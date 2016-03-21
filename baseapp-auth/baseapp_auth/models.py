@@ -47,6 +47,7 @@ class PermissionsMixin(models.Model):
 
 class User(PermissionsMixin, AbstractBaseUser):
     email = CaseInsensitiveEmailField(unique=True, db_index=True)
+    is_email_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(
         _('active'),
         default=True,
@@ -56,6 +57,10 @@ class User(PermissionsMixin, AbstractBaseUser):
         ),
     )
     date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
+
+    # Changing email
+    new_email = CaseInsensitiveEmailField(blank=True)
+    is_new_email_verified = models.BooleanField(default=False)
 
     objects = UserManager()
 
