@@ -6,9 +6,11 @@ from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter(trailing_slash=False)
 
-# Register
+# Login / Register
+from .login.views import LoginViewSet  # noqa
 from .register.views import RegisterViewSet  # noqa
 
+router.register('login', LoginViewSet, base_name='login')
 router.register(r'register', RegisterViewSet, base_name='register')
 
 # Users
