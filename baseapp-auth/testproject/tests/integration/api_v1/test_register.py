@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 
 from apps.users.models import User
@@ -35,3 +37,9 @@ class TestRegister(ApiMixin):
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
         assert r.data['email'] == ['That email is already in use.  Choose another.']
+
+    def test_sends_welcome_email(self, client, data, outbox):
+        with patch('apps.api.v1.register.views.send_welcome_email') as mock:
+            r = client.post(self.reverse(), data)
+            h.responseCreated(r)
+            assert mock.called
