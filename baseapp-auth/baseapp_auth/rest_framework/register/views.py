@@ -1,6 +1,8 @@
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 
+from apps.users.emails import send_welcome_email
+
 from ..users.serializers import UserSerializer
 from .serializers import RegisterSerializer
 
@@ -17,5 +19,5 @@ class RegisterViewSet(viewsets.GenericViewSet):
 
     def perform_create(self, serializer):
         user = serializer.save()
-        # send_verification_email(user)
+        send_welcome_email(user)
         return user
