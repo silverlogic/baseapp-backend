@@ -2,10 +2,11 @@ from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import serializers
 
+from apps.api.serializers import ModelSerializer
 from apps.users.models import User
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UserSerializer(ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'email', 'is_email_verified', 'new_email', 'is_new_email_verified')
