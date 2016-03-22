@@ -1,4 +1,4 @@
-from rest_framework import viewsets, response
+from rest_framework import response, viewsets
 
 from .serializers import LoginSerializer
 
