@@ -22,6 +22,6 @@ class UserAdmin(UserAdmin):
     add_form = UserCreationForm
     list_display = ('id', 'email', 'is_active', 'is_superuser',)
     list_filter = ('is_superuser', 'is_active',)
-    search_fields = ('email',)
+    search_fields = ('=email',)
     ordering = ('id',)
     filter_horizontal = ()
