@@ -1,1 +1,1 @@
-from .fixtures import *  # noqa
+from tests.fixtures import *  # noqa
