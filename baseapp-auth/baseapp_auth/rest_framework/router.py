@@ -17,3 +17,9 @@ router.register(r'register', RegisterViewSet, base_name='register')
 from .users.views import UsersViewSet  # noqa
 
 router.register(r'users', UsersViewSet, base_name='users')
+
+# Forgot Password
+from .forgot_password.views import ForgotPasswordViewSet, ResetPasswordViewSet  # noqa
+
+router.register(r'forgot-password', ForgotPasswordViewSet, base_name='forgot-password')
+router.register(r'forgot-password/reset', ResetPasswordViewSet, base_name='reset-password')
