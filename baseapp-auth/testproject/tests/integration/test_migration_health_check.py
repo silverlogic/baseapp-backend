@@ -30,6 +30,7 @@ class TestMigrationHealthCheck(TestCase):
             ProjectState.from_apps(apps),
         )
         changes = autodetector.changes(graph=executor.loader.graph)
+        changes.pop('avatar', None)  # out of our control
         if changes:
             self.fail(
                 "Your models have changes that are not yet reflected "

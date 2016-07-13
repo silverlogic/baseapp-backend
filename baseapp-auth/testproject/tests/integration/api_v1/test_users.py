@@ -1,4 +1,5 @@
 import pytest
+from avatar.models import Avatar
 
 import tests.factories as f
 import tests.helpers as h
@@ -9,6 +10,11 @@ pytestmark = pytest.mark.django_db
 
 class TestUsersUpdate(ApiMixin):
     view_name = 'users-detail'
+
+    def test_guest_cant_update(self, client):
+        user = f.UserFactory()
+        r = client.patch(self.reverse(kwargs={'pk': user.id}))
+        h.responseUnauthorized(r)
 
     def test_user_can_update_self(self, user_client):
         r = user_client.patch(self.reverse(kwargs={'pk': user_client.user.id}))
@@ -25,6 +31,19 @@ class TestUsersUpdate(ApiMixin):
         user_client.patch(self.reverse(kwargs={'pk': user_client.user.id}), data)
         user_client.user.refresh_from_db()
         assert user_client.user.email != 'test@email.co'
+
+    def test_can_upload_avatar(self, user_client, image_base64):
+        data = {'avatar': image_base64}
+        r = user_client.patch(self.reverse(kwargs={'pk': user_client.user.pk}), data)
+        h.responseOk(r)
+        assert Avatar.objects.exists()
+
+    def test_can_clear_avatar(self, user_client, image_djangofile):
+        Avatar.objects.create(user=user_client.user, primary=True, avatar=image_djangofile)
+        data = {'avatar': None}
+        r = user_client.patch(self.reverse(kwargs={'pk': user_client.user.pk}), data)
+        h.responseOk(r)
+        assert not Avatar.objects.exists()
 
 
 class TestUsersMe(ApiMixin):
