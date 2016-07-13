@@ -1,11 +1,24 @@
-from rest_framework import permissions, response, viewsets
+from rest_framework import mixins, permissions, response, viewsets
 from rest_framework.decorators import list_route
+
+from apps.users.models import User
 
 from .serializers import ChangePasswordSerializer, UserSerializer
 
 
-class UsersViewSet(viewsets.GenericViewSet):
+class UpdateSelfPermission(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.method in ('PUT', 'PATCH'):
+            if not request.user.is_authenticated() or request.user != obj:
+                return False
+        return True
+
+
+class UsersViewSet(mixins.UpdateModelMixin,
+                   viewsets.GenericViewSet):
     serializer_class = UserSerializer
+    permission_classes = (UpdateSelfPermission,)
+    queryset = User.objects.all()
 
     @list_route(methods=['GET'], permission_classes=[permissions.IsAuthenticated])
     def me(self, request):
