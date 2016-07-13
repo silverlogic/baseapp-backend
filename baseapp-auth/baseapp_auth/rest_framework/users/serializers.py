@@ -1,16 +1,31 @@
 from django.utils.translation import ugettext_lazy as _
 
+from avatar.models import Avatar
 from rest_framework import serializers
 
 from apps.api.serializers import ModelSerializer
 from apps.users.models import User
 
+from .fields import AvatarField
+
 
 class UserSerializer(ModelSerializer):
+    avatar = AvatarField(required=False, allow_null=True)
+
     class Meta:
         model = User
-        fields = ('id', 'email', 'is_email_verified', 'new_email', 'is_new_email_verified')
+        fields = ('id', 'email', 'is_email_verified', 'new_email', 'is_new_email_verified',
+                  'avatar',)
         read_only_fields = ('email', 'is_email_verified', 'new_email', 'is_new_email_confirmed')
+
+    def update(self, instance, validated_data):
+        if 'avatar' in validated_data:
+            avatar = validated_data.pop('avatar')
+            if avatar:
+                Avatar.objects.create(user=instance, primary=True, avatar=avatar)
+            else:
+                instance.avatar_set.all().delete()
+        return super().update(instance, validated_data)
 
 
 class ChangePasswordSerializer(serializers.Serializer):
