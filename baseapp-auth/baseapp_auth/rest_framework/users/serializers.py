@@ -1,6 +1,7 @@
 from django.utils.translation import ugettext_lazy as _
 
 from avatar.models import Avatar
+from avatar.utils import invalidate_cache
 from rest_framework import serializers
 
 from apps.api.serializers import ModelSerializer
@@ -25,6 +26,7 @@ class UserSerializer(ModelSerializer):
                 Avatar.objects.create(user=instance, primary=True, avatar=avatar)
             else:
                 instance.avatar_set.all().delete()
+            invalidate_cache(instance, sizes=[1024, 64])
         return super().update(instance, validated_data)
 
 
