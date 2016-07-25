@@ -9,14 +9,20 @@ from apps.users.models import User
 from .fields import AvatarField
 
 
-class UserSerializer(ModelSerializer):
+class UserBaseSerializer(ModelSerializer):
     avatar = AvatarField(required=False, allow_null=True)
 
     class Meta:
         model = User
         fields = ('id', 'email', 'is_email_verified', 'new_email', 'is_new_email_verified',
                   'avatar',)
-        read_only_fields = ('email', 'is_email_verified', 'new_email', 'is_new_email_confirmed')
+        private_fields = ('email', 'is_email_verified', 'new_email', 'is_new_email_verified',)
+        read_only_fields = ('email', 'is_email_verified', 'new_email', 'is_new_email_confirmed',)
+
+
+class UserSerializer(UserBaseSerializer):
+    class Meta(UserBaseSerializer.Meta):
+        pass
 
     def update(self, instance, validated_data):
         if 'avatar' in validated_data:
@@ -26,6 +32,19 @@ class UserSerializer(ModelSerializer):
             else:
                 instance.avatar_set.all().delete()
         return super().update(instance, validated_data)
+
+    def to_representation(self, user):
+        request = self.context['request']
+        if request.user.is_authenticated() and request.user.pk == user.pk:
+            return super().to_representation(user)
+        else:
+            return UserPublicSerializer(user).data
+
+
+class UserPublicSerializer(UserBaseSerializer):
+    class Meta(UserSerializer.Meta):
+        fields = tuple(set(UserSerializer.Meta.fields) - set(UserSerializer.Meta.private_fields))
+        read_only_fields = tuple(set(UserSerializer.Meta.read_only_fields) - set(UserSerializer.Meta.private_fields))
 
 
 class ChangePasswordSerializer(serializers.Serializer):

@@ -14,7 +14,8 @@ class UpdateSelfPermission(permissions.BasePermission):
         return True
 
 
-class UsersViewSet(mixins.UpdateModelMixin,
+class UsersViewSet(mixins.RetrieveModelMixin,
+                   mixins.UpdateModelMixin,
                    viewsets.GenericViewSet):
     serializer_class = UserSerializer
     permission_classes = (UpdateSelfPermission,)
