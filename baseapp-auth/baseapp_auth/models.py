@@ -62,6 +62,10 @@ class User(PermissionsMixin, AbstractBaseUser):
     new_email = CaseInsensitiveEmailField(blank=True)
     is_new_email_verified = models.BooleanField(default=False)
 
+    # Profile
+    first_name = models.CharField(max_length=100, blank=True)
+    last_name = models.CharField(max_length=100, blank=True)
+
     objects = UserManager()
 
     USERNAME_FIELD = 'email'
