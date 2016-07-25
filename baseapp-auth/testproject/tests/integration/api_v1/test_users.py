@@ -8,6 +8,36 @@ from tests.mixins import ApiMixin
 pytestmark = pytest.mark.django_db
 
 
+class TestUsersRetrieve(ApiMixin):
+    view_name = 'users-detail'
+
+    def test_guest_can_retreive(self, client):
+        user = f.UserFactory()
+        r = client.get(self.reverse(kwargs={'pk': user.pk}))
+        h.responseOk(r)
+
+    def test_user_can_retrieve(self, user_client):
+        user = f.UserFactory()
+        r = user_client.get(self.reverse(kwargs={'pk': user.pk}))
+        h.responseOk(r)
+
+    def test_object_keys_for_own_user(self, user_client):
+        r = user_client.get(self.reverse(kwargs={'pk': user_client.user.pk}))
+        h.responseOk(r)
+        expected = {'id', 'email', 'is_email_verified', 'new_email', 'is_new_email_verified',
+                    'avatar'}
+        actual = set(r.data.keys())
+        assert expected == actual
+
+    def test_object_keys_for_other_user(self, user_client):
+        user = f.UserFactory()
+        r = user_client.get(self.reverse(kwargs={'pk': user.pk}))
+        h.responseOk(r)
+        expected = {'id', 'avatar'}
+        actual = set(r.data.keys())
+        assert expected == actual
+
+
 class TestUsersUpdate(ApiMixin):
     view_name = 'users-detail'
 
