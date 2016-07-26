@@ -9,9 +9,11 @@ router = DefaultRouter(trailing_slash=False)
 # Login / Register
 from .login.views import LoginViewSet  # noqa
 from .register.views import RegisterViewSet  # noqa
+from .social_auth.views import SocialAuthViewSet  # noqa
 
 router.register(r'login', LoginViewSet, base_name='login')
 router.register(r'register', RegisterViewSet, base_name='register')
+router.register(r'social-auth', SocialAuthViewSet, base_name='social-auth')
 
 # Users
 from .users.views import UsersViewSet  # noqa

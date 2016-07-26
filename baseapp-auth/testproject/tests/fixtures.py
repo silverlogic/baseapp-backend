@@ -3,6 +3,7 @@ from io import BytesIO
 from django.core import mail
 from django.core.files.images import ImageFile
 
+import httpretty
 import pytest
 from rest_framework.test import APIClient
 
@@ -31,6 +32,15 @@ def user_client():
     client = Client()
     client.force_authenticate(user)
     return client
+
+
+@pytest.yield_fixture()
+def use_httpretty():
+    httpretty.enable()
+    httpretty.HTTPretty.allow_net_connect = False
+    yield
+    httpretty.disable()
+    httpretty.reset()
 
 
 @pytest.fixture
