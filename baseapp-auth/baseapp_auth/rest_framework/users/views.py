@@ -1,4 +1,4 @@
-from rest_framework import mixins, permissions, response, viewsets
+from rest_framework import mixins, permissions, response, viewsets, filters
 from rest_framework.decorators import list_route
 
 from apps.users.models import User
@@ -16,10 +16,13 @@ class UpdateSelfPermission(permissions.BasePermission):
 
 class UsersViewSet(mixins.RetrieveModelMixin,
                    mixins.UpdateModelMixin,
+                   mixins.ListModelMixin,
                    viewsets.GenericViewSet):
     serializer_class = UserSerializer
     permission_classes = (UpdateSelfPermission,)
     queryset = User.objects.all()
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('first_name', 'last_name',)
 
     @list_route(methods=['GET'], permission_classes=[permissions.IsAuthenticated])
     def me(self, request):

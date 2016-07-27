@@ -76,6 +76,26 @@ class TestUsersUpdate(ApiMixin):
         assert not Avatar.objects.exists()
 
 
+class TestUsersList(ApiMixin):
+    view_name = 'users-list'
+
+    def test_guest_can_list(self, client):
+        r = client.get(self.reverse())
+        h.responseOk(r)
+
+    def test_user_can_list(self, user_client):
+        r = user_client.get(self.reverse())
+        h.responseOk(r)
+
+    def test_can_search(self, client):
+        f.UserFactory(first_name='John', last_name='Smith')
+        f.UserFactory(first_name='Bobby', last_name='Timbers')
+        r = client.get(self.reverse(query_params={'q': 'John Smith'}))
+        h.responseOk(r)
+        assert len(r.data['results']) == 1
+        assert r.data['results'][0]['first_name'] == 'John'
+
+
 class TestUsersMe(ApiMixin):
     view_name = 'users-me'
 
