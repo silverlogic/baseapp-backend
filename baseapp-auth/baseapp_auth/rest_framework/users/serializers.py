@@ -4,6 +4,7 @@ from avatar.models import Avatar
 from rest_framework import serializers
 
 from apps.api.serializers import ModelSerializer
+from apps.referrals.utils import get_referral_code
 from apps.users.models import User
 
 from .fields import AvatarField
@@ -11,13 +12,18 @@ from .fields import AvatarField
 
 class UserBaseSerializer(ModelSerializer):
     avatar = AvatarField(required=False, allow_null=True)
+    referral_code = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ('id', 'email', 'is_email_verified', 'new_email', 'is_new_email_verified',
-                  'avatar', 'first_name', 'last_name',)
-        private_fields = ('email', 'is_email_verified', 'new_email', 'is_new_email_verified',)
+                  'referral_code', 'avatar', 'first_name', 'last_name',)
+        private_fields = ('email', 'is_email_verified', 'new_email', 'is_new_email_verified',
+                          'referral_code',)
         read_only_fields = ('email', 'is_email_verified', 'new_email', 'is_new_email_confirmed',)
+
+    def get_referral_code(self, user):
+        return get_referral_code(user)
 
 
 class UserSerializer(UserBaseSerializer):
