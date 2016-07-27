@@ -1,4 +1,4 @@
-from rest_framework import mixins, permissions, response, viewsets, filters
+from rest_framework import filters, mixins, permissions, response, viewsets
 from rest_framework.decorators import list_route
 
 from apps.users.models import User
