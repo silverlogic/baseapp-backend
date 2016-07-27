@@ -6,6 +6,7 @@ import pytest
 import social.apps.django_app.utils
 from avatar.models import Avatar
 
+from apps.referrals.utils import get_referral_code
 from apps.users.models import User
 
 import tests.factories as f
@@ -111,6 +112,20 @@ class TestFacebookSocialAuth(SocialAuthMixin):
         r = client.post(self.reverse(), complete_data)
         h.responseOk(r)
         assert Avatar.objects.count()
+
+    def test_can_be_referred(self, client, complete_data):
+        referrer = f.UserFactory()
+        complete_data['referral_code'] = get_referral_code(referrer)
+        r = client.post(self.reverse(), complete_data)
+        h.responseOk(r)
+        referee = User.objects.exclude(pk=referrer.pk).first()
+        referee.referred_by
+
+    def test_when_referral_code_is_invalid(self, client, data):
+        data['referral_code'] = '18a9sdf891203'
+        r = client.post(self.reverse(), data)
+        h.responseBadRequest(r)
+        assert r.data['referral_code'] == ['Invalid referral code.']
 
     def test_when_no_email_from_provider(self, client, no_email_data):
         r = client.post(self.reverse(), no_email_data)

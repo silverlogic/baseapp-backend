@@ -25,7 +25,7 @@ class TestUsersRetrieve(ApiMixin):
         r = user_client.get(self.reverse(kwargs={'pk': user_client.user.pk}))
         h.responseOk(r)
         expected = {'id', 'email', 'is_email_verified', 'new_email', 'is_new_email_verified',
-                    'avatar', 'first_name', 'last_name'}
+                    'referral_code', 'avatar', 'first_name', 'last_name'}
         actual = set(r.data.keys())
         assert expected == actual
 

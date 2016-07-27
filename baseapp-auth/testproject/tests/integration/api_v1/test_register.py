@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
+from apps.referrals.utils import get_referral_code
 from apps.users.models import User
 
 import tests.factories as f
@@ -43,3 +44,17 @@ class TestRegister(ApiMixin):
             r = client.post(self.reverse(), data)
             h.responseCreated(r)
             assert mock.called
+
+    def test_can_be_referred(self, client, data):
+        referrer = f.UserFactory()
+        data['referral_code'] = get_referral_code(referrer)
+        r = client.post(self.reverse(), data)
+        h.responseCreated(r)
+        referee = User.objects.exclude(pk=referrer.pk).first()
+        referee.referred_by
+
+    def test_when_referral_code_is_invalid(self, client, data):
+        data['referral_code'] = '18a9sdf891203'
+        r = client.post(self.reverse(), data)
+        h.responseBadRequest(r)
+        assert r.data['referral_code'] == ['Invalid referral code.']
