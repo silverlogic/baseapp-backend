@@ -48,8 +48,12 @@ def set_avatar(is_new, backend, user, response, *args, **kwargs):
     elif backend.name == 'twitter':
         image_url = response.get('profile_image_url', None)
         if image_url:
-            # get a larger image the the default response one.
-            image_url = re.sub(r'_bigger\.(?P<extension>\w+)$', '_400x400.\g<extension>', image_url)
+            if re.search(r'default_profile_images', image_url):
+                # don't want those silly default egg images.
+                image_url = None
+            else:
+                # get a larger image the the default response one.
+                image_url = re.sub(r'_bigger\.(?P<extension>\w+)$', '_400x400.\g<extension>', image_url)
 
     if image_url:
         response = requests.get(image_url)
