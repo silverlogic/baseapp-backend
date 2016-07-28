@@ -257,6 +257,28 @@ class TestTwitterSocialAuth(OAuth1Mixin):
                 mock.return_value = '1234'
                 yield data
 
+    @pytest.yield_fixture
+    def step2_data_with_default_profile_image(self, data, image_base64):
+        data['oauth_token'] = '1234'
+        data['oauth_verifier'] = '12345'
+        data['email'] = 'seancook@example.com'
+
+        httpretty.register_uri(
+            httpretty.GET,
+            re.compile('https://api.twitter.com/1.\d+/account/verify_credentials.json'),
+            body=json.dumps({
+                'id': 543,
+                'name': 'Sean Cook',
+                'screen_name': 'thecooker',
+                'profile_image_url': 'http://example.com/sticky/default_profile_images/default_profile_3_bigger.png'
+            })
+        )
+
+        with patch('social.backends.twitter.TwitterOAuth.get_unauthorized_token') as mock:
+            with patch('social.backends.twitter.TwitterOAuth.access_token') as mock:
+                mock.return_value = '1234'
+                yield data
+
     def test_can_perform_step1(self, client, step1_data):
         r = client.post(self.reverse(), step1_data)
         h.responseOk(r)
@@ -277,3 +299,8 @@ class TestTwitterSocialAuth(OAuth1Mixin):
         r = client.post(self.reverse(), step2_data_with_profile_image)
         h.responseOk(r)
         assert Avatar.objects.count()
+
+    def test_user_avatar_is_not_created_when_user_has_default_profile_image(self, client, step2_data_with_default_profile_image):
+        r = client.post(self.reverse(), step2_data_with_default_profile_image)
+        h.responseOk(r)
+        assert not Avatar.objects.count()
