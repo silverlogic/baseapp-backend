@@ -16,24 +16,37 @@ from tests.mixins import ApiMixin
 pytestmark = pytest.mark.django_db
 
 
-class SocialAuthMixin(ApiMixin):
+class OAuth2Mixin(ApiMixin):
     view_name = 'social-auth-list'
 
     @pytest.fixture
     def base_data(self, use_httpretty):
         return {
-            'code': 'asdf9123'
+            'code': 'asdf9123',
+            'redirect_uri': 'https://example.com',
         }
 
 
-class TestBaseSocialAuth(SocialAuthMixin):
+class TestOAuth2(OAuth2Mixin):
     def test_cant_auth_with_invalid_provider(self, client, base_data):
         base_data['provider'] = 'blarg'
         r = client.post(self.reverse(), base_data)
         h.responseBadRequest(r)
+        assert 'provider' in r.data
+
+    def test_cant_auth_without_redirect_uri(self, client, base_data, settings):
+        base_data['provider'] = 'facebook'
+        base_data.pop('redirect_uri')
+        settings.SOCIAL_AUTH_FACEBOOK_KEY = '1234'
+        settings.SOCIAL_AUTH_FACEBOOK_SECRET = '1234'
+        settings.AUTHENTICATION_BACKENDS = ['social.backends.facebook.FacebookOAuth2']
+        social.apps.django_app.utils.BACKENDS = settings.AUTHENTICATION_BACKENDS
+        r = client.post(self.reverse(), base_data)
+        h.responseBadRequest(r)
+        assert 'redirect_uri' in r.data
 
 
-class TestFacebookSocialAuth(SocialAuthMixin):
+class TestFacebookSocialAuth(OAuth2Mixin):
     @pytest.fixture
     def data(self, base_data, settings, image_base64):
         base_data['provider'] = 'facebook'
