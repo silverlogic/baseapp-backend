@@ -36,12 +36,18 @@ def set_avatar(is_new, backend, user, response, *args, **kwargs):
     if not is_new:
         return
 
+    image_url = None
+
     if backend.name == 'facebook':
         picture_url = 'https://graph.facebook.com/v2.7/me/picture'
         picture_params = {'type': 'large', 'access_token': response['access_token']}
         response = requests.get(picture_url, params=picture_params)
         data = response.json()
         image_url = data['data']['url']
+    elif backend.name == 'twitter':
+        image_url = response.get('profile_image_url', None)
+
+    if image_url:
         response = requests.get(image_url)
         image = BytesIO(response.content)
         Avatar.objects.create(user=user, primary=True, avatar=ImageFile(image, name='pic.jpg'))
