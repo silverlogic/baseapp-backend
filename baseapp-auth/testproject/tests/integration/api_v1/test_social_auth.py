@@ -22,7 +22,7 @@ class SocialAuthMixin(ApiMixin):
     @pytest.fixture
     def base_data(self, use_httpretty):
         return {
-            'access_token': 'asdf9123'
+            'code': 'asdf9123'
         }
 
 
@@ -61,7 +61,20 @@ class TestFacebookSocialAuth(SocialAuthMixin):
         return base_data
 
     @pytest.fixture
-    def complete_data(self, data):
+    def success_data(self, data):
+        httpretty.register_uri(
+            httpretty.GET,
+            re.compile('https://graph.facebook.com/v2.\d+/oauth/access_token$'),
+            body=json.dumps({
+                "access_token": '1234',
+                "token_type": 'type',
+                "expires_in": 6000
+            })
+        )
+        return data
+
+    @pytest.fixture
+    def complete_data(self, success_data):
         httpretty.register_uri(
             httpretty.GET,
             re.compile('https://graph.facebook.com/v2.\d+/me$'),
@@ -72,10 +85,10 @@ class TestFacebookSocialAuth(SocialAuthMixin):
                 'email': 'johnsmith@example.com',
             })
         )
-        return data
+        return success_data
 
     @pytest.fixture
-    def no_email_data(self, data):
+    def no_email_data(self, success_data):
         httpretty.register_uri(
             httpretty.GET,
             re.compile('https://graph.facebook.com/v\d+.\d+/me$'),
@@ -85,13 +98,13 @@ class TestFacebookSocialAuth(SocialAuthMixin):
                 'last_name': 'Smith',
             })
         )
-        return data
+        return success_data
 
     @pytest.fixture
-    def invalid_access_token_data(self, data):
+    def invalid_code_data(self, data):
         httpretty.register_uri(
             httpretty.GET,
-            re.compile('https://graph.facebook.com/v\d+.\d+/me'),
+            re.compile('https://graph.facebook.com/v2.\d+/oauth/access_token$'),
             status=400
         )
         return data
@@ -144,7 +157,7 @@ class TestFacebookSocialAuth(SocialAuthMixin):
         h.responseBadRequest(r)
         assert r.data['email'] == 'email_already_in_use'
 
-    def test_when_invalid_access_token(self, client, invalid_access_token_data):
-        r = client.post(self.reverse(), invalid_access_token_data)
+    def test_when_invalid_code(self, client, invalid_code_data):
+        r = client.post(self.reverse(), invalid_code_data)
         h.responseBadRequest(r)
-        assert 'access_token' in r.data
+        assert r.data['non_field_errors'] == 'invalid_credentials'
