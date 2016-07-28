@@ -1,3 +1,4 @@
+import re
 from io import BytesIO
 
 from django.core.files.images import ImageFile
@@ -46,6 +47,9 @@ def set_avatar(is_new, backend, user, response, *args, **kwargs):
         image_url = data['data']['url']
     elif backend.name == 'twitter':
         image_url = response.get('profile_image_url', None)
+        if image_url:
+            # get a larger image the the default response one.
+            image_url = re.sub(r'_bigger\.(?P<extension>\w+)$', '_400x400.\g<extension>', image_url)
 
     if image_url:
         response = requests.get(image_url)

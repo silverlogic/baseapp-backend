@@ -242,13 +242,13 @@ class TestTwitterSocialAuth(OAuth1Mixin):
                 'id': 543,
                 'name': 'Sean Cook',
                 'screen_name': 'thecooker',
-                'profile_image_url': 'http://example.com/profile_image.jpg'
+                'profile_image_url': 'http://example.com/profile_images/1234431/18272_bigger.jpg'
             })
         )
 
         httpretty.register_uri(
             httpretty.GET,
-            'http://example.com/profile_image.jpg',
+            'http://example.com/profile_images/1234431/18272_400x400.jpg',
             body=image_base64
         )
 
