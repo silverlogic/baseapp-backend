@@ -38,13 +38,11 @@ def set_avatar(is_new, backend, user, response, *args, **kwargs):
         return
 
     image_url = None
+    image_params = {}
 
     if backend.name == 'facebook':
-        picture_url = 'https://graph.facebook.com/v2.7/me/picture'
-        picture_params = {'type': 'large', 'access_token': response['access_token']}
-        response = requests.get(picture_url, params=picture_params)
-        data = response.json()
-        image_url = data['data']['url']
+        image_url = 'https://graph.facebook.com/v2.7/me/picture'
+        image_params = {'type': 'large', 'access_token': response['access_token']}
     elif backend.name == 'twitter':
         image_url = response.get('profile_image_url', None)
         if image_url:
@@ -56,6 +54,6 @@ def set_avatar(is_new, backend, user, response, *args, **kwargs):
                 image_url = re.sub(r'_bigger\.(?P<extension>\w+)$', '_400x400.\g<extension>', image_url)
 
     if image_url:
-        response = requests.get(image_url)
+        response = requests.get(image_url, params=image_params)
         image = BytesIO(response.content)
         Avatar.objects.create(user=user, primary=True, avatar=ImageFile(image, name='pic.jpg'))
