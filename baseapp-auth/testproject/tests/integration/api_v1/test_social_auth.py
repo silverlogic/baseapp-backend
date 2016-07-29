@@ -70,15 +70,6 @@ class TestFacebookSocialAuth(OAuth2Mixin):
         httpretty.register_uri(
             httpretty.GET,
             re.compile('https://graph.facebook.com/v2.\d+/me/picture$'),
-            body=json.dumps({
-                'data': {
-                    'url': 'https://example.com/picture.jpg'
-                }
-            })
-        )
-        httpretty.register_uri(
-            httpretty.GET,
-            'https://example.com/picture.jpg',
             body=image_base64
         )
 
