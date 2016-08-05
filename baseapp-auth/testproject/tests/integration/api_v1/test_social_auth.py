@@ -202,6 +202,7 @@ class TestTwitterSocialAuth(OAuth1Mixin):
     @pytest.yield_fixture
     def step2_data(self, data):
         data['oauth_token'] = '1234'
+        data['oauth_token_secret'] = '1234xyz'
         data['oauth_verifier'] = '12345'
         data['email'] = 'seancook@example.com'
 
@@ -223,6 +224,7 @@ class TestTwitterSocialAuth(OAuth1Mixin):
     @pytest.yield_fixture
     def step2_data_with_profile_image(self, data, image_base64):
         data['oauth_token'] = '1234'
+        data['oauth_token_secret'] = '1234xyz'
         data['oauth_verifier'] = '12345'
         data['email'] = 'seancook@example.com'
 
@@ -251,6 +253,7 @@ class TestTwitterSocialAuth(OAuth1Mixin):
     @pytest.yield_fixture
     def step2_data_with_default_profile_image(self, data, image_base64):
         data['oauth_token'] = '1234'
+        data['oauth_token_secret'] = '1234xyz'
         data['oauth_verifier'] = '12345'
         data['email'] = 'seancook@example.com'
 
