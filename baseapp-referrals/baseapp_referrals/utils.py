@@ -3,7 +3,7 @@ from django.db.models import ObjectDoesNotExist
 
 from hashids import Hashids
 
-hashids = Hashids(salt='referral-codes', min_length=15)
+hashids = Hashids(salt='referral-codes', min_length=4)
 
 
 def get_referral_code(user):
