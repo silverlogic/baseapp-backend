@@ -60,7 +60,7 @@ class User(PermissionsMixin, AbstractBaseUser):
 
     # Changing email
     new_email = CaseInsensitiveEmailField(blank=True)
-    is_new_email_verified = models.BooleanField(default=False)
+    is_new_email_confirmed = models.BooleanField(default=False, help_text='Has the user confirmed they want an email change?')
 
     # Profile
     first_name = models.CharField(max_length=100, blank=True)

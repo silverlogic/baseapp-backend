@@ -25,3 +25,8 @@ from .forgot_password.views import ForgotPasswordViewSet, ResetPasswordViewSet  
 
 router.register(r'forgot-password', ForgotPasswordViewSet, base_name='forgot-password')
 router.register(r'forgot-password/reset', ResetPasswordViewSet, base_name='reset-password')
+
+# Change Email
+from .change_email.views import ChangeEmailViewSet  # noqa
+
+router.register(r'change-email', ChangeEmailViewSet, base_name='change-email')

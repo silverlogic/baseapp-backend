@@ -16,9 +16,9 @@ class UserBaseSerializer(ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'is_email_verified', 'new_email', 'is_new_email_verified',
+        fields = ('id', 'email', 'is_email_verified', 'new_email', 'is_new_email_confirmed',
                   'referral_code', 'avatar', 'first_name', 'last_name',)
-        private_fields = ('email', 'is_email_verified', 'new_email', 'is_new_email_verified',
+        private_fields = ('email', 'is_email_verified', 'new_email', 'is_new_email_confirmed',
                           'referral_code',)
         read_only_fields = ('email', 'is_email_verified', 'new_email', 'is_new_email_confirmed',)
 
