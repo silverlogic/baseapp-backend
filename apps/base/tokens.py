@@ -1,4 +1,4 @@
-from django.core.signing import BadSignature, loads, dumps
+from django.core.signing import BadSignature, dumps, loads
 
 
 class TokenGenerator(object):
