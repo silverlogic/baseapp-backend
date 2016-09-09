@@ -24,8 +24,9 @@ class RegisterSerializer(serializers.Serializer):
         return referral_code
 
     def save(self):
-        user = User.objects.create_user(email=self.data['email'],
-                                        password=self.data['password'])
+        validated_data = self.validated_data
+        user = User.objects.create_user(email=validated_data['email'],
+                                        password=validated_data['password'])
         if hasattr(self, 'referrer'):
             UserReferral.objects.create(referrer=self.referrer, referee=user)
         return user
