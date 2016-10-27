@@ -1,6 +1,8 @@
 import pytest
 from avatar.models import Avatar
 
+from apps.users.tokens import ConfirmEmailTokenGenerator
+
 import tests.factories as f
 import tests.helpers as h
 from tests.mixins import ApiMixin
@@ -144,3 +146,30 @@ class TestUsersChangePassword(ApiMixin):
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
         assert r.data['current_password'] == ['That is not your current password.']
+
+
+class TestConfirmEmail(ApiMixin):
+    view_name = 'users-confirm-email'
+
+    @pytest.fixture
+    def data(self):
+        self.user = f.UserFactory(is_email_verified=False)
+        return {
+            'token': ConfirmEmailTokenGenerator().make_token(self.user)
+        }
+
+    def test_confirm_email(self, client, data):
+        assert not self.user.is_email_verified
+        r = client.post(self.reverse(kwargs={'pk': self.user.pk}), data)
+        h.responseOk(r)
+        self.user.refresh_from_db()
+        assert self.user.is_email_verified
+
+    def test_confirm_email_invalid_token(self, client, data):
+        data['token'] = 'invalid-token'
+        r = client.post(self.reverse(kwargs={'pk': self.user.pk}), data)
+        h.responseBadRequest(r)
+
+    def test_confirm_email_no_user(self, client, data):
+        r = client.post(self.reverse(kwargs={'pk': self.user.pk + 1}), data)
+        h.responseBadRequest(r)
