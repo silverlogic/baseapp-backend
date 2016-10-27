@@ -123,6 +123,12 @@ class TestChangeEmailVerify(ApiMixin):
         self.user.refresh_from_db()
         assert not self.user.is_new_email_confirmed
 
+    def test_users_is_email_verified_set(self, client, data):
+        r = client.post(self.reverse(), data)
+        h.responseOk(r)
+        self.user.refresh_from_db()
+        assert self.user.is_email_verified
+
     def test_when_user_doesnt_exist(self, client, data):
         r = client.post(self.reverse(kwargs={'pk': self.user.id + 1}), data)
         h.responseBadRequest(r)

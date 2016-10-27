@@ -6,6 +6,7 @@ from rest_framework import serializers
 from apps.api.serializers import ModelSerializer
 from apps.referrals.utils import get_referral_code
 from apps.users.models import User
+from apps.users.tokens import ConfirmEmailTokenGenerator
 
 from .fields import AvatarField
 
@@ -67,3 +68,17 @@ class ChangePasswordSerializer(serializers.Serializer):
         user = self.context['request'].user
         user.set_password(self.data['new_password'])
         user.save()
+
+
+class ConfirmEmailSerializer(serializers.Serializer):
+    token = serializers.CharField()
+
+    def validate_token(self, token):
+        if not ConfirmEmailTokenGenerator().check_token(self.instance, token):
+            raise serializers.ValidationError(_('Invalid token'))
+        return token
+
+    def update(self, instance, validated_data):
+        instance.is_email_verified = True
+        instance.save()
+        return instance

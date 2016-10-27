@@ -1,9 +1,12 @@
-from rest_framework import filters, mixins, permissions, response, viewsets
-from rest_framework.decorators import list_route
+from django.http import Http404
+from django.utils.translation import ugettext_lazy as _
+
+from rest_framework import filters, mixins, permissions, response, serializers, viewsets
+from rest_framework.decorators import detail_route, list_route
 
 from apps.users.models import User
 
-from .serializers import ChangePasswordSerializer, UserSerializer
+from .serializers import ChangePasswordSerializer, ConfirmEmailSerializer, UserSerializer
 
 
 class UpdateSelfPermission(permissions.BasePermission):
@@ -36,3 +39,14 @@ class UsersViewSet(mixins.RetrieveModelMixin,
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return response.Response({'detail': 'success'})
+
+    @detail_route(methods=['POST'], permission_classes=[], serializer_class=ConfirmEmailSerializer)
+    def confirm_email(self, request, pk=None, *args, **kwargs):
+        try:
+            user = self.get_object()
+        except Http404:
+            raise serializers.ValidationError(_('Invalid token'))
+        serializer = self.get_serializer(data=request.data, instance=user)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return response.Response({})
