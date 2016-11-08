@@ -2,11 +2,17 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 
-from .tokens import ChangeEmailConfirmTokenGenerator, ChangeEmailVerifyTokenGenerator
+from .tokens import (
+    ChangeEmailConfirmTokenGenerator, ChangeEmailVerifyTokenGenerator, ConfirmEmailTokenGenerator
+)
 
 
 def send_welcome_email(user):
-    context = {'user': user}
+    token = ConfirmEmailTokenGenerator().make_token(user)
+    confirm_url = settings.FRONT_CONFIRM_EMAIL_URL.format(id=user.pk, token=token)
+    context = {
+        'user': user,
+        'confirm_url': confirm_url}
     subject = render_to_string('users/emails/welcome-subject.txt.j2', context=context).strip()
     message = render_to_string('users/emails/welcome-body.txt.j2', context=context)
     html_message = render_to_string('users/emails/welcome-body.html.j2', context=context)

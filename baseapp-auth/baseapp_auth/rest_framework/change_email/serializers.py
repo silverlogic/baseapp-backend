@@ -47,5 +47,6 @@ class ChangeEmailVerifySerializer(serializers.Serializer):
         instance.email = instance.new_email
         instance.new_email = ''
         instance.is_new_email_confirmed = False
+        instance.is_email_verified = True
         instance.save()
         return instance

@@ -13,3 +13,10 @@ class ChangeEmailVerifyTokenGenerator(TokenGenerator):
 
     def get_signing_value(self, user):
         return [user.id, user.new_email, user.is_new_email_confirmed]
+
+
+class ConfirmEmailTokenGenerator(TokenGenerator):
+    key_salt = 'confirm_email'
+
+    def get_signing_value(self, user):
+        return [user.pk, user.email]
