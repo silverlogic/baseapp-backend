@@ -57,3 +57,7 @@ def set_avatar(is_new, backend, user, response, *args, **kwargs):
         response = requests.get(image_url, params=image_params)
         image = BytesIO(response.content)
         Avatar.objects.create(user=user, primary=True, avatar=ImageFile(image, name='pic.jpg'))
+
+
+def set_is_new(is_new, user, *args, **kwargs):
+    user.is_new = is_new
