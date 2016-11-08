@@ -52,6 +52,10 @@ def set_avatar(is_new, backend, user, response, *args, **kwargs):
             else:
                 # get a larger image the the default response one.
                 image_url = re.sub(r'_bigger\.(?P<extension>\w+)$', '_400x400.\g<extension>', image_url)
+    elif backend.name.startswith('linkedin'):
+        pictures = response.get('pictureUrls', None)
+        if pictures:
+            image_url = pictures['values'][0]
 
     if image_url:
         response = requests.get(image_url, params=image_params)
