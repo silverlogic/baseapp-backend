@@ -309,3 +309,85 @@ class TestTwitterSocialAuth(OAuth1Mixin):
         r = client.post(self.reverse(), step2_data_with_default_profile_image)
         h.responseOk(r)
         assert not Avatar.objects.count()
+
+
+class TestLinkedInSocialAuth(OAuth2Mixin):
+    @pytest.fixture
+    def data(self, base_data, settings, image_base64):
+        base_data['provider'] = 'linkedin-oauth2'
+
+        settings.SOCIAL_AUTH_LINKEDIN_OAUTH2_KEY = '1234'
+        settings.SOCIAL_AUTH_LINKEDIN_OAUTH2_SECRET = '1234'
+        settings.AUTHENTICATION_BACKENDS = ['social.backends.linkedin.LinkedinOAuth2']
+        social.apps.django_app.utils.BACKENDS = settings.AUTHENTICATION_BACKENDS
+
+        httpretty.register_uri(
+            httpretty.GET,
+            re.compile('https://media.licdn.com/mpr/asd/image'),
+            body=image_base64
+        )
+
+        return base_data
+
+    @pytest.fixture
+    def success_data(self, data):
+        httpretty.register_uri(
+            httpretty.POST,
+            re.compile('https://www.linkedin.com/uas/oauth2/accessToken'),
+            body=json.dumps({
+                "access_token": '1234',
+                "expires_in": 6000
+            })
+        )
+        return data
+
+    @pytest.fixture
+    def complete_data(self, success_data):
+        httpretty.register_uri(
+            httpretty.GET,
+            re.compile('https://api.linkedin.com/v1/people/~:(.*)'),
+            body=json.dumps({
+                'id': 'asd81a',
+                'firstName': 'John',
+                'lastName': 'Smith',
+                'emailAddress': 'johnsmith@example.com',
+            })
+        )
+        return success_data
+
+    @pytest.fixture
+    def picture_data(self, success_data):
+        httpretty.register_uri(
+            httpretty.GET,
+            re.compile('https://api.linkedin.com/v1/people/~:(.*)'),
+            body=json.dumps({
+                'id': 'asd81a',
+                'firstName': 'John',
+                'lastName': 'Smith',
+                'emailAddress': 'johnsmith@example.com',
+                'pictureUrls': {
+                    '_total': 1,
+                    'values': [
+                        'https://media.licdn.com/mpr/asd/image',
+                    ]
+                }
+            })
+        )
+        return success_data
+
+    def test_can_auth_linkedin(self, client, complete_data):
+        r = client.post(self.reverse(), complete_data)
+        h.responseOk(r)
+
+    def test_user_is_created_with_fields_filled_in(self, client, complete_data):
+        r = client.post(self.reverse(), complete_data)
+        h.responseOk(r)
+        user = User.objects.get()
+        assert user.first_name == 'John'
+        assert user.last_name == 'Smith'
+        assert user.email == 'johnsmith@example.com'
+
+    def test_user_avatar_is_created_from_profile_picture(self, client, picture_data):
+        r = client.post(self.reverse(), picture_data)
+        h.responseOk(r)
+        assert Avatar.objects.count()
