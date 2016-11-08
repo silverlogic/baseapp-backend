@@ -177,6 +177,17 @@ class TestFacebookSocialAuth(OAuth2Mixin):
         h.responseBadRequest(r)
         assert r.data['non_field_errors'] == 'invalid_credentials'
 
+    def test_is_new_response_field(self, client, complete_data):
+        # Register
+        r = client.post(self.reverse(), complete_data)
+        h.responseOk(r)
+        assert r.data['is_new']
+
+        # Login
+        r = client.post(self.reverse(), complete_data)
+        h.responseOk(r)
+        assert not r.data['is_new']
+
 
 class TestTwitterSocialAuth(OAuth1Mixin):
     @pytest.fixture
