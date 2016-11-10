@@ -23,10 +23,13 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError(_('Invalid referral code.'))
         return referral_code
 
+    def validate(self, data):
+        data.pop('referral_code')
+        return data
+
     def save(self):
         validated_data = self.validated_data
-        user = User.objects.create_user(email=validated_data['email'],
-                                        password=validated_data['password'])
+        user = User.objects.create_user(**validated_data)
         if hasattr(self, 'referrer'):
             UserReferral.objects.create(referrer=self.referrer, referee=user)
         return user
