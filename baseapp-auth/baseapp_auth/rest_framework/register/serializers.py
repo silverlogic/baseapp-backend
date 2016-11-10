@@ -24,7 +24,7 @@ class RegisterSerializer(serializers.Serializer):
         return referral_code
 
     def validate(self, data):
-        data.pop('referral_code')
+        data.pop('referral_code', None)
         return data
 
     def save(self):
