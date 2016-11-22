@@ -18,9 +18,10 @@ class RegisterSerializer(serializers.Serializer):
         return email
 
     def validate_referral_code(self, referral_code):
-        self.referrer = get_user_from_referral_code(referral_code)
-        if not self.referrer:
-            raise serializers.ValidationError(_('Invalid referral code.'))
+        if referral_code:
+            self.referrer = get_user_from_referral_code(referral_code)
+            if not self.referrer:
+                raise serializers.ValidationError(_('Invalid referral code.'))
         return referral_code
 
     def validate(self, data):
