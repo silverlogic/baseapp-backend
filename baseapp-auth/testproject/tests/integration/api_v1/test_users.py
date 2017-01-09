@@ -1,6 +1,12 @@
+from datetime import timedelta
+
+from django.utils import timezone
+
 import pytest
 from avatar.models import Avatar
 
+from apps.referrals.models import UserReferral
+from apps.referrals.utils import get_referral_code
 from apps.users.tokens import ConfirmEmailTokenGenerator
 
 import tests.factories as f
@@ -63,6 +69,43 @@ class TestUsersUpdate(ApiMixin):
         user_client.patch(self.reverse(kwargs={'pk': user_client.user.id}), data)
         user_client.user.refresh_from_db()
         assert user_client.user.email != 'test@email.co'
+
+    def test_can_update_referred_by_code_on_the_same_day_user_registered(self, user_client):
+        user = f.UserFactory()
+        data = {'referred_by_code': get_referral_code(user)}
+        r = user_client.patch(self.reverse(kwargs={'pk': user_client.user.id}), data)
+        h.responseOk(r)
+        user_client.user.refresh_from_db()
+        assert user_client.user.referred_by.referrer == user
+
+    def test_cant_update_referred_by_code_with_invalid_code(self, user_client):
+        data = {'referred_by_code': '8182'}
+        r = user_client.patch(self.reverse(kwargs={'pk': user_client.user.id}), data)
+        h.responseBadRequest(r)
+        assert r.data['referred_by_code'] == ['Invalid referral code.']
+
+    def test_cant_update_referred_by_code_when_user_already_has_a_referrer(self, user_client):
+        user = f.UserFactory()
+        UserReferral.objects.create(referee=user_client.user, referrer=user)
+        data = {'referred_by_code': get_referral_code(user)}
+        r = user_client.patch(self.reverse(kwargs={'pk': user_client.user.id}), data)
+        h.responseBadRequest(r)
+        assert r.data['referred_by_code'] == ['You have already been referred by somebody.']
+
+    def test_cant_update_referred_by_code_to_yourself(self, user_client):
+        data = {'referred_by_code': get_referral_code(user_client.user)}
+        r = user_client.patch(self.reverse(kwargs={'pk': user_client.user.id}), data)
+        h.responseBadRequest(r)
+        assert r.data['referred_by_code'] == ['You cannot refer yourself.']
+
+    def test_cant_update_referred_by_code_after_the_day_the_user_registered(self, user_client):
+        user_client.user.date_joined = timezone.now() - timedelta(days=1, hours=1)
+        user_client.user.save()
+        user = f.UserFactory()
+        data = {'referred_by_code': get_referral_code(user)}
+        r = user_client.patch(self.reverse(kwargs={'pk': user_client.user.id}), data)
+        h.responseBadRequest(r)
+        assert r.data['referred_by_code'] == ['You are no longer allowed to change who you were referred by.']
 
     def test_can_upload_avatar(self, user_client, image_base64):
         data = {'avatar': image_base64}

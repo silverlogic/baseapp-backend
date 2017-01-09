@@ -1,10 +1,14 @@
+from datetime import timedelta
+
+from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
 from avatar.models import Avatar
 from rest_framework import serializers
 
 from apps.api.serializers import ModelSerializer
-from apps.referrals.utils import get_referral_code
+from apps.referrals.models import UserReferral
+from apps.referrals.utils import get_referral_code, get_user_from_referral_code
 from apps.users.models import User
 from apps.users.tokens import ConfirmEmailTokenGenerator
 
@@ -14,11 +18,12 @@ from .fields import AvatarField
 class UserBaseSerializer(ModelSerializer):
     avatar = AvatarField(required=False, allow_null=True)
     referral_code = serializers.SerializerMethodField()
+    referred_by_code = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     class Meta:
         model = User
         fields = ('id', 'email', 'is_email_verified', 'new_email', 'is_new_email_confirmed',
-                  'referral_code', 'avatar', 'first_name', 'last_name',)
+                  'referral_code', 'referred_by_code', 'avatar', 'first_name', 'last_name',)
         private_fields = ('email', 'is_email_verified', 'new_email', 'is_new_email_confirmed',
                           'referral_code',)
         read_only_fields = ('email', 'is_email_verified', 'new_email', 'is_new_email_confirmed',)
@@ -31,13 +36,30 @@ class UserSerializer(UserBaseSerializer):
     class Meta(UserBaseSerializer.Meta):
         pass
 
+    def validate_referred_by_code(self, referred_by_code):
+        if referred_by_code:
+            self.referrer = get_user_from_referral_code(referred_by_code)
+            if not self.referrer:
+                raise serializers.ValidationError(_('Invalid referral code.'))
+            elif self.referrer == self.instance:
+                raise serializers.ValidationError(_('You cannot refer yourself.'))
+            elif (timezone.now() - self.instance.date_joined) > timedelta(days=1):
+                raise serializers.ValidationError(_('You are no longer allowed to change who you were referred by.'))
+            elif hasattr(self.instance, 'referred_by'):
+                raise serializers.ValidationError(_('You have already been referred by somebody.'))
+        return referred_by_code
+
     def update(self, instance, validated_data):
+        if hasattr(self, 'referrer'):
+            UserReferral.objects.create(referrer=self.referrer, referee=instance)
+
         if 'avatar' in validated_data:
             avatar = validated_data.pop('avatar')
             if avatar:
                 Avatar.objects.create(user=instance, primary=True, avatar=avatar)
             else:
                 instance.avatar_set.all().delete()
+
         return super().update(instance, validated_data)
 
     def to_representation(self, user):
