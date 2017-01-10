@@ -1,5 +1,8 @@
+from unittest.mock import patch
+
 import pytest
 
+from apps.base.exceptions import DeepLinkFetchError
 from apps.users.tokens import ChangeEmailConfirmTokenGenerator, ChangeEmailVerifyTokenGenerator
 
 import tests.factories as f
@@ -23,8 +26,18 @@ class TestChangeEmailRequest(ApiMixin):
         h.responseUnauthorized(r)
 
     def test_user_can_request(self, user_client, data):
-        r = user_client.post(self.reverse(), data)
-        h.responseOk(r)
+        with patch('apps.users.emails.get_deep_link') as m:
+            m.return_value = {
+                'url': 'https://httpbin.org/html'
+            }
+            r = user_client.post(self.reverse(), data)
+            h.responseOk(r)
+
+    def test_user_can_request_deep_link_error(self, user_client, data):
+        with patch('apps.users.emails.get_deep_link') as m:
+            m.side_effect = DeepLinkFetchError
+            r = user_client.post(self.reverse(), data)
+            h.responseOk(r)
 
     def test_new_email_cant_be_in_use(self, user_client, data):
         f.UserFactory(email=data['new_email'])
@@ -32,14 +45,30 @@ class TestChangeEmailRequest(ApiMixin):
         h.responseBadRequest(r)
 
     def test_sets_user_new_email(self, user_client, data):
-        r = user_client.post(self.reverse(), data)
-        h.responseOk(r)
+        with patch('apps.users.emails.get_deep_link') as m:
+            m.return_value = {
+                'url': 'https://httpbin.org/html'
+            }
+            r = user_client.post(self.reverse(), data)
+            h.responseOk(r)
+        user_client.user.refresh_from_db()
+        assert user_client.user.new_email == data['new_email']
+
+    def test_sets_user_new_email_deep_link_error(self, user_client, data):
+        with patch('apps.users.emails.get_deep_link') as m:
+            m.side_effect = DeepLinkFetchError
+            r = user_client.post(self.reverse(), data)
+            h.responseOk(r)
         user_client.user.refresh_from_db()
         assert user_client.user.new_email == data['new_email']
 
     def test_sends_an_email_to_users_current_email(self, user_client, data, outbox):
-        r = user_client.post(self.reverse(), data)
-        h.responseOk(r)
+        with patch('apps.users.emails.get_deep_link') as m:
+            m.return_value = {
+                'url': 'https://httpbin.org/html'
+            }
+            r = user_client.post(self.reverse(), data)
+            h.responseOk(r)
         assert len(outbox) == 1
         assert outbox[0].to == [user_client.user.email]
 
@@ -57,18 +86,36 @@ class TestChangeEmailConfirm(ApiMixin):
         }
 
     def test_guest_can_confirm(self, client, data):
-        r = client.post(self.reverse(), data)
-        h.responseOk(r)
+        with patch('apps.users.emails.get_deep_link') as m:
+            m.return_value = {
+                'url': 'https://httpbin.org/html'
+            }
+            r = client.post(self.reverse(), data)
+            h.responseOk(r)
+
+    def test_guest_can_confirm_deep_link_error(self, client, data):
+        with patch('apps.users.emails.get_deep_link') as m:
+            m.side_effect = DeepLinkFetchError
+            r = client.post(self.reverse(), data)
+            h.responseOk(r)
 
     def test_sets_users_is_new_email_confirmed(self, client, data):
-        r = client.post(self.reverse(), data)
-        h.responseOk(r)
+        with patch('apps.users.emails.get_deep_link') as m:
+            m.return_value = {
+                'url': 'https://httpbin.org/html'
+            }
+            r = client.post(self.reverse(), data)
+            h.responseOk(r)
         self.user.refresh_from_db()
         assert self.user.is_new_email_confirmed
 
     def test_sends_an_email_to_users_new_email(self, client, data, outbox):
-        r = client.post(self.reverse(), data)
-        h.responseOk(r)
+        with patch('apps.users.emails.get_deep_link') as m:
+            m.return_value = {
+                'url': 'https://httpbin.org/html'
+            }
+            r = client.post(self.reverse(), data)
+            h.responseOk(r)
         self.user.refresh_from_db()
         assert len(outbox) == 1
         assert outbox[0].to == [self.user.new_email]
@@ -83,8 +130,12 @@ class TestChangeEmailConfirm(ApiMixin):
         h.responseBadRequest(r)
 
     def test_cant_confirm_twice(self, client, data):
-        r = client.post(self.reverse(), data)
-        h.responseOk(r)
+        with patch('apps.users.emails.get_deep_link') as m:
+            m.return_value = {
+                'url': 'https://httpbin.org/html'
+            }
+            r = client.post(self.reverse(), data)
+            h.responseOk(r)
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
 
@@ -155,8 +206,21 @@ class TestChangeEmailResendConfirm(ApiMixin):
     def test_user_can_resend(self, client, outbox):
         user = f.UserFactory(new_email='new@example.com')
         client.force_authenticate(user)
-        r = client.post(self.reverse())
-        h.responseOk(r)
+        with patch('apps.users.emails.get_deep_link') as m:
+            m.return_value = {
+                'url': 'https://httpbin.org/html'
+            }
+            r = client.post(self.reverse())
+            h.responseOk(r)
+        assert len(outbox) == 1
+
+    def test_user_can_resend_deep_link_error(self, client, outbox):
+        user = f.UserFactory(new_email='new@example.com')
+        client.force_authenticate(user)
+        with patch('apps.users.emails.get_deep_link') as m:
+            m.side_effect = DeepLinkFetchError
+            r = client.post(self.reverse())
+            h.responseOk(r)
         assert len(outbox) == 1
 
     def test_user_cant_resend_if_user_has_no_new_email(self, user_client):
@@ -180,8 +244,12 @@ class TestChangeEmailResendVerify(ApiMixin):
     def test_user_can_resend(self, client, outbox):
         user = f.UserFactory(new_email='new@example.com', is_new_email_confirmed=True)
         client.force_authenticate(user)
-        r = client.post(self.reverse())
-        h.responseOk(r)
+        with patch('apps.users.emails.get_deep_link') as m:
+            m.return_value = {
+                'url': 'https://httpbin.org/html'
+            }
+            r = client.post(self.reverse())
+            h.responseOk(r)
         assert len(outbox) == 1
 
     def test_user_cant_resend_if_their_new_email_is_not_confirmed(self, client):
