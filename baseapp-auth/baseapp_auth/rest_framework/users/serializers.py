@@ -67,7 +67,7 @@ class UserSerializer(UserBaseSerializer):
         if request.user.is_authenticated() and request.user.pk == user.pk:
             return super().to_representation(user)
         else:
-            return UserPublicSerializer(user).data
+            return UserPublicSerializer(user, context=self.context).data
 
 
 class UserPublicSerializer(UserBaseSerializer):
