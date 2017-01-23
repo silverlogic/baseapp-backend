@@ -30,3 +30,8 @@ router.register(r'forgot-password/reset', ResetPasswordViewSet, base_name='reset
 from .change_email.views import ChangeEmailViewSet  # noqa
 
 router.register(r'change-email', ChangeEmailViewSet, base_name='change-email')
+
+# Referral
+from .referrals.views import ReferralsViewSet  # noqa
+
+router.register(r'referrals', ReferralsViewSet, base_name='referrals')
