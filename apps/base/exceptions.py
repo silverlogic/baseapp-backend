@@ -1,0 +1,2 @@
+class DeepLinkFetchError(Exception):
+    pass
