@@ -1,6 +1,5 @@
 from io import BytesIO
 
-from django.conf import settings
 from django.core import mail
 from django.core.files.images import ImageFile
 
@@ -53,11 +52,3 @@ def image_base64():
 def image_djangofile(image_base64):
     i = BytesIO(image_base64.encode('utf-8'))
     return ImageFile(i, name='image.png')
-
-
-@pytest.fixture
-def branch_settings():
-    initial_key = settings.BRANCH_KEY
-    settings.BRANCH_KEY = 'key_test_dcra3OpQqFet3BlfOvbeJbehDFgpeOkB'
-    yield
-    settings.BRANCH_KEY = initial_key
