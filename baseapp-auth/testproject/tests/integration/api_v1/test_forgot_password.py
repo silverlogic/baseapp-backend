@@ -38,7 +38,7 @@ class TestForgotPassword(ApiMixin):
             assert r.data['email'] == 'admin@tsl.io'
             assert len(outbox) == 1
 
-    def test_when_email_exist_actual(self, client, data, outbox, branch_settings):
+    def test_when_email_exist_actual(self, client, data, outbox):
         f.UserFactory(email=data['email'])
         r = client.post(self.reverse(), data)
         h.responseOk(r)
