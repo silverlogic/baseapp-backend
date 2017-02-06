@@ -12,7 +12,7 @@ def get_deep_link(**kwargs):
     Valid params and return value can be found at:
     https://github.com/BranchMetrics/branch-deep-linking-public-api#creating-a-deep-linking-url
     """
-    kwargs['branch_key'] = settings.BRANCH_KEY
+    kwargs['branch_key'] = settings.BRANCHIO_KEY
     try:
         r = requests.post('https://api.branch.io/v1/url', json=kwargs)
         r.raise_for_status()
