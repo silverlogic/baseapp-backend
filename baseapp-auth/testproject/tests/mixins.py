@@ -22,6 +22,6 @@ class ApiMixin:
         url = reverse('{}:{}'.format(version, view_name), **kwargs)
 
         if query_params:
-            url += '?' + urllib.parse.urlencode(query_params)
+            url += '?' + urllib.parse.urlencode(query_params, doseq=True)
 
         return url
