@@ -1,3 +1,4 @@
+import json
 from io import BytesIO
 
 from django.core import mail
@@ -34,7 +35,7 @@ def user_client():
     return client
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def use_httpretty():
     httpretty.enable()
     httpretty.HTTPretty.allow_net_connect = False
@@ -52,3 +53,21 @@ def image_base64():
 def image_djangofile(image_base64):
     i = BytesIO(image_base64.encode('utf-8'))
     return ImageFile(i, name='image.png')
+
+
+@pytest.fixture
+def deep_link_mock_success(use_httpretty):
+    httpretty.register_uri(
+        httpretty.POST,
+        'https://api.branch.io/v1/url',
+        body=json.dumps({'url': 'https://example.com/128z8x81'})
+    )
+
+
+@pytest.fixture
+def deep_link_mock_error(use_httpretty):
+    httpretty.register_uri(
+        httpretty.POST,
+        'https://api.branch.io/v1/url',
+        status=400,
+    )
