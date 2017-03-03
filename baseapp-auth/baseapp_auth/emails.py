@@ -12,10 +12,30 @@ from .tokens import (
 
 def send_welcome_email(user):
     token = ConfirmEmailTokenGenerator().make_token(user)
-    confirm_url = settings.FRONT_CONFIRM_EMAIL_URL.format(id=user.pk, token=token)
+    web_url = settings.FRONT_CONFIRM_EMAIL_URL.format(id=user.pk, token=token)
+    try:
+        deep_link = get_deep_link(
+            web_url,
+            for_ios=settings.IOS_CONFIRM_EMAIL_DEEP_LINK,
+            for_android=settings.ANDROID_CONFIRM_EMAIL_DEEP_LINK,
+            **{
+                'channel': 'email',
+                'feature': 'confirm email',
+                'data': {
+                    'type': 'confirm-email',
+                    'id': user.pk,
+                    'token': token,
+                }
+            }
+        )
+    except DeepLinkFetchError:
+        confirm_url = web_url
+    else:
+        confirm_url = deep_link['url']
     context = {
         'user': user,
-        'confirm_url': confirm_url}
+        'confirm_url': confirm_url
+    }
     subject = render_to_string('users/emails/welcome-subject.txt.j2', context=context).strip()
     message = render_to_string('users/emails/welcome-body.txt.j2', context=context)
     html_message = render_to_string('users/emails/welcome-body.html.j2', context=context)
@@ -24,23 +44,24 @@ def send_welcome_email(user):
 
 def send_password_reset_email(info):
     fallback_url = settings.FRONT_FORGOT_PASSWORD_URL.format(token=info['token'])
-    payload = {
-        'channel': 'email',
-        'feature': 'password reset',
-        'tags': ['password', 'password reset', 'forgot password'],
-        'data': {
-            'email': info['email'],
-            'token': info['token'],
-            '$fallback_url': fallback_url,
-            'type': 'forgot-password'
-        }
-    }
     try:
-        r = get_deep_link(**payload)
+        deep_link = get_deep_link(
+            fallback_url,
+            for_ios=settings.IOS_FORGOT_PASSWORD_DEEP_LINK,
+            for_android=settings.ANDROID_FORGOT_PASSWORD_DEEP_LINK,
+            **{
+                'channel': 'email',
+                'feature': 'password reset',
+                'data': {
+                    'type': 'forgot-password',
+                    'token': info['token'],
+                }
+            }
+        )
     except DeepLinkFetchError:
         url = fallback_url
     else:
-        url = r['url']
+        url = deep_link['url']
     context = {'url': url}
     subject = render_to_string('users/emails/password-reset-subject.txt.j2', context).strip()
     message = render_to_string('users/emails/password-reset-body.txt.j2', context)
@@ -51,24 +72,25 @@ def send_password_reset_email(info):
 def send_change_email_confirm_email(user):
     token = ChangeEmailConfirmTokenGenerator().make_token(user)
     fallback_url = settings.FRONT_CHANGE_EMAIL_CONFIRM_URL.format(id=user.id, token=token)
-    payload = {
-        'channel': 'email',
-        'feature': 'change email',
-        'tags': ['email', 'change email', 'change email confirm', 'confirm'],
-        'data': {
-            'user': user.pk,
-            'token': token,
-            '$fallback_url': fallback_url,
-            'type': 'change-email-confirm',
-            'new_email': user.new_email
-        }
-    }
     try:
-        r = get_deep_link(**payload)
+        deep_link = get_deep_link(
+            fallback_url,
+            for_ios=settings.IOS_CHANGE_EMAIL_DEEP_LINK,
+            for_android=settings.ANDROID_CHANGE_EMAIL_DEEP_LINK,
+            **{
+                'channel': 'email',
+                'feature': 'change email',
+                'data': {
+                    'type': 'change-email-confirm',
+                    'user': user.pk,
+                    'token': token,
+                }
+            }
+        )
     except DeepLinkFetchError:
         url = fallback_url
     else:
-        url = r['url']
+        url = deep_link['url']
     context = {
         'url': url,
         'new_email': user.new_email,
@@ -82,24 +104,25 @@ def send_change_email_confirm_email(user):
 def send_change_email_verify_email(user):
     token = ChangeEmailVerifyTokenGenerator().make_token(user)
     fallback_url = settings.FRONT_CHANGE_EMAIL_VERIFY_URL.format(id=user.id, token=token)
-    payload = {
-        'channel': 'email',
-        'feature': 'change email',
-        'tags': ['email', 'change email', 'change email verify', 'verify'],
-        'data': {
-            'user': user.pk,
-            'token': token,
-            '$fallback_url': fallback_url,
-            'type': 'change-email-verify',
-            'new_email': user.new_email
-        }
-    }
     try:
-        r = get_deep_link(**payload)
+        deep_link = get_deep_link(
+            fallback_url,
+            for_ios=settings.IOS_CHANGE_EMAIL_DEEP_LINK,
+            for_android=settings.ANDROID_CHANGE_EMAIL_DEEP_LINK,
+            **{
+                'channel': 'email',
+                'feature': 'change email',
+                'data': {
+                    'type': 'change-email-verify',
+                    'user': user.pk,
+                    'token': token,
+                }
+            }
+        )
     except DeepLinkFetchError:
         url = fallback_url
     else:
-        url = r['url']
+        url = deep_link['url']
     context = {
         'url': url,
     }

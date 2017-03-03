@@ -210,7 +210,7 @@ class TestTwitterSocialAuth(OAuth1Mixin):
         )
         return data
 
-    @pytest.yield_fixture
+    @pytest.fixture
     def step2_data(self, data):
         data['oauth_token'] = '1234'
         data['oauth_token_secret'] = '1234xyz'
@@ -232,7 +232,7 @@ class TestTwitterSocialAuth(OAuth1Mixin):
                 mock.return_value = '1234'
                 yield data
 
-    @pytest.yield_fixture
+    @pytest.fixture
     def step2_data_with_profile_image(self, data, image_base64):
         data['oauth_token'] = '1234'
         data['oauth_token_secret'] = '1234xyz'
@@ -261,7 +261,7 @@ class TestTwitterSocialAuth(OAuth1Mixin):
                 mock.return_value = '1234'
                 yield data
 
-    @pytest.yield_fixture
+    @pytest.fixture
     def step2_data_with_default_profile_image(self, data, image_base64):
         data['oauth_token'] = '1234'
         data['oauth_token_secret'] = '1234xyz'
