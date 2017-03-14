@@ -8,6 +8,8 @@ from apps.users.models import User
 
 
 class RegisterSerializer(serializers.Serializer):
+    first_name = serializers.CharField(required=False, allow_blank=True)
+    last_name = serializers.CharField(required=False, allow_blank=True)
     email = serializers.EmailField()
     password = serializers.CharField()
     referral_code = serializers.CharField(required=False, allow_blank=True)
