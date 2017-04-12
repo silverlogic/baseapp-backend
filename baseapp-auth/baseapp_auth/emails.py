@@ -23,7 +23,7 @@ def send_welcome_email(user):
                 'feature': 'confirm email',
                 'data': {
                     'type': 'confirm-email',
-                    'id': user.pk,
+                    'user': user.pk,
                     'token': token,
                 }
             }

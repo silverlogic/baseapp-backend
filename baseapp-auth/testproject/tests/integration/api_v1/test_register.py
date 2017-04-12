@@ -54,12 +54,6 @@ class TestRegister(ApiMixin):
         h.responseBadRequest(r)
         assert r.data['email'] == ['That email is already in use.  Choose another.']
 
-    def test_sends_welcome_email(self, client, data, outbox):
-        with patch('apps.api.v1.register.views.send_welcome_email') as mock:
-            r = client.post(self.reverse(), data)
-            h.responseCreated(r)
-            assert mock.called
-
     def test_can_be_referred(self, client, data):
         referrer = f.UserFactory()
         data['referral_code'] = get_referral_code(referrer)
