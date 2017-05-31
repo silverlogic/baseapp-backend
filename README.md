@@ -1,8 +1,8 @@
-# BaseApp Django Version 2
+# Django Backend
 
 ## Requirements
 
-* Python 3.5.3
+* Python 3.6.1
 
 ## Getting Started
 
