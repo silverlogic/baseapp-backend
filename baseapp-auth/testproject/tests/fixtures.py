@@ -1,7 +1,6 @@
 import json
 from io import BytesIO
 
-from django.core import mail
 from django.core.files.images import ImageFile
 
 import httpretty
@@ -23,8 +22,8 @@ def client():
 
 
 @pytest.fixture
-def outbox():
-    return mail.outbox
+def outbox(mailoutbox):
+    return mailoutbox
 
 
 @pytest.fixture
