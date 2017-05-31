@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import httpretty
 import pytest
-import social.apps.django_app.utils
+import social_django.utils
 from avatar.models import Avatar
 
 from apps.referrals.utils import get_referral_code
@@ -50,8 +50,8 @@ class TestOAuth2(OAuth2Mixin):
         base_data.pop('redirect_uri')
         settings.SOCIAL_AUTH_FACEBOOK_KEY = '1234'
         settings.SOCIAL_AUTH_FACEBOOK_SECRET = '1234'
-        settings.AUTHENTICATION_BACKENDS = ['social.backends.facebook.FacebookOAuth2']
-        social.apps.django_app.utils.BACKENDS = settings.AUTHENTICATION_BACKENDS
+        settings.AUTHENTICATION_BACKENDS = ['social_core.backends.facebook.FacebookOAuth2']
+        social_django.utils.BACKENDS = settings.AUTHENTICATION_BACKENDS
         r = client.post(self.reverse(), base_data)
         h.responseBadRequest(r)
         assert 'redirect_uri' in r.data
@@ -64,8 +64,8 @@ class TestFacebookSocialAuth(OAuth2Mixin):
 
         settings.SOCIAL_AUTH_FACEBOOK_KEY = '1234'
         settings.SOCIAL_AUTH_FACEBOOK_SECRET = '1234'
-        settings.AUTHENTICATION_BACKENDS = ['social.backends.facebook.FacebookOAuth2']
-        social.apps.django_app.utils.BACKENDS = settings.AUTHENTICATION_BACKENDS
+        settings.AUTHENTICATION_BACKENDS = ['social_core.backends.facebook.FacebookOAuth2']
+        social_django.utils.BACKENDS = settings.AUTHENTICATION_BACKENDS
 
         httpretty.register_uri(
             httpretty.GET,
@@ -196,8 +196,8 @@ class TestTwitterSocialAuth(OAuth1Mixin):
 
         settings.SOCIAL_AUTH_TWITTER_KEY = '1234'
         settings.SOCIAL_AUTH_TWITTER_SECRET = '1234'
-        settings.AUTHENTICATION_BACKENDS = ['social.backends.twitter.TwitterOAuth']
-        social.apps.django_app.utils.BACKENDS = settings.AUTHENTICATION_BACKENDS
+        settings.AUTHENTICATION_BACKENDS = ['social_core.backends.twitter.TwitterOAuth']
+        social_django.utils.BACKENDS = settings.AUTHENTICATION_BACKENDS
 
         return base_data
 
@@ -227,8 +227,8 @@ class TestTwitterSocialAuth(OAuth1Mixin):
             })
         )
 
-        with patch('social.backends.twitter.TwitterOAuth.get_unauthorized_token') as mock:
-            with patch('social.backends.twitter.TwitterOAuth.access_token') as mock:
+        with patch('social_core.backends.twitter.TwitterOAuth.get_unauthorized_token') as mock:
+            with patch('social_core.backends.twitter.TwitterOAuth.access_token') as mock:
                 mock.return_value = '1234'
                 yield data
 
@@ -256,8 +256,8 @@ class TestTwitterSocialAuth(OAuth1Mixin):
             body=image_base64
         )
 
-        with patch('social.backends.twitter.TwitterOAuth.get_unauthorized_token') as mock:
-            with patch('social.backends.twitter.TwitterOAuth.access_token') as mock:
+        with patch('social_core.backends.twitter.TwitterOAuth.get_unauthorized_token') as mock:
+            with patch('social_core.backends.twitter.TwitterOAuth.access_token') as mock:
                 mock.return_value = '1234'
                 yield data
 
@@ -279,8 +279,8 @@ class TestTwitterSocialAuth(OAuth1Mixin):
             })
         )
 
-        with patch('social.backends.twitter.TwitterOAuth.get_unauthorized_token') as mock:
-            with patch('social.backends.twitter.TwitterOAuth.access_token') as mock:
+        with patch('social_core.backends.twitter.TwitterOAuth.get_unauthorized_token') as mock:
+            with patch('social_core.backends.twitter.TwitterOAuth.access_token') as mock:
                 mock.return_value = '1234'
                 yield data
 
@@ -318,8 +318,8 @@ class TestLinkedInSocialAuth(OAuth2Mixin):
 
         settings.SOCIAL_AUTH_LINKEDIN_OAUTH2_KEY = '1234'
         settings.SOCIAL_AUTH_LINKEDIN_OAUTH2_SECRET = '1234'
-        settings.AUTHENTICATION_BACKENDS = ['social.backends.linkedin.LinkedinOAuth2']
-        social.apps.django_app.utils.BACKENDS = settings.AUTHENTICATION_BACKENDS
+        settings.AUTHENTICATION_BACKENDS = ['social_core.backends.linkedin.LinkedinOAuth2']
+        social_django.utils.BACKENDS = settings.AUTHENTICATION_BACKENDS
 
         httpretty.register_uri(
             httpretty.GET,

@@ -53,7 +53,7 @@ class TestChangeEmailConfirm(ApiMixin):
 
     @pytest.fixture
     def data(self):
-        self.user = f.UserFactory()
+        self.user = f.UserFactory(new_email='bob@example.com')
         self.url_kwargs = {'pk': self.user.pk}
         token = ChangeEmailConfirmTokenGenerator().make_token(self.user)
         return {
