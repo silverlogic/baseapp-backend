@@ -23,7 +23,7 @@ class UsersViewSet(mixins.RetrieveModelMixin,
                    viewsets.GenericViewSet):
     serializer_class = UserSerializer
     permission_classes = (UpdateSelfPermission,)
-    queryset = User.objects.all()
+    queryset = User.objects.all().order_by('id')
     filter_backends = (filters.SearchFilter,)
     search_fields = ('first_name', 'last_name',)
 
