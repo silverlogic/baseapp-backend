@@ -2,7 +2,7 @@
 
 ## Requirements
 
-* Python 3.6.1
+* Python 3.6
 
 ## Getting Started
 
