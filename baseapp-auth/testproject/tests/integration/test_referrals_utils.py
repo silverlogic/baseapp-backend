@@ -13,7 +13,7 @@ def test_round_trip_referral_code():
 
 
 def test_get_user_when_referral_code_is_invalid():
-    assert get_user_from_referral_code('18239asdf') is None
+    assert get_user_from_referral_code("18239asdf") is None
 
 
 def test_get_user_when_user_does_not_exist():

@@ -65,7 +65,9 @@ class TestFacebookSocialAuth(OAuth2Mixin):
         social_django.utils.BACKENDS = settings.AUTHENTICATION_BACKENDS
 
         httpretty.register_uri(
-            httpretty.GET, re.compile(r"https://graph.facebook.com/v2.\d+/me/picture$"), body=image_base64
+            httpretty.GET,
+            re.compile(r"https://graph.facebook.com/v2.\d+/me/picture$"),
+            body=image_base64,
         )
 
         return base_data
@@ -85,7 +87,12 @@ class TestFacebookSocialAuth(OAuth2Mixin):
             httpretty.GET,
             re.compile(r"https://graph.facebook.com/v2.\d+/me$"),
             body=json.dumps(
-                {"id": "1387123", "first_name": "John", "last_name": "Smith", "email": "johnsmith@example.com"}
+                {
+                    "id": "1387123",
+                    "first_name": "John",
+                    "last_name": "Smith",
+                    "email": "johnsmith@example.com",
+                }
             ),
         )
         return success_data
@@ -102,7 +109,9 @@ class TestFacebookSocialAuth(OAuth2Mixin):
     @pytest.fixture
     def invalid_code_data(self, data):
         httpretty.register_uri(
-            httpretty.GET, re.compile(r"https://graph.facebook.com/v2.\d+/oauth/access_token$"), status=400
+            httpretty.GET,
+            re.compile(r"https://graph.facebook.com/v2.\d+/oauth/access_token$"),
+            status=400,
         )
         return data
 
@@ -185,7 +194,9 @@ class TestTwitterSocialAuth(OAuth1Mixin):
 
     @pytest.fixture
     def step1_data(self, data):
-        httpretty.register_uri(httpretty.POST, "https://api.twitter.com/oauth/request_token", body="")
+        httpretty.register_uri(
+            httpretty.POST, "https://api.twitter.com/oauth/request_token", body=""
+        )
         return data
 
     @pytest.fixture
@@ -227,7 +238,9 @@ class TestTwitterSocialAuth(OAuth1Mixin):
         )
 
         httpretty.register_uri(
-            httpretty.GET, "http://example.com/profile_images/1234431/18272_400x400.jpg", body=image_base64
+            httpretty.GET,
+            "http://example.com/profile_images/1234431/18272_400x400.jpg",
+            body=image_base64,
         )
 
         with patch("social_core.backends.twitter.TwitterOAuth.get_unauthorized_token") as mock:
@@ -299,7 +312,9 @@ class TestLinkedInSocialAuth(OAuth2Mixin):
         settings.AUTHENTICATION_BACKENDS = ["social_core.backends.linkedin.LinkedinOAuth2"]
         social_django.utils.BACKENDS = settings.AUTHENTICATION_BACKENDS
 
-        httpretty.register_uri(httpretty.GET, re.compile("https://media.licdn.com/mpr/asd/image"), body=image_base64)
+        httpretty.register_uri(
+            httpretty.GET, re.compile("https://media.licdn.com/mpr/asd/image"), body=image_base64
+        )
 
         return base_data
 
@@ -318,7 +333,12 @@ class TestLinkedInSocialAuth(OAuth2Mixin):
             httpretty.GET,
             re.compile("https://api.linkedin.com/v1/people/~:(.*)"),
             body=json.dumps(
-                {"id": "asd81a", "firstName": "John", "lastName": "Smith", "emailAddress": "johnsmith@example.com"}
+                {
+                    "id": "asd81a",
+                    "firstName": "John",
+                    "lastName": "Smith",
+                    "emailAddress": "johnsmith@example.com",
+                }
             ),
         )
         return success_data
@@ -334,7 +354,10 @@ class TestLinkedInSocialAuth(OAuth2Mixin):
                     "firstName": "John",
                     "lastName": "Smith",
                     "emailAddress": "johnsmith@example.com",
-                    "pictureUrls": {"_total": 1, "values": ["https://media.licdn.com/mpr/asd/image"]},
+                    "pictureUrls": {
+                        "_total": 1,
+                        "values": ["https://media.licdn.com/mpr/asd/image"],
+                    },
                 }
             ),
         )
