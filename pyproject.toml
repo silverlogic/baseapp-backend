@@ -1,0 +1,13 @@
+[tool.black]
+line-length = 100
+target_version = ['py36']
+
+[tool.isort]
+line_length=100
+multi_line_output=3
+known_django='django'
+known_first_party='apps,settings'
+known_tests='tests'
+sections='FUTURE,STDLIB,DJANGO,THIRDPARTY,FIRSTPARTY,LOCALFOLDER,TESTS'
+default_section='THIRDPARTY'
+include_trailing_comma=true
