@@ -9,7 +9,9 @@ from apps.users.emails import send_change_email_confirm_email, send_change_email
 from apps.users.models import User
 
 from .serializers import (
-    ChangeEmailConfirmSerializer, ChangeEmailRequestSerializer, ChangeEmailVerifySerializer
+    ChangeEmailConfirmSerializer,
+    ChangeEmailRequestSerializer,
+    ChangeEmailVerifySerializer,
 )
 
 
