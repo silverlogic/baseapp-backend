@@ -10,7 +10,7 @@ class CaseInsensitiveTextField(models.TextField):
     description = _("Case insensitive text")
 
     def db_type(self, connection):
-        return 'citext'
+        return "citext"
 
 
 class CaseInsensitiveEmailField(CaseInsensitiveTextField, models.EmailField):
@@ -23,6 +23,6 @@ class random_name_in(object):
         self.dir = dir
 
     def __call__(self, instance, filename):
-        ext = filename.split('.')[-1]
-        filename = '{}.{}'.format(uuid.uuid4(), ext)
+        ext = filename.split(".")[-1]
+        filename = "{}.{}".format(uuid.uuid4(), ext)
         return os.path.join(self.dir, filename)
