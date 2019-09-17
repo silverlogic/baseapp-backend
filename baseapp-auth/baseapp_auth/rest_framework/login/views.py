@@ -10,4 +10,4 @@ class LoginViewSet(viewsets.GenericViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         token = serializer.save()
-        return response.Response({'token': token.key})
+        return response.Response({"token": token.key})

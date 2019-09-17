@@ -10,13 +10,11 @@ pytestmark = pytest.mark.django_db
 
 
 class TestChangeEmailRequest(ApiMixin):
-    view_name = 'change-email-list'
+    view_name = "change-email-list"
 
     @pytest.fixture
     def data(self):
-        return {
-            'new_email': 'john@example.com',
-        }
+        return {"new_email": "john@example.com"}
 
     def test_guest_cant_request(self, client, data):
         r = client.post(self.reverse(), data)
@@ -31,7 +29,7 @@ class TestChangeEmailRequest(ApiMixin):
         h.responseOk(r)
 
     def test_new_email_cant_be_in_use(self, user_client, data):
-        f.UserFactory(email=data['new_email'])
+        f.UserFactory(email=data["new_email"])
         r = user_client.post(self.reverse(), data)
         h.responseBadRequest(r)
 
@@ -39,9 +37,11 @@ class TestChangeEmailRequest(ApiMixin):
         r = user_client.post(self.reverse(), data)
         h.responseOk(r)
         user_client.user.refresh_from_db()
-        assert user_client.user.new_email == data['new_email']
+        assert user_client.user.new_email == data["new_email"]
 
-    def test_sends_an_email_to_users_current_email(self, user_client, data, outbox, deep_link_mock_success):
+    def test_sends_an_email_to_users_current_email(
+        self, user_client, data, outbox, deep_link_mock_success
+    ):
         r = user_client.post(self.reverse(), data)
         h.responseOk(r)
         assert len(outbox) == 1
@@ -49,16 +49,14 @@ class TestChangeEmailRequest(ApiMixin):
 
 
 class TestChangeEmailConfirm(ApiMixin):
-    view_name = 'change-email-confirm'
+    view_name = "change-email-confirm"
 
     @pytest.fixture
     def data(self):
-        self.user = f.UserFactory(new_email='bob@example.com')
-        self.url_kwargs = {'pk': self.user.pk}
+        self.user = f.UserFactory(new_email="bob@example.com")
+        self.url_kwargs = {"pk": self.user.pk}
         token = ChangeEmailConfirmTokenGenerator().make_token(self.user)
-        return {
-            'token': token,
-        }
+        return {"token": token}
 
     def test_guest_can_confirm(self, client, data, deep_link_mock_success):
         r = client.post(self.reverse(), data)
@@ -82,11 +80,11 @@ class TestChangeEmailConfirm(ApiMixin):
         assert outbox[0].to == [self.user.new_email]
 
     def test_when_user_doesnt_exist(self, client, data):
-        r = client.post(self.reverse(kwargs={'pk': self.user.id + 1}), data)
+        r = client.post(self.reverse(kwargs={"pk": self.user.id + 1}), data)
         h.responseBadRequest(r)
 
     def test_when_invalid_token(self, client, data):
-        data['token'] = '1234'
+        data["token"] = "1234"
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
 
@@ -98,16 +96,14 @@ class TestChangeEmailConfirm(ApiMixin):
 
 
 class TestChangeEmailVerify(ApiMixin):
-    view_name = 'change-email-verify'
+    view_name = "change-email-verify"
 
     @pytest.fixture
     def data(self):
-        self.user = f.UserFactory(new_email='new@example.com', is_new_email_confirmed=True)
-        self.url_kwargs = {'pk': self.user.pk}
+        self.user = f.UserFactory(new_email="new@example.com", is_new_email_confirmed=True)
+        self.url_kwargs = {"pk": self.user.pk}
         token = ChangeEmailVerifyTokenGenerator().make_token(self.user)
-        return {
-            'token': token,
-        }
+        return {"token": token}
 
     def test_guest_can_verify(self, client, data):
         r = client.post(self.reverse(), data)
@@ -117,7 +113,7 @@ class TestChangeEmailVerify(ApiMixin):
         r = client.post(self.reverse(), data)
         h.responseOk(r)
         self.user.refresh_from_db()
-        assert self.user.email == 'new@example.com'
+        assert self.user.email == "new@example.com"
 
     def test_resets_users_new_email(self, client, data):
         r = client.post(self.reverse(), data)
@@ -138,11 +134,11 @@ class TestChangeEmailVerify(ApiMixin):
         assert self.user.is_email_verified
 
     def test_when_user_doesnt_exist(self, client, data):
-        r = client.post(self.reverse(kwargs={'pk': self.user.id + 1}), data)
+        r = client.post(self.reverse(kwargs={"pk": self.user.id + 1}), data)
         h.responseBadRequest(r)
 
     def test_when_invalid_token(self, client, data):
-        data['token'] = '1234'
+        data["token"] = "1234"
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
 
@@ -154,21 +150,21 @@ class TestChangeEmailVerify(ApiMixin):
 
 
 class TestChangeEmailResendConfirm(ApiMixin):
-    view_name = 'change-email-resend-confirm'
+    view_name = "change-email-resend-confirm"
 
     def test_guest_cant_resend(self, client):
         r = client.post(self.reverse())
         h.responseUnauthorized(r)
 
     def test_user_can_resend(self, client, outbox, deep_link_mock_success):
-        user = f.UserFactory(new_email='new@example.com')
+        user = f.UserFactory(new_email="new@example.com")
         client.force_authenticate(user)
         r = client.post(self.reverse())
         h.responseOk(r)
         assert len(outbox) == 1
 
     def test_user_can_resend_deep_link_error(self, client, outbox, deep_link_mock_error):
-        user = f.UserFactory(new_email='new@example.com')
+        user = f.UserFactory(new_email="new@example.com")
         client.force_authenticate(user)
         r = client.post(self.reverse())
         h.responseOk(r)
@@ -179,42 +175,42 @@ class TestChangeEmailResendConfirm(ApiMixin):
         h.responseBadRequest(r)
 
     def test_user_cant_resend_if_new_email_is_already_confirmed(self, client):
-        user = f.UserFactory(new_email='new@example.com', is_new_email_confirmed=True)
+        user = f.UserFactory(new_email="new@example.com", is_new_email_confirmed=True)
         client.force_authenticate(user)
         r = client.post(self.reverse())
         h.responseBadRequest(r)
 
 
 class TestChangeEmailResendVerify(ApiMixin):
-    view_name = 'change-email-resend-verify'
+    view_name = "change-email-resend-verify"
 
     def test_guest_cant_resend(self, client):
         r = client.post(self.reverse())
         h.responseUnauthorized(r)
 
     def test_user_can_resend(self, client, outbox, deep_link_mock_success):
-        user = f.UserFactory(new_email='new@example.com', is_new_email_confirmed=True)
+        user = f.UserFactory(new_email="new@example.com", is_new_email_confirmed=True)
         client.force_authenticate(user)
         r = client.post(self.reverse())
         h.responseOk(r)
         assert len(outbox) == 1
 
     def test_user_cant_resend_if_their_new_email_is_not_confirmed(self, client):
-        user = f.UserFactory(new_email='new@example.com', is_new_email_confirmed=False)
+        user = f.UserFactory(new_email="new@example.com", is_new_email_confirmed=False)
         client.force_authenticate(user)
         r = client.post(self.reverse())
         h.responseBadRequest(r)
 
 
 class TestChangeEmailCancel(ApiMixin):
-    view_name = 'change-email-cancel'
+    view_name = "change-email-cancel"
 
     def test_guest_cant_cancel(self, client):
         r = client.post(self.reverse())
         h.responseUnauthorized(r)
 
     def test_user_can_cancel(self, client):
-        user = f.UserFactory(new_email='new@example.com', is_new_email_confirmed=True)
+        user = f.UserFactory(new_email="new@example.com", is_new_email_confirmed=True)
         client.force_authenticate(user)
         r = client.post(self.reverse())
         h.responseOk(r)

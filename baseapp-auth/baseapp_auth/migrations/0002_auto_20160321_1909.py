@@ -9,24 +9,20 @@ import apps.base.models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('users', '0001_initial'),
-    ]
+    dependencies = [("users", "0001_initial")]
 
     operations = [
         migrations.AddField(
-            model_name='user',
-            name='is_email_verified',
+            model_name="user", name="is_email_verified", field=models.BooleanField(default=False)
+        ),
+        migrations.AddField(
+            model_name="user",
+            name="is_new_email_verified",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name='user',
-            name='is_new_email_verified',
-            field=models.BooleanField(default=False),
-        ),
-        migrations.AddField(
-            model_name='user',
-            name='new_email',
+            model_name="user",
+            name="new_email",
             field=apps.base.models.CaseInsensitiveEmailField(blank=True, max_length=254),
         ),
     ]

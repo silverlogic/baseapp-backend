@@ -16,23 +16,23 @@ class RegisterSerializer(serializers.Serializer):
 
     def validate_email(self, email):
         if User.objects.filter(email=email).exists():
-            raise serializers.ValidationError(_('That email is already in use.  Choose another.'))
+            raise serializers.ValidationError(_("That email is already in use.  Choose another."))
         return email
 
     def validate_referral_code(self, referral_code):
         if referral_code:
             self.referrer = get_user_from_referral_code(referral_code)
             if not self.referrer:
-                raise serializers.ValidationError(_('Invalid referral code.'))
+                raise serializers.ValidationError(_("Invalid referral code."))
         return referral_code
 
     def validate(self, data):
-        data.pop('referral_code', None)
+        data.pop("referral_code", None)
         return data
 
     def save(self):
         validated_data = self.validated_data
         user = User.objects.create_user(**validated_data)
-        if hasattr(self, 'referrer'):
+        if hasattr(self, "referrer"):
             UserReferral.objects.create(referrer=self.referrer, referee=user)
         return user

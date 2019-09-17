@@ -8,5 +8,5 @@ pytestmark = pytest.mark.django_db
 
 class TestCleanUpSocialAuthCache:
     def test_it_works(self):
-        SocialAuthAccessTokenCache.objects.create(access_token='asdb')
+        SocialAuthAccessTokenCache.objects.create(access_token="asdb")
         clean_up_social_auth_cache()
