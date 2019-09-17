@@ -6,7 +6,9 @@ from apps.base.deep_links import get_deep_link
 from apps.base.exceptions import DeepLinkFetchError
 
 from .tokens import (
-    ChangeEmailConfirmTokenGenerator, ChangeEmailVerifyTokenGenerator, ConfirmEmailTokenGenerator
+    ChangeEmailConfirmTokenGenerator,
+    ChangeEmailVerifyTokenGenerator,
+    ConfirmEmailTokenGenerator,
 )
 
 
