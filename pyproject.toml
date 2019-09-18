@@ -5,9 +5,11 @@ target_version = ['py36']
 [tool.isort]
 line_length=100
 multi_line_output=3
+force_grid_wrap=0
+combine_as_imports=true
+include_trailing_comma=true
 known_django='django'
 known_first_party='apps,settings'
 known_tests='tests'
 sections='FUTURE,STDLIB,DJANGO,THIRDPARTY,FIRSTPARTY,LOCALFOLDER,TESTS'
 default_section='THIRDPARTY'
-include_trailing_comma=true
