@@ -26,3 +26,16 @@ class random_name_in(object):
         ext = filename.split(".")[-1]
         filename = "{}.{}".format(uuid.uuid4(), ext)
         return os.path.join(self.dir, filename)
+
+
+@deconstructible
+class random_dir_in(object):
+    """
+    Upload a file to a directory with a randomly generated name, but keep the real file name.
+    """
+
+    def __init__(self, base_dir):
+        self.base_dir = base_dir
+
+    def __call__(self, instance, filename):
+        return os.path.join(self.base_dir, str(uuid.uuid4()), filename)
