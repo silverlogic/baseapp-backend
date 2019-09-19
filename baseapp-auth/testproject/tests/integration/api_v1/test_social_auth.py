@@ -18,16 +18,13 @@ pytestmark = pytest.mark.django_db
 
 
 class SocialAuthMixin(ApiMixin):
-    view_name = 'social-auth-list'
+    view_name = "social-auth-list"
 
 
 class OAuth2Mixin(SocialAuthMixin):
     @pytest.fixture
     def base_data(self, use_httpretty):
-        return {
-            'code': 'asdf9123',
-            'redirect_uri': 'https://example.com',
-        }
+        return {"code": "asdf9123", "redirect_uri": "https://example.com"}
 
 
 class OAuth1Mixin(SocialAuthMixin):
@@ -38,39 +35,39 @@ class OAuth1Mixin(SocialAuthMixin):
 
 class TestSocialAuth(SocialAuthMixin):
     def test_cant_auth_with_invalid_provider(self, client):
-        data = {'provider': 'blarg'}
+        data = {"provider": "blarg"}
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
-        assert 'provider' in r.data
+        assert "provider" in r.data
 
 
 class TestOAuth2(OAuth2Mixin):
     def test_cant_auth_without_redirect_uri(self, client, base_data, settings):
-        base_data['provider'] = 'facebook'
-        base_data.pop('redirect_uri')
-        settings.SOCIAL_AUTH_FACEBOOK_KEY = '1234'
-        settings.SOCIAL_AUTH_FACEBOOK_SECRET = '1234'
-        settings.AUTHENTICATION_BACKENDS = ['social_core.backends.facebook.FacebookOAuth2']
+        base_data["provider"] = "facebook"
+        base_data.pop("redirect_uri")
+        settings.SOCIAL_AUTH_FACEBOOK_KEY = "1234"
+        settings.SOCIAL_AUTH_FACEBOOK_SECRET = "1234"
+        settings.AUTHENTICATION_BACKENDS = ["social_core.backends.facebook.FacebookOAuth2"]
         social_django.utils.BACKENDS = settings.AUTHENTICATION_BACKENDS
         r = client.post(self.reverse(), base_data)
         h.responseBadRequest(r)
-        assert 'redirect_uri' in r.data
+        assert "redirect_uri" in r.data
 
 
 class TestFacebookSocialAuth(OAuth2Mixin):
     @pytest.fixture
     def data(self, base_data, settings, image_base64):
-        base_data['provider'] = 'facebook'
+        base_data["provider"] = "facebook"
 
-        settings.SOCIAL_AUTH_FACEBOOK_KEY = '1234'
-        settings.SOCIAL_AUTH_FACEBOOK_SECRET = '1234'
-        settings.AUTHENTICATION_BACKENDS = ['social_core.backends.facebook.FacebookOAuth2']
+        settings.SOCIAL_AUTH_FACEBOOK_KEY = "1234"
+        settings.SOCIAL_AUTH_FACEBOOK_SECRET = "1234"
+        settings.AUTHENTICATION_BACKENDS = ["social_core.backends.facebook.FacebookOAuth2"]
         social_django.utils.BACKENDS = settings.AUTHENTICATION_BACKENDS
 
         httpretty.register_uri(
             httpretty.GET,
-            re.compile('https://graph.facebook.com/v2.\d+/me/picture$'),
-            body=image_base64
+            re.compile(r"https://graph.facebook.com/v2.\d+/me/picture$"),
+            body=image_base64,
         )
 
         return base_data
@@ -79,12 +76,8 @@ class TestFacebookSocialAuth(OAuth2Mixin):
     def success_data(self, data):
         httpretty.register_uri(
             httpretty.GET,
-            re.compile('https://graph.facebook.com/v2.\d+/oauth/access_token$'),
-            body=json.dumps({
-                "access_token": '1234',
-                "token_type": 'type',
-                "expires_in": 6000
-            })
+            re.compile(r"https://graph.facebook.com/v2.\d+/oauth/access_token$"),
+            body=json.dumps({"access_token": "1234", "token_type": "type", "expires_in": 6000}),
         )
         return data
 
@@ -92,13 +85,15 @@ class TestFacebookSocialAuth(OAuth2Mixin):
     def complete_data(self, success_data):
         httpretty.register_uri(
             httpretty.GET,
-            re.compile('https://graph.facebook.com/v2.\d+/me$'),
-            body=json.dumps({
-                'id': '1387123',
-                'first_name': 'John',
-                'last_name': 'Smith',
-                'email': 'johnsmith@example.com',
-            })
+            re.compile(r"https://graph.facebook.com/v2.\d+/me$"),
+            body=json.dumps(
+                {
+                    "id": "1387123",
+                    "first_name": "John",
+                    "last_name": "Smith",
+                    "email": "johnsmith@example.com",
+                }
+            ),
         )
         return success_data
 
@@ -106,12 +101,8 @@ class TestFacebookSocialAuth(OAuth2Mixin):
     def no_email_data(self, success_data):
         httpretty.register_uri(
             httpretty.GET,
-            re.compile('https://graph.facebook.com/v\d+.\d+/me$'),
-            body=json.dumps({
-                'id': '1387123',
-                'first_name': 'John',
-                'last_name': 'Smith',
-            })
+            re.compile(r"https://graph.facebook.com/v\d+.\d+/me$"),
+            body=json.dumps({"id": "1387123", "first_name": "John", "last_name": "Smith"}),
         )
         return success_data
 
@@ -119,8 +110,8 @@ class TestFacebookSocialAuth(OAuth2Mixin):
     def invalid_code_data(self, data):
         httpretty.register_uri(
             httpretty.GET,
-            re.compile('https://graph.facebook.com/v2.\d+/oauth/access_token$'),
-            status=400
+            re.compile(r"https://graph.facebook.com/v2.\d+/oauth/access_token$"),
+            status=400,
         )
         return data
 
@@ -132,9 +123,9 @@ class TestFacebookSocialAuth(OAuth2Mixin):
         r = client.post(self.reverse(), complete_data)
         h.responseOk(r)
         user = User.objects.get()
-        assert user.first_name == 'John'
-        assert user.last_name == 'Smith'
-        assert user.email == 'johnsmith@example.com'
+        assert user.first_name == "John"
+        assert user.last_name == "Smith"
+        assert user.email == "johnsmith@example.com"
 
     def test_user_avatar_is_created_from_profile_picture(self, client, complete_data):
         r = client.post(self.reverse(), complete_data)
@@ -143,60 +134,60 @@ class TestFacebookSocialAuth(OAuth2Mixin):
 
     def test_can_be_referred(self, client, complete_data):
         referrer = f.UserFactory()
-        complete_data['referral_code'] = get_referral_code(referrer)
+        complete_data["referral_code"] = get_referral_code(referrer)
         r = client.post(self.reverse(), complete_data)
         h.responseOk(r)
         referee = User.objects.exclude(pk=referrer.pk).first()
         referee.referred_by
 
     def test_when_referral_code_is_invalid(self, client, data):
-        data['referral_code'] = '18a9sdf891203'
+        data["referral_code"] = "18a9sdf891203"
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
-        assert r.data['referral_code'] == ['Invalid referral code.']
+        assert r.data["referral_code"] == ["Invalid referral code."]
 
     def test_when_no_email_from_provider(self, client, no_email_data):
         r = client.post(self.reverse(), no_email_data)
         h.responseBadRequest(r)
-        assert r.data['email'] == 'no_email_provided'
+        assert r.data["email"] == "no_email_provided"
 
-        no_email_data['email'] = 'rob@example.com'
+        no_email_data["email"] = "rob@example.com"
         r = client.post(self.reverse(), no_email_data)
         h.responseOk(r)
         user = User.objects.get()
-        assert user.email == 'rob@example.com'
+        assert user.email == "rob@example.com"
 
     def test_when_email_already_belongs_to_another_user(self, client, complete_data):
-        f.UserFactory(email='johnsmith@example.com')
+        f.UserFactory(email="johnsmith@example.com")
         r = client.post(self.reverse(), complete_data)
         h.responseBadRequest(r)
-        assert r.data['email'] == 'email_already_in_use'
+        assert r.data["email"] == "email_already_in_use"
 
     def test_when_invalid_code(self, client, invalid_code_data):
         r = client.post(self.reverse(), invalid_code_data)
         h.responseBadRequest(r)
-        assert r.data['non_field_errors'] == 'invalid_credentials'
+        assert r.data["non_field_errors"] == "invalid_credentials"
 
     def test_is_new_response_field(self, client, complete_data):
         # Register
         r = client.post(self.reverse(), complete_data)
         h.responseOk(r)
-        assert r.data['is_new']
+        assert r.data["is_new"]
 
         # Login
         r = client.post(self.reverse(), complete_data)
         h.responseOk(r)
-        assert not r.data['is_new']
+        assert not r.data["is_new"]
 
 
 class TestTwitterSocialAuth(OAuth1Mixin):
     @pytest.fixture
     def data(self, base_data, settings):
-        base_data['provider'] = 'twitter'
+        base_data["provider"] = "twitter"
 
-        settings.SOCIAL_AUTH_TWITTER_KEY = '1234'
-        settings.SOCIAL_AUTH_TWITTER_SECRET = '1234'
-        settings.AUTHENTICATION_BACKENDS = ['social_core.backends.twitter.TwitterOAuth']
+        settings.SOCIAL_AUTH_TWITTER_KEY = "1234"
+        settings.SOCIAL_AUTH_TWITTER_SECRET = "1234"
+        settings.AUTHENTICATION_BACKENDS = ["social_core.backends.twitter.TwitterOAuth"]
         social_django.utils.BACKENDS = settings.AUTHENTICATION_BACKENDS
 
         return base_data
@@ -204,84 +195,82 @@ class TestTwitterSocialAuth(OAuth1Mixin):
     @pytest.fixture
     def step1_data(self, data):
         httpretty.register_uri(
-            httpretty.POST,
-            'https://api.twitter.com/oauth/request_token',
-            body=''
+            httpretty.POST, "https://api.twitter.com/oauth/request_token", body=""
         )
         return data
 
     @pytest.fixture
     def step2_data(self, data):
-        data['oauth_token'] = '1234'
-        data['oauth_token_secret'] = '1234xyz'
-        data['oauth_verifier'] = '12345'
-        data['email'] = 'seancook@example.com'
+        data["oauth_token"] = "1234"
+        data["oauth_token_secret"] = "1234xyz"
+        data["oauth_verifier"] = "12345"
+        data["email"] = "seancook@example.com"
 
         httpretty.register_uri(
             httpretty.GET,
-            re.compile('https://api.twitter.com/1.\d+/account/verify_credentials.json'),
-            body=json.dumps({
-                'id': 543,
-                'name': 'Sean Cook',
-                'screen_name': 'thecooker',
-            })
+            re.compile(r"https://api.twitter.com/1.\d+/account/verify_credentials.json"),
+            body=json.dumps({"id": 543, "name": "Sean Cook", "screen_name": "thecooker"}),
         )
 
-        with patch('social_core.backends.twitter.TwitterOAuth.get_unauthorized_token') as mock:
-            with patch('social_core.backends.twitter.TwitterOAuth.access_token') as mock:
-                mock.return_value = '1234'
+        with patch("social_core.backends.twitter.TwitterOAuth.get_unauthorized_token") as mock:
+            with patch("social_core.backends.twitter.TwitterOAuth.access_token") as mock:
+                mock.return_value = "1234"
                 yield data
 
     @pytest.fixture
     def step2_data_with_profile_image(self, data, image_base64):
-        data['oauth_token'] = '1234'
-        data['oauth_token_secret'] = '1234xyz'
-        data['oauth_verifier'] = '12345'
-        data['email'] = 'seancook@example.com'
+        data["oauth_token"] = "1234"
+        data["oauth_token_secret"] = "1234xyz"
+        data["oauth_verifier"] = "12345"
+        data["email"] = "seancook@example.com"
 
         httpretty.register_uri(
             httpretty.GET,
-            re.compile('https://api.twitter.com/1.\d+/account/verify_credentials.json'),
-            body=json.dumps({
-                'id': 543,
-                'name': 'Sean Cook',
-                'screen_name': 'thecooker',
-                'profile_image_url': 'http://example.com/profile_images/1234431/18272_bigger.jpg'
-            })
+            re.compile(r"https://api.twitter.com/1.\d+/account/verify_credentials.json"),
+            body=json.dumps(
+                {
+                    "id": 543,
+                    "name": "Sean Cook",
+                    "screen_name": "thecooker",
+                    "profile_image_url": "http://example.com/profile_images/1234431/18272_bigger.jpg",
+                }
+            ),
         )
 
         httpretty.register_uri(
             httpretty.GET,
-            'http://example.com/profile_images/1234431/18272_400x400.jpg',
-            body=image_base64
+            "http://example.com/profile_images/1234431/18272_400x400.jpg",
+            body=image_base64,
         )
 
-        with patch('social_core.backends.twitter.TwitterOAuth.get_unauthorized_token') as mock:
-            with patch('social_core.backends.twitter.TwitterOAuth.access_token') as mock:
-                mock.return_value = '1234'
+        with patch("social_core.backends.twitter.TwitterOAuth.get_unauthorized_token") as mock:
+            with patch("social_core.backends.twitter.TwitterOAuth.access_token") as mock:
+                mock.return_value = "1234"
                 yield data
 
     @pytest.fixture
     def step2_data_with_default_profile_image(self, data, image_base64):
-        data['oauth_token'] = '1234'
-        data['oauth_token_secret'] = '1234xyz'
-        data['oauth_verifier'] = '12345'
-        data['email'] = 'seancook@example.com'
+        data["oauth_token"] = "1234"
+        data["oauth_token_secret"] = "1234xyz"
+        data["oauth_verifier"] = "12345"
+        data["email"] = "seancook@example.com"
 
         httpretty.register_uri(
             httpretty.GET,
-            re.compile('https://api.twitter.com/1.\d+/account/verify_credentials.json'),
-            body=json.dumps({
-                'id': 543,
-                'name': 'Sean Cook',
-                'screen_name': 'thecooker',
-                'profile_image_url': 'http://example.com/sticky/default_profile_images/default_profile_3_bigger.png'
-            })
+            re.compile(r"https://api.twitter.com/1.\d+/account/verify_credentials.json"),
+            body=json.dumps(
+                {
+                    "id": 543,
+                    "name": "Sean Cook",
+                    "screen_name": "thecooker",
+                    "profile_image_url": "http://example.com/sticky/default_profile_images/default_profile_3_bigger.png",
+                }
+            ),
         )
 
-        with patch('social_core.backends.twitter.TwitterOAuth.get_unauthorized_token') as mock:
-            with patch('social_core.backends.twitter.TwitterOAuth.access_token') as mock:
-                mock.return_value = '1234'
+        with patch("social_core.backends.twitter.TwitterOAuth.get_unauthorized_token") as mock:
+            with patch("social_core.backends.twitter.TwitterOAuth.access_token") as mock:
+                mock.return_value = "1234"
                 yield data
 
     def test_can_perform_step1(self, client, step1_data):
@@ -296,16 +285,18 @@ class TestTwitterSocialAuth(OAuth1Mixin):
         r = client.post(self.reverse(), step2_data)
         h.responseOk(r)
         user = User.objects.get()
-        assert user.first_name == 'Sean'
-        assert user.last_name == 'Cook'
-        assert user.email == 'seancook@example.com'
+        assert user.first_name == "Sean"
+        assert user.last_name == "Cook"
+        assert user.email == "seancook@example.com"
 
     def test_user_avatar_is_created_from_profile_image(self, client, step2_data_with_profile_image):
         r = client.post(self.reverse(), step2_data_with_profile_image)
         h.responseOk(r)
         assert Avatar.objects.count()
 
-    def test_user_avatar_is_not_created_when_user_has_default_profile_image(self, client, step2_data_with_default_profile_image):
+    def test_user_avatar_is_not_created_when_user_has_default_profile_image(
+        self, client, step2_data_with_default_profile_image
+    ):
         r = client.post(self.reverse(), step2_data_with_default_profile_image)
         h.responseOk(r)
         assert not Avatar.objects.count()
@@ -314,17 +305,15 @@ class TestTwitterSocialAuth(OAuth1Mixin):
 class TestLinkedInSocialAuth(OAuth2Mixin):
     @pytest.fixture
     def data(self, base_data, settings, image_base64):
-        base_data['provider'] = 'linkedin-oauth2'
+        base_data["provider"] = "linkedin-oauth2"
 
-        settings.SOCIAL_AUTH_LINKEDIN_OAUTH2_KEY = '1234'
-        settings.SOCIAL_AUTH_LINKEDIN_OAUTH2_SECRET = '1234'
-        settings.AUTHENTICATION_BACKENDS = ['social_core.backends.linkedin.LinkedinOAuth2']
+        settings.SOCIAL_AUTH_LINKEDIN_OAUTH2_KEY = "1234"
+        settings.SOCIAL_AUTH_LINKEDIN_OAUTH2_SECRET = "1234"
+        settings.AUTHENTICATION_BACKENDS = ["social_core.backends.linkedin.LinkedinOAuth2"]
         social_django.utils.BACKENDS = settings.AUTHENTICATION_BACKENDS
 
         httpretty.register_uri(
-            httpretty.GET,
-            re.compile('https://media.licdn.com/mpr/asd/image'),
-            body=image_base64
+            httpretty.GET, re.compile("https://media.licdn.com/mpr/asd/image"), body=image_base64
         )
 
         return base_data
@@ -333,11 +322,8 @@ class TestLinkedInSocialAuth(OAuth2Mixin):
     def success_data(self, data):
         httpretty.register_uri(
             httpretty.POST,
-            re.compile('https://www.linkedin.com/uas/oauth2/accessToken'),
-            body=json.dumps({
-                "access_token": '1234',
-                "expires_in": 6000
-            })
+            re.compile("https://www.linkedin.com/uas/oauth2/accessToken"),
+            body=json.dumps({"access_token": "1234", "expires_in": 6000}),
         )
         return data
 
@@ -345,13 +331,15 @@ class TestLinkedInSocialAuth(OAuth2Mixin):
     def complete_data(self, success_data):
         httpretty.register_uri(
             httpretty.GET,
-            re.compile('https://api.linkedin.com/v1/people/~:(.*)'),
-            body=json.dumps({
-                'id': 'asd81a',
-                'firstName': 'John',
-                'lastName': 'Smith',
-                'emailAddress': 'johnsmith@example.com',
-            })
+            re.compile("https://api.linkedin.com/v1/people/~:(.*)"),
+            body=json.dumps(
+                {
+                    "id": "asd81a",
+                    "firstName": "John",
+                    "lastName": "Smith",
+                    "emailAddress": "johnsmith@example.com",
+                }
+            ),
         )
         return success_data
 
@@ -359,19 +347,19 @@ class TestLinkedInSocialAuth(OAuth2Mixin):
     def picture_data(self, success_data):
         httpretty.register_uri(
             httpretty.GET,
-            re.compile('https://api.linkedin.com/v1/people/~:(.*)'),
-            body=json.dumps({
-                'id': 'asd81a',
-                'firstName': 'John',
-                'lastName': 'Smith',
-                'emailAddress': 'johnsmith@example.com',
-                'pictureUrls': {
-                    '_total': 1,
-                    'values': [
-                        'https://media.licdn.com/mpr/asd/image',
-                    ]
+            re.compile("https://api.linkedin.com/v1/people/~:(.*)"),
+            body=json.dumps(
+                {
+                    "id": "asd81a",
+                    "firstName": "John",
+                    "lastName": "Smith",
+                    "emailAddress": "johnsmith@example.com",
+                    "pictureUrls": {
+                        "_total": 1,
+                        "values": ["https://media.licdn.com/mpr/asd/image"],
+                    },
                 }
-            })
+            ),
         )
         return success_data
 
@@ -383,9 +371,9 @@ class TestLinkedInSocialAuth(OAuth2Mixin):
         r = client.post(self.reverse(), complete_data)
         h.responseOk(r)
         user = User.objects.get()
-        assert user.first_name == 'John'
-        assert user.last_name == 'Smith'
-        assert user.email == 'johnsmith@example.com'
+        assert user.first_name == "John"
+        assert user.last_name == "Smith"
+        assert user.email == "johnsmith@example.com"
 
     def test_user_avatar_is_created_from_profile_picture(self, client, picture_data):
         r = client.post(self.reverse(), picture_data)

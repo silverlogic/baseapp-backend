@@ -6,7 +6,9 @@ from apps.base.deep_links import get_deep_link
 from apps.base.exceptions import DeepLinkFetchError
 
 from .tokens import (
-    ChangeEmailConfirmTokenGenerator, ChangeEmailVerifyTokenGenerator, ConfirmEmailTokenGenerator
+    ChangeEmailConfirmTokenGenerator,
+    ChangeEmailVerifyTokenGenerator,
+    ConfirmEmailTokenGenerator,
 )
 
 
@@ -19,54 +21,48 @@ def send_welcome_email(user):
             for_ios=settings.IOS_CONFIRM_EMAIL_DEEP_LINK,
             for_android=settings.ANDROID_CONFIRM_EMAIL_DEEP_LINK,
             **{
-                'channel': 'email',
-                'feature': 'confirm email',
-                'data': {
-                    'type': 'confirm-email',
-                    'user': user.pk,
-                    'token': token,
-                }
-            }
+                "channel": "email",
+                "feature": "confirm email",
+                "data": {"type": "confirm-email", "user": user.pk, "token": token},
+            },
         )
     except DeepLinkFetchError:
         confirm_url = web_url
     else:
-        confirm_url = deep_link['url']
-    context = {
-        'user': user,
-        'confirm_url': confirm_url
-    }
-    subject = render_to_string('users/emails/welcome-subject.txt.j2', context=context).strip()
-    message = render_to_string('users/emails/welcome-body.txt.j2', context=context)
-    html_message = render_to_string('users/emails/welcome-body.html.j2', context=context)
-    send_mail(subject, message, html_message=html_message, from_email=None, recipient_list=[user.email])
+        confirm_url = deep_link["url"]
+    context = {"user": user, "confirm_url": confirm_url}
+    subject = render_to_string("users/emails/welcome-subject.txt.j2", context=context).strip()
+    message = render_to_string("users/emails/welcome-body.txt.j2", context=context)
+    html_message = render_to_string("users/emails/welcome-body.html.j2", context=context)
+    send_mail(
+        subject, message, html_message=html_message, from_email=None, recipient_list=[user.email]
+    )
 
 
 def send_password_reset_email(info):
-    fallback_url = settings.FRONT_FORGOT_PASSWORD_URL.format(token=info['token'])
+    fallback_url = settings.FRONT_FORGOT_PASSWORD_URL.format(token=info["token"])
     try:
         deep_link = get_deep_link(
             fallback_url,
             for_ios=settings.IOS_FORGOT_PASSWORD_DEEP_LINK,
             for_android=settings.ANDROID_FORGOT_PASSWORD_DEEP_LINK,
             **{
-                'channel': 'email',
-                'feature': 'password reset',
-                'data': {
-                    'type': 'forgot-password',
-                    'token': info['token'],
-                }
-            }
+                "channel": "email",
+                "feature": "password reset",
+                "data": {"type": "forgot-password", "token": info["token"]},
+            },
         )
     except DeepLinkFetchError:
         url = fallback_url
     else:
-        url = deep_link['url']
-    context = {'url': url}
-    subject = render_to_string('users/emails/password-reset-subject.txt.j2', context).strip()
-    message = render_to_string('users/emails/password-reset-body.txt.j2', context)
-    html_message = render_to_string('users/emails/password-reset-body.html.j2', context)
-    send_mail(subject, message, html_message=html_message, from_email=None, recipient_list=[info['email']])
+        url = deep_link["url"]
+    context = {"url": url}
+    subject = render_to_string("users/emails/password-reset-subject.txt.j2", context).strip()
+    message = render_to_string("users/emails/password-reset-body.txt.j2", context)
+    html_message = render_to_string("users/emails/password-reset-body.html.j2", context)
+    send_mail(
+        subject, message, html_message=html_message, from_email=None, recipient_list=[info["email"]]
+    )
 
 
 def send_change_email_confirm_email(user):
@@ -78,27 +74,22 @@ def send_change_email_confirm_email(user):
             for_ios=settings.IOS_CHANGE_EMAIL_DEEP_LINK,
             for_android=settings.ANDROID_CHANGE_EMAIL_DEEP_LINK,
             **{
-                'channel': 'email',
-                'feature': 'change email',
-                'data': {
-                    'type': 'change-email-confirm',
-                    'user': user.pk,
-                    'token': token,
-                }
-            }
+                "channel": "email",
+                "feature": "change email",
+                "data": {"type": "change-email-confirm", "user": user.pk, "token": token},
+            },
         )
     except DeepLinkFetchError:
         url = fallback_url
     else:
-        url = deep_link['url']
-    context = {
-        'url': url,
-        'new_email': user.new_email,
-    }
-    subject = render_to_string('users/emails/change-email-confirm-subject.txt.j2', context).strip()
-    message = render_to_string('users/emails/change-email-confirm-body.txt.j2', context)
-    html_message = render_to_string('users/emails/change-email-confirm-body.html.j2', context)
-    send_mail(subject, message, html_message=html_message, from_email=None, recipient_list=[user.email])
+        url = deep_link["url"]
+    context = {"url": url, "new_email": user.new_email}
+    subject = render_to_string("users/emails/change-email-confirm-subject.txt.j2", context).strip()
+    message = render_to_string("users/emails/change-email-confirm-body.txt.j2", context)
+    html_message = render_to_string("users/emails/change-email-confirm-body.html.j2", context)
+    send_mail(
+        subject, message, html_message=html_message, from_email=None, recipient_list=[user.email]
+    )
 
 
 def send_change_email_verify_email(user):
@@ -110,23 +101,23 @@ def send_change_email_verify_email(user):
             for_ios=settings.IOS_CHANGE_EMAIL_DEEP_LINK,
             for_android=settings.ANDROID_CHANGE_EMAIL_DEEP_LINK,
             **{
-                'channel': 'email',
-                'feature': 'change email',
-                'data': {
-                    'type': 'change-email-verify',
-                    'user': user.pk,
-                    'token': token,
-                }
-            }
+                "channel": "email",
+                "feature": "change email",
+                "data": {"type": "change-email-verify", "user": user.pk, "token": token},
+            },
         )
     except DeepLinkFetchError:
         url = fallback_url
     else:
-        url = deep_link['url']
-    context = {
-        'url': url,
-    }
-    subject = render_to_string('users/emails/change-email-verify-subject.txt.j2', context).strip()
-    message = render_to_string('users/emails/change-email-verify-body.txt.j2', context)
-    html_message = render_to_string('users/emails/change-email-verify-body.html.j2', context)
-    send_mail(subject, message, html_message=html_message, from_email=None, recipient_list=[user.new_email])
+        url = deep_link["url"]
+    context = {"url": url}
+    subject = render_to_string("users/emails/change-email-verify-subject.txt.j2", context).strip()
+    message = render_to_string("users/emails/change-email-verify-body.txt.j2", context)
+    html_message = render_to_string("users/emails/change-email-verify-body.html.j2", context)
+    send_mail(
+        subject,
+        message,
+        html_message=html_message,
+        from_email=None,
+        recipient_list=[user.new_email],
+    )

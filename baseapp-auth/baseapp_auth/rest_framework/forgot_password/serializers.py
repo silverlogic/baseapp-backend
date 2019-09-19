@@ -17,7 +17,7 @@ class ForgotPasswordSerializer(serializers.Serializer):
         try:
             self.user = User.objects.get(email=email)
         except User.DoesNotExist:
-            raise serializers.ValidationError(_('Email does not exist.'))
+            raise serializers.ValidationError(_("Email does not exist."))
         return email
 
 
@@ -31,11 +31,11 @@ class ResetPasswordSerializer(serializers.Serializer):
             user_id, user_token = signing.loads(decoded_token)
             self.user = user = User.objects.get(pk=user_id)
             if not (default_token_generator.check_token(user, user_token)):
-                raise serializers.ValidationError(_('Invalid token.'))
+                raise serializers.ValidationError(_("Invalid token."))
         except (signing.BadSignature, DjangoUnicodeDecodeError, SignatureExpired):
-            raise serializers.ValidationError(_('Invalid token.'))
+            raise serializers.ValidationError(_("Invalid token."))
         return token
 
     def save(self):
-        self.user.set_password(self.data['new_password'])
+        self.user.set_password(self.data["new_password"])
         self.user.save()

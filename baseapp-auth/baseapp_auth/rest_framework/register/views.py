@@ -15,7 +15,9 @@ class RegisterViewSet(viewsets.GenericViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = self.perform_create(serializer)
-        return Response(UserSerializer(user, context={'request': request}).data, status=status.HTTP_201_CREATED)
+        return Response(
+            UserSerializer(user, context={"request": request}).data, status=status.HTTP_201_CREATED
+        )
 
     def perform_create(self, serializer):
         user = serializer.save()

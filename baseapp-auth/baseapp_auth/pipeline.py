@@ -19,10 +19,10 @@ def get_username(strategy, details, response, user=None, *args, **kwargs):
     storage = strategy.storage
 
     if not user:
-        if details.get('email'):
-            username = details['email']
-        elif strategy.request.data.get('email'):
-            username = strategy.request.data['email']
+        if details.get("email"):
+            username = details["email"]
+        elif strategy.request.data.get("email"):
+            username = strategy.request.data["email"]
         else:
             raise EmailNotProvidedError()
 
@@ -30,7 +30,7 @@ def get_username(strategy, details, response, user=None, *args, **kwargs):
             raise EmailAlreadyExistsError()
     else:
         username = storage.user.get_username(user)
-    return {'username': username}
+    return {"username": username}
 
 
 def set_avatar(is_new, backend, user, response, *args, **kwargs):
@@ -40,27 +40,29 @@ def set_avatar(is_new, backend, user, response, *args, **kwargs):
     image_url = None
     image_params = {}
 
-    if backend.name == 'facebook':
-        image_url = 'https://graph.facebook.com/v2.7/me/picture'
-        image_params = {'type': 'large', 'access_token': response['access_token']}
-    elif backend.name == 'twitter':
-        image_url = response.get('profile_image_url', None)
+    if backend.name == "facebook":
+        image_url = "https://graph.facebook.com/v2.7/me/picture"
+        image_params = {"type": "large", "access_token": response["access_token"]}
+    elif backend.name == "twitter":
+        image_url = response.get("profile_image_url", None)
         if image_url:
-            if re.search(r'default_profile_images', image_url):
+            if re.search(r"default_profile_images", image_url):
                 # don't want those silly default egg images.
                 image_url = None
             else:
                 # get a larger image the the default response one.
-                image_url = re.sub(r'_bigger\.(?P<extension>\w+)$', '_400x400.\g<extension>', image_url)
-    elif backend.name.startswith('linkedin'):
-        pictures = response.get('pictureUrls', None)
+                image_url = re.sub(
+                    r"_bigger\.(?P<extension>\w+)$", r"_400x400.\g<extension>", image_url
+                )
+    elif backend.name.startswith("linkedin"):
+        pictures = response.get("pictureUrls", None)
         if pictures:
-            image_url = pictures['values'][0]
+            image_url = pictures["values"][0]
 
     if image_url:
         response = requests.get(image_url, params=image_params)
         image = BytesIO(response.content)
-        Avatar.objects.create(user=user, primary=True, avatar=ImageFile(image, name='pic.jpg'))
+        Avatar.objects.create(user=user, primary=True, avatar=ImageFile(image, name="pic.jpg"))
 
 
 def set_is_new(is_new, user, *args, **kwargs):

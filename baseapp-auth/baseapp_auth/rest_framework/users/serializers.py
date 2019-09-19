@@ -22,11 +22,26 @@ class UserBaseSerializer(ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'is_email_verified', 'new_email', 'is_new_email_confirmed',
-                  'referral_code', 'referred_by_code', 'avatar', 'first_name', 'last_name',)
-        private_fields = ('email', 'is_email_verified', 'new_email', 'is_new_email_confirmed',
-                          'referral_code',)
-        read_only_fields = ('email', 'is_email_verified', 'new_email', 'is_new_email_confirmed',)
+        fields = (
+            "id",
+            "email",
+            "is_email_verified",
+            "new_email",
+            "is_new_email_confirmed",
+            "referral_code",
+            "referred_by_code",
+            "avatar",
+            "first_name",
+            "last_name",
+        )
+        private_fields = (
+            "email",
+            "is_email_verified",
+            "new_email",
+            "is_new_email_confirmed",
+            "referral_code",
+        )
+        read_only_fields = ("email", "is_email_verified", "new_email", "is_new_email_confirmed")
 
     def get_referral_code(self, user):
         return get_referral_code(user)
@@ -40,21 +55,23 @@ class UserSerializer(UserBaseSerializer):
         if referred_by_code:
             self.referrer = get_user_from_referral_code(referred_by_code)
             if not self.referrer:
-                raise serializers.ValidationError(_('Invalid referral code.'))
+                raise serializers.ValidationError(_("Invalid referral code."))
             elif self.referrer == self.instance:
-                raise serializers.ValidationError(_('You cannot refer yourself.'))
+                raise serializers.ValidationError(_("You cannot refer yourself."))
             elif (timezone.now() - self.instance.date_joined) > timedelta(days=1):
-                raise serializers.ValidationError(_('You are no longer allowed to change who you were referred by.'))
-            elif hasattr(self.instance, 'referred_by'):
-                raise serializers.ValidationError(_('You have already been referred by somebody.'))
+                raise serializers.ValidationError(
+                    _("You are no longer allowed to change who you were referred by.")
+                )
+            elif hasattr(self.instance, "referred_by"):
+                raise serializers.ValidationError(_("You have already been referred by somebody."))
         return referred_by_code
 
     def update(self, instance, validated_data):
-        if hasattr(self, 'referrer'):
+        if hasattr(self, "referrer"):
             UserReferral.objects.create(referrer=self.referrer, referee=instance)
 
-        if 'avatar' in validated_data:
-            avatar = validated_data.pop('avatar')
+        if "avatar" in validated_data:
+            avatar = validated_data.pop("avatar")
             if avatar:
                 Avatar.objects.create(user=instance, primary=True, avatar=avatar)
             else:
@@ -63,7 +80,7 @@ class UserSerializer(UserBaseSerializer):
         return super().update(instance, validated_data)
 
     def to_representation(self, user):
-        request = self.context['request']
+        request = self.context["request"]
         if request.user.is_authenticated() and request.user.pk == user.pk:
             return super().to_representation(user)
         else:
@@ -73,7 +90,9 @@ class UserSerializer(UserBaseSerializer):
 class UserPublicSerializer(UserBaseSerializer):
     class Meta(UserSerializer.Meta):
         fields = tuple(set(UserSerializer.Meta.fields) - set(UserSerializer.Meta.private_fields))
-        read_only_fields = tuple(set(UserSerializer.Meta.read_only_fields) - set(UserSerializer.Meta.private_fields))
+        read_only_fields = tuple(
+            set(UserSerializer.Meta.read_only_fields) - set(UserSerializer.Meta.private_fields)
+        )
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -81,14 +100,14 @@ class ChangePasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField()
 
     def validate_current_password(self, current_password):
-        user = self.context['request'].user
+        user = self.context["request"].user
         if not user.check_password(current_password):
-            raise serializers.ValidationError(_('That is not your current password.'))
+            raise serializers.ValidationError(_("That is not your current password."))
         return current_password
 
     def save(self):
-        user = self.context['request'].user
-        user.set_password(self.data['new_password'])
+        user = self.context["request"].user
+        user.set_password(self.data["new_password"])
         user.save()
 
 
@@ -97,7 +116,7 @@ class ConfirmEmailSerializer(serializers.Serializer):
 
     def validate_token(self, token):
         if not ConfirmEmailTokenGenerator().check_token(self.instance, token):
-            raise serializers.ValidationError(_('Invalid token'))
+            raise serializers.ValidationError(_("Invalid token"))
         return token
 
     def update(self, instance, validated_data):

@@ -14,12 +14,12 @@ class LoginSerializer(serializers.Serializer):
         try:
             self.user = User.objects.get(email=email)
         except User.DoesNotExist:
-            raise serializers.ValidationError(_('Email does not exist.'))
+            raise serializers.ValidationError(_("Email does not exist."))
         return email
 
     def validate(self, data):
-        if not self.user.check_password(data['password']):
-            raise serializers.ValidationError({'password': _('Incorrect password.')})
+        if not self.user.check_password(data["password"]):
+            raise serializers.ValidationError({"password": _("Incorrect password.")})
         return data
 
     def create(self, validated_data):
