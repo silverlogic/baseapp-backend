@@ -4,8 +4,8 @@ from .models import UserReferral
 
 
 class UserReferralAdmin(admin.ModelAdmin):
-    list_display = ('id', 'referrer', 'referee',)
-    fields = ('referrer', 'referee',)
+    list_display = ("id", "referrer", "referee")
+    fields = ("referrer", "referee")
 
 
 admin.site.register(UserReferral, UserReferralAdmin)
