@@ -331,7 +331,7 @@ class TestLinkedInSocialAuth(OAuth2Mixin):
     def complete_data(self, success_data):
         httpretty.register_uri(
             httpretty.GET,
-            re.compile("https://api.linkedin.com/v1/people/~:(.*)"),
+            re.compile("https://api.linkedin.com/v1/people/(~|%7E):(.*)"),
             body=json.dumps(
                 {
                     "id": "asd81a",
@@ -347,7 +347,7 @@ class TestLinkedInSocialAuth(OAuth2Mixin):
     def picture_data(self, success_data):
         httpretty.register_uri(
             httpretty.GET,
-            re.compile("https://api.linkedin.com/v1/people/~:(.*)"),
+            re.compile("https://api.linkedin.com/v1/people/(~|%7E):(.*)"),
             body=json.dumps(
                 {
                     "id": "asd81a",
