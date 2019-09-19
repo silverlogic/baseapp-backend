@@ -12,5 +12,5 @@ class AdminTimezoneMiddleware(MiddlewareMixin):
         # it will greatly reduce the effectiveness of http caching (e.g. using varnish).
         # To get around this we make sure we only access the request user if we the URL matches
         # the admin.
-        if request.path.startswith('/admin') and request.user.is_superuser:
+        if request.path.startswith("/admin") and request.user.is_superuser:
             timezone.activate(pytz.timezone(settings.ADMIN_TIME_ZONE))

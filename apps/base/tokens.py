@@ -18,7 +18,7 @@ class TokenGenerator(object):
         return self.get_signing_value(obj) == value
 
     def decode_token(self, token):
-        '''Returns the decoded token or None if decoding fails.'''
+        """Returns the decoded token or None if decoding fails."""
         try:
             return loads(token, salt=self.key_salt)
         except BadSignature:
@@ -26,4 +26,4 @@ class TokenGenerator(object):
 
     @property
     def key_salt(self):
-        raise NotImplementedError('Subclasses must define key_salt.')
+        raise NotImplementedError("Subclasses must define key_salt.")
