@@ -39,5 +39,8 @@ def get_deep_link(
         r.raise_for_status()
     except RequestException:
         raise DeepLinkFetchError
-    else:
-        return r.json()
+
+    results = r.json()
+    if "url" not in results:
+        raise DeepLinkFetchError
+    return results
