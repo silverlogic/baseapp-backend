@@ -28,11 +28,16 @@ class ResetPasswordSerializer(serializers.Serializer):
     def validate_token(self, token):
         try:
             decoded_token = urlsafe_base64_decode(token)
-            user_id, user_token = signing.loads(decoded_token)
+            user_id, user_token = signing.loads(decoded_token.decode())
             self.user = user = User.objects.get(pk=user_id)
             if not (default_token_generator.check_token(user, user_token)):
                 raise serializers.ValidationError(_("Invalid token."))
-        except (signing.BadSignature, DjangoUnicodeDecodeError, SignatureExpired):
+        except (
+            signing.BadSignature,
+            DjangoUnicodeDecodeError,
+            SignatureExpired,
+            UnicodeDecodeError,
+        ):
             raise serializers.ValidationError(_("Invalid token."))
         return token
 

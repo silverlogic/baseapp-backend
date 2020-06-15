@@ -67,7 +67,6 @@ class TestResetPassword(ApiMixin):
         assert match
 
         token = match.group(1)
-
         data = {"token": token, "new_password": "blub", "confirm_new_password": "blub"}
         r = client.post(self.reverse(), data)
         h.responseOk(r)
