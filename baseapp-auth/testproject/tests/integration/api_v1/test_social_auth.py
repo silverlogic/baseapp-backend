@@ -76,7 +76,7 @@ class TestFacebookSocialAuth(OAuth2Mixin):
     def success_data(self, data):
         httpretty.register_uri(
             httpretty.GET,
-            re.compile(r"https://graph.facebook.com/v2.\d+/oauth/access_token$"),
+            re.compile(r"https://graph.facebook.com/v3.\d+/oauth/access_token$"),
             body=json.dumps({"access_token": "1234", "token_type": "type", "expires_in": 6000}),
         )
         return data
@@ -85,7 +85,7 @@ class TestFacebookSocialAuth(OAuth2Mixin):
     def complete_data(self, success_data):
         httpretty.register_uri(
             httpretty.GET,
-            re.compile(r"https://graph.facebook.com/v2.\d+/me$"),
+            re.compile(r"https://graph.facebook.com/v3.\d+/me$"),
             body=json.dumps(
                 {
                     "id": "1387123",
@@ -110,7 +110,7 @@ class TestFacebookSocialAuth(OAuth2Mixin):
     def invalid_code_data(self, data):
         httpretty.register_uri(
             httpretty.GET,
-            re.compile(r"https://graph.facebook.com/v2.\d+/oauth/access_token$"),
+            re.compile(r"https://graph.facebook.com/v3.\d+/oauth/access_token$"),
             status=400,
         )
         return data
@@ -322,7 +322,7 @@ class TestLinkedInSocialAuth(OAuth2Mixin):
     def success_data(self, data):
         httpretty.register_uri(
             httpretty.POST,
-            re.compile("https://www.linkedin.com/uas/oauth2/accessToken"),
+            re.compile("https://www.linkedin.com/oauth/v2/accessToken$"),
             body=json.dumps({"access_token": "1234", "expires_in": 6000}),
         )
         return data
@@ -331,13 +331,31 @@ class TestLinkedInSocialAuth(OAuth2Mixin):
     def complete_data(self, success_data):
         httpretty.register_uri(
             httpretty.GET,
-            re.compile("https://api.linkedin.com/v1/people/(~|%7E):(.*)"),
+            # re.compile("https://api.linkedin.com/v2/people/(~|%7E):(.*)"),
+            re.compile("https://api.linkedin.com/v2/me$"),
             body=json.dumps(
                 {
-                    "id": "asd81a",
-                    "firstName": "John",
-                    "lastName": "Smith",
-                    "emailAddress": "johnsmith@example.com",
+                    "emailAddress": "bobsmith@example.com",
+                    "firstName": {
+                        "localized": {"en_US": "Bob"},
+                        "preferredLocale": {"country": "US", "language": "en"},
+                    },
+                    "localizedFirstName": "Bob",
+                    "headline": {
+                        "localized": {"en_US": "API Enthusiast at LinkedIn"},
+                        "preferredLocale": {"country": "US", "language": "en"},
+                    },
+                    "localizedHeadline": "API Enthusiast at LinkedIn",
+                    "vanityName": "bsmith",
+                    "id": "yrZCpj2Z12",
+                    "lastName": {
+                        "localized": {"en_US": "Smith"},
+                        "preferredLocale": {"country": "US", "language": "en"},
+                    },
+                    "localizedLastName": "Smith",
+                    "profilePicture": {
+                        "displayImage": "urn:li:digitalmediaAsset:C4D00AAAAbBCDEFGhiJ"
+                    },
                 }
             ),
         )
@@ -347,13 +365,30 @@ class TestLinkedInSocialAuth(OAuth2Mixin):
     def picture_data(self, success_data):
         httpretty.register_uri(
             httpretty.GET,
-            re.compile("https://api.linkedin.com/v1/people/(~|%7E):(.*)"),
+            re.compile("https://api.linkedin.com/v2/me$"),
             body=json.dumps(
                 {
-                    "id": "asd81a",
-                    "firstName": "John",
-                    "lastName": "Smith",
-                    "emailAddress": "johnsmith@example.com",
+                    "emailAddress": "bobsmith@example.com",
+                    "firstName": {
+                        "localized": {"en_US": "Bob"},
+                        "preferredLocale": {"country": "US", "language": "en"},
+                    },
+                    "localizedFirstName": "Bob",
+                    "headline": {
+                        "localized": {"en_US": "API Enthusiast at LinkedIn"},
+                        "preferredLocale": {"country": "US", "language": "en"},
+                    },
+                    "localizedHeadline": "API Enthusiast at LinkedIn",
+                    "vanityName": "bsmith",
+                    "id": "yrZCpj2Z12",
+                    "lastName": {
+                        "localized": {"en_US": "Smith"},
+                        "preferredLocale": {"country": "US", "language": "en"},
+                    },
+                    "localizedLastName": "Smith",
+                    "profilePicture": {
+                        "displayImage": "urn:li:digitalmediaAsset:C4D00AAAAbBCDEFGhiJ"
+                    },
                     "pictureUrls": {
                         "_total": 1,
                         "values": ["https://media.licdn.com/mpr/asd/image"],
@@ -371,9 +406,9 @@ class TestLinkedInSocialAuth(OAuth2Mixin):
         r = client.post(self.reverse(), complete_data)
         h.responseOk(r)
         user = User.objects.get()
-        assert user.first_name == "John"
+        assert user.first_name == "Bob"
         assert user.last_name == "Smith"
-        assert user.email == "johnsmith@example.com"
+        assert user.email == "bobsmith@example.com"
 
     def test_user_avatar_is_created_from_profile_picture(self, client, picture_data):
         r = client.post(self.reverse(), picture_data)
