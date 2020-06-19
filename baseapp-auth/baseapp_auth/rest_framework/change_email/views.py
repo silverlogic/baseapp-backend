@@ -2,9 +2,9 @@ from django.http import Http404
 from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import mixins, permissions, serializers, status, viewsets
-from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from apps.api.v1.decorators import action
 from apps.users.emails import send_change_email_confirm_email, send_change_email_verify_email
 from apps.users.models import User
 
