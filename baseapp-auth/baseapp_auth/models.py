@@ -14,6 +14,15 @@ class PermissionsMixin(models.Model):
     Django's Permission model using the ModelBackend.
     """
 
+    is_active = models.BooleanField(
+        _("active"),
+        default=True,
+        help_text=_(
+            "Designates whether this user should be treated as active. "
+            "Unselect this instead of deleting accounts."
+        ),
+    )
+
     is_superuser = models.BooleanField(
         _("superuser status"),
         default=False,
@@ -51,14 +60,6 @@ class PermissionsMixin(models.Model):
 class User(PermissionsMixin, AbstractBaseUser):
     email = CaseInsensitiveEmailField(unique=True, db_index=True)
     is_email_verified = models.BooleanField(default=False)
-    is_active = models.BooleanField(
-        _("active"),
-        default=True,
-        help_text=_(
-            "Designates whether this user should be treated as active. "
-            "Unselect this instead of deleting accounts."
-        ),
-    )
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
 
     # Changing email
