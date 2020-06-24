@@ -21,7 +21,7 @@ class ForgotPasswordViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):
         user_id = associated_user.pk
         user_token = default_token_generator.make_token(associated_user)
         token = urlsafe_base64_encode(force_bytes(signing.dumps([user_id, user_token])))
-        info = {"email": associated_user.email, "token": token.decode("utf-8")}
+        info = {"email": associated_user.email, "token": token}
         send_password_reset_email(info)
         return response.Response(ForgotPasswordSerializer(info).data, status=status.HTTP_200_OK)
 

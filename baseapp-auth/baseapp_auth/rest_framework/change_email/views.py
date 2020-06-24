@@ -2,9 +2,9 @@ from django.http import Http404
 from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import mixins, permissions, serializers, status, viewsets
-from rest_framework.decorators import detail_route, list_route
 from rest_framework.response import Response
 
+from apps.api.v1.decorators import action
 from apps.users.emails import send_change_email_confirm_email, send_change_email_verify_email
 from apps.users.models import User
 
@@ -28,8 +28,11 @@ class ChangeEmailViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         send_change_email_confirm_email(user)
         return Response({}, status=status.HTTP_200_OK)
 
-    @detail_route(
-        methods=["POST"], serializer_class=ChangeEmailConfirmSerializer, permission_classes=[]
+    @action(
+        detail=True,
+        methods=["POST"],
+        serializer_class=ChangeEmailConfirmSerializer,
+        permission_classes=[],
     )
     def confirm(self, request, *args, **kwargs):
         """step 2"""
@@ -43,8 +46,11 @@ class ChangeEmailViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         send_change_email_verify_email(user)
         return Response({}, status=status.HTTP_200_OK)
 
-    @detail_route(
-        methods=["POST"], serializer_class=ChangeEmailVerifySerializer, permission_classes=[]
+    @action(
+        detail=True,
+        methods=["POST"],
+        serializer_class=ChangeEmailVerifySerializer,
+        permission_classes=[],
     )
     def verify(self, request, *args, **kwargs):
         """step 3"""
@@ -57,7 +63,7 @@ class ChangeEmailViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         serializer.save()
         return Response({}, status=status.HTTP_200_OK)
 
-    @list_route(methods=["POST"])
+    @action(detail=False, methods=["POST"])
     def resend_confirm(self, request, *args, **kwargs):
         user = request.user
         if not user.new_email:
@@ -71,7 +77,7 @@ class ChangeEmailViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         send_change_email_confirm_email(user)
         return Response({}, status=status.HTTP_200_OK)
 
-    @list_route(methods=["POST"])
+    @action(detail=False, methods=["POST"])
     def resend_verify(self, request, *args, **kwargs):
         user = request.user
         if not user.is_new_email_confirmed:
@@ -81,7 +87,7 @@ class ChangeEmailViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         send_change_email_verify_email(user)
         return Response({}, status=status.HTTP_200_OK)
 
-    @list_route(methods=["POST"])
+    @action(detail=False, methods=["POST"])
     def cancel(self, request, *args, **kwrgs):
         user = request.user
         user.new_email = ""
