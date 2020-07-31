@@ -14,9 +14,9 @@ def test_celery_beat_tasks_exist(schedule):
 
 @pytest.mark.parametrize("schedule", settings.CELERY_BEAT_SCHEDULE.values())
 def test_celery_beat_tasks_have_expires(schedule):
-    if not schedule.get("expires"):
+    if not schedule.get("options", {}).get("expires"):
         pytest.fail(
-            'celery beat task "{}" must set expires.  Standard rule is 75% of the schedule frequency. e.g. if task is scheduled hourly, expire after 45 min'.format(
+            'celery beat task "{}" must set options.expires.  Standard rule is 75% of the schedule frequency. e.g. if task is scheduled hourly, expire after 45 min'.format(
                 schedule["task"]
             )
         )
