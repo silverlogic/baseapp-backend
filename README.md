@@ -67,3 +67,23 @@ located under the apidocs directory.  All documentation is written in
 [asciidoctor](http://asciidoctor.org/) format.
 
 See apidocs/README.md for more info.
+
+## UML Generation
+
+Examples
+
+```
+./manage.py generate_uml
+./manage.py generate_uml --library pydot --format pdf
+./manage.py generate_uml --library pydot --apps users --format svg
+./manage.py generate_uml --library pydot --apps users --models User --format png
+./manage.py generate_uml --library pydot --apps users --models User UserReferral --format dot
+```
+
+To see available options run
+
+```
+./manage.py generate_uml --help
+```
+
+Recommend using [GraphvizOnline](https://dreampuf.github.io/GraphvizOnline) with output of .dot file for editing
