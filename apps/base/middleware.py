@@ -1,8 +1,13 @@
+import threading
+import uuid
+
 from django.conf import settings
 from django.utils import timezone
 from django.utils.deprecation import MiddlewareMixin
 
 import pytz
+
+threading_local = threading.local()
 
 
 class AdminTimezoneMiddleware(MiddlewareMixin):
@@ -14,3 +19,15 @@ class AdminTimezoneMiddleware(MiddlewareMixin):
         # the admin.
         if request.path.startswith("/admin") and request.user.is_superuser:
             timezone.activate(pytz.timezone(settings.ADMIN_TIME_ZONE))
+
+
+class ThreadAttachedRequestLocalMiddleware(MiddlewareMixin):
+    def __call__(self, request):
+        request_trace = {"trace.id": uuid.uuid4()}
+        if request.user:
+            request_trace["user.id"] = request.user.id
+            request_trace["user.email"] = request.user.email
+        setattr(threading_local, "request_trace", request_trace)
+        response = self.get_response(request)
+        setattr(threading_local, "request_trace", None)
+        return response
