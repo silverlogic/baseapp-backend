@@ -1,45 +1,156 @@
-**Edit a file, create a new file, and clone from Bitbucket in under 2 minutes**
+# BaseApp Payments - Django
 
-When you're done, you can delete the content in this README and update the file with details for others getting started with your repository.
+This app provides the integration of Stripe with The SilverLogic's [BaseApp](https://bitbucket.org/silverlogic/baseapp-django-v2): [django-restframework](https://www.django-rest-framework.org/) and [dj-stripe](https://dj-stripe.readthedocs.io/en/master/)
 
-*We recommend that you open this README in another tab as you perform the tasks below. You can [watch our video](https://youtu.be/0ocf7u76WSo) for a full demo of all the steps in this tutorial. Open the video in a new tab to avoid leaving Bitbucket.*
+## Install the package
 
----
+Add to `requirements/base.txt`:
 
-## Edit a file
+```bash
+git+https://alisson:CQ5M7thUNtvqSeKcNW62@bitbucket.org/silverlogic/baseapp-payments-django.git@v1#egg=baseapp_payments
+```
 
-You’ll start by editing this README file to learn how to edit a file in Bitbucket.
+## Setup Stripe's credentials
 
-1. Click **Source** on the left side.
-2. Click the README.md link from the list of files.
-3. Click the **Edit** button.
-4. Delete the following text: *Delete this line to make a change to the README from Bitbucket.*
-5. After making your change, click **Commit** and then **Commit** again in the dialog. The commit page will open and you’ll see the change you just made.
-6. Go back to the **Source** page.
+Add to your `settings/base.py`:
 
----
+```py
+# Stripe
+STRIPE_API_KEY = env("STRIPE_API_KEY")
+STRIPE_LIVE_SECRET_KEY = env("STRIPE_LIVE_SECRET_KEY")
+STRIPE_TEST_SECRET_KEY = env("STRIPE_TEST_SECRET_KEY")
+STRIPE_LIVE_MODE = env("STRIPE_LIVE_MODE")  # Change to True in production
+DJSTRIPE_WEBHOOK_SECRET = env("DJSTRIPE_WEBHOOK_SECRET")
+DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
+```
 
-## Create a file
+## Add to your router file `apps/api/v1/router.py`
 
-Next, you’ll add a new file to this repository.
+```py
+from baseapp_payments.views import StripePaymentsViewSet  # noqa
 
-1. Click the **New file** button at the top of the **Source** page.
-2. Give the file a filename of **contributors.txt**.
-3. Enter your name in the empty file space.
-4. Click **Commit** and then **Commit** again in the dialog.
-5. Go back to the **Source** page.
+router.register(r"baseapp-payments", StripePaymentsViewSet, basename="baseapp-payments")
+```
 
-Before you move on, go ahead and explore the repository. You've already seen the **Source** page, but check out the **Commits**, **Branches**, and **Settings** pages.
+## Subscriber
 
----
+A subscriber can be an User, an Organization, a Project, any model that have an `email` property. You can specify the model of your subscriber with the setting:
 
-## Clone a repository
+```py
+DJSTRIPE_SUBSCRIBER_MODEL='apps.organizations.Organization`
+```
 
-Use these steps to clone from SourceTree, our client for using the repository command-line free. Cloning allows you to work on your files locally. If you don't yet have SourceTree, [download and install first](https://www.sourcetreeapp.com/). If you prefer to clone from the command line, see [Clone a repository](https://confluence.atlassian.com/x/4whODQ).
+Make sure to also implement `get_subscriber_from_request` in your `apps.users.User` to grab the subscriber for the current authenticated user:
 
-1. You’ll see the clone button under the **Source** heading. Click that button.
-2. Now click **Check out in SourceTree**. You may need to create a SourceTree account or log in.
-3. When you see the **Clone New** dialog in SourceTree, update the destination path and name if you’d like to and then click **Clone**.
-4. Open the directory you just created to see your repository’s files.
+```py
+class User(PermissionsMixin, AbstractBaseUser):
+    ...
 
-Now that you're more familiar with your Bitbucket repository, go ahead and add a new file locally. You can [push your change back to Bitbucket with SourceTree](https://confluence.atlassian.com/x/iqyBMg), or you can [add, commit,](https://confluence.atlassian.com/x/8QhODQ) and [push from the command line](https://confluence.atlassian.com/x/NQ0zDQ).
+    def get_subscriber_from_request(self, request):
+        org_pk = request.GET.get('organization')
+        return Organization.objects.get(pk=org_pk, admins=request.user)
+```
+
+Implement the following methods in the subscriber's model:
+
+```py
+class Organization(models.Model):
+    def get_subscription_plan(self):
+        return self.subscription_plan
+
+    def subscription_start_request(self, plan, customer, subscription, request):
+        self.subscription_plan = plan
+        self.show_payment_method_action_banner = False
+        self.save()
+
+    def subscription_cancel_request(self, customer, subscription, request):
+        # in this use case the self.subscription_plan will be set to null when we receive the event from stripe instead
+        pass
+
+    def subscription_update_request(self, plan, is_upgrade, request):
+        # is_upgrade = current plan's price < new plan's price
+
+        # if we want to upgrade right way but wait to the end of the period to change plans when it is a downgrade:
+        if is_upgrade:
+            self.subscription_plan = plan
+            self.save()
+
+    def subscription_plan_changed_webhook(self, plan, price, event):
+        # stripe's event: invoice.paid
+        # this method is called if the plan is different from the one returned by self.get_subscription_plan()
+        self.subscription_plan = plan
+        self.save()
+
+    def subscription_deleted_webhook(self, event):
+        # stripe's event: customer.subscription.deleted
+        self.subscription_plan = None
+        self.show_payment_method_action_banner = True
+        self.save()
+
+    def invoice_payment_failed_webhook(self, event):
+        # stripe's event: invoice.payment_failed
+        self.show_payment_method_action_banner = True
+        self.save()
+```
+
+## Plan model
+
+You can extend the plan model by inheriting `baseapp_payments.models.BasePlan`:
+
+```py
+from django.db import models
+from baseapp_payments.models import BasePlan
+
+class SubscriptionPlan(BasePlan):
+    video_calls_per_month = models.PositiveIntegerField(default=5)
+```
+
+Add to your `settings/base.py` the path to your custom plan model:
+
+```
+BASEAPP_PAYMENTS_PLAN_MODEL = "apps.plans.SubscriptionPlan"
+```
+
+To **extend the serializer** you can create a normal serializer:
+
+```py
+from rest_framework import serializers
+from .models import SubscriptionPlan
+
+class SubscriptionPlanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubscriptionPlan
+        fields = (
+            "id",
+            "name",
+            "is_active",
+            "searches_per_month",
+            "can_create_favorites",
+        )
+```
+
+Then add to your `settings/base.py` the path to your custom serializer:
+
+```py
+BASEAPP_PAYMENTS_PLAN_SERIALIZER = "apps.plans.serializers.SubscriptionPlanSerializer"
+```
+
+# Stripe's webhook events
+
+You can [listen to any stripe events using the webhooks](https://dj-stripe.readthedocs.io/en/master/usage/webhooks/) 
+
+```py
+from djstripe import webhooks
+
+@webhooks.handler("customer.subscription.trial_will_end")
+def my_handler(event, **kwargs):
+    event.customer.subscriber.show_trial_ended_action_banner = True
+    event.customer.subscriber.save()
+```
+
+# To do
+
+ - [ ] Create a special error message to be handled by the frontend package
+   Ex: if by trying to perform an action I'm not able due to payment failure or plan is out of credits for that action then show call to action to upgrade
+ - [ ] Move tests from FinJoy to this repository
+ - [ ] One time payments (to buy a product)
