@@ -114,19 +114,17 @@ BASEAPP_PAYMENTS_PLAN_MODEL = "apps.plans.SubscriptionPlan"
 To **extend the serializer** you can create a normal serializer:
 
 ```py
-from rest_framework import serializers
+from baseapp_payments.serializers import PlanSerializer
 from .models import SubscriptionPlan
 
-class SubscriptionPlanSerializer(serializers.ModelSerializer):
+class SubscriptionPlanSerializer(PlanSerializer):
     class Meta:
         model = SubscriptionPlan
-        fields = (
-            "id",
-            "name",
-            "is_active",
+        fields = super().Meta.fields + (
             "searches_per_month",
             "can_create_favorites",
         )
+
 ```
 
 Then add to your `settings/base.py` the path to your custom serializer:
@@ -146,6 +144,14 @@ from djstripe import webhooks
 def my_handler(event, **kwargs):
     event.customer.subscriber.show_trial_ended_action_banner = True
     event.customer.subscriber.save()
+```
+
+# Two-way sync with Stripe
+
+When the webhook is fully setup all data changed in stripe will be updated in the system receiving the webhooks events. If you have data on Stripe already you can [manually sync](https://dj-stripe.readthedocs.io/en/master/usage/manually_syncing_with_stripe/). For example with the following command you can sync all data:
+
+```bash
+./manage.py djstripe_sync_models
 ```
 
 # To do

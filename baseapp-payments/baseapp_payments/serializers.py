@@ -225,12 +225,17 @@ class ProductSerializer(ExpanderSerializerMixin, serializers.ModelSerializer):
 
 
 class PlanSerializer(ExpanderSerializerMixin, serializers.ModelSerializer):
+    price_amount = serializers.DecimalField(max_digits=19, decimal_places=12, source="price_amount")
+    interval = serializers.CharField(source="interval")
+
     class Meta:
         model = Plan
         fields = (
             "id",
             "name",
             "slug",
+            "price_amount",
+            "interval",
             "is_active",
         )
 

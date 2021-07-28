@@ -23,6 +23,16 @@ class BasePlan(models.Model):
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
+    @property
+    def price_amount(self):
+        if self.price_id:
+            return self.price.unit_amount_decimal
+
+    @property
+    def interval(self):
+        if self.price_id:
+            return self.price.recurring.get('interval')
+
 
 class Plan(BasePlan):
     class Meta:
