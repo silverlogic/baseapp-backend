@@ -1,6 +1,8 @@
 import importlib
 
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ObjectDoesNotExist
 
 import swapper
 from djstripe.models import Customer, PaymentMethod, Price, Product, Subscription, SubscriptionItem
@@ -257,3 +259,29 @@ def get_serializer(name):
         module = importlib.import_module(module_path)
         return getattr(module, class_name)
     return PlanSerializer
+
+
+class CreatePaymentIntentSerializer(serializers.Serializer):
+    payment_method = serializers.CharField(required=False)
+    amount = serializers.DecimalField(max_digits=19, decimal_places=2, required=True)
+    content_type = serializers.PrimaryKeyRelatedField(
+        required=True, queryset=ContentType.objects.all()
+    )
+    object_id = serializers.IntegerField(required=True)
+
+    class Meta:
+        fields = (
+            "payment_method",
+            "ammount",
+            "content_type",
+        )
+
+    def validate(self, data):
+        validated_data = super().validate(data)
+        try:
+            validated_data["product"] = validated_data["content_type"].get_object_for_this_type(
+                pk=validated_data["object_id"]
+            )
+        except ObjectDoesNotExist:
+            raise serializers.ValidationError({"object_id": ["Object does not exist."]})
+        return validated_data

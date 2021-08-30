@@ -113,6 +113,7 @@ BASEAPP_PAYMENTS_PLAN_MODEL = "apps.plans.SubscriptionPlan"
 To **extend the serializer** you can create a normal serializer:
 
 ```py
+
 from baseapp_payments.serializers import PlanSerializer
 from .models import SubscriptionPlan
 
@@ -132,6 +133,57 @@ Then add to your `settings/base.py` the path to your custom serializer:
 BASEAPP_PAYMENTS_PLAN_SERIALIZER = "apps.plans.serializers.SubscriptionPlanSerializer"
 ```
 
+## One time payment / buy a product
+
+
+Implement method stripe_payment_intent_params in your product model:
+
+```py
+    def stripe_payment_intent_params(self, request, validated_data):
+        price = self.price
+
+        if self.class_type.slug == "donation":
+            price = validated_data["amount"]
+
+        amount = int(price * 100)
+
+        return {
+
+            "amount": amount,
+            "application_fee_amount": int(self.instructor.stripe_percentage_fee / 100.00 * amount),
+            "transfer_data": {"destination": self.instructor.stripe_account_id,},
+
+        }
+```
+
+And then call create_payment_intent in the Viewset you're using for 'checkout/purchase' your product:
+    [FLOW Example](https://bitbucket.org/silverlogic/flow-backend-django/src/64dbb17acfd05333fb6177c6b2e42c2332d89571/apps/api/v1/classes/views.py?at=master#views.py-178)
+```py
+    from baseapp_payments.utils import create_payment_intent, stripe
+
+
+    @action(
+        detail=True,
+        methods=["POST"],
+        permission_classes=[permissions.IsAuthenticated],
+        serializer_class=PurchaseClassSerializer,
+    )
+    def purchase(self, request, *args, **kwargs):
+        class_obj = self.get_object()
+        user = request.user
+        serializer = self.get_serializer(data=request.data)
+        serializer.class_obj = class_obj
+        serializer.is_valid(raise_exception=True)
+
+        if class_obj.class_type.slug != "free":
+            payment_intent = create_payment_intent(class_obj, request, serializer.validated_data)
+            ClassStudent.objects.create(student=user, clss=class_obj, payment_intent=payment_intent)
+        else:
+            ClassStudent.objects.create(student=user, clss=class_obj)
+
+        serializer.send_email()
+        return response.Response({}, status=status.HTTP_200_OK)
+   
 # Stripe's webhook events
 
 You can [listen to any stripe events using the webhooks](https://dj-stripe.readthedocs.io/en/master/usage/webhooks/) 
@@ -152,6 +204,7 @@ When the webhook is fully setup all data changed in stripe will be updated in th
 ```bash
 ./manage.py djstripe_sync_models
 ```
+
 
 # To do
 

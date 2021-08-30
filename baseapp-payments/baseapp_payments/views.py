@@ -2,13 +2,14 @@ import swapper
 from djstripe.models import Customer
 from rest_framework import permissions, status, viewsets
 from rest_framework.response import Response
-
+import logging
 from apps.api.v1.decorators import action
 
 from .serializers import (
     CancelSubscriptionSerializer,
     CapturePaymentEditSerializer,
     CapturePaymentIntentSerializer,
+    CreatePaymentIntentSerializer,
     CustomerSerializer,
     EditPaymentMethodSerializer,
     SubscribeCustomerSerializer,
@@ -17,6 +18,7 @@ from .serializers import (
 )
 from .utils import (
     add_metadata_to_payment_method,
+    create_payment_intent,
     delete_payment_method,
     edit_payment_method,
     get_customer_payment_methods,
@@ -51,7 +53,8 @@ class StripePaymentsViewSet(viewsets.GenericViewSet,):
             )
 
         except Exception as e:
-            error = {"error": str(e)}
+            logging.exception(e)
+            error = {"error": "Error getting customer"}
             return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["POST"], permission_classes=[permissions.IsAuthenticated])
@@ -75,7 +78,8 @@ class StripePaymentsViewSet(viewsets.GenericViewSet,):
             )
 
         except Exception as e:
-            error = {"error": str(e)}
+            logging.exception(e)
+            error = {"error": "Error creating payment method"}
             return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["POST"], permission_classes=[permissions.IsAuthenticated])
@@ -87,7 +91,8 @@ class StripePaymentsViewSet(viewsets.GenericViewSet,):
             serializer.save()
             return Response({}, status=status.HTTP_201_CREATED)
         except Exception as e:
-            error = {"error": str(e)}
+            logging.exception(e)
+            error = {"error": "Error creating subscription"}
             return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
     @action(
@@ -143,7 +148,8 @@ class StripePaymentsViewSet(viewsets.GenericViewSet,):
             return Response({"id": payment_method_id}, status=status.HTTP_201_CREATED,)
 
         except Exception as e:
-            error = {"error": str(e)}
+            logging.exception(e)
+            error = {"error": "Error editing payment method"}
             return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["DELETE"], permission_classes=[permissions.IsAuthenticated])
@@ -159,7 +165,8 @@ class StripePaymentsViewSet(viewsets.GenericViewSet,):
             return Response({"id": payment_method_id}, status=status.HTTP_200_OK,)
 
         except Exception as e:
-            error = {"error": str(e)}
+            logging.exception(e)
+            error = {"error": "Error deleting payment method"}
             return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["POST"], permission_classes=[permissions.IsAuthenticated])
@@ -175,5 +182,22 @@ class StripePaymentsViewSet(viewsets.GenericViewSet,):
             return Response({"id": payment_method_id}, status=status.HTTP_200_OK,)
 
         except Exception as e:
-            error = {"error": str(e)}
+            logging.exception(e)
+            error = {"error": "Error making payment method primary"}
+            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["POST"], permission_classes=[permissions.IsAuthenticated])
+    def create_payment(self, request):
+        serializer = CreatePaymentIntentSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        product = data["product"]
+
+        try:
+            response = create_payment_intent(product, request, data)
+            return Response({"id": response.id}, status=status.HTTP_200_OK,)
+
+        except Exception as e:
+            logging.exception(e)
+            error = {"error": "Error creating payment intent"}
             return Response(error, status=status.HTTP_400_BAD_REQUEST)

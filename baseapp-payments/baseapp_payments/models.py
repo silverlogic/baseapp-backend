@@ -31,9 +31,10 @@ class BasePlan(models.Model):
     @property
     def interval(self):
         if self.price_id:
-            return self.price.recurring.get('interval')
+            return self.price.recurring.get("interval")
 
 
 class Plan(BasePlan):
     class Meta:
         swappable = swapper.swappable_setting("baseapp_payments", "Plan")
+

@@ -1,7 +1,7 @@
 from django.conf import settings
 
 import stripe
-from djstripe.models import Customer, PaymentMethod, Source
+from djstripe.models import Customer, PaymentIntent, PaymentMethod, Source
 
 if settings.STRIPE_LIVE_MODE:
     stripe.api_key = settings.STRIPE_LIVE_SECRET_KEY
@@ -109,3 +109,17 @@ def create_source(card):
 def add_metadata_to_payment_method(payment_method_id, source_id):
     data = stripe.PaymentMethod.modify(payment_method_id, metadata={"source_id": source_id})
     PaymentMethod.sync_from_stripe_data(data)
+
+
+def create_payment_intent(product, request, validated_data):
+    payment_method = validated_data["payment_method"]
+    currency = settings.STRIPE_DEFAULT_CURRENCY
+    customer = stripe.PaymentMethod.retrieve(payment_method).customer
+
+    params = {"payment_method_types": ["card"], "currency": currency, "customer": customer}
+    params.update(product.stripe_payment_intent_params(request, validated_data))
+
+    intent = stripe.PaymentIntent.create(**params)
+    PaymentIntent.sync_from_stripe_data(intent)
+    intent = stripe.PaymentIntent.confirm(intent.id, payment_method=payment_method)
+    return PaymentIntent.sync_from_stripe_data(intent)
