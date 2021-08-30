@@ -7,7 +7,7 @@ This app provides the integration of Stripe with The SilverLogic's [BaseApp](htt
 Add to `requirements/base.txt`:
 
 ```bash
-git+https://alisson:CQ5M7thUNtvqSeKcNW62@bitbucket.org/silverlogic/baseapp-payments-django.git@v1#egg=baseapp_payments
+git+https://alisson:CQ5M7thUNtvqSeKcNW62@bitbucket.org/silverlogic/baseapp-payments-django.git@1ee806c415eff38d136efafa8788540d8a7eca6d#egg=baseapp_payments
 ```
 
 ## Setup Stripe's credentials
@@ -16,7 +16,6 @@ Add to your `settings/base.py`:
 
 ```py
 # Stripe
-STRIPE_API_KEY = env("STRIPE_API_KEY")
 STRIPE_LIVE_SECRET_KEY = env("STRIPE_LIVE_SECRET_KEY")
 STRIPE_TEST_SECRET_KEY = env("STRIPE_TEST_SECRET_KEY")
 STRIPE_LIVE_MODE = env("STRIPE_LIVE_MODE")  # Change to True in production

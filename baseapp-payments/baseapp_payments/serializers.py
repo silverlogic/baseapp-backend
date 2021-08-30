@@ -87,7 +87,8 @@ class CancelSubscriptionSerializer(serializers.Serializer):
 
 class PaymentMethodSerializer(serializers.ModelSerializer):
     last4 = serializers.SerializerMethodField()
-
+    name = serializers.SerializerMethodField()
+    card_brand = serializers.SerializerMethodField()
     class Meta:
         model = PaymentMethod
         fields = (
@@ -95,11 +96,19 @@ class PaymentMethodSerializer(serializers.ModelSerializer):
             "created",
             "card",
             "last4",
+            "billing_details",
+            "name",
+            "card_brand",
         )
 
     def get_last4(self, obj):
         return obj.card["last4"]
 
+    def get_name(self, obj):
+        return obj.billing_details["name"]
+
+    def get_card_brand(self, obj):
+        return obj.card["brand"]
 
 class CustomerSerializer(ExpanderSerializerMixin, serializers.ModelSerializer):
     class Meta:
