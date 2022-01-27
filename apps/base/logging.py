@@ -30,3 +30,9 @@ class BaseJSONFormatter(JSONFormatter):
             extra["trace.id"] = celery_data["id"]
 
         return extra
+
+    def to_json(self, record):
+        # Performance increase a lot by removing the request. Otherwise, it
+        # tries to parse a very huge json data
+        record.pop("request", None)
+        return super().to_json(record)
