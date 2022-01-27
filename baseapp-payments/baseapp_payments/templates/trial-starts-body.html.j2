@@ -1,0 +1,26 @@
+{% extends 'emails/base.html.j2' %}
+
+{% block content %}
+<tr>
+    <td class="content-block" style="font-family: Poppins, Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif;  color: #636363; box-sizing: border-box; font-size: 16px; vertical-align: top; margin: 0; padding: 40px 0 20px;" valign="top">
+        Thank you for starting your membership.
+    </td>
+</tr>
+<tr>
+    <td class="content-block" style="font-family: Poppins, Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif;  color: #636363; box-sizing: border-box; font-size: 16px; vertical-align: top; margin: 0; padding: 0 0 20px;" valign="top">
+        Enjoy unlimited access to premium on-demand content for {{ trial_days }} days free of charge. After your trial expires, you will be automatically charged for your new subscription.
+    </td>
+</tr>
+<tr>
+    <td class="content-block" itemprop="handler" itemscope itemtype="http://schema.org/HttpActionHandler" style="font-family: Poppins, Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif;  color: #636363; box-sizing: border-box; font-size: 16px; vertical-align: top; padding: 0 0 20px; margin: 32px 0; text-transform: uppercase;" valign="top">
+        <a href="https://{{ url }}" target="_blank" rel="nofollow" class="btn-primary" itemprop="url" style="font-family: Poppins, Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif;  box-sizing: border-box; font-size: 16px; color: #FFF; width: 100%; text-decoration: none; text-transform: uppercase; line-height: 2em; font-weight: bold; text-align: center; cursor: pointer; display: inline-block; border-radius: 24px; background-color: #2A79A1; margin: 0; border-color: #2A79A1; border-style: solid; border-width: 10px 20px;">
+            Explore
+        </a>
+    </td>
+</tr>
+<tr>
+    <td class="content-block" style="font-family: Poppins, Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif;  color: #636363; box-sizing: border-box; font-size: 16px; vertical-align: top; margin: 0; padding: 0 0 20px;" valign="top">
+        Thank you
+    </td>
+</tr>
+{% endblock %}

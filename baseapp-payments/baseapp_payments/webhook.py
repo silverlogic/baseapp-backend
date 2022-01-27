@@ -1,10 +1,13 @@
 import logging
+from datetime import datetime
 
 from django.db import transaction
 
 import swapper
 from djstripe import webhooks
 from djstripe.models import Subscription
+
+from .emails import send_subscription_trial_start_email, send_subscription_trial_will_end_email
 
 
 @webhooks.handler("invoice.paid")
@@ -45,3 +48,19 @@ def on_invoice_payment_failed_webhook(event):
 @webhooks.handler("invoice.payment_failed")
 def invoice_payment_failed_webhook(event, **kwargs):
     transaction.on_commit(lambda: on_invoice_payment_failed_webhook(event))
+
+
+def on_subscription_trial_will_end_webhook(event):
+    subscription = (
+        Subscription.objects.all().filter(customer=event.customer, status="trialing").first()
+    )
+    if subscription and event.owner.email:
+        Plan = swapper.load_model("baseapp_payments", "Plan")
+        plan = Plan.objects.get(price=subscription.plan)
+
+        send_subscription_trial_will_end_email(event.owner.email, plan.name)
+
+
+@webhooks.handler("customer.subscription.trial_will_end")
+def subscription_trial_will_end_webhook(event, **kwargs):
+    transaction.on_commit(lambda: on_subscription_trial_will_end_webhook(event))

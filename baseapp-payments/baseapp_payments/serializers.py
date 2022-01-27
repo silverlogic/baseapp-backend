@@ -1,14 +1,17 @@
 import importlib
+from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 
 import swapper
+from constance import config
 from djstripe.models import Customer, PaymentMethod, Price, Product, Subscription, SubscriptionItem
 from expander import ExpanderSerializerMixin
 from rest_framework import serializers
 
+from .emails import send_subscription_trial_start_email
 from .utils import update_subscription
 
 Plan = swapper.load_model("baseapp_payments", "Plan")
@@ -39,11 +42,15 @@ class SubscribeCustomerSerializer(serializers.Serializer):
         )
 
         self.customer, created = Customer.get_or_create(self.subscriber)
-        customer_subscription_exits = (
-            Subscription.objects.active().filter(customer=self.customer).exists()
-        )
-        if customer_subscription_exits:
+
+        if self.customer.has_any_active_subscription():
             raise serializers.ValidationError({"Already Subscribed."})
+
+        customer_is_trialing = (
+            Subscription.objects.all().filter(customer=self.customer, status="trialing").exists()
+        )
+        if customer_is_trialing:
+            raise serializers.ValidationError({"Already Trialing."})
 
         try:
             self.plan = Plan.objects.get(slug=validated_data["plan"])
@@ -53,13 +60,22 @@ class SubscribeCustomerSerializer(serializers.Serializer):
         return validated_data
 
     def save(self):
-        subscription = self.customer.subscribe(plan=self.plan.price, default_payment_method=self.validated_data.get("payment_method_id"))
+        customer_has_used_trial = Subscription.objects.all().filter(customer=self.customer, status="canceled").exists()
+        if not customer_has_used_trial and config.BASEAPP_PAYMENTS_TRIAL_DAYS:
+            subscription = self.customer.subscribe(plan=self.plan.price, trial_period_days=config.BASEAPP_PAYMENTS_TRIAL_DAYS, default_payment_method=self.validated_data.get("payment_method_id"))
+            send_subscription_trial_start_email(self.customer.email)
+        else:
+            subscription = self.customer.subscribe(plan=self.plan.price, default_payment_method=self.validated_data.get("payment_method_id"))
+
         self.subscriber.subscription_start_request(
             plan=self.plan,
             customer=self.customer,
             subscription=subscription,
             request=self.context["request"],
         )
+
+        self.customer.save()
+
 
 
 class CancelSubscriptionSerializer(serializers.Serializer):
@@ -72,7 +88,11 @@ class CancelSubscriptionSerializer(serializers.Serializer):
 
         self.customer, created = Customer.get_or_create(self.subscriber)
 
-        self.subscription = Subscription.objects.active().filter(customer=self.customer).first()
+        self.subscription = (
+            Subscription.objects.all()
+            .filter(customer=self.customer, status__in=["active", "trialing"])
+            .first()
+        )
 
         if not self.subscription:
             raise serializers.ValidationError(
@@ -92,6 +112,7 @@ class PaymentMethodSerializer(serializers.ModelSerializer):
     last4 = serializers.SerializerMethodField()
     name = serializers.SerializerMethodField()
     card_brand = serializers.SerializerMethodField()
+
     class Meta:
         model = PaymentMethod
         fields = (
@@ -113,16 +134,28 @@ class PaymentMethodSerializer(serializers.ModelSerializer):
     def get_card_brand(self, obj):
         return obj.card["brand"]
 
+
 class CustomerSerializer(ExpanderSerializerMixin, serializers.ModelSerializer):
+    is_trial_ended = serializers.SerializerMethodField()
+    is_trialing = serializers.SerializerMethodField()
+
     class Meta:
         model = Customer
         fields = (
             "id",
             "default_payment_method",
+            "is_trial_ended",
+            "is_trialing",
         )
         expandable_fields = {
             "default_payment_method": PaymentMethodSerializer,
         }
+
+    def get_is_trial_ended(self, obj):
+        return Subscription.objects.all().filter(customer=obj, status="canceled").exists()
+
+    def get_is_trialing(self, obj):
+        return Subscription.objects.all().filter(customer=obj, status="trialing").exists()
 
 
 class UpdateSubscriptionSerializer(serializers.Serializer):

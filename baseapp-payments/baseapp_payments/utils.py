@@ -116,7 +116,11 @@ def create_payment_intent(product, request, validated_data):
     currency = settings.STRIPE_DEFAULT_CURRENCY
     customer = stripe.PaymentMethod.retrieve(payment_method).customer
 
-    params = {"payment_method_types": ["card"], "currency": currency, "customer": customer}
+    params = {
+        "payment_method_types": ["card"],
+        "currency": currency,
+        "customer": customer,
+    }
     params.update(product.stripe_payment_intent_params(request, validated_data))
 
     intent = stripe.PaymentIntent.create(**params)

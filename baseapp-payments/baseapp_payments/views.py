@@ -1,8 +1,10 @@
+import logging
+
 import swapper
 from djstripe.models import Customer
 from rest_framework import permissions, status, viewsets
 from rest_framework.response import Response
-import logging
+
 from apps.api.v1.decorators import action
 
 from .serializers import (
@@ -106,7 +108,7 @@ class StripePaymentsViewSet(viewsets.GenericViewSet,):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(
-            {"msg": "Subscription was successfully canceled."}, status=status.HTTP_200_OK
+            {"msg": "Subscription was successfully canceled."}, status=status.HTTP_200_OK,
         )
 
     @action(
@@ -152,7 +154,9 @@ class StripePaymentsViewSet(viewsets.GenericViewSet,):
             error = {"error": "Error editing payment method"}
             return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=["DELETE"], permission_classes=[permissions.IsAuthenticated])
+    @action(
+        detail=False, methods=["DELETE"], permission_classes=[permissions.IsAuthenticated],
+    )
     def delete_payment_method(self, request):
         serializer = CapturePaymentEditSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)

@@ -37,4 +37,3 @@ class BasePlan(models.Model):
 class Plan(BasePlan):
     class Meta:
         swappable = swapper.swappable_setting("baseapp_payments", "Plan")
-
