@@ -29,6 +29,7 @@ class CapturePaymentEditSerializer(serializers.Serializer):
 
 class SubscribeCustomerSerializer(serializers.Serializer):
     plan = serializers.CharField(required=True)
+    payment_method_id = serializers.CharField(required=False)
 
     def validate(self, data):
         validated_data = super().validate(data)
@@ -52,7 +53,7 @@ class SubscribeCustomerSerializer(serializers.Serializer):
         return validated_data
 
     def save(self):
-        subscription = self.customer.subscribe(plan=self.plan.price)
+        subscription = self.customer.subscribe(plan=self.plan.price, default_payment_method=self.validated_data.get("payment_method_id"))
         self.subscriber.subscription_start_request(
             plan=self.plan,
             customer=self.customer,
