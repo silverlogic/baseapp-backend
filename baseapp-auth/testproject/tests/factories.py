@@ -7,3 +7,10 @@ class UserFactory(factory.DjangoModelFactory):
 
     class Meta:
         model = "users.User"
+
+
+class PasswordValidationFactory(factory.DjangoModelFactory):
+    name = "apps.users.password_validators.MustContainSpecialCharacterValidator"
+
+    class Meta:
+        model = "users.PasswordValidation"

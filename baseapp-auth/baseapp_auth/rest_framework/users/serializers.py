@@ -10,6 +10,7 @@ from apps.api.serializers import ModelSerializer
 from apps.referrals.models import UserReferral
 from apps.referrals.utils import get_referral_code, get_user_from_referral_code
 from apps.users.models import User
+from apps.users.password_validators import apply_password_validators
 from apps.users.tokens import ConfirmEmailTokenGenerator
 
 from .fields import AvatarField
@@ -104,6 +105,10 @@ class ChangePasswordSerializer(serializers.Serializer):
         if not user.check_password(current_password):
             raise serializers.ValidationError(_("That is not your current password."))
         return current_password
+
+    def validate_new_password(self, new_password):
+        apply_password_validators(new_password)
+        return new_password
 
     def save(self):
         user = self.context["request"].user

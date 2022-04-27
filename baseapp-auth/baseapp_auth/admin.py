@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.utils.translation import gettext_lazy as _
 
 from .forms import UserChangeForm, UserCreationForm
-from .models import User
+from .models import PasswordValidation, User
 
 
 @admin.register(User)
@@ -29,3 +29,12 @@ class UserAdmin(UserAdmin):
     search_fields = ("first_name", "last_name", "email")
     ordering = ("id",)
     filter_horizontal = ()
+
+
+@admin.register(PasswordValidation)
+class PasswordValidationAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "name",
+        "is_active",
+    )
