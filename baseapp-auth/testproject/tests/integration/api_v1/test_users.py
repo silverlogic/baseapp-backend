@@ -198,6 +198,16 @@ class TestUsersChangePassword(ApiMixin):
         h.responseBadRequest(r)
         assert r.data["current_password"] == ["That is not your current password."]
 
+    def test_new_password_must_match_password_validations(self, client, data):
+        f.PasswordValidationFactory()
+        user = f.UserFactory(password=data["current_password"])
+        client.force_authenticate(user)
+        r = client.post(self.reverse(), data)
+        h.responseBadRequest(r)
+        assert r.data["new_password"] == [
+            "This password must contain at least 1 special characters."
+        ]
+
 
 class TestConfirmEmail(ApiMixin):
     view_name = "users-confirm-email"

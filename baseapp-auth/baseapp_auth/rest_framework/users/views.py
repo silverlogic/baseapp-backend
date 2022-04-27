@@ -35,7 +35,12 @@ class UsersViewSet(
         serializer = self.get_serializer(user)
         return response.Response(serializer.data)
 
-    @action(detail=False, methods=["POST"], permission_classes=[permissions.IsAuthenticated])
+    @action(
+        detail=False,
+        methods=["POST"],
+        permission_classes=[permissions.IsAuthenticated],
+        serializer_class=ChangePasswordSerializer,
+    )
     def change_password(self, request):
         serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)

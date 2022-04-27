@@ -3,6 +3,8 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from model_utils import Choices
+
 from apps.base.models import CaseInsensitiveEmailField
 
 from .managers import UserManager
@@ -88,3 +90,29 @@ class User(PermissionsMixin, AbstractBaseUser):
 
     def get_full_name(self):
         return self.email
+
+
+class PasswordValidation(models.Model):
+    VALIDATORS = Choices(
+        (
+            "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+            "User Attribute Similarity",
+        ),
+        ("django.contrib.auth.password_validation.MinimumLengthValidator", "Minimum Length"),
+        ("django.contrib.auth.password_validation.CommonPasswordValidator", "Common Password"),
+        ("django.contrib.auth.password_validation.NumericPasswordValidator", "Numeric Password"),
+        (
+            "apps.users.password_validators.MustContainCapitalLetterValidator",
+            "Must Contain Capital Letter",
+        ),
+        (
+            "apps.users.password_validators.MustContainSpecialCharacterValidator",
+            "Must Contain Special Character",
+        ),
+    )
+    name = models.CharField(max_length=255, choices=VALIDATORS)
+    options = models.JSONField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.name
