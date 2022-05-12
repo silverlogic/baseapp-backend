@@ -2,9 +2,11 @@ import json
 from io import BytesIO
 
 from django.core.files.images import ImageFile
+from django.test import AsyncClient as DjangoAsyncClient
 
 import httpretty
 import pytest
+from asgiref.sync import sync_to_async
 from rest_framework.test import APIClient
 
 import tests.factories as f
@@ -14,6 +16,11 @@ class Client(APIClient):
     def force_authenticate(self, user):
         self.user = user
         super().force_authenticate(user)
+
+
+class AsyncClient(DjangoAsyncClient):
+    def force_authenticate(self, user):
+        self.user = user
 
 
 @pytest.fixture
@@ -32,6 +39,18 @@ def user_client():
     client = Client()
     client.force_authenticate(user)
     return client
+
+
+@pytest.fixture
+async def async_user_client():
+    user = await sync_to_async(f.UserFactory)()
+    token = await sync_to_async(f.TokenFactory)(user=user)
+    client = AsyncClient()
+    client.force_authenticate(user)
+    client.token = token
+    yield client
+    await sync_to_async(token.delete)()
+    await sync_to_async(user.delete)()
 
 
 @pytest.fixture()

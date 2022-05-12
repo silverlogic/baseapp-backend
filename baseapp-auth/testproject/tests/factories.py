@@ -14,3 +14,10 @@ class PasswordValidationFactory(factory.DjangoModelFactory):
 
     class Meta:
         model = "users.PasswordValidation"
+
+
+class TokenFactory(factory.DjangoModelFactory):
+    user = factory.SubFactory(UserFactory)
+
+    class Meta:
+        model = "authtoken.Token"
