@@ -19,10 +19,10 @@ pytestmark = pytest.mark.django_db
 class TestUsersRetrieve(ApiMixin):
     view_name = "users-detail"
 
-    def test_guest_can_retreive(self, client):
+    def test_guest_cant_retreive(self, client):
         user = f.UserFactory()
         r = client.get(self.reverse(kwargs={"pk": user.pk}))
-        h.responseOk(r)
+        h.responseUnauthorized(r)
 
     def test_user_can_retrieve(self, user_client):
         user = f.UserFactory()
@@ -135,18 +135,18 @@ class TestUsersUpdate(ApiMixin):
 class TestUsersList(ApiMixin):
     view_name = "users-list"
 
-    def test_guest_can_list(self, client):
+    def test_guest_cant_list(self, client):
         r = client.get(self.reverse())
-        h.responseOk(r)
+        h.responseUnauthorized(r)
 
     def test_user_can_list(self, user_client):
         r = user_client.get(self.reverse())
         h.responseOk(r)
 
-    def test_can_search(self, client):
+    def test_can_search(self, user_client):
         f.UserFactory(first_name="John", last_name="Smith")
         f.UserFactory(first_name="Bobby", last_name="Timbers")
-        r = client.get(self.reverse(query_params={"q": "John Smith"}))
+        r = user_client.get(self.reverse(query_params={"q": "John Smith"}))
         h.responseOk(r)
         assert len(r.data["results"]) == 1
         assert r.data["results"][0]["first_name"] == "John"
