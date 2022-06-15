@@ -34,6 +34,7 @@ class UserBaseSerializer(ModelSerializer):
             "avatar",
             "first_name",
             "last_name",
+            "permissions",
         )
         private_fields = (
             "email",
@@ -42,7 +43,13 @@ class UserBaseSerializer(ModelSerializer):
             "is_new_email_confirmed",
             "referral_code",
         )
-        read_only_fields = ("email", "is_email_verified", "new_email", "is_new_email_confirmed")
+        read_only_fields = (
+            "email",
+            "is_email_verified",
+            "new_email",
+            "is_new_email_confirmed",
+            "permissions",
+        )
 
     def get_referral_code(self, user):
         return get_referral_code(user)
