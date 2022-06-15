@@ -1,11 +1,13 @@
 from django.contrib.auth.models import AbstractBaseUser
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from model_utils import Choices
 
 from apps.base.models import CaseInsensitiveEmailField
+from apps.permissions.models import Permission
 
 from .managers import UserManager
 
@@ -74,6 +76,14 @@ class User(PermissionsMixin, AbstractBaseUser):
     first_name = models.CharField(max_length=100, blank=True)
     last_name = models.CharField(max_length=100, blank=True)
 
+    # Permissions
+    role = models.ForeignKey(
+        "permissions.Role", related_name="users", blank=True, null=True, on_delete=models.SET_NULL
+    )
+    permission_groups = models.ManyToManyField(
+        "permissions.PermissionGroup", related_name="users", blank=True
+    )
+
     objects = UserManager()
 
     USERNAME_FIELD = "email"
@@ -90,6 +100,16 @@ class User(PermissionsMixin, AbstractBaseUser):
 
     def get_full_name(self):
         return self.email
+
+    @property
+    def permissions(self):
+        lookup = Q(permission_groups__in=self.permission_groups.all())
+        if self.role:
+            lookup = (lookup | Q(permission_groups__roles=self.role) | Q(roles=self.role)) & ~Q(
+                excluded_in_roles=self.role
+            )
+
+        return Permission.objects.filter(lookup).distinct().values_list("slug", flat=True)
 
 
 class PasswordValidation(models.Model):

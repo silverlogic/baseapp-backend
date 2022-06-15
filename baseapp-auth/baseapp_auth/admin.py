@@ -10,7 +10,7 @@ from .models import PasswordValidation, User
 class UserAdmin(UserAdmin):
     fieldsets = (
         (None, {"fields": ("email", "password", "date_joined", "last_login")}),
-        (_("Permissions"), {"fields": ("is_active", "is_superuser")}),
+        (_("Permissions"), {"fields": ("is_active", "is_superuser", "role", "permission_groups")},),
         (_("Profile"), {"fields": (("first_name", "last_name"),)}),
     )
     add_fieldsets = ((None, {"classes": ("wide",), "fields": ("email", "password1", "password2")}),)
