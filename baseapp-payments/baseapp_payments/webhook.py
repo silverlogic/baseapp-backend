@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 
 from django.db import transaction
 
@@ -7,7 +6,7 @@ import swapper
 from djstripe import webhooks
 from djstripe.models import Subscription
 
-from .emails import send_subscription_trial_start_email, send_subscription_trial_will_end_email
+from .emails import send_subscription_trial_will_end_email
 
 
 @webhooks.handler("invoice.paid")

@@ -6,7 +6,10 @@ from constance import config
 
 
 def send_subscription_trial_start_email(email):
-    context = {"trial_days": config.BASEAPP_PAYMENTS_TRIAL_DAYS, "url": "{}/results".format(settings.FRONT_URL)}
+    context = {
+        "trial_days": config.BASEAPP_PAYMENTS_TRIAL_DAYS,
+        "url": "{}/results".format(settings.FRONT_URL),
+    }
     subject = render_to_string("users/emails/trial-starts-subject.txt.j2", context=context).strip()
     message = render_to_string("users/emails/trial-starts-body.txt.j2", context=context)
     html_message = render_to_string("users/emails/trial-starts-body.html.j2", context=context)

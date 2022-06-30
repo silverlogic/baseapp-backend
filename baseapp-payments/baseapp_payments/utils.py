@@ -32,11 +32,8 @@ def edit_payment_method(payment_method_id, data):
 
 
 def make_another_default_payment_method(customer_id, payment_method_id):
-    payment_method = stripe.PaymentMethod.retrieve(payment_method_id)
     data = stripe.Customer.modify(
-        customer_id,
-        invoice_settings={"default_payment_method": payment_method_id},
-        default_source=payment_method.metadata.source_id,
+        customer_id, invoice_settings={"default_payment_method": payment_method_id},
     )
     # example of sync to DJ-stripe
     Customer.sync_from_stripe_data(data)
@@ -65,10 +62,6 @@ def update_subscription(subscription, price, is_upgrade):
 
 def delete_payment_method(payment_method_id, customer_id):
     payment_method = stripe.PaymentMethod.retrieve(payment_method_id)
-    if payment_method.metadata and payment_method.metadata.source_id:
-        Source.sync_from_stripe_data(
-            stripe.Customer.delete_source(customer_id, payment_method.metadata.source_id)
-        )
     data = stripe.PaymentMethod.detach(payment_method_id)
     PaymentMethod.sync_from_stripe_data(data)
     return data

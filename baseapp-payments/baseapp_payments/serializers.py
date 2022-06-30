@@ -1,5 +1,4 @@
 import importlib
-from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
@@ -23,7 +22,6 @@ class EndSubscriptionSerializer(serializers.Serializer):
 
 class CapturePaymentIntentSerializer(serializers.Serializer):
     payment_method_id = serializers.CharField(required=True)
-    source_id = serializers.CharField(required=True)
 
 
 class CapturePaymentEditSerializer(serializers.Serializer):
@@ -60,12 +58,21 @@ class SubscribeCustomerSerializer(serializers.Serializer):
         return validated_data
 
     def save(self):
-        customer_has_used_trial = Subscription.objects.all().filter(customer=self.customer, status="canceled").exists()
+        customer_has_used_trial = (
+            Subscription.objects.all().filter(customer=self.customer, status="canceled").exists()
+        )
         if not customer_has_used_trial and config.BASEAPP_PAYMENTS_TRIAL_DAYS:
-            subscription = self.customer.subscribe(plan=self.plan.price, trial_period_days=config.BASEAPP_PAYMENTS_TRIAL_DAYS, default_payment_method=self.validated_data.get("payment_method_id"))
+            subscription = self.customer.subscribe(
+                plan=self.plan.price,
+                trial_period_days=config.BASEAPP_PAYMENTS_TRIAL_DAYS,
+                default_payment_method=self.validated_data.get("payment_method_id"),
+            )
             send_subscription_trial_start_email(self.customer.email)
         else:
-            subscription = self.customer.subscribe(plan=self.plan.price, default_payment_method=self.validated_data.get("payment_method_id"))
+            subscription = self.customer.subscribe(
+                plan=self.plan.price,
+                default_payment_method=self.validated_data.get("payment_method_id"),
+            )
 
         self.subscriber.subscription_start_request(
             plan=self.plan,
@@ -75,7 +82,6 @@ class SubscribeCustomerSerializer(serializers.Serializer):
         )
 
         self.customer.save()
-
 
 
 class CancelSubscriptionSerializer(serializers.Serializer):

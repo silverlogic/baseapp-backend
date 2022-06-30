@@ -19,7 +19,6 @@ from .serializers import (
     get_serializer,
 )
 from .utils import (
-    add_metadata_to_payment_method,
     create_payment_intent,
     delete_payment_method,
     edit_payment_method,
@@ -69,14 +68,10 @@ class StripePaymentsViewSet(viewsets.GenericViewSet,):
                 request.user.get_subscriber_from_request(request)
             )
             payment_method_id = serializer.validated_data["payment_method_id"]
-            source_id = serializer.validated_data["source_id"]
             customer.add_payment_method(payment_method_id)
-            customer.add_card(source_id)
-            add_metadata_to_payment_method(payment_method_id, source_id)
 
             return Response(
-                {"payment_method_id": payment_method_id, "source_id": source_id},
-                status=status.HTTP_201_CREATED,
+                {"payment_method_id": payment_method_id}, status=status.HTTP_201_CREATED,
             )
 
         except Exception as e:
