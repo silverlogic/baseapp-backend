@@ -13,8 +13,12 @@ from .emails import send_subscription_trial_start_email, send_subscription_trial
 @webhooks.handler("invoice.paid")
 def subscription_plan_changed_webhook(event, **kwargs):
     subscription = Subscription.objects.active().filter(customer=event.customer).first()
+    if not subscription:
+        return
     current_plan = subscription.customer.subscriber.get_subscription_plan()
-    current_price = current_plan.price if current_plan else None
+    if not current_plan:
+        return
+    current_price = current_plan.price
     invoice_price = subscription.plan
 
     if current_price and invoice_price and current_price.id != invoice_price.id:
