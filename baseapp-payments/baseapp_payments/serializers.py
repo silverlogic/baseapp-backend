@@ -45,7 +45,7 @@ class SubscribeCustomerSerializer(serializers.Serializer):
             raise serializers.ValidationError({"Already Subscribed."})
 
         customer_is_trialing = (
-            Subscription.objects.all().filter(customer=self.customer, status="trialing").exists()
+            Subscription.objects.all().filter(customer=self.customer, status="trialing", plan__has_trial=True).exists()
         )
         if customer_is_trialing:
             raise serializers.ValidationError({"Already Trialing."})
@@ -59,7 +59,7 @@ class SubscribeCustomerSerializer(serializers.Serializer):
 
     def save(self):
         customer_has_used_trial = (
-            Subscription.objects.all().filter(customer=self.customer, status="canceled").exists()
+            Subscription.objects.all().filter(customer=self.customer, status="canceled", plan__has_trial=True).exists()
         )
         if not customer_has_used_trial and config.BASEAPP_PAYMENTS_TRIAL_DAYS:
             subscription = self.customer.subscribe(
@@ -158,10 +158,10 @@ class CustomerSerializer(ExpanderSerializerMixin, serializers.ModelSerializer):
         }
 
     def get_is_trial_ended(self, obj):
-        return Subscription.objects.all().filter(customer=obj, status="canceled").exists()
+        return Subscription.objects.all().filter(customer=obj, status="canceled", plan__has_trial=True).exists()
 
     def get_is_trialing(self, obj):
-        return Subscription.objects.all().filter(customer=obj, status="trialing").exists()
+        return Subscription.objects.all().filter(customer=obj, status="trialing", plan__has_trial=True).exists()
 
 
 class UpdateSubscriptionSerializer(serializers.Serializer):
