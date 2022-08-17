@@ -87,3 +87,15 @@ To see available options run
 ```
 
 Recommend using [GraphvizOnline](https://dreampuf.github.io/GraphvizOnline) with output of .dot file for editing
+
+## Generate routes info
+
+Run one of these commands.
+
+```
+./manage.py routes_info
+./manage.py routes_info -npc
+./manage.py routes_info --no-permission-classes
+```
+
+It should list all actions of each viewset (or only the empty ones if you add `--no-permission-classes`)
