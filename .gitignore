@@ -3,6 +3,8 @@ __pycache__/
 /apidocs/build/
 **/venv
 .DS_Store
+sonar-project.properties
+.scannerwork/
 
 # workspace files are user-specific
 *.sublime-workspace

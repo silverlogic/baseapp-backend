@@ -2,7 +2,7 @@
 
 ## Requirements
 
-* Python 3.6
+* Python 3.9.7
 
 ## Getting Started
 
@@ -16,6 +16,7 @@
 * Use flake8 (found in requirements/dev.txt) to lint code.
 * Use isort (found in requirements/dev.txt) to automatically sort your imports before commiting. (`isort **/*.py`)
 * Use black (found in requirements/dev.txt) to automatically format your code before comitting. (`black .`)
+* SonarQube: `cp sonar-project.properties.example sonar-project.properties`
 
 ### Tests
 
@@ -99,3 +100,10 @@ Run one of these commands.
 ```
 
 It should list all actions of each viewset (or only the empty ones if you add `--no-permission-classes`)
+
+## Local SonarQube Setup
+
+You'll need SonarQube and `sonar-scanner`
+* [SonarQube Docker instructions](https://www.sonarqube.org/features/deployment/) - free version is fine
+* Once you have SonarQube running, create a project for local analysis and take note of the project key and project token.
+* Follow the instructions in SonarQube to run `sonar-scanner`
