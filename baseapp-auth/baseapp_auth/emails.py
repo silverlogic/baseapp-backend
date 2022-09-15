@@ -5,6 +5,7 @@ from django.template.loader import render_to_string
 from apps.base.deep_links import get_deep_link
 from apps.base.exceptions import DeepLinkFetchError
 
+from .models import User
 from .tokens import (
     ChangeEmailConfirmTokenGenerator,
     ChangeEmailVerifyTokenGenerator,
@@ -121,3 +122,55 @@ def send_change_email_verify_email(user):
         from_email=None,
         recipient_list=[user.new_email],
     )
+
+
+def new_superuser_notification_email(new_superuser, assigner):
+    context = {"assigner": assigner, "assignee": new_superuser}
+    superusers = (
+        User.objects.filter(is_superuser=True)
+        .exclude(email__in=[new_superuser.email, assigner.email])
+        .all()
+    )
+    recipient_list = list(superusers.values_list("email", flat=True))
+
+    subject = f"{new_superuser.email} has been made superuser by {assigner.email}"
+    message = render_to_string(
+        "users/emails/new-superuser-notification-email.txt.j2", context=context
+    )
+    html_message = render_to_string(
+        "users/emails/new-superuser-notification-email.html.j2", context=context
+    )
+    if recipient_list:
+        send_mail(
+            subject,
+            message,
+            html_message=html_message,
+            from_email=None,
+            recipient_list=recipient_list,
+        )
+
+
+def remove_superuser_notification_email(non_superuser, assigner):
+    context = {"assigner": assigner, "assignee": non_superuser}
+    superusers = (
+        User.objects.filter(is_superuser=True)
+        .exclude(email__in=[non_superuser.email, assigner.email])
+        .all()
+    )
+    recipient_list = list(superusers.values_list("email", flat=True))
+
+    subject = f"{non_superuser.email} has been removed from superuser by {assigner.email}"
+    message = render_to_string(
+        "users/emails/remove-superuser-notification-email.txt.j2", context=context
+    )
+    html_message = render_to_string(
+        "users/emails/remove-superuser-notification-email.html.j2", context=context
+    )
+    if recipient_list:
+        send_mail(
+            subject,
+            message,
+            html_message=html_message,
+            from_email=None,
+            recipient_list=recipient_list,
+        )
