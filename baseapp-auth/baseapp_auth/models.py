@@ -1,10 +1,12 @@
+from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from model_utils import Choices
+from model_utils import Choices, FieldTracker
+from model_utils.models import TimeStampedModel
 
 from apps.base.models import CaseInsensitiveEmailField
 from apps.permissions.models import Permission
@@ -84,6 +86,8 @@ class User(PermissionsMixin, AbstractBaseUser):
         "permissions.PermissionGroup", related_name="users", blank=True
     )
 
+    superuser_tracker = FieldTracker(fields=["is_superuser"])
+
     objects = UserManager()
 
     USERNAME_FIELD = "email"
@@ -136,3 +140,13 @@ class PasswordValidation(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class SuperuserUpdateLog(TimeStampedModel):
+    assigner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="superuser_assigner_logs", on_delete=models.PROTECT,
+    )
+    assignee = models.ForeignKey(
+        User, related_name="superuser_assignee_logs", on_delete=models.CASCADE
+    )
+    made_superuser = models.BooleanField()
