@@ -61,13 +61,39 @@ py.test --reuse-db
 
 ## API Documentation
 
-**All changes to the Django API must be reflected in the API documentation.**
+**All changes to the Django API should be reflected in the API documentation automatically**
 
-The API documentation is built using [middleman](https://middlemanapp.com/) and is
-located under the apidocs directory.  All documentation is written in
-[asciidoctor](http://asciidoctor.org/) format.
+The API documentation is built using [drf-yasg](https://drf-yasg.readthedocs.io/en/stable/index.html) and can be found at `/docs` or path mentioned in **SWAGGER_DOC_PATH** in `settings/base.py`
 
-See apidocs/README.md for more info.
+To override the default doc generated, can do:
+```python
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+```
+and add swagger_auto_schema with the endpoints in viewsets like:
+```python
+
+@swagger_auto_schema(
+    operation_description="operation description",
+    operation_summary="operation summary or name",
+    manual_parameters=[ # list of openapi.Parameter objects
+        openapi.Parameter(
+            "name of param",
+            openapi.IN_QUERY, # options are [IN_BODY, IN_PATH, IN_QUERY, IN_FORM, IN_HEADER]
+            description="description",
+            type=openapi.TYPE_BOOLEAN, # options are [TYPE_OBJECT, TYPE_STRING, TYPE_NUMBER, 
+                                       # TYPE_INTEGER, TYPE_BOOLEAN, TYPE_ARRAY, TYPE_FILE]
+        )
+    ],
+    responses={
+            200: openapi.Response("response description", SomeSerializer), # SomeSerializer is optional
+            404: openapi.Response("response description"),
+        },
+)
+def something(self, request, *args, **kwargs):
+    ...
+```
+
 
 ## UML Generation
 
