@@ -7,7 +7,7 @@ This app provides the integration of Stripe with The SilverLogic's [BaseApp](htt
 Add to `requirements/base.txt`:
 
 ```bash
-git+https://alisson:CQ5M7thUNtvqSeKcNW62@bitbucket.org/silverlogic/baseapp-payments-django.git@1ee806c415eff38d136efafa8788540d8a7eca6d#egg=baseapp_payments
+git+https://bitbucket.org/silverlogic/baseapp-payments-django.git@1ee806c415eff38d136efafa8788540d8a7eca6d
 ```
 
 ## Setup Stripe's credentials
