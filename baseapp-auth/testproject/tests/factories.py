@@ -1,7 +1,7 @@
 import factory
 
 
-class UserFactory(factory.DjangoModelFactory):
+class UserFactory(factory.django.DjangoModelFactory):
     email = factory.Faker("email")
     password = factory.PostGenerationMethodCall("set_password", "default")
 
@@ -14,28 +14,28 @@ class UserFactory(factory.DjangoModelFactory):
             self.permission_groups.add(*extracted)
 
 
-class PasswordValidationFactory(factory.DjangoModelFactory):
+class PasswordValidationFactory(factory.django.DjangoModelFactory):
     name = "apps.users.password_validators.MustContainSpecialCharacterValidator"
 
     class Meta:
         model = "users.PasswordValidation"
 
 
-class TokenFactory(factory.DjangoModelFactory):
+class TokenFactory(factory.django.DjangoModelFactory):
     user = factory.SubFactory(UserFactory)
 
     class Meta:
         model = "authtoken.Token"
 
 
-class PermissionFactory(factory.DjangoModelFactory):
+class PermissionFactory(factory.django.DjangoModelFactory):
     name = factory.Faker("bs")
 
     class Meta:
         model = "permissions.Permission"
 
 
-class PermissionGroupFactory(factory.DjangoModelFactory):
+class PermissionGroupFactory(factory.django.DjangoModelFactory):
     name = factory.Faker("company")
 
     class Meta:
@@ -47,7 +47,7 @@ class PermissionGroupFactory(factory.DjangoModelFactory):
             self.permissions.add(*extracted)
 
 
-class RoleFactory(factory.DjangoModelFactory):
+class RoleFactory(factory.django.DjangoModelFactory):
     name = factory.Faker("job")
 
     class Meta:
