@@ -144,7 +144,9 @@ class PasswordValidation(models.Model):
 
 class SuperuserUpdateLog(TimeStampedModel):
     assigner = models.ForeignKey(
-        settings.AUTH_USER_MODEL, related_name="superuser_assigner_logs", on_delete=models.PROTECT,
+        settings.AUTH_USER_MODEL,
+        related_name="superuser_assigner_logs",
+        on_delete=models.PROTECT,
     )
     assignee = models.ForeignKey(
         User, related_name="superuser_assignee_logs", on_delete=models.CASCADE
