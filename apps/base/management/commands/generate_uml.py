@@ -143,7 +143,8 @@ class Command(BaseCommand):
         command_app = get_commands()[command_name]
         command_class = load_command_class(command_app, command_name)
         file_name = "uml-{date}.{ext}".format(
-            date=timezone.now().strftime("%Y-%m-%d_%H-%M-%S"), ext=output_format,
+            date=timezone.now().strftime("%Y-%m-%d_%H-%M-%S"),
+            ext=output_format,
         )
 
         call_command(
