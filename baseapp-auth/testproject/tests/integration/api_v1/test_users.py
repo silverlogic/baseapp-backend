@@ -19,7 +19,7 @@ pytestmark = pytest.mark.django_db
 class TestUsersRetrieve(ApiMixin):
     view_name = "users-detail"
 
-    def test_guest_cant_retreive(self, client):
+    def test_guest_cant_retrieve(self, client):
         user = f.UserFactory()
         r = client.get(self.reverse(kwargs={"pk": user.pk}))
         h.responseUnauthorized(r)
