@@ -163,13 +163,6 @@ class TestChangeEmailResendConfirm(ApiMixin):
         h.responseOk(r)
         assert len(outbox) == 1
 
-    def test_user_can_resend_deep_link_error(self, client, outbox, deep_link_mock_error):
-        user = f.UserFactory(new_email="new@example.com")
-        client.force_authenticate(user)
-        r = client.post(self.reverse())
-        h.responseOk(r)
-        assert len(outbox) == 1
-
     def test_user_cant_resend_if_user_has_no_new_email(self, user_client):
         r = user_client.post(self.reverse())
         h.responseBadRequest(r)

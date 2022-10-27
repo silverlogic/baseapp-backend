@@ -17,6 +17,10 @@ class TestMigrationHealthCheck(TestCase):
         pass
 
     def test_for_uncreated_migrations(self):
+        """
+        Migrations are created and added to the repo, so the CI detects if any
+        migrations were created but not pushed to the git branch.
+        """
 
         connection = connections[DEFAULT_DB_ALIAS]
 
