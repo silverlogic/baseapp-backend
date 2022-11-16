@@ -29,6 +29,10 @@ class TestChangeEmailRequest(ApiMixin):
         h.responseOk(r)
 
     def test_new_email_cant_be_in_use(self, user_client, data):
+        """
+        new_email holds the next email for the user, so we can't have other user
+        with the same email as that new_email.
+        """
         f.UserFactory(email=data["new_email"])
         r = user_client.post(self.reverse(), data)
         h.responseBadRequest(r)
