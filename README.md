@@ -94,6 +94,13 @@ def something(self, request, *args, **kwargs):
     ...
 ```
 
+## TSL Pluggable Django applications
+
+TSL develops a set of external Python packages that can be plugged into BasApp through Django application registry.
+
+* [payments](https://bitbucket.org/silverlogic/baseapp-payments-django/src/master/) - integration of Stripe with BaseApp and dj-stripe
+* [django-trench](https://github.com/silverlogic/django-trench/) - a set of REST API endpoints to supplement `django-rest-framework` with multi-factor authentication (MFA, 2FA).
+
 
 ## UML Generation
 
