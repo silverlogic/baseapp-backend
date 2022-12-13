@@ -13,6 +13,10 @@
 
 ### Code Style
 
+* Activate pre-commit hook to automatically format and lint staged python code upon every commit:
+
+        $ pre-commit install        
+
 * Use flake8 (found in requirements/dev.txt) to lint code.
 * Use isort (found in requirements/dev.txt) to automatically sort your imports before commiting. (`isort **/*.py`)
 * Use black (found in requirements/dev.txt) to automatically format your code before comitting. (`black .`)
