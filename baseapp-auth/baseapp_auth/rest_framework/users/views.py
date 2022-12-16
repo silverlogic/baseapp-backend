@@ -1,7 +1,7 @@
 from django.http import Http404
 from django.utils.translation import gettext_lazy as _
 
-from rest_framework import filters, mixins, permissions, response, serializers, viewsets
+from rest_framework import filters, mixins, permissions, response, serializers, status, viewsets
 
 from apps.api.v1.decorators import action
 from apps.users.models import User
@@ -65,3 +65,13 @@ class UsersViewSet(
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return response.Response({})
+
+    @action(detail=False, methods=["DELETE"], permission_classes=[permissions.IsAuthenticated])
+    def delete_account(self, request):
+        user = request.user
+        if user.is_superuser:
+            user.is_active = False
+            user.save()
+        else:
+            user.delete()
+        return response.Response(data={}, status=status.HTTP_204_NO_CONTENT)
