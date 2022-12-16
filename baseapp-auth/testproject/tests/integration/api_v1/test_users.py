@@ -7,6 +7,7 @@ from avatar.models import Avatar
 
 from apps.referrals.models import UserReferral
 from apps.referrals.utils import get_referral_code
+from apps.users.models import User
 from apps.users.tokens import ConfirmEmailTokenGenerator
 
 import tests.factories as f
@@ -165,6 +166,30 @@ class TestUsersMe(ApiMixin):
         client.force_authenticate(user)
         r = client.get(self.reverse())
         h.responseOk(r)
+
+
+class TestUsersDeleteAccount(ApiMixin):
+    view_name = "users-delete-account"
+
+    def test_as_anon(self, client):
+        r = client.get(self.reverse())
+        h.responseUnauthorized(r)
+
+    def test_non_admin_can_delete_account(self, user_client):
+        user_client.user.is_superuser = False
+        user_client.user.save()
+        user_id = user_client.user.id
+        r = user_client.delete(self.reverse())
+        h.responseNoContent(r)
+        assert User.objects.filter(id=user_id).exists() is False
+
+    def test_admin_can_only_deactivate_account(self, user_client):
+        user_client.user.is_superuser = True
+        user_client.user.save()
+        user_id = user_client.user.id
+        r = user_client.delete(self.reverse())
+        h.responseNoContent(r)
+        assert User.objects.filter(id=user_id, is_active=False).exists() is True
 
 
 class TestUsersChangePassword(ApiMixin):
