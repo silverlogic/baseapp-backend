@@ -43,7 +43,6 @@ class TestUsersRetrieve(ApiMixin):
             "avatar",
             "first_name",
             "last_name",
-            "permissions",
         }
         actual = set(r.data.keys())
         assert expected == actual
@@ -52,7 +51,7 @@ class TestUsersRetrieve(ApiMixin):
         user = f.UserFactory()
         r = user_client.get(self.reverse(kwargs={"pk": user.pk}))
         h.responseOk(r)
-        expected = {"id", "avatar", "first_name", "last_name", "permissions"}
+        expected = {"id", "avatar", "first_name", "last_name"}
         actual = set(r.data.keys())
         assert expected == actual
 
