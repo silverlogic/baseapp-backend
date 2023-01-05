@@ -51,19 +51,25 @@ class TestForgotPassword(ApiMixin):
 
 class TestResetPassword(ApiMixin):
     view_name = "reset-password-list"
+    search_param = r"/forgot-password/(\S+)"
+
+    @pytest.fixture
+    def data_email(self):
+        return {"email": "john@example.com"}
 
     def test_cant_reset_password_with_bad_token(self, client):
         data = {"token": "bad", "new_password": "blub"}
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
 
-    def test_can_reset_password_with_token_from_email(self, client, outbox, deep_link_mock_error):
-        data = {"email": "johnnobody@gmail.com"}
-        user = f.UserFactory(email=data["email"])
-        client.post(self.reverse("forgot-password-list"), data)
+    def test_can_reset_password_with_token_from_email(
+        self, client, outbox, data_email, deep_link_mock_error
+    ):
+        user = f.UserFactory(email=data_email["email"])
+        client.post(self.reverse("forgot-password-list"), data_email)
 
         message_body = outbox[0].body
-        match = re.search(r"/forgot-password/(\S+)", message_body)
+        match = re.search(self.search_param, message_body)
         assert match
 
         token = match.group(1)
@@ -75,14 +81,13 @@ class TestResetPassword(ApiMixin):
         assert user.check_password("blub")
 
     def test_cant_reset_password_after_resetting_with_samelink(
-        self, client, outbox, deep_link_mock_error
+        self, client, outbox, data_email, deep_link_mock_error
     ):
-        data = {"email": "johnnobody@gmail.com"}
-        user = f.UserFactory(email=data["email"])
-        client.post(self.reverse("forgot-password-list"), data)
+        user = f.UserFactory(email=data_email["email"])
+        client.post(self.reverse("forgot-password-list"), data_email)
 
         message_body = outbox[0].body
-        match = re.search(r"/forgot-password/(\S+)", message_body)
+        match = re.search(self.search_param, message_body)
         assert match
 
         token = match.group(1)
@@ -99,3 +104,20 @@ class TestResetPassword(ApiMixin):
         h.responseBadRequest(r)
         user.refresh_from_db()
         assert user.check_password("blub")
+
+    def test_cannot_reset_password_with_invalid_password(
+        self, client, outbox, data_email, deep_link_mock_error
+    ):
+        f.PasswordValidationFactory()
+        f.UserFactory(email=data_email["email"])
+        client.post(self.reverse("forgot-password-list"), data_email)
+
+        message_body = outbox[0].body
+        match = re.search(self.search_param, message_body)
+        assert match
+
+        token = match.group(1)
+        data = {"token": token, "new_password": "blub", "confirm_new_password": "blub"}
+        r = client.post(self.reverse(), data)
+        h.responseBadRequest(r)
+        assert "This password must contain at least 1 special characters." in r.data["new_password"]

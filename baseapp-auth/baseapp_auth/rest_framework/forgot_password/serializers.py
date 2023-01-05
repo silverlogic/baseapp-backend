@@ -8,6 +8,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from apps.users.models import User
+from apps.users.password_validators import apply_password_validators
 
 
 class ForgotPasswordSerializer(serializers.Serializer):
@@ -40,6 +41,10 @@ class ResetPasswordSerializer(serializers.Serializer):
         ):
             raise serializers.ValidationError(_("Invalid token."))
         return token
+
+    def validate_new_password(self, new_password):
+        apply_password_validators(new_password)
+        return new_password
 
     def save(self):
         self.user.set_password(self.data["new_password"])
