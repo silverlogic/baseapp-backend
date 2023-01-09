@@ -1,9 +1,9 @@
 from django.contrib.auth.models import User as DjUser
 from django.db import models
-from permissions.mixin import UserPermissionsMixin
+from permissions.mixin import PermissionModelMixin
 
 
-class User(DjUser, UserPermissionsMixin):
+class User(DjUser, PermissionModelMixin):
     class Meta(DjUser.Meta):
         pass
 
