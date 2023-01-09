@@ -18,7 +18,6 @@ def check_user_permission(user, view, obj=None):
     return user.has_perm('testapp.list_tests')
 
 def check_object_permission(user, view, obj=None):
-    print("OBJ", obj)
     if not obj:
         return True
     return obj.title == 'verified'
