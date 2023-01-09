@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "testproject.testapp",
-    "permissions",
+    "drf_view_action_permissions",
 ]
 
 MIDDLEWARE = [
