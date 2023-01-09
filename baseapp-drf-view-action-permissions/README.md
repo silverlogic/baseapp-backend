@@ -64,6 +64,24 @@ class UserViewSet(viewsets.ModelViewSet):
 
 The permission class will expect the user to have a **Permission** with the codename `users.lessons_users` when a GET or POST request is made.
 
+The `perms_map_action` can also accept a method with the following signature `def method_name(user, view, obj=None)`.
+
+```py
+
+def check_object_permission(user, view, obj=None):
+    if not obj:
+        return True
+    return obj.user.id ==  user.id
+
+class UserViewSet(viewsets.ModelViewSet):
+    permission_classes = [ActionPermission]
+    permission_base = "users"
+    perms_map_action = {
+        'update': ['users.change_users', check_object_permission]
+    }
+    ...
+```
+
 The `DjangoActionPermissions` class will only work with models injected to the `request` by one of the DRF's [authentication mechanisms](https://www.django-rest-framework.org/api-guide/authentication/) as the `user` property.
 
 ## Create Permissions
