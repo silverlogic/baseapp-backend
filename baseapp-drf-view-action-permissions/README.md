@@ -15,7 +15,7 @@ django-view-action-permissions @ git+https://{BITBUCKET_USERNAME}@bitbucket.org/
 ```py
 INSTALLED_APPS = [
     ...
-    "permissions",
+    "drf_view_action_permissions",
 ]
 ```
 
@@ -23,7 +23,7 @@ INSTALLED_APPS = [
 
 ```py
 from django.db import models
-from permissions.mixins import PermissionModelMixin
+from drf_view_action_permissions.mixins import PermissionModelMixin
 
 class User(PermissionModelMixin, models.Model):
     ...
@@ -33,7 +33,7 @@ class User(PermissionModelMixin, models.Model):
 
 ```py
 from rest_framework import viewsets
-from permissions.action import DjangoActionPermissions
+from drf_view_action_permissions.action import DjangoActionPermissions
 
 class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [DjangoActionPermissions, ]
@@ -112,7 +112,7 @@ We have provided two utility function to load and remove permissions from group.
 ```py
 from django.db import migrations
 
-from permissions.utils import get_permission_loader, get_permission_remover
+from drf_view_action_permissions.utils import get_permission_loader, get_permission_remover
 
 permissions = [
     {"name": "Test Group", "permissions": ['list_testmodel', 'disable_testmodel', 'add_testmodel'],},

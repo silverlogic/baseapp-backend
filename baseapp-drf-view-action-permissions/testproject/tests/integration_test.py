@@ -5,7 +5,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework.test import APITestCase, URLPatternsTestCase
 from django.contrib.auth.models import Permission
 
-from permissions.action import DjangoActionPermissions
+from drf_view_action_permissions.action import DjangoActionPermissions
 from testproject.testapp.models import TestModel
 
 from . import factories as f
