@@ -105,6 +105,8 @@ class User(models.Model):
 
 After defining the permissions, you need to generate a migration using Django command `./manage.py makemigrations`. Make sure to have generated the migration before any other migration that uses this new permission i.e writing a migration to add the new permission to a group.
 
+If you want to use the default drf list view action make sure to add `view_{modelname}_list` in the permissions list, except you want to specify the permission to use in `perms_map_action`
+
 ### Creating migrations for groups
 
 We have provided two utility function to load and remove permissions from group. See example below
