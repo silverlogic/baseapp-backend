@@ -17,7 +17,7 @@ def get_permission_loader(permissions):
 def get_permission_remover(permissions, remove_group=False):
     def remove_permissions_data(apps, schema_editor):
         """
-        The group will not be deleted if the the model is not passed as an argument
+        The group will not be deleted if the remove_group is False
         """
         Permission = apps.get_model("auth", "Permission")
         Group = apps.get_model("auth", "Group")
