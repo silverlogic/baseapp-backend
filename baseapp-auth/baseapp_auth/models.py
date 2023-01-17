@@ -65,6 +65,9 @@ class User(PermissionsMixin, AbstractBaseUser):
     email = CaseInsensitiveEmailField(unique=True, db_index=True)
     is_email_verified = models.BooleanField(default=False)
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
+    password_changed_date = models.DateTimeField(
+        _("last date password was changed"), default=timezone.now
+    )
 
     # Changing email
     new_email = CaseInsensitiveEmailField(blank=True)
@@ -76,7 +79,7 @@ class User(PermissionsMixin, AbstractBaseUser):
     first_name = models.CharField(max_length=100, blank=True)
     last_name = models.CharField(max_length=100, blank=True)
 
-    superuser_tracker = FieldTracker(fields=["is_superuser"])
+    tracker = FieldTracker(fields=["is_superuser", "password"])
 
     objects = UserManager()
 
@@ -96,6 +99,12 @@ class User(PermissionsMixin, AbstractBaseUser):
         if self.first_name and self.last_name:
             return f"{self.first_name} {self.last_name}".strip()
         return self.email
+
+    def save(self, *args, **kwargs):
+        with self.tracker:
+            if self.tracker.has_changed("password"):
+                self.password_changed_date = timezone.now()
+            super().save(*args, **kwargs)
 
 
 class PasswordValidation(models.Model):
