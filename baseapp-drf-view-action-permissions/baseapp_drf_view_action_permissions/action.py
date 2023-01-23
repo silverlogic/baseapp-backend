@@ -1,4 +1,6 @@
 from rest_framework.permissions import DjangoModelPermissions
+from rest_framework import permissions
+from .utils import client_ip_address_is_restricted
 
 
 class DjangoActionPermissions(DjangoModelPermissions):
@@ -134,3 +136,11 @@ class DjangoActionPermissions(DjangoModelPermissions):
     def has_object_permission(self, request, view, obj):
         """Apply action permission with object and with ignoring method."""
         return self.has_action_permission(request, view, obj)
+
+
+class IpAddressPermission(permissions.IsAuthenticated):
+    message = 'restricted by IP address'
+    def has_permission(self, request, view):
+        if super().has_permission(request, view):
+            return not client_ip_address_is_restricted(request)
+        return False

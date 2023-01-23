@@ -1,3 +1,4 @@
+from django.test import override_settings
 import pytest
 from django.urls import include, path, reverse
 from rest_framework import decorators, response, status, viewsets
@@ -5,12 +6,13 @@ from rest_framework.routers import DefaultRouter
 from rest_framework.test import APITestCase, URLPatternsTestCase
 from django.contrib.auth.models import Permission
 
-from drf_view_action_permissions.action import DjangoActionPermissions
+from drf_view_action_permissions.action import DjangoActionPermissions, IpAddressPermission
 from testproject.testapp.models import TestModel
 
 from . import factories as f
 from . import helpers as h
 from .fixtures import Client
+
 
 pytestmark = pytest.mark.django_db
 
@@ -22,6 +24,15 @@ def check_object_permission(user, view, obj=None):
         return True
     return obj.title == 'verified'
 
+class DummyIpViewSet(viewsets.GenericViewSet):
+    permission_classes =  []
+
+    def list(self, *args, **kwargs):
+        return response.Response([])
+
+    @decorators.action(methods=["GET"], detail=False, permission_classes=[IpAddressPermission, ])
+    def custom_action(self, *args, **kwargs):
+        return response.Response({})
 
 class DummyViewSet(viewsets.GenericViewSet):
     permission_classes = [DjangoActionPermissions, ]
@@ -296,3 +307,66 @@ class TestActionPermission(APITestCase, URLPatternsTestCase):
         r = self.client.get(reverse("test-multi-perms"))
         h.responseForbidden(r)
 
+
+
+class TestIpRestriction(APITestCase, URLPatternsTestCase):
+    client_class = Client
+    test_router = DefaultRouter(trailing_slash=False)
+    test_router.register(r"testip", DummyIpViewSet, basename="testip")
+
+    urlpatterns = [
+        path("/", include(test_router.urls)),
+    ]
+
+    def setUp(self) -> None:
+        f.TestModelFactory()
+        return super().setUp()
+
+    def test_cannot_access_list_in_viewset_with_ip_restricted(self):
+        f.IpRestrictionFactory(ip_address="127.0.0.1")
+        role = f.RoleFactory()
+        user = f.UserFactory(role=role)
+        self.client.force_authenticate(user)
+        with self.assertRaises(ValueError):
+            self.client.get(reverse("testip-list"))
+
+    @override_settings(IP_RESTRICT_ONLY_DJANGO_ADMIN=True)
+    def test_can_access_list_in_viewset_with_ip_restricted_only_django_admin(self):
+        f.IpRestrictionFactory(ip_address="127.0.0.1")
+        role = f.RoleFactory()
+        user = f.UserFactory(role=role)
+        self.client.force_authenticate(user)
+        r = self.client.get(reverse("testip-list"))
+        h.responseOk(r)
+        
+    def test_role_can_access_list_in_viewset_with_ip_restricted(self):
+        role = f.RoleFactory()
+        user = f.UserFactory(role=role)
+        f.IpRestrictionFactory(ip_address="127.0.0.1", unrestricted_roles=[role])
+        self.client.force_authenticate(user)
+        r = self.client.get(reverse("testip-list"))
+        h.responseOk(r)        
+        
+    def test_can_access_list_in_viewset_without_ip_restricted(self):
+        role = f.RoleFactory()
+        user = f.UserFactory(role=role)
+        self.client.force_authenticate(user)
+        r = self.client.get(reverse("testip-list"))
+        h.responseOk(r)        
+    
+    @override_settings(IP_RESTRICT_ONLY_DJANGO_ADMIN=True)
+    def test_cannot_access_custom_action_in_viewset_with_ip_restricted_permission(self):
+        role = f.RoleFactory()
+        user = f.UserFactory(role=role)
+        f.IpRestrictionFactory(ip_address="127.0.0.1")
+        self.client.force_authenticate(user)
+        r = self.client.get(reverse("testip-custom-action"))
+        h.responseForbidden(r)        
+    
+    @override_settings(IP_RESTRICT_ONLY_DJANGO_ADMIN=True)
+    def test_can_access_custom_action_in_viewset_with_ip_restricted_permission(self):
+        role = f.RoleFactory()
+        user = f.UserFactory(role=role)
+        self.client.force_authenticate(user)
+        r = self.client.get(reverse("testip-custom-action"))
+        h.responseOk(r)        

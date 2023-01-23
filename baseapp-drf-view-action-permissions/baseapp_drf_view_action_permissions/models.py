@@ -46,3 +46,11 @@ class Role(models.Model):
         except Exception:
             return perms
         return perms
+
+
+class IpRestriction(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    modified_at = models.DateTimeField(auto_now=True)
+    ip_address = models.GenericIPAddressField(unique=True)
+    is_whitelisted = models.BooleanField(default=False, help_text="If checked, this IP will be whitelisted")
+    unrestricted_roles = models.ManyToManyField(Role, related_name="ips", blank=True, help_text="List of roles that will be unrestricted for this IP")

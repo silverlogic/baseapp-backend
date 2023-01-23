@@ -2,6 +2,7 @@ import factory
 
 from django.contrib.auth.models import Group
 from testproject.testapp.models import TestModel
+from drf_view_action_permissions.models import IpRestriction
 
 
 class UserFactory(factory.DjangoModelFactory):
@@ -58,3 +59,15 @@ class TestModelFactory(factory.DjangoModelFactory):
 
     class Meta:
         model = TestModel
+
+
+class IpRestrictionFactory(factory.DjangoModelFactory):
+    ip_address = factory.Faker("ipv4")
+
+    @factory.post_generation
+    def unrestricted_roles(self, create, extracted, **kwargs):
+        if create and extracted:
+            self.unrestricted_roles.add(*extracted)
+
+    class Meta:
+        model = IpRestriction

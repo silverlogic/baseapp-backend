@@ -1,5 +1,6 @@
 Django==3.2.16
 djangorestframework==3.12.4
+django-ipware==4.0.2
 
 # test
 pytest==6.2.5
