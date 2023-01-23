@@ -49,6 +49,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "drf_view_action_permissions.middleware.RestrictIpMiddleware",
 ]
 
 ROOT_URLCONF = "testproject.urls"

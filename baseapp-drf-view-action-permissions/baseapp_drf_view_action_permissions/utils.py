@@ -1,3 +1,8 @@
+from ipware import get_client_ip
+from .settings import PermissionSettings
+from .models import IpRestriction
+
+
 def get_permission_loader(permissions):
     def load_permissions_data(apps, schema_editor):
         Permission = apps.get_model("auth", "Permission")
@@ -32,3 +37,24 @@ def get_permission_remover(permissions, remove_group=False):
                 if remove_group:
                     group.delete()
     return remove_permissions_data
+
+
+def client_ip_address_is_restricted(request):
+    """
+    Check if the client IP address is restricted
+    """
+    permission_settings = PermissionSettings()
+    client_ip, _ = get_client_ip(request)
+    restricted = IpRestriction.objects.filter(ip_address=client_ip).prefetch_related('unrestricted_roles').first()
+    if permission_settings.ALLOW_ONLY_WHITELISTED_IP:
+        if (restricted and not restricted.is_whitelisted) or not restricted:
+            return True
+    else:
+        if restricted and not restricted.is_whitelisted:
+            try:
+                if (request.user and request.user.role not in restricted.unrestricted_roles.all()) or not request.user:
+                    return True
+            except Exception:
+                return True
+    return False
+    
