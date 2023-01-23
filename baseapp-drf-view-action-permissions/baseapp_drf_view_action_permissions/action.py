@@ -1,5 +1,6 @@
-from rest_framework.permissions import DjangoModelPermissions
 from rest_framework import permissions
+from rest_framework.permissions import DjangoModelPermissions
+
 from .utils import client_ip_address_is_restricted
 
 
@@ -48,10 +49,10 @@ class DjangoActionPermissions(DjangoModelPermissions):
             if self.perms_map_action.get(action):
                 return
             perm_str = "%(app_label)s.{}_%(app_label)s".format(action)
-            permission_base = getattr(view, 'permission_base', '')
+            permission_base = getattr(view, "permission_base", "")
             if permission_base:
                 perm_str = "%(app_label)s.{}_{}".format(action, permission_base)
-            
+
             self.perms_map_action[action] = [perm_str]
 
     # pylint: disable=protected-access
@@ -90,7 +91,9 @@ class DjangoActionPermissions(DjangoModelPermissions):
 
     def user_has_action_perm(self, user, view, perm, obj=None):
         """Check if user has single permission for particular view action."""
-        assert callable(perm) or isinstance(perm, str), "Permission must be function or string"
+        assert callable(perm) or isinstance(
+            perm, str
+        ), "Permission must be function or string"
 
         if callable(perm):
             return perm(user, view, obj)
@@ -110,7 +113,9 @@ class DjangoActionPermissions(DjangoModelPermissions):
         """Check action specific permissions ignoring custom method."""
         model_cls = self.get_model_cls(view)
         perms = self.get_required_action_permissions(view, model_cls, obj)
-        return all(self.user_has_action_perm(request.user, view, perm, obj) for perm in perms)
+        return all(
+            self.user_has_action_perm(request.user, view, perm, obj) for perm in perms
+        )
 
     def has_permission(self, request, view):
         """Apply action permission without object and with ignoring method."""
@@ -128,7 +133,9 @@ class DjangoActionPermissions(DjangoModelPermissions):
         if getattr(view, "include_model_default_method_permission", None):
             model_cls = self.get_model_cls(view)
             perms = self.get_required_permissions(request.method, model_cls)
-            result = all(self.user_has_action_perm(request.user, view, perm) for perm in perms)
+            result = all(
+                self.user_has_action_perm(request.user, view, perm) for perm in perms
+            )
             return result and self.has_action_permission(request, view)
 
         return self.has_action_permission(request, view)
@@ -139,7 +146,8 @@ class DjangoActionPermissions(DjangoModelPermissions):
 
 
 class IpAddressPermission(permissions.IsAuthenticated):
-    message = 'restricted by IP address'
+    message = "restricted by IP address"
+
     def has_permission(self, request, view):
         if super().has_permission(request, view):
             return not client_ip_address_is_restricted(request)
