@@ -1,8 +1,8 @@
 import factory
-
 from django.contrib.auth.models import Group
-from testproject.testapp.models import TestModel
+
 from drf_view_action_permissions.models import IpRestriction
+from testproject.testapp.models import TestModel
 
 
 class UserFactory(factory.DjangoModelFactory):
@@ -25,7 +25,7 @@ class GroupFactory(factory.DjangoModelFactory):
 
     class Meta:
         model = Group
-    
+
     @factory.post_generation
     def permissions(self, create, extracted, **kwargs):
         if create and extracted:
