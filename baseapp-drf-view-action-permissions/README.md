@@ -182,3 +182,41 @@ assert user.has_perms(['users.change_users', 'vendors.add_client'])
 ```
 
 Note that super user has all the permissions.
+
+# IP Address Restrictions
+
+To restrict Django admin and all endpoints by Ip address, Add below to the middlewares
+
+```py
+MIDDLEWARE = [
+    ...
+    "django.contrib.auth.middleware.AuthenticationMiddleware", # make sure it's after the authentication middle ware
+    ...
+    "drf_view_action_permissions.middleware.RestrictIpMiddleware",
+    ...
+]
+```
+
+To restrict only Django admin, set `IP_RESTRICT_ONLY_DJANGO_ADMIN=True`. If you want to only allow whitelisted IP also set `ALLOW_ONLY_WHITELISTED_IP=True`.
+
+If ALLOW_ONLY_WHITELISTED_IP is False it will allow any Ip that is not specified in Ip Restrictions.
+
+## Restrict Viewset by Ip
+
+You can also use `IpAddressPermission` to restrict specific or all view actions.
+
+```py
+from drf_view_action_permissions.action import IpAddressPermission
+
+
+class DummyIpViewSet(viewsets.GenericViewSet):
+    permission_classes =  [IpAddressPermission, ]
+
+    def list(self, *args, **kwargs):
+        return response.Response([])
+
+    @decorators.action(methods=["GET"], detail=False, permission_classes=[IpAddressPermission, ])
+    def custom_action(self, *args, **kwargs):
+        return response.Response({})
+
+```
