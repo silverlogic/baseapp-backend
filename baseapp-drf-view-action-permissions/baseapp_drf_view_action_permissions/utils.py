@@ -63,7 +63,7 @@ def client_ip_address_is_restricted(request):
             try:
                 if (
                     request.user
-                    and request.user.role not in restricted.unrestricted_roles.all()
+                    and not restricted.unrestricted_roles.filter(id=request.user.role_id).exists()
                 ) or not request.user:
                     return True
             except Exception:
