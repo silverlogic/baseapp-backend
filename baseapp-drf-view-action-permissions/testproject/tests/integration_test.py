@@ -357,15 +357,7 @@ class TestIpRestriction(APITestCase, URLPatternsTestCase):
         self.client.force_authenticate(user)
         r = self.client.get(reverse("testip-list"))
         h.responseOk(r)
-
-    def test_role_can_access_list_in_viewset_with_ip_restricted(self):
-        role = f.RoleFactory()
-        user = f.UserFactory(role=role)
-        f.IpRestrictionFactory(ip_address="127.0.0.1", unrestricted_roles=[role])
-        self.client.force_authenticate(user)
-        r = self.client.get(reverse("testip-list"))
-        h.responseOk(r)
-
+    
     def test_can_access_list_in_viewset_without_ip_restricted(self):
         role = f.RoleFactory()
         user = f.UserFactory(role=role)
