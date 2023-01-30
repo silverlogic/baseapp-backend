@@ -48,6 +48,7 @@ def client_ip_address_is_restricted(request):
     """
     Check if the client IP address is restricted
     """
+    print("user", request.user)
     permission_settings = PermissionSettings()
     client_ip, _ = get_client_ip(request)
     restricted = (
