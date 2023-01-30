@@ -201,6 +201,8 @@ To restrict only Django admin, set `IP_RESTRICT_ONLY_DJANGO_ADMIN=True`. If you 
 
 If ALLOW_ONLY_WHITELISTED_IP is False it will allow any Ip that is not specified in Ip Restrictions.
 
+Note: Restriction by role only works in Django admin when using the middleware since user object is not available in middleware when using drf views. Use `IpAddressPermission` on such views.
+
 ## Restrict Viewset by Ip
 
 You can also use `IpAddressPermission` to restrict specific or all view actions.
