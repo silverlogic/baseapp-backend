@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User as DjUser
 from django.db import models
+
 from drf_view_action_permissions.mixin import PermissionModelMixin
 
 

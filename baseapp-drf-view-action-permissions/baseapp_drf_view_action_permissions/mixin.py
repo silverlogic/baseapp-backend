@@ -20,22 +20,24 @@ class PermissionModelMixin(PermissionsMixin):
 
     class Meta:
         abstract = True
-    
+
     def has_perm(self, perm):
         return perm in self.permission_list
-    
+
     def has_perms(self, perms):
         return all(self.has_perm(perm) for perm in perms)
 
     @cached_property
     def permission_list(self):
         perms = super().get_all_permissions()
-        excluded_perms = list(Permission.objects.filter(
-            excluded_permission_users__email=self.email
-        ).values_list("codename", flat=True))
+        excluded_perms = list(
+            Permission.objects.filter(
+                excluded_permission_users__email=self.email
+            ).values_list("codename", flat=True)
+        )
 
         if self.role:
             role_perms = self.role.get_permission_list(excluded_perms)
             perms = {*perms, *role_perms}
-        
+
         return perms
