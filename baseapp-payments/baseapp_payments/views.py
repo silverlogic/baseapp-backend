@@ -29,7 +29,9 @@ from .utils import (
 Plan = swapper.load_model("baseapp_payments", "Plan")
 
 
-class StripePaymentsViewSet(viewsets.GenericViewSet,):
+class StripePaymentsViewSet(
+    viewsets.GenericViewSet,
+):
     def get_queryset(self):
         # TO DO: remove method
         # this is just to trick the DRF web interface
@@ -71,7 +73,8 @@ class StripePaymentsViewSet(viewsets.GenericViewSet,):
             customer.add_payment_method(payment_method_id)
 
             return Response(
-                {"payment_method_id": payment_method_id}, status=status.HTTP_201_CREATED,
+                {"payment_method_id": payment_method_id},
+                status=status.HTTP_201_CREATED,
             )
 
         except Exception as e:
@@ -103,7 +106,8 @@ class StripePaymentsViewSet(viewsets.GenericViewSet,):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(
-            {"msg": "Subscription was successfully canceled."}, status=status.HTTP_200_OK,
+            {"msg": "Subscription was successfully canceled."},
+            status=status.HTTP_200_OK,
         )
 
     @action(
@@ -133,7 +137,10 @@ class StripePaymentsViewSet(viewsets.GenericViewSet,):
         customer, created = Customer.get_or_create(
             request.user.get_subscriber_from_request(request)
         )
-        return Response(get_customer_payment_methods(customer.id), status=status.HTTP_200_OK,)
+        return Response(
+            get_customer_payment_methods(customer.id),
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=False, methods=["PUT"], permission_classes=[permissions.IsAuthenticated])
     def edit_payment_method(self, request):
@@ -142,7 +149,10 @@ class StripePaymentsViewSet(viewsets.GenericViewSet,):
         try:
             payment_method_id = serializer.validated_data["payment_method_id"]
             edit_payment_method(payment_method_id, serializer.validated_data)
-            return Response({"id": payment_method_id}, status=status.HTTP_201_CREATED,)
+            return Response(
+                {"id": payment_method_id},
+                status=status.HTTP_201_CREATED,
+            )
 
         except Exception as e:
             logging.exception(e)
@@ -150,7 +160,9 @@ class StripePaymentsViewSet(viewsets.GenericViewSet,):
             return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
     @action(
-        detail=False, methods=["DELETE"], permission_classes=[permissions.IsAuthenticated],
+        detail=False,
+        methods=["DELETE"],
+        permission_classes=[permissions.IsAuthenticated],
     )
     def delete_payment_method(self, request):
         serializer = CapturePaymentEditSerializer(data=request.data, context={"request": request})
@@ -161,7 +173,10 @@ class StripePaymentsViewSet(viewsets.GenericViewSet,):
             )
             payment_method_id = serializer.validated_data["payment_method_id"]
             delete_payment_method(payment_method_id, customer.id)
-            return Response({"id": payment_method_id}, status=status.HTTP_200_OK,)
+            return Response(
+                {"id": payment_method_id},
+                status=status.HTTP_200_OK,
+            )
 
         except Exception as e:
             logging.exception(e)
@@ -178,7 +193,10 @@ class StripePaymentsViewSet(viewsets.GenericViewSet,):
             )
             payment_method_id = serializer.validated_data["payment_method_id"]
             make_another_default_payment_method(customer.id, payment_method_id)
-            return Response({"id": payment_method_id}, status=status.HTTP_200_OK,)
+            return Response(
+                {"id": payment_method_id},
+                status=status.HTTP_200_OK,
+            )
 
         except Exception as e:
             logging.exception(e)
@@ -194,7 +212,10 @@ class StripePaymentsViewSet(viewsets.GenericViewSet,):
 
         try:
             response = create_payment_intent(product, request, data)
-            return Response({"id": response.id}, status=status.HTTP_200_OK,)
+            return Response(
+                {"id": response.id},
+                status=status.HTTP_200_OK,
+            )
 
         except Exception as e:
             logging.exception(e)

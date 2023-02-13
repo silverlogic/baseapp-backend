@@ -14,7 +14,11 @@ def send_subscription_trial_start_email(email):
     message = render_to_string("users/emails/trial-starts-body.txt.j2", context=context)
     html_message = render_to_string("users/emails/trial-starts-body.html.j2", context=context)
     send_mail(
-        subject, message, html_message=html_message, from_email=None, recipient_list=[email],
+        subject,
+        message,
+        html_message=html_message,
+        from_email=None,
+        recipient_list=[email],
     )
 
 
@@ -24,5 +28,9 @@ def send_subscription_trial_will_end_email(email, plan):
     message = render_to_string("users/emails/trial-ends-body.txt.j2", context=context)
     html_message = render_to_string("users/emails/trial-ends-body.html.j2", context=context)
     send_mail(
-        subject, message, html_message=html_message, from_email=None, recipient_list=[email],
+        subject,
+        message,
+        html_message=html_message,
+        from_email=None,
+        recipient_list=[email],
     )

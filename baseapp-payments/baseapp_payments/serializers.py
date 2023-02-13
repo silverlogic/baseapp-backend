@@ -62,7 +62,11 @@ class SubscribeCustomerSerializer(serializers.Serializer):
             Subscription.objects.all().filter(customer=self.customer, status="canceled").exists()
         )
 
-        if not customer_has_used_trial and config.BASEAPP_PAYMENTS_TRIAL_DAYS and "premium" in self.plan.slug:
+        if (
+            not customer_has_used_trial
+            and config.BASEAPP_PAYMENTS_TRIAL_DAYS
+            and "premium" in self.plan.slug
+        ):
             subscription = self.customer.subscribe(
                 plan=self.plan.price,
                 trial_period_days=config.BASEAPP_PAYMENTS_TRIAL_DAYS,
@@ -111,7 +115,9 @@ class CancelSubscriptionSerializer(serializers.Serializer):
     def save(self):
         subscription = self.subscription.cancel(at_period_end=True)
         self.subscriber.subscription_cancel_request(
-            customer=self.customer, subscription=subscription, request=self.context["request"],
+            customer=self.customer,
+            subscription=subscription,
+            request=self.context["request"],
         )
 
 

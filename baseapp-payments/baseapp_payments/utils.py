@@ -1,7 +1,7 @@
 from django.conf import settings
 
 import stripe
-from djstripe.models import Customer, PaymentIntent, PaymentMethod, Source
+from djstripe.models import Customer, PaymentIntent, PaymentMethod
 
 if settings.STRIPE_LIVE_MODE:
     stripe.api_key = settings.STRIPE_LIVE_SECRET_KEY
@@ -10,7 +10,10 @@ else:
 
 
 def get_customer_payment_methods(customer_id, payment_type="card"):
-    return stripe.PaymentMethod.list(customer=customer_id, type=payment_type,)
+    return stripe.PaymentMethod.list(
+        customer=customer_id,
+        type=payment_type,
+    )
 
 
 def edit_payment_method(payment_method_id, data):
@@ -27,13 +30,17 @@ def edit_payment_method(payment_method_id, data):
             },
             "name": data["name"],
         },
-        card={"exp_month": data["exp_month"], "exp_year": data["exp_year"],},
+        card={
+            "exp_month": data["exp_month"],
+            "exp_year": data["exp_year"],
+        },
     )
 
 
 def make_another_default_payment_method(customer_id, payment_method_id):
     data = stripe.Customer.modify(
-        customer_id, invoice_settings={"default_payment_method": payment_method_id},
+        customer_id,
+        invoice_settings={"default_payment_method": payment_method_id},
     )
     # example of sync to DJ-stripe
     Customer.sync_from_stripe_data(data)
@@ -44,14 +51,24 @@ def update_subscription(subscription, price, is_upgrade):
     if is_upgrade:
         data = stripe.Subscription.modify(
             subscription.id,
-            items=[{"id": subscription.items.all()[0].id, "price": price.id,}],
+            items=[
+                {
+                    "id": subscription.items.all()[0].id,
+                    "price": price.id,
+                }
+            ],
             billing_cycle_anchor="now",
             proration_behavior="create_prorations",
         )
     else:
         data = stripe.Subscription.modify(
             subscription.id,
-            items=[{"id": subscription.items.all()[0].id, "price": price.id,}],
+            items=[
+                {
+                    "id": subscription.items.all()[0].id,
+                    "price": price.id,
+                }
+            ],
             proration_behavior="none",
         )
 
@@ -61,7 +78,7 @@ def update_subscription(subscription, price, is_upgrade):
 
 
 def delete_payment_method(payment_method_id, customer_id):
-    payment_method = stripe.PaymentMethod.retrieve(payment_method_id)
+    # payment_method = stripe.PaymentMethod.retrieve(payment_method_id)
     data = stripe.PaymentMethod.detach(payment_method_id)
     PaymentMethod.sync_from_stripe_data(data)
     return data
