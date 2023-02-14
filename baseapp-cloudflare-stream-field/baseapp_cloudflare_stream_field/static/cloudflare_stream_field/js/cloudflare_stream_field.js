@@ -16,7 +16,7 @@ addEventListener("load", function() {
 
           // Create a new tus upload
           var upload = new tus.Upload(file, {
-              endpoint: "/stream-upload-url/",
+              endpoint: "/cloudflare-stream-upload/",
               retryDelays: [0, 3000, 5000, 10000, 20000],
               chunkSize: 50 * 1024 * 1024,  // 5MB
               metadata: {

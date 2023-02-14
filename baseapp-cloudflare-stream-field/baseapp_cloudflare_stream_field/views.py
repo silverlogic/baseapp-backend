@@ -21,7 +21,9 @@ def direct_creator_uploads(request):
     }
     response = requests.post(url, headers=headers)
     if response.status_code == 201:
-        return HttpResponseRedirect(response.headers["Location"], status=201)
+        return HttpResponseRedirect(
+            response.headers["Location"], status=201, headers={"Access-Control-Allow-Origin": "*"}
+        )
     else:
         logging.info(response.text)
-    return HttpResponse(status=400)
+    return HttpResponse(status=400, headers={"Access-Control-Allow-Origin": "*"})

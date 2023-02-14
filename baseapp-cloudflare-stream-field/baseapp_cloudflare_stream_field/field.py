@@ -1,129 +1,57 @@
 import json
 
-from django.db.models import JSONField
-from django.db.models.fields.json import KeyTransform
+from django.db.models import JSONField, signals
 from django.db.models.query_utils import DeferredAttribute
 
 from cloudflare_stream_field.stream import StreamClient
+from cloudflare_stream_field.tasks import refresh_from_cloudflare
 from cloudflare_stream_field.widgets import CloudflareStreamAdminWidget
 
-
-class CloudflareStream(dict):
-    def __init__(self, value, instance=None, field=None, **kwargs):
-        self.instance = instance
-        self.field = field
-        if value:
-            kwargs.update(value)
-        super().__init__(**kwargs)
-
-    def create(self, **kwargs):
-        stream_client = StreamClient()
-        result = stream_client.create_live_input(**kwargs)
-        self.update(result)
-        return self
-
-    def __getattr__(self, name):
-        try:
-            return self[name]
-        except (KeyError, TypeError):
-            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+stream_client = StreamClient()
 
 
 class CloudflareStreamDeferredAttribute(DeferredAttribute):
-    def __get__(self, instance, cls=None):
-        if instance is None:
-            return self
-
-        value = super().__get__(instance, cls)
-
-        # If this value is a string (instance.file = "path/to/file") or None
-        # then we simply wrap it with the appropriate attribute class according
-        # to the file field. [This is FieldFile for FileFields and
-        # ImageFieldFile for ImageFields; it's also conceivable that user
-        # subclasses might also want to subclass the attribute class]. This
-        # object understands how to convert a path to a file, and also how to
-        # handle None.
-        if isinstance(value, str) or value is None:
-            try:
-                data = json.loads(value)
-            except (json.decoder.JSONDecodeError, TypeError):
-                data = None
-            attr = self.field.attr_class(data, instance=instance, field=self.field)
-            instance.__dict__[self.field.attname] = attr
-        elif isinstance(value, dict):
-            attr = self.field.attr_class(value, instance=instance, field=self.field)
-            instance.__dict__[self.field.attname] = attr
-
-        elif isinstance(value, self.field.attr_class):
-            instance.__dict__[self.field.attname] = value
-
-        # Other types of files may be assigned as well, but they need to have
-        # the FieldFile interface added to them. Thus, we wrap any other type of
-        # File inside a FieldFile (well, the field's attr_class, which is
-        # usually FieldFile).
-        #  elif isinstance(file, File) and not isinstance(file, FieldFile):
-        #      file_copy = self.field.attr_class(instance, self.field, file.name, None)
-        #      file_copy.file = file
-        #      file_copy._committed = False
-        #      instance.__dict__[self.field.attname] = file_copy
-
-        # Finally, because of the (some would say boneheaded) way pickle works,
-        # the underlying FieldFile might not actually itself have an associated
-        # file. So we need to reset the details of the FieldFile in those cases.
-        #  elif isinstance(file, FieldFile) and not hasattr(file, "field"):
-        #      file.instance = instance
-        #      file.field = self.field
-        #      file.storage = self.field.storage
-
-        # Make sure that the instance is correct.
-        #  elif isinstance(file, FieldFile) and instance is not file.instance:
-        #      file.instance = instance
-
-        # That was fun, wasn't it?
-        return instance.__dict__[self.field.attname]
-
     def __set__(self, instance, value):
+        # Check if its an video ID, seems like its a 32char hexdecimal value.
+        # But was afraid of them changing this structure in the future, trying to make it more future proof:
+        if value and isinstance(value, str) and len(value) >= 16 and len(value) <= 64:
+            value = stream_client.get_video_data(value)
         instance.__dict__[self.field.attname] = value
 
 
 class CloudflareStreamField(JSONField):
-    attr_class = CloudflareStream
     descriptor_class = CloudflareStreamDeferredAttribute
 
-    def from_db_value(self, value, expression, connection):
-        if value is None:
-            return value
-        # Some backends (SQLite at least) extract non-string values in their
-        # SQL datatypes.
-        if isinstance(expression, KeyTransform) and not isinstance(value, str):
-            return value
-        try:
-            return json.loads(value, cls=self.decoder)
-        except json.JSONDecodeError:
-            return value
+    def contribute_to_class(self, cls, name, **kwargs):
+        super().contribute_to_class(cls, name, **kwargs)
+        if not cls._meta.abstract:
+            signals.pre_delete.connect(self.delete_from_cloudflare, sender=cls)
+            signals.post_save.connect(self.refresh_from_cloudflare, sender=cls)
 
-    def get_prep_value(self, value):
-        if value is None or isinstance(value, str):
-            return value
-        if not isinstance(value, str):
-            value = json.dumps(value, cls=self.encoder)
-        return super().get_prep_value(value)
+    def delete_from_cloudflare(self, sender, instance, **kwargs):
+        cloudflare_video = getattr(instance, self.attname)
+        if cloudflare_video and "uid" in cloudflare_video:
+            if isinstance(cloudflare_video, str):
+                cloudflare_video = json.loads(cloudflare_video)
+            uid = cloudflare_video["uid"]
+            stream_client.delete_video_data(uid)
 
-    #  def save_form_data(self, instance, data):
-    #      # Important: None means "no change", other false value means "clear"
-    #      # This subtle distinction (rather than a more explicit marker) is
-    #      # needed because we need to consume values that are also sane for a
-    #      # regular (non Model-) Form to find in its cleaned_data dictionary.
-    #      if data is not None:
-    #          # This value will be converted to str and stored in the
-    #          # database, so leaving False as-is is not acceptable.
-    #          setattr(instance, self.name, data or "")
+    def refresh_from_cloudflare(self, sender, instance, **kwargs):
+        from django.contrib.contenttypes.models import ContentType
+
+        content_type = ContentType.objects.get_for_model(sender)
+        refresh_from_cloudflare.apply_async(
+            kwargs={
+                "content_type_pk": content_type.pk,
+                "object_pk": instance.pk,
+                "attname": self.attname,
+            },
+            countdown=60,
+        )
 
     def formfield(self, *args, **kwargs):
-        #  if self.async_upload:
         kwargs.update(
             {
-                #  "form_class": FormCloudflareStreamFileField,
                 "max_length": self.max_length,
                 "widget": CloudflareStreamAdminWidget,
             }
