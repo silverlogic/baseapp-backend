@@ -1,0 +1,3 @@
+include README.md
+recursive-include cloudflare_stream_field/templates *
+recursive-include cloudflare_stream_field/static *
