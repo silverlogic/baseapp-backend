@@ -8,9 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 import requests
 
 
-@login_required
-@csrf_exempt
-def direct_creator_uploads(request):
+def direct_creator_upload(request):
     url = f"https://api.cloudflare.com/client/v4/accounts/{settings.CLOUDFLARE_ACCOUNT_ID}/stream?direct_user=true"
     headers = {
         "Authorization": f"Bearer {settings.CLOUDFLARE_API_TOKEN}",
@@ -22,8 +20,19 @@ def direct_creator_uploads(request):
     response = requests.post(url, headers=headers)
     if response.status_code == 201:
         return HttpResponseRedirect(
-            response.headers["Location"], status=201, headers={"Access-Control-Allow-Origin": "*"}
+            response.headers["Location"],
+            status=201,
+            headers={
+                "Access-Control-Expose-Headers": "Location, Stream-Media-ID",
+                "Stream-Media-ID": response.headers["stream-media-id"],
+            },
         )
     else:
         logging.info(response.text)
-    return HttpResponse(status=400, headers={"Access-Control-Allow-Origin": "*"})
+    return HttpResponse(status=400)
+
+
+@login_required
+@csrf_exempt
+def cloudflare_stream_upload(request):
+    return direct_creator_upload(request)

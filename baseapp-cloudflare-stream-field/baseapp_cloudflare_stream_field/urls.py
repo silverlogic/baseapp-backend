@@ -1,5 +1,5 @@
 from django.urls import path
 
-from cloudflare_stream_field.views import direct_creator_uploads
+from cloudflare_stream_field.views import cloudflare_stream_upload
 
-urlpatterns = [path("", direct_creator_uploads)]
+urlpatterns = [path("", cloudflare_stream_upload)]

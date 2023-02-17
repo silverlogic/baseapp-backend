@@ -46,7 +46,7 @@ class CloudflareStreamField(JSONField):
                 "object_pk": instance.pk,
                 "attname": self.attname,
             },
-            countdown=60,
+            countdown=5,
         )
 
     def formfield(self, *args, **kwargs):

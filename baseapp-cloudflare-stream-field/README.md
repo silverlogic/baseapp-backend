@@ -25,6 +25,17 @@ Include the URLs in your main `urls.py` file:
 re_path(r"^cloudflare-stream-upload/", include("cloudflare_stream_field.urls")),
 ```
 
+And if you use Django REST Framework, add the following to your router:
+
+```python
+# Cloudflare Stream Upload
+from cloudflare_stream_field.rest_framework import CloudflareStreamUploadViewSet
+
+router.register(
+    r"cloudflare-stream-upload", CloudflareStreamUploadViewSet, basename="cloudflare-stream-upload"
+)
+```
+
 ### Allow CORS Headers
 
 You need to add `tus-resumable, upload-length, upload-metadata, upload-creator` to your CORS header. Add the following to `settings/base.py`:
