@@ -6,6 +6,7 @@ from rest_framework import filters, mixins, permissions, response, serializers, 
 from apps.api.v1.decorators import action
 from apps.users.models import User
 
+from .parsers import SafeJSONParser
 from .serializers import ChangePasswordSerializer, ConfirmEmailSerializer, UserSerializer
 
 
@@ -43,6 +44,7 @@ class UsersViewSet(
         methods=["POST"],
         permission_classes=[permissions.IsAuthenticated],
         serializer_class=ChangePasswordSerializer,
+        parser_classes=[SafeJSONParser],
     )
     def change_password(self, request):
         serializer = ChangePasswordSerializer(data=request.data, context={"request": request})

@@ -233,6 +233,21 @@ class TestUsersChangePassword(ApiMixin):
             "This password must contain at least 1 special characters."
         ]
 
+    def test_fails_nicely_on_invalid_json(self, user_client):
+        invalid_json_str = """{
+    "current_password": "1234",
+    "new_password": "1234
+}
+"""
+        r = user_client.generic(
+            "POST", self.reverse(), data=invalid_json_str, content_type="application/json"
+        )
+        h.responseBadRequest(r)
+        # The request should fail to parse the invalid json and pass an empty dict
+        # to the endpoint request object. So we should see serializer field errors here
+        assert r.data["current_password"] == ["This field is required."]
+        assert r.data["new_password"] == ["This field is required."]
+
 
 class TestConfirmEmail(ApiMixin):
     view_name = "users-confirm-email"
