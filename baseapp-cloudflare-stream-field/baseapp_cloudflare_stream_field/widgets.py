@@ -13,7 +13,7 @@ class CloudflareStreamBaseWidget(FileInput):
 
     def format_value(self, value):
         self.full_value = {}
-        if isinstance(value, str):
+        if value and isinstance(value, str):
             value = json.loads(value)
         if value and isinstance(value, dict):
             self.full_value = value
@@ -41,7 +41,7 @@ class CloudflareStreamBaseWidget(FileInput):
             if video_uid:
                 stream_client = StreamClient()
                 return stream_client.get_video_data(video_uid)
-        return file_value
+        return file_value or ""
 
 
 class CloudflareStreamAdminWidget(CloudflareStreamBaseWidget):

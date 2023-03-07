@@ -11,7 +11,7 @@ def refresh_from_cloudflare(content_type_pk, object_pk, attname, retries=1):
     content_type = ContentType.objects.get(pk=content_type_pk)
     obj = content_type.get_object_for_this_type(pk=object_pk)
     cloudflare_video = getattr(obj, attname)
-    if cloudflare_video["status"]["state"] != "ready":
+    if "uid" in cloudflare_video and cloudflare_video["status"]["state"] != "ready":
         new_value = stream_client.get_video_data(cloudflare_video["uid"])
         if new_value["status"]["state"] == "ready":
             setattr(obj, attname, new_value)

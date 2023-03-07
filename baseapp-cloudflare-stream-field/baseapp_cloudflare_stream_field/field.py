@@ -37,17 +37,19 @@ class CloudflareStreamField(JSONField):
             stream_client.delete_video_data(uid)
 
     def refresh_from_cloudflare(self, sender, instance, **kwargs):
-        from django.contrib.contenttypes.models import ContentType
+        cloudflare_video = getattr(instance, self.attname)
+        if cloudflare_video and "uid" in cloudflare_video:
+            from django.contrib.contenttypes.models import ContentType
 
-        content_type = ContentType.objects.get_for_model(sender)
-        refresh_from_cloudflare.apply_async(
-            kwargs={
-                "content_type_pk": content_type.pk,
-                "object_pk": instance.pk,
-                "attname": self.attname,
-            },
-            countdown=5,
-        )
+            content_type = ContentType.objects.get_for_model(sender)
+            refresh_from_cloudflare.apply_async(
+                kwargs={
+                    "content_type_pk": content_type.pk,
+                    "object_pk": instance.pk,
+                    "attname": self.attname,
+                },
+                countdown=5,
+            )
 
     def formfield(self, *args, **kwargs):
         kwargs.update(
