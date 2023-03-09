@@ -42,4 +42,4 @@ class StreamClient:
             f"{self._api_url}/{video_uid}",
             headers={**self._request_headers, "Content-Type": "application/json"},
         )
-        return res.json()
+        return res
