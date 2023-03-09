@@ -43,3 +43,12 @@ class StreamClient:
             headers={**self._request_headers, "Content-Type": "application/json"},
         )
         return res
+
+    def list_videos(self, params=None):
+        # params to paginate ?before=last-video-created
+        res = requests.get(
+            f"{self._api_url}",
+            params=params,
+            headers={**self._request_headers, "Content-Type": "application/json"},
+        )
+        return res.json()
