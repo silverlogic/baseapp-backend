@@ -13,3 +13,4 @@ __pycache__/
 # generated UMLs
 uml-*.*
 .env
+.bash_history
