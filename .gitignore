@@ -8,8 +8,9 @@ __pycache__/
 # workspace files are user-specific
 *.sublime-workspace
 **/*.code-workspace
-**/.vscode
 .idea/
 
 # generated UMLs
 uml-*.*
+.env
+.bash_history
