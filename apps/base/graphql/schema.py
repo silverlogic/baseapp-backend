@@ -5,6 +5,7 @@ from apps.cities.graphql.queries import CitiesQuery
 from apps.comments.graphql.mutations import CommentsMutations
 from apps.comments.graphql.queries import CommentsQuery
 from apps.organizations.graphql.queries import ClassroomQuery
+from apps.reactions.graphql.mutations import ReactionsMutations
 from apps.users.graphql.queries import UsersQuery
 
 
@@ -12,7 +13,7 @@ class Query(graphene.ObjectType, ClassroomQuery, CommentsQuery, UsersQuery, Citi
     node = relay.node.NodeField(relay.Node)
 
 
-class Mutation(graphene.ObjectType, CommentsMutations):
+class Mutation(graphene.ObjectType, CommentsMutations, ReactionsMutations):
     pass
 
 
