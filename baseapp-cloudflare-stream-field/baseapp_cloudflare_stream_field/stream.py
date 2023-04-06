@@ -11,20 +11,23 @@ class StreamClient:
         )
 
     @property
-    def _request_headers(self):
-        return {"Authorization": f"Bearer {settings.CLOUDFLARE_API_TOKEN}"}
+    def request_headers(self):
+        return {
+            "Authorization": f"Bearer {settings.CLOUDFLARE_API_TOKEN}",
+            "Content-Type": "application/json",
+        }
 
     def get_video_data(self, video_uid):
         res = requests.get(
             f"{self._api_url}/{video_uid}",
-            headers={**self._request_headers, "Content-Type": "application/json"},
+            headers=self.request_headers,
         )
         return res.json()["result"]
 
     def upload_via_link(self, link, meta={}):
         res = requests.post(
             f"{self._api_url}/copy",
-            headers={**self._request_headers, "Content-Type": "application/json"},
+            headers=self.request_headers,
             json={"url": link, "meta": meta},
         )
         return res.json()["result"]
@@ -32,7 +35,7 @@ class StreamClient:
     def update_video_data(self, video_uid, meta={}):
         res = requests.post(
             f"{self._api_url}/{video_uid}",
-            headers={**self._request_headers, "Content-Type": "application/json"},
+            headers=self.request_headers,
             json={"meta": meta},
         )
         return res.json()["result"]
@@ -40,7 +43,7 @@ class StreamClient:
     def delete_video_data(self, video_uid):
         res = requests.delete(
             f"{self._api_url}/{video_uid}",
-            headers={**self._request_headers, "Content-Type": "application/json"},
+            headers=self.request_headers,
         )
         return res
 
@@ -49,6 +52,13 @@ class StreamClient:
         res = requests.get(
             f"{self._api_url}",
             params=params,
-            headers={**self._request_headers, "Content-Type": "application/json"},
+            headers=self.request_headers,
+        )
+        return res.json()
+
+    def download_video(self, video_uid):
+        res = requests.post(
+            f"{self._api_url}/{video_uid}/downloads",
+            headers=self.request_headers,
         )
         return res.json()

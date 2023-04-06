@@ -4,7 +4,7 @@ from django.db.models import JSONField, signals
 from django.db.models.query_utils import DeferredAttribute
 
 from cloudflare_stream_field.stream import StreamClient
-from cloudflare_stream_field.tasks import refresh_from_cloudflare
+from cloudflare_stream_field.tasks import generate_download_url, refresh_from_cloudflare
 from cloudflare_stream_field.widgets import CloudflareStreamAdminWidget
 
 stream_client = StreamClient()
@@ -22,13 +22,21 @@ class CloudflareStreamDeferredAttribute(DeferredAttribute):
 class CloudflareStreamField(JSONField):
     descriptor_class = CloudflareStreamDeferredAttribute
 
+    def __init__(
+        self,
+        downloadable=False,
+        **kwargs,
+    ):
+        self.downloadable = downloadable
+        super().__init__(**kwargs)
+
     def contribute_to_class(self, cls, name, **kwargs):
         super().contribute_to_class(cls, name, **kwargs)
         if not cls._meta.abstract:
-            signals.pre_delete.connect(self.delete_from_cloudflare, sender=cls)
-            signals.post_save.connect(self.refresh_from_cloudflare, sender=cls)
+            signals.pre_delete.connect(self.pre_delete, sender=cls)
+            signals.post_save.connect(self.post_save, sender=cls)
 
-    def delete_from_cloudflare(self, sender, instance, **kwargs):
+    def pre_delete(self, sender, instance, **kwargs):
         cloudflare_video = getattr(instance, self.attname)
         if cloudflare_video and "uid" in cloudflare_video:
             if isinstance(cloudflare_video, str):
@@ -36,20 +44,31 @@ class CloudflareStreamField(JSONField):
             uid = cloudflare_video["uid"]
             stream_client.delete_video_data(uid)
 
-    def refresh_from_cloudflare(self, sender, instance, **kwargs):
+    def post_save(self, sender, instance, **kwargs):
         cloudflare_video = getattr(instance, self.attname)
         if cloudflare_video and "uid" in cloudflare_video:
             from django.contrib.contenttypes.models import ContentType
 
             content_type = ContentType.objects.get_for_model(sender)
-            refresh_from_cloudflare.apply_async(
-                kwargs={
-                    "content_type_pk": content_type.pk,
-                    "object_pk": instance.pk,
-                    "attname": self.attname,
-                },
-                countdown=5,
-            )
+
+            if cloudflare_video["status"]["state"] != "ready":
+                refresh_from_cloudflare.apply_async(
+                    kwargs={
+                        "content_type_pk": content_type.pk,
+                        "object_pk": instance.pk,
+                        "attname": self.attname,
+                    },
+                    countdown=5,
+                )
+
+            if self.downloadable and "download_url" not in cloudflare_video["meta"]:
+                generate_download_url.apply_async(
+                    kwargs={
+                        "content_type_pk": content_type.pk,
+                        "object_pk": instance.pk,
+                        "attname": self.attname,
+                    }
+                )
 
     def formfield(self, *args, **kwargs):
         kwargs.update(
