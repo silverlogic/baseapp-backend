@@ -18,9 +18,13 @@ CLOUDFLARE_ACCOUNT_ID = env("CLOUDFLARE_ACCOUNT_ID")
 CLOUDFLARE_API_TOKEN = env("CLOUDFLARE_API_TOKEN")
 CLOUDFLARE_AUTH_EMAIL = env("CLOUDFLARE_AUTH_EMAIL")
 
-# Make sure to add the task routing for refresh_from_cloudflare
+# Make sure to add the task routing for refresh_from_cloudflare and generate_download_url
 CELERY_TASK_ROUTES = {
     "cloudflare_stream_field.tasks.refresh_from_cloudflare": {
+        "exchange": "default",
+        "routing_key": "default",
+    },
+    "cloudflare_stream_field.tasks.generate_download_url": {
         "exchange": "default",
         "routing_key": "default",
     },
