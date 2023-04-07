@@ -74,10 +74,10 @@ Import and use the field in your models file:
 from cloudflare_stream_field import CloudflareStreamField
 
 class Post(models.Model):
-    video = CloudflareStreamField(null=True, blank=True)
+    video = CloudflareStreamField(null=True, blank=True, downloadable=False)
 ```
 
-
+If you set `downloadable` to `True` it will automatically trigger a task to generate and save the download url at `obj.video['meta']['download_url']`.
 
 `CloudflareStreamField` inherits from `JSONField` so you can use any look it provides, like filter only for videos fully processed by Cloudflare:
 
