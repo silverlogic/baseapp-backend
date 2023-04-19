@@ -18,3 +18,11 @@ def LoginRequiredError():
         code="login_required",
         message=_("You should be logged in to perform this action"),
     )
+
+
+def InappropriateLanguageError():
+    return Error(
+        code="inappropriate_language",
+        location="content",
+        message=_("Please be advised that the use of inappropriate language is not permitted."),
+    )
