@@ -78,3 +78,8 @@ class CloudflareStreamField(JSONField):
             }
         )
         return super().formfield(*args, **kwargs)
+
+    def bound_data(self, data, initial):
+        if data and isinstance(data, dict):
+            return data
+        return super().bound_data(data, initial)
