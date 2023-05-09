@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from json_log_formatter import JSONFormatter
 
-from apps.base.middleware import threading_local
+from .middleware import threading_local
 
 
 class BaseJSONFormatter(JSONFormatter):
