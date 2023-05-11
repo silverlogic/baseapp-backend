@@ -6,9 +6,7 @@ import requests
 class StreamClient:
     @property
     def _api_url(self):
-        return (
-            f"https://api.cloudflare.com/client/v4/accounts/{settings.CLOUDFLARE_ACCOUNT_ID}/stream"
-        )
+        return f"https://api.cloudflare.com/client/v4/accounts/{settings.CLOUDFLARE_ACCOUNT_ID}/stream"
 
     @property
     def request_headers(self):

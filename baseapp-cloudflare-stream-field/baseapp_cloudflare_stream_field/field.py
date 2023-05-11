@@ -2,12 +2,20 @@ import json
 
 from django.db.models import JSONField, signals
 from django.db.models.query_utils import DeferredAttribute
+from django import forms
 
 from cloudflare_stream_field.stream import StreamClient
 from cloudflare_stream_field.tasks import generate_download_url, refresh_from_cloudflare
 from cloudflare_stream_field.widgets import CloudflareStreamAdminWidget
 
 stream_client = StreamClient()
+
+
+class CloudflareFormJSONField(forms.JSONField):
+    def bound_data(self, data, initial):
+        if data and isinstance(data, dict):
+            return data
+        return super().bound_data(data, initial)
 
 
 class CloudflareStreamDeferredAttribute(DeferredAttribute):
@@ -73,6 +81,7 @@ class CloudflareStreamField(JSONField):
     def formfield(self, *args, **kwargs):
         kwargs.update(
             {
+                "form_class": CloudflareFormJSONField,
                 "max_length": self.max_length,
                 "widget": CloudflareStreamAdminWidget,
             }

@@ -6,9 +6,19 @@
         <a href="{{ widget.dashboard }}" target="_blank">Details</a>
         <span> . </span>
         <a href="{{ widget.analytics }}" target="_blank">Analytics</a>
+        {% if not widget.required %}
+        <span> . </span>
+        <span class="file-upload clearable-file-input">
+            <input type="checkbox" name="{{ widget.checkbox_name }}" id="{{ widget.checkbox_id }}"{% if widget.attrs.disabled %} disabled{% endif %}>
+            <label for="{{ widget.checkbox_id }}">{{ widget.clear_checkbox_label }}</label>
+        </span>
+        {% endif %}
     </p>
-    <p class="file-upload"><iframe src="{{ widget.iframe }}" style="border: none; height: 100%; min-height: 300px; max-height: 480px; width: 100%; max-width: 600px;" allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" allowfullscreen="true"></iframe></p>
+    <p class="file-upload">
+        <iframe src="{{ widget.iframe }}" style="border: none; height: 100%; min-height: 300px; max-height: 480px; width: 100%; max-width: 600px;" allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" allowfullscreen="true"></iframe>
+    </p>
     {% endif %}
+
     <p class="file-upload">
         <span id="{{ widget.attrs.id }}_uploaded_status"></span>
         <input type="file" id="{{ widget.attrs.id }}_input_file" class="cloudflare_stream_field-input-file">

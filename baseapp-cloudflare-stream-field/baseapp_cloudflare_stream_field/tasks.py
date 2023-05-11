@@ -48,10 +48,15 @@ def generate_download_url(content_type_pk, object_pk, attname, retries=1):
         )
         return None
 
-    if cloudflare_video["status"]["state"] == "ready" and "download_url" not in cloudflare_video["meta"]:
+    if (
+        cloudflare_video["status"]["state"] == "ready"
+        and "download_url" not in cloudflare_video["meta"]
+    ):
         response = stream_client.download_video(cloudflare_video["uid"])
         download_url = response["result"]["default"]["url"]
         cloudflare_video["meta"]["download_url"] = download_url
-        stream_client.update_video_data(cloudflare_video["uid"], cloudflare_video["meta"])
+        stream_client.update_video_data(
+            cloudflare_video["uid"], cloudflare_video["meta"]
+        )
         setattr(obj, attname, cloudflare_video)
         obj.save(update_fields=[attname])

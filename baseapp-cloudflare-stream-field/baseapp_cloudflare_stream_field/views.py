@@ -15,7 +15,9 @@ def direct_creator_upload(request):
         "Tus-Resumable": request.META.get("HTTP_TUS_RESUMABLE", "1.0.0"),
         "Upload-Length": request.META.get("HTTP_UPLOAD_LENGTH"),
         "Upload-Metadata": request.META.get("HTTP_UPLOAD_METADATA"),
-        "Upload-Creator": str(request.user.pk) if request.user.is_authenticated else None,
+        "Upload-Creator": str(request.user.pk)
+        if request.user.is_authenticated
+        else None,
     }
     response = requests.post(url, headers=headers)
     if response.status_code == 201:
