@@ -4,105 +4,87 @@
         <meta name="viewport" content="width=device-width" />
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
         <style type="text/css">
-            a {
-                text-decoration: none;
-                margin-right: 16px;
+            img {
+                max-width: 100%;
             }
-            td {
-                text-align: center;
+            body {
+                -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: none; width: 100% !important; height: 100%; line-height: 1.6em;
             }
-            .container {
-                background-color: #F5F9FC;
-                border-radius: 16px;
-                padding: 48px 48px 0 48px;
+            body {
+                background-color: #f6f6f6;
             }
-            .title {
-                color: #1C1B22;
-                font-weight: 800;
-                font-size: 30px;
-            }
-            .white-container {
-                background-color: white;
-                margin-top: 32px;
-                padding: 32px;
-                border: 1px solid #CDD9E0;
-                border-radius: 12px;
-            }
-            .button-primary {
-                display: block;
-                width: 93%;
-                color: #27923C;
-                line-height: 130%;
-                font-weight: bold;
-                cursor: pointer;
-                border-radius: 12px;
-                background: #EFF9F3;
-                border: 1px solid #3FBF77;
-                padding: 16px;
+            @media only screen and (max-width: 640px) {
+                body {
+                    padding: 0 !important;
+                }
+                h1 {
+                    font-weight: 800 !important; margin: 20px 0 5px !important;
+                }
+                h2 {
+                    font-weight: 800 !important; margin: 20px 0 5px !important;
+                }
+                h3 {
+                    font-weight: 800 !important; margin: 20px 0 5px !important;
+                }
+                h4 {
+                    font-weight: 800 !important; margin: 20px 0 5px !important;
+                }
+                h1 {
+                    font-size: 22px !important;
+                }
+                h2 {
+                    font-size: 18px !important;
+                }
+                h3 {
+                    font-size: 16px !important;
+                }
+                .container {
+                    padding: 0 !important; width: 100% !important;
+                }
+                .content {
+                    padding: 0 !important;
+                }
+                .content-wrap {
+                    padding: 10px !important;
+                }
             }
         </style>
     </head>
 
-    <body itemscope itemtype="http://schema.org/EmailMessage" bgcolor="white">
-        <table style="width: 100%; max-width: 640px; margin: 0 auto;" bgcolor="white">
-            <tr>
-                <td>
-                    <table class="container" width="100%" cellpadding="0" cellspacing="0" itemprop="action" itemscope itemtype="http://schema.org/ConfirmAction">
-                        <tr>
-                            <td>
-                                <table width="100%" cellpadding="0" cellspacing="0">
-                                    <tr>
-                                        <td>
-                                            <img src="{{ static(image or 'emails/verify.png') }}" alt="Logo" />
-                                            <h1 class="title">{{ title or 'Verify your email' }}</h1>
-                                        </td>
-                                    </tr>
-                                    <table class="white-container" width="100%" cellpadding="0" cellspacing="0">
-                                        <tr>
-                                            <td>
-                                                <img style="margin-bottom: 48px;" src="{{ static('emails/logo.png') }}" alt="Logo" />
-                                            </td>
-                                        </tr>
-                                    {% block content %}
-                                    {% endblock %}
-                                    </table>
-                                    {% block footer %}
-                                    <tr>
-                                        <td style="padding: 32px 0 48px; text-align: center; font-weight: 400; color: #393F49;">
-                                            If you didn’t ask to {{ (title or 'Verify your email')|lower }}, you can ignore this message.
-                                        </td>
-                                    </tr>
-                                    {% endblock %}
-                                </table>
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    <div style="margin-top: 42px; text-align: center;">
-                        <a target="_blank" href="https://www.youtube.com/channel/UC4A_FhY8LKA1kOTQDlfmcNA">
-                            <img src="{{ static('emails/YouTube.png') }}" alt="Youtube Logo" />
-                        </a>
-                        <a target="_blank" href="https://www.instagram.com/the_ceo_official_/">
-                            <img src="{{ static('emails/Instagram.png') }}" alt="Instagram Logo" />
-                        </a>
-                        <a target="_blank" href="https://www.twitter.com/c_e_o_official">
-                            <img src="{{ static('emails/Twitter.png') }}" alt="Twitter Logo" />
-                        </a>
-                        <a target="_blank" href="https://www.facebook.com/CEOCreateEveryOpportunity/" style="margin: 0">
-                            <img src="{{ static('emails/Facebook.png') }}" alt="Facebook Logo" />
-                        </a>
+    <body itemscope itemtype="http://schema.org/EmailMessage" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: none; width: 100% !important; height: 100%; line-height: 1.6em; background-color: white; margin: 0;" bgcolor="white">
+        <table class="body-wrap" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; width: 100%; background-color: lightgray; margin: 0;" bgcolor="#f6f6f6"><tr style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;"><td style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0;" valign="top"></td>
+                <td class="container" width="600" style=" background: white; font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; display: block !important; max-width: 600px !important; clear: both !important; margin: 0 auto;" valign="top">
+                    <div style="border-bottom: #3E8FD4;border-bottom-style: solid;border-top: #3E8FD4;border-top-style: solid;border-width: 9px; box-shadow: 1px 1px 48px 0px #888888;">
+                        <div class="content" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; max-width: 600px; display: block; margin: 0 auto; padding: 8px;">
+                            <table class="main" width="100%" cellpadding="0" cellspacing="0" itemprop="action" itemscope itemtype="http://schema.org/ConfirmAction" style="background: url({{ static('emails/background_top.png') }}) top left no-repeat, url({{ static('emails/background_bottom.png') }}) bottom right no-repeat; background-size: 330px 150px, 330px 150px; font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; background-color: #fff; margin: 0;" bgcolor="#fff">
+                                <tr style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
+                                    <td class="content-wrap" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0; padding: 20px;" valign="top">
+                                        <table width="100%" cellpadding="0" cellspacing="0" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
+                                            <tr style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
+                                                <td class="content-block" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0; padding: 0 0 20px;" valign="top">
+                                                    <img style="width: 33%; float: right;" src="{{ static('emails/logo.png') }}" alt="Logo" />
+                                                </td>
+                                            </tr>
+                                            {% block content %}
+                                            {% endblock %}
+                                            {% block footer %}
+                                            <tr style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;"><td class="content-block" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0; padding: 0 0 20px;" valign="top">
+                                                    Thank you,
+                                                </td>
+                                            </tr>
+                                            <tr style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;"><td class="content-block" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0; padding: 0 0 20px;" valign="top">
+                                                    &mdash; TSL
+                                                </td>
+                                            </tr>
+                                            {% endblock %}
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
                     </div>
                 </td>
-            </tr>
-            <tr>
-                <td>
-                    <p style="text-align: center; color: #465259; font-size: 12px; font-weight: 400; line-height: 150%;">
-                        Copyright © 2023 Create Every Opportunity™. All Rights Reserved.<br/>
-                        See our <a href="#" style="color: #0A6BB5; font-weight: 500;">Privacy Policy</a> and <a href="#" style="color: #0A6BB5; font-weight: 500;">Terms of service</a>.
-                    </p>
+                <td style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0;" valign="top">
                 </td>
             </tr>
         </table>
