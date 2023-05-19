@@ -61,3 +61,12 @@ SOCIAL_AUTH_LINKEDIN_OAUTH2_FIELD_SELECTORS = [
     "email-address",
     "picture-urls::(original)",
 ]
+
+# Google
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.environ.get("SOCIAL_AUTH_GOOGLE_KEY")
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ.get("SOCIAL_AUTH_GOOGLE_SECRET")
+SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = ["email"]
+SOCIAL_AUTH_GOOGLE_OAUTH2_AUTH_EXTRA_ARGUMENTS = {
+    "access_type": "offline",
+    "approval_prompt": "force",
+}
