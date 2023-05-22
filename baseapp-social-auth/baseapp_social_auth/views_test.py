@@ -453,3 +453,51 @@ class TestLinkedInSocialAuth(SocialAuthViewSetMock):
         r = self.client.post(self.reverse(), picture_data)
         h.responseOk(r)
         assert Avatar.objects.count()
+
+@pytest.mark.usefixtures("use_httpretty")
+class TestGoogleSocialAuthViewSet(SocialAuthViewSetMock):
+    def base_data(self):
+        return {
+            "code": "asdf9123",
+            "redirect_uri": "https://example.com",
+            "provider": "google-oauth2",
+        }
+
+    def data(self):
+        base_data = self.base_data()
+        httpretty.register_uri(
+            httpretty.GET,
+            re.compile(r"https://www.googleapis.com/oauth2/v3/userinfo"),
+            body=json.dumps(
+                {
+                    "id": "1387123",
+                    "given_name": "John",
+                    "family_name": "Doe",
+                    "email": "johndoe@example.com",
+                }
+            ),
+        )
+        return base_data
+
+    def success_data(self):
+        httpretty.register_uri(
+            httpretty.POST,
+            re.compile(r"https://accounts.google.com/o/oauth2/token$"),
+            body=json.dumps(
+                {"access_token": "1234", "token_type": "type", "expires_in": 6000}
+            ),
+        )
+        return self.data()
+
+    def test_can_auth_google(self):
+        r = self.client.post(self.reverse(), self.success_data())
+        h.responseOk(r)
+
+    def test_google_user_is_created_with_fields_filled_in(self):
+        complete_data = self.success_data()
+        r = self.client.post(self.reverse(), complete_data)
+        h.responseOk(r)
+        user = get_user_model().objects.get()
+        assert user.first_name == "John"
+        assert user.last_name == "Doe"
+        assert user.email == "johndoe@example.com"
