@@ -7,8 +7,9 @@ from django.test import AsyncClient as DjangoAsyncClient, Client as DjClient
 import httpretty
 import pytest
 from asgiref.sync import sync_to_async
-from graphene_django.utils.testing import graphql_query
 from rest_framework.test import APIClient
+
+from ..graphql.testing import graphql_query
 
 import tests.factories as f
 

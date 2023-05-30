@@ -15,7 +15,9 @@ def user_passes_test(test_func):
         def _wrapped_view(cls, root, info, **data):
             if test_func(info.context.user):
                 return view_func(cls, root, info, **data)
-            raise GraphQLError("authentication required")
+            raise GraphQLError(
+                "authentication required", extensions={"code": "authentication_required"}
+            )
 
         return _wrapped_view
 
