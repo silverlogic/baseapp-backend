@@ -41,7 +41,7 @@ class ThumbnailField(graphene.Field):
                 cache_key = self._get_cache_key(instance, width, height)
                 value_from_cache = cache.get(cache_key)
                 if value_from_cache:
-                    return value_from_cache
+                    return File(url=value_from_cache)
 
             thumbnailer = get_thumbnailer(instance)
             url = thumbnailer.get_thumbnail({"size": (width, height)}).url
