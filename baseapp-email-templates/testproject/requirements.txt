@@ -1,0 +1,7 @@
+# install "install_requires" from setup.cfg
+-e ./baseapp-core
+-e ./baseapp-email-templates
+
+# channels
+channels==4.0.0
+channels_redis==4.0.0
