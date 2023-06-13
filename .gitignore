@@ -5,6 +5,7 @@ __pycache__/
 .DS_Store
 .scannerwork/
 .env
+*.egg-info
 
 # workspace files are user-specific
 *.sublime-workspace
