@@ -24,6 +24,7 @@ SOCIAL_AUTH_PIPELINE = [
     "social_core.pipeline.social_auth.auth_allowed",
     # Checks if the current social-account is already associated in the site.
     "social_core.pipeline.social_auth.social_user",
+    "baseapp_social_auth.cache.pipeline.associate_by_email",
     "baseapp_social_auth.cache.pipeline.cache_access_token",
     # Make up a username for this person and ensure it isn't taken.  If it is taken,
     # fail.
