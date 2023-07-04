@@ -4,11 +4,12 @@ import test.helpers as h
 from test.routers import DefaultRouter
 from unittest.mock import patch
 
+from django.contrib.auth import get_user_model
+from django.urls import include, path, reverse
+
 import httpretty
 import pytest
 from avatar.models import Avatar
-from django.contrib.auth import get_user_model
-from django.urls import include, path, reverse
 from rest_framework.test import APITestCase, URLPatternsTestCase
 
 from .fixtures import IMAGE_BASE64, Client
@@ -59,9 +60,7 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
         httpretty.register_uri(
             httpretty.GET,
             re.compile(r"https://graph.facebook.com/v3.\d+/oauth/access_token$"),
-            body=json.dumps(
-                {"access_token": "1234", "token_type": "type", "expires_in": 6000}
-            ),
+            body=json.dumps({"access_token": "1234", "token_type": "type", "expires_in": 6000}),
         )
         return self.data()
 
@@ -85,9 +84,7 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
         httpretty.register_uri(
             httpretty.GET,
             re.compile(r"https://graph.facebook.com/v\d+.\d+/me$"),
-            body=json.dumps(
-                {"id": "1387123", "first_name": "John", "last_name": "Smith"}
-            ),
+            body=json.dumps({"id": "1387123", "first_name": "John", "last_name": "Smith"}),
         )
         return self.success_data()
 
@@ -208,20 +205,12 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
 
         httpretty.register_uri(
             httpretty.GET,
-            re.compile(
-                r"https://api.twitter.com/1.\d+/account/verify_credentials.json"
-            ),
-            body=json.dumps(
-                {"id": 543, "name": "Sean Cook", "screen_name": "thecooker"}
-            ),
+            re.compile(r"https://api.twitter.com/1.\d+/account/verify_credentials.json"),
+            body=json.dumps({"id": 543, "name": "Sean Cook", "screen_name": "thecooker"}),
         )
 
-        with patch(
-            "social_core.backends.twitter.TwitterOAuth.get_unauthorized_token"
-        ) as mock:
-            with patch(
-                "social_core.backends.twitter.TwitterOAuth.access_token"
-            ) as mock:
+        with patch("social_core.backends.twitter.TwitterOAuth.get_unauthorized_token") as mock:
+            with patch("social_core.backends.twitter.TwitterOAuth.access_token") as mock:
                 mock.return_value = "1234"
                 yield data
 
@@ -234,9 +223,7 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
 
         httpretty.register_uri(
             httpretty.GET,
-            re.compile(
-                r"https://api.twitter.com/1.\d+/account/verify_credentials.json"
-            ),
+            re.compile(r"https://api.twitter.com/1.\d+/account/verify_credentials.json"),
             body=json.dumps(
                 {
                     "id": 543,
@@ -253,12 +240,8 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
             body=IMAGE_BASE64,
         )
 
-        with patch(
-            "social_core.backends.twitter.TwitterOAuth.get_unauthorized_token"
-        ) as mock:
-            with patch(
-                "social_core.backends.twitter.TwitterOAuth.access_token"
-            ) as mock:
+        with patch("social_core.backends.twitter.TwitterOAuth.get_unauthorized_token") as mock:
+            with patch("social_core.backends.twitter.TwitterOAuth.access_token") as mock:
                 mock.return_value = "1234"
                 yield data
 
@@ -271,9 +254,7 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
 
         httpretty.register_uri(
             httpretty.GET,
-            re.compile(
-                r"https://api.twitter.com/1.\d+/account/verify_credentials.json"
-            ),
+            re.compile(r"https://api.twitter.com/1.\d+/account/verify_credentials.json"),
             body=json.dumps(
                 {
                     "id": 543,
@@ -284,12 +265,8 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
             ),
         )
 
-        with patch(
-            "social_core.backends.twitter.TwitterOAuth.get_unauthorized_token"
-        ) as mock:
-            with patch(
-                "social_core.backends.twitter.TwitterOAuth.access_token"
-            ) as mock:
+        with patch("social_core.backends.twitter.TwitterOAuth.get_unauthorized_token") as mock:
+            with patch("social_core.backends.twitter.TwitterOAuth.access_token") as mock:
                 mock.return_value = "1234"
                 yield data
 
@@ -327,9 +304,7 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
     def test_twitter_user_avatar_is_not_created_when_user_has_default_profile_image(
         self,
     ):
-        for (
-            step2_data_with_default_profile_image
-        ) in self.step2_data_with_default_profile_image():
+        for step2_data_with_default_profile_image in self.step2_data_with_default_profile_image():
             r = self.client.post(self.reverse(), step2_data_with_default_profile_image)
         h.responseOk(r)
         assert not Avatar.objects.count()
@@ -454,6 +429,7 @@ class TestLinkedInSocialAuth(SocialAuthViewSetMock):
         h.responseOk(r)
         assert Avatar.objects.count()
 
+
 @pytest.mark.usefixtures("use_httpretty")
 class TestGoogleSocialAuthViewSet(SocialAuthViewSetMock):
     def base_data(self):
@@ -483,9 +459,7 @@ class TestGoogleSocialAuthViewSet(SocialAuthViewSetMock):
         httpretty.register_uri(
             httpretty.POST,
             re.compile(r"https://accounts.google.com/o/oauth2/token$"),
-            body=json.dumps(
-                {"access_token": "1234", "token_type": "type", "expires_in": 6000}
-            ),
+            body=json.dumps({"access_token": "1234", "token_type": "type", "expires_in": 6000}),
         )
         return self.data()
 

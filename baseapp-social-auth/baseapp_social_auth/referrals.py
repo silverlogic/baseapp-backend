@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db.models import ObjectDoesNotExist
+
 from hashids import Hashids
 
 hashids = Hashids(salt="referral-codes", min_length=4)

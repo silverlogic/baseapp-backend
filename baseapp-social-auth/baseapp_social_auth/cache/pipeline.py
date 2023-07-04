@@ -1,8 +1,8 @@
 import json
 
-from .models import SocialAuthAccessTokenCache
-
 from social_core.exceptions import AuthException
+
+from .models import SocialAuthAccessTokenCache
 
 
 def cache_access_token(strategy, response, user=None, *args, **kwargs):
@@ -29,6 +29,7 @@ def cache_access_token(strategy, response, user=None, *args, **kwargs):
                 code=code, defaults={"access_token": access_token}
             )
 
+
 def associate_by_email(strategy, response, user=None, *args, **kwargs):
     # Associate current auth with a user with the same email address in the DB.
     # This pipeline entry is not 100% secure unless you know that the providers
@@ -37,7 +38,7 @@ def associate_by_email(strategy, response, user=None, *args, **kwargs):
     # email address on some provider.  This pipeline entry is disabled by
     # default.
     provider = strategy.request.data["provider"]
-    providers_to_trust = ["facebook"]
+    providers_to_trust = ["facebook", "apple-id", "google-oauth2"]
     if provider in providers_to_trust:
         email = response["email"]
         if email:

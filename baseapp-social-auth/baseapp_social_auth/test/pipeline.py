@@ -1,10 +1,10 @@
 import re
 from io import BytesIO
 
-import requests
-from avatar.models import Avatar
 from django.core.files.images import ImageFile
 
+import requests
+from avatar.models import Avatar
 from baseapp_social_auth.referrals import get_user_from_referral_code
 
 from .models import UserReferral
@@ -67,9 +67,7 @@ def set_avatar(is_new, backend, user, response, *args, **kwargs):
     if image_url:
         response = requests.get(image_url, params=image_params)
         image = BytesIO(response.content)
-        Avatar.objects.create(
-            user=user, primary=True, avatar=ImageFile(image, name="pic.jpg")
-        )
+        Avatar.objects.create(user=user, primary=True, avatar=ImageFile(image, name="pic.jpg"))
 
 
 def set_is_new(is_new, user, *args, **kwargs):
