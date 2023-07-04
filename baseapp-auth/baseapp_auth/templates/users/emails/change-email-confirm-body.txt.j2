@@ -1,0 +1,13 @@
+{% extends 'emails/base.txt.j2' %}
+
+{% block content %}
+Somebody has requested a change of email on your account.
+
+The requested new email is: {{ new_email }}
+
+To confirm you would like to change your email, please go to the following link:
+
+{{ url }}
+
+If you did not request this change it means your account has been compromised and you should change your password immediately.
+{% endblock content %}
