@@ -1,4 +1,5 @@
 import graphene
+from baseapp_auth.graphql.queries import UsersQuery
 from graphene import relay
 
 from apps.cities.graphql.queries import CitiesQuery
@@ -8,7 +9,6 @@ from apps.organizations.graphql.queries import ClassroomQuery
 from apps.reactions.graphql.mutations import ReactionsMutations
 from apps.reports.graphql.mutations import ReportsMutations
 from apps.reports.graphql.queries import ReportsQuery
-from apps.users.graphql.queries import UsersQuery
 
 
 class Query(

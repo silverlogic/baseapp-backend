@@ -4,12 +4,11 @@ from __future__ import unicode_literals
 
 from django.db import migrations, models
 
-import apps.base.models
+import baseapp_core.models
 
 
 class Migration(migrations.Migration):
-
-    dependencies = [("users", "0001_initial")]
+    dependencies = [("baseapp_auth", "0001_initial")]
 
     operations = [
         migrations.AddField(
@@ -23,6 +22,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="user",
             name="new_email",
-            field=apps.base.models.CaseInsensitiveEmailField(blank=True, max_length=254),
+            field=baseapp_core.models.CaseInsensitiveEmailField(blank=True, max_length=254),
         ),
     ]

@@ -5,9 +5,8 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ("users", "0007_superuserupdatelog"),
+        ("baseapp_auth", "0007_superuserupdatelog"),
     ]
 
     operations = [

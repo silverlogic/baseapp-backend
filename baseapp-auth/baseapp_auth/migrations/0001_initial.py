@@ -5,11 +5,10 @@ import django.utils.timezone
 from django.contrib.postgres.operations import CITextExtension
 from django.db import migrations, models
 
-import apps.base.models
+import baseapp_core.models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = []
@@ -40,7 +39,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "email",
-                    apps.base.models.CaseInsensitiveEmailField(
+                    baseapp_core.models.CaseInsensitiveEmailField(
                         db_index=True, max_length=254, unique=True
                     ),
                 ),

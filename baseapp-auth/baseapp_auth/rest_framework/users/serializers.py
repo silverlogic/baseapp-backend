@@ -4,14 +4,13 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from avatar.models import Avatar
+from baseapp_auth.models import User
+from baseapp_auth.password_validators import apply_password_validators
+from baseapp_auth.tokens import ConfirmEmailTokenGenerator
+from baseapp_core.rest_framework.serializers import ModelSerializer
+from baseapp_referrals.models import UserReferral
+from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
 from rest_framework import serializers
-
-from apps.api.serializers import ModelSerializer
-from apps.referrals.models import UserReferral
-from apps.referrals.utils import get_referral_code, get_user_from_referral_code
-from apps.users.models import User
-from apps.users.password_validators import apply_password_validators
-from apps.users.tokens import ConfirmEmailTokenGenerator
 
 from .fields import AvatarField
 

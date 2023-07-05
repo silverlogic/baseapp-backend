@@ -6,9 +6,8 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ("users", "0005_passwordvalidation"),
+        ("baseapp_auth", "0005_passwordvalidation"),
     ]
 
     operations = []

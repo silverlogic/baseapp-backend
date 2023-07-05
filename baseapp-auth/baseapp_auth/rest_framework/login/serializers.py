@@ -1,9 +1,8 @@
 from django.utils.translation import gettext_lazy as _
 
+from baseapp_auth.models import User
 from rest_framework import exceptions, serializers
 from rest_framework.authtoken.models import Token
-
-from apps.users.models import User
 
 
 class LoginSerializer(serializers.Serializer):

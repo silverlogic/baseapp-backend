@@ -1,10 +1,9 @@
 from unittest.mock import patch
 
 import pytest
-
-from apps.base.exceptions import DeepLinkFetchError
-from apps.referrals.utils import get_referral_code
-from apps.users.models import User
+from baseapp_auth.models import User
+from baseapp_core.exceptions import DeepLinkFetchError
+from baseapp_referrals.utils import get_referral_code
 
 import tests.factories as f
 import tests.helpers as h
@@ -27,14 +26,14 @@ class TestRegister(ApiMixin):
         assert len(outbox) == 1
 
     def test_user_can_request_deep_link_error(self, user_client, outbox, data):
-        with patch("apps.users.emails.get_deep_link") as m:
+        with patch("baseapp_auth.emails.get_deep_link") as m:
             m.side_effect = DeepLinkFetchError
             r = user_client.post(self.reverse(), data)
             h.responseCreated(r)
             assert len(outbox) == 1
 
     def test_sends_register_email(self, user_client, data):
-        with patch("apps.api.v1.register.views.send_welcome_email") as mock:
+        with patch("baseapp_auth.rest_framework.register.views.send_welcome_email") as mock:
             r = user_client.post(self.reverse(), data)
             h.responseCreated(r)
             assert mock.called

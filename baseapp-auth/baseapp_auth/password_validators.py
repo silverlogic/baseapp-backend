@@ -4,7 +4,7 @@ from django.contrib.auth.password_validation import get_password_validators, val
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
 
-from apps.users.models import PasswordValidation
+from baseapp_auth.models import PasswordValidation
 
 
 class MustContainCapitalLetterValidator:

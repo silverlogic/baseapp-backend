@@ -1,10 +1,9 @@
 from django.http import Http404
 from django.utils.translation import gettext_lazy as _
 
+from baseapp_auth.models import User
+from baseapp_core.rest_framework.decorators import action
 from rest_framework import filters, mixins, permissions, response, serializers, status, viewsets
-
-from apps.api.v1.decorators import action
-from apps.users.models import User
 
 from .parsers import SafeJSONParser
 from .serializers import ChangePasswordSerializer, ConfirmEmailSerializer, UserSerializer

@@ -1,6 +1,5 @@
 import pytest
-
-from apps.users.tokens import ChangeEmailConfirmTokenGenerator, ChangeEmailVerifyTokenGenerator
+from baseapp_auth.tokens import ChangeEmailConfirmTokenGenerator, ChangeEmailVerifyTokenGenerator
 
 import tests.factories as f
 import tests.helpers as h

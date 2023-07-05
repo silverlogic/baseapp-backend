@@ -1,6 +1,5 @@
 from avatar.templatetags.avatar_tags import avatar_url
-
-from apps.api.fields import ThumbnailImageField
+from baseapp_core.rest_framework.fields import ThumbnailImageField
 
 
 class AvatarField(ThumbnailImageField):
