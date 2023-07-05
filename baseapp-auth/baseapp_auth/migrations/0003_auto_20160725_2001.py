@@ -6,8 +6,7 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
-    dependencies = [("users", "0002_auto_20160321_1909")]
+    dependencies = [("baseapp_auth", "0002_auto_20160321_1909")]
 
     operations = [
         migrations.AddField(

@@ -1,6 +1,6 @@
 from django.contrib.auth.models import BaseUserManager
 
-from apps.users.querysets import UserQuerySet
+from baseapp_auth.querysets import UserQuerySet
 
 
 class UserManager(BaseUserManager):

@@ -11,6 +11,9 @@ class ApiMixin:
 
     def reverse(self, view_name=None, query_params=None, **kwargs):
         # Specified in integration/vX/conftest.py
+
+        print("pytest.api_version: ", pytest.api_version)
+
         version = pytest.api_version
 
         if self.url_kwargs is not None:

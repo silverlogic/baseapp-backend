@@ -42,7 +42,9 @@ class TestForgotPassword(ApiMixin):
         assert len(outbox) == 1
 
     def test_sends_reset_email(self, client, data, outbox):
-        with patch("apps.api.v1.forgot_password.views.send_password_reset_email") as mock:
+        with patch(
+            "baseapp_auth.rest_framework.forgot_password.views.send_password_reset_email"
+        ) as mock:
             f.UserFactory(email=data["email"])
             r = client.post(self.reverse(), data)
             h.responseOk(r)

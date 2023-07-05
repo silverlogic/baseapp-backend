@@ -4,9 +4,8 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ("users", "0004_auto_20160811_1614"),
+        ("baseapp_auth", "0004_auto_20160811_1614"),
     ]
 
     operations = [
@@ -40,11 +39,11 @@ class Migration(migrations.Migration):
                                 "Numeric Password",
                             ),
                             (
-                                "apps.users.password_validators.MustContainCapitalLetterValidator",
+                                "baseapp_auth.password_validators.MustContainCapitalLetterValidator",
                                 "Must Contain Capital Letter",
                             ),
                             (
-                                "apps.users.password_validators.MustContainSpecialCharacterValidator",
+                                "baseapp_auth.password_validators.MustContainSpecialCharacterValidator",
                                 "Must Contain Special Character",
                             ),
                         ],

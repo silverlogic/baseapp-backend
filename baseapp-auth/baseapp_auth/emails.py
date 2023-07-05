@@ -5,8 +5,8 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.urls import reverse
 
-from apps.base.deep_links import get_deep_link
-from apps.base.exceptions import DeepLinkFetchError
+from baseapp_core.deep_links import get_deep_link
+from baseapp_core.exceptions import DeepLinkFetchError
 
 from .models import User
 from .tokens import (

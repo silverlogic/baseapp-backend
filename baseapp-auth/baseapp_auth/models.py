@@ -4,10 +4,9 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from baseapp_core.models import CaseInsensitiveEmailField
 from model_utils import Choices, FieldTracker
 from model_utils.models import TimeStampedModel
-
-from apps.base.models import CaseInsensitiveEmailField
 
 from .managers import UserManager
 
@@ -117,11 +116,11 @@ class PasswordValidation(models.Model):
         ("django.contrib.auth.password_validation.CommonPasswordValidator", "Common Password"),
         ("django.contrib.auth.password_validation.NumericPasswordValidator", "Numeric Password"),
         (
-            "apps.users.password_validators.MustContainCapitalLetterValidator",
+            "baseapp_auth.password_validators.MustContainCapitalLetterValidator",
             "Must Contain Capital Letter",
         ),
         (
-            "apps.users.password_validators.MustContainSpecialCharacterValidator",
+            "baseapp_auth.password_validators.MustContainSpecialCharacterValidator",
             "Must Contain Special Character",
         ),
     )
@@ -140,6 +139,6 @@ class SuperuserUpdateLog(TimeStampedModel):
         on_delete=models.PROTECT,
     )
     assignee = models.ForeignKey(
-        User, related_name="superuser_assignee_logs", on_delete=models.CASCADE
+        settings.AUTH_USER_MODEL, related_name="superuser_assignee_logs", on_delete=models.CASCADE
     )
     made_superuser = models.BooleanField()

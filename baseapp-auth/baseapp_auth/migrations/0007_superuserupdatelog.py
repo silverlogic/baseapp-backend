@@ -9,9 +9,8 @@ import model_utils.fields
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ("users", "0006_auto_20220607_1535"),
+        ("baseapp_auth", "0006_auto_20220607_1535"),
     ]
 
     operations = [

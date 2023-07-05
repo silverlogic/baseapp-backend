@@ -6,7 +6,7 @@ class UserFactory(factory.django.DjangoModelFactory):
     password = factory.PostGenerationMethodCall("set_password", "default")
 
     class Meta:
-        model = "users.User"
+        model = "baseapp_auth.User"
 
     @factory.post_generation
     def permission_groups(self, create, extracted, **kwargs):
@@ -15,10 +15,10 @@ class UserFactory(factory.django.DjangoModelFactory):
 
 
 class PasswordValidationFactory(factory.django.DjangoModelFactory):
-    name = "apps.users.password_validators.MustContainSpecialCharacterValidator"
+    name = "baseapp_auth.password_validators.MustContainSpecialCharacterValidator"
 
     class Meta:
-        model = "users.PasswordValidation"
+        model = "baseapp_auth.PasswordValidation"
 
 
 class TokenFactory(factory.django.DjangoModelFactory):

@@ -1,9 +1,10 @@
 from django.utils.translation import gettext_lazy as _
 
+import swapper
 from rest_framework import serializers
 
-from apps.users.models import User
-from apps.users.tokens import ChangeEmailConfirmTokenGenerator, ChangeEmailVerifyTokenGenerator
+User = swapper.load_model("baseapp_auth", "User")
+from baseapp_auth.tokens import ChangeEmailConfirmTokenGenerator, ChangeEmailVerifyTokenGenerator
 
 
 class ChangeEmailRequestSerializer(serializers.Serializer):

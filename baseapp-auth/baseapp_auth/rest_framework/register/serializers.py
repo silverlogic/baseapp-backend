@@ -1,10 +1,9 @@
 from django.utils.translation import gettext as _
 
+from baseapp_auth.models import User
+from baseapp_referrals.models import UserReferral
+from baseapp_referrals.utils import get_user_from_referral_code
 from rest_framework import serializers
-
-from apps.referrals.models import UserReferral
-from apps.referrals.utils import get_user_from_referral_code
-from apps.users.models import User
 
 
 class RegisterSerializer(serializers.Serializer):

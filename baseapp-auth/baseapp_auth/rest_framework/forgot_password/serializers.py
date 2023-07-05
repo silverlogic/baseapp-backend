@@ -5,10 +5,9 @@ from django.utils.encoding import DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode
 from django.utils.translation import gettext_lazy as _
 
+from baseapp_auth.models import User
+from baseapp_auth.password_validators import apply_password_validators
 from rest_framework import serializers
-
-from apps.users.models import User
-from apps.users.password_validators import apply_password_validators
 
 
 class ForgotPasswordSerializer(serializers.Serializer):

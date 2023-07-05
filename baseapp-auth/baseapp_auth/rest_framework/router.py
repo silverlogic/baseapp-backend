@@ -2,7 +2,7 @@
 isort:skip_file
 """
 
-from .routers import DefaultRouter
+from baseapp_core.rest_framework.routers import DefaultRouter
 
 router = DefaultRouter(trailing_slash=False)
 

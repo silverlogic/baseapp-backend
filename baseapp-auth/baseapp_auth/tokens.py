@@ -1,4 +1,4 @@
-from apps.base.tokens import TokenGenerator
+from baseapp_core.tokens import TokenGenerator
 
 
 class ChangeEmailConfirmTokenGenerator(TokenGenerator):
