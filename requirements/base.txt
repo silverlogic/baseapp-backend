@@ -1,0 +1,9 @@
+Django==3.2.20
+
+# Django REST Framework
+djangorestframework==3.14.0
+djangorestframework-expander==0.2.3
+drf-extra-fields==3.4.1
+
+# postgresql driver
+psycopg2==2.9.5
