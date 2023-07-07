@@ -54,7 +54,7 @@ jobs:
         id: installation
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements/dev.txt ]; then pip install -r requirements/dev.txt; fi
+          pip install pytest
       - name: pytest
         if: steps.installation.outcome == 'success'
         run: |

@@ -1,1 +1,1 @@
-from tests.fixtures import *  # noqa
+from baseapp_reactions.baseapp_reactions.tests.fixtures import *  # noqa
