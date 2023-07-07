@@ -8,11 +8,6 @@ class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = "baseapp_auth.User"
 
-    @factory.post_generation
-    def permission_groups(self, create, extracted, **kwargs):
-        if create and extracted:
-            self.permission_groups.add(*extracted)
-
 
 class PasswordValidationFactory(factory.django.DjangoModelFactory):
     name = "baseapp_auth.password_validators.MustContainSpecialCharacterValidator"

@@ -39,7 +39,11 @@ def send_welcome_email(user):
     message = render_to_string("users/emails/welcome-body.txt.j2", context=context)
     html_message = render_to_string("users/emails/welcome-body.html.j2", context=context)
     send_mail(
-        subject, message, html_message=html_message, from_email=None, recipient_list=[user.email]
+        subject,
+        message,
+        html_message=html_message,
+        from_email=None,
+        recipient_list=[user.email],
     )
 
 
@@ -65,7 +69,11 @@ def send_password_reset_email(info):
     message = render_to_string("users/emails/password-reset-body.txt.j2", context)
     html_message = render_to_string("users/emails/password-reset-body.html.j2", context)
     send_mail(
-        subject, message, html_message=html_message, from_email=None, recipient_list=[info["email"]]
+        subject,
+        message,
+        html_message=html_message,
+        from_email=None,
+        recipient_list=[info["email"]],
     )
 
 
@@ -80,7 +88,11 @@ def send_change_email_confirm_email(user):
             **{
                 "channel": "email",
                 "feature": "change email",
-                "data": {"type": "change-email-confirm", "user": user.pk, "token": token},
+                "data": {
+                    "type": "change-email-confirm",
+                    "user": user.pk,
+                    "token": token,
+                },
             },
         )
     except DeepLinkFetchError:
@@ -92,7 +104,11 @@ def send_change_email_confirm_email(user):
     message = render_to_string("users/emails/change-email-confirm-body.txt.j2", context)
     html_message = render_to_string("users/emails/change-email-confirm-body.html.j2", context)
     send_mail(
-        subject, message, html_message=html_message, from_email=None, recipient_list=[user.email]
+        subject,
+        message,
+        html_message=html_message,
+        from_email=None,
+        recipient_list=[user.email],
     )
 
 
@@ -107,7 +123,11 @@ def send_change_email_verify_email(user):
             **{
                 "channel": "email",
                 "feature": "change email",
-                "data": {"type": "change-email-verify", "user": user.pk, "token": token},
+                "data": {
+                    "type": "change-email-verify",
+                    "user": user.pk,
+                    "token": token,
+                },
             },
         )
     except DeepLinkFetchError:
@@ -185,5 +205,9 @@ def send_password_expired_email(user: User):
     message = render_to_string("users/emails/password-expired-body.txt.j2", context)
     html_message = render_to_string("users/emails/password-expired-body.html.j2", context)
     send_mail(
-        subject, message, html_message=html_message, from_email=None, recipient_list=[user.email]
+        subject,
+        message,
+        html_message=html_message,
+        from_email=None,
+        recipient_list=[user.email],
     )

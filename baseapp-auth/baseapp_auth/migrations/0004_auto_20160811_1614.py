@@ -14,7 +14,8 @@ class Migration(migrations.Migration):
             model_name="user",
             name="is_new_email_confirmed",
             field=models.BooleanField(
-                default=False, help_text="Has the user confirmed they want an email change?"
+                default=False,
+                help_text="Has the user confirmed they want an email change?",
             ),
         ),
     ]

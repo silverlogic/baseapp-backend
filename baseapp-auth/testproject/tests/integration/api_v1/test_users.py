@@ -4,10 +4,11 @@ from django.utils import timezone
 
 import pytest
 from avatar.models import Avatar
-from baseapp_auth.models import User
-from baseapp_auth.tokens import ConfirmEmailTokenGenerator
 from baseapp_referrals.models import UserReferral
 from baseapp_referrals.utils import get_referral_code
+
+from baseapp_auth.models import User
+from baseapp_auth.tokens import ConfirmEmailTokenGenerator
 
 import tests.factories as f
 import tests.helpers as h
@@ -239,7 +240,10 @@ class TestUsersChangePassword(ApiMixin):
 }
 """
         r = user_client.generic(
-            "POST", self.reverse(), data=invalid_json_str, content_type="application/json"
+            "POST",
+            self.reverse(),
+            data=invalid_json_str,
+            content_type="application/json",
         )
         h.responseBadRequest(r)
         # The request should fail to parse the invalid json and pass an empty dict

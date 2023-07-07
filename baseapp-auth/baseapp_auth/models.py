@@ -4,6 +4,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+import swapper
 from baseapp_core.models import CaseInsensitiveEmailField
 from model_utils import Choices, FieldTracker
 from model_utils.models import TimeStampedModel
@@ -60,7 +61,7 @@ class PermissionsMixin(models.Model):
         return self.is_superuser
 
 
-class User(PermissionsMixin, AbstractBaseUser):
+class AbstractUser(PermissionsMixin, AbstractBaseUser):
     email = CaseInsensitiveEmailField(unique=True, db_index=True)
     is_email_verified = models.BooleanField(default=False)
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
@@ -78,13 +79,12 @@ class User(PermissionsMixin, AbstractBaseUser):
     first_name = models.CharField(max_length=100, blank=True)
     last_name = models.CharField(max_length=100, blank=True)
 
-    tracker = FieldTracker(fields=["is_superuser", "password"])
-
     objects = UserManager()
 
     USERNAME_FIELD = "email"
 
     class Meta:
+        abstract = True
         verbose_name = _("user")
         verbose_name_plural = _("users")
 
@@ -106,15 +106,35 @@ class User(PermissionsMixin, AbstractBaseUser):
             super().save(*args, **kwargs)
 
 
+class User(AbstractUser):
+    # FieldTracker doesn't work with abstract model classes
+    tracker = FieldTracker(fields=["is_superuser", "password"])
+
+    def save(self, *args, **kwargs):
+        with self.tracker:
+            if self.tracker.has_changed("password"):
+                self.password_changed_date = timezone.now()
+            super().save(*args, **kwargs)
+
+
 class PasswordValidation(models.Model):
     VALIDATORS = Choices(
         (
             "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
             "User Attribute Similarity",
         ),
-        ("django.contrib.auth.password_validation.MinimumLengthValidator", "Minimum Length"),
-        ("django.contrib.auth.password_validation.CommonPasswordValidator", "Common Password"),
-        ("django.contrib.auth.password_validation.NumericPasswordValidator", "Numeric Password"),
+        (
+            "django.contrib.auth.password_validation.MinimumLengthValidator",
+            "Minimum Length",
+        ),
+        (
+            "django.contrib.auth.password_validation.CommonPasswordValidator",
+            "Common Password",
+        ),
+        (
+            "django.contrib.auth.password_validation.NumericPasswordValidator",
+            "Numeric Password",
+        ),
         (
             "baseapp_auth.password_validators.MustContainCapitalLetterValidator",
             "Must Contain Capital Letter",
@@ -139,6 +159,8 @@ class SuperuserUpdateLog(TimeStampedModel):
         on_delete=models.PROTECT,
     )
     assignee = models.ForeignKey(
-        settings.AUTH_USER_MODEL, related_name="superuser_assignee_logs", on_delete=models.CASCADE
+        settings.AUTH_USER_MODEL,
+        related_name="superuser_assignee_logs",
+        on_delete=models.CASCADE,
     )
     made_superuser = models.BooleanField()

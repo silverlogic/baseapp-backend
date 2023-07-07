@@ -3,10 +3,11 @@ from unittest.mock import MagicMock
 from django.utils import timezone
 
 import pytest
-from baseapp_auth import tasks
-from baseapp_auth.models import User
 from constance.test import override_config
 from freezegun import freeze_time
+
+from baseapp_auth import tasks
+from baseapp_auth.models import User
 
 import tests.factories as f
 

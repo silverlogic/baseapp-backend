@@ -101,7 +101,11 @@ class TestResetPassword(ApiMixin):
         user.refresh_from_db()
         assert user.check_password("blub")
 
-        data = {"token": token, "new_password": "diffpass", "confirm_new_password": "diffpass"}
+        data = {
+            "token": token,
+            "new_password": "diffpass",
+            "confirm_new_password": "diffpass",
+        }
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
         user.refresh_from_db()
