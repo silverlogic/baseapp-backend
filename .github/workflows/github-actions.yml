@@ -16,6 +16,28 @@ jobs:
         run: |
           ls ${{ github.workspace }}
       - run: echo "🍏 This job's status is ${{ job.status }}."
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install flake8, isort and black
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 isort black
+      - name: flake8
+        run: |
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - name: isort
+        run: isort --check .
+      - name: black
+        run: black --check .
   test:
     runs-on: ubuntu-latest
     steps:
@@ -28,41 +50,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements/dev.txt ]; then pip install -r requirements/dev.txt; fi
-      - name: Lint with flake8
+      - name: pytest
         run: |
-          # stop the build if there are Python syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-      - name: isort
-        run: isort --check .
-      - name: black
-        run: black --check .
-
-      # - name: Test with pytest
-      # - run: pytest
-  #     - run: |
-  #         sudo apt-get update
-  #         sudo apt-get install -y poppler-utils python3-psycopg2 python3-pygraphviz graphviz graphviz-dev libgraphviz-dev
-  #         python3 -m venv ../venv
-  #         . ../venv/bin/activate
-  #         pip install -r requirements/dev.txt
-  #     - run: |
-  #         . ../venv/bin/activate
-  #         mkdir -p ~/workspace/test-reports
-  #         export SECRET_KEY=notsecret
-  #         export DATABASE_URL='postgis://postgres:postgres@localhost/ci'
-  #         export CELERY_BROKER_URL="N/A"
-  #         export CELERY_RESULTS_URL="N/A"
-  #         export URL="http://localhost"
-  #         export FRONT_URL="http://app.localhost"
-  #         export BRANCHIO_KEY="key_test_pmEf8Pqmg05t4N1MamZw4egeyxahRfTj"
-  #         export REDIS_URL=""
-  #         TEST_FILES=$(circleci tests glob "tests/**/test_*.py" | circleci tests split --split-by=timings)
-  #         coverage run --data-file=~/workspace/test-reports/.coverage.${RANDOM} -m pytest ${TEST_FILES}
-  # lint:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - run: |
-  #         . ../venv/bin/activate
-  #         flake8
+          TEST_FILES=$(find . -name 'test_*.py')
+          pytest $TEST_FILES
