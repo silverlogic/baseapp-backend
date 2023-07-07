@@ -1,11 +1,12 @@
 from django.http import Http404
 from django.utils.translation import gettext_lazy as _
 
-from baseapp_auth.emails import send_change_email_confirm_email, send_change_email_verify_email
-from baseapp_auth.models import User
 from baseapp_core.rest_framework.decorators import action
 from rest_framework import mixins, permissions, serializers, status, viewsets
 from rest_framework.response import Response
+
+from baseapp_auth.emails import send_change_email_confirm_email, send_change_email_verify_email
+from baseapp_auth.models import User
 
 from .serializers import (
     ChangeEmailConfirmSerializer,

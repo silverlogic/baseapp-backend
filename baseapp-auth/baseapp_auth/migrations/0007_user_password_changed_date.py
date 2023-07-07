@@ -6,7 +6,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("baseapp_auth", "0007_superuserupdatelog"),
+        ("baseapp_auth", "0006_superuserupdatelog"),
     ]
 
     operations = [
@@ -14,7 +14,8 @@ class Migration(migrations.Migration):
             model_name="user",
             name="password_changed_date",
             field=models.DateTimeField(
-                default=django.utils.timezone.now, verbose_name="last date password was changed"
+                default=django.utils.timezone.now,
+                verbose_name="last date password was changed",
             ),
         ),
     ]

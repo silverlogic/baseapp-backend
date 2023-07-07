@@ -3,6 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+import swapper
 from constance import config
 
 from .emails import (
@@ -11,7 +12,9 @@ from .emails import (
     send_password_expired_email,
 )
 from .forms import UserChangeForm, UserCreationForm
-from .models import PasswordValidation, SuperuserUpdateLog, User
+from .models import PasswordValidation, SuperuserUpdateLog
+
+User = swapper.load_model("baseapp_auth", "User")
 
 
 @admin.register(User)
@@ -19,7 +22,15 @@ class UserAdmin(UserAdmin):
     fieldsets = (
         (
             None,
-            {"fields": ("email", "password", "date_joined", "last_login", "password_changed_date")},
+            {
+                "fields": (
+                    "email",
+                    "password",
+                    "date_joined",
+                    "last_login",
+                    "password_changed_date",
+                )
+            },
         ),
         (
             _("Permissions"),

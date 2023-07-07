@@ -1,9 +1,10 @@
 from unittest.mock import patch
 
 import pytest
-from baseapp_auth.models import User
 from baseapp_core.exceptions import DeepLinkFetchError
 from baseapp_referrals.utils import get_referral_code
+
+from baseapp_auth.models import User
 
 import tests.factories as f
 import tests.helpers as h

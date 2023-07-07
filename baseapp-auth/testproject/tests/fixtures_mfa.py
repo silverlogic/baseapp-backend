@@ -1,0 +1,33 @@
+import pytest
+import tests.factories as f
+from django.contrib.auth import get_user_model
+from trench.models import MFAMethod as MFAMethodModel
+from django.apps import apps
+from trench.command.create_secret import create_secret_command
+
+
+User = get_user_model()
+
+
+def mfa_method_creator(
+    user, method_name: str, is_primary: bool = True, **method_args
+) -> MFAMethodModel:
+    MFAMethod = apps.get_model("trench.MFAMethod")
+    return MFAMethod.objects.create(
+        user=user,
+        secret=method_args.pop("secret", create_secret_command()),
+        is_primary=is_primary,
+        name=method_name,
+        is_active=method_args.pop("is_active", True),
+        **method_args,
+    )
+
+
+@pytest.fixture()
+def active_user_with_application_otp():
+    user = f.UserFactory()
+    user.set_password("1234567890")
+    user.is_active = True
+    user.save()
+    mfa_method_creator(user=user, method_name="app")
+    return user

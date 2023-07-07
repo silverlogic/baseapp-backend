@@ -5,9 +5,11 @@ from django.utils.encoding import DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode
 from django.utils.translation import gettext_lazy as _
 
+from rest_framework import serializers
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
 from baseapp_auth.models import User
 from baseapp_auth.password_validators import apply_password_validators
-from rest_framework import serializers
 
 
 class ForgotPasswordSerializer(serializers.Serializer):
@@ -21,10 +23,23 @@ class ForgotPasswordSerializer(serializers.Serializer):
         return email
 
 
-class ResetPasswordSerializer(serializers.Serializer):
+class ResetPasswordBaseSerializer(serializers.Serializer):
     new_password = serializers.CharField()
     token = serializers.CharField()
 
+    def validate_token(self, token):
+        pass
+
+    def validate_new_password(self, new_password):
+        apply_password_validators(new_password)
+        return new_password
+
+    def save(self):
+        self.user.set_password(self.data["new_password"])
+        self.user.save()
+
+
+class ResetPasswordSerializer(ResetPasswordBaseSerializer):
     def validate_token(self, token):
         try:
             decoded_token = urlsafe_base64_decode(token)
@@ -41,10 +56,10 @@ class ResetPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError(_("Invalid token."))
         return token
 
-    def validate_new_password(self, new_password):
-        apply_password_validators(new_password)
-        return new_password
 
-    def save(self):
-        self.user.set_password(self.data["new_password"])
-        self.user.save()
+class ResetPasswordJwtSerializer(ResetPasswordBaseSerializer):
+    def validate_token(self, token):
+        authenticator = JWTAuthentication()
+        validated_token = authenticator.get_validated_token(token)
+        self.user = authenticator.get_user(validated_token)
+        return token

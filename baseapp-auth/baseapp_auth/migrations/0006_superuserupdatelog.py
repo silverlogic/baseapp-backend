@@ -10,7 +10,7 @@ import model_utils.fields
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("baseapp_auth", "0006_auto_20220607_1535"),
+        ("baseapp_auth", "0005_passwordvalidation"),
     ]
 
     operations = [
@@ -20,19 +20,26 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.AutoField(
-                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
                     ),
                 ),
                 (
                     "created",
                     model_utils.fields.AutoCreatedField(
-                        default=django.utils.timezone.now, editable=False, verbose_name="created"
+                        default=django.utils.timezone.now,
+                        editable=False,
+                        verbose_name="created",
                     ),
                 ),
                 (
                     "modified",
                     model_utils.fields.AutoLastModifiedField(
-                        default=django.utils.timezone.now, editable=False, verbose_name="modified"
+                        default=django.utils.timezone.now,
+                        editable=False,
+                        verbose_name="modified",
                     ),
                 ),
                 ("made_superuser", models.BooleanField()),

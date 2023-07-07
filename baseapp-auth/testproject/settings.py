@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     "channels",
     "avatar",
     "trench",
+    "rest_framework_simplejwt",
+    "testapp",
     "test",
     "baseapp_core",
     "baseapp_auth",
@@ -67,7 +69,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "testproject.urls"
+ROOT_URLCONF = "urls"
 
 TEMPLATES = [
     {
@@ -85,7 +87,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "test.wsgi.application"
+WSGI_APPLICATION = "wsgi.application"
 
 
 # Database
@@ -125,6 +127,7 @@ CONSTANCE_CONFIG = OrderedDict(
 # Rest Framework
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.TokenAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ),
@@ -170,7 +173,10 @@ TEMPLATES = [
         "BACKEND": "django_jinja.backend.Jinja2",
         "DIRS": [str(APPS_DIR / "templates")],
         "APP_DIRS": True,
-        "OPTIONS": {"match_extension": ".j2", "constants": {"URL": URL, "FRONT_URL": FRONT_URL}},
+        "OPTIONS": {
+            "match_extension": ".j2",
+            "constants": {"URL": URL, "FRONT_URL": FRONT_URL},
+        },
     },
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -196,3 +202,9 @@ MEDIA_ROOT = str(BASE_DIR.parent / "media")
 MEDIA_URL = "{url}/media/".format(url=URL)
 STATIC_ROOT = str(BASE_DIR.parent / "static")
 STATIC_URL = "{url}/static/".format(url=URL)
+
+SIMPLE_JWT = {
+    # It will work instead of the default serializer(TokenObtainPairSerializer).
+    "TOKEN_OBTAIN_SERIALIZER": "testapp.rest_framework.jwt.serializers.MyTokenObtainPairSerializer",
+    # ...
+}
