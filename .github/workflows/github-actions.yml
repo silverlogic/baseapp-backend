@@ -38,6 +38,10 @@ jobs:
         run: isort --check .
       - name: black
         run: black --check .
+      - name: pytest
+        run: |
+          TEST_FILES=$(find tests -name 'test_*.py')
+          pytest $TEST_FILES
   test:
     runs-on: ubuntu-latest
     steps:
