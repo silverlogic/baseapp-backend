@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core import signing
 from django.utils.encoding import force_bytes
@@ -8,7 +9,8 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from baseapp_auth.emails import send_password_reset_email
-from baseapp_auth.models import User
+
+User = get_user_model()
 
 from .serializers import ForgotPasswordSerializer, ResetPasswordSerializer
 

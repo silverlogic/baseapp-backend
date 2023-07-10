@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core import signing
 from django.core.signing import SignatureExpired
@@ -8,8 +9,9 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from baseapp_auth.models import User
 from baseapp_auth.password_validators import apply_password_validators
+
+User = get_user_model()
 
 
 class ForgotPasswordSerializer(serializers.Serializer):

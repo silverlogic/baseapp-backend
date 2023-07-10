@@ -1,9 +1,9 @@
 from django.conf.urls import include, re_path
 from django.contrib import admin
-import testproject.urls.mfa as mfa_urls
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+import testproject.urls.mfa as mfa_urls
 from testproject.testapp.rest_framework.router import router as v1_router
 
 __all__ = [

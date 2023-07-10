@@ -4,10 +4,9 @@ import pytest
 from baseapp_core.exceptions import DeepLinkFetchError
 from baseapp_referrals.utils import get_referral_code
 
-from baseapp_auth.models import User
-
 import testproject.tests.factories as f
 import testproject.tests.helpers as h
+from testproject.testapp.models import User
 from testproject.tests.mixins import ApiMixin
 
 pytestmark = pytest.mark.django_db

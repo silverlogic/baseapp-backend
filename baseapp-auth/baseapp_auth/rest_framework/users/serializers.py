@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -9,7 +10,7 @@ from baseapp_referrals.models import UserReferral
 from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
 from rest_framework import serializers
 
-from baseapp_auth.models import User
+User = get_user_model()
 from baseapp_auth.password_validators import apply_password_validators
 from baseapp_auth.tokens import ConfirmEmailTokenGenerator
 

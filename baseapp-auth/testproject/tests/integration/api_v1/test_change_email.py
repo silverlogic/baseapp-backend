@@ -1,9 +1,8 @@
 import pytest
 
-from baseapp_auth.tokens import ChangeEmailConfirmTokenGenerator, ChangeEmailVerifyTokenGenerator
-
 import testproject.tests.factories as f
 import testproject.tests.helpers as h
+from baseapp_auth.tokens import ChangeEmailConfirmTokenGenerator, ChangeEmailVerifyTokenGenerator
 from testproject.tests.mixins import ApiMixin
 
 pytestmark = pytest.mark.django_db

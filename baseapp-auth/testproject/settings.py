@@ -87,7 +87,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "wsgi.application"
+WSGI_APPLICATION = "testproject.wsgi.application"
 
 
 # Database
@@ -140,7 +140,7 @@ REST_FRAMEWORK = {
 }
 
 # Auth
-AUTH_USER_MODEL = "baseapp_auth.User"
+AUTH_USER_MODEL = "testapp.User"
 AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.PBKDF2PasswordHasher"]
 

@@ -9,9 +9,9 @@ import pytest
 from asgiref.sync import sync_to_async
 from rest_framework.test import APIClient
 
-from ..graphql.testing import graphql_query
-
 import testproject.tests.factories as f
+
+from ..graphql.testing import graphql_query
 
 
 class Client(APIClient):

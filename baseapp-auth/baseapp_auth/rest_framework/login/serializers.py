@@ -1,11 +1,10 @@
-from django.contrib.auth import authenticate
-
+from django.contrib.auth import authenticate, get_user_model
 from django.utils.translation import gettext_lazy as _
 
 from rest_framework import exceptions, serializers
 from rest_framework.authtoken.models import Token
 
-from baseapp_auth.models import User
+User = get_user_model()
 
 
 class LoginPasswordExpirationMixin:
