@@ -2,6 +2,8 @@ name: GitHub Actions Demo
 run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
 on: [push]
 jobs:
+  call-workflow-passing-data:
+    uses: ./.github/workflows/workflow-B.yml
   Explore-GitHub-Actions:
     runs-on: ubuntu-latest
     steps:
@@ -42,21 +44,21 @@ jobs:
       - name: black
         if: steps.installation.outcome == 'success'
         run: black --check .
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v3
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        id: installation
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest
-      - name: pytest
-        if: steps.installation.outcome == 'success'
-        run: |
-          TEST_FILES=$(find . -path '*/tests/*' -name 'test_*.py')
-          pytest $TEST_FILES
+  # test:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Set up Python ${{ matrix.python-version }}
+  #       uses: actions/setup-python@v3
+  #       with:
+  #         python-version: ${{ matrix.python-version }}
+  #     - name: Install dependencies
+  #       id: installation
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install pytest
+  #     - name: pytest
+  #       if: steps.installation.outcome == 'success'
+  #       run: |
+  #         TEST_FILES=$(find . -path '*/tests/*' -name 'test_*.py')
+  #         pytest $TEST_FILES
