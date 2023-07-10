@@ -1,12 +1,11 @@
-import json
 from django.utils import timezone
 
 import pytest
 from constance.test import override_config
 
-import tests.factories as f
-import tests.helpers as h
-from tests.mixins import ApiMixin
+import testproject.tests.factories as f
+import testproject.tests.helpers as h
+from testproject.tests.mixins import ApiMixin
 
 pytestmark = pytest.mark.django_db
 

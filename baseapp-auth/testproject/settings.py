@@ -52,7 +52,7 @@ INSTALLED_APPS = [
     "avatar",
     "trench",
     "rest_framework_simplejwt",
-    "testapp",
+    "testproject.testapp",
     "test",
     "baseapp_core",
     "baseapp_auth",
@@ -69,7 +69,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "urls"
+ROOT_URLCONF = "testproject.urls"
 
 TEMPLATES = [
     {
@@ -205,6 +205,6 @@ STATIC_URL = "{url}/static/".format(url=URL)
 
 SIMPLE_JWT = {
     # It will work instead of the default serializer(TokenObtainPairSerializer).
-    "TOKEN_OBTAIN_SERIALIZER": "testapp.rest_framework.jwt.serializers.MyTokenObtainPairSerializer",
+    "TOKEN_OBTAIN_SERIALIZER": "testproject.testapp.rest_framework.jwt.serializers.MyTokenObtainPairSerializer",
     # ...
 }

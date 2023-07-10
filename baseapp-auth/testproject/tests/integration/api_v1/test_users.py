@@ -10,9 +10,9 @@ from baseapp_referrals.utils import get_referral_code
 from baseapp_auth.models import User
 from baseapp_auth.tokens import ConfirmEmailTokenGenerator
 
-import tests.factories as f
-import tests.helpers as h
-from tests.mixins import ApiMixin
+import testproject.tests.factories as f
+import testproject.tests.helpers as h
+from testproject.tests.mixins import ApiMixin
 
 pytestmark = pytest.mark.django_db
 

@@ -11,7 +11,7 @@ from rest_framework.test import APIClient
 
 from ..graphql.testing import graphql_query
 
-import tests.factories as f
+import testproject.tests.factories as f
 
 
 class Client(APIClient):

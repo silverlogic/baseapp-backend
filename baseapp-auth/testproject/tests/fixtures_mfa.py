@@ -1,5 +1,5 @@
 import pytest
-import tests.factories as f
+import testproject.tests.factories as f
 from django.contrib.auth import get_user_model
 from trench.models import MFAMethod as MFAMethodModel
 from django.apps import apps
