@@ -1,9 +1,9 @@
-name: Lint workflow
+name: Lint Workflow
 
 on:
   workflow_call:
     inputs:
-      config-path:
+      project:
         required: false
         type: string
 
