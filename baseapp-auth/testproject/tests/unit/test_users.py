@@ -9,7 +9,7 @@ from freezegun import freeze_time
 from baseapp_auth import tasks
 from baseapp_auth.models import User
 
-import tests.factories as f
+import testproject.tests.factories as f
 
 pytestmark = pytest.mark.django_db
 

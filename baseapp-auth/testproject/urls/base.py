@@ -4,7 +4,7 @@ import testproject.urls.mfa as mfa_urls
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from testapp.rest_framework.router import router as v1_router
+from testproject.testapp.rest_framework.router import router as v1_router
 
 __all__ = [
     "urlpatterns",

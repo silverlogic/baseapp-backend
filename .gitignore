@@ -25,3 +25,4 @@ media/
 # project-specific
 baseapp-auth/testproject/baseapp_auth
 baseapp-auth/testproject/baseapp_core
+baseapp-auth/db.sqlite3
