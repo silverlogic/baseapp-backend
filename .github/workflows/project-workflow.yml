@@ -36,6 +36,7 @@ jobs:
         if: steps.installation.outcome == 'success'
         run: black --check .
   Test:
+    needs: Lint
     runs-on: ubuntu-latest
     steps:
       - run: echo "Test for ${{ inputs.project }} project"
