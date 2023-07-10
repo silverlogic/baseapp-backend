@@ -7,19 +7,11 @@ jobs:
     steps:
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
-  baseapp-core-lint:
-    uses: ./.github/workflows/lint.yml
+  baseapp-core-workflow:
+    uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-core
-  baseapp-core-test:
-    uses: ./.github/workflows/test.yml
-    with:
-      project: baseapp-core
-  baseapp-reactions-lint:
-    uses: ./.github/workflows/lint.yml
-    with:
-      project: baseapp-reactions
-  baseapp-reactions-test:
-    uses: ./.github/workflows/test.yml
+  baseapp-reactions-workflow:
+    uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-reactions
