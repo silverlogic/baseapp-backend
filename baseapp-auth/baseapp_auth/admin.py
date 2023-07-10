@@ -1,4 +1,5 @@
 from django.contrib import admin, messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -14,11 +15,10 @@ from .emails import (
 from .forms import UserChangeForm, UserCreationForm
 from .models import PasswordValidation, SuperuserUpdateLog
 
-User = swapper.load_model("baseapp_auth", "User")
+User = get_user_model()
 
 
-@admin.register(User)
-class UserAdmin(UserAdmin):
+class AbstractUserAdmin(UserAdmin):
     fieldsets = (
         (
             None,
@@ -79,7 +79,7 @@ class UserAdmin(UserAdmin):
         return obj.is_password_expired
 
     def save_model(self, request, obj, form, change):
-        if change and obj.tracker.has_changed("is_superuser"):
+        if change and hasattr(obj, "tracker") and obj.tracker.has_changed("is_superuser"):
             SuperuserUpdateLog.objects.create(
                 assigner=request.user, assignee=obj, made_superuser=obj.is_superuser
             )

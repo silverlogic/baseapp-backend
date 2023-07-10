@@ -1,9 +1,10 @@
+from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 
 import swapper
 from rest_framework import serializers
 
-User = swapper.load_model("baseapp_auth", "User")
+User = get_user_model()
 from baseapp_auth.tokens import ChangeEmailConfirmTokenGenerator, ChangeEmailVerifyTokenGenerator
 
 

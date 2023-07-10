@@ -6,7 +6,7 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-    dependencies = [("baseapp_auth", "0003_auto_20160725_2001")]
+    dependencies = [("testapp", "0003_auto_20160725_2001")]
 
     operations = [
         migrations.RemoveField(model_name="user", name="is_new_email_verified"),

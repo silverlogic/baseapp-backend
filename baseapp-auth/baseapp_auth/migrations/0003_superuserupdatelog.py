@@ -10,7 +10,7 @@ import model_utils.fields
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("baseapp_auth", "0005_passwordvalidation"),
+        ("baseapp_auth", "0002_passwordvalidation"),
     ]
 
     operations = [

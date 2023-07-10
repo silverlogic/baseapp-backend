@@ -1,10 +1,11 @@
-import pytest
-import testproject.tests.factories as f
-from django.contrib.auth import get_user_model
-from trench.models import MFAMethod as MFAMethodModel
 from django.apps import apps
-from trench.command.create_secret import create_secret_command
+from django.contrib.auth import get_user_model
 
+import pytest
+from trench.command.create_secret import create_secret_command
+from trench.models import MFAMethod as MFAMethodModel
+
+import testproject.tests.factories as f
 
 User = get_user_model()
 

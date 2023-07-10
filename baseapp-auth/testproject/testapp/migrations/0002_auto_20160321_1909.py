@@ -8,7 +8,7 @@ import baseapp_core.models
 
 
 class Migration(migrations.Migration):
-    dependencies = [("baseapp_auth", "0001_initial")]
+    dependencies = [("testapp", "0001_initial")]
 
     operations = [
         migrations.AddField(

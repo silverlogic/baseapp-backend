@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 
 import swapper
 from baseapp_core.models import CaseInsensitiveEmailField
-from model_utils import Choices, FieldTracker
+from model_utils import Choices
 from model_utils.models import TimeStampedModel
 
 from .managers import UserManager
@@ -100,21 +100,11 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser):
         return self.email
 
     def save(self, *args, **kwargs):
-        with self.tracker:
-            if self.tracker.has_changed("password"):
-                self.password_changed_date = timezone.now()
-            super().save(*args, **kwargs)
-
-
-class User(AbstractUser):
-    # FieldTracker doesn't work with abstract model classes
-    tracker = FieldTracker(fields=["is_superuser", "password"])
-
-    def save(self, *args, **kwargs):
-        with self.tracker:
-            if self.tracker.has_changed("password"):
-                self.password_changed_date = timezone.now()
-            super().save(*args, **kwargs)
+        if hasattr(self, "tracker"):
+            with self.tracker:
+                if self.tracker.has_changed("password"):
+                    self.password_changed_date = timezone.now()
+                super().save(*args, **kwargs)
 
 
 class PasswordValidation(models.Model):

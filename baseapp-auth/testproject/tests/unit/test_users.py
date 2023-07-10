@@ -6,10 +6,9 @@ import pytest
 from constance.test import override_config
 from freezegun import freeze_time
 
-from baseapp_auth import tasks
-from baseapp_auth.models import User
-
 import testproject.tests.factories as f
+from baseapp_auth import tasks
+from testproject.testapp.models import User
 
 pytestmark = pytest.mark.django_db
 

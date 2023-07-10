@@ -6,7 +6,7 @@ class UserFactory(factory.django.DjangoModelFactory):
     password = factory.PostGenerationMethodCall("set_password", "default")
 
     class Meta:
-        model = "baseapp_auth.User"
+        model = "testapp.User"
 
 
 class PasswordValidationFactory(factory.django.DjangoModelFactory):
