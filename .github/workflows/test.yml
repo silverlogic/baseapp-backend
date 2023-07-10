@@ -1,0 +1,30 @@
+name: Test Workflow
+
+on:
+  workflow_call:
+    inputs:
+      project:
+        required: false
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        id: installation
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+      # TODO: Install deps
+      # TODO: Uncomment once project is executable. It needs to have a 'manage.py' to run the tests
+      # - name: pytest
+      #   if: steps.installation.outcome == 'success'
+      #   run: |
+      #     TEST_FILES=$(find . -path '*/tests/*' -name 'test_*.py')
+      #     pytest $TEST_FILES

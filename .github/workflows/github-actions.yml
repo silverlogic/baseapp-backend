@@ -2,8 +2,6 @@ name: GitHub Actions Demo
 run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
 on: [push]
 jobs:
-  call-workflow-passing-data:
-    uses: ./.github/workflows/workflow-B.yml
   Explore-GitHub-Actions:
     runs-on: ubuntu-latest
     steps:
@@ -18,32 +16,10 @@ jobs:
         run: |
           ls ${{ github.workspace }}
       - run: echo "🍏 This job's status is ${{ job.status }}."
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v3
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install flake8, isort and black
-        id: installation
-        run: |
-          python -m pip install --upgrade pip
-          pip install flake8 isort black
-      - name: flake8
-        if: steps.installation.outcome == 'success'
-        run: |
-          # stop the build if there are Python syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-      - name: isort
-        if: steps.installation.outcome == 'success'
-        run: isort --check .
-      - name: black
-        if: steps.installation.outcome == 'success'
-        run: black --check .
+  Lint-Workflow:
+    uses: ./.github/workflows/lint.yml
+  Test-Workflow:
+    uses: ./.github/workflows/test.yml
   # test:
   #   runs-on: ubuntu-latest
   #   steps:
