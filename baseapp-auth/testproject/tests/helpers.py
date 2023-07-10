@@ -1,4 +1,5 @@
 import pytest
+import json
 from rest_framework import status
 
 
@@ -43,3 +44,7 @@ def responseNotFound(response):
 
 def responseMethodNotAllowed(response):
     responseEquals(response, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+def get_json(data):
+    return json.loads(json.dumps(data))

@@ -7,7 +7,7 @@ from baseapp_core.rest_framework.routers import DefaultRouter
 router = DefaultRouter(trailing_slash=False)
 
 # Login / Register
-from .login.views import LoginMfaViewSet  # noqa
+from baseapp_auth.rest_framework.login.views import LoginMfaViewSet  # noqa
 from baseapp_auth.rest_framework.register.views import RegisterViewSet  # noqa
 
 router.register(r"login", LoginMfaViewSet, basename="login")
