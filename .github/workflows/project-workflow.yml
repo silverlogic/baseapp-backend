@@ -8,53 +8,54 @@ on:
         type: string
 
 jobs:
-  Lint:
+  project-workflow:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
     steps:
-      - run: echo "Lint for ${{ inputs.project }} project"
+      # Lint
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
+      - run: echo "🗒️ Checking ${{ inputs.project }} Lint"
       - name: Install flake8, isort and black
-        id: installation
+        id: lint_installation
         run: |
           python -m pip install --upgrade pip
           pip install flake8 isort black
       - name: flake8
-        if: steps.installation.outcome == 'success'
+        id: flake8
+        if: steps.lint_installation.outcome == 'success'
         run: |
           # stop the build if there are Python syntax errors or undefined names
           flake8 ./${{ inputs.project }} --count --select=E9,F63,F7,F82 --show-source --statistics
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           flake8 ./${{ inputs.project }} --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: isort
-        if: steps.installation.outcome == 'success'
+        id: isort
+        if: steps.flake8.outcome == 'success'
         run: isort --check ./${{ inputs.project }}
       - name: black
-        if: steps.installation.outcome == 'success'
+        id: black
+        if: steps.isort.outcome == 'success'
         run: black --check .
-  Test:
-    needs: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Test for ${{ inputs.project }} project"
-      - uses: actions/checkout@v3
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v3
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        id: installation
+      # Test
+      - run: echo "🧪 Checking ${{ inputs.project }} Tests"
+        if: steps.black.outcome == 'success'
+      - name: Install tests requirements
+        if: steps.black.outcome == 'success'
+        id: requirements_installation
         run: |
           python -m pip install --upgrade pip
           app_name=$(echo "${{ inputs.project }}" | tr '-' '_')
           requirements_path="${{ inputs.project }}/${app_name}/tests/requirements.txt"
-          if [ -f ${requirements_path} ]; then pip install -r ${requirements_path}; else echo 'No requirements file found'; fi
+          if [ -f ${requirements_path} ]; then pip install -r ${requirements_path}; else echo 'No requirements.txt file found in tests directory'; fi
       # TODO: Uncomment once project is executable. It needs to have a 'manage.py' to run the tests
       # - name: pytest
-      #   if: steps.installation.outcome == 'success'
+      #   if: steps.requirements_installation.outcome == 'success'
       #   run: |
       #     TEST_FILES=$(find . -path '*/${{ inputs.project }}/*/tests/*' -name 'test_*.py')
       #     pytest $TEST_FILES
