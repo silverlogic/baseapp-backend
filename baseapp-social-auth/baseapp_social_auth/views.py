@@ -7,14 +7,11 @@ from django.http import Http404, HttpResponse
 from django.utils.decorators import method_decorator
 from django.utils.encoding import iri_to_uri
 from django.views.decorators.cache import never_cache
+
 from requests import HTTPError
 from rest_framework import serializers, status, viewsets
 from rest_framework.response import Response
-from rest_social_auth.views import (
-    DOMAIN_FROM_ORIGIN,
-    SocialTokenOnlyAuthView,
-    decorate_request,
-)
+from rest_social_auth.views import DOMAIN_FROM_ORIGIN, SocialTokenOnlyAuthView, decorate_request
 from social_core.exceptions import AuthException
 from social_core.utils import parse_qs, user_is_authenticated
 
@@ -46,10 +43,7 @@ class SocialAuthViewSet(SocialTokenOnlyAuthView, viewsets.GenericViewSet):
         self.set_input_data(request, input_data)
         decorate_request(request, provider_name)
         serializer_in = self.get_serializer_in(data=input_data)
-        if (
-            self.oauth_v1()
-            and request.backend.OAUTH_TOKEN_PARAMETER_NAME not in input_data
-        ):
+        if self.oauth_v1() and request.backend.OAUTH_TOKEN_PARAMETER_NAME not in input_data:
             # oauth1 first stage (1st is get request_token, 2nd is get access_token)
             manual_redirect_uri = input_data.get("redirect_uri", None)
             if manual_redirect_uri:
@@ -131,7 +125,5 @@ class SocialAuthViewSet(SocialTokenOnlyAuthView, viewsets.GenericViewSet):
 
     def respond_error(self, error):
         if isinstance(error, (AuthException, HTTPError)):
-            raise serializers.ValidationError(
-                {"non_field_errors": "invalid_credentials"}
-            )
+            raise serializers.ValidationError({"non_field_errors": "invalid_credentials"})
         return Response(status=status.HTTP_400_BAD_REQUEST)
