@@ -6,8 +6,8 @@ from rest_framework import viewsets
 from rest_framework.settings import api_settings
 
 User = get_user_model()
-import testproject.tests.factories as f
-import testproject.tests.helpers as h
+import tests.factories as f
+import tests.helpers as h
 from baseapp_auth.rest_framework.users.serializers import UserSerializer
 
 pytestmark = pytest.mark.django_db
