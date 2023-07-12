@@ -5,7 +5,7 @@ import pytest
 from trench.command.create_secret import create_secret_command
 from trench.models import MFAMethod as MFAMethodModel
 
-import testproject.tests.factories as f
+import tests.factories as f
 
 User = get_user_model()
 

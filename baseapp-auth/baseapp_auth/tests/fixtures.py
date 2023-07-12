@@ -9,7 +9,7 @@ import pytest
 from asgiref.sync import sync_to_async
 from rest_framework.test import APIClient
 
-import testproject.tests.factories as f
+import tests.factories as f
 
 
 class Client(APIClient):

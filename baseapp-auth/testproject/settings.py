@@ -53,7 +53,6 @@ INSTALLED_APPS = [
     "trench",
     "rest_framework_simplejwt",
     "testproject.testapp",
-    "test",
     "baseapp_core",
     "baseapp_auth",
     "baseapp_referrals",

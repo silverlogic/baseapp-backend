@@ -1,7 +1,7 @@
 import pytest
 from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
 
-import testproject.tests.factories as f
+import tests.factories as f
 
 pytestmark = pytest.mark.django_db
 

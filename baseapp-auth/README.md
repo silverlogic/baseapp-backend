@@ -106,12 +106,19 @@ And manually install the package:
 pip install -e baseapp-backend/baseapp-auth
 ```
 
-The `-e` flag will make it like any change you make in the cloned repo files will effect into the project.
+You can find demo requirements in [testproject/requirements.txt](testproject/requirements.txt) including baseapp dependencies installed in editable mode.
 
 ### Test project
 
-In [testproject](testproject/) you can find a demo app that can be run as a standalone demo django app:
+In [testproject](testproject/) you can find a demo app that can be run as a standalone djano app:
 
 ```bash
 python manage.py runserver
+```
+
+Running unit tests:
+
+```bash
+cd basepp_auth
+pytest tests
 ```
