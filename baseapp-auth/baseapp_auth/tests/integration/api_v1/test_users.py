@@ -7,10 +7,11 @@ from avatar.models import Avatar
 from baseapp_referrals.models import UserReferral
 from baseapp_referrals.utils import get_referral_code
 
-import tests.factories as f
-import tests.helpers as h
 from baseapp_auth.tokens import ConfirmEmailTokenGenerator
 from testproject.testapp.models import User
+
+import tests.factories as f
+import tests.helpers as h
 from tests.mixins import ApiMixin
 
 pytestmark = pytest.mark.django_db
