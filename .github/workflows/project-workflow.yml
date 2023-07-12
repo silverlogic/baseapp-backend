@@ -6,6 +6,8 @@ on:
       project:
         required: true
         type: string
+  release:
+    types: [published]
 
 jobs:
   project-workflow:
@@ -13,6 +15,10 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.8"]
+
+    permissions:
+      id-token: write
+
     steps:
       # Lint
       - uses: actions/checkout@v3

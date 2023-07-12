@@ -1,3 +1,7 @@
 from setuptools import setup
 
-setup()
+setup(
+    name="baseapp-reactions",
+    packages=["baseapp-reactions"],
+    version="0.1",
+)

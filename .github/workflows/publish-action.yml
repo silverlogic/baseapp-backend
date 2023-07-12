@@ -1,0 +1,23 @@
+name: Publish
+run-name: ${{ github.actor }} is checking ${{ github.ref }} branch 🚀
+on:
+  release:
+    types: [published]
+
+jobs:
+  baseapp-auth-workflow:
+    uses: ./.github/workflows/publish-workflow.yml
+    with:
+      project: baseapp-auth
+  baseapp-core-workflow:
+    uses: ./.github/workflows/publish-workflow.yml
+    with:
+      project: baseapp-core
+  baseapp-reactions-workflow:
+    uses: ./.github/workflows/publish-workflow.yml
+    with:
+      project: baseapp-reactions
+  baseapp-referrals-workflow:
+    uses: ./.github/workflows/publish-workflow.yml
+    with:
+      project: baseapp-referrals
