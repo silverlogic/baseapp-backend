@@ -6,6 +6,9 @@ on:
       project:
         required: true
         type: string
+    release:
+      types:
+        - published
 
 jobs:
   project-workflow:
@@ -14,10 +17,6 @@ jobs:
       matrix:
         python-version: ["3.8"]
 
-#    environment:
-#      name: pypi
-##      url: https://pypi.org/p/baseapp-backend
-#      url: https://test.pypi.org/legacy/p/baseapp-backend
     permissions:
       id-token: write
 
@@ -74,7 +73,7 @@ jobs:
         with:
           filters: |
             src:
-              - './${{ inputs.project }}/**'
+              - '${{ inputs.project }}/**'
 
       - name: Build distribution
         if: steps.changes.outputs.src == 'true'
@@ -88,7 +87,7 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
 
 #      - name: Publish distribution 📦 to PyPI
-#        if: startsWith(github.ref, 'refs/tags')
+#        if: steps.changes.outputs.src == 'true'
 #        uses: pypa/gh-action-pypi-publish@release/v1
 #        with:
 #          password: ${{ secrets.PYPI_API_TOKEN }}
