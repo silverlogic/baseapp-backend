@@ -11,6 +11,8 @@ jobs:
   common-workflow:
     name: Lint
     uses: ./.github/workflows/project-workflow.yml
+    with:
+      project: baseapp-reactions
 
 #    permissions:
 #      id-token: write
