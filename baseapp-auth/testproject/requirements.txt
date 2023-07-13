@@ -1,4 +1,4 @@
-Django==3.2.19
+Django==3.2.20
 celery==5.2.7
 djangorestframework==3.14.0
 djangorestframework-simplejwt[crypto]==5.2.2
