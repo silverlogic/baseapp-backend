@@ -4,9 +4,9 @@ import swapper
 from baseapp_comments.graphql.object_types import CommentNode
 from graphql_relay import to_global_id
 
-from ..models import ReactionTypes
+from ..models import ReactionTypes, Reaction
 
-Reaction = swapper.load_model("baseapp_reactions", "Reaction")
+# Reaction = swapper.load_model("baseapp_reactions.model", "Reaction")
 
 pytestmark = pytest.mark.django_db
 
