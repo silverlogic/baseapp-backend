@@ -11,8 +11,8 @@ from drf_view_action_permissions.action import (DjangoActionPermissions,
 from testproject.testapp.models import TestModel
 
 from . import factories as f
-from . import helpers as h
-from .fixtures import Client
+from baseapp_core.tests import helpers as h
+from baseapp_core.tests.fixtures import Client
 
 pytestmark = pytest.mark.django_db
 

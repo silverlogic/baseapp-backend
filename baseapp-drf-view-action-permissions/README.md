@@ -7,7 +7,7 @@ This app uses django provided permission and group model and provides the abilit
 Add to `requirements/base.txt` (replacing everything inside brackets):
 
 ```bash
-django-view-action-permissions @ git+https://{BITBUCKET_USERNAME}@bitbucket.org/silverlogic/baseapp-view-action-permissions-django.git@{TAG or BRANCH or HASH}
+baseapp-drf-view-action-permissions @ git+https://github.com/silverlogic/baseapp-backend.git@v0.1#subdirectory=baseapp-drf-view-action-permissions
 ```
 
 ## Add the app to your project INSTALLED_APPS
@@ -15,7 +15,7 @@ django-view-action-permissions @ git+https://{BITBUCKET_USERNAME}@bitbucket.org/
 ```py
 INSTALLED_APPS = [
     ...
-    "drf_view_action_permissions",
+    "baseapp_drf_view_action_permissions",
 ]
 ```
 
@@ -23,7 +23,7 @@ INSTALLED_APPS = [
 
 ```py
 from django.db import models
-from drf_view_action_permissions.mixins import PermissionModelMixin
+from baseapp_drf_view_action_permissions.mixins import PermissionModelMixin
 
 class User(PermissionModelMixin, models.Model):
     ...
@@ -33,7 +33,7 @@ class User(PermissionModelMixin, models.Model):
 
 ```py
 from rest_framework import viewsets
-from drf_view_action_permissions.action import DjangoActionPermissions
+from baseapp_drf_view_action_permissions.action import DjangoActionPermissions
 
 class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [DjangoActionPermissions, ]
@@ -114,7 +114,7 @@ We have provided two utility function to load and remove permissions from group.
 ```py
 from django.db import migrations
 
-from drf_view_action_permissions.utils import get_permission_loader, get_permission_remover
+from baseapp_drf_view_action_permissions.utils import get_permission_loader, get_permission_remover
 
 permissions = [
     {"name": "Test Group", "permissions": ['list_testmodel', 'disable_testmodel', 'add_testmodel'],},
@@ -192,7 +192,7 @@ MIDDLEWARE = [
     ...
     "django.contrib.auth.middleware.AuthenticationMiddleware", # make sure it's after the authentication middleware
     ...
-    "drf_view_action_permissions.middleware.RestrictIpMiddleware",
+    "baseapp_drf_view_action_permissions.middleware.RestrictIpMiddleware",
     ...
 ]
 ```
@@ -208,7 +208,7 @@ Note: Restriction by role only works in Django admin when using the middleware s
 You can also use `IpAddressPermission` to restrict specific or all view actions.
 
 ```py
-from drf_view_action_permissions.action import IpAddressPermission
+from baseapp_drf_view_action_permissions.action import IpAddressPermission
 
 
 class DummyIpViewSet(viewsets.GenericViewSet):

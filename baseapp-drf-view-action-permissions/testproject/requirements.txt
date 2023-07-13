@@ -8,6 +8,9 @@ pytest-django==4.5.2
 factory-boy==2.12.0
 Faker==4.1.0
 
+# baseapp dependencies
+-e ../../baseapp-core
+
 # lint
 black==22.10.0
 flake8==5.0.4
