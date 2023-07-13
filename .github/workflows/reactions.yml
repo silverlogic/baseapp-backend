@@ -9,6 +9,7 @@ on:
 
 jobs:
   common-workflow:
+    name: Lint
     uses: ./project-workflow.yml
 
 #    permissions:
