@@ -1,0 +1,17 @@
+Django==3.2.16
+djangorestframework==3.12.4
+django-ipware==4.0.2
+
+# test
+pytest==6.2.5
+pytest-django==4.5.2
+factory-boy==2.12.0
+Faker==4.1.0
+
+# baseapp dependencies
+-e ../../baseapp-core
+
+# lint
+black==22.10.0
+flake8==5.0.4
+isort==5.10.1
