@@ -1,13 +1,25 @@
 from django.utils import timezone
+from django.db import models
+from baseapp_core.models import CaseInsensitiveEmailField
+from baseapp_auth.models import AbstractUser
+
+
+
 
 from model_utils import FieldTracker
 
-from baseapp_auth.models import AbstractUser
+
+from django.contrib.auth.models import AbstractBaseUser
+
+
+from importlib import import_module
+
 
 
 class User(AbstractUser):
     # FieldTracker doesn't work with abstract model classes
     tracker = FieldTracker(fields=["is_superuser", "password"])
+
 
     def save(self, *args, **kwargs):
         with self.tracker:
