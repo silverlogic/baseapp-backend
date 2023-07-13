@@ -6,9 +6,8 @@ on:
       project:
         required: true
         type: string
-    release:
-      types:
-        - published
+  release:
+    types: [published]
 
 jobs:
   project-workflow:
