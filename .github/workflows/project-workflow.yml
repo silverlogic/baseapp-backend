@@ -68,22 +68,21 @@ jobs:
       #     TEST_FILES=$(find . -path '*/${{ inputs.project }}/*/tests/*' -name 'test_*.py')
       #     pytest $TEST_FILES
 
-      - name: Check for Changes
-        id: check_changes
-        run: |
-          changes=$(git diff --name-only HEAD HEAD~1)
-          if [[ $changes =~ ${{ inputs.project }} ]]; then
-            echo "::set-output name=has_changes::true"
-          else
-            echo "::set-output name=has_changes::false"
-          fi
+      - name: Check for changes
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            src:
+              - '${{ inputs.project }}/**'
+                      
 
       - name: Build distribution
-        if: steps.check_changes.outputs.has_changes == 'true'
+        if: steps.changes.outputs.src == 'true'
         run: python3 ${{ inputs.project }}/setup.py sdist
 
       - name: Publish distribution 📦 to Test PyPI
-        if: steps.check_changes.outputs.has_changes == 'true'
+        if: steps.changes.outputs.src == 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
