@@ -1,0 +1,28 @@
+__pycache__/
+.cache/
+/apidocs/build/
+**/venv
+.DS_Store
+.scannerwork/
+.env
+*.egg-info
+
+# workspace files are user-specific
+*.sublime-workspace
+**/*.code-workspace
+.idea/
+
+# generated UMLs
+uml-*.*
+.env
+.bash_history
+
+src
+.pytest_cache/
+__pycache__/
+media/
+
+# project-specific
+baseapp-auth/testproject/baseapp_auth
+baseapp-auth/testproject/baseapp_core
+baseapp-auth/db.sqlite3
