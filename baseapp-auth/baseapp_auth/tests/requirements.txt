@@ -35,7 +35,7 @@ channels_redis==4.0.0
 daphne==4.0.0
 
 # postgresql driver
-psycopg2-binary==2.9.5
+psycopg2==2.9.5
 
 # Multi-factor authentication
 django-trench @ https://github.com/silverlogic/django-trench/archive/refs/tags/v0.3.3.zip

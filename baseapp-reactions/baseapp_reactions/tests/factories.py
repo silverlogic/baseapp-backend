@@ -3,7 +3,10 @@ from django.contrib.contenttypes.models import ContentType
 import factory
 import swapper
 
-Reaction = swapper.load_model("baseapp_reactions", "Reaction")
+# Reaction = swapper.load_model("baseapp_reactions", "Reaction")
+
+from ..models import Reaction
+
 
 # from baseapp_auth.tests.factories import UserFactory
 

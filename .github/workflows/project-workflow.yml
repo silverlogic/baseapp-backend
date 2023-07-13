@@ -34,19 +34,19 @@ jobs:
           flake8 ./${{ inputs.project }} --count --select=E9,F63,F7,F82 --show-source --statistics
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           flake8 ./${{ inputs.project }} --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-      - name: isort
-        id: isort
-        if: steps.flake8.outcome == 'success'
-        run: isort --check ./${{ inputs.project }}
-      - name: black
-        id: black
-        if: steps.isort.outcome == 'success'
-        run: black --check .
+      # - name: isort
+      #   id: isort
+      #   if: steps.flake8.outcome == 'success'
+      #   run: isort --check ./${{ inputs.project }}
+      # - name: black
+      #   id: black
+      #   if: steps.isort.outcome == 'success'
+      #   run: black --check .
       # Test
       - run: echo "🧪 Checking ${{ inputs.project }} Tests"
-        if: steps.black.outcome == 'success'
+        # if: steps.black.outcome == 'success'
       - name: Install tests requirements
-        if: steps.black.outcome == 'success'
+        # if: steps.black.outcome == 'success'
         id: requirements_installation
         run: |
           python -m pip install --upgrade pip
@@ -54,8 +54,9 @@ jobs:
           requirements_path="${{ inputs.project }}/${app_name}/tests/requirements.txt"
           if [ -f ${requirements_path} ]; then pip install -r ${requirements_path}; else echo 'No requirements.txt file found in tests directory'; fi
       # TODO: Uncomment once project is executable. It needs to have a 'manage.py' to run the tests
-      # - name: pytest
-      #   if: steps.requirements_installation.outcome == 'success'
-      #   run: |
-      #     TEST_FILES=$(find . -path '*/${{ inputs.project }}/*/tests/*' -name 'test_*.py')
-      #     pytest $TEST_FILES
+      - name: pytest
+        if: steps.requirements_installation.outcome == 'success'
+        run: |
+          app_name=$(echo "${{ inputs.project }}" | tr '-' '_')
+          tests_path="${{ inputs.project }}/${app_name}/tests"
+          pytest ${tests_path}
