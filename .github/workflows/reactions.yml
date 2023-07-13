@@ -9,7 +9,7 @@ on:
 
 jobs:
   common-workflow:
-    uses: ./project-workflow.yml
+#    uses: ./project-workflow.yml
     runs-on: ubuntu-latest
     strategy:
       matrix:
