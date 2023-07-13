@@ -8,23 +8,24 @@ on:
         type: string
 
 jobs:
-  project-workflow:
-#    runs-on: ubuntu-latest
+  common-workflow:
+    uses: ./project-workflow.yml
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.8"]
 #    permissions:
 #      id-token: write
 
-    uses: ./project-workflow.yml
 
-#    steps:
-#      - uses: actions/checkout@v3
-#
-#      - name: Set up Python ${{ matrix.python-version }}
-#        uses: actions/setup-python@v3
-#        with:
-#          python-version: ${{ matrix.python-version }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
 #
 #      - name: Build distribution
 #        run: python3 baseapp-reactions/setup.py sdist
