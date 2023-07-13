@@ -2,6 +2,7 @@ from django.utils import timezone
 
 import pytest
 from constance.test import override_config
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 import tests.factories as f
 import tests.helpers as h
@@ -62,6 +63,21 @@ class TestLogin(ApiMixin):
         r = self.send_login_request(client, auth_method, data)
         h.responseUnauthorized(r)
         assert r.data.get("password") is not None
+
+
+class TestJwtAuth(ApiMixin):
+    def test_can_jwt_token_contains_user_data(self, client):
+        data = {"email": "john@doe.com", "password": "1234567890"}
+        user = f.UserFactory(email=data["email"], password=data["password"])
+        r = client.post("/v1/auth/jwt/login/", data)
+        h.responseOk(r)
+        authenticator = JWTAuthentication()
+        validated_token = authenticator.get_validated_token(r.data["access"])
+
+        assert validated_token["id"] == user.id
+        assert validated_token["email"] == user.email
+        assert validated_token["first_name"] == user.first_name
+        assert validated_token["last_name"] == user.last_name
 
 
 class TestMfaLogin(ApiMixin):
