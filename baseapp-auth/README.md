@@ -11,7 +11,7 @@ This project provides the default User model and authentication utilities.
 ### Authentication endpoints
 
 In `rest_framework` directory you can find a implementation of authentication-related endpoints: login, signup, forgot-passowrd, change-email. The attached [test project](testproject/) has DRF routing set up to test/demo JWT authentication and Multi-factor authentication (MFA).
-
+[README.md](..%2Fbaseapp-referrals%2FREADME.md)
 ### Utilities
 
 ## How to use
