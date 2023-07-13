@@ -9,15 +9,16 @@ on:
 
 jobs:
   common-workflow:
-#    uses: ./project-workflow.yml
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.8"]
+    uses: ./project-workflow.yml
+
 #    permissions:
 #      id-token: write
 
-
+  reaction-workflow:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ "3.8" ]
 
     steps:
       - uses: actions/checkout@v3
