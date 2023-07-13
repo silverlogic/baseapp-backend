@@ -69,7 +69,7 @@ jobs:
       #     pytest $TEST_FILES
 
       - name: Build distribution
-        run: python3 ${{ github.event.inputs.project }}/setup.py sdist
+        run: python3 ${{ inputs.project }}/setup.py sdist
 
       - name: Publish distribution 📦 to Test PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
