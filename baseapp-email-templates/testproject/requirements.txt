@@ -1,0 +1,25 @@
+Django==3.2.16
+djangorestframework == 3.14.0
+djangorestframework-expander == 0.2.3
+django-model-utils == 4.3.1
+django-ckeditor == 6.5.1
+sendgrid == 6.9.7
+django-sendgrid-v5 == 1.2.1
+beautifulsoup4 == 4.6.3
+django-nested-admin == 3.3.3
+django-jinja == 2.10.2
+
+# baseapp dependencies
+-e ../../baseapp-core
+
+# test
+freezegun==1.2.1
+pytest==6.2.5
+httpretty==1.1.4
+pytest-django==4.5.2
+factory-boy==3.2.1
+
+# lint
+black==22.10.0
+flake8==5.0.4
+isort==5.10.1
