@@ -3,9 +3,9 @@
 This app provides the integration of custom e-mail template configuration with The SilverLogic's [BaseApp](https://bitbucket.org/silverlogic/baseapp-django-v2).
 
 ## Install the package
-Add to `requirements/base.txt`:
+`baseapp_email_templates`  Add to `requirements/base.txt`:
 ```bash
-git+https://bitbucket.org/silverlogic/baseapp-email-templates-django.git
+baseapp-email-templates @ git+https://github.com/silverlogic/baseapp-backend.git@v0.1#subdirectory=baseapp-email-templates
 ```
 
 ## Configure template settings

@@ -17,3 +17,7 @@ Reusable app to enable User's reactions on any model, features like like/dislike
 ## [baseapp-referrals](baseapp-referrals)
 
 Utilities for user referrals
+
+## [baseapp-email-templates](baseapp-email-templates)
+
+Utilities for Django Email Template
