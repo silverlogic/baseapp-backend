@@ -106,13 +106,16 @@ And manually install the package:
 pip install -e baseapp-backend/baseapp-auth
 ```
 
-You can find demo requirements in [testproject/requirements.txt](testproject/requirements.txt) including baseapp dependencies installed in editable mode.
-
 ### Test project
 
 In [testproject](testproject/) you can find a demo app that can be run as a standalone djano app:
 
 ```bash
+# install dependecies
+python3 -m venv venv
+source venv/bin/activate
+pip install -r testproject/requirements.txt
+
 python manage.py runserver
 ```
 
