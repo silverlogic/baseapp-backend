@@ -10,7 +10,7 @@ on:
 jobs:
   common-workflow:
     name: Lint
-    uses: ./project-workflow.yml
+    uses: ./.github/workflows/project-workflow.yml
 
 #    permissions:
 #      id-token: write
