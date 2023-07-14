@@ -4,7 +4,6 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-import swapper
 from baseapp_core.models import CaseInsensitiveEmailField
 from model_utils import Choices
 from model_utils.models import TimeStampedModel
