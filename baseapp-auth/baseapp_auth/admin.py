@@ -4,7 +4,6 @@ from django.contrib.auth.admin import UserAdmin
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-import swapper
 from constance import config
 
 from .emails import (
