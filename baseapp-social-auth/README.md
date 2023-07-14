@@ -13,7 +13,7 @@ Use this package to login/signup using social networks (Facebook, Google and oth
 Add to `requirements/base.txt`:
 
 ```
-baseapp-social-auth-django @ git+https://bitbucket.org/silverlogic/baseapp-social-auth-django.git@{TAG or BRANCH or HASH}
+baseapp-social-auth @ git+https://github.com/silverlogic/baseapp-backend.git@v0.1#subdirectory=baseapp-social-auth
 ```
 
 ### Add to your routes

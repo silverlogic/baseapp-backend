@@ -1,9 +1,10 @@
 from django.test import TestCase
 
 import pytest
+from freezegun import freeze_time
+
 from baseapp_social_auth.cache.models import SocialAuthAccessTokenCache
 from baseapp_social_auth.cache.tasks import clean_up_social_auth_cache
-from freezegun import freeze_time
 
 pytestmark = pytest.mark.django_db
 

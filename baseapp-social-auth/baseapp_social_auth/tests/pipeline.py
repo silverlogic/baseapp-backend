@@ -5,9 +5,9 @@ from django.core.files.images import ImageFile
 
 import requests
 from avatar.models import Avatar
-from baseapp_social_auth.referrals import get_user_from_referral_code
+from baseapp_referrals.models import UserReferral
 
-from .models import UserReferral
+from baseapp_social_auth.referrals import get_user_from_referral_code
 
 
 class EmailAlreadyExistsError(Exception):

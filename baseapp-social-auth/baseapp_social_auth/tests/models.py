@@ -32,12 +32,3 @@ class User(AbstractBaseUser):
     USERNAME_FIELD = "email"
 
     objects = UserManager()
-
-
-class UserReferral(models.Model):
-    referrer = models.ForeignKey(
-        settings.AUTH_USER_MODEL, related_name="referrals", on_delete=models.CASCADE
-    )
-    referee = models.OneToOneField(
-        settings.AUTH_USER_MODEL, related_name="referred_by", on_delete=models.CASCADE
-    )

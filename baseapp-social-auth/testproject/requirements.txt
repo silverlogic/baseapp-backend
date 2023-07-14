@@ -1,0 +1,7 @@
+# baseapp dependencies
+-e ./baseapp-core
+-e ./baseapp-social-auth
+-e ./baseapp-referrals
+
+Pillow==9.5.0
+rest-social-auth==5.0.1

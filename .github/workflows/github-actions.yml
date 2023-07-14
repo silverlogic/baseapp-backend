@@ -11,6 +11,10 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-core
+  baseapp-social-auth:
+    uses: ./.github/workflows/project-workflow.yml
+    with:
+      project: baseapp-social-auth
   baseapp-auth-workflow:
     uses: ./.github/workflows/project-workflow.yml
     with:

@@ -1,6 +1,8 @@
 import os
 from datetime import timedelta
 
+from baseapp_core.tests.settings import *  # noqa
+
 SOCIAL_AUTH_BEAT_SCHEDULES = {
     "clean-up-social-auth-cache": {
         "task": "baseapp_social_auth.cache.tasks.clean_up_social_auth_cache",

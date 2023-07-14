@@ -1,7 +1,5 @@
 import json
 import re
-import test.helpers as h
-from test.routers import DefaultRouter
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -10,11 +8,13 @@ from django.urls import include, path, reverse
 import httpretty
 import pytest
 from avatar.models import Avatar
+from baseapp_core.rest_framework.routers import DefaultRouter
+from baseapp_core.tests import helpers as h
+from baseapp_core.tests.fixtures import *  # noqa
 from rest_framework.test import APITestCase, URLPatternsTestCase
 
-from .fixtures import IMAGE_BASE64, Client
-from .referrals import get_referral_code
-from .views import SocialAuthViewSet
+from baseapp_social_auth.referrals import get_referral_code
+from baseapp_social_auth.views import SocialAuthViewSet
 
 pytestmark = pytest.mark.django_db
 
