@@ -2,22 +2,26 @@ name: GitHub Actions
 run-name: ${{ github.actor }} is checking ${{ github.ref }} branch 🚀
 on: [push]
 jobs:
-  baseapp-core-workflow:
-    uses: ./.github/workflows/project-workflow.yml
-    with:
-      project: baseapp-core
   baseapp-auth-workflow:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-auth
-  # baseapp-reactions-workflow:
-  #   uses: ./.github/workflows/project-workflow.yml
-  #   with:
-  #     project: baseapp-reactions
-  baseapp-payments:
+  baseapp-core-workflow:
+    uses: ./.github/workflows/project-workflow.yml
+    with:
+      project: baseapp-core
+  baseapp-reactions-workflow:
+    uses: ./.github/workflows/project-workflow.yml
+    with:
+      project: baseapp-reactions
+  baseapp-payments-workflow:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-payments
+  baseapp-referrals-workflow:
+    uses: ./.github/workflows/project-workflow.yml
+    with:
+      project: baseapp-referrals
   baseapp-drf-view-action-permissions:
     uses: ./.github/workflows/project-workflow.yml
     with:

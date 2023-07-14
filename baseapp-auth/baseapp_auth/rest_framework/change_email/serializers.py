@@ -1,10 +1,10 @@
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 
+from baseapp_auth.tokens import ChangeEmailConfirmTokenGenerator, ChangeEmailVerifyTokenGenerator
 from rest_framework import serializers
 
 User = get_user_model()
-from baseapp_auth.tokens import ChangeEmailConfirmTokenGenerator, ChangeEmailVerifyTokenGenerator
 
 
 class ChangeEmailRequestSerializer(serializers.Serializer):

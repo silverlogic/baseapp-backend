@@ -5,10 +5,10 @@ from django.utils.translation import gettext_lazy as _
 from baseapp_core.rest_framework.decorators import action
 from rest_framework import filters, mixins, permissions, response, serializers, status, viewsets
 
-User = get_user_model()
-
 from .parsers import SafeJSONParser
 from .serializers import ChangePasswordSerializer, ConfirmEmailSerializer, UserSerializer
+
+User = get_user_model()
 
 
 class UpdateSelfPermission(permissions.BasePermission):

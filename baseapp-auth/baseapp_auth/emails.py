@@ -9,12 +9,13 @@ from django.urls import reverse
 from baseapp_core.deep_links import get_deep_link
 from baseapp_core.exceptions import DeepLinkFetchError
 
-User = get_user_model()
 from .tokens import (
     ChangeEmailConfirmTokenGenerator,
     ChangeEmailVerifyTokenGenerator,
     ConfirmEmailTokenGenerator,
 )
+
+User = get_user_model()
 
 
 def send_welcome_email(user):

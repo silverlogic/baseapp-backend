@@ -8,9 +8,9 @@ from baseapp_auth.emails import send_password_reset_email
 from rest_framework import mixins, response, status, viewsets
 from rest_framework_simplejwt.tokens import RefreshToken
 
-User = get_user_model()
-
 from .serializers import ForgotPasswordSerializer, ResetPasswordSerializer
+
+User = get_user_model()
 
 
 class ForgotPasswordBaseViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):

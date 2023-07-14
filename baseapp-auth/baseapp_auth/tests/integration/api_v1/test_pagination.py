@@ -2,14 +2,15 @@ from django.contrib.auth import get_user_model
 from django.test import RequestFactory
 
 import pytest
+from baseapp_auth.rest_framework.users.serializers import UserSerializer
 from rest_framework import viewsets
 from rest_framework.settings import api_settings
 
-User = get_user_model()
-from baseapp_auth.rest_framework.users.serializers import UserSerializer
-
 import tests.factories as f
 import tests.helpers as h
+
+User = get_user_model()
+
 
 pytestmark = pytest.mark.django_db
 
