@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "baseapp_core",
+    "easy_thumbnails",
 ]
 
 MIDDLEWARE = [
@@ -126,3 +127,7 @@ STATIC_URL = "/static/"
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+THUMBNAIL_CACHE = "default"
+
+CELERY_BEAT_SCHEDULE = {}

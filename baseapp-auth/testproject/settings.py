@@ -26,14 +26,12 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS += [
-    "easy_thumbnails",
     "constance",
     "constance.backends.database",
     "channels",
     "avatar",
     "trench",
     "rest_framework_simplejwt",
-    "testproject.testapp",
     "baseapp_auth",
     "baseapp_referrals",
 ]
@@ -41,8 +39,6 @@ INSTALLED_APPS += [
 ROOT_URLCONF = "testproject.urls"
 
 WSGI_APPLICATION = "testproject.wsgi.application"
-
-THUMBNAIL_CACHE = "default"
 
 CELERY_BEAT_SCHEDULE = {
     "notify_is_password_expired": {
