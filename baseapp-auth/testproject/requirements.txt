@@ -1,7 +1,7 @@
 # baseapp dependencies
--e .. # install "install_requires" from setup.cfg 
--e ../../baseapp-core
--e ../../baseapp-referrals
+# install "install_requires" from setup.cfg 
+-e ./baseapp-core
+-e ./baseapp-referrals
 
 # test
 freezegun==1.2.1

@@ -4,12 +4,11 @@ from io import BytesIO
 from django.core.files.images import ImageFile
 from django.test import AsyncClient as DjangoAsyncClient, Client as DjClient
 
+import baseapp_core.tests.factories as f
 import httpretty
 import pytest
 from asgiref.sync import sync_to_async
 from rest_framework.test import APIClient
-
-import baseapp_core.tests.factories as f
 
 from ..graphql.testing import graphql_query
 

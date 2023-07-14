@@ -1,8 +1,7 @@
-from baseapp_core.settings.base import * # noqa
-
 from collections import OrderedDict
 from pathlib import Path
 
+from baseapp_core.settings.base import *  # noqa
 from baseapp_core.settings.env import env
 from celery.schedules import crontab
 
@@ -34,6 +33,7 @@ INSTALLED_APPS += [
     "rest_framework_simplejwt",
     "baseapp_auth",
     "baseapp_referrals",
+    "testproject.testapp",
 ]
 
 ROOT_URLCONF = "testproject.urls"

@@ -41,6 +41,7 @@ jobs:
       - name: black
         id: black
         if: steps.isort.outcome == 'success'
+        # TODO: Check if can check black only on the package
         run: black --check .
       # Test
       - run: echo "🧪 Checking ${{ inputs.project }} Tests"
@@ -48,14 +49,16 @@ jobs:
       - name: Install tests requirements
         if: steps.black.outcome == 'success'
         id: requirements_installation
+        # TODO: Check if it is baseapp-core to avoid installing twice
         run: |
           python -m pip install --upgrade pip
-          app_name=$(echo "${{ inputs.project }}" | tr '-' '_')
-          requirements_path="${{ inputs.project }}/${app_name}/tests/requirements.txt"
+          pip install -e ${{ inputs.project }}
+          pip install -r baseapp-core/testproject/requirements.txt
+          requirements_path="${{ inputs.project }}/testproject/requirements.txt"
           if [ -f ${requirements_path} ]; then pip install -r ${requirements_path}; else echo 'No requirements.txt file found in tests directory'; fi
-      # TODO: Uncomment once project is executable. It needs to have a 'manage.py' to run the tests
-      # - name: pytest
-      #   if: steps.requirements_installation.outcome == 'success'
-      #   run: |
-      #     TEST_FILES=$(find . -path '*/${{ inputs.project }}/*/tests/*' -name 'test_*.py')
-      #     pytest $TEST_FILES
+      - name: pytest
+        if: steps.requirements_installation.outcome == 'success'
+        run: |
+          app_name=$(echo "${{ inputs.project }}" | tr '-' '_')
+          tests_path="${{ inputs.project }}/${app_name}/tests"
+          pytest ${tests_path}
