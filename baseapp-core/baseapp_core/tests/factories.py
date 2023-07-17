@@ -1,4 +1,3 @@
-# from django.contrib.auth.models import AbstractBaseUser
 from django.conf import settings
 
 import factory

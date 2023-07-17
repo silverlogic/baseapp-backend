@@ -115,15 +115,15 @@ In [testproject](testproject/) you can find a demo app that can be run as a stan
 python3 -m venv venv
 source venv/bin/activate
 cd testproject/
+pip install -r ../../baseapp-core/testproject/requirements.txt
 pip install -r requirements.txt
 
-cd ..
 python manage.py runserver
 ```
 
 Running unit tests:
 
 ```bash
-cd basepp_auth
-pytest tests/
+cd ../..
+pytest baseapp-auth/baseapp_auth/tests
 ```
