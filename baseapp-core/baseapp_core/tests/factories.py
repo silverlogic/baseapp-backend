@@ -1,4 +1,5 @@
-from django.contrib.auth.models import AbstractBaseUser
+# from django.contrib.auth.models import AbstractBaseUser
+from django.conf import settings
 
 import factory
 
@@ -10,7 +11,7 @@ class UserFactory(factory.django.DjangoModelFactory):
     last_name = factory.Faker("last_name")
 
     class Meta:
-        model = AbstractBaseUser
+        model = settings.AUTH_USER_MODEL
 
 
 class TokenFactory(factory.django.DjangoModelFactory):

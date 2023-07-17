@@ -15,7 +15,11 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-auth
-  baseapp-reactions-workflow:
-    uses: ./.github/workflows/project-workflow.yml
-    with:
-      project: baseapp-reactions
+  # baseapp-reactions-workflow:
+  #   uses: ./.github/workflows/project-workflow.yml
+  #   with:
+  #     project: baseapp-reactions
+  # BASEAPP-NAME-workflow:
+  #   uses: ./.github/workflows/project-workflow.yml
+  #   with:
+  #     project: BASEAPP-NAME

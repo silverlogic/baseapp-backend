@@ -1,6 +1,6 @@
-# baseapp dependencies
-# install "install_requires" from setup.cfg 
+# install "install_requires" from setup.cfg
 -e ./baseapp-core
+-e ./baseapp-auth
 -e ./baseapp-referrals
 
 # TODO: Check if should be baseapp_core dependencies
