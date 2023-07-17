@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("drf_view_action_permissions", "0001_initial"),
+        ("baseapp_drf_view_action_permissions", "0001_initial"),
     ]
 
     operations = [
@@ -38,7 +38,7 @@ class Migration(migrations.Migration):
                         blank=True,
                         help_text="List of roles that will be unrestricted for this IP",
                         related_name="ips",
-                        to="drf_view_action_permissions.Role",
+                        to="baseapp_drf_view_action_permissions.Role",
                     ),
                 ),
             ],

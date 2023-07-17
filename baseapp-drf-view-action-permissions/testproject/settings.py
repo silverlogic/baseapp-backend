@@ -38,7 +38,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "testproject.testapp",
-    "drf_view_action_permissions",
+    "baseapp_core",
+    "baseapp_drf_view_action_permissions",
 ]
 
 MIDDLEWARE = [
@@ -49,7 +50,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "drf_view_action_permissions.middleware.RestrictIpMiddleware",
+    "baseapp_drf_view_action_permissions.middleware.RestrictIpMiddleware",
 ]
 
 ROOT_URLCONF = "testproject.urls"

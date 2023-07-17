@@ -36,7 +36,7 @@ class RoleFactory(factory.DjangoModelFactory):
     name = factory.Faker("job")
 
     class Meta:
-        model = "drf_view_action_permissions.Role"
+        model = "baseapp_drf_view_action_permissions.Role"
 
     @factory.post_generation
     def permissions(self, create, extracted, **kwargs):

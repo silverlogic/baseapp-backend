@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("auth", "0012_alter_user_first_name_max_length"),
-        ("drf_view_action_permissions", "0001_initial"),
+        ("baseapp_drf_view_action_permissions", "0001_initial"),
     ]
 
     operations = [
@@ -71,7 +71,7 @@ class Migration(migrations.Migration):
                         null=True,
                         on_delete=django.db.models.deletion.SET_NULL,
                         related_name="users",
-                        to="drf_view_action_permissions.role",
+                        to="baseapp_drf_view_action_permissions.role",
                     ),
                 ),
             ],
