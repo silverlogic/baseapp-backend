@@ -8,4 +8,7 @@ class AvatarField(ThumbnailImageField):
 
     def to_representation(self, instance):
         user = instance
-        return {"full_size": avatar_url(user, 1024), "small": avatar_url(user, 64)}
+        return {
+            "full_size": avatar_url(user, 1024),
+            "small": avatar_url(user, 64),
+        }

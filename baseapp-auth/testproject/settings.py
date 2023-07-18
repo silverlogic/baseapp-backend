@@ -6,9 +6,6 @@ from celery.schedules import crontab
 
 APPS_DIR = BASE_DIR
 
-if DEFAULT_AUTO_FIELD:
-    del DEFAULT_AUTO_FIELD
-
 # Application definition
 
 INSTALLED_APPS += [

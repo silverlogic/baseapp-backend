@@ -1,7 +1,6 @@
+from baseapp_auth.emails import send_welcome_email
 from rest_framework import status, viewsets
 from rest_framework.response import Response
-
-from baseapp_auth.emails import send_welcome_email
 
 from ..users.serializers import UserSerializer
 from .serializers import RegisterSerializer

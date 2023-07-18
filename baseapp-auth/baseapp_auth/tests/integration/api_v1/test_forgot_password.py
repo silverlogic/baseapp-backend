@@ -75,7 +75,11 @@ class TestResetPassword(ApiMixin):
         assert match
 
         token = match.group(1)
-        data = {"token": token, "new_password": "blub", "confirm_new_password": "blub"}
+        data = {
+            "token": token,
+            "new_password": "blub",
+            "confirm_new_password": "blub",
+        }
         r = client.post(self.reverse(), data)
         h.responseOk(r)
 
@@ -94,7 +98,11 @@ class TestResetPassword(ApiMixin):
 
         token = match.group(1)
 
-        data = {"token": token, "new_password": "blub", "confirm_new_password": "blub"}
+        data = {
+            "token": token,
+            "new_password": "blub",
+            "confirm_new_password": "blub",
+        }
         r = client.post(self.reverse(), data)
         h.responseOk(r)
 
@@ -123,7 +131,11 @@ class TestResetPassword(ApiMixin):
         assert match
 
         token = match.group(1)
-        data = {"token": token, "new_password": "blub", "confirm_new_password": "blub"}
+        data = {
+            "token": token,
+            "new_password": "blub",
+            "confirm_new_password": "blub",
+        }
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
         assert "This password must contain at least 1 special characters." in r.data["new_password"]

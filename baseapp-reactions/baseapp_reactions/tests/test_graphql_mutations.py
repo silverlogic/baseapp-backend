@@ -47,14 +47,24 @@ def test_user_can_react(graphql_user_client):
     # create reaction with type LIKE
     graphql_user_client(
         REACTION_TOGGLE_GRAPHQL,
-        variables={"input": {"targetObjectId": comment_relay_id, "type": ReactionTypes.LIKE.name}},
+        variables={
+            "input": {
+                "targetObjectId": comment_relay_id,
+                "type": ReactionTypes.LIKE.name,
+            }
+        },
     )
     assert Reaction.objects.count() == 1
 
     # change reaction with type LIKE to GRR
     graphql_user_client(
         REACTION_TOGGLE_GRAPHQL,
-        variables={"input": {"targetObjectId": comment_relay_id, "type": ReactionTypes.GRR.name}},
+        variables={
+            "input": {
+                "targetObjectId": comment_relay_id,
+                "type": ReactionTypes.GRR.name,
+            }
+        },
     )
     assert Reaction.objects.count() == 1
     assert Reaction.objects.filter(type=ReactionTypes.GRR).count() == 1
@@ -62,6 +72,11 @@ def test_user_can_react(graphql_user_client):
     # remove reaction
     graphql_user_client(
         REACTION_TOGGLE_GRAPHQL,
-        variables={"input": {"targetObjectId": comment_relay_id, "type": ReactionTypes.GRR.name}},
+        variables={
+            "input": {
+                "targetObjectId": comment_relay_id,
+                "type": ReactionTypes.GRR.name,
+            }
+        },
     )
     assert Reaction.objects.count() == 0

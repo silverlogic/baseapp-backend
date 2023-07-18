@@ -4,10 +4,9 @@ from django.core import signing
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
+from baseapp_auth.emails import send_password_reset_email
 from rest_framework import mixins, response, status, viewsets
 from rest_framework_simplejwt.tokens import RefreshToken
-
-from baseapp_auth.emails import send_password_reset_email
 
 User = get_user_model()
 

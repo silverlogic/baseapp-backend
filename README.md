@@ -18,11 +18,11 @@ Reusable app to enable User's reactions on any model, features like like/dislike
 
 Utilities for user referrals
 
-## Tests
+## How to develop
 
 ### Testing
 
-In each app you can find a demo app, [testproject](baseapp-core/testproject/), that can be run as a standalone Django app to test. Then in baseapp-backend directory:
+Each module of baseapp-backend has a demo project in `testproject/` directory, which can be run as a standalone Django app to test. Then in baseapp-backend directory:
 
 ```bash
 # create virtual environment

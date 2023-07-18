@@ -30,3 +30,6 @@ baseapp-auth/db.sqlite3
 # Virtual Enviroment
 .venv
 venv
+
+# dev db
+db.sqlite3

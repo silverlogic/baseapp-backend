@@ -1,5 +1,4 @@
 import pytest
-
 from baseapp_auth.tokens import ChangeEmailConfirmTokenGenerator, ChangeEmailVerifyTokenGenerator
 
 from ...mixins import ApiMixin
