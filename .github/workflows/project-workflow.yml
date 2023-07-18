@@ -42,7 +42,7 @@ jobs:
         id: black
         if: steps.isort.outcome == 'success'
         # TODO: Check if can check black only on the package
-        run: black --check .
+        run: black --check ./${{ inputs.project }}
       # Test
       - run: echo "🧪 Checking ${{ inputs.project }} Tests"
         if: steps.black.outcome == 'success'

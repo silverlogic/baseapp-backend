@@ -2,6 +2,3 @@
 -e ./baseapp-core
 -e ./baseapp-auth
 -e ./baseapp-referrals
-
-# TODO: Check if should be baseapp_core dependencies
-drf-extra-fields==3.4.1

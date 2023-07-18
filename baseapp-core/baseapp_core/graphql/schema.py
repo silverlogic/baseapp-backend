@@ -12,12 +12,19 @@ from apps.reports.graphql.queries import ReportsQuery
 
 
 class Query(
-    graphene.ObjectType, ClassroomQuery, CommentsQuery, UsersQuery, CitiesQuery, ReportsQuery
+    graphene.ObjectType,
+    ClassroomQuery,
+    CommentsQuery,
+    UsersQuery,
+    CitiesQuery,
+    ReportsQuery,
 ):
     node = relay.node.NodeField(relay.Node)
 
 
-class Mutation(graphene.ObjectType, CommentsMutations, ReactionsMutations, ReportsMutations):
+class Mutation(
+    graphene.ObjectType, CommentsMutations, ReactionsMutations, ReportsMutations
+):
     pass
 
 
