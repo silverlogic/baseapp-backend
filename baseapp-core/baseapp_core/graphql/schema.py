@@ -22,7 +22,9 @@ class Query(
     node = relay.node.NodeField(relay.Node)
 
 
-class Mutation(graphene.ObjectType, CommentsMutations, ReactionsMutations, ReportsMutations):
+class Mutation(
+    graphene.ObjectType, CommentsMutations, ReactionsMutations, ReportsMutations
+):
     pass
 
 

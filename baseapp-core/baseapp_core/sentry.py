@@ -23,7 +23,9 @@ def fetch_git_sha(path, head=None):
 
     if not os.path.exists(revision_file):
         if not os.path.exists(os.path.join(path, ".git")):
-            raise Exception("%s does not seem to be the root of a git repository" % (path,))
+            raise Exception(
+                "%s does not seem to be the root of a git repository" % (path,)
+            )
 
         # Check for our .git/packed-refs' file since a `git gc` may have run
         # https://git-scm.com/book/en/v2/Git-Internals-Maintenance-and-Data-Recovery
