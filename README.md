@@ -65,7 +65,7 @@ baseapp-APPNAME/
 - A testproject directory in baseapp-APPNAME directory
 - In the testproject dir:
   - A settings.py file
-    - It can/should import `baseapp_core/settings/base.py`
+    - It can/should import `baseapp_core/tests/settings.py`
   - A requirements.txt file that installs "install_requires" of the tested app.
     - It must install app required packages:
       ```
