@@ -26,3 +26,10 @@ media/
 baseapp-auth/testproject/baseapp_auth
 baseapp-auth/testproject/baseapp_core
 baseapp-auth/db.sqlite3
+
+# Virtual Enviroment
+.venv
+venv
+
+# dev db
+db.sqlite3

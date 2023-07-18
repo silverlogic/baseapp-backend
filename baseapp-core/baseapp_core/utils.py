@@ -20,4 +20,6 @@ def get_content_type_by_natural_key(value):
     try:
         return ContentType.objects.get_by_natural_key(app_label, model_name)
     except ContentType.DoesNotExist:
-        raise serializers.ValidationError({"target_content_type": ["Content type not found"]})
+        raise serializers.ValidationError(
+            {"target_content_type": ["Content type not found"]}
+        )

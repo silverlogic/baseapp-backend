@@ -37,7 +37,15 @@ class AbstractUserAdmin(UserAdmin):
         ),
         (_("Profile"), {"fields": (("first_name", "last_name"),)}),
     )
-    add_fieldsets = ((None, {"classes": ("wide",), "fields": ("email", "password1", "password2")}),)
+    add_fieldsets = (
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": ("email", "password1", "password2"),
+            },
+        ),
+    )
     form = UserChangeForm
     add_form = UserCreationForm
     list_display = (
@@ -80,7 +88,9 @@ class AbstractUserAdmin(UserAdmin):
     def save_model(self, request, obj, form, change):
         if change and hasattr(obj, "tracker") and obj.tracker.has_changed("is_superuser"):
             SuperuserUpdateLog.objects.create(
-                assigner=request.user, assignee=obj, made_superuser=obj.is_superuser
+                assigner=request.user,
+                assignee=obj,
+                made_superuser=obj.is_superuser,
             )
             if obj.is_superuser:
                 new_superuser_notification_email(obj, request.user)

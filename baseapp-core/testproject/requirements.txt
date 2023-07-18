@@ -1,0 +1,19 @@
+# install "install_requires" from setup.cfg
+-e ./baseapp-core
+
+# test
+freezegun==1.2.1
+pytest==6.2.5
+httpretty==1.1.4
+pytest-django==4.5.2
+# test factories
+factory-boy==3.2.1
+
+# lint
+black==22.10.0
+flake8==5.0.4
+isort==5.10.1
+
+# channels
+channels==4.0.0
+channels_redis==4.0.0

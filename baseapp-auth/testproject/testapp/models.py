@@ -1,8 +1,7 @@
 from django.utils import timezone
 
-from model_utils import FieldTracker
-
 from baseapp_auth.models import AbstractUser
+from model_utils import FieldTracker
 
 
 class User(AbstractUser):

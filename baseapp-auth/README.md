@@ -94,36 +94,4 @@ CELERY_BEAT_SCHEDULE = {
 
 ## How to delevop
 
-Clone the project inside your project's backend dir:
-
-```
-git clone git@github.com:silverlogic/baseapp-backend.git
-```
-
-And manually install the package:
-
-```
-pip install -e baseapp-backend/baseapp-auth
-```
-
-### Test project
-
-In [testproject](testproject/) you can find a demo app that can be run as a standalone djano app:
-
-```bash
-# install dependecies
-python3 -m venv venv
-source venv/bin/activate
-cd testproject/
-pip install -r requirements.txt
-
-cd ..
-python manage.py runserver
-```
-
-Running unit tests:
-
-```bash
-cd basepp_auth
-pytest tests/
-```
+General development instructions can be found in [main README](..#testing)

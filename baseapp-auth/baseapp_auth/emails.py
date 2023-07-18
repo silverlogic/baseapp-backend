@@ -28,7 +28,11 @@ def send_welcome_email(user):
             **{
                 "channel": "email",
                 "feature": "confirm email",
-                "data": {"type": "confirm-email", "user": user.pk, "token": token},
+                "data": {
+                    "type": "confirm-email",
+                    "user": user.pk,
+                    "token": token,
+                },
             },
         )
     except DeepLinkFetchError:
@@ -185,10 +189,12 @@ def remove_superuser_notification_email(non_superuser, assigner):
 
     subject = f"{non_superuser.email} has been removed from superuser by {assigner.email}"
     message = render_to_string(
-        "users/emails/remove-superuser-notification-email.txt.j2", context=context
+        "users/emails/remove-superuser-notification-email.txt.j2",
+        context=context,
     )
     html_message = render_to_string(
-        "users/emails/remove-superuser-notification-email.html.j2", context=context
+        "users/emails/remove-superuser-notification-email.html.j2",
+        context=context,
     )
     if recipient_list:
         send_mail(

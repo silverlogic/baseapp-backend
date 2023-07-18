@@ -71,7 +71,8 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser):
     # Changing email
     new_email = CaseInsensitiveEmailField(blank=True)
     is_new_email_confirmed = models.BooleanField(
-        default=False, help_text="Has the user confirmed they want an email change?"
+        default=False,
+        help_text="Has the user confirmed they want an email change?",
     )
 
     # Profile

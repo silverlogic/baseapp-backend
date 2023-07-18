@@ -6,10 +6,9 @@ from django.utils.encoding import DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode
 from django.utils.translation import gettext_lazy as _
 
+from baseapp_auth.password_validators import apply_password_validators
 from rest_framework import serializers
 from rest_framework_simplejwt.authentication import JWTAuthentication
-
-from baseapp_auth.password_validators import apply_password_validators
 
 User = get_user_model()
 

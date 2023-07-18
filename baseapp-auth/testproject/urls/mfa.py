@@ -37,7 +37,11 @@ urlpatterns = (
         MFAMethodBackupCodesRegenerationView.as_view(),
         name="mfa-regenerate-codes",
     ),
-    path("code/request/", MFAMethodRequestCodeView.as_view(), name="mfa-request-code"),
+    path(
+        "code/request/",
+        MFAMethodRequestCodeView.as_view(),
+        name="mfa-request-code",
+    ),
     path("config/", MFAConfigView.as_view(), name="mfa-config-info"),
     path(
         "user-active-methods/",

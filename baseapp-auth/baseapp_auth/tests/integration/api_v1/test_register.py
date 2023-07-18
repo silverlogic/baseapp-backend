@@ -3,7 +3,6 @@ from unittest.mock import patch
 import pytest
 from baseapp_core.exceptions import DeepLinkFetchError
 from baseapp_referrals.utils import get_referral_code
-
 from testproject.testapp.models import User
 
 import tests.factories as f

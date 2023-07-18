@@ -28,6 +28,8 @@ router.register(r"forgot-password", ForgotPasswordViewSet, basename="forgot-pass
 router.register(r"forgot-password/reset", ResetPasswordViewSet, basename="reset-password")
 
 # Change Email
-from baseapp_auth.rest_framework.change_email.views import ChangeEmailViewSet  # noqa
+from baseapp_auth.rest_framework.change_email.views import (
+    ChangeEmailViewSet,
+)  # noqa
 
 router.register(r"change-email", ChangeEmailViewSet, basename="change-email")

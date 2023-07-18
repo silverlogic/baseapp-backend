@@ -1,9 +1,9 @@
 from django.apps import AppConfig
 
 
-class AuthConfig(AppConfig):
+class ReferralsConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "baseapp_auth"
+    name = "baseapp_referrals"
 
     def ready(self):
         pass

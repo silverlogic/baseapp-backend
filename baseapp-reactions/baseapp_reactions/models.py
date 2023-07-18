@@ -29,7 +29,9 @@ class AbstractBaseReaction(TimeStampedModel):
             return self.label
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, related_name="reactions", on_delete=models.CASCADE
+        settings.AUTH_USER_MODEL,
+        related_name="reactions",
+        on_delete=models.CASCADE,
     )
     reaction_type = models.IntegerField(choices=ReactionTypes.choices, default=ReactionTypes.LIKE)
 
@@ -50,7 +52,11 @@ class AbstractBaseReaction(TimeStampedModel):
         ]
 
     def __str__(self):
-        return "Reaction (%s) #%s by %s" % (self.reaction_type, self.id, self.user.first_name)
+        return "Reaction (%s) #%s by %s" % (
+            self.reaction_type,
+            self.id,
+            self.user.first_name,
+        )
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)

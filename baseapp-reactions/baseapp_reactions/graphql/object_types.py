@@ -52,7 +52,14 @@ class ReactionNode(DjangoObjectType):
     class Meta:
         interfaces = (relay.Node,)
         model = Reaction
-        fields = ("id", "user", "reaction_type", "created", "modified", "target")
+        fields = (
+            "id",
+            "user",
+            "reaction_type",
+            "created",
+            "modified",
+            "target",
+        )
         filter_fields = {
             "id": ["exact"],
         }

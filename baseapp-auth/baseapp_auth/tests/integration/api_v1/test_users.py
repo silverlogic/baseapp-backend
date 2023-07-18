@@ -4,10 +4,9 @@ from django.utils import timezone
 
 import pytest
 from avatar.models import Avatar
+from baseapp_auth.tokens import ConfirmEmailTokenGenerator
 from baseapp_referrals.models import UserReferral
 from baseapp_referrals.utils import get_referral_code
-
-from baseapp_auth.tokens import ConfirmEmailTokenGenerator
 from testproject.testapp.models import User
 
 import tests.factories as f

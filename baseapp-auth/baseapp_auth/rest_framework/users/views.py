@@ -34,7 +34,11 @@ class UsersViewSet(
     filter_backends = (filters.SearchFilter,)
     search_fields = ("first_name", "last_name")
 
-    @action(detail=False, methods=["GET"], permission_classes=[permissions.IsAuthenticated])
+    @action(
+        detail=False,
+        methods=["GET"],
+        permission_classes=[permissions.IsAuthenticated],
+    )
     def me(self, request):
         user = request.user
         serializer = self.get_serializer(user)

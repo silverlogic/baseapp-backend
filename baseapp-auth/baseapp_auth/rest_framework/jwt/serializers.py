@@ -1,8 +1,7 @@
 from django.utils.translation import gettext_lazy as _
 
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-
 from baseapp_auth.rest_framework.login.serializers import LoginPasswordExpirationMixin
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 
 class BaseJwtLoginSerializer(LoginPasswordExpirationMixin, TokenObtainPairSerializer):

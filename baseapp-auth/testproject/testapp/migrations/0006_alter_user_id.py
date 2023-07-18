@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("testapp", "0005_user_password_changed_date"),
     ]
@@ -14,7 +13,10 @@ class Migration(migrations.Migration):
             model_name="user",
             name="id",
             field=models.BigAutoField(
-                auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                auto_created=True,
+                primary_key=True,
+                serialize=False,
+                verbose_name="ID",
             ),
         ),
     ]
