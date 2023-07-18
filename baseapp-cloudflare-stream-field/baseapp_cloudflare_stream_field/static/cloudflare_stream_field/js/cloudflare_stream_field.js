@@ -5,7 +5,7 @@ if (typeof djangoAdminCloudflareStreamFieldListenerSetUp == "undefined") {
 
 addEventListener("load", function() {
   (function($) {
-       $('input.cloudflare_stream_field-input-file').on('change', function(e) {
+       $('input.baseapp_cloudflare_stream_field-input-file').on('change', function(e) {
           var fileFied = $(this)
           var strippedId = fileFied.attr('id').replace('_input_file', '')
           var videoIdField = $('#' + strippedId)

@@ -1,5 +1,5 @@
+from baseapp_cloudflare_stream_field.stream import StreamClient
 from celery import shared_task
-from cloudflare_stream_field.stream import StreamClient
 
 stream_client = StreamClient()
 

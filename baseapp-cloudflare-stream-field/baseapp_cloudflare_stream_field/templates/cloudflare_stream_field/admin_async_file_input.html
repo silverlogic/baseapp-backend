@@ -21,7 +21,7 @@
 
     <p class="file-upload">
         <span id="{{ widget.attrs.id }}_uploaded_status"></span>
-        <input type="file" id="{{ widget.attrs.id }}_input_file" class="cloudflare_stream_field-input-file">
+        <input type="file" id="{{ widget.attrs.id }}_input_file" class="baseapp_cloudflare_stream_field-input-file">
     </p>
     <p class="file-upload"><progress id="{{ widget.attrs.id }}_progress" value="0" max="100" style="width:500px"></progress></p>
     <input type="hidden" name="{{ widget.name }}" {% if widget.value != None %} value="{{ widget.value|stringformat:'s' }}"{% endif %}{% include "django/forms/widgets/attrs.html" %}>

@@ -7,7 +7,7 @@ jobs:
     steps:
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
-  baseapp-core-workflow:
+  baseapp-core:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-core
@@ -15,14 +15,14 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-social-auth
-  baseapp-auth-workflow:
+  baseapp-auth:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-auth
-  # baseapp-reactions-workflow:
-  #   uses: ./.github/workflows/project-workflow.yml
-  #   with:
-  #     project: baseapp-reactions
+  baseapp-cloudflare-stream-field:
+    uses: ./.github/workflows/project-workflow.yml
+    with:
+      project: baseapp-cloudflare-stream-field
   baseapp-payments:
     uses: ./.github/workflows/project-workflow.yml
     with:
@@ -35,7 +35,3 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-email-templates
-  # BASEAPP-NAME-workflow:
-  #   uses: ./.github/workflows/project-workflow.yml
-  #   with:
-  #     project: BASEAPP-NAME

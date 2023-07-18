@@ -1,14 +1,14 @@
 import json
 
 from django.conf import settings
-from django.forms import ClearableFileInput, CheckboxInput, forms
+from django.forms import CheckboxInput, ClearableFileInput, forms
 from django.templatetags.static import static
 
-from cloudflare_stream_field.stream import StreamClient
+from baseapp_cloudflare_stream_field.stream import StreamClient
 
 
 class CloudflareStreamAdminWidget(ClearableFileInput):
-    template_name = "cloudflare_stream_field/admin_async_file_input.html"
+    template_name = "baseapp_cloudflare_stream_field/admin_async_file_input.html"
 
     def format_value(self, value):
         self.full_value = {}
@@ -52,7 +52,7 @@ class CloudflareStreamAdminWidget(ClearableFileInput):
 
     @property
     def media(self):
-        js = ["tus.js", "cloudflare_stream_field.js"]
+        js = ["tus.js", "baseapp_cloudflare_stream_field.js"]
         return forms.Media(
-            js=[static("cloudflare_stream_field/js/%s" % path) for path in js]
+            js=[static("baseapp_cloudflare_stream_field/js/%s" % path) for path in js]
         )

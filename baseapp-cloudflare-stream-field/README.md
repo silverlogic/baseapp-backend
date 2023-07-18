@@ -7,7 +7,7 @@ This app provides integration with Cloudflare Stream, where you can upload direc
 Add to `requirements/base.txt`:
 
 ```bash
-django-cloudflare-stream @ git+https://github.com/silverlogic/django-cloudflare-stream.git
+baseapp-cloudflare-stream-field @ git+https://github.com/silverlogic/baseapp-backend.git@v0.1#subdirectory=baseapp-cloudflare-stream-field
 ```
 
 Add the following to your `settings/base.py`:
@@ -20,11 +20,11 @@ CLOUDFLARE_AUTH_EMAIL = env("CLOUDFLARE_AUTH_EMAIL")
 
 # Make sure to add the task routing for refresh_from_cloudflare and generate_download_url
 CELERY_TASK_ROUTES = {
-    "cloudflare_stream_field.tasks.refresh_from_cloudflare": {
+    "baseapp_cloudflare_stream_field.tasks.refresh_from_cloudflare": {
         "exchange": "default",
         "routing_key": "default",
     },
-    "cloudflare_stream_field.tasks.generate_download_url": {
+    "baseapp_cloudflare_stream_field.tasks.generate_download_url": {
         "exchange": "default",
         "routing_key": "default",
     },
@@ -34,14 +34,14 @@ CELERY_TASK_ROUTES = {
 Include the URLs in your main `urls.py` file:
 
 ```python
-re_path(r"^cloudflare-stream-upload/", include("cloudflare_stream_field.urls")),
+re_path(r"^cloudflare-stream-upload/", include("baseapp_cloudflare_stream_field.urls")),
 ```
 
 And if you use Django REST Framework, add the following to your router:
 
 ```python
 # Cloudflare Stream Upload
-from cloudflare_stream_field.rest_framework import CloudflareStreamUploadViewSet
+from baseapp_cloudflare_stream_field.rest_framework import CloudflareStreamUploadViewSet
 
 router.register(
     r"cloudflare-stream-upload", CloudflareStreamUploadViewSet, basename="cloudflare-stream-upload"
@@ -75,7 +75,7 @@ CORS_ALLOW_HEADERS = [
 Import and use the field in your models file:
 
 ```python
-from cloudflare_stream_field import CloudflareStreamField
+from baseapp_cloudflare_stream_field import CloudflareStreamField
 
 class Post(models.Model):
     video = CloudflareStreamField(null=True, blank=True, downloadable=False)
