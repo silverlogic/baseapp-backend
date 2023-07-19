@@ -22,8 +22,6 @@ INSTALLED_APPS += [
 
 ROOT_URLCONF = "testproject.urls"
 
-WSGI_APPLICATION = "testproject.wsgi.application"
-
 CELERY_BEAT_SCHEDULE = {
     "notify_is_password_expired": {
         "task": "baseapp_auth.tasks.notify_users_is_password_expired",

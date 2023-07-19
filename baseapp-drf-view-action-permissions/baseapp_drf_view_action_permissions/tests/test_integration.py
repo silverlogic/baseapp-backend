@@ -6,8 +6,7 @@ from rest_framework import decorators, response, status, viewsets
 from rest_framework.routers import DefaultRouter
 from rest_framework.test import APITestCase, URLPatternsTestCase
 
-from drf_view_action_permissions.action import (DjangoActionPermissions,
-                                                IpAddressPermission)
+from baseapp_drf_view_action_permissions.action import DjangoActionPermissions, IpAddressPermission
 from testproject.testapp.models import TestModel
 
 from . import factories as f
@@ -211,9 +210,7 @@ class TestActionPermission(APITestCase, URLPatternsTestCase):
     def test_can_access_custom_action_in_viewset_with_perms(self):
         role = f.RoleFactory()
 
-        permission = Permission.objects.filter(
-            codename="custom_action_testmodel"
-        ).first()
+        permission = Permission.objects.filter(codename="custom_action_testmodel").first()
         role.permissions.add(permission)
         user = f.UserFactory(role=role)
         self.client.force_authenticate(user)
@@ -231,9 +228,7 @@ class TestActionPermission(APITestCase, URLPatternsTestCase):
 
     def test_can_access_custom_detail_action_in_viewset_with_perms(self):
         role = f.RoleFactory()
-        permission = Permission.objects.filter(
-            codename="custom_detail_action_testmodel"
-        ).first()
+        permission = Permission.objects.filter(codename="custom_detail_action_testmodel").first()
         role.permissions.add(permission)
         user = f.UserFactory(role=role)
         self.client.force_authenticate(user)
@@ -357,7 +352,7 @@ class TestIpRestriction(APITestCase, URLPatternsTestCase):
         self.client.force_authenticate(user)
         r = self.client.get(reverse("testip-list"))
         h.responseOk(r)
-    
+
     def test_can_access_list_in_viewset_without_ip_restricted(self):
         role = f.RoleFactory()
         user = f.UserFactory(role=role)

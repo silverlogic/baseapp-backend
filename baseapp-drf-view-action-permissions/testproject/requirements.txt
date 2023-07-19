@@ -1,19 +1,2 @@
-Django==3.2.19
-djangorestframework==3.14.0
-django-ipware==4.0.2
-
-# test
-freezegun==1.2.1
-pytest==6.2.5
-httpretty==1.1.4
-pytest-django==4.5.2
-# test factories
-factory-boy==3.2.1
-
-# baseapp dependencies
--e ../../baseapp-core
-
-# lint
-black==22.10.0
-flake8==5.0.4
-isort==5.10.1
+-e ./baseapp-core
+-e ./baseapp-drf-view-action-permissions

@@ -1,11 +1,11 @@
 import factory
 from django.contrib.auth.models import Group
 
-from drf_view_action_permissions.models import IpRestriction
+from baseapp_drf_view_action_permissions.models import IpRestriction
 from testproject.testapp.models import TestModel
 
 
-class UserFactory(factory.DjangoModelFactory):
+class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = "testapp.User"
 
@@ -20,7 +20,7 @@ class UserFactory(factory.DjangoModelFactory):
             self.exclude_permissions.add(*extracted)
 
 
-class GroupFactory(factory.DjangoModelFactory):
+class GroupFactory(factory.django.DjangoModelFactory):
     name = factory.Faker("company")
 
     class Meta:
@@ -32,7 +32,7 @@ class GroupFactory(factory.DjangoModelFactory):
             self.permissions.add(*extracted)
 
 
-class RoleFactory(factory.DjangoModelFactory):
+class RoleFactory(factory.django.DjangoModelFactory):
     name = factory.Faker("job")
 
     class Meta:
@@ -54,14 +54,14 @@ class RoleFactory(factory.DjangoModelFactory):
             self.exclude_permissions.add(*extracted)
 
 
-class TestModelFactory(factory.DjangoModelFactory):
+class TestModelFactory(factory.django.DjangoModelFactory):
     title = factory.Faker("name")
 
     class Meta:
         model = TestModel
 
 
-class IpRestrictionFactory(factory.DjangoModelFactory):
+class IpRestrictionFactory(factory.django.DjangoModelFactory):
     ip_address = factory.Faker("ipv4")
 
     @factory.post_generation
