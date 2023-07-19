@@ -28,14 +28,15 @@ jobs:
       - name: Build distribution
         run: python3 ${{ inputs.project }}/setup.py sdist
 
+      # TODO comment when pushing to actual repo
       - name: Publish distribution 📦 to Test PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           repository-url: https://test.pypi.org/legacy/
 
+      # TODO uncomment to push to repo
 #      - name: Publish distribution 📦 to PyPI
-#        if: steps.changes.outputs.src == 'true'
 #        uses: pypa/gh-action-pypi-publish@release/v1
 #        with:
 #          password: ${{ secrets.PYPI_API_TOKEN }}
