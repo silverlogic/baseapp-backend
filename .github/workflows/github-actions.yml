@@ -19,6 +19,10 @@ jobs:
   #   uses: ./.github/workflows/project-workflow.yml
   #   with:
   #     project: baseapp-reactions
+  baseapp-payments:
+    uses: ./.github/workflows/project-workflow.yml
+    with:
+      project: baseapp-payments
   # BASEAPP-NAME-workflow:
   #   uses: ./.github/workflows/project-workflow.yml
   #   with:

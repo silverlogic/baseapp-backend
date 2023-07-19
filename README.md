@@ -18,6 +18,10 @@ Reusable app to enable User's reactions on any model, features like like/dislike
 
 Utilities for user referrals
 
+## [baseapp-payments](baseapp-payments)
+
+Utilities for payments
+
 ## How to develop
 
 ### Testing
