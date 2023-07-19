@@ -2,19 +2,6 @@ name: GitHub Actions
 run-name: ${{ github.actor }} is checking ${{ github.ref }} branch 🚀
 on: [push]
 jobs:
-  Explore-GitHub-Actions:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
-      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
-  baseapp-core:
-    uses: ./.github/workflows/project-workflow.yml
-    with:
-      project: baseapp-core
-  baseapp-social-auth:
-    uses: ./.github/workflows/project-workflow.yml
-    with:
-      project: baseapp-social-auth
   baseapp-auth:
     uses: ./.github/workflows/project-workflow.yml
     with:
@@ -23,10 +10,10 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-cloudflare-stream-field
-  baseapp-payments:
+  baseapp-core-workflow:
     uses: ./.github/workflows/project-workflow.yml
     with:
-      project: baseapp-payments
+      project: baseapp-core
   baseapp-drf-view-action-permissions:
     uses: ./.github/workflows/project-workflow.yml
     with:
@@ -35,3 +22,23 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-email-templates
+  baseapp-payments:
+    uses: ./.github/workflows/project-workflow.yml
+    with:
+      project: baseapp-payments
+  baseapp-social-auth:
+    uses: ./.github/workflows/project-workflow.yml
+    with:
+      project: baseapp-social-auth
+#  baseapp-reactions-workflow:
+#    uses: ./.github/workflows/project-workflow.yml
+#    with:
+#      project: baseapp-reactions
+#  baseapp-referrals-workflow:
+#    uses: ./.github/workflows/project-workflow.yml
+#    with:
+#      project: baseapp-referrals
+  # BASEAPP-NAME-workflow:
+  #   uses: ./.github/workflows/project-workflow.yml
+  #   with:
+  #     project: BASEAPP-NAME

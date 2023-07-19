@@ -33,7 +33,9 @@ class AbstractBaseReaction(TimeStampedModel):
         related_name="reactions",
         on_delete=models.CASCADE,
     )
-    reaction_type = models.IntegerField(choices=ReactionTypes.choices, default=ReactionTypes.LIKE)
+    reaction_type = models.IntegerField(
+        choices=ReactionTypes.choices, default=ReactionTypes.LIKE
+    )
 
     target_content_type = models.ForeignKey(
         ContentType,
