@@ -45,16 +45,12 @@ class EmailTemplate(TimeStampedModel):
 
     def send_via_sendgrid(self, personalization, attachments=[]):
         if not self.sendgrid_template_id:
-            raise Exception(
-                "SendGrid template ID required to send message via SendGrid"
-            )
+            raise Exception("SendGrid template ID required to send message via SendGrid")
         send_personalized_mail(self, personalization, attachments)
 
     def mass_send_via_sendgrid(self, personalizations):
         if not self.sendgrid_template_id:
-            raise Exception(
-                "SendGrid template ID required to send message via SendGrid"
-            )
+            raise Exception("SendGrid template ID required to send message via SendGrid")
         mass_send_personalized_mail(self, personalizations)
 
     def send(

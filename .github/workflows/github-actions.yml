@@ -26,7 +26,7 @@ jobs:
   baseapp-email-templates:
     uses: ./.github/workflows/project-workflow.yml
     with:
-      project: baseapp-payments
+      project: baseapp-email-templates
   # BASEAPP-NAME-workflow:
   #   uses: ./.github/workflows/project-workflow.yml
   #   with:

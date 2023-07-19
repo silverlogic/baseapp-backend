@@ -1,5 +1,6 @@
-import baseapp_email_templates.tests.factories as f
 import pytest
+
+import baseapp_email_templates.tests.factories as f
 from baseapp_email_templates.custom_templates import get_full_copy_template
 from baseapp_email_templates.sendgrid import get_personalization
 

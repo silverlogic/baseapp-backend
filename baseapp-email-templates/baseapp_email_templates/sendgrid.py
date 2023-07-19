@@ -11,9 +11,7 @@ MAX_SENDGRID_PERSONALIZATIONS_PER_API_REQUEST = 1000
 
 
 class SengridMessage(EmailMessage):
-    def __init__(
-        self, template_id, personalizations: Iterable[Personalization], from_email=None
-    ):
+    def __init__(self, template_id, personalizations: Iterable[Personalization], from_email=None):
         self.personalizations = personalizations
         self.template_id = template_id
 
@@ -23,9 +21,7 @@ class SengridMessage(EmailMessage):
         super().__init__(from_email=from_email, to=to)
 
 
-def send_personalized_mail(
-    copy_template, personalization: Personalization, attachments=[]
-):
+def send_personalized_mail(copy_template, personalization: Personalization, attachments=[]):
     template_id = copy_template.sendgrid_template_id
     attachments = list(copy_template.static_attachments.all()) + attachments
 
@@ -37,9 +33,7 @@ def send_personalized_mail(
     return mail.send(fail_silently=True)
 
 
-def mass_send_personalized_mail(
-    copy_template, personalizations: Iterable[Personalization]
-):
+def mass_send_personalized_mail(copy_template, personalizations: Iterable[Personalization]):
     """
     Easy wrapper for sending personalized messages of the same Sendgrid template.
     Recipients data is configured through Sendgrid personalizations.
@@ -48,9 +42,7 @@ def mass_send_personalized_mail(
     template_id = copy_template.sendgrid_template_id
     attachments = copy_template.static_attachments.all()
 
-    for personalizations in chunk(
-        personalizations, MAX_SENDGRID_PERSONALIZATIONS_PER_API_REQUEST
-    ):
+    for personalizations in chunk(personalizations, MAX_SENDGRID_PERSONALIZATIONS_PER_API_REQUEST):
         mail = SengridMessage(
             template_id=template_id,
             personalizations=personalizations,

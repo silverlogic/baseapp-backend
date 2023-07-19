@@ -21,11 +21,7 @@ class random_name_in(object):
 def attach_files(mail: EmailMessage, attachments):
     for attachment in attachments:
         attachment_file = attachment.file if hasattr(attachment, "file") else attachment
-        name = (
-            attachment.filename
-            if hasattr(attachment, "filename")
-            else attachment_file.name
-        )
+        name = attachment.filename if hasattr(attachment, "filename") else attachment_file.name
         mail.attach(name, attachment_file.read())
 
 

@@ -1,4 +1,5 @@
 import factory
+
 from baseapp_email_templates.models import EmailTemplate
 
 

@@ -6,6 +6,7 @@ from django.db import migrations, models
 
 import ckeditor.fields
 import model_utils.fields
+
 from baseapp_email_templates.utils import random_name_in
 
 

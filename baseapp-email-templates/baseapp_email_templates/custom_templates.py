@@ -37,9 +37,7 @@ def _wrap_in_base_template(
     base_template_txt = open(f"{extended_with}.txt.j2", "r").read()
 
     if replace_content_extend in base_template_html:
-        full_copy_html = base_template_html.replace(
-            replace_content_extend, f"{blocked_copy}", 1
-        )
+        full_copy_html = base_template_html.replace(replace_content_extend, f"{blocked_copy}", 1)
     else:
         full_copy_html = base_template_html.replace(
             replace_content_extend_bracket,
