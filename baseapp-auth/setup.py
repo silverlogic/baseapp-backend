@@ -6,7 +6,7 @@ with open("README.md", "r") as f:
 setup(
     name="baseapp-auth",
     packages=find_packages(),
-    version="0.1",
+    version="0.3",
     long_description=long_description,
     long_description_content_type="text/markdown"
 )
