@@ -22,6 +22,11 @@ Utilities for user referrals
 
 Utilities for payments
 
+## [baseapp-drf-view-action-permissions](baseapp-drf-view-action-permissions)
+
+This app uses django provided permission and group model and provides the ability to add roles to a django model, and make views from the [django-restframework](https://www.django-rest-framework.org/) check for them. A **Permission** represents the lowest single unit of access. A **Group** is a collection of Permissions. A **Role** can have many Permision Groups, many Permissions and many **Excluded Permissions**. The access of a Role is the aggregation of its single Permissions + the permissions on its **Permission** Groups - its Excluded Permissions.
+
+
 ## How to develop
 
 ### Testing
