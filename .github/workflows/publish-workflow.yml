@@ -39,7 +39,7 @@ jobs:
 
       # TODO uncomment to push to repo
 #      - name: Publish distribution 📦 to PyPI
-#        working-directory: ./${{ inputs.project }}/
 #        uses: pypa/gh-action-pypi-publish@release/v1
 #        with:
 #          password: ${{ secrets.PYPI_API_TOKEN }}
+#          packages-dir: ${{ inputs.project }}/dist/
