@@ -13,10 +13,6 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.8"]
-
-    permissions:
-      id-token: write
-
     steps:
       # Lint
       - uses: actions/checkout@v3
@@ -54,7 +50,7 @@ jobs:
         id: requirements_installation
         run: |
           python -m pip install --upgrade pip
-          pip install -r "${{ inputs.project }}/testproject/requirements.txt"
+          pip install -r baseapp-core/testproject/requirements.txt
           requirements_path="${{ inputs.project }}/testproject/requirements.txt"
           if [ -f ${requirements_path} ]; then pip install -r ${requirements_path}; else echo 'No requirements.txt file found in testproject directory'; fi
       - name: pytest
