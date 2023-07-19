@@ -1,9 +1,7 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
-setup()
-# if __name__ == "__main__":
-#     setup(
-#         name="baseapp-core",
-#         packages=["baseapp-core"],
-#         version="0.1",
-#     )
+setup(
+    name="baseapp-core",
+    packages=find_packages(),
+    version="0.1",
+)
