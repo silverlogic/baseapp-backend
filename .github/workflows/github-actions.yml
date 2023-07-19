@@ -15,10 +15,10 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-core
-  baseapp-reactions-workflow:
-    uses: ./.github/workflows/project-workflow.yml
-    with:
-      project: baseapp-reactions
+#  baseapp-reactions-workflow:
+#    uses: ./.github/workflows/project-workflow.yml
+#    with:
+#      project: baseapp-reactions
   baseapp-payments-workflow:
     uses: ./.github/workflows/project-workflow.yml
     with:
