@@ -31,11 +31,11 @@ jobs:
 
       # TODO comment when pushing to actual repo
       - name: Publish distribution 📦 to Test PyPI
-        working-directory: ${{ inputs.project }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           repository-url: https://test.pypi.org/legacy/
+          packages-dir: ${{ inputs.project }}/
 
       # TODO uncomment to push to repo
 #      - name: Publish distribution 📦 to PyPI
