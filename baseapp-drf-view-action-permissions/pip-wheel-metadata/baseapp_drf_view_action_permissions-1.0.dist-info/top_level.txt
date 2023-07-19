@@ -1,0 +1,2 @@
+baseapp_drf_view_action_permissions
+testproject

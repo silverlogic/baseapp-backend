@@ -11,7 +11,6 @@ from baseapp_email_templates.utils import random_name_in
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = []
