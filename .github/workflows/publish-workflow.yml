@@ -26,10 +26,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Build distribution
-        run: python3 ${{ inputs.project }}/setup.py sdist
+        working-directory: ${{ inputs.project }}
+        run: python3 setup.py sdist
 
       # TODO comment when pushing to actual repo
       - name: Publish distribution 📦 to Test PyPI
+        working-directory: ${{ inputs.project }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
@@ -37,6 +39,7 @@ jobs:
 
       # TODO uncomment to push to repo
 #      - name: Publish distribution 📦 to PyPI
+#        working-directory: ./${{ inputs.project }}/
 #        uses: pypa/gh-action-pypi-publish@release/v1
 #        with:
 #          password: ${{ secrets.PYPI_API_TOKEN }}
