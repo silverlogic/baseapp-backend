@@ -36,15 +36,11 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "groups",
-                    models.ManyToManyField(
-                        blank=True, related_name="roles", to="auth.Group"
-                    ),
+                    models.ManyToManyField(blank=True, related_name="roles", to="auth.Group"),
                 ),
                 (
                     "permissions",
-                    models.ManyToManyField(
-                        blank=True, related_name="roles", to="auth.Permission"
-                    ),
+                    models.ManyToManyField(blank=True, related_name="roles", to="auth.Permission"),
                 ),
             ],
         ),

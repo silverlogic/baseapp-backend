@@ -11,9 +11,8 @@ class RestrictIpMiddleware:
         if permission_settings.IP_RESTRICT_ONLY_DJANGO_ADMIN:
             if not request.path.startswith("/admin"):
                 return self.get_response(request)
-        
+
         if client_ip_address_is_restricted(request):
             raise ValueError("IP address is restricted")
 
         return self.get_response(request)
-

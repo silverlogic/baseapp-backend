@@ -28,14 +28,10 @@ def get_permission_remover(permissions, remove_group=False):
         Group = apps.get_model("auth", "Group")
         db_alias = schema_editor.connection.alias
         for perm_group in permissions:
-            group = (
-                Group.objects.using(db_alias).filter(name=perm_group["name"]).first()
-            )
+            group = Group.objects.using(db_alias).filter(name=perm_group["name"]).first()
             if group:
                 for perm in perm_group.get("permissions", []):
-                    permission = (
-                        Permission.objects.using(db_alias).filter(codename=perm).first()
-                    )
+                    permission = Permission.objects.using(db_alias).filter(codename=perm).first()
                     if permission:
                         group.permissions.remove(permission)
                 if remove_group:

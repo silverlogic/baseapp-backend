@@ -1,5 +1,6 @@
-import pytest
 from django.contrib.auth.models import Permission
+
+import pytest
 
 from . import factories as f
 
@@ -14,9 +15,7 @@ class TestUserPermissions:
         role = f.RoleFactory(permissions=permissions)
         user = f.UserFactory(role=role)
 
-        assert user.permission_list == set(
-            [f"testapp.{p.codename}" for p in permissions]
-        )
+        assert user.permission_list == set([f"testapp.{p.codename}" for p in permissions])
 
     def test_get_permissions_from_permission_groups_in_role(self):
         permission_1 = Permission.objects.filter(codename="list_tests").first()

@@ -31,9 +31,9 @@ class PermissionModelMixin(PermissionsMixin):
     def permission_list(self):
         perms = super().get_all_permissions()
         excluded_perms = list(
-            Permission.objects.filter(
-                excluded_permission_users__email=self.email
-            ).values_list("codename", flat=True)
+            Permission.objects.filter(excluded_permission_users__email=self.email).values_list(
+                "codename", flat=True
+            )
         )
 
         if self.role:
