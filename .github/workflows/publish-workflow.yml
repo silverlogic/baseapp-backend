@@ -35,7 +35,7 @@ jobs:
         with:
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           repository-url: https://test.pypi.org/legacy/
-          packages-dir: ${{ inputs.project }}/
+          packages-dir: ${{ inputs.project }}/dist/
 
       # TODO uncomment to push to repo
 #      - name: Publish distribution 📦 to PyPI
