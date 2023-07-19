@@ -9,7 +9,9 @@ def responseEquals(response, status_code):
     ), "Response must include at least an empty object or else IOS will go crazy."
     if response.status_code != status_code:
         pytest.fail(
-            "Wrong status code. Got {}, expected {}".format(response.status_code, status_code)
+            "Wrong status code. Got {}, expected {}".format(
+                response.status_code, status_code
+            )
         )
 
 
