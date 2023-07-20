@@ -1,0 +1,29 @@
+<div>
+    {% if widget.preview %}
+    <p class="file-upload">
+        <a href="{{ widget.preview }}" target="_blank">Preview</a>
+        <span> . </span>
+        <a href="{{ widget.dashboard }}" target="_blank">Details</a>
+        <span> . </span>
+        <a href="{{ widget.analytics }}" target="_blank">Analytics</a>
+        {% if not widget.required %}
+        <span> . </span>
+        <span class="file-upload clearable-file-input">
+            <input type="checkbox" name="{{ widget.checkbox_name }}" id="{{ widget.checkbox_id }}"{% if widget.attrs.disabled %} disabled{% endif %}>
+            <label for="{{ widget.checkbox_id }}">{{ widget.clear_checkbox_label }}</label>
+        </span>
+        {% endif %}
+    </p>
+    <p class="file-upload">
+        <iframe src="{{ widget.iframe }}" style="border: none; height: 100%; min-height: 300px; max-height: 480px; width: 100%; max-width: 600px;" allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" allowfullscreen="true"></iframe>
+    </p>
+    {% endif %}
+
+    <p class="file-upload">
+        <span id="{{ widget.attrs.id }}_uploaded_status"></span>
+        <input type="file" id="{{ widget.attrs.id }}_input_file" class="baseapp_cloudflare_stream_field-input-file">
+    </p>
+    <p class="file-upload"><progress id="{{ widget.attrs.id }}_progress" value="0" max="100" style="width:500px"></progress></p>
+    <input type="hidden" name="{{ widget.name }}" {% if widget.value != None %} value="{{ widget.value|stringformat:'s' }}"{% endif %}{% include "django/forms/widgets/attrs.html" %}>
+</div>
+
