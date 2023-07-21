@@ -71,7 +71,9 @@ class ReactionToggle(RelayMutation):
                 reaction_deleted_id = to_global_id(ReactionNode._meta.name, reaction.pk)
                 reaction.delete()
                 target.refresh_from_db()
-                return ReactionToggle(target=target, reaction_deleted_id=reaction_deleted_id)
+                return ReactionToggle(
+                    target=target, reaction_deleted_id=reaction_deleted_id
+                )
 
             if "reaction-change" not in target.get_my_permissions(info.context):
                 raise GraphQLError(
@@ -85,7 +87,9 @@ class ReactionToggle(RelayMutation):
         target.refresh_from_db()
 
         return ReactionToggle(
-            reaction=ReactionNode._meta.connection.Edge(node=reaction, cursor=offset_to_cursor(0)),
+            reaction=ReactionNode._meta.connection.Edge(
+                node=reaction, cursor=offset_to_cursor(0)
+            ),
             target=target,
         )
 

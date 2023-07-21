@@ -18,9 +18,9 @@ def test_student_can_see_reactions(django_user_student, graphql_user_student):
     assert content["data"]["allClassrooms"]["totalCount"] == 1
     assert len(content["data"]["allClassrooms"]["edges"]) == 1
     assert (
-        content["data"]["allClassrooms"]["edges"][0]["node"]["comments"]["edges"][0]["node"][
-            "reactionsCount"
-        ]["total"]
+        content["data"]["allClassrooms"]["edges"][0]["node"]["comments"]["edges"][0][
+            "node"
+        ]["reactionsCount"]["total"]
         == 1
     )
 
@@ -37,8 +37,8 @@ def test_instructor_can_see_reactions(django_user_instructor, graphql_user_instr
     assert content["data"]["allClassrooms"]["totalCount"] == 1
     assert len(content["data"]["allClassrooms"]["edges"]) == 1
     assert (
-        content["data"]["allClassrooms"]["edges"][0]["node"]["comments"]["edges"][0]["node"][
-            "reactionsCount"
-        ]["total"]
+        content["data"]["allClassrooms"]["edges"][0]["node"]["comments"]["edges"][0][
+            "node"
+        ]["reactionsCount"]["total"]
         == 1
     )
