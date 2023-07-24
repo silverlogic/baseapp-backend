@@ -1,4 +1,8 @@
 """
+Default router setup for auth endpoints.
+"""
+
+"""
 isort:skip_file
 """
 
