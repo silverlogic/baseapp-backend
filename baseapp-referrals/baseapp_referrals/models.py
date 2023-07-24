@@ -1,8 +1,13 @@
 from django.conf import settings
 from django.db import models
 
+import swapper
 
-class UserReferral(models.Model):
+
+class BaseUserReferral(models.Model):
+    class Meta:
+        abstract = True
+
     referrer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="referrals",
@@ -13,3 +18,8 @@ class UserReferral(models.Model):
         related_name="referred_by",
         on_delete=models.CASCADE,
     )
+
+
+class UserReferral(BaseUserReferral):
+    class Meta:
+        swappable = swapper.swappable_setting("baseapp_referrals", "UserReferral")
