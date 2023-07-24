@@ -29,8 +29,6 @@ This app uses django provided permission and group model and provides the abilit
 
 ## How to develop
 
-### Testing
-
 Each module of baseapp-backend has a demo project in `testproject/` directory, which can be run as a standalone Django app to test. Then in baseapp-backend directory:
 
 ```bash
@@ -46,6 +44,15 @@ pip3 install -r baseapp-core/testproject/requirements.txt
 # Install baseapp-APPNAME dependencies
 pip3 install -r baseapp-APPNAME/testproject/requirements.txt
 ```
+
+Run testproject:
+
+```bash
+cd baseapp-APPNAME/testproject
+python manage.py runserver
+```
+
+### Testing
 
 Running unit tests:
 

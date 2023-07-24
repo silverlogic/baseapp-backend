@@ -42,5 +42,8 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
+            options={
+                "swappable": "BASEAPP_REFERRALS_USER_REFERRAL_MODEL",
+            },
         )
     ]

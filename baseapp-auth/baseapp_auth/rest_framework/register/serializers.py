@@ -1,11 +1,12 @@
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext as _
 
-from baseapp_referrals.models import UserReferral
+import swapper
 from baseapp_referrals.utils import get_user_from_referral_code
 from rest_framework import serializers
 
 User = get_user_model()
+UserReferral = swapper.load_model("baseapp_referrals", "UserReferral")
 
 
 class RegisterSerializer(serializers.Serializer):

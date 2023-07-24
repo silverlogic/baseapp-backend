@@ -4,8 +4,10 @@ from io import BytesIO
 from django.core.files.images import ImageFile
 
 import requests
+import swapper
 from avatar.models import Avatar
-from baseapp_referrals.models import UserReferral
+
+UserReferral = swapper.load_model("baseapp_referrals", "UserReferral")
 
 from baseapp_social_auth.referrals import get_user_from_referral_code
 
