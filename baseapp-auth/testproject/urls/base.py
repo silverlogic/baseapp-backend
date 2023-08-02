@@ -1,4 +1,4 @@
-from django.conf.urls import include, re_path
+from django.urls import include, re_path
 from django.contrib import admin
 
 import testproject.urls.mfa as mfa_urls
