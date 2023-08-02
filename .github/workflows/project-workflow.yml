@@ -13,6 +13,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.8"]
+        django-version: ["3.2", "4.2"]
     steps:
       # Lint
       - uses: actions/checkout@v3
@@ -45,14 +46,19 @@ jobs:
       # Test
       - run: echo "🧪 Checking ${{ inputs.project }} Tests"
         if: steps.black.outcome == 'success'
-      - name: Install tests requirements
+      - name: Install tests requirements with Django ${{ matrix.django-version }}
         if: steps.black.outcome == 'success'
         id: requirements_installation
         run: |
           python -m pip install --upgrade pip
           pip install -r baseapp-core/testproject/requirements.txt
+          pip install "Django~=${{ matrix.django-version }}"
           requirements_path="${{ inputs.project }}/testproject/requirements.txt"
-          if [ -f ${requirements_path} ]; then pip install -r ${requirements_path}; else echo 'No requirements.txt file found in testproject directory'; fi
+          if [ -f ${requirements_path} ]
+            then pip install -r ${requirements_path}
+          else 
+            echo 'No requirements.txt file found in testproject directory'
+          fi
       - name: pytest
         if: steps.requirements_installation.outcome == 'success'
         run: |

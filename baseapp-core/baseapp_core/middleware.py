@@ -5,7 +5,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.utils.deprecation import MiddlewareMixin
 
-import pytz
+import zoneinfo
 
 threading_local = threading.local()
 
@@ -18,7 +18,7 @@ class AdminTimezoneMiddleware(MiddlewareMixin):
         # To get around this we make sure we only access the request user if we the URL matches
         # the admin.
         if request.path.startswith("/admin") and request.user.is_superuser:
-            timezone.activate(pytz.timezone(settings.ADMIN_TIME_ZONE))
+            timezone.activate(zoneinfo.ZoneInfo(settings.ADMIN_TIME_ZONE))
 
 
 class ThreadAttachedRequestLocalMiddleware(MiddlewareMixin):
