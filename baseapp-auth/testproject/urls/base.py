@@ -1,5 +1,5 @@
-from django.urls import include, re_path
 from django.contrib import admin
+from django.urls import include, re_path
 
 import testproject.urls.mfa as mfa_urls
 from baseapp_auth.rest_framework.router import router as auth_router
