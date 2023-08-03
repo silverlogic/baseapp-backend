@@ -1,5 +1,4 @@
 from django.forms.utils import pretty_name
-
 from rest_framework.decorators import MethodMapper
 
 

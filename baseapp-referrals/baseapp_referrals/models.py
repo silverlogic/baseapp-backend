@@ -1,7 +1,6 @@
+import swapper
 from django.conf import settings
 from django.db import models
-
-import swapper
 
 
 class BaseUserReferral(models.Model):

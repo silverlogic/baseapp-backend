@@ -1,9 +1,8 @@
+from baseapp_auth.password_validators import apply_password_validators
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
 from django.utils.translation import gettext_lazy as _
-
-from baseapp_auth.password_validators import apply_password_validators
 
 User = get_user_model()
 

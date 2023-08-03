@@ -1,10 +1,9 @@
 import re
 from io import BytesIO
 
-from django.core.files.images import ImageFile
-
 import requests
 from avatar.models import Avatar
+from django.core.files.images import ImageFile
 
 
 class EmailAlreadyExistsError(Exception):

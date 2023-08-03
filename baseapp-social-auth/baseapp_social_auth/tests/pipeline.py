@@ -1,11 +1,10 @@
 import re
 from io import BytesIO
 
-from django.core.files.images import ImageFile
-
 import requests
 import swapper
 from avatar.models import Avatar
+from django.core.files.images import ImageFile
 
 UserReferral = swapper.load_model("baseapp_referrals", "UserReferral")
 

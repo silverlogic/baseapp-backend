@@ -1,8 +1,7 @@
-from django.contrib.auth import get_user_model
-from django.utils.translation import gettext as _
-
 import swapper
 from baseapp_referrals.utils import get_user_from_referral_code
+from django.contrib.auth import get_user_model
+from django.utils.translation import gettext as _
 from rest_framework import serializers
 
 User = get_user_model()

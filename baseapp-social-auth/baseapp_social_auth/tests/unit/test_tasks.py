@@ -1,6 +1,5 @@
-from django.test import TestCase
-
 import pytest
+from django.test import TestCase
 from freezegun import freeze_time
 
 from baseapp_social_auth.cache.models import SocialAuthAccessTokenCache

@@ -1,6 +1,5 @@
-from django.contrib import admin
-
 import swapper
+from django.contrib import admin
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
 

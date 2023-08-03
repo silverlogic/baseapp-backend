@@ -2,7 +2,6 @@ from typing import Iterable
 
 from django.conf import settings
 from django.core.mail import EmailMessage
-
 from sendgrid.helpers.mail import Personalization, To
 
 from .utils import attach_files, chunk

@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.core.cache import InvalidCacheBackendError, caches
-
 from drf_extra_fields.fields import Base64ImageField
 from easy_thumbnails.files import get_thumbnailer
 

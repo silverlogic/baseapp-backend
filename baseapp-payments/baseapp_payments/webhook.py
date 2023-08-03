@@ -1,8 +1,7 @@
 import logging
 
-from django.db import transaction
-
 import swapper
+from django.db import transaction
 from djstripe import webhooks
 from djstripe.models import Subscription
 

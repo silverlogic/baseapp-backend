@@ -1,10 +1,9 @@
 from typing import List
 
+from ckeditor.fields import RichTextField
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
-
-from ckeditor.fields import RichTextField
 from model_utils.models import TimeStampedModel
 
 from .custom_templates import get_full_copy_template

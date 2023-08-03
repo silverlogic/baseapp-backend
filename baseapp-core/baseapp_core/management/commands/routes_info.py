@@ -1,7 +1,6 @@
-from django.core.management.base import BaseCommand
-
 from apps.api.constants import DEFAULT_ACTIONS
 from apps.api.v1.router import router as v1_router
+from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
@@ -18,9 +17,7 @@ class Command(BaseCommand):
     def get_actions(self, viewset, debug):
         actions = []
         has_empty_permission_classes = False
-        default_permissions = [
-            permission.__class__ for permission in viewset().get_permissions()
-        ]
+        default_permissions = [permission.__class__ for permission in viewset().get_permissions()]
 
         for rest_action in DEFAULT_ACTIONS:
             if hasattr(viewset, rest_action):
@@ -48,9 +45,7 @@ class Command(BaseCommand):
             actions, has_empty_permission_classes = self.get_actions(viewset, False)
 
             if write_always or has_empty_permission_classes:
-                self.stdout.write(
-                    f"Listing views for {viewset.__module__}.{viewset.__name__}"
-                )
+                self.stdout.write(f"Listing views for {viewset.__module__}.{viewset.__name__}")
                 for action in actions:
                     if write_always or not (action[1]):
                         paths.append(str(action[1]))

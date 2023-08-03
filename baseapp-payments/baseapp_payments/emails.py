@@ -1,8 +1,7 @@
+from constance import config
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
-
-from constance import config
 
 
 def send_subscription_trial_start_email(email):

@@ -1,7 +1,6 @@
+import graphene
 from django.conf import settings
 from django.core.cache import InvalidCacheBackendError, caches
-
-import graphene
 from easy_thumbnails.files import get_thumbnailer
 
 try:

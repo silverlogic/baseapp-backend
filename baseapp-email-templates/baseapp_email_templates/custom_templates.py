@@ -1,8 +1,7 @@
 import re
 
-from django.template import Context, Template
-
 from bs4 import BeautifulSoup
+from django.template import Context, Template
 
 
 def _get_text_from_html(html):

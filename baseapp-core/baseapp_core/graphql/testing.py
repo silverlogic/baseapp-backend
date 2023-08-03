@@ -1,7 +1,6 @@
 import json
 
 from django.test import Client
-
 from graphene_django.settings import graphene_settings
 
 DEFAULT_GRAPHQL_URL = "/graphql"
@@ -68,9 +67,7 @@ def graphql_query(
                 encoded_body[key] = value
 
     if headers:
-        resp = client.post(
-            graphql_url, encoded_body, content_type=content_type, **headers
-        )
+        resp = client.post(graphql_url, encoded_body, content_type=content_type, **headers)
     else:
         resp = client.post(graphql_url, encoded_body, content_type=content_type)
     return resp

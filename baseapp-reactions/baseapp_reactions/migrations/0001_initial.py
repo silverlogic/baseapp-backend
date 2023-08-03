@@ -2,10 +2,9 @@
 
 import django.db.models.deletion
 import django.utils.timezone
+import model_utils.fields
 from django.conf import settings
 from django.db import migrations, models
-
-import model_utils.fields
 
 
 class Migration(migrations.Migration):
@@ -47,9 +46,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "reaction_type",
-                    models.IntegerField(
-                        choices=[(1, "like"), (-1, "dislike")], default=1
-                    ),
+                    models.IntegerField(choices=[(1, "like"), (-1, "dislike")], default=1),
                 ),
                 (
                     "target_object_id",
@@ -75,9 +72,7 @@ class Migration(migrations.Migration):
             ],
             options={
                 "swappable": "BASEAPP_REACTIONS_REACTION_MODEL",
-                "unique_together": {
-                    ("user", "target_content_type", "target_object_id")
-                },
+                "unique_together": {("user", "target_content_type", "target_object_id")},
             },
         ),
     ]

@@ -26,9 +26,7 @@ class CloudflareStreamAdminWidget(ClearableFileInput):
                 {
                     "id": attrs["id"],
                     "preview": self.full_value.get("preview"),
-                    "iframe": self.full_value.get("preview").replace(
-                        "/watch", "/iframe"
-                    ),
+                    "iframe": self.full_value.get("preview").replace("/watch", "/iframe"),
                     "dashboard": f"https://dash.cloudflare.com/{settings.CLOUDFLARE_ACCOUNT_ID}/stream/videos/{uid}",
                     "analytics": f"https://dash.cloudflare.com/{settings.CLOUDFLARE_ACCOUNT_ID}/stream/analytics?uid={uid}&time-window=43200",
                 }

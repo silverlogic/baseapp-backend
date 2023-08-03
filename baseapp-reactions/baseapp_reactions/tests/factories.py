@@ -1,7 +1,6 @@
-from django.contrib.contenttypes.models import ContentType
-
 import factory
 import swapper
+from django.contrib.contenttypes.models import ContentType
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
 
