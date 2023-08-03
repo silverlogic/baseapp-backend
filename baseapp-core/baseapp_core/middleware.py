@@ -1,11 +1,10 @@
 import threading
 import uuid
+import zoneinfo
 
 from django.conf import settings
 from django.utils import timezone
 from django.utils.deprecation import MiddlewareMixin
-
-import zoneinfo
 
 threading_local = threading.local()
 
