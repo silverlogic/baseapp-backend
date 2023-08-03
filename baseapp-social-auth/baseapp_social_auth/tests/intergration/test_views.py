@@ -49,7 +49,7 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
 
         httpretty.register_uri(
             httpretty.GET,
-            re.compile(r"https://graph.facebook.com/v2.\d+/me/picture$"),
+            re.compile(r"https://graph.facebook.com/v12.\d+/me/picture$"),
             body="1234",
         )
 
@@ -58,7 +58,7 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
     def success_data(self):
         httpretty.register_uri(
             httpretty.GET,
-            re.compile(r"https://graph.facebook.com/v3.\d+/oauth/access_token$"),
+            re.compile(r"https://graph.facebook.com/v12.\d+/oauth/access_token$"),
             body=json.dumps({"access_token": "1234", "token_type": "type", "expires_in": 6000}),
         )
         return self.data()
@@ -66,7 +66,7 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
     def complete_data(self):
         httpretty.register_uri(
             httpretty.GET,
-            re.compile(r"https://graph.facebook.com/v3.\d+/me$"),
+            re.compile(r"https://graph.facebook.com/v12.\d+/me$"),
             body=json.dumps(
                 {
                     "id": "1387123",
@@ -90,7 +90,7 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
     def invalid_code_data(self):
         httpretty.register_uri(
             httpretty.GET,
-            re.compile(r"https://graph.facebook.com/v3.\d+/oauth/access_token$"),
+            re.compile(r"https://graph.facebook.com/v12.\d+/oauth/access_token$"),
             status=400,
         )
         return self.data()

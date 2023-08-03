@@ -45,7 +45,7 @@ def set_avatar(is_new, backend, user, response, *args, **kwargs):
     image_params = {}
 
     if backend.name == "facebook":
-        image_url = "https://graph.facebook.com/v2.7/me/picture"
+        image_url = "https://graph.facebook.com/v12.0/me/picture"
         image_params = {"type": "large", "access_token": response["access_token"]}
     elif backend.name == "twitter":
         image_url = response.get("profile_image_url", None)
