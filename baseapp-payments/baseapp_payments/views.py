@@ -1,11 +1,10 @@
 import logging
 
 import swapper
+from apps.api.v1.decorators import action
 from djstripe.models import Customer
 from rest_framework import permissions, status, viewsets
 from rest_framework.response import Response
-
-from apps.api.v1.decorators import action
 
 from .serializers import (
     CancelSubscriptionSerializer,

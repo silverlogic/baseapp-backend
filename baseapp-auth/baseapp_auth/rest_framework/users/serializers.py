@@ -1,14 +1,12 @@
 from datetime import timedelta
 
-from django.contrib.auth import get_user_model
-from django.utils import timezone
-from django.utils.translation import gettext_lazy as _
-
 import swapper
 from avatar.models import Avatar
 from baseapp_core.rest_framework.serializers import ModelSerializer
-from baseapp_referrals.models import UserReferral
 from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 User = get_user_model()

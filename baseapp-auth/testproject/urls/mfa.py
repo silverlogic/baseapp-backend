@@ -1,5 +1,4 @@
 from django.urls import path
-
 from trench.views import (
     MFAConfigView,
     MFAListActiveUserMethodsView,

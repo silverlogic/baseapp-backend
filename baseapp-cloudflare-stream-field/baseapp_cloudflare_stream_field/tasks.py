@@ -1,5 +1,6 @@
-from baseapp_cloudflare_stream_field.stream import StreamClient
 from celery import shared_task
+
+from baseapp_cloudflare_stream_field.stream import StreamClient
 
 stream_client = StreamClient()
 
@@ -55,8 +56,6 @@ def generate_download_url(content_type_pk, object_pk, attname, retries=1):
         response = stream_client.download_video(cloudflare_video["uid"])
         download_url = response["result"]["default"]["url"]
         cloudflare_video["meta"]["download_url"] = download_url
-        stream_client.update_video_data(
-            cloudflare_video["uid"], cloudflare_video["meta"]
-        )
+        stream_client.update_video_data(cloudflare_video["uid"], cloudflare_video["meta"])
         setattr(obj, attname, cloudflare_video)
         obj.save(update_fields=[attname])

@@ -1,8 +1,7 @@
-from django.contrib.contenttypes.models import ContentType
-
 import graphene
 import swapper
 from baseapp_core.graphql import CountedConnection
+from django.contrib.contenttypes.models import ContentType
 from graphene import relay
 from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField

@@ -1,10 +1,9 @@
+import swapper
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-
-import swapper
 from model_utils.models import TimeStampedModel
 
 
@@ -33,9 +32,7 @@ class AbstractBaseReaction(TimeStampedModel):
         related_name="reactions",
         on_delete=models.CASCADE,
     )
-    reaction_type = models.IntegerField(
-        choices=ReactionTypes.choices, default=ReactionTypes.LIKE
-    )
+    reaction_type = models.IntegerField(choices=ReactionTypes.choices, default=ReactionTypes.LIKE)
 
     target_content_type = models.ForeignKey(
         ContentType,

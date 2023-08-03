@@ -1,12 +1,18 @@
 import importlib
 
+import swapper
+from constance import config
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
-
-import swapper
-from constance import config
-from djstripe.models import Customer, PaymentMethod, Price, Product, Subscription, SubscriptionItem
+from djstripe.models import (
+    Customer,
+    PaymentMethod,
+    Price,
+    Product,
+    Subscription,
+    SubscriptionItem,
+)
 from expander import ExpanderSerializerMixin
 from rest_framework import serializers
 

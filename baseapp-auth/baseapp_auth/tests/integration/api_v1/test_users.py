@@ -1,16 +1,14 @@
 from datetime import timedelta
 
-from django.utils import timezone
-
 import pytest
 import swapper
+import tests.factories as f
+import tests.helpers as h
 from avatar.models import Avatar
 from baseapp_auth.tokens import ConfirmEmailTokenGenerator
 from baseapp_referrals.utils import get_referral_code
+from django.utils import timezone
 from testproject.testapp.models import User
-
-import tests.factories as f
-import tests.helpers as h
 from tests.mixins import ApiMixin
 
 UserReferral = swapper.load_model("baseapp_referrals", "UserReferral")

@@ -7,11 +7,14 @@ from django.http import Http404, HttpResponse
 from django.utils.decorators import method_decorator
 from django.utils.encoding import iri_to_uri
 from django.views.decorators.cache import never_cache
-
 from requests import HTTPError
 from rest_framework import serializers, status, viewsets
 from rest_framework.response import Response
-from rest_social_auth.views import DOMAIN_FROM_ORIGIN, SocialTokenOnlyAuthView, decorate_request
+from rest_social_auth.views import (
+    DOMAIN_FROM_ORIGIN,
+    SocialTokenOnlyAuthView,
+    decorate_request,
+)
 from social_core.exceptions import AuthException
 from social_core.utils import parse_qs, user_is_authenticated
 

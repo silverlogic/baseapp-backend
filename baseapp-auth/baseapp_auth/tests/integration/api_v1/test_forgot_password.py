@@ -1,12 +1,10 @@
 import re
 from unittest.mock import patch
 
-from django.conf import settings
-
 import pytest
-
 import tests.factories as f
 import tests.helpers as h
+from django.conf import settings
 from tests.mixins import ApiMixin
 
 pytestmark = pytest.mark.django_db

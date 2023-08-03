@@ -1,6 +1,5 @@
-from django.contrib.auth.models import Permission
-
 import pytest
+from django.contrib.auth.models import Permission
 
 from . import factories as f
 

@@ -1,10 +1,9 @@
+from baseapp_core.models import CaseInsensitiveEmailField
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-
-from baseapp_core.models import CaseInsensitiveEmailField
 from model_utils import Choices
 from model_utils.models import TimeStampedModel
 

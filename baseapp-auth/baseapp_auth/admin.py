@@ -1,10 +1,9 @@
+from constance import config
 from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-
-from constance import config
 
 from .emails import (
     new_superuser_notification_email,

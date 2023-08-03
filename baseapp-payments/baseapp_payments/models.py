@@ -1,7 +1,6 @@
+import swapper
 from django.db import models
 from django.utils.text import slugify
-
-import swapper
 
 from . import webhook  # noqa
 

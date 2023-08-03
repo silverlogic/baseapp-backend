@@ -1,7 +1,6 @@
+from apps.reactions.models import ReactableModel, update_reactions_count
 from django.apps import apps
 from django.core.management.base import BaseCommand
-
-from apps.reactions.models import ReactableModel, update_reactions_count
 
 
 class Command(BaseCommand):

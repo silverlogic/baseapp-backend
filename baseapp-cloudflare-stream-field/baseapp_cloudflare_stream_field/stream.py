@@ -1,12 +1,13 @@
-from django.conf import settings
-
 import requests
+from django.conf import settings
 
 
 class StreamClient:
     @property
     def _api_url(self):
-        return f"https://api.cloudflare.com/client/v4/accounts/{settings.CLOUDFLARE_ACCOUNT_ID}/stream"
+        return (
+            f"https://api.cloudflare.com/client/v4/accounts/{settings.CLOUDFLARE_ACCOUNT_ID}/stream"
+        )
 
     @property
     def request_headers(self):

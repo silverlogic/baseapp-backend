@@ -1,12 +1,11 @@
 from unittest.mock import patch
 
 import pytest
+import tests.factories as f
+import tests.helpers as h
 from baseapp_core.exceptions import DeepLinkFetchError
 from baseapp_referrals.utils import get_referral_code
 from testproject.testapp.models import User
-
-import tests.factories as f
-import tests.helpers as h
 from tests.mixins import ApiMixin
 
 pytestmark = pytest.mark.django_db

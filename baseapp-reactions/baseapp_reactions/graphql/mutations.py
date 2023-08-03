@@ -1,10 +1,9 @@
-from django.contrib.contenttypes.models import ContentType
-from django.utils.translation import ugettext_lazy as _
-
 import graphene
 import swapper
 from baseapp_core.graphql import RelayMutation, login_required
 from baseapp_core.utils import get_content_type_by_natural_key
+from django.contrib.contenttypes.models import ContentType
+from django.utils.translation import ugettext_lazy as _
 from graphql.error import GraphQLError
 from graphql_relay import to_global_id
 from graphql_relay.connection.arrayconnection import offset_to_cursor
@@ -71,9 +70,7 @@ class ReactionToggle(RelayMutation):
                 reaction_deleted_id = to_global_id(ReactionNode._meta.name, reaction.pk)
                 reaction.delete()
                 target.refresh_from_db()
-                return ReactionToggle(
-                    target=target, reaction_deleted_id=reaction_deleted_id
-                )
+                return ReactionToggle(target=target, reaction_deleted_id=reaction_deleted_id)
 
             if "reaction-change" not in target.get_my_permissions(info.context):
                 raise GraphQLError(
@@ -87,9 +84,7 @@ class ReactionToggle(RelayMutation):
         target.refresh_from_db()
 
         return ReactionToggle(
-            reaction=ReactionNode._meta.connection.Edge(
-                node=reaction, cursor=offset_to_cursor(0)
-            ),
+            reaction=ReactionNode._meta.connection.Edge(node=reaction, cursor=offset_to_cursor(0)),
             target=target,
         )
 

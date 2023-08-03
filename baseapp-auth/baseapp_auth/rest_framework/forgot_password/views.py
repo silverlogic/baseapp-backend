@@ -1,10 +1,9 @@
+from baseapp_auth.emails import send_password_reset_email
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core import signing
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
-
-from baseapp_auth.emails import send_password_reset_email
 from rest_framework import mixins, response, status, viewsets
 from rest_framework_simplejwt.tokens import RefreshToken
 

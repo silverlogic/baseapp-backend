@@ -1,5 +1,4 @@
 from django.db import models
-
 from phonenumber_field.modelfields import PhoneNumberField as PhoneNumberModelField
 from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework.serializers import ModelSerializer as OrigModelSerializer
@@ -21,9 +20,7 @@ class ModelSerializer(OrigModelSerializer):
         return field_class, field_kwargs
 
     def build_standard_field(self, field_name, model_field):
-        field_class, field_kwargs = super().build_standard_field(
-            field_name, model_field
-        )
+        field_class, field_kwargs = super().build_standard_field(field_name, model_field)
         if issubclass(field_class, PhoneNumberField) and model_field.blank:
             field_kwargs["allow_blank"] = True
         return field_class, field_kwargs
