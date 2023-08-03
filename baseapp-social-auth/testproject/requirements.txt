@@ -4,4 +4,4 @@
 -e ./baseapp-referrals
 
 Pillow==9.5.0
-rest-social-auth==5.0.1
+rest-social-auth==8.1.0
