@@ -48,7 +48,7 @@ pip3 install -r baseapp-APPNAME/testproject/requirements.txt
 Run testproject:
 
 ```bash
-cd baseapp-APPNAME/testproject
+cd baseapp-APPNAME
 python manage.py runserver
 ```
 
