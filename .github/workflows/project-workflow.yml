@@ -31,7 +31,7 @@ jobs:
         id: flake8
         if: steps.lint_installation.outcome == 'success'
         run: |
-          flake8 ./${{ inputs.project }} --show-source --statistics
+          flake8 ./${{ inputs.project }} --show-source --statistics --count
       - name: isort
         id: isort
         if: steps.flake8.outcome == 'success'
