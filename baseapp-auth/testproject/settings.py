@@ -123,8 +123,10 @@ MEDIA_URL = "{url}/media/".format(url=URL)
 STATIC_ROOT = str(BASE_DIR.parent / "static")
 STATIC_URL = "{url}/static/".format(url=URL)
 
+# JWT Authentication
 SIMPLE_JWT = {
     # It will work instead of the default serializer(TokenObtainPairSerializer).
     "TOKEN_OBTAIN_SERIALIZER": "testproject.testapp.rest_framework.jwt.serializers.MyTokenObtainPairSerializer",
     # ...
 }
+JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"

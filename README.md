@@ -8,7 +8,7 @@ The core contains the basics for BaseApp like Django Rest Framework's basic setu
 
 ## [baseapp-auth](baseapp-auth)
 
-Reusable user and authentication utilities. Authentication setup using SimpleToken, JWT and Multi-factor authentication (MFA)
+Reusable user and authentication utilities. Authentication setup using AuthToken, JWT and Multi-factor authentication (MFA)
 
 ## [baseapp-reactions](baseapp-reactions)
 

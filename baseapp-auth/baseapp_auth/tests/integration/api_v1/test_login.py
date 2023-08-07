@@ -68,8 +68,8 @@ class TestLoginBase(ApiMixin):
         assert r.data.get("password") is not None
 
 
-class TestLoginSimpleToken(TestLoginBase):
-    login_endpoint_path = "/v1/auth/simpletoken/login"
+class TestLoginAuthToken(TestLoginBase):
+    login_endpoint_path = "/v1/auth/authtoken/login"
 
     @pytest.fixture
     def data(self):
@@ -125,9 +125,9 @@ class TestLoginJwt(TestLoginBase):
         assert validated_token["last_name"] == user.last_name
 
 
-class TestLoginMfa(TestLoginBase):
+class TestLoginMfaAuthToken(TestLoginBase):
     """
-    MFA with Simpletoken authentication
+    MFA with AuthToken authentication
     More detailed MFA tests can be found in the "trench" package.
     """
 
@@ -165,7 +165,6 @@ class TestLoginMfa(TestLoginBase):
         self.assert_simple_token_response(r)
 
 
-@pytest.mark.skip("TODO: mix BA login serializer with MFA-JWT view")
 class TestLoginMfaJwt(TestLoginBase):
     """
     MFA with JWT authentication
@@ -196,7 +195,7 @@ class TestLoginMfaJwt(TestLoginBase):
         h.responseOk(r)
         assert set(r.data.keys()) == {"ephemeral_token", "method"}
 
-    def test_receives_second_step_mfa_response(self, client, active_user_with_application_otp):
+    def test_receives_second_step_mfa_jwt_response(self, client, active_user_with_application_otp):
         user = active_user_with_application_otp
         ephemeral_token = self.get_mfa_ephemeral_token(user)
         code = self.get_mfa_code(user)

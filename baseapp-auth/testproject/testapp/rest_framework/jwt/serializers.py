@@ -1,6 +1,6 @@
 from baseapp_auth.rest_framework.jwt.serializers import BaseJwtLoginSerializer
-from baseapp_auth.rest_framework.users.serializers import UserBaseSerializer
+from django.conf import settings
 
 
 class MyTokenObtainPairSerializer(BaseJwtLoginSerializer):
-    claim_serializer_class = UserBaseSerializer
+    _claim_serializer_class = getattr(settings, "JWT_CLAIM_SERIALIZER_CLASS", None)

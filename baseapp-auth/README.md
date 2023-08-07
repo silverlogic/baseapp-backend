@@ -10,8 +10,13 @@ This project provides the default User model and authentication utilities.
 
 ### Authentication endpoints
 
-In `rest_framework` directory you can find a implementation of authentication-related endpoints: login, signup, forgot-passowrd, change-email. The attached [test project](testproject/) has DRF routing set up to test/demo JWT authentication and Multi-factor authentication (MFA).
-[README.md](..%2Fbaseapp-referrals%2FREADME.md)
+In the `rest_framework/` directory you can find a implementation of account-related endpoints: login, signup, forgot-passowrd, change-email. Authentication (login) is implemented in a few different modes that can be picked depending on project preference/requirements. In [testproject/urls.py](testproject/urls.py) you'll find DRF routing set up for each of supported modes with unit tests for each mode:
+
+- Authentication with Simple AuthToken
+- Authentication with JWT
+- Authentication with MFA and Simple AuthToken
+- Authentication with MFA and JWT
+
 ### Utilities
 
 ## How to use
@@ -54,7 +59,7 @@ REST_FRAMEWORK = {
 }
 ```
 
-and set the required `SIMPLE_JWT` settings (e.g. the claims serializer):
+I you want to use JWT authentication, set the related JWT settings (e.g. the claims serializer):
 
 ```py
 SIMPLE_JWT = {
@@ -62,6 +67,7 @@ SIMPLE_JWT = {
     "TOKEN_OBTAIN_SERIALIZER": "testproject.testapp.rest_framework.jwt.serializers.MyTokenObtainPairSerializer",
     # ...
 }
+JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
 ```
 
 There is a constance config for password expiration interval:

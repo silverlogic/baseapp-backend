@@ -5,9 +5,9 @@ from django.urls import include, re_path
 mfa_login_router = DefaultRouter(trailing_slash=False)
 
 # Login
-from baseapp_auth.rest_framework.login.views import LoginMfaViewSet  # noqa
+from baseapp_auth.rest_framework.login.views import MfaAuthTokenViewSet  # noqa
 
-mfa_login_router.register(r"login", LoginMfaViewSet, basename="login")
+mfa_login_router.register(r"login", MfaAuthTokenViewSet, basename="login")
 
 __all__ = [
     "urlpatterns",
