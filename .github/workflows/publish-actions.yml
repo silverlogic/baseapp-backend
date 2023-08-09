@@ -9,6 +9,10 @@ jobs:
     uses: ./.github/workflows/publish-workflow.yml
     with:
       project: baseapp-auth
+  baseapp-cloudflare-stream-field:
+    uses: ./.github/workflows/publish-workflow.yml
+    with:
+      project: baseapp-cloudflare-stream-field
   baseapp-core:
     uses: ./.github/workflows/publish-workflow.yml
     with:
