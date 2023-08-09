@@ -1,4 +1,13 @@
-name: Project Workflow
+# This workflow will publish a Python package to the Test PyPI repository.
+# To use it make your project point to this file on the publish-actions.yml, like the following example:
+# 
+# jobs:
+#   baseapp-auth:
+#     uses: ./.github/workflows/publish-workflow-test.yml
+#     with:
+#       project: baseapp-auth
+
+name: Project Workflow Test
 
 on:
   workflow_call:
@@ -29,8 +38,9 @@ jobs:
         working-directory: ${{ inputs.project }}
         run: python3 setup.py sdist
 
-      - name: Publish distribution 📦 to PyPI
+      - name: Publish distribution 📦 to Test PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          repository-url: https://test.pypi.org/legacy/
           packages-dir: ${{ inputs.project }}/dist/
