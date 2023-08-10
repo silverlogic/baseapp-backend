@@ -29,10 +29,6 @@ jobs:
     uses: ./.github/workflows/publish-workflow.yml
     with:
       project: baseapp-reactions
-  baseapp-referrals:
-    uses: ./.github/workflows/publish-workflow.yml
-    with:
-      project: baseapp-referrals
   baseapp-social-auth:
     uses: ./.github/workflows/publish-workflow.yml
     with:

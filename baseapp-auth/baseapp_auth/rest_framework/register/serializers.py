@@ -1,11 +1,10 @@
-import swapper
+from baseapp_auth.utils.referral_utils import get_user_referral_model, use_referrals
 from baseapp_referrals.utils import get_user_from_referral_code
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext as _
 from rest_framework import serializers
 
 User = get_user_model()
-UserReferral = swapper.load_model("baseapp_referrals", "UserReferral")
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -21,7 +20,7 @@ class RegisterSerializer(serializers.Serializer):
         return email
 
     def validate_referral_code(self, referral_code):
-        if referral_code:
+        if use_referrals() and referral_code:
             self.referrer = get_user_from_referral_code(referral_code)
             if not self.referrer:
                 raise serializers.ValidationError(_("Invalid referral code."))
@@ -34,6 +33,6 @@ class RegisterSerializer(serializers.Serializer):
     def save(self):
         validated_data = self.validated_data
         user = User.objects.create_user(**validated_data)
-        if hasattr(self, "referrer"):
-            UserReferral.objects.create(referrer=self.referrer, referee=user)
+        if use_referrals() and hasattr(self, "referrer"):
+            get_user_referral_model().objects.create(referrer=self.referrer, referee=user)
         return user

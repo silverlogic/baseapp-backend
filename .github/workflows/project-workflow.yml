@@ -6,6 +6,12 @@ on:
       project:
         required: true
         type: string
+      app_name:
+        required: false
+        type: string
+      custom_pytest:
+        required: false
+        type: string
 
 jobs:
   project-workflow:
@@ -61,5 +67,14 @@ jobs:
         if: steps.requirements_installation.outcome == 'success'
         run: |
           app_name=$(echo "${{ inputs.project }}" | tr '-' '_')
+          if [ "${{ inputs.app_name }}" ]
+            then app_name="${{ inputs.app_name }}"
+          else 
+            app_name=$(echo "${{ inputs.project }}" | tr '-' '_')
+          fi
           tests_path="${{ inputs.project }}/${app_name}/tests"
           pytest ${tests_path}
+          echo "Running custom pytest command"
+          if [ "${{ inputs.custom_pytest }}" ]
+            then eval "${{ inputs.custom_pytest }}"
+          fi

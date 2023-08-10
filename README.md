@@ -8,15 +8,15 @@ The core contains the basics for BaseApp like Django Rest Framework's basic setu
 
 ## [baseapp-auth](baseapp-auth)
 
-Reusable user and authentication utilities. Authentication setup using AuthToken, JWT and Multi-factor authentication (MFA)
+Contains the following apps:
+
+**baseapp_auth**: Reusable user and authentication utilities. Authentication setup using AuthToken, JWT and Multi-factor authentication (MFA)
+
+**baseapp_referrals**: Models and utilities for user referrals
 
 ## [baseapp-reactions](baseapp-reactions)
 
 Reusable app to enable User's reactions on any model, features like like/dislike or any other reactions type, customizable for project's needs.
-
-## [baseapp-referrals](baseapp-referrals)
-
-Utilities for user referrals
 
 ## [baseapp-payments](baseapp-payments)
 

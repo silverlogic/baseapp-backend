@@ -1,4 +1,2 @@
-# install "install_requires" from setup.cfg
 -e ./baseapp-core
 -e ./baseapp-auth
--e ./baseapp-referrals

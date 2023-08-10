@@ -1,19 +1,24 @@
 from datetime import timedelta
 
 import pytest
-import swapper
 import tests.factories as f
 import tests.helpers as h
 from avatar.models import Avatar
 from baseapp_auth.tokens import ConfirmEmailTokenGenerator
+from baseapp_auth.utils.referral_utils import get_user_referral_model
 from baseapp_referrals.utils import get_referral_code
+from django.conf import settings
 from django.utils import timezone
 from testproject.testapp.models import User
 from tests.mixins import ApiMixin
 
-UserReferral = swapper.load_model("baseapp_referrals", "UserReferral")
+pytestmark = [pytest.mark.django_db, pytest.mark.referrals]
 
-pytestmark = pytest.mark.django_db
+skip_if_no_referrals = pytest.mark.skipif(
+    "baseapp_referrals" not in settings.INSTALLED_APPS, reason="No referrals app"
+)
+
+UserReferral = get_user_referral_model()
 
 
 class TestUsersRetrieve(ApiMixin):
@@ -79,6 +84,7 @@ class TestUsersUpdate(ApiMixin):
         user_client.user.refresh_from_db()
         assert user_client.user.email != "test@email.co"
 
+    @skip_if_no_referrals
     def test_can_update_referred_by_code_on_the_same_day_user_registered(self, user_client):
         user = f.UserFactory()
         data = {"referred_by_code": get_referral_code(user)}
@@ -87,12 +93,14 @@ class TestUsersUpdate(ApiMixin):
         user_client.user.refresh_from_db()
         assert user_client.user.referred_by.referrer == user
 
+    @skip_if_no_referrals
     def test_cant_update_referred_by_code_with_invalid_code(self, user_client):
         data = {"referred_by_code": "8182"}
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.id}), data)
         h.responseBadRequest(r)
         assert r.data["referred_by_code"] == ["Invalid referral code."]
 
+    @skip_if_no_referrals
     def test_cant_update_referred_by_code_when_user_already_has_a_referrer(self, user_client):
         user = f.UserFactory()
         UserReferral.objects.create(referee=user_client.user, referrer=user)
@@ -101,12 +109,14 @@ class TestUsersUpdate(ApiMixin):
         h.responseBadRequest(r)
         assert r.data["referred_by_code"] == ["You have already been referred by somebody."]
 
+    @skip_if_no_referrals
     def test_cant_update_referred_by_code_to_yourself(self, user_client):
         data = {"referred_by_code": get_referral_code(user_client.user)}
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.id}), data)
         h.responseBadRequest(r)
         assert r.data["referred_by_code"] == ["You cannot refer yourself."]
 
+    @skip_if_no_referrals
     def test_cant_update_referred_by_code_after_the_day_the_user_registered(self, user_client):
         user_client.user.date_joined = timezone.now() - timedelta(days=1, hours=1)
         user_client.user.save()

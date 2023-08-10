@@ -7,7 +7,6 @@ from celery.schedules import crontab
 APPS_DIR = BASE_DIR
 
 # Application definition
-
 INSTALLED_APPS += [
     "constance",
     "constance.backends.database",
@@ -16,7 +15,6 @@ INSTALLED_APPS += [
     "trench",
     "rest_framework_simplejwt",
     "baseapp_auth",
-    "baseapp_referrals",
     "testproject.testapp",
 ]
 
