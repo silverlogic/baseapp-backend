@@ -4,9 +4,11 @@ import pytest
 import tests.factories as f
 from baseapp_auth import tasks
 from constance.test import override_config
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from freezegun import freeze_time
-from testproject.testapp.models import User
+
+User = get_user_model()
 
 pytestmark = pytest.mark.django_db
 

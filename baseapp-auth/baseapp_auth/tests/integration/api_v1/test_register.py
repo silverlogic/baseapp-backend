@@ -6,8 +6,10 @@ import tests.helpers as h
 from baseapp_core.exceptions import DeepLinkFetchError
 from baseapp_referrals.utils import get_referral_code
 from django.conf import settings
-from testproject.testapp.models import User
+from django.contrib.auth import get_user_model
 from tests.mixins import ApiMixin
+
+User = get_user_model()
 
 pytestmark = [pytest.mark.django_db, pytest.mark.referrals]
 
