@@ -1,7 +1,7 @@
 from datetime import timedelta
 
-import swapper
 from avatar.models import Avatar
+from baseapp_auth.utils.referral_utils import get_user_referral_model, use_referrals
 from baseapp_core.rest_framework.serializers import ModelSerializer
 from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
 from django.contrib.auth import get_user_model
@@ -10,7 +10,6 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 User = get_user_model()
-UserReferral = swapper.load_model("baseapp_referrals", "UserReferral")
 
 from baseapp_auth.password_validators import apply_password_validators
 from baseapp_auth.tokens import ConfirmEmailTokenGenerator
@@ -52,7 +51,9 @@ class UserBaseSerializer(ModelSerializer):
         )
 
     def get_referral_code(self, user):
-        return get_referral_code(user)
+        if use_referrals():
+            return get_referral_code(user)
+        return ""
 
 
 class UserSerializer(UserBaseSerializer):
@@ -60,7 +61,7 @@ class UserSerializer(UserBaseSerializer):
         pass
 
     def validate_referred_by_code(self, referred_by_code):
-        if referred_by_code:
+        if use_referrals() and referred_by_code:
             self.referrer = get_user_from_referral_code(referred_by_code)
             if not self.referrer:
                 raise serializers.ValidationError(_("Invalid referral code."))
@@ -75,8 +76,8 @@ class UserSerializer(UserBaseSerializer):
         return referred_by_code
 
     def update(self, instance, validated_data):
-        if hasattr(self, "referrer"):
-            UserReferral.objects.create(referrer=self.referrer, referee=instance)
+        if use_referrals() and hasattr(self, "referrer"):
+            get_user_referral_model().objects.create(referrer=self.referrer, referee=instance)
 
         if "avatar" in validated_data:
             avatar = validated_data.pop("avatar")
