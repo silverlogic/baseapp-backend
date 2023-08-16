@@ -8,9 +8,11 @@ from baseapp_auth.tokens import ConfirmEmailTokenGenerator
 from baseapp_auth.utils.referral_utils import get_user_referral_model
 from baseapp_referrals.utils import get_referral_code
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.utils import timezone
-from testproject.testapp.models import User
 from tests.mixins import ApiMixin
+
+User = get_user_model()
 
 pytestmark = [pytest.mark.django_db, pytest.mark.referrals]
 
