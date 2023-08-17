@@ -1,4 +1,4 @@
-name: Publish
+name: Publish Actions
 run-name: ${{ github.actor }} is checking ${{ github.ref }} branch 🚀
 on:
   release:

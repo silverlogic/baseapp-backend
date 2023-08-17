@@ -7,7 +7,7 @@
 #     with:
 #       project: baseapp-auth
 
-name: Project Workflow Test
+name: Publish Workflow Test
 
 on:
   workflow_call:

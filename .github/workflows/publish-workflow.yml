@@ -1,4 +1,4 @@
-name: Project Workflow
+name: Publish Workflow
 
 on:
   workflow_call:
