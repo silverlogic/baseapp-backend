@@ -19,6 +19,7 @@ on:
 jobs:
   publish-workflow:
     runs-on: ubuntu-latest
+    environment: testing
     if: contains(github.event.release.tag_name, inputs.project)
     strategy:
       matrix:

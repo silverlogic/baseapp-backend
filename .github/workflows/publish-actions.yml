@@ -9,31 +9,39 @@ jobs:
     uses: ./.github/workflows/publish-workflow.yml
     with:
       project: baseapp-auth
+    secrets: inherit
   baseapp-cloudflare-stream-field:
     uses: ./.github/workflows/publish-workflow.yml
     with:
       project: baseapp-cloudflare-stream-field
+    secrets: inherit
   baseapp-core:
     uses: ./.github/workflows/publish-workflow.yml
     with:
       project: baseapp-core
+    secrets: inherit
   baseapp-drf-view-action-permissions:
     uses: ./.github/workflows/publish-workflow.yml
     with:
       project: baseapp-baseapp-drf-view-action-permissions
+    secrets: inherit
   baseapp-email-templates:
     uses: ./.github/workflows/publish-workflow.yml
     with:
       project: baseapp-email-templates
+    secrets: inherit
   baseapp-payments:
     uses: ./.github/workflows/publish-workflow.yml
     with:
       project: baseapp-payments
+    secrets: inherit
   baseapp-reactions:
     uses: ./.github/workflows/publish-workflow.yml
     with:
       project: baseapp-reactions
+    secrets: inherit
   baseapp-social-auth:
     uses: ./.github/workflows/publish-workflow.yml
     with:
       project: baseapp-social-auth
+    secrets: inherit

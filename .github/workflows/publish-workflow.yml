@@ -10,6 +10,7 @@ on:
 jobs:
   publish-workflow:
     runs-on: ubuntu-latest
+    environment: production
     if: contains(github.event.release.tag_name, inputs.project)
     strategy:
       matrix:
@@ -32,5 +33,6 @@ jobs:
       - name: Publish distribution 📦 to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
+          user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
           packages-dir: ${{ inputs.project }}/dist/
