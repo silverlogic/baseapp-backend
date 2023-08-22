@@ -1,7 +1,7 @@
 # install "install_requires" from setup.cfg
 -e ./baseapp-core
 
-django==3.2
+django==3.2.20
 
 # test
 freezegun==1.2.1
