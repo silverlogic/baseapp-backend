@@ -1,4 +1,4 @@
-name: Project Workflow
+name: Publish Workflow
 
 on:
   workflow_call:
@@ -10,6 +10,7 @@ on:
 jobs:
   publish-workflow:
     runs-on: ubuntu-latest
+    environment: production
     if: contains(github.event.release.tag_name, inputs.project)
     strategy:
       matrix:
