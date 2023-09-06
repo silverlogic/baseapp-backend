@@ -11,8 +11,6 @@ from rest_framework.test import APIClient
 
 import baseapp_core.tests.factories as f
 
-from ..graphql.testing import graphql_query
-
 IMAGE_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAMAAAAM7l6QAAAARVBMVEXPACr///8HAAIVAARnND5oABVzABcnCA6mACJHAA62ACXhztGcbXfi0dVzP0qZAB86EhqLWWPNsLZUABEjAAcaBAhbKjRAQ1vHAAAA+0lEQVQokYWTCZKEIAxFw2cTV9z6/kftsMjoiG2qVPQlAZMfEod1vfI7sHvVd+Uj5ecyWhSz43LFM0Pp9NS2k3aSHeYTHhSw6YayNZod1HDg4QO4AqPDCnyGjDnW0D/jBCrhuUKZA3PAi8V6p0Qr7MJ4hGxquNkwCuosdI2G9Laj/iGYwyV6UnC8FFeSXh0U+Zi7ig087Zgoli7eiY4m8GqCJKDN7ukSf9EtcMZHjjOOyUt03jktQ3KfKpr3FuUA+Wjpx6oWfuylLC9F5ZZsP1ry1tAHOZgshyAmeeOmiClKcX2W4l3I21nIZQxMGANzG4PXIcojyHHyMoJf+KcJUmsQs8MAAAAASUVORK5CYII="
 
 
@@ -108,19 +106,3 @@ def deep_link_mock_success(use_httpretty):
 @pytest.fixture
 def deep_link_mock_error(use_httpretty):
     httpretty.register_uri(httpretty.POST, "https://api.branch.io/v1/url", status=400)
-
-
-@pytest.fixture
-def graphql_client(django_client):
-    def func(*args, **kwargs):
-        return graphql_query(*args, **kwargs, client=django_client)
-
-    return func
-
-
-@pytest.fixture
-def graphql_user_client(django_user_client):
-    def func(*args, **kwargs):
-        return graphql_query(*args, **kwargs, client=django_user_client)
-
-    return func
