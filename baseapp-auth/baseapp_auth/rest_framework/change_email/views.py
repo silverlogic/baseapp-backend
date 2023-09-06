@@ -20,8 +20,10 @@ User = get_user_model()
 
 class ChangeEmailViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = ChangeEmailRequestSerializer
-    queryset = User.objects.all()
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return User.objects.all()
 
     def create(self, request, *args, **kwargs):
         """step 1"""
