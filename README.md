@@ -26,6 +26,9 @@ Utilities for payments
 
 This app uses django provided permission and group model and provides the ability to add roles to a django model, and make views from the [django-restframework](https://www.django-rest-framework.org/) check for them. A **Permission** represents the lowest single unit of access. A **Group** is a collection of Permissions. A **Role** can have many Permision Groups, many Permissions and many **Excluded Permissions**. The access of a Role is the aggregation of its single Permissions + the permissions on its **Permission** Groups - its Excluded Permissions.
 
+## [baseapp-notifications](baseapp-notifications)
+
+Reusable app to handle in-app, email and push notifications.
 
 ## How to develop
 
@@ -51,6 +54,22 @@ Run testproject:
 cd baseapp-APPNAME
 python manage.py runserver
 ```
+
+### How to develop with a specific project
+
+Clone the repository inside your project's backend dir:
+
+```bash
+git clone git@github.com:silverlogic/baseapp-backend.git
+```
+
+And manually install the package:
+
+```bash
+pip install -e baseapp-backend/baseapp-APPNAME
+```
+
+The `-e` flag will make it like any change you make in the cloned files will effect into the project, even with django's auto reload.
 
 ### Testing
 
