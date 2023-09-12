@@ -50,7 +50,6 @@ class DummyViewSet(viewsets.GenericViewSet):
     permission_classes = [
         DjangoActionPermissions,
     ]
-    queryset = TestModel.objects.all()
     permission_base = "testmodel"
     perms_map_action = {
         "disable": ["testapp.test_disable"],
@@ -62,6 +61,9 @@ class DummyViewSet(viewsets.GenericViewSet):
             "testapp.add_testmodel",
         ],
     }
+
+    def get_queryset(self):
+        return TestModel.objects.all()
 
     def create(self, *args, **kwargs):
         return response.Response({}, status=status.HTTP_201_CREATED)

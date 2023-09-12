@@ -38,12 +38,14 @@ from baseapp_drf_view_action_permissions.action import DjangoActionPermissions
 class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [DjangoActionPermissions, ]
     permission_base = "users" # if not defined the app label would be used
-    queryset = User.objects.all()
     model_class = User # Only required if viewset not using queryset
     # optional perms_map_action to override default behaviour
     perms_map_action = {
         'custom_action': ['users.list_users']
     }
+
+    def get_queryset(self):
+        return User.objects.all()
     ...
 ```
 
