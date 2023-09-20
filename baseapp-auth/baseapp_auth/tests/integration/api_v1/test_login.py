@@ -92,7 +92,7 @@ class TestLoginAuthToken(TestLoginBase):
 
 
 class TestLoginJwt(TestLoginBase):
-    login_endpoint_path = "/v1/auth/jwt/login"
+    login_endpoint_path = "/v1/auth/jwt/"
 
     @pytest.fixture
     def data(self):
