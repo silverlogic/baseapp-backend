@@ -3,11 +3,13 @@ import swapper
 from django import forms
 from django.apps import apps
 from django.conf import settings
+from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 from graphene_django.forms.mutation import _set_errors_flag_to_context
 from graphene_django.types import ErrorType
 from graphql.error import GraphQLError
 
+from baseapp.files.graphql.utils import attach_files_from_relay_ids
 from baseapp_core.graphql import (
     RelayMutation,
     get_obj_from_relay_id,
@@ -36,11 +38,13 @@ class CommentCreate(RelayMutation):
         in_reply_to_id = graphene.ID(required=False)
         profile_id = graphene.ID(required=False)
         body = graphene.String(required=True)
+        file_ids = graphene.List(graphene.NonNull(graphene.ID), required=False)
 
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         activity_name = f"{app_label}.add_comment"
+        file_ids = input.pop("file_ids", None)
 
         if apps.is_installed("baseapp.activity_log"):
             from baseapp.activity_log.context import set_public_activity
@@ -83,18 +87,19 @@ class CommentCreate(RelayMutation):
 
         form = CommentForm(instance=comment, data=input)
         if form.is_valid():
-            form.save()
+            with transaction.atomic():
+                comment = form.save()
 
-            # Need to refresh to update comments_count
-            target.refresh_from_db()
-            if comment.profile:
-                comment.profile.refresh_from_db()
-            if comment.in_reply_to:
-                comment.in_reply_to.refresh_from_db()
+                attach_files_from_relay_ids(comment, file_ids, info.context.user)
 
-            return cls(
-                comment=CommentObjectType._meta.connection.Edge(node=comment),
-            )
+                # Need to refresh to update comments_count
+                target.refresh_from_db()
+                if comment.profile:
+                    comment.profile.refresh_from_db()
+                if comment.in_reply_to:
+                    comment.in_reply_to.refresh_from_db()
+
+            return cls(comment=CommentObjectType._meta.connection.Edge(node=comment))
         else:
             errors = ErrorType.from_errors(form.errors)
             _set_errors_flag_to_context(info)
@@ -108,6 +113,7 @@ class CommentUpdate(RelayMutation):
     class Input:
         id = graphene.ID(required=True)
         body = graphene.String(required=True)
+        file_ids = graphene.List(graphene.NonNull(graphene.ID), required=False)
 
     @classmethod
     @login_required
@@ -115,6 +121,7 @@ class CommentUpdate(RelayMutation):
         pk = get_pk_from_relay_id(input.get("id"))
         comment = Comment.objects.get(pk=pk)
         activity_name = f"{app_label}.change_comment"
+        file_ids = input.pop("file_ids", None)
 
         if not info.context.user.has_perm(activity_name, comment):
             raise GraphQLError(
@@ -131,10 +138,11 @@ class CommentUpdate(RelayMutation):
 
         form = CommentForm(instance=comment, data=input)
         if form.is_valid():
-            comment = form.save()
-            return cls(
-                comment=comment,
-            )
+            with transaction.atomic():
+                comment = form.save()
+                attach_files_from_relay_ids(comment, file_ids, info.context.user)
+
+            return cls(comment=comment)
         else:
             errors = ErrorType.from_errors(form.errors)
             _set_errors_flag_to_context(info)
