@@ -56,11 +56,13 @@ INSTALLED_APPS += [
     "testproject.pages",
     "testproject.organizations",
     "testproject.chats",
+    "testproject.files",
     *WAGTAIL_INSTALLED_INTERNAL_APPS,
     *WAGTAIL_INSTALLED_APPS,
     "baseapp_wagtail.tests",
     "baseapp_pdf",
     "baseapp_api_key",
+    "baseapp.files",
 ]
 
 MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")
@@ -126,6 +128,7 @@ AUTHENTICATION_BACKENDS = [
     "baseapp_pages.permissions.PagesPermissionsBackend",
     "baseapp_organizations.permissions.OrganizationsPermissionsBackend",
     "baseapp_chats.permissions.ChatsPermissionsBackend",
+    "baseapp.files.permissions.FilesPermissionsBackend",
 ]
 
 ADMIN_TIME_ZONE = "UTC"
@@ -217,6 +220,10 @@ BASEAPP_CHATS_CHATROOMPARTICIPANT_MODEL = "chats.ChatRoomParticipant"
 BASEAPP_CHATS_UNREADMESSAGECOUNT_MODEL = "chats.UnreadMessageCount"
 BASEAPP_CHATS_MESSAGE_MODEL = "chats.Message"
 BASEAPP_CHATS_MESSAGESTATUS_MODEL = "chats.MessageStatus"
+
+# Files
+BASEAPP_FILES_FILE_MODEL = "files.File"
+BASEAPP_FILES_FILETARGET_MODEL = "files.FileTarget"
 
 # Notifications
 NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"

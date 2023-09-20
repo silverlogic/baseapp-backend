@@ -57,12 +57,8 @@ PROFILE_UPDATE_GRAPHQL = """
                 id
                 name
                 biography
-                image(width: 100, height: 100) {
-                    url
-                }
-                bannerImage(width: 100, height: 100) {
-                    url
-                }
+                image(width: 100, height: 100)
+                bannerImage(width: 100, height: 100)
             }
             errors {
                 field

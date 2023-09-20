@@ -20,9 +20,7 @@ GET_PROFILE_BY_PATH = """
             name
             metadata {
                 metaTitle
-                metaOgImage(width: 100, height: 100) {
-                    url
-                }
+                metaOgImage(width: 100, height: 100)
             }
         }
     }
@@ -49,7 +47,7 @@ def test_profile_metadata(graphql_user_client, image_djangofile):
     assert content["data"]["profile"]["id"] == profile.relay_id
     assert content["data"]["profile"]["name"] == profile.name
     assert content["data"]["profile"]["metadata"]["metaTitle"] == profile.name
-    assert content["data"]["profile"]["metadata"]["metaOgImage"]["url"].startswith("http") is True
+    assert content["data"]["profile"]["metadata"]["metaOgImage"].startswith("http") is True
 
 
 def test_owner_can_change_profile(django_user_client, graphql_user_client):

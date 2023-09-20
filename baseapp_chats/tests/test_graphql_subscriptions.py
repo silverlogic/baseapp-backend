@@ -113,9 +113,7 @@ async def test_build_absolute_uri_on_graphql_subscription(
                     message {
                       node {
                         profile {
-                          image(width: 100, height: 100) {
-                            url
-                          }
+                          image(width: 100, height: 100)
                         }
                       }
                     }
@@ -144,9 +142,9 @@ async def test_build_absolute_uri_on_graphql_subscription(
 
     # Check that subscription message were sent.
     resp = await client.receive(assert_id=sub_id, assert_type="next")
-    assert resp["data"]["chatRoomOnMessage"]["message"]["node"]["profile"]["image"][
-        "url"
-    ].startswith("http")
+    assert resp["data"]["chatRoomOnMessage"]["message"]["node"]["profile"]["image"].startswith(
+        "http"
+    )
 
     # Disconnect and wait the application to finish gracefully.
     await client.finalize()

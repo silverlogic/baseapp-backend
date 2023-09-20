@@ -5,6 +5,7 @@ from graphene_django.debug import DjangoDebug
 from baseapp.activity_log.graphql.queries import ActivityLogQueries
 from baseapp.content_feed.graphql.mutations import ContentFeedMutations
 from baseapp.content_feed.graphql.queries import ContentFeedQueries
+from baseapp.files.graphql.mutations import FilesMutations
 from baseapp_blocks.graphql.mutations import BlocksMutations
 from baseapp_chats.graphql.mutations import ChatsMutations
 from baseapp_chats.graphql.queries import ChatsQueries
@@ -64,6 +65,7 @@ class Mutation(
     OrganizationsMutations,
     ChatsMutations,
     ContentFeedMutations,
+    FilesMutations,
 ):
     delete_node = DeleteNode.Field()
 

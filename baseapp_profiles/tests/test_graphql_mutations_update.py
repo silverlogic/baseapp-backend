@@ -20,12 +20,8 @@ PROFILE_UPDATE_GRAPHQL = """
                 id
                 name
                 biography
-                image(width: 100, height: 100) {
-                    url
-                }
-                bannerImage(width: 100, height: 100) {
-                    url
-                }
+                image(width: 100, height: 100)
+                bannerImage(width: 100, height: 100)
             }
             errors {
                 field
@@ -137,7 +133,7 @@ def test_owner_can_update_profile_image(django_user_client, graphql_user_client,
     )
 
     content = response.json()
-    assert content["data"]["profileUpdate"]["profile"]["image"]["url"].startswith("http")
+    assert content["data"]["profileUpdate"]["profile"]["image"].startswith("http")
 
 
 def test_owner_can_update_profile_banner_image(
@@ -152,7 +148,7 @@ def test_owner_can_update_profile_banner_image(
     )
 
     content = response.json()
-    assert content["data"]["profileUpdate"]["profile"]["bannerImage"]["url"].startswith("http://")
+    assert content["data"]["profileUpdate"]["profile"]["bannerImage"].startswith("http://")
 
 
 def test_owner_can_delete_profile_image(django_user_client, graphql_user_client):
@@ -189,7 +185,7 @@ def test_owner_can_update_profile_banner_image_camel_case(
     )
 
     content = response.json()
-    assert content["data"]["profileUpdate"]["profile"]["bannerImage"]["url"].startswith("http://")
+    assert content["data"]["profileUpdate"]["profile"]["bannerImage"].startswith("http://")
 
 
 def test_superuser_can_update_profile(django_user_client, graphql_user_client):
