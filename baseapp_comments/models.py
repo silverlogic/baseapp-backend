@@ -7,6 +7,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
+from baseapp.files.base import FileableModel
 from baseapp_core.graphql import RelayModel
 from baseapp_reactions.models import ReactableModel
 from baseapp_reports.models import ReportableModel
@@ -47,7 +48,12 @@ class NonDeletedComments(models.Manager):
 
 
 class AbstractComment(
-    TimeStampedModel, AbstractCommentableModel, ReactableModel, ReportableModel, RelayModel
+    TimeStampedModel,
+    AbstractCommentableModel,
+    ReactableModel,
+    ReportableModel,
+    RelayModel,
+    FileableModel,
 ):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
