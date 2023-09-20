@@ -121,6 +121,7 @@ class BaseCommentObjectType:
             "ReactionsInterface",
             "MentionsInterface",
             "NodeActivityLogInterface",
+            "FilesInterface",
         )
         model = Comment
         fields = (

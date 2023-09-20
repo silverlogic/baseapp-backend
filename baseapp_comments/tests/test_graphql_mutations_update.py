@@ -14,6 +14,13 @@ COMMENT_UPDATE_GRAPHQL = """
             comment {
                 id
                 body
+                files {
+                    edges {
+                        node {
+                            pk
+                        }
+                    }
+                }
             }
             errors {
                 field

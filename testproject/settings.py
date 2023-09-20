@@ -42,6 +42,7 @@ INSTALLED_APPS += [
     "baseapp_social_auth",
     "baseapp_social_auth.cache",
     "baseapp.content_feed",
+    "baseapp.files",
     "baseapp_pdf",
     "baseapp_api_key",
     *WAGTAIL_INSTALLED_APPS,
@@ -53,6 +54,7 @@ INSTALLED_APPS += [
     "testproject.profiles",
     "testproject.reactions",
     "testproject.content_feed",
+    "testproject.files",
     "testproject.follows",
     "testproject.blocks",
     "testproject.base",
@@ -138,6 +140,7 @@ AUTHENTICATION_BACKENDS = [
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_blocks"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_chats"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_organizations"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_files"),
 ]
 
 ADMIN_TIME_ZONE = "UTC"
@@ -237,6 +240,10 @@ BASEAPP_CHATS_CHATROOMPARTICIPANT_MODEL = "social_chats.ChatRoomParticipant"
 BASEAPP_CHATS_UNREADMESSAGECOUNT_MODEL = "social_chats.UnreadMessageCount"
 BASEAPP_CHATS_MESSAGE_MODEL = "social_chats.Message"
 BASEAPP_CHATS_MESSAGESTATUS_MODEL = "social_chats.MessageStatus"
+
+# Files
+BASEAPP_FILES_FILE_MODEL = "files.File"
+BASEAPP_FILES_FILETARGET_MODEL = "files.FileTarget"
 
 # Notifications
 NOTIFICATIONS_NOTIFICATION_MODEL = "notifications.Notification"

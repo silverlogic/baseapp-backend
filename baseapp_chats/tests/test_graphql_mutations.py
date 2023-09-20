@@ -57,9 +57,7 @@ CREATE_ROOM_GRAPHQL = """
                             }
                         }
                     }
-                    image(width: 100, height: 100) {
-                        url
-                    }
+                    image(width: 100, height: 100)
                     allMessages {
                         edges {
                             node {
@@ -98,9 +96,7 @@ UPDATE_ROOM_GRAPHQL = """
                             }
                         }
                     }
-                    image(width: 100, height: 100) {
-                        url
-                    }
+                    image(width: 100, height: 100)
                 }
             }
             removedParticipants {
@@ -839,7 +835,7 @@ def test_user_can_create_group(django_user_client, graphql_user_client, image_dj
     assert content["data"]["chatRoomCreate"]["room"]["node"]["title"] == "group"
     assert content["data"]["chatRoomCreate"]["room"]["node"]["isGroup"]
     assert len(content["data"]["chatRoomCreate"]["room"]["node"]["participants"]["edges"]) == 3
-    assert content["data"]["chatRoomCreate"]["room"]["node"]["image"]["url"].startswith(
+    assert content["data"]["chatRoomCreate"]["room"]["node"]["image"].startswith(
         "http://"  # NOSONAR
     )
 
@@ -1096,7 +1092,7 @@ def test_admin_user_can_update_group_image(
         extra={"image": image_djangofile},
     )
     content = response.json()
-    assert content["data"]["chatRoomUpdate"]["room"]["node"]["image"]["url"].startswith(
+    assert content["data"]["chatRoomUpdate"]["room"]["node"]["image"].startswith(
         "http://"  # NOSONAR
     )
 
