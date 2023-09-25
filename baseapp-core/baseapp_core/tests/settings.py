@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "rest_framework.authtoken",
+    "djmail",
     "baseapp_core",
     "easy_thumbnails",
 ]
@@ -127,6 +128,10 @@ STATIC_URL = "/static/"
 THUMBNAIL_CACHE = "default"
 
 CELERY_BEAT_SCHEDULE = {}
+
+# Email
+DEFAULT_FROM_EMAIL = "john@test.com"
+DJMAIL_REAL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Channels
 CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
