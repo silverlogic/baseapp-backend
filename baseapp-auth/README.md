@@ -2,7 +2,10 @@
 
 ## Usage
 
-This project provides the default User model and authentication utilities.
+This project includes:
+
+- API endpoints for authentication and account management
+- default User model
 
 ### Abstract user model
 
@@ -19,11 +22,11 @@ In the `rest_framework/` directory you can find a implementation of account-rela
 
 ### Utilities
 
-## How to use
+## Demo
 
-There is a [standalon demo project](testproject/) with a complete demo setup.
+There is a [test project](testproject/) with a complete demo set up.
 
-### Installation
+## Installation
 
 Add to requirements of yor project (replacing everything inside brackets):
 

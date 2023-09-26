@@ -49,7 +49,6 @@ class TestLoginBase(ApiMixin):
     def check_when_password_doesnt_match(self, client, data):
         f.UserFactory(email=data["email"], password="not password")
         r = self.send_login_request(client, data)
-        print(r.data)
         h.responseUnauthorized(r)
 
     @override_config(USER_PASSWORD_EXPIRATION_INTERVAL=1)

@@ -40,3 +40,7 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-social-auth
+  baseapp-e2e:
+    uses: ./.github/workflows/project-workflow.yml
+    with:
+      project: baseapp-e2e
