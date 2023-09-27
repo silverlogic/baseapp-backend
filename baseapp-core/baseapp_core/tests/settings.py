@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -39,6 +40,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "rest_framework.authtoken",
+    "djmail",
     "baseapp_core",
     "easy_thumbnails",
 ]
@@ -126,3 +128,20 @@ STATIC_URL = "/static/"
 THUMBNAIL_CACHE = "default"
 
 CELERY_BEAT_SCHEDULE = {}
+
+# Email
+DEFAULT_FROM_EMAIL = "john@test.com"
+DJMAIL_REAL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# Channels
+CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+
+# GraphQL
+GRAPHENE = {
+    "SCHEMA": "testproject.graphql.schema.schema",
+    "MIDDLEWARE": (
+        "baseapp_core.graphql.LogExceptionMiddleware",
+        "baseapp_core.graphql.TokenAuthentication",
+    ),
+    "SCHEMA_OUTPUT": "schema.graphql",
+}

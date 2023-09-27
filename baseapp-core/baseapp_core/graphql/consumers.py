@@ -1,4 +1,7 @@
 import asyncio
+import contextvars
+import functools
+import sys
 
 import channels_graphql_ws
 from channels.db import database_sync_to_async
@@ -6,12 +9,20 @@ from django.contrib.auth.models import AnonymousUser
 from graphene_django.settings import graphene_settings
 from rest_framework.authtoken.models import Token
 
+python_version = sys.version_info
+
 
 async def threadpool_for_sync_resolvers(next_middleware, root, info, *args, **kwds):
     if asyncio.iscoroutinefunction(next_middleware):
         result = await next_middleware(root, info, *args, **kwds)
     else:
-        result = await asyncio.to_thread(next_middleware, root, info, *args, **kwds)
+        if python_version >= (3, 9):
+            result = await asyncio.to_thread(next_middleware, root, info, *args, **kwds)
+        else:
+            loop = asyncio.get_running_loop()
+            ctx = contextvars.copy_context()
+            func_call = functools.partial(ctx.run, next_middleware, *args, **kwds)
+            result = await loop.run_in_executor(None, func_call)
     return result
 
 
