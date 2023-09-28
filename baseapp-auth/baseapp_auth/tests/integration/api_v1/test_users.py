@@ -6,6 +6,8 @@ import tests.helpers as h
 from avatar.models import Avatar
 from baseapp_auth.tokens import ConfirmEmailTokenGenerator
 from baseapp_auth.utils.referral_utils import get_user_referral_model
+from baseapp_auth.rest_framework.routers.account import account_router
+from baseapp_auth.rest_framework.users.views import UsersViewSet
 from baseapp_referrals.utils import get_referral_code
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -21,6 +23,10 @@ skip_if_no_referrals = pytest.mark.skipif(
 )
 
 UserReferral = get_user_referral_model()
+
+account_router.register(
+    r"users", UsersViewSet, basename="users"
+)  # We expect the main app to register the viewset
 
 
 class TestUsersRetrieve(ApiMixin):

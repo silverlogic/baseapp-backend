@@ -23,12 +23,16 @@ DJSTRIPE_WEBHOOK_SECRET = env("DJSTRIPE_WEBHOOK_SECRET")
 DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
 ```
 
-## Add to your router file `apps/api/v1/router.py`
+## Add the payments_router to your urlpatterns
 
 ```py
-from baseapp_payments.views import StripePaymentsViewSet  # noqa
+from baseapp_payments.router import payments_router
 
-router.register(r"baseapp-payments", StripePaymentsViewSet, basename="baseapp-payments")
+v1_urlpatterns = [
+    ...
+    re_path(r"payments", include(payments_router.urls)),
+    ...
+]
 ```
 
 ## Subscriber
