@@ -13,5 +13,5 @@ __all__ = [
 ]
 
 urlpatterns = [
-    re_path(r"/", include(mfa_jwt_login_router.urls)),  # MFA JWT login
+    re_path(r"", include(mfa_jwt_login_router.urls)),  # MFA JWT login
 ]
