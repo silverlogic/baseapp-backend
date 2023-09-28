@@ -1,9 +1,9 @@
-from django.utils.module_loading import import_string
 from baseapp_core.rest_framework.decorators import action
+from django.utils.module_loading import import_string
 from rest_framework.serializers import Serializer
 from rest_framework.viewsets import GenericViewSet
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.settings import api_settings
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 
 class JWTAuthViewSet(TokenObtainPairView, TokenRefreshView, GenericViewSet):

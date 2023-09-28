@@ -1,5 +1,5 @@
-from django.urls import include, re_path
 from baseapp_core.rest_framework.routers import DefaultRouter
+from django.urls import include, re_path
 
 jwt_router = DefaultRouter(trailing_slash=False)
 
