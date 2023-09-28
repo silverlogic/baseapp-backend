@@ -4,6 +4,7 @@ import tests.helpers as h
 from constance.test import override_config
 from django.utils import timezone
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.tokens import RefreshToken
 from tests.mixins import ApiMixin
 from trench.backends.provider import get_mfa_handler
 from trench.utils import UserTokenGenerator
@@ -90,8 +91,20 @@ class TestLoginAuthToken(TestLoginBase):
         self.check_cant_login_with_expired_password(client, data)
 
 
+class TestJwtRefresh(ApiMixin):
+    login_endpoint_path = "/v1/auth/jwt/refresh"
+
+    def test_receives_new_access_token(self, client):
+        user = f.UserFactory()
+        refresh = RefreshToken.for_user(user)
+        refresh_token = str(refresh)
+        r = client.post(self.login_endpoint_path, {"refresh": refresh_token})
+        h.responseOk(r)
+        assert set(r.data.keys()) == {"access"}
+
+
 class TestLoginJwt(TestLoginBase):
-    login_endpoint_path = "/v1/auth/jwt"
+    login_endpoint_path = "/v1/auth/jwt/login"
 
     @pytest.fixture
     def data(self):

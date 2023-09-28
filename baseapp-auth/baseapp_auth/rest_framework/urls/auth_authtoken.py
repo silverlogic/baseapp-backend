@@ -12,4 +12,4 @@ __all__ = [
     "urlpatterns",
 ]
 
-urlpatterns = [re_path(r"/", include(authtoken_router.urls))]
+urlpatterns = [re_path(r"", include(authtoken_router.urls))]

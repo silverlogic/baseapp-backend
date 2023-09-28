@@ -14,6 +14,6 @@ __all__ = [
 ]
 
 urlpatterns = [
-    re_path(r"/", include(mfa_login_router.urls)),  # MFA login
-    re_path(r"/", include(mfa_urls)),  # other MFA endpoints
+    re_path(r"", include(mfa_login_router.urls)),  # MFA login
+    re_path(r"", include(mfa_urls)),  # other MFA endpoints
 ]
