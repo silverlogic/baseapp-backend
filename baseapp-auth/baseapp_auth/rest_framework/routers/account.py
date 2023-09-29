@@ -11,11 +11,6 @@ from baseapp_auth.rest_framework.register.views import RegisterViewSet  # noqa
 
 account_router.register(r"register", RegisterViewSet, basename="register")
 
-# Users
-from baseapp_auth.rest_framework.users.views import UsersViewSet  # noqa
-
-account_router.register(r"users", UsersViewSet, basename="users")
-
 # Forgot Password
 from baseapp_auth.rest_framework.forgot_password.views import (
     ForgotPasswordViewSet,
