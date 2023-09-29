@@ -8,7 +8,11 @@ from django.core.serializers import deserialize
 from rest_framework import response, viewsets
 from rest_framework.parsers import JSONParser
 
-from .serializers import LoadDataSerializer, LoadScriptSerializer
+from .serializers import (
+    LoadDataSerializer,
+    LoadScriptSerializer,
+    SetUserPasswordSerializer,
+)
 
 
 class E2EViewSet(viewsets.ViewSet):
@@ -31,6 +35,13 @@ class E2EViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["POST"])
     def load_script(self, request):
         serializer = LoadScriptSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return response.Response({"detail": "success"})
+
+    @action(detail=False, methods=["POST"])
+    def set_password(self, request):
+        serializer = SetUserPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return response.Response({"detail": "success"})
