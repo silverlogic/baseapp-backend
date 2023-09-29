@@ -4,7 +4,7 @@ from baseapp_core.rest_framework.decorators import action
 from baseapp_e2e.rest_framework.permissions import E2eEnabled
 from django.core import management
 from django.core.management.commands import flush
-from django.core.serializers import deserialize
+from django.core.serializers import deserialize, serialize
 from rest_framework import response, viewsets
 from rest_framework.parsers import JSONParser
 
@@ -23,9 +23,11 @@ class E2EViewSet(viewsets.ViewSet):
     def load_data(self, request):
         serializer = LoadDataSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        objects = []
         for obj in deserialize("json", (json.dumps(serializer.validated_data["objects"]))):
             obj.save()
-        return response.Response({"detail": "success"})
+            objects.append(obj.object)
+        return response.Response({"objects": json.loads(serialize("json", objects))})
 
     @action(detail=False, methods=["POST"])
     def flush_data(self, request):
