@@ -50,3 +50,8 @@ jobs:
     with:
       project: baseapp-e2e
     secrets: inherit
+  baseapp-notifications:
+    uses: ./.github/workflows/publish-workflow.yml
+    with:
+      project: baseapp-notifications
+    secrets: inherit
