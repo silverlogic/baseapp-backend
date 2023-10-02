@@ -12,10 +12,10 @@ __all__ = [
 
 v1_urlpatterns = [
     re_path(r"", include(account_router.urls)),
-    re_path(r"auth/authtoken", include(auth_authtoken_urls)),
-    re_path(r"auth/jwt", include(auth_jwt_urls)),
-    re_path(r"auth/mfa", include(auth_mfa_urls)),
-    re_path(r"auth/mfa/jwt", include(auth_mfa_jwt_urls)),
+    re_path(r"auth/authtoken/", include(auth_authtoken_urls)),
+    re_path(r"auth/jwt/", include(auth_jwt_urls)),
+    re_path(r"auth/mfa/", include(auth_mfa_urls)),
+    re_path(r"auth/mfa/jwt/", include(auth_mfa_jwt_urls)),
 ]
 
 urlpatterns = [
