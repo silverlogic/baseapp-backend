@@ -144,7 +144,7 @@ class CommentReactionFactory(AbstractReactionFactory):
 
 In the above example we have a easy way to make reactions to any comment into the database for testing proporses using `CommentReactionFactory`.
 
-## How to delevop
+## How to develop
 
 Clone the project inside your project's backend dir:
 

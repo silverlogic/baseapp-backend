@@ -1,0 +1,7 @@
+{% extends 'emails/base.txt.j2' %}
+
+{% block content %}
+{% block notification_message %}{{ email_message }}{% endblock notification_message %}
+{% block action_button %}
+{% if notification_url %}{{ notification_url }}{% endif %}{% endblock action_button %}
+{% endblock content %}

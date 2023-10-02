@@ -1,0 +1,24 @@
+{% extends 'emails/base.html.j2' %}
+
+{% block content %}
+    <tr>
+        <td style="line-height: 130%; font-size: 16px; padding-bottom: 8px;">
+            {% block notification_message %}
+                {{ email_message }}
+            {% endblock %}
+        </td>
+    </tr>
+
+    {% block action_button %}
+        {% if notification_url %}
+            <tr>
+                <td width="100%" cellpadding="0" cellspacing="0">
+                    <a href="{{ notification_url }}" itemprop="url" class="button-primary">
+                        See on App
+                    </a>
+                </td>
+            </tr>
+        {% endif %}
+    {% endblock %}
+
+{% endblock %}
