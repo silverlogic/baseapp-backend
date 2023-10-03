@@ -19,5 +19,5 @@ AUTH_USER_MODEL = "testapp.User"
 # End-to-end tests
 E2E = {
     "ENABLED": True,
-    "SCRIPTS_PACKAGE": "baseapp_e2e.e2e_scripts",
+    "SCRIPTS_PACKAGE": "e2e.scripts",
 }

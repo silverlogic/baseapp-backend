@@ -1,5 +1,4 @@
 import json
-from unittest.mock import call, patch
 
 import pytest
 import tests.factories as f
@@ -64,18 +63,24 @@ class TestLoadScript(TestBaseE2E):
 
     def test_load_script(self, client, monkeypatch):
         scripts = ["hello", "world"]
+        expected_hello_user_count = 5
+        expected_world_user_count = 10
 
-        data = []
+        assert User.objects.count() == 0
 
-        def script_side_effect(name):
-            data.append(f.ModeFactory())
+        r = client.post(
+            self.endpoint_url,
+            data=json.dumps({"scripts": scripts}),
+            content_type="application/json",
+        )
+        h.responseOk(r)
+        assert User.objects.count() == expected_hello_user_count + expected_world_user_count
 
-        with patch("baseapp_e2e.rest_framework.serializers.load_script") as mock_load_script:
-            mock_load_script.side_effect = script_side_effect
-            client.post(
-                self.endpoint_url,
-                data=json.dumps({"scripts": scripts}),
-                content_type="application/json",
-            )
-            mock_load_script.assert_has_calls([call(script) for script in scripts])
-            assert len(data) == len(scripts)
+        # 2nd run / load
+        r = client.post(
+            self.endpoint_url,
+            data=json.dumps({"scripts": scripts}),
+            content_type="application/json",
+        )
+        h.responseOk(r)
+        assert User.objects.count() == 2 * (expected_hello_user_count + expected_world_user_count)
