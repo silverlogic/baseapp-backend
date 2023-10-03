@@ -22,3 +22,7 @@ class UserManager(BaseUserManager):
 
     def get_queryset(self, *args, **kwargs) -> UserQuerySet:
         return super().get_queryset(*args, **kwargs).add_is_password_expired()
+
+    def get_by_natural_key(self, email):
+        # to be used by deserialization by natural keys (https://docs.djangoproject.com/en/4.2/topics/serialization/#deserialization-of-natural-keys)
+        return self.get(email=email)
