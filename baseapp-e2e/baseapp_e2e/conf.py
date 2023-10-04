@@ -10,7 +10,7 @@ USER_SETTINGS = getattr(settings, SETTING_KEY, None)
 
 DEFAULTS = {
     "ENABLED": True,
-    "SCRIPTS_PACKAGE": "e2e.scripts",
+    "SCRIPTS_PACKAGE": "testproject.e2e.scripts",
 }
 
 IMPORT_STRINGS = ()
