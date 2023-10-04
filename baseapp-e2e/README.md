@@ -38,12 +38,13 @@ E2E = {
 }
 ```
 
-Then add a python script on the defined module path, e.g.: `<project-root>/e2e/scripts/users.py`:
+Then add a python script on the defined module path, e.g.: `<project-root>/e2e/scripts/users.py`. The script is expected to have a `def load()` function that will be executed by the endpoint.
 
 ```py
 import tests.factories as f
 
-f.UserFactory()
+def load():
+    f.UserFactory()
 ```
 
 To request the script to be run use request format as:
