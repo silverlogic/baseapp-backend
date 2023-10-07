@@ -196,3 +196,18 @@ CONSTANCE_CONFIG = OrderedDict(
         ),
     ]
 )
+
+# Rest Framework
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ),
+    "DEFAULT_PAGINATION_CLASS": "baseapp_core.rest_framework.pagination.DefaultPageNumberPagination",
+    "PAGE_SIZE": 30,
+    "DEFAULT_VERSIONING_CLASS": "rest_framework.versioning.NamespaceVersioning",
+    "ORDERING_PARAM": "order_by",
+    "SEARCH_PARAM": "q",
+    "TEST_REQUEST_DEFAULT_FORMAT": "json",
+}
