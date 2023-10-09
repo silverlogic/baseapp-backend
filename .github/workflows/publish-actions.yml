@@ -23,7 +23,7 @@ jobs:
   baseapp-drf-view-action-permissions:
     uses: ./.github/workflows/publish-workflow.yml
     with:
-      project: baseapp-baseapp-drf-view-action-permissions
+      project: baseapp-drf-view-action-permissions
     secrets: inherit
   baseapp-email-templates:
     uses: ./.github/workflows/publish-workflow.yml
