@@ -33,3 +33,7 @@ venv
 
 # dev db
 db.sqlite3
+
+# build
+**/build/
+dist/
