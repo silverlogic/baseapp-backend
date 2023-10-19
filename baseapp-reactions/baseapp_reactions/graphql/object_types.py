@@ -1,9 +1,8 @@
 import graphene
 import swapper
-from baseapp_core.graphql import CountedConnection
+from baseapp_core.graphql import CountedConnection, DjangoObjectType
 from django.contrib.contenttypes.models import ContentType
 from graphene import relay
-from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")

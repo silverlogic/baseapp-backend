@@ -1,5 +1,5 @@
+from baseapp_core.graphql import DjangoObjectType
 from graphene import relay
-from graphene_django import DjangoObjectType
 
 from baseapp_notifications.graphql.object_types import NotificationsNode
 
