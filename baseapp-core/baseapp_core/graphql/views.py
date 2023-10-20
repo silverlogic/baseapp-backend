@@ -28,8 +28,10 @@ class GraphQLView(GrapheneGraphQLView):
             operation_ast = get_operation_ast(document, operation_name)
             operation_type = operation_ast.operation.value
 
-            sentry_sdk.Hub.current.scope.transaction.name = operation_name
-            sentry_sdk.Hub.current.scope.transaction.op = operation_type
+            if operation_name:
+                sentry_sdk.Hub.current.scope.transaction.name = operation_name
+            if operation_type:
+                sentry_sdk.Hub.current.scope.transaction.op = operation_type
 
         return super().execute_graphql_request(
             request, data, query, variables, operation_name, show_graphiql
