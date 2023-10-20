@@ -82,7 +82,9 @@ class Command(BaseCommand):
             app_label = re.sub(r"^(apps).(.+)$", r"\2", app_config.name)
             self.available_apps.append(app_label)
             for ct in ContentType.objects.filter(app_label=app_label):
-                self.available_models.append(ct.model_class().__name__)
+                Model = ct.model_class()
+                if Model is not None:
+                    self.available_models.append(ct.model_class().__name__)
 
     def add_arguments(self, parser):
         parser.add_argument(
