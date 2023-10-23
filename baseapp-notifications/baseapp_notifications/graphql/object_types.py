@@ -1,8 +1,8 @@
 import graphene
+import graphene_django_optimizer as gql_optimizer
 import swapper
-from baseapp_core.graphql import CountedConnection
+from baseapp_core.graphql import DjangoObjectType
 from graphene import relay
-from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 
 from .filters import NotificationFilter
@@ -37,8 +37,6 @@ class NotificationNode(DjangoObjectType):
     class Meta:
         interfaces = (relay.Node,)
         model = Notification
-        name = "Notification"
-        connection_class = CountedConnection
 
     @classmethod
     def get_node(cls, info, id):
@@ -46,7 +44,8 @@ class NotificationNode(DjangoObjectType):
             return None
 
         try:
-            return cls._meta.model.objects.get(id=id, recipient=info.context.user)
+            queryset = cls.get_queryset(cls._meta.model.objects, info)
+            return queryset.get(id=id, recipient=info.context.user)
         except cls._meta.model.DoesNotExist:
             return None
 
@@ -55,4 +54,4 @@ class NotificationNode(DjangoObjectType):
         if not info.context.user.is_authenticated:
             return queryset.none()
 
-        return queryset.filter(recipient=info.context.user)
+        return gql_optimizer.query(queryset.filter(recipient=info.context.user), info)

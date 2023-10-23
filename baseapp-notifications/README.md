@@ -73,6 +73,7 @@ CELERY_TASK_ROUTES = {
 4 - Make sure that your main `User`'s `DjangoObjectType` implements interface `NotificationsNode`:
 
 ```python
+from baseapp_core.graphql import DjangoObjectType
 from baseapp_notifications.graphql.object_types import NotificationsNode
 
 class UserNode(DjangoObjectType):

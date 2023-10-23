@@ -47,7 +47,7 @@ class ReactionToggle(RelayMutation):
         # check https://github.com/queplanta/backend/blob/master/accounts/permissions.py#L9
         if "reaction-add" not in target.get_my_permissions(info.context):
             raise GraphQLError(
-                _("You don't have permission to perform this action"),
+                str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
             )
             # return cls(e)
@@ -63,7 +63,7 @@ class ReactionToggle(RelayMutation):
             if reaction.reaction_type == reaction_type:
                 if "reaction-delete" not in target.get_my_permissions(info.context):
                     raise GraphQLError(
-                        _("You don't have permission to perform this action"),
+                        str(_("You don't have permission to perform this action")),
                         extensions={"code": "permission_required"},
                     )
 
@@ -74,7 +74,7 @@ class ReactionToggle(RelayMutation):
 
             if "reaction-change" not in target.get_my_permissions(info.context):
                 raise GraphQLError(
-                    _("You don't have permission to perform this action"),
+                    str(_("You don't have permission to perform this action")),
                     extensions={"code": "permission_required"},
                 )
 

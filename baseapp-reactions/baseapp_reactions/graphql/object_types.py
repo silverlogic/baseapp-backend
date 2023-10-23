@@ -1,9 +1,9 @@
 import graphene
+import graphene_django_optimizer as gql_optimizer
 import swapper
-from baseapp_core.graphql import CountedConnection
+from baseapp_core.graphql import DjangoObjectType
 from django.contrib.contenttypes.models import ContentType
 from graphene import relay
-from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
@@ -62,5 +62,7 @@ class ReactionNode(DjangoObjectType):
         filter_fields = {
             "id": ["exact"],
         }
-        name = "Reaction"
-        connection_class = CountedConnection
+    
+    @classmethod
+    def get_queryset(cls, queryset, info):
+        return gql_optimizer.query(queryset, info)
