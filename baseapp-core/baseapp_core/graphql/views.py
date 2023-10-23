@@ -20,18 +20,19 @@ class GraphQLView(GrapheneGraphQLView):
             raise HttpError(HttpResponseBadRequest("Must provide query string."))
 
         if sentry_sdk:
-            try:
-                document = parse(query)
-            except Exception as e:
-                return ExecutionResult(errors=[e])
+            if sentry_sdk.Hub.current.scope.transaction:
+                try:
+                    document = parse(query)
+                except Exception as e:
+                    return ExecutionResult(errors=[e])
 
-            operation_ast = get_operation_ast(document, operation_name)
-            operation_type = operation_ast.operation.value
+                operation_ast = get_operation_ast(document, operation_name)
+                operation_type = operation_ast.operation.value
 
-            if operation_name:
-                sentry_sdk.Hub.current.scope.transaction.name = operation_name
-            if operation_type:
-                sentry_sdk.Hub.current.scope.transaction.op = operation_type
+                if operation_name:
+                    sentry_sdk.Hub.current.scope.transaction.name = operation_name
+                if operation_type:
+                    sentry_sdk.Hub.current.scope.transaction.op = operation_type
 
         return super().execute_graphql_request(
             request, data, query, variables, operation_name, show_graphiql
