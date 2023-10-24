@@ -44,7 +44,7 @@ class ReactionsNode(relay.Node):
             ).first()
 
 
-class ReactionNode(DjangoObjectType):
+class ReactionNode(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
     target = graphene.Field(relay.Node)
     reaction_type = graphene.Field(ReactionTypesEnum)
 
@@ -62,7 +62,3 @@ class ReactionNode(DjangoObjectType):
         filter_fields = {
             "id": ["exact"],
         }
-    
-    @classmethod
-    def get_queryset(cls, queryset, info):
-        return gql_optimizer.query(queryset, info)

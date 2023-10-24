@@ -29,7 +29,7 @@ class NotificationsNode(relay.Node):
         return Notification.objects.none()
 
 
-class NotificationNode(DjangoObjectType):
+class NotificationNode(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
     actor = graphene.Field(relay.Node)
     target = graphene.Field(relay.Node)
     action_object = graphene.Field(relay.Node)
@@ -54,4 +54,4 @@ class NotificationNode(DjangoObjectType):
         if not info.context.user.is_authenticated:
             return queryset.none()
 
-        return gql_optimizer.query(queryset.filter(recipient=info.context.user), info)
+        return super().get_queryset(queryset.filter(recipient=info.context.user), info)
