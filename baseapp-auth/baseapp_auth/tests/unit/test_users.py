@@ -1,13 +1,12 @@
 from unittest.mock import MagicMock
 
+import baseapp_auth.tests.helpers as h
 import pytest
 from baseapp_auth import tasks
 from constance.test import override_config
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from freezegun import freeze_time
-
-import baseapp_auth.tests.helpers as h
 
 User = get_user_model()
 UserFactory = h.get_user_factory()

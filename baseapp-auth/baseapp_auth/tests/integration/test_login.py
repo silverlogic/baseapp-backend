@@ -1,13 +1,12 @@
+import baseapp_auth.tests.helpers as h
 import pytest
+from baseapp_auth.tests.mixins import ApiMixin
 from constance.test import override_config
 from django.utils import timezone
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import RefreshToken
 from trench.backends.provider import get_mfa_handler
 from trench.utils import UserTokenGenerator
-
-import baseapp_auth.tests.helpers as h
-from baseapp_auth.tests.mixins import ApiMixin
 
 pytestmark = pytest.mark.django_db
 

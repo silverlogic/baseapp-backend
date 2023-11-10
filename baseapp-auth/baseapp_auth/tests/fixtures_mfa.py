@@ -1,10 +1,9 @@
+import baseapp_auth.tests.helpers as h
 import pytest
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from trench.command.create_secret import create_secret_command
 from trench.models import MFAMethod as MFAMethodModel
-
-import baseapp_auth.tests.helpers as h
 
 User = get_user_model()
 UserFactory = h.get_user_factory()
