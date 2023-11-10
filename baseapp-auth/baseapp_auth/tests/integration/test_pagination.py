@@ -4,12 +4,13 @@ from django.test import RequestFactory
 from rest_framework import viewsets
 from rest_framework.settings import api_settings
 
-User = get_user_model()
-import tests.factories as f
-import tests.helpers as h
+import baseapp_auth.tests.helpers as h
 from baseapp_auth.rest_framework.users.serializers import UserSerializer
 
 pytestmark = pytest.mark.django_db
+
+User = get_user_model()
+UserFactory = h.get_user_factory()
 
 
 class TestPagination:
@@ -22,7 +23,7 @@ class TestPagination:
 
     def test_uses_page_size_query_param(self):
         expected_page_size = 5
-        f.UserFactory.create_batch(size=expected_page_size + 1)
+        UserFactory.create_batch(size=expected_page_size + 1)
         self.factory = RequestFactory()
 
         request = self.factory.get("", {"page_size": expected_page_size})
@@ -31,7 +32,7 @@ class TestPagination:
         assert len(response.data["results"]) == expected_page_size
 
     def test_uses_page_size_setting_by_default(self):
-        f.UserFactory.create_batch(size=api_settings.PAGE_SIZE + 1)
+        UserFactory.create_batch(size=api_settings.PAGE_SIZE + 1)
         self.factory = RequestFactory()
 
         request = self.factory.get("")

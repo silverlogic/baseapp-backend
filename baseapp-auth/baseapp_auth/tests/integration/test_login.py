@@ -1,15 +1,17 @@
 import pytest
-import tests.factories as f
-import tests.helpers as h
 from constance.test import override_config
 from django.utils import timezone
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import RefreshToken
-from tests.mixins import ApiMixin
 from trench.backends.provider import get_mfa_handler
 from trench.utils import UserTokenGenerator
 
+import baseapp_auth.tests.helpers as h
+from baseapp_auth.tests.mixins import ApiMixin
+
 pytestmark = pytest.mark.django_db
+
+UserFactory = h.get_user_factory()
 
 
 class TestLoginBase(ApiMixin):
@@ -32,13 +34,13 @@ class TestLoginBase(ApiMixin):
         assert set(r.data.keys()) == {"access", "refresh"}
 
     def check_receives_auth_simple_token(self, client, data):
-        f.UserFactory(email=data["email"], password=data["password"])
+        UserFactory(email=data["email"], password=data["password"])
         r = self.send_login_request(client, data)
         h.responseOk(r)
         self.assert_simple_token_response(r)
 
     def check_receives_auth_jwt_token(self, client, data):
-        f.UserFactory(email=data["email"], password=data["password"])
+        UserFactory(email=data["email"], password=data["password"])
         r = self.send_login_request(client, data)
         h.responseOk(r)
         self.assert_jwt_token_response(r)
@@ -48,19 +50,19 @@ class TestLoginBase(ApiMixin):
         h.responseUnauthorized(r)
 
     def check_when_password_doesnt_match(self, client, data):
-        f.UserFactory(email=data["email"], password="not password")
+        UserFactory(email=data["email"], password="not password")
         r = self.send_login_request(client, data)
         h.responseUnauthorized(r)
 
     @override_config(USER_PASSWORD_EXPIRATION_INTERVAL=1)
     def check_can_login_with_not_expired_password(self, client, data):
-        f.UserFactory(email=data["email"], password=data["password"])
+        UserFactory(email=data["email"], password=data["password"])
         r = self.send_login_request(client, data)
         h.responseOk(r)
 
     @override_config(USER_PASSWORD_EXPIRATION_INTERVAL=1)
     def check_cant_login_with_expired_password(self, client, data):
-        user = f.UserFactory(email=data["email"], password=data["password"])
+        user = UserFactory(email=data["email"], password=data["password"])
         user.password_changed_date = timezone.now() - timezone.timedelta(days=1)
         user.save()
         r = self.send_login_request(client, data)
@@ -95,7 +97,7 @@ class TestJwtRefresh(ApiMixin):
     login_endpoint_path = "/v1/auth/jwt/refresh"
 
     def test_receives_new_access_token(self, client):
-        user = f.UserFactory()
+        user = UserFactory()
         refresh = RefreshToken.for_user(user)
         refresh_token = str(refresh)
         r = client.post(self.login_endpoint_path, {"refresh": refresh_token})
@@ -126,7 +128,7 @@ class TestLoginJwt(TestLoginBase):
         self.check_cant_login_with_expired_password(client, data)
 
     def test_jwt_token_contains_user_data(self, client, data):
-        user = f.UserFactory(email=data["email"], password=data["password"])
+        user = UserFactory(email=data["email"], password=data["password"])
         r = self.send_login_request(client, data)
         authenticator = JWTAuthentication()
         validated_token = authenticator.get_validated_token(r.data["access"])

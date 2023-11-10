@@ -128,3 +128,7 @@ SIMPLE_JWT = {
     # ...
 }
 JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
+
+
+# Baseapp Auth
+BASEAPP_AUTH_USER_FACTORY = "baseapp_auth.tests.factories.UserFactory"

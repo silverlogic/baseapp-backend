@@ -1,14 +1,16 @@
 from unittest.mock import MagicMock
 
 import pytest
-import tests.factories as f
 from baseapp_auth import tasks
 from constance.test import override_config
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from freezegun import freeze_time
 
+import baseapp_auth.tests.helpers as h
+
 User = get_user_model()
+UserFactory = h.get_user_factory()
 
 pytestmark = pytest.mark.django_db
 
@@ -39,7 +41,7 @@ def test_user_get_full_name_as_email():
 
 @override_config(USER_PASSWORD_EXPIRATION_INTERVAL=1)
 def test_user_only_notified_once_for_expired_password():
-    user = f.UserFactory()
+    user = UserFactory()
     user.password_changed_date = timezone.now() - timezone.timedelta(days=1)
     user.save()
 

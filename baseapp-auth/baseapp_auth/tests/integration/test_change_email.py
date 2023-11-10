@@ -1,14 +1,15 @@
 import pytest
-import tests.factories as f
-import tests.helpers as h
 from baseapp_auth.tokens import (
     ChangeEmailConfirmTokenGenerator,
     ChangeEmailVerifyTokenGenerator,
 )
 
-from ...mixins import ApiMixin
+import baseapp_auth.tests.helpers as h
+from baseapp_auth.tests.mixins import ApiMixin
 
 pytestmark = pytest.mark.django_db
+
+UserFactory = h.get_user_factory()
 
 
 class TestChangeEmailRequest(ApiMixin):
@@ -35,7 +36,7 @@ class TestChangeEmailRequest(ApiMixin):
         new_email holds the next email for the user, so we can't have other user
         with the same email as that new_email.
         """
-        f.UserFactory(email=data["new_email"])
+        UserFactory(email=data["new_email"])
         r = user_client.post(self.reverse(), data)
         h.responseBadRequest(r)
 
@@ -59,7 +60,7 @@ class TestChangeEmailConfirm(ApiMixin):
 
     @pytest.fixture
     def data(self):
-        self.user = f.UserFactory(new_email="bob@example.com")
+        self.user = UserFactory(new_email="bob@example.com")
         self.url_kwargs = {"pk": self.user.pk}
         token = ChangeEmailConfirmTokenGenerator().make_token(self.user)
         return {"token": token}
@@ -106,7 +107,7 @@ class TestChangeEmailVerify(ApiMixin):
 
     @pytest.fixture
     def data(self):
-        self.user = f.UserFactory(new_email="new@example.com", is_new_email_confirmed=True)
+        self.user = UserFactory(new_email="new@example.com", is_new_email_confirmed=True)
         self.url_kwargs = {"pk": self.user.pk}
         token = ChangeEmailVerifyTokenGenerator().make_token(self.user)
         return {"token": token}
@@ -163,7 +164,7 @@ class TestChangeEmailResendConfirm(ApiMixin):
         h.responseUnauthorized(r)
 
     def test_user_can_resend(self, client, outbox, deep_link_mock_success):
-        user = f.UserFactory(new_email="new@example.com")
+        user = UserFactory(new_email="new@example.com")
         client.force_authenticate(user)
         r = client.post(self.reverse())
         h.responseOk(r)
@@ -174,7 +175,7 @@ class TestChangeEmailResendConfirm(ApiMixin):
         h.responseBadRequest(r)
 
     def test_user_cant_resend_if_new_email_is_already_confirmed(self, client):
-        user = f.UserFactory(new_email="new@example.com", is_new_email_confirmed=True)
+        user = UserFactory(new_email="new@example.com", is_new_email_confirmed=True)
         client.force_authenticate(user)
         r = client.post(self.reverse())
         h.responseBadRequest(r)
@@ -188,14 +189,14 @@ class TestChangeEmailResendVerify(ApiMixin):
         h.responseUnauthorized(r)
 
     def test_user_can_resend(self, client, outbox, deep_link_mock_success):
-        user = f.UserFactory(new_email="new@example.com", is_new_email_confirmed=True)
+        user = UserFactory(new_email="new@example.com", is_new_email_confirmed=True)
         client.force_authenticate(user)
         r = client.post(self.reverse())
         h.responseOk(r)
         assert len(outbox) == 1
 
     def test_user_cant_resend_if_their_new_email_is_not_confirmed(self, client):
-        user = f.UserFactory(new_email="new@example.com", is_new_email_confirmed=False)
+        user = UserFactory(new_email="new@example.com", is_new_email_confirmed=False)
         client.force_authenticate(user)
         r = client.post(self.reverse())
         h.responseBadRequest(r)
@@ -209,7 +210,7 @@ class TestChangeEmailCancel(ApiMixin):
         h.responseUnauthorized(r)
 
     def test_user_can_cancel(self, client):
-        user = f.UserFactory(new_email="new@example.com", is_new_email_confirmed=True)
+        user = UserFactory(new_email="new@example.com", is_new_email_confirmed=True)
         client.force_authenticate(user)
         r = client.post(self.reverse())
         h.responseOk(r)

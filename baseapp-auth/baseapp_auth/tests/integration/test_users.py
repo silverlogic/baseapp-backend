@@ -1,8 +1,6 @@
 from datetime import timedelta
 
 import pytest
-import tests.factories as f
-import tests.helpers as h
 from avatar.models import Avatar
 from baseapp_auth.rest_framework.routers.account import account_router
 from baseapp_auth.rest_framework.users.views import UsersViewSet
@@ -12,9 +10,13 @@ from baseapp_referrals.utils import get_referral_code
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from tests.mixins import ApiMixin
+
+import baseapp_auth.tests.helpers as h
+from baseapp_auth.tests.mixins import ApiMixin
+from baseapp_auth.tests.factories import PasswordValidationFactory
 
 User = get_user_model()
+UserFactory = h.get_user_factory()
 
 pytestmark = [pytest.mark.django_db, pytest.mark.referrals]
 
@@ -33,12 +35,12 @@ class TestUsersRetrieve(ApiMixin):
     view_name = "users-detail"
 
     def test_guest_cant_retrieve(self, client):
-        user = f.UserFactory()
+        user = UserFactory()
         r = client.get(self.reverse(kwargs={"pk": user.pk}))
         h.responseUnauthorized(r)
 
     def test_user_can_retrieve(self, user_client):
-        user = f.UserFactory()
+        user = UserFactory()
         r = user_client.get(self.reverse(kwargs={"pk": user.pk}))
         h.responseOk(r)
 
@@ -60,7 +62,7 @@ class TestUsersRetrieve(ApiMixin):
         assert expected == actual
 
     def test_object_keys_for_other_user(self, user_client):
-        user = f.UserFactory()
+        user = UserFactory()
         r = user_client.get(self.reverse(kwargs={"pk": user.pk}))
         h.responseOk(r)
         expected = {"id", "avatar", "first_name", "last_name"}
@@ -72,7 +74,7 @@ class TestUsersUpdate(ApiMixin):
     view_name = "users-detail"
 
     def test_guest_cant_update(self, client):
-        user = f.UserFactory()
+        user = UserFactory()
         r = client.patch(self.reverse(kwargs={"pk": user.id}))
         h.responseUnauthorized(r)
 
@@ -81,7 +83,7 @@ class TestUsersUpdate(ApiMixin):
         h.responseOk(r)
 
     def test_user_cant_update_other_user(self, user_client):
-        other_user = f.UserFactory()
+        other_user = UserFactory()
         data = {"email": "test@email.co"}
         r = user_client.patch(self.reverse(kwargs={"pk": other_user.id}), data)
         h.responseForbidden(r)
@@ -94,7 +96,7 @@ class TestUsersUpdate(ApiMixin):
 
     @skip_if_no_referrals
     def test_can_update_referred_by_code_on_the_same_day_user_registered(self, user_client):
-        user = f.UserFactory()
+        user = UserFactory()
         data = {"referred_by_code": get_referral_code(user)}
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.id}), data)
         h.responseOk(r)
@@ -110,7 +112,7 @@ class TestUsersUpdate(ApiMixin):
 
     @skip_if_no_referrals
     def test_cant_update_referred_by_code_when_user_already_has_a_referrer(self, user_client):
-        user = f.UserFactory()
+        user = UserFactory()
         UserReferral.objects.create(referee=user_client.user, referrer=user)
         data = {"referred_by_code": get_referral_code(user)}
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.id}), data)
@@ -128,7 +130,7 @@ class TestUsersUpdate(ApiMixin):
     def test_cant_update_referred_by_code_after_the_day_the_user_registered(self, user_client):
         user_client.user.date_joined = timezone.now() - timedelta(days=1, hours=1)
         user_client.user.save()
-        user = f.UserFactory()
+        user = UserFactory()
         data = {"referred_by_code": get_referral_code(user)}
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.id}), data)
         h.responseBadRequest(r)
@@ -162,8 +164,8 @@ class TestUsersList(ApiMixin):
         h.responseOk(r)
 
     def test_can_search(self, user_client):
-        f.UserFactory(first_name="John", last_name="Smith")
-        f.UserFactory(first_name="Bobby", last_name="Timbers")
+        UserFactory(first_name="John", last_name="Smith")
+        UserFactory(first_name="Bobby", last_name="Timbers")
         r = user_client.get(self.reverse(query_params={"q": "John Smith"}))
         h.responseOk(r)
         assert len(r.data["results"]) == 1
@@ -178,7 +180,7 @@ class TestUsersMe(ApiMixin):
         h.responseUnauthorized(r)
 
     def test_as_user(self, client):
-        user = f.UserFactory()
+        user = UserFactory()
         client.force_authenticate(user)
         r = client.get(self.reverse())
         h.responseOk(r)
@@ -220,13 +222,13 @@ class TestUsersChangePassword(ApiMixin):
         h.responseUnauthorized(r)
 
     def test_user_can_change_password(self, client, data):
-        user = f.UserFactory(password=data["current_password"])
+        user = UserFactory(password=data["current_password"])
         client.force_authenticate(user)
         r = client.post(self.reverse(), data)
         h.responseOk(r)
 
     def test_password_is_set(self, client, data):
-        user = f.UserFactory(password=data["current_password"])
+        user = UserFactory(password=data["current_password"])
         client.force_authenticate(user)
         r = client.post(self.reverse(), data)
         h.responseOk(r)
@@ -234,15 +236,15 @@ class TestUsersChangePassword(ApiMixin):
         assert user.check_password(data["new_password"])
 
     def test_current_password_must_match(self, client, data):
-        user = f.UserFactory(password="not current password")
+        user = UserFactory(password="not current password")
         client.force_authenticate(user)
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
         assert r.data["current_password"] == ["That is not your current password."]
 
     def test_new_password_must_match_password_validations(self, client, data):
-        f.PasswordValidationFactory()
-        user = f.UserFactory(password=data["current_password"])
+        PasswordValidationFactory()
+        user = UserFactory(password=data["current_password"])
         client.force_authenticate(user)
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
@@ -274,7 +276,7 @@ class TestConfirmEmail(ApiMixin):
 
     @pytest.fixture
     def data(self):
-        self.user = f.UserFactory(is_email_verified=False)
+        self.user = UserFactory(is_email_verified=False)
         return {"token": ConfirmEmailTokenGenerator().make_token(self.user)}
 
     def test_confirm_email(self, client, data):
