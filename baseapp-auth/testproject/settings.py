@@ -131,4 +131,4 @@ JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.User
 
 
 # Baseapp Auth
-BASEAPP_AUTH_USER_FACTORY = "baseapp_auth.tests.factories.UserFactory"
+BASEAPP_AUTH_USER_FACTORY = "testproject.testapp.tests.factories.UserFactory"
