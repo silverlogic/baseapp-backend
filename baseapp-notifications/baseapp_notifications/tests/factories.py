@@ -1,6 +1,5 @@
 import factory
 import swapper
-
 from baseapp_auth.tests.helpers import get_user_factory
 
 Notification = swapper.load_model("notifications", "Notification")
