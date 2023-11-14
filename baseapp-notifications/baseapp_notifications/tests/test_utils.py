@@ -2,13 +2,14 @@ from unittest.mock import patch
 
 import pytest
 import swapper
-from baseapp_auth.tests.factories import UserFactory
+from baseapp_auth.tests.helpers import get_user_factory
 
 from ..utils import send_notification
 
 pytestmark = pytest.mark.django_db
 
 Notification = swapper.load_model("notifications", "Notification")
+UserFactory = get_user_factory()
 
 
 def test_send_notification_add_to_history():
