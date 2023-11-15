@@ -1,13 +1,16 @@
 import re
 from unittest.mock import patch
 
+import baseapp_auth.tests.helpers as h
 import pytest
-import tests.factories as f
-import tests.helpers as h
+from baseapp_auth.tests.factories import PasswordValidationFactory
+from baseapp_auth.tests.mixins import ApiMixin
 from django.conf import settings
-from tests.mixins import ApiMixin
 
 pytestmark = pytest.mark.django_db
+
+
+UserFactory = h.get_user_factory()
 
 
 class TestForgotPassword(ApiMixin):
@@ -26,14 +29,14 @@ class TestForgotPassword(ApiMixin):
         assert r.data["email"] == ["Email does not exist."]
 
     def test_when_email_exist(self, client, data, outbox, deep_link_mock_success):
-        f.UserFactory(email=data["email"])
+        UserFactory(email=data["email"])
         r = client.post(self.reverse(), data)
         h.responseOk(r)
         assert r.data["email"] == "admin@tsl.io"
         assert len(outbox) == 1
 
     def test_fetch_deep_link_error(self, client, data, outbox, deep_link_mock_error):
-        f.UserFactory(email=data["email"])
+        UserFactory(email=data["email"])
         r = client.post(self.reverse(), data)
         h.responseOk(r)
         assert r.data["email"] == "admin@tsl.io"
@@ -43,7 +46,7 @@ class TestForgotPassword(ApiMixin):
         with patch(
             "baseapp_auth.rest_framework.forgot_password.views.send_password_reset_email"
         ) as mock:
-            f.UserFactory(email=data["email"])
+            UserFactory(email=data["email"])
             r = client.post(self.reverse(), data)
             h.responseOk(r)
             assert mock.called
@@ -65,7 +68,7 @@ class TestResetPassword(ApiMixin):
     def test_can_reset_password_with_token_from_email(
         self, client, outbox, data_email, deep_link_mock_error
     ):
-        user = f.UserFactory(email=data_email["email"])
+        user = UserFactory(email=data_email["email"])
         client.post(self.reverse("forgot-password-list"), data_email)
 
         message_body = outbox[0].body
@@ -87,7 +90,7 @@ class TestResetPassword(ApiMixin):
     def test_cant_reset_password_after_resetting_with_samelink(
         self, client, outbox, data_email, deep_link_mock_error
     ):
-        user = f.UserFactory(email=data_email["email"])
+        user = UserFactory(email=data_email["email"])
         client.post(self.reverse("forgot-password-list"), data_email)
 
         message_body = outbox[0].body
@@ -120,8 +123,8 @@ class TestResetPassword(ApiMixin):
     def test_cannot_reset_password_with_invalid_password(
         self, client, outbox, data_email, deep_link_mock_error
     ):
-        f.PasswordValidationFactory()
-        f.UserFactory(email=data_email["email"])
+        PasswordValidationFactory()
+        UserFactory(email=data_email["email"])
         client.post(self.reverse("forgot-password-list"), data_email)
 
         message_body = outbox[0].body

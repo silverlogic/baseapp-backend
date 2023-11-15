@@ -129,3 +129,6 @@ JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.User
 
 # Notifications
 NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"
+
+# Baseapp Auth
+BASEAPP_AUTH_USER_FACTORY = "testproject.testapp.tests.factories.UserFactory"

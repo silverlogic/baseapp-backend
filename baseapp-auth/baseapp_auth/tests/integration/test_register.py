@@ -1,15 +1,15 @@
 from unittest.mock import patch
 
+import baseapp_auth.tests.helpers as h
 import pytest
-import tests.factories as f
-import tests.helpers as h
+from baseapp_auth.tests.mixins import ApiMixin
 from baseapp_core.exceptions import DeepLinkFetchError
 from baseapp_referrals.utils import get_referral_code
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from tests.mixins import ApiMixin
 
 User = get_user_model()
+UserFactory = h.get_user_factory()
 
 pytestmark = [pytest.mark.django_db, pytest.mark.referrals]
 
@@ -51,14 +51,14 @@ class TestRegister(ApiMixin):
         assert user.check_password(data["password"])
 
     def test_cant_use_duplicate_email(self, client, data):
-        f.UserFactory(email=data["email"])
+        UserFactory(email=data["email"])
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
         assert r.data["email"] == ["That email is already in use.  Choose another."]
 
     @skip_if_no_referrals
     def test_can_be_referred(self, client, data):
-        referrer = f.UserFactory()
+        referrer = UserFactory()
         data["referral_code"] = get_referral_code(referrer)
         r = client.post(self.reverse(), data)
         h.responseCreated(r)

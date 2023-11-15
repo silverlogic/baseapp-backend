@@ -4,7 +4,7 @@ from django.contrib.contenttypes.models import ContentType
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
 
-# from baseapp_auth.tests.factories import UserFactory
+# UserFactory = get_user_factory()
 
 
 class AbstractReactionFactory(factory.django.DjangoModelFactory):
