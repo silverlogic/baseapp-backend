@@ -5,7 +5,7 @@ from .connections import CountedConnection
 
 
 class DjangoObjectType(GrapheneDjangoObjectType):
-    pk = graphene.Int(required=False)
+    pk = graphene.Int(required=True)
 
     class Meta:
         abstract = True
