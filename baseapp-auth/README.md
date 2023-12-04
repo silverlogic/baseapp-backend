@@ -104,3 +104,9 @@ CELERY_BEAT_SCHEDULE = {
 ## How to delevop
 
 General development instructions can be found in [main README](..#testing)
+
+## Other Settings
+
+```py
+BA_AUTH_PRE_AUTH_TOKEN_EXPIRATION_TIME_DELTA: datetime.timedelta
+```

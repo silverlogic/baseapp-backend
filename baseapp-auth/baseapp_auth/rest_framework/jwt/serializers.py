@@ -1,6 +1,9 @@
 from baseapp_auth.rest_framework.login.serializers import LoginPasswordExpirationMixin
+from django.contrib.auth import get_user_model
 from django.utils.module_loading import import_string
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+User = get_user_model()
 
 
 class BaseJwtLoginSerializer(LoginPasswordExpirationMixin, TokenObtainPairSerializer):

@@ -20,10 +20,14 @@ class TokenGenerator(object):
     def decode_token(self, token):
         """Returns the decoded token or None if decoding fails."""
         try:
-            return loads(token, salt=self.key_salt)
+            return loads(token, salt=self.key_salt, max_age=self.max_age)
         except BadSignature:
             return None
 
     @property
     def key_salt(self):
         raise NotImplementedError("Subclasses must define key_salt.")
+
+    @property
+    def max_age(self) -> int | None:
+        return None
