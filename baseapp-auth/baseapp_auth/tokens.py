@@ -2,6 +2,7 @@ from math import floor
 
 from baseapp_core.tokens import TokenGenerator
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.utils.encoding import DjangoUnicodeDecodeError, force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.utils.timezone import timedelta
@@ -50,6 +51,8 @@ class PreAuthTokenGenerator(TokenGenerator):
         if hasattr(settings, "BA_AUTH_PRE_AUTH_TOKEN_EXPIRATION_TIME_DELTA"):
             _time_delta = settings.BA_AUTH_PRE_AUTH_TOKEN_EXPIRATION_TIME_DELTA
             if not isinstance(_time_delta, timedelta):
-                raise Exception("BA_AUTH_PRE_AUTH_TOKEN_EXPIRATION_TIME_DELTA must be a timedelta")
+                raise ImproperlyConfigured(
+                    "BA_AUTH_PRE_AUTH_TOKEN_EXPIRATION_TIME_DELTA must be a timedelta"
+                )
             return int(floor(_time_delta.total_seconds()))
         return None

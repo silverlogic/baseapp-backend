@@ -30,6 +30,10 @@ This app uses django provided permission and group model and provides the abilit
 
 Reusable app to handle in-app, email and push notifications.
 
+## [baseapp-url-shortening](baseapp-url-shortening)
+
+Functionality for url shortening
+
 ## How to develop
 
 Each module of baseapp-backend has a demo project in `testproject/` directory, which can be run as a standalone Django app to test. Then in baseapp-backend directory:

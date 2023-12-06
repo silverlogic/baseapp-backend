@@ -48,3 +48,7 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-notifications
+  baseapp-url-shortening:
+    uses: ./.github/workflows/project-workflow.yml
+    with:
+      project: baseapp-url-shortening

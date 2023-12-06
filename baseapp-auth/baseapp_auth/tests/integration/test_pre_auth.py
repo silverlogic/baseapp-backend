@@ -17,7 +17,7 @@ from baseapp_auth.tokens import PreAuthTokenGenerator
 
 class TestPreAuthMixin(ApiMixin):
     def assert_token_response(self, r):
-        raise Exception("Not implemented")
+        raise NotImplementedError()
 
 
 class TestPreAuthJWT(TestPreAuthMixin):

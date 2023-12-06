@@ -12,15 +12,15 @@ class AuthTokenPreAuthSerializer(serializers.Serializer):
     token = serializers.CharField()
 
     def validate_token(self, token):
+        generator = PreAuthTokenGenerator()
+        value = generator.decode_token(token)
+        if value is None:
+            raise serializers.ValidationError(_("Invalid token."))
         try:
-            generator = PreAuthTokenGenerator()
-            value = generator.decode_token(token)
-            if value is None:
-                raise Exception()
             self.user = User.objects.get(id=value[0])
-            if not generator.is_value_valid(self.user, value):
-                raise Exception()
-        except Exception:
+        except User.DoesNotExist:
+            raise serializers.ValidationError(_("Invalid token."))
+        if not generator.is_value_valid(self.user, value):
             raise serializers.ValidationError(_("Invalid token."))
         return token
 
@@ -32,15 +32,15 @@ class JWTPreAuthSerializer(serializers.Serializer):
     token = serializers.CharField()
 
     def validate_token(self, token):
+        generator = PreAuthTokenGenerator()
+        value = generator.decode_token(token)
+        if value is None:
+            raise serializers.ValidationError(_("Invalid token."))
         try:
-            generator = PreAuthTokenGenerator()
-            value = generator.decode_token(token)
-            if value is None:
-                raise Exception()
             self.user = User.objects.get(id=value[0])
-            if not generator.is_value_valid(self.user, value):
-                raise Exception()
-        except Exception:
+        except User.DoesNotExist:
+            raise serializers.ValidationError(_("Invalid token."))
+        if not generator.is_value_valid(self.user, value):
             raise serializers.ValidationError(_("Invalid token."))
         return token
 
