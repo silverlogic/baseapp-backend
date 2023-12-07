@@ -55,3 +55,8 @@ jobs:
     with:
       project: baseapp-notifications
     secrets: inherit
+  baseapp-url-shortening:
+    uses: ./.github/workflows/publish-workflow.yml
+    with:
+      project: baseapp-url-shortening
+    secrets: inherit

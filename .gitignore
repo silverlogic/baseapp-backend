@@ -10,6 +10,7 @@ __pycache__/
 # workspace files are user-specific
 *.sublime-workspace
 **/*.code-workspace
+**/.vscode
 .idea/
 
 # generated UMLs
@@ -37,3 +38,6 @@ db.sqlite3
 # build
 **/build/
 dist/
+
+# pyenv
+.python-version
