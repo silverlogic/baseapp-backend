@@ -1,7 +1,3 @@
-from django.conf import settings
-
-print(settings.INSTALLED_APPS)
-
 import pytest
 
 from baseapp_url_shortening.tests import factories as f
