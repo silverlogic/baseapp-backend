@@ -75,6 +75,8 @@ class Reaction(AbstractBaseReaction):
 
 
 def update_reactions_count(target):
+    if not target:
+        return
     counts = default_reactions_count()
     ReactionModel = swapper.load_model("baseapp_reactions", "Reaction")
     target_content_type = ContentType.objects.get_for_model(target)
