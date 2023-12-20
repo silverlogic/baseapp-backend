@@ -18,8 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11"]
-        django-version: ["4.2"]
+        python-version: ["3.11", "3.12"]
+        django-version: ["4.2", "5.0"]
     steps:
       # Lint
       - uses: actions/checkout@v3
