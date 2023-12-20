@@ -16,6 +16,8 @@ Contains the following apps:
 
 ## [baseapp-cloudflare-stream-field](baseapp-cloudflare-stream-field)
 
+Integration with Cloudflare Stream for file streaming
+
 ## [baseapp-drf-view-action-permissions](baseapp-drf-view-action-permissions)
 
 This app uses django provided permission and group model and provides the ability to add roles to a django model, and make views from the [django-restframework](https://www.django-rest-framework.org/) check for them. A **Permission** represents the lowest single unit of access. A **Group** is a collection of Permissions. A **Role** can have many Permision Groups, many Permissions and many **Excluded Permissions**. The access of a Role is the aggregation of its single Permissions + the permissions on its **Permission** Groups - its Excluded Permissions.
@@ -39,6 +41,8 @@ Utilities for payments
 Reusable app to enable User's reactions on any model, features like like/dislike or any other reactions type, customizable for project's needs.
 
 ## [baseapp-social-auth](baseapp-social-auth)
+
+Login/signup using social networks (Facebook, Google and others)
 
 ## [baseapp-url-shortening](baseapp-url-shortening)
 
