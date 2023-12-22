@@ -22,6 +22,8 @@ services:
       DB_SERVICE: 'db'
     expose:
       - '8000'
+    ports:
+      - '8000:8000'
     build:
       context: ./
       dockerfile: ./Dockerfile
