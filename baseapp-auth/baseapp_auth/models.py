@@ -2,9 +2,9 @@ from baseapp_core.models import CaseInsensitiveEmailField
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
 from django.db import models
+from django.db.models import TextChoices
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-from model_utils import Choices
 from model_utils.models import TimeStampedModel
 
 from .managers import UserManager
@@ -107,33 +107,33 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser):
 
 
 class PasswordValidation(models.Model):
-    VALIDATORS = Choices(
-        (
+    class Validators(TextChoices):
+        UserAttributeSimilarityValidator = (
             "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
             "User Attribute Similarity",
-        ),
-        (
+        )
+        MinimumLengthValidator = (
             "django.contrib.auth.password_validation.MinimumLengthValidator",
             "Minimum Length",
-        ),
-        (
+        )
+        CommonPasswordValidator = (
             "django.contrib.auth.password_validation.CommonPasswordValidator",
             "Common Password",
-        ),
-        (
+        )
+        NumericPasswordValidator = (
             "django.contrib.auth.password_validation.NumericPasswordValidator",
             "Numeric Password",
-        ),
-        (
+        )
+        MustContainCapitalLetterValidator = (
             "baseapp_auth.password_validators.MustContainCapitalLetterValidator",
             "Must Contain Capital Letter",
-        ),
-        (
+        )
+        MustContainSpecialCharacterValidator = (
             "baseapp_auth.password_validators.MustContainSpecialCharacterValidator",
             "Must Contain Special Character",
-        ),
-    )
-    name = models.CharField(max_length=255, choices=VALIDATORS)
+        )
+
+    name = models.CharField(max_length=255, choices=Validators.choices)
     options = models.JSONField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
 

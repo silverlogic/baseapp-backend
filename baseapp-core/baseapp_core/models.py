@@ -4,7 +4,6 @@ import uuid
 from django.db import models
 from django.utils.deconstruct import deconstructible
 from django.utils.translation import gettext_lazy as _
-from model_utils import Choices
 
 
 class CaseInsensitiveTextField(models.TextField):
@@ -40,10 +39,3 @@ class random_dir_in(object):
 
     def __call__(self, instance, filename):
         return os.path.join(self.base_dir, str(uuid.uuid4()), filename)
-
-
-PUBLISH_STATUSES = Choices(
-    ("draft", "Draft"),
-    ("published", "Published"),
-    ("archived", "Archived"),
-)
