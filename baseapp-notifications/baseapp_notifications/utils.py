@@ -21,6 +21,8 @@ def send_notification(
     send_email=True,
     email_subject=None,
     email_message=None,
+    push_title=None,
+    push_description=None,
     **kwargs,
 ):
     # TO DO:
@@ -74,13 +76,11 @@ def send_notification(
     if send_push:
         send_push_notification.delay(
             recipient.id,
-            dict(
-                description=description,
-                verb=verb,
-                **kwargs
-                # TO DO:
-                # serialize all objects so devices can use this data if necessary
-            ),
+            push_title=push_title,
+            push_description=push_description or description,
+            # TO DO:
+            # serialize all objects so devices can use this data if necessary
+            **kwargs,
         )
 
     return notifications
