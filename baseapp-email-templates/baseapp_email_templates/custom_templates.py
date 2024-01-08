@@ -90,3 +90,11 @@ def get_full_copy_template(
     subject = _produce(copy_template.subject, render_template_context)
 
     return html_message, message, subject
+
+
+def get_sms_template_message(
+    copy_template,
+    context={},
+):
+    message = _produce(copy_template.message, Context(context))
+    return message

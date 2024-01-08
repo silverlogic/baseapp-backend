@@ -97,3 +97,15 @@ class Attachment(TimeStampedModel):
         blank=True,
         null=True,
     )
+
+
+class SmsTemplate(TimeStampedModel):
+    name = models.CharField(
+        max_length=255,
+        unique=True,
+        help_text="Unique name used to identify this message",
+    )
+    message = models.TextField(blank=True, null=True, help_text="Message to be sent")
+
+    class Meta:
+        ordering = ["-id"]

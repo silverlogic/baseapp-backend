@@ -1,7 +1,7 @@
 
 # BaseApp E-mail Templates - Django
 
-This app provides the integration of custom e-mail template configuration with The SilverLogic's [BaseApp](https://bitbucket.org/silverlogic/baseapp-django-v2).
+This app provides the integration of custom e-mail and sms template configuration with The SilverLogic's [BaseApp](https://bitbucket.org/silverlogic/baseapp-django-v2).
 
 ## Install the package
 
@@ -151,4 +151,66 @@ context = {"content": "Hello."}
 extended_with = "apps/base/templates/test-template.html"
 
 template.send(recipients, context, True, extended_with)
+```
+
+### SmsTemplate Model
+
+The `SmsTemplate` model has two fields:
+* `name`: this name must be unique.
+* `message`: this is a textfield and does not accept HTML
+
+### Creating migrations for your template
+
+Once you have installed the package you can simply create a migration to input your templates like so:
+```py
+from __future__ import unicode_literals
+
+from django.db import migrations
+
+
+def create_object(sms_template, name, message):
+    sms_template.objects.create(
+        name=name,
+        message=message,
+    )
+
+
+def create_sms_templates(apps, schema_migration):
+    sms_template = apps.get_model("baseapp_email_templates", "SmsTemplate")
+
+    create_object(
+        sms_template,
+        "First Template",
+        """
+            Hello, {{ some_variable }}.
+        """,
+    )
+
+    create_object(
+        sms_template,
+        "Second template",
+        """
+            Hello, {{ some_other_variable }}.
+        """,
+    )
+
+
+class Migration(migrations.Migration):
+    dependencies = [("some_app", "0002_some_previus_migration")]
+
+    operations = [migrations.RunPython(create_sms_templates, migrations.RunPython.noop)]
+
+```
+
+OBS: make sure that the variables are the right ones that you will pass as context when getting the message.
+
+### Get the template message
+To get the template message you can simply use the util functions `get_sms_message` from `sms_utils` passing as first parameter the name of the template and the second parameter the context with your variables if needed.
+
+```py
+from baseapp_email_templates.sms_utils import get_sms_message
+
+context = {"some_variable": "some_value"}
+
+message = get_sms_message("First Template", context)
 ```

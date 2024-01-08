@@ -1,7 +1,7 @@
 from django.contrib import admin
 from nested_admin.nested import NestedTabularInline
 
-from .models import Attachment, EmailTemplate
+from .models import Attachment, EmailTemplate, SmsTemplate
 
 
 class AttachmentsInline(NestedTabularInline):
@@ -41,4 +41,11 @@ class EmailTemplateAdmin(admin.ModelAdmin):
         return obj.html_content
 
 
+class SmsTemplateAdmin(admin.ModelAdmin):
+    list_display = ("name", "message")
+    search_fields = ("name", "message")
+    ordering = ("-id",)
+
+
 admin.site.register(EmailTemplate, EmailTemplateAdmin)
+admin.site.register(SmsTemplate, SmsTemplateAdmin)
