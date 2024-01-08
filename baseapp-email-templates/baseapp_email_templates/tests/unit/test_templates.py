@@ -3,6 +3,7 @@ import pytest
 import baseapp_email_templates.tests.factories as f
 from baseapp_email_templates.custom_templates import get_full_copy_template
 from baseapp_email_templates.sendgrid import get_personalization
+from baseapp_email_templates.sms_utils import get_sms_message
 
 pytestmark = pytest.mark.django_db
 
@@ -62,3 +63,26 @@ class TestEmailTemplates:
         self.template.send_via_sendgrid(personalization)
 
         assert len(outbox) == 1
+
+
+class TestSmsTemplates:
+    @pytest.fixture
+    def data(self):
+        template_data = {
+            "name": "Test Template",
+            "message": "Hello {{ user_name }}",
+        }
+        self.template = f.SmsTemplateFactory(**template_data)
+        return template_data
+
+    def test_get_sms_template_message(self, data):
+        context = {"user_name": "Test User"}
+        message = get_sms_message(self.template.name, context)
+
+        assert message == "Hello Test User"
+
+    def test_template_does_not_exist(self, caplog):
+        context = {"user_name": "Test User"}
+        get_sms_message("Nonexistent Template", context)
+
+        assert "Template Nonexistent Template does not exist" in caplog.text
