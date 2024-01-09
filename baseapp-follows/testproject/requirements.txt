@@ -1,0 +1,8 @@
+# baseapp dependencies
+-r ../../baseapp-core/testproject/requirements.txt
+
+-e ./baseapp-core[graphql]
+-e ./baseapp-auth
+-e ./baseapp-follows
+
+django-channels-graphql-ws @ git+https://github.com/silverlogic/DjangoChannelsGraphqlWs.git@5378558e9137e4bd34f55bf478f2764c5ec453a9

@@ -60,3 +60,9 @@ jobs:
     with:
       project: baseapp-url-shortening
     secrets: inherit
+  baseapp-follow:
+    uses: ./.github/workflows/project-workflow.yml
+    with:
+      project: baseapp-follow
+    secrets: inherit
+
