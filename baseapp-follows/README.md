@@ -1,6 +1,6 @@
 # BaseApp Follows
 
-Reusable app to enable User's follows on any model, features like like/dislike or any other follows type, customizable for project's needs.
+Reusable app to enable any model follow/unfollow any model.
 
 
 ## Requirements:

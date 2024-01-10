@@ -48,6 +48,10 @@ Login/signup using social networks (Facebook, Google and others)
 
 Functionality for url shortening
 
+## [baseapp-follows](baseapp-follows)
+
+Reusable app to enable any model follow/unfollow any model.
+
 ## How to develop
 
 Each module of baseapp-backend has a demo project in `testproject/` directory, which can be run as a standalone Django app to test. Then in baseapp-backend directory:
