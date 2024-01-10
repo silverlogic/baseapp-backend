@@ -30,10 +30,10 @@ class FollowsInterface(relay.Node):
         return self.following_count
 
     def resolve_followers(self, info, **kwargs):
-        return gql_optimizer.query(self.followers.all(), info)
+        return self.followers.all()
 
     def resolve_following(self, info, **kwargs):
-        return gql_optimizer.query(self.following.all(), info)
+        return self.following.all()
 
     def resolve_is_followed_by_me(self, info, **kwargs):
         if not info.context.user.is_authenticated:
