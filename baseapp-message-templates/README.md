@@ -1,5 +1,5 @@
 
-# BaseApp E-mail Templates - Django
+# BaseApp Message Templates - Django
 
 This app provides the integration of custom e-mail and sms template configuration with The SilverLogic's [BaseApp](https://bitbucket.org/silverlogic/baseapp-django-v2).
 
