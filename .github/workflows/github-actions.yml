@@ -24,10 +24,10 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-drf-view-action-permissions
-  baseapp-email-templates:
+  baseapp-message-templates:
     uses: ./.github/workflows/project-workflow.yml
     with:
-      project: baseapp-email-templates
+      project: baseapp-message-templates
   baseapp-payments:
     uses: ./.github/workflows/project-workflow.yml
     with:

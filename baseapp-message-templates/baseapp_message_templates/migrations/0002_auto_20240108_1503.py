@@ -7,7 +7,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("baseapp_email_templates", "0001_initial"),
+        ("baseapp_message_templates", "0001_initial"),
     ]
 
     operations = [

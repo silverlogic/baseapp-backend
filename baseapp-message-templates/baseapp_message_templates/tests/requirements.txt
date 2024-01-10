@@ -1,4 +1,4 @@
 -e ./baseapp-core
--e ./baseapp-email-templates
+-e ./baseapp-message-templates
 
 Pillow==9.5.0
