@@ -30,11 +30,6 @@ jobs:
     with:
       project: baseapp-message-templates
     secrets: inherit
-  baseapp-email-templates:
-    uses: ./.github/workflows/publish-workflow.yml
-    with:
-      project: baseapp-email-templates
-    secrets: inherit    
   baseapp-payments:
     uses: ./.github/workflows/publish-workflow.yml
     with:
