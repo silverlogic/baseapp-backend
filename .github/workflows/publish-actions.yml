@@ -25,10 +25,10 @@ jobs:
     with:
       project: baseapp-drf-view-action-permissions
     secrets: inherit
-  baseapp-email-templates:
+  baseapp-message-templates:
     uses: ./.github/workflows/publish-workflow.yml
     with:
-      project: baseapp-email-templates
+      project: baseapp-message-templates
     secrets: inherit
   baseapp-payments:
     uses: ./.github/workflows/publish-workflow.yml

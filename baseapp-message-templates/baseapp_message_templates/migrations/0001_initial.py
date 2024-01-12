@@ -6,7 +6,7 @@ import django.utils.timezone
 import model_utils.fields
 from django.db import migrations, models
 
-from baseapp_email_templates.utils import random_name_in
+from baseapp_message_templates.utils import random_name_in
 
 
 class Migration(migrations.Migration):
@@ -124,7 +124,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="static_attachments",
-                        to="baseapp_email_templates.emailtemplate",
+                        to="baseapp_message_templates.emailtemplate",
                     ),
                 ),
             ],

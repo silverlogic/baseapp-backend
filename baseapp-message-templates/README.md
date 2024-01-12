@@ -1,5 +1,5 @@
 
-# BaseApp E-mail Templates - Django
+# BaseApp Message Templates - Django
 
 This app provides the integration of custom e-mail and sms template configuration with The SilverLogic's [BaseApp](https://bitbucket.org/silverlogic/baseapp-django-v2).
 
@@ -8,7 +8,7 @@ This app provides the integration of custom e-mail and sms template configuratio
 Add to `requirements/base.txt`:
 
 ```bash
-git+https://bitbucket.org/silverlogic/baseapp-email-templates-django.git
+git+https://bitbucket.org/silverlogic/baseapp-message-templates-django.git
 ```
 
 ## Configure template settings
@@ -38,7 +38,7 @@ TEMPLATES  =  [
 				"django.contrib.messages.context_processors.messages",
 			],
 			"libraries": {
-				"filter": "baseapp_email_templates.filters",
+				"filter": "baseapp_message_templates.filters",
 			},
 		},
 	},
@@ -78,7 +78,7 @@ This model is responsible for customizing your e-mail template and sending mail.
 If a `sendgrid_template_id` is provided on an instance of `EmailTemplate`, a SendGrid template can be used to send mail. In order to send mail via SendGrid template, at least one `Personalization` must first be created. Each `Personalization`will contain the email of a recipient and any context that must be provided to the template. A `Personalization` can be created like so:
 
 ```py
-from baseapp_email_templates.sendgrid import get_personalization
+from baseapp_message_templates.sendgrid import get_personalization
 
 personalization = get_personalization("john@test.com", {"message": "Hello there."})
 ```
@@ -88,8 +88,8 @@ personalization = get_personalization("john@test.com", {"message": "Hello there.
 The `send_via_sendgrid` method of `EmailTemplate` can be used to send a single email to one recipient. The method takes one `Personalization` as an argument, as well as an optional list of `attachments` that can be sent along with this particular message.
 
 ```py
-from baseapp_email_templates.models import EmailTemplate
-from baseapp_email_templates.sendgrid import get_personalization
+from baseapp_message_templates.models import EmailTemplate
+from baseapp_message_templates.sendgrid import get_personalization
 
 template = EmailTemplate.objects.get("Test Template")
 
@@ -103,8 +103,8 @@ template.send_via_sendgrid(personalization)
 The `mass_send_via_sendgrid` method of `EmailTemplate` can be used to send multiple instances of a template to multiple recipients. The method takes a list of `Personalization` objects as an argument, and each `Personalization` will send a separate message to each recipient with its own context.
 
 ```py
-from baseapp_email_templates.models import EmailTemplate
-from baseapp_email_templates.sendgrid import get_personalization
+from baseapp_message_templates.models import EmailTemplate
+from baseapp_message_templates.sendgrid import get_personalization
 
 
 template = EmailTemplate.objects.get("Test Template")
@@ -141,7 +141,7 @@ The `use_base_template` flag will determine whether this message should extend f
 Finally, the `attachments` parameter is a list of one or more files that will be send along with this particular message. These attachments will be sent along with any static attachments that have been attached to the template itself through `Attachment`.
 
 ```py
-from baseapp_email_templates.models import EmailTemplate
+from baseapp_message_templates.models import EmailTemplate
 
 
 template = EmailTemplate.objects.get("Test Template")
@@ -176,7 +176,7 @@ def create_object(sms_template, name, message):
 
 
 def create_sms_templates(apps, schema_migration):
-    sms_template = apps.get_model("baseapp_email_templates", "SmsTemplate")
+    sms_template = apps.get_model("baseapp_message_templates", "SmsTemplate")
 
     create_object(
         sms_template,
@@ -208,7 +208,7 @@ OBS: make sure that the variables are the right ones that you will pass as conte
 To get the template message you can simply use the util functions `get_sms_message` from `sms_utils` passing as first parameter the name of the template and the second parameter the context with your variables if needed.
 
 ```py
-from baseapp_email_templates.sms_utils import get_sms_message
+from baseapp_message_templates.sms_utils import get_sms_message
 
 context = {"some_variable": "some_value"}
 

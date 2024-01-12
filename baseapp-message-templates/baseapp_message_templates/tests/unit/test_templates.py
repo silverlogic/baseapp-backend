@@ -1,9 +1,9 @@
 import pytest
 
-import baseapp_email_templates.tests.factories as f
-from baseapp_email_templates.custom_templates import get_full_copy_template
-from baseapp_email_templates.sendgrid import get_personalization
-from baseapp_email_templates.sms_utils import get_sms_message
+import baseapp_message_templates.tests.factories as f
+from baseapp_message_templates.custom_templates import get_full_copy_template
+from baseapp_message_templates.sendgrid import get_personalization
+from baseapp_message_templates.sms_utils import get_sms_message
 
 pytestmark = pytest.mark.django_db
 

@@ -26,7 +26,7 @@ This app uses django provided permission and group model and provides the abilit
 
 Utilities for performing E2E (End-To-End) tests with front-end client. (Database initialization and seeding)
 
-## [baseapp-email-templates](baseapp-email-templates)
+## [baseapp-message-templates](baseapp-message-templates)
 
 ## [baseapp-notifications](baseapp-notifications)
 

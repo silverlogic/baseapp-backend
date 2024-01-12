@@ -9,7 +9,7 @@ ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 # Application definition
 
 INSTALLED_APPS += [
-    "baseapp_email_templates",
+    "baseapp_message_templates",
 ]
 
 
