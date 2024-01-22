@@ -31,11 +31,11 @@ class StreamClient:
         )
         return res.json()["result"]
 
-    def update_video_data(self, video_uid, meta={}):
+    def update_video_data(self, video_uid, data={}):
         res = requests.post(
             f"{self._api_url}/{video_uid}",
             headers=self.request_headers,
-            json={"meta": meta},
+            json=data,
         )
         return res.json()["result"]
 
