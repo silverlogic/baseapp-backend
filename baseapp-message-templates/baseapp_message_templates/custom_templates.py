@@ -1,5 +1,7 @@
 import re
+from copy import deepcopy
 
+import nh3
 from bs4 import BeautifulSoup
 from django.template import Context, Template
 from django.template.loader import render_to_string
@@ -24,37 +26,34 @@ def _wrap_in_base_template(
     plain_text,
     extended_with,
 ):
-    block_content_begin = "{% block content %}"
-    block_content_end = "{% endblock content %}"
-    load_filters = "{% load my_filters %}"
-    replace_content_extend = "{% block content %}"
-    replace_content_extend_bracket = " %}"
+    attributes = deepcopy(nh3.ALLOWED_ATTRIBUTES)
+    tags = deepcopy(nh3.ALLOWED_TAGS)
+    # add "class" attribute to all allowed tags
+    for tag in tags:
+        if tag in attributes:
+            attributes[tag].add("class")
+        else:
+            attributes[tag] = {"class"}
 
-    blocked_copy = (block_content_begin + html).replace("\n ", "\n")
-    blocked_text_copy = (block_content_begin + plain_text).replace("\n ", "\n")
+    # add specific attributes
+    attributes["a"].add("target")
 
-    base_template_html = render_to_string(f"{extended_with}.html.j2", {}, using="jinja2")
-    base_template_txt = render_to_string(f"{extended_with}.txt.j2", {})
+    sanitized_html = nh3.clean(html, attributes=attributes)
+    full_copy_html = render_to_string(
+        f"{extended_with}.html.j2",
+        {
+            "template_content": sanitized_html,
+        },
+        using="jinja2",
+    )
 
-    if replace_content_extend in base_template_html:
-        full_copy_html = base_template_html.replace(replace_content_extend, f"{blocked_copy}", 1)
-    else:
-        full_copy_html = base_template_html.replace(
-            replace_content_extend_bracket,
-            f"{replace_content_extend_bracket}{blocked_copy}{block_content_end}",
-            1,
-        )
-
-    if replace_content_extend in base_template_txt:
-        full_copy_txt = base_template_txt.replace(
-            replace_content_extend, f"{load_filters}{blocked_text_copy}", 1
-        )
-    else:
-        full_copy_txt = base_template_txt.replace(
-            replace_content_extend_bracket,
-            f"{replace_content_extend_bracket}{load_filters}{blocked_text_copy}{block_content_end}",
-            1,
-        )
+    full_copy_txt = render_to_string(
+        f"{extended_with}.txt.j2",
+        {
+            "template_content": plain_text,
+        },
+        using="jinja2",
+    )
 
     return full_copy_html, full_copy_txt
 
