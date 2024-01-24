@@ -2,6 +2,7 @@ import re
 
 from bs4 import BeautifulSoup
 from django.template import Context, Template
+from django.template.loader import render_to_string
 
 
 def _get_text_from_html(html):
@@ -32,8 +33,8 @@ def _wrap_in_base_template(
     blocked_copy = (block_content_begin + html).replace("\n ", "\n")
     blocked_text_copy = (block_content_begin + plain_text).replace("\n ", "\n")
 
-    base_template_html = open(f"{extended_with}.html.j2", "r").read()
-    base_template_txt = open(f"{extended_with}.txt.j2", "r").read()
+    base_template_html = render_to_string(f"{extended_with}.html.j2", {}, using="jinja2")
+    base_template_txt = render_to_string(f"{extended_with}.txt.j2", {})
 
     if replace_content_extend in base_template_html:
         full_copy_html = base_template_html.replace(replace_content_extend, f"{blocked_copy}", 1)
