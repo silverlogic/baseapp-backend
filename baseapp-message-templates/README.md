@@ -19,6 +19,7 @@ TEMPLATES  =  [
 		"BACKEND": "django_jinja.backend.Jinja2",
 		"DIRS": [str(APPS_DIR  /  "templates")], # change this to wherever your base templates are stored
 		"APP_DIRS": True,
+        "NAME": "jinja2",
 		"OPTIONS": {
 			"match_extension": ".j2",
 			"constants": {"URL": URL, "FRONT_URL": FRONT_URL},
