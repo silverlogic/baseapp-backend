@@ -27,7 +27,7 @@ For example: [nossila](https://github.com/nossila/) `(actor)`
 `(target)` 12 hours ago
 
 ## Whats missing
-- [ ] Finish implementing push notifications
+- [X] Finish implementing push notifications
 - [ ] DRF views and serializers
 
 ## How to install
@@ -35,15 +35,16 @@ For example: [nossila](https://github.com/nossila/) `(actor)`
 Requirements:
 - **baseapp-core** >= 0.2.0
 - **django-notifications-hq** >= 1.8
+- **django-push-notifications >= 3.0.2
 
 Run `pip install baseapp-notifications`
 And make sure to add the frozen version to your `requirements/base.txt` file
 
 If you want to develop, [install using this other guide](#how-to-develop).
 
-## Setup
+## Setup In-App notifications
 
-1 - Add both to your `INSTALLED_APPS`:
+1 - Add to your `INSTALLED_APPS`:
 
 ```python
 INSTALLED_APPS = [
@@ -109,6 +110,45 @@ class Subscription(graphene.ObjectType, NotificationsSubscription):
 schema = graphene.Schema(query=Query, mutation=Mutation, subscription=Subscription)
 ```
 
+## Setup Push notifications (apple and google)
+
+1 - Add to your `INSTALLED_APPS`:
+
+```python
+INSTALLED_APPS = [
+  "push_notifications"
+]
+```
+
+2 - Set the push notifications settings in your `settings/base.py`:
+
+```python
+PUSH_NOTIFICATIONS_SETTINGS = {
+  "FCM_API_KEY": "[your api key]",
+  "APNS_CERTIFICATE": ["Absolute path to your APNS certificate file"],
+  "APNS_TOPIC": ["Apple app ID"],
+  "DEFAULT_CLOUD_MESSAGE_TYPE": "FCM",
+  "UPDATE_ON_DUPLICATE_REG_ID": True/False,
+  "APNS_USE_SANDBOX": True/False,
+}
+```
+
+You can get more details about this settings dict at the [django-push-notifications oficial repository](https://github.com/jazzband/django-push-notifications?tab=readme-ov-file#settings-list).
+
+3 - Set the push notification routes in your `router.py`
+
+```python
+from push_notifications.api.rest_framework import (  # noqa
+    APNSDeviceAuthorizedViewSet,
+    GCMDeviceAuthorizedViewSet,
+    WNSDeviceAuthorizedViewSet,
+    WebPushDeviceAuthorizedViewSet,
+)
+router.register(r"push-notifications/apns", APNSDeviceAuthorizedViewSet, basename="apns")
+router.register(r"push-notifications/gcm", GCMDeviceAuthorizedViewSet, basename="gcm")
+router.register(r"push-notifications/wns", WNSDeviceAuthorizedViewSet, basename="wns")
+router.register(r"push-notifications/web", WebPushDeviceAuthorizedViewSet, basename="web")
+```
 
 ## How to send a notification
 
@@ -129,6 +169,9 @@ send_notification(
       user_name=user.name,
       repository_name=repository.name
     ),
+    push_title=_("title"),
+    push_description=_("description"),
+    extra={},
 )
 ```
 
@@ -149,6 +192,9 @@ Arguments:
 - **email_message**: An string (default=description). This will override the email's body message. (Optional)
 - **public**: An boolean (default=True). (Optional)
 - **timestamp**: An tzinfo (default=timezone.now()). (Optional)
+- **push_description**: A string. (Required). The "body" of your push notification
+- **push_title**: A string. (Optional). This will override the Title of your notification (apple and google uses the name defined on your build files)
+- **extra**: A dict with data of any type. (Optional)
 
 **Extra data**: ou can also send any arbitrary kwargs and they will be added to `Notification.data` JSONField.
 
