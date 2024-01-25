@@ -2,6 +2,7 @@
 
 import baseapp_core.models
 import django.utils.timezone
+from django.contrib.postgres.operations import CITextExtension
 from django.db import migrations, models
 
 
@@ -11,6 +12,7 @@ class Migration(migrations.Migration):
     dependencies = []
 
     operations = [
+        CITextExtension(),
         migrations.CreateModel(
             name="User",
             fields=[

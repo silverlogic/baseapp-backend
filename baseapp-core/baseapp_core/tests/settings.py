@@ -10,11 +10,17 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
+from collections import OrderedDict
 from pathlib import Path
+
+from django.utils.translation import gettext_lazy as _
+
+from baseapp_core.settings.env import env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+APPS_DIR = BASE_DIR
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
@@ -43,6 +49,9 @@ INSTALLED_APPS = [
     "djmail",
     "baseapp_core",
     "easy_thumbnails",
+    "constance",
+    "constance.backends.database",
+    "pghistory",
 ]
 
 MIDDLEWARE = [
@@ -57,10 +66,23 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "baseapp_core.urls"
 
+# Sites
+URL = env("URL", "", required=False)
+FRONT_URL = env("FRONT_URL", "", required=False)
+
 TEMPLATES = [
     {
+        "BACKEND": "django_jinja.backend.Jinja2",
+        "DIRS": [str(APPS_DIR / "templates")],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "match_extension": ".j2",
+            "constants": {"URL": URL, "FRONT_URL": FRONT_URL},
+        },
+    },
+    {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [str(APPS_DIR / "templates")],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -73,6 +95,7 @@ TEMPLATES = [
     },
 ]
 
+ASGI_APPLICATION = "baseapp_core.asgi.application"
 WSGI_APPLICATION = "baseapp_core.wsgi.application"
 
 
@@ -81,8 +104,13 @@ WSGI_APPLICATION = "baseapp_core.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.contrib.gis.db.backends.postgis",
+        "NAME": env("DB_NAME"),
+        "USER": env("DB_USER"),
+        "PASSWORD": env("DB_PASS"),
+        "HOST": env("DB_SERVICE"),
+        "PORT": env("DB_PORT"),
+        "ATOMIC_REQUESTS": True,
     }
 }
 
@@ -119,6 +147,8 @@ USE_L10N = True
 
 USE_TZ = True
 
+LANGUAGES = [("en", _("English"))]
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
@@ -145,3 +175,24 @@ GRAPHENE = {
     ),
     "SCHEMA_OUTPUT": "schema.graphql",
 }
+
+# Must be absolute URLs for use in emails.
+MEDIA_ROOT = str(BASE_DIR.parent / "media")
+MEDIA_URL = "{url}/media/".format(url=URL)
+
+STATIC_ROOT = str(BASE_DIR.parent / "static")
+STATIC_URL = "{url}/static/".format(url=URL)
+
+# Constance
+CONSTANCE_BACKEND = "constance.backends.database.DatabaseBackend"
+CONSTANCE_CONFIG = OrderedDict(
+    [
+        (
+            "USER_PASSWORD_EXPIRATION_INTERVAL",
+            (
+                365 * 2,
+                "The time interval (in days) after which a user will need to reset their password.",
+            ),
+        ),
+    ]
+)
