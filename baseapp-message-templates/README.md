@@ -45,13 +45,51 @@ TEMPLATES  =  [
 	},
 ]
 ```
-  
-## Set default base template (optional)
 
-If you want to use a default base template that your emails will automatically inherit from, add the path to that template to your settings. Note that this base template won't apply to e-mails that are created on SendGrid.
+## Default Email Template
 
-```py
-DEFAULT_EMAIL_TEMPLATE = [your_path]
+In our Django application, you have the option to use a default email template. This template acts as a wrapper for your other email templates, ensuring a consistent layout and style across all your emails.
+
+
+### Using the Default Template
+
+To effectively utilize the default template:
+
+1. **Create the Default Template**
+
+   Ensure your default template includes a placeholder for the child template content. This is done using the `template_content|safe` variable in your Jinja2 template. 
+
+   Example:
+   ```html
+   <html>
+   <body>
+     <div>
+       <!-- Your default template layout -->
+       <div class="content">
+         {{ template_content|safe }}
+       </div>
+       <!-- More of your default template layout -->
+     </div>
+   </body>
+   </html>
+
+
+2. **Render Child Templates**
+
+	When rendering a child template, pass the content as a string to template_content. `Jinja2` will insert this content into the default template at the location of {{ template_content|safe }}.
+
+3. **Sanitize for Security:**
+	To ensure security, especially since we're using the safe filter, it's important to sanitize `template_content` to prevent XSS (Cross-Site Scripting) attacks. This process removes or neutralizes any potentially harmful scripts that might be part of the content.
+
+
+### Setting Default Base Template (Optional)
+
+If you want to use a default base template that your emails will automatically inherit from, add the path to that template in your Django settings. This configuration allows you to define a consistent layout or design for your emails. Note that this base template won't apply to emails created directly in SendGrid.
+
+In your `settings.py`:
+
+```python
+DEFAULT_EMAIL_TEMPLATE = "path/to/your/default/template" # ex: "emails/base-template"
 ```
 
 ## Setup SendGrid credentials (optional)
