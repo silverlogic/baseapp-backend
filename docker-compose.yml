@@ -3,7 +3,6 @@ services:
   db:
     image: 'postgis/postgis:16-3.4'
     env_file: .env
-    restart: always
     volumes:
       - db:/var/lib/postgresql/data
     healthcheck:
