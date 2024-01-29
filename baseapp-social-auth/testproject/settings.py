@@ -17,7 +17,6 @@ INSTALLED_APPS += [
     "baseapp_social_auth",
     "baseapp_referrals",
     "baseapp_social_auth.cache",
-    "test",
 ]
 
 ROOT_URLCONF = "testproject.urls"

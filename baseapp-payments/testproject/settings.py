@@ -12,7 +12,6 @@ INSTALLED_APPS += [
     "django.contrib.sites",
     # Third party
     "djstripe",
-    "constance",
     "baseapp_payments",
 ]
 

@@ -8,8 +8,6 @@ APPS_DIR = BASE_DIR
 
 # Application definition
 INSTALLED_APPS += [
-    "constance",
-    "constance.backends.database",
     "channels",
     "avatar",
     "trench",

@@ -57,23 +57,21 @@ Reusable app to enable any model follow/unfollow any model.
 Each module of baseapp-backend has a demo project in `testproject/` directory, which can be run as a standalone Django app to test. Then in baseapp-backend directory:
 
 ```bash
-# create virtual environment
-python3 -m venv venv
+# Bring up docker containers
+docker compose up -d --wait
 
-# Activate virtual environment
-source venv/bin/activate
-
-# Install baseapp-core dependencies
-pip3 install -r baseapp-core/testproject/requirements.txt
-
-# Install baseapp-APPNAME dependencies
-pip3 install -r baseapp-APPNAME/testproject/requirements.txt
+# Enter backend docker container
+docker compose exec backend bash
 ```
 
-Run testproject:
+Run testproject inside the backend docker container:
 
 ```bash
-cd baseapp-APPNAME
+# Install baseapp-APPNAME dependencies
+pip3 install -r baseapp-APPNAME/testproject/requirements.txt
+
+# Change folder to your app's testproject:
+cd baseapp-APPNAME/testproject
 python manage.py runserver
 ```
 
@@ -98,7 +96,7 @@ The `-e` flag will make it like any change you make in the cloned files will eff
 Running unit tests:
 
 ```bash
-pytest baseapp-APPNAME/baseapp_APPNAME/tests
+docker compose exec backend pytest baseapp-APPNAME/baseapp_APPNAME/tests
 ```
 
 ### Implementation

@@ -1,0 +1,38 @@
+version: "3"
+services:
+  db:
+    image: 'postgis/postgis:16-3.4'
+    env_file: .env
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  backend:
+    stdin_open: true
+    tty: true
+    env_file: .env
+    environment:
+      DB_USER: ${POSTGRES_USER}
+      DB_PASS: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      DB_PORT: '5432'
+      DB_SERVICE: 'db'
+    expose:
+      - '8000'
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    depends_on:
+      - db
+    volumes:
+      - ./:/usr/src/app
+      - public:/usr/src/public
+      - static:/usr/src/static
+
+volumes:
+    db:
+    public:
+    static:
