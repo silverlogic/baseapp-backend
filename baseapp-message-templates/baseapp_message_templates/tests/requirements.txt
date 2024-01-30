@@ -1,4 +1,4 @@
 -e ./baseapp-core
 -e ./baseapp-message-templates
 
-Pillow==9.5.0
+Pillow==10.2.0

@@ -3,5 +3,5 @@
 -e ./baseapp-auth
 -e ./baseapp-social-auth
 
-Pillow==9.5.0
+Pillow==10.2.0
 rest-social-auth==8.1.0
