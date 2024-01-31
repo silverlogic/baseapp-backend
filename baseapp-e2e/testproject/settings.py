@@ -21,3 +21,5 @@ E2E = {
     "ENABLED": True,
     "SCRIPTS_PACKAGE": "e2e.scripts",
 }
+
+del REST_FRAMEWORK  # noqa

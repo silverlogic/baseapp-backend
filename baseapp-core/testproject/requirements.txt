@@ -1,6 +1,8 @@
 # install "install_requires" from setup.cfg
 -e ./baseapp-core
 
+djangorestframework-simplejwt[crypto]>=5.2.2
+
 # test
 freezegun==1.2.1
 pytest==7.4.2
