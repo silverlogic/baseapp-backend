@@ -11,8 +11,15 @@ from .sendgrid import mass_send_personalized_mail, send_personalized_mail
 from .utils import attach_files, random_name_in
 
 
+class CaseInsensitiveCharField(models.CharField):
+    description = "Case insensitive character"
+
+    def db_type(self, connection):
+        return "citext"
+
+
 class EmailTemplate(TimeStampedModel):
-    name = models.CharField(
+    name = CaseInsensitiveCharField(
         max_length=255,
         unique=True,
         help_text="Unique name used to identify this message",
@@ -100,7 +107,7 @@ class Attachment(TimeStampedModel):
 
 
 class SmsTemplate(TimeStampedModel):
-    name = models.CharField(
+    name = CaseInsensitiveCharField(
         max_length=255,
         unique=True,
         help_text="Unique name used to identify this message",
