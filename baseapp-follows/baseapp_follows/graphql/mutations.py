@@ -5,8 +5,7 @@ from baseapp_core.utils import get_content_type_by_natural_key
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
-from graphql_relay.connection.arrayconnection import offset_to_cursor
-from graphql_relay.node.node import from_global_id
+from graphql_relay import from_global_id, offset_to_cursor
 
 from .object_types import FollowNode, FollowsInterface
 

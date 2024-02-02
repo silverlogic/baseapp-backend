@@ -1,6 +1,6 @@
 from baseapp_core.models import CaseInsensitiveEmailField
 from django.conf import settings
-from django.contrib.auth.models import AbstractBaseUser
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 from django.db.models import TextChoices
 from django.utils import timezone
@@ -8,55 +8,6 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from .managers import UserManager
-
-
-class PermissionsMixin(models.Model):
-    """
-    A mixin class that adds the fields and methods necessary to support
-    Django's Permission model using the ModelBackend.
-    """
-
-    is_active = models.BooleanField(
-        _("active"),
-        default=True,
-        help_text=_(
-            "Designates whether this user should be treated as active. "
-            "Unselect this instead of deleting accounts."
-        ),
-    )
-
-    is_superuser = models.BooleanField(
-        _("superuser status"),
-        default=False,
-        help_text=_(
-            "Designates that this user has all permissions without " "explicitly assigning them."
-        ),
-    )
-
-    class Meta:
-        abstract = True
-
-    def has_perm(self, perm, obj=None):
-        """
-        Returns True if the user is superadmin and is active
-        """
-        return self.is_active and self.is_superuser
-
-    def has_perms(self, perm_list, obj=None):
-        """
-        Returns True if the user is superadmin and is active
-        """
-        return self.is_active and self.is_superuser
-
-    def has_module_perms(self, app_label):
-        """
-        Returns True if the user is superadmin and is active
-        """
-        return self.is_active and self.is_superuser
-
-    @property
-    def is_staff(self):
-        return self.is_superuser
 
 
 class AbstractUser(PermissionsMixin, AbstractBaseUser):
@@ -77,6 +28,21 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser):
     # Profile
     first_name = models.CharField(max_length=100, blank=True)
     last_name = models.CharField(max_length=100, blank=True)
+
+    is_active = models.BooleanField(
+        _("active"),
+        default=True,
+        help_text=_(
+            "Designates whether this user should be treated as active. "
+            "Unselect this instead of deleting accounts."
+        ),
+    )
+
+    is_staff = models.BooleanField(
+        _("staff status"),
+        default=False,
+        help_text=_("Designates whether the user can log into this admin site."),
+    )
 
     objects = UserManager()
 

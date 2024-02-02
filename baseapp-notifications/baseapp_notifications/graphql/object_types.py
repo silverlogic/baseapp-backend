@@ -37,6 +37,7 @@ class NotificationNode(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
     class Meta:
         interfaces = (relay.Node,)
         model = Notification
+        fields = "__all__"
 
     @classmethod
     def get_node(cls, info, id):

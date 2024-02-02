@@ -20,6 +20,23 @@ In the `rest_framework/` directory you can find a implementation of account-rela
 - Authentication with MFA and Simple AuthToken
 - Authentication with MFA and JWT
 
+
+### GraphQL
+
+#### PermissionsInterface
+
+When your `DjangoObjectType` implements `PermissionsInterface` you are able to query for object-level permissions:
+
+```graphql
+query {
+  page(id: 1) {
+    canDelete: hasPerm(perm: "delete")
+    canChange: hasPerm(perm: "change")
+  }
+}
+```
+```
+
 ### Utilities
 
 ## Demo

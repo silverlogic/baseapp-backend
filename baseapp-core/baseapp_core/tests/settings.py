@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "easy_thumbnails",
     "constance",
     "constance.backends.database",
+    "pgtrigger",
     "pghistory",
 ]
 
