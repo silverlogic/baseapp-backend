@@ -169,7 +169,7 @@ CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
 
 # GraphQL
 GRAPHENE = {
-    "SCHEMA": "testproject.graphql.schema.schema",
+    "SCHEMA": "testproject.graphql.schema",
     "MIDDLEWARE": (
         "baseapp_core.graphql.LogExceptionMiddleware",
         "baseapp_core.graphql.TokenAuthentication",
