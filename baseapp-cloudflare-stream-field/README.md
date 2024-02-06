@@ -1,6 +1,6 @@
 # Django Cloudflare Stream Field
 
-This app provides integration with Cloudflare Stream, where you can upload directly to Cloudflare using TUS protocol.
+This app provides integration with Cloudflare Stream, where you can upload [directly to Cloudflare](https://developers.cloudflare.com/stream/uploading-videos/direct-creator-uploads/) using [TUS protocol](https://tus.io/).
 
 ## Install the package
 
@@ -30,6 +30,24 @@ CELERY_TASK_ROUTES = {
     },
 }
 ```
+
+This package offers the option to post-process the original video by trimming it to a predefined duration. This process creates a new trimmed video and then deletes the original one. To enable this behavior, you should add the following configurations:
+
+```python
+  CLOUDFLARE_VIDEO_MAX_DURATION_SECONDS = Integer number
+  CLOUDFLARE_VIDEO_AUTOMATIC_TRIM = True/False
+```
+
+If you set ```CLOUDFLARE_VIDEO_AUTOMATIC_TRIM = True```, you must also specify a value for ```CLOUDFLARE_VIDEO_MAX_DURATION_SECONDS```. This will trim the video to create a clip starting from the beginning and lasting up to your defined maximum duration. For example:
+
+```python
+  CLOUDFLARE_VIDEO_MAX_DURATION_SECONDS = 30
+  CLOUDFLARE_VIDEO_AUTOMATIC_TRIM = True
+
+  # Will create a new video from 0s to 30s
+```
+
+If ```CLOUDFLARE_VIDEO_AUTOMATIC_TRIM``` is not set to True, the package will create a request to Cloudflare with the maxDurationSeconds parameter. This means that it will attempt to fail uploads where the video's duration exceeds the set value. ***However, this feature is not fully implemented yet, so its use is not recommended at this time. Contributions to enhance this feature in our package are welcome.***
 
 Include the URLs in your main `urls.py` file:
 
@@ -88,3 +106,20 @@ If you set `downloadable` to `True` it will automatically trigger a task to gene
 ```python
 Post.objects.filter(video__status__state="ready")
 ```
+
+
+This package manages the video upload flow as follows:
+
+- The client starts by creating a TUS (resumable upload protocol) request to your backend.
+- Your server functions as a middleware, receiving this request and forwarding it to Cloudflare's endpoint.
+- Upon receipt, Cloudflare provides a unique, one-time upload URL. TUS then manages the upload to this URL.
+- Once the upload is complete, the client gets a response with the 'Stream-Media-ID' header, which contains a unique identifier for the video in Cloudflare.
+- You then need to send this identifier (uid) back to your backend to create a new instance with the CloudflareStreamField. For example:
+
+Example:
+
+```python
+Model.objects.create(video=uid)
+````
+
+This step ensures that your server's records are updated and in sync with the video's status on Cloudflare. 
