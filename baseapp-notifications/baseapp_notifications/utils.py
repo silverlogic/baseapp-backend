@@ -1,6 +1,8 @@
 import logging
 
+import swapper
 from django.core.mail import send_mail
+from django.db.models import Q
 from django.template.exceptions import TemplateDoesNotExist
 from django.template.loader import render_to_string
 from django.utils.text import slugify
@@ -25,15 +27,12 @@ def send_notification(
     push_description=None,
     **kwargs,
 ):
-    # TO DO:
-    # setting = NotificationSettings.objects.filter(user=recipient, verb=verb).first()
-    # if setting and not setting.is_active:
-    #     return None
-    # can also check user agrees to get notification per email or per push, more refined control
-
+    NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationSetting")
     notifications = []
 
-    if add_to_history:
+    if add_to_history and can_user_receive_notification(
+        recipient.id, verb, NotificationSetting.NotificationChannelTypes.IN_APP
+    ):
         notifications = notify.send(
             sender=sender,
             recipient=recipient,
@@ -44,7 +43,9 @@ def send_notification(
             **kwargs,
         )
 
-    if send_email:
+    if send_email and can_user_receive_notification(
+        recipient.id, verb, NotificationSetting.NotificationChannelTypes.EMAIL
+    ):
         notification = (
             notifications[0][1][0]
             if len(notifications) > 0 and len(notifications[0]) > 1 and len(notifications[0][1]) > 0
@@ -73,7 +74,9 @@ def send_notification(
             notification.emailed = True
             notification.save(update_fields=["emailed"])
 
-    if send_push:
+    if send_push and can_user_receive_notification(
+        recipient.id, verb, NotificationSetting.NotificationChannelTypes.PUSH
+    ):
         send_push_notification.delay(
             recipient.id,
             push_title=push_title,
@@ -114,3 +117,24 @@ def send_email_notification(to, context):
     send_mail(
         subject, text_message, html_message=html_message, from_email=None, recipient_list=[to]
     )
+
+
+def can_user_receive_notification(user_id, verb, channel):
+    NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationSetting")
+    user_setting = NotificationSetting.objects.filter(
+        Q(channel=channel) | Q(channel=NotificationSetting.NotificationChannelTypes.ALL),
+        user_id=user_id,
+        verb=get_setting_from_verb(verb),
+    ).first()
+    if user_setting:
+        return user_setting.is_active
+    return True
+
+
+def get_setting_from_verb(verb):
+    """ "
+    Returns the setting group from the verb if available, otherwise returns the verb itself
+        'CHATS.SEND_MESSAGE' -> 'CHATS'
+        'SEND_MESSAGE' -> 'SEND_MESSAGE'
+    """
+    return verb.split(".")[0] if "." in verb else verb
