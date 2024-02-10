@@ -56,6 +56,10 @@ Reusable app to enable any model follow/unfollow any model.
 
 Reusable app to handle pages, URL's paths and metadata. It provides useful models and GraphQL Interfaces.
 
+## [baseapp-comments](baseapp-comments)
+
+Comment threads on any model. With support for reactions, notifications and GraphQL subscriptions.
+
 ## How to develop
 
 Each module of baseapp-backend has a demo project in `testproject/` directory, which can be run as a standalone Django app to test. Then in baseapp-backend directory:
