@@ -1,3 +1,6 @@
+import json
+import logging
+
 import requests
 from django.conf import settings
 
@@ -61,3 +64,22 @@ class StreamClient:
             headers=self.request_headers,
         )
         return res.json()
+
+    def clip_video(self, data={}):
+        res = requests.post(
+            f"{self._api_url}/clip",
+            headers=self.request_headers,
+            json=data,
+        )
+
+        if res.status_code == 400:
+            logging.error(res)
+            error = json.loads(res.text)
+            if (
+                error["messages"][0]["message"]
+                == "clip range must not exceed the duration of the parent media"
+                and error["messages"][0]["code"] == 10005
+            ):
+                return None
+
+        return res.json()["result"]

@@ -27,6 +27,7 @@ class CloudflareStreamDeferredAttribute(DeferredAttribute):
         # But was afraid of them changing this structure in the future, trying to make it more future proof:
         if value and isinstance(value, str) and len(value) >= 16 and len(value) <= 64:
             value = stream_client.get_video_data(value)
+
         instance.__dict__[self.field.attname] = value
 
 
@@ -62,7 +63,11 @@ class CloudflareStreamField(JSONField):
 
             content_type = ContentType.objects.get_for_model(sender)
 
-            if cloudflare_video["status"]["state"] != "ready":
+            if (
+                cloudflare_video["status"]["state"] != "ready"
+                and cloudflare_video["status"]["errorReasonCode"]
+                != "ERR_DURATION_EXCEED_CONSTRAINT"
+            ):
                 refresh_from_cloudflare.apply_async(
                     kwargs={
                         "content_type_pk": content_type.pk,

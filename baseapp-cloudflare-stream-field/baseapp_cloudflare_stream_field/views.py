@@ -1,3 +1,4 @@
+import base64
 import logging
 
 import requests
@@ -9,6 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 def direct_creator_upload(request):
     url = f"https://api.cloudflare.com/client/v4/accounts/{settings.CLOUDFLARE_ACCOUNT_ID}/stream?direct_user=true"
+
     headers = {
         "Authorization": f"Bearer {settings.CLOUDFLARE_API_TOKEN}",
         "Tus-Resumable": request.META.get("HTTP_TUS_RESUMABLE", "1.0.0"),
@@ -16,7 +18,16 @@ def direct_creator_upload(request):
         "Upload-Metadata": request.META.get("HTTP_UPLOAD_METADATA"),
         "Upload-Creator": str(request.user.pk) if request.user.is_authenticated else None,
     }
+
+    if hasattr(settings, "CLOUDFLARE_VIDEO_MAX_DURATION_SECONDS") and not getattr(
+        settings, "CLOUDFLARE_VIDEO_AUTOMATIC_TRIM", False
+    ):
+        max_duration = settings.CLOUDFLARE_VIDEO_MAX_DURATION_SECONDS
+        encoded_max_duration = base64.b64encode(str(max_duration).encode()).decode()
+        headers["Upload-Metadata"] += f",maxDurationSeconds {encoded_max_duration}"
+
     response = requests.post(url, headers=headers)
+
     if response.status_code == 201:
         return HttpResponseRedirect(
             response.headers["Location"],
