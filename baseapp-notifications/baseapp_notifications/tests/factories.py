@@ -18,3 +18,10 @@ class NotificationFactory(AbstractNotificationFactory):
 
     class Meta:
         model = Notification
+
+
+class NotificationSettingFactory(factory.django.DjangoModelFactory):
+    user = factory.SubFactory(UserFactory)
+
+    class Meta:
+        model = swapper.load_model("baseapp_notifications", "NotificationSetting")

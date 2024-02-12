@@ -3,17 +3,26 @@ import graphene_django_optimizer as gql_optimizer
 import swapper
 from baseapp_core.graphql import DjangoObjectType
 from graphene import relay
+from graphene_django import DjangoConnectionField
 from graphene_django.filter import DjangoFilterConnectionField
 
+from ..utils import can_user_receive_notification
 from .filters import NotificationFilter
 
 Notification = swapper.load_model("notifications", "Notification")
+NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationSetting")
+NotificationChannelTypesEnum = graphene.Enum.from_enum(NotificationSetting.NotificationChannelTypes)
 
 
-class NotificationsNode(relay.Node):
+class NotificationsInterface(relay.Node):
     notifications_unread_count = graphene.Int()
     notifications = DjangoFilterConnectionField(
         lambda: NotificationNode, filterset_class=NotificationFilter
+    )
+    notification_settings = DjangoConnectionField(lambda: NotificationSettingNode)
+    is_notification_setting_active = graphene.Boolean(
+        verb=graphene.String(required=True),
+        channel=NotificationChannelTypesEnum(required=True),
     )
 
     def resolve_notifications_unread_count(self, info):
@@ -27,6 +36,16 @@ class NotificationsNode(relay.Node):
                 "-unread", "-timestamp"
             )
         return Notification.objects.none()
+
+    def resolve_notification_settings(self, info, **kwargs):
+        if info.context.user.is_authenticated and info.context.user == self:
+            return NotificationSetting.objects.filter(user=info.context.user)
+        return NotificationSetting.objects.none()
+
+    def resolve_is_notification_setting_active(self, info, verb, channel, **kwargs):
+        if info.context.user.is_authenticated and info.context.user == self:
+            return can_user_receive_notification(info.context.user.id, verb, channel)
+        return False
 
 
 class NotificationNode(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
@@ -56,3 +75,30 @@ class NotificationNode(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
             return queryset.none()
 
         return super().get_queryset(queryset.filter(recipient=info.context.user), info)
+
+
+class NotificationSettingNode(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
+    channel = graphene.Field(NotificationChannelTypesEnum)
+
+    class Meta:
+        model = NotificationSetting
+        fields = "__all__"
+        interfaces = (relay.Node,)
+
+    @classmethod
+    def get_queryset(cls, queryset, info):
+        if not info.context.user.is_authenticated:
+            return queryset.none()
+
+        return super().get_queryset(queryset.filter(user=info.context.user), info)
+
+    @classmethod
+    def get_node(cls, info, id):
+        if not info.context.user.is_authenticated:
+            return None
+
+        try:
+            queryset = cls.get_queryset(cls._meta.model.objects, info)
+            return queryset.get(id=id, user=info.context.user)
+        except cls._meta.model.DoesNotExist:
+            return None
