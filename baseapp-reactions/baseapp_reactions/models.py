@@ -1,6 +1,6 @@
 import swapper
 from django.conf import settings
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -93,23 +93,21 @@ def update_reactions_count(target):
     target.save(update_fields=["reactions_count"])
 
 
+SwappedReaction = swapper.load_model(
+    "baseapp_reactions", "Reaction", required=False, require_ready=False
+)
+
+
 class ReactableModel(models.Model):
     reactions_count = models.JSONField(default=default_reactions_count)
-    # can't load Reaction with swapper in this file
-    # reactions = GenericRelation(
-    #     lambda: swapper.load_model("baseapp_reactions", "Reaction", required=False), content_type_field="target_content_type", object_id_field="target_object_id"
-    # )
+    reactions = GenericRelation(
+        SwappedReaction,
+        content_type_field="target_content_type",
+        object_id_field="target_object_id"
+    )
 
     class Meta:
         abstract = True
 
     def get_my_permissions(self, request):
         raise NotImplementedError
-
-    @property
-    def reactions(self):
-        ReactionModel = swapper.load_model("baseapp_reactions", "Reaction")
-        target_content_type = ContentType.objects.get_for_model(self)
-        return ReactionModel.objects.filter(
-            target_content_type=target_content_type, target_object_id=self.pk
-        )
