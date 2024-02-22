@@ -19,9 +19,7 @@ def direct_creator_upload(request):
         "Upload-Creator": str(request.user.pk) if request.user.is_authenticated else None,
     }
 
-    if hasattr(settings, "CLOUDFLARE_VIDEO_MAX_DURATION_SECONDS") and not getattr(
-        settings, "CLOUDFLARE_VIDEO_AUTOMATIC_TRIM", False
-    ):
+    if hasattr(settings, "CLOUDFLARE_VIDEO_MAX_DURATION_SECONDS"):
         max_duration = settings.CLOUDFLARE_VIDEO_MAX_DURATION_SECONDS
         encoded_max_duration = base64.b64encode(str(max_duration).encode()).decode()
         headers["Upload-Metadata"] += f",maxDurationSeconds {encoded_max_duration}"

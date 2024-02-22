@@ -63,11 +63,7 @@ class CloudflareStreamField(JSONField):
 
             content_type = ContentType.objects.get_for_model(sender)
 
-            if (
-                cloudflare_video["status"]["state"] != "ready"
-                and cloudflare_video["status"]["errorReasonCode"]
-                != "ERR_DURATION_EXCEED_CONSTRAINT"
-            ):
+            if cloudflare_video["status"]["state"] != "ready":
                 refresh_from_cloudflare.apply_async(
                     kwargs={
                         "content_type_pk": content_type.pk,

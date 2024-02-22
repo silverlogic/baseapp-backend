@@ -13,18 +13,20 @@ def refresh_from_cloudflare(content_type_pk, object_pk, attname, retries=1):
     content_type = ContentType.objects.get(pk=content_type_pk)
     obj = content_type.get_object_for_this_type(pk=object_pk)
     cloudflare_video = getattr(obj, attname)
+
     if cloudflare_video["status"]["state"] != "ready":
         new_value = stream_client.get_video_data(cloudflare_video["uid"])
         setattr(obj, attname, new_value)
 
-        if (
+        if new_value["status"]["errorReasonCode"] == "ERR_DURATION_EXCEED_CONSTRAINT":
+            obj.delete()
+        elif (
             new_value["status"]["state"] == "ready"
             and new_value["status"]["errorReasonCode"] != "ERR_DURATION_EXCEED_CONSTRAINT"
         ):
-
             if (
                 getattr(settings, "CLOUDFLARE_VIDEO_AUTOMATIC_TRIM", False)
-                and hasattr(settings, "CLOUDFLARE_VIDEO_MAX_DURATION_SECONDS")
+                and hasattr(settings, "CLOUDFLARE_VIDEO_TRIM_DURATION_SECONDS")
                 and new_value["clippedFrom"] is None
             ):
                 old_video_uid = new_value["uid"]
@@ -32,7 +34,7 @@ def refresh_from_cloudflare(content_type_pk, object_pk, attname, retries=1):
                     {
                         "clippedFromVideoUID": old_video_uid,
                         "startTimeSeconds": 0,
-                        "endTimeSeconds": settings.CLOUDFLARE_VIDEO_MAX_DURATION_SECONDS,
+                        "endTimeSeconds": settings.CLOUDFLARE_VIDEO_TRIM_DURATION_SECONDS,
                     }
                 )
                 if new_video:
@@ -102,7 +104,7 @@ def clip_video(content_type_pk, object_pk, attname, retries=1):
             {
                 "clippedFromVideoUID": cloudflare_video["uid"],
                 "startTimeSeconds": 0,
-                "endTimeSeconds": settings.CLOUDFLARE_VIDEO_MAX_DURATION_SECONDS,
+                "endTimeSeconds": settings.CLOUDFLARE_VIDEO_TRIM_DURATION_SECONDS,
             }
         )
     elif retries < 1000:

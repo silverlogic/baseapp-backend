@@ -34,11 +34,12 @@ CELERY_TASK_ROUTES = {
 This package offers the option to post-process the original video by trimming it to a predefined duration. This process creates a new trimmed video and then deletes the original one. To enable this behavior, you should add the following configurations:
 
 ```python
+  CLOUDFLARE_VIDEO_TRIM_DURATION_SECONDS = Integer number
   CLOUDFLARE_VIDEO_MAX_DURATION_SECONDS = Integer number
   CLOUDFLARE_VIDEO_AUTOMATIC_TRIM = True/False
 ```
 
-If you set ```CLOUDFLARE_VIDEO_AUTOMATIC_TRIM = True```, you must also specify a value for ```CLOUDFLARE_VIDEO_MAX_DURATION_SECONDS```. This will trim the video to create a clip starting from the beginning and lasting up to your defined maximum duration. For example:
+If you set ```CLOUDFLARE_VIDEO_AUTOMATIC_TRIM = True```, you must also specify a value for ```CLOUDFLARE_VIDEO_TRIM_DURATION_SECONDS```. This will trim the video to create a clip starting from the beginning and lasting up to your defined maximum duration. For example:
 
 ```python
   CLOUDFLARE_VIDEO_MAX_DURATION_SECONDS = 30
@@ -47,7 +48,14 @@ If you set ```CLOUDFLARE_VIDEO_AUTOMATIC_TRIM = True```, you must also specify a
   # Will create a new video from 0s to 30s
 ```
 
-If ```CLOUDFLARE_VIDEO_AUTOMATIC_TRIM``` is not set to True, the package will create a request to Cloudflare with the maxDurationSeconds parameter. This means that it will attempt to fail uploads where the video's duration exceeds the set value. ***However, this feature is not fully implemented yet, so its use is not recommended at this time. Contributions to enhance this feature in our package are welcome.***
+If ```CLOUDFLARE_VIDEO_MAX_DURATION_SECONDS``` is set, it will create a request to Cloudflare with the maxDurationSeconds parameter. This means that it will attempt to fail uploads where the video's duration exceeds the specified value. Setting this parameter is also a good option for restricting the amount of storage that pending uploads will use. By default, Cloudflare will use 14,400 seconds for URLs that have not been uploaded.
+
+[Example](https://community.cloudflare.com/t/pending-videos-taking-up-a-large-amount-of-storage-quota/327634):
+
+- A user begins uploading a video.
+- The upload process is interrupted and cannot be completed due to an issue on the client's side.
+- This interruption results in the creation of a 'pending video' instance under Cloudflare.
+- If **maxDurationSeconds** is set to 30, then only 30 seconds' worth of video storage will be utilized from your account, as opposed to the default allocation of 14,400 seconds."
 
 Include the URLs in your main `urls.py` file:
 
