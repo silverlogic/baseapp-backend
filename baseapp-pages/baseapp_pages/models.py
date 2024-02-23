@@ -1,5 +1,6 @@
 import pghistory
 import swapper
+from baseapp_comments.models import CommentableModel
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import random_name_in
 from django.conf import settings
@@ -90,7 +91,7 @@ class PageMixin(models.Model):
         abstract = True
 
 
-class AbstractPage(PageMixin, TimeStampedModel, RelayModel):
+class AbstractPage(PageMixin, TimeStampedModel, RelayModel, CommentableModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="pages",
