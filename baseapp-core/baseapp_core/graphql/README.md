@@ -55,6 +55,53 @@ urlpatterns = [
 Our `GraphQLView` is a subclass of `graphene_django.views.GraphQLView` with some additional features:
 - Sentry integration, it will name the transaction with the query name instead of just `/graphql`, making it easy to find queries on Sentry.
 
+## Enable websockets
+
+To enable websockets you need to make sure you have `daphne` in your `INSTALLED_APPS` and `ASGI_APPLICATION` setup in your settings file.
+
+```python
+INSTALLED_APPS = [
+    "daphne",
+    # ...
+]
+
+ASGI_APPLICATION = "apps.asgi.application"
+```
+
+In your `asgi.py` make sure to have something like:
+    
+```python
+from django.core.asgi import get_asgi_application
+from django.urls import re_path
+
+from channels.routing import ProtocolTypeRouter, URLRouter
+
+django_asgi_app = get_asgi_application()
+
+# we need to load all applications before we can import from the apps
+
+from baseapp_core.graphql.consumers import GraphqlWsJWTAuthenticatedConsumer 
+
+# OR if not using JWT:
+# from baseapp_core.graphql.consumers import GraphqlWsAuthenticatedConsumer
+
+
+application = ProtocolTypeRouter(
+    {
+        "http": django_asgi_app,
+        "websocket": URLRouter([
+            re_path(r"graphql", GraphqlWsJWTAuthenticatedConsumer.as_asgi())
+        ]),
+    }
+)
+```
+
+**Make sure** to check that when running `runserver` if you see the following message, this will confirm you are using ASGI:
+
+```
+[daphne.server] [INFO] Listening on TCP address 0.0.0.0:8000
+```
+
 ## Usage
 
 ### Object Types
