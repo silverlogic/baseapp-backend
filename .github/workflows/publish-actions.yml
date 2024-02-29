@@ -65,4 +65,9 @@ jobs:
     with:
       project: baseapp-follows
     secrets: inherit
+  baseapp-pages:
+    uses: ./.github/workflows/publish-workflow.yml
+    with:
+      project: baseapp-pages
+    secrets: inherit
 

@@ -32,7 +32,15 @@ class AbstractUserAdmin(UserAdmin):
         ),
         (
             _("Permissions"),
-            {"fields": ("is_active", "is_superuser")},
+            {
+                "fields": (
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
+                    "groups",
+                    "user_permissions",
+                ),
+            },
         ),
         (_("Profile"), {"fields": (("first_name", "last_name"),)}),
     )

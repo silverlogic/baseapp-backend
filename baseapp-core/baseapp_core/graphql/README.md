@@ -176,6 +176,28 @@ query {
 
 Aboth will return the same object.
 
+### DeleteNode
+
+Add `baseapp_core.graphql.mutations.DeleteNode` to your `Mutation` class, like:
+
+```python
+from baseapp_core.graphql import DeleteNode
+
+class Mutation(
+    graphene.ObjectType,
+):
+    delete_node = DeleteNode.Field()
+```
+
+This will make it possible to delete any object that the user has permission to delete:
+
+```graphql
+mutation {
+    deleteNode(id: "VXNlcjox") {
+        deletedID @deleteRecord
+    }
+}
+```
 
 ### get_obj_relay_id
 

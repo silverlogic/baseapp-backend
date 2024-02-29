@@ -52,6 +52,10 @@ Functionality for url shortening
 
 Reusable app to enable any model follow/unfollow any model.
 
+## [baseapp-pages](baseapp-pages)
+
+Reusable app to handle pages, URL's paths and metadata. It provides useful models and GraphQL Interfaces.
+
 ## How to develop
 
 Each module of baseapp-backend has a demo project in `testproject/` directory, which can be run as a standalone Django app to test. Then in baseapp-backend directory:

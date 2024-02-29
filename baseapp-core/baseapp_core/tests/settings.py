@@ -58,6 +58,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -169,7 +170,7 @@ CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
 
 # GraphQL
 GRAPHENE = {
-    "SCHEMA": "testproject.graphql.schema.schema",
+    "SCHEMA": "testproject.graphql.schema",
     "MIDDLEWARE": (
         "baseapp_core.graphql.LogExceptionMiddleware",
         "baseapp_core.graphql.TokenAuthentication",
