@@ -6,7 +6,7 @@ Reusable app to handle pages, URL's paths and metadata. It provides useful model
 - [ ] Allow for custom settings.LANGUAGES per project
 - [ ] Make create migration work with TranslatedField
 
-Currenly if you have a different set of languages in your projects it will create a new migration changing the fields. So if you have a migration check test it will fail because the `settings.LANGUAGES are different.
+Currenly if you have a different set of languages in your projects it will create a new migration changing the fields. So if you have a migration check test it will fail because the `settings.LANGUAGES` are different.
 
 ## How to install:
 
@@ -26,10 +26,8 @@ Add `baseapp_pages` and `django_quill` to your project's `INSTALLED_APPS` and ru
 
 ```python
 INSTALLED_APPS = [
-    # ...
     'baseapp_pages',
     'django_quill',
-    # ...
 ]
 ```
 
@@ -128,38 +126,6 @@ class MyModelObjectType(DjangoObjectType):
             )
         return metadata
 ```
-
-<!-- ## How to to customize the Page model
-
-In some cases you may need to extend Page model, and we can do it following the next steps:
-
-Start by creating a barebones django app:
-
-```
-mkdir my_project/pages
-touch my_project/pages/__init__.py
-touch my_project/pages/models.py
-```
-
-Your `models.py` will look something like this:
-
-```python
-from django.db import models
-
-from baseapp_pages.models import AbstractPage
-
-
-class Page(AbstractPage):
-    custom_field = models.CharField(null=True)
-```
-
-Now make your to add your new app to your `INSTALLED_APPS` and run `makemigrations` and `migrate` like any normal django app.
-
-Now in your `settings/base.py` make sure to tell baseapp-pages what is your custom model for Page:
-
-```python
-BASEAPP_PAGES_PAGE_MODEL = 'pages.Page'
-``` -->
 
 ## How to develop
 

@@ -1,6 +1,6 @@
 name: GitHub Actions
 run-name: ${{ github.actor }} is checking ${{ github.ref }} branch 🚀
-on: [push]
+on: [push, pull_request]
 jobs:
   baseapp-auth-baseapp_auth:
     uses: ./.github/workflows/project-workflow.yml
