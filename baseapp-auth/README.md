@@ -89,6 +89,16 @@ SIMPLE_JWT = {
 }
 JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
 ```
+We override some settings from the Simple JWT library by default to make some baseapp features work properly. They look like the following:
+```py
+SIMPLE_JWT = {
+    "TOKEN_OBTAIN_SERIALIZER": "baseapp_auth.rest_framework.jwt.serializers.BaseJwtLoginSerializer",
+    "TOKEN_REFRESH_SERIALIZER": "baseapp_auth.rest_framework.jwt.serializers.BaseJwtRefreshSerializer",
+}
+
+JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
+```
+However, any setting defined on the project will take precedence over the default ones.
 
 There is a constance config for password expiration interval:
 
