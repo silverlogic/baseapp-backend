@@ -70,4 +70,8 @@ jobs:
     with:
       project: baseapp-pages
     secrets: inherit
-
+  baseapp-comments:
+    uses: ./.github/workflows/publish-workflow.yml
+    with:
+      project: baseapp-comments
+    secrets: inherit
