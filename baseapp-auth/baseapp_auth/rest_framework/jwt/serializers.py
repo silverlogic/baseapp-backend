@@ -1,13 +1,18 @@
+from baseapp_auth.rest_framework.jwt.tokens import CustomClaimRefreshToken
 from baseapp_auth.rest_framework.login.serializers import LoginPasswordExpirationMixin
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils.module_loading import import_string
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.serializers import (
+    TokenObtainPairSerializer,
+    TokenRefreshSerializer,
+)
 
 User = get_user_model()
 
 
-class BaseJwtLoginSerializer(LoginPasswordExpirationMixin, TokenObtainPairSerializer):
-    _claim_serializer_class = ""
+class CustomClaimSerializerMixin:
+    _claim_serializer_class = getattr(settings, "JWT_CLAIM_SERIALIZER_CLASS", None)
 
     @classmethod
     def get_claim_serializer_class(cls):
@@ -17,6 +22,10 @@ class BaseJwtLoginSerializer(LoginPasswordExpirationMixin, TokenObtainPairSerial
             msg = "Could not import serializer '%s'" % cls._claim_serializer_class
             raise ImportError(msg)
 
+
+class BaseJwtLoginSerializer(
+    CustomClaimSerializerMixin, LoginPasswordExpirationMixin, TokenObtainPairSerializer
+):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
@@ -33,3 +42,10 @@ class BaseJwtLoginSerializer(LoginPasswordExpirationMixin, TokenObtainPairSerial
         validated_data = super().validate(data)
         self.check_password_expiration(self.user)
         return validated_data
+
+
+class BaseJwtRefreshSerializer(CustomClaimSerializerMixin, TokenRefreshSerializer):
+    _token_class = CustomClaimRefreshToken
+
+    def token_class(cls, *args):
+        return cls._token_class(*args, ClaimSerializerClass=cls.get_claim_serializer_class())

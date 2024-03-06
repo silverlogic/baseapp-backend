@@ -1,5 +1,7 @@
 from django.apps import AppConfig
 
+from .settings import JWT_CLAIM_SERIALIZER_CLASS, SIMPLE_JWT
+
 
 class AuthConfig(AppConfig):
     default = True
@@ -8,4 +10,13 @@ class AuthConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
 
     def ready(self):
-        pass
+        from django.conf import settings  # noqa
+
+        # Set default settings
+        settings.SIMPLE_JWT = {
+            **SIMPLE_JWT,
+            **getattr(settings, "SIMPLE_JWT", {}),
+        }
+        settings.JWT_CLAIM_SERIALIZER_CLASS = getattr(
+            settings, "JWT_CLAIM_SERIALIZER_CLASS", JWT_CLAIM_SERIALIZER_CLASS
+        )
