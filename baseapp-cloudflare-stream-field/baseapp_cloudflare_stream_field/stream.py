@@ -45,7 +45,7 @@ class StreamClient:
     def upload_caption_file(self, video_uid, language_code, caption_file):
         res = requests.put(
             f"{self._api_url}/{video_uid}/captions/{language_code}",
-            headers={key: value for key, value in self.request_headers.items() if key != "Content-Type"},
+            headers={**self.request_headers, "Content-Type": "multipart/form-data"},
             files={"file": caption_file},
         )
         return res.json()
