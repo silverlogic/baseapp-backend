@@ -42,6 +42,14 @@ class StreamClient:
         )
         return res.json()["result"]
 
+    def upload_caption_file(self, video_uid, language_code, caption_file):
+        res = requests.put(
+            f"{self._api_url}/{video_uid}/captions/{language_code}",
+            headers={**self.request_headers, "Content-Type": "multipart/form-data"},
+            files={"file": caption_file},
+        )
+        return res.json()
+
     def delete_video_data(self, video_uid):
         res = requests.delete(
             f"{self._api_url}/{video_uid}",
