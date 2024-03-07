@@ -10,13 +10,11 @@ Currenly if you have a different set of languages in your projects it will creat
 
 ## How to install:
 
-Add dependencies to your `requirements/base.txt` file:
+This package requires to following packages to be installed:
 
-```
-baseapp-pages
-```
+- [baseapp-comments](../baseapp-comments/README.md)
 
-And run provision or manually `pip install -r requirements/base.ext`
+And install the package with `pip install baseapp-pages`.
 
 If you want to develop, [install using this other guide](#how-to-develop).
 
