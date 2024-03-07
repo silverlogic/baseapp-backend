@@ -5,6 +5,9 @@ from django.utils.translation import gettext_lazy as _
 INSTALLED_APPS += [
     "graphene_django",
     "baseapp_pages",
+    "django_quill",
+    "baseapp_reactions",
+    "baseapp_comments",
     "baseapp_auth",
     "testproject.testapp",
 ]
@@ -20,4 +23,5 @@ LANGUAGES = [("en", _("English")), ("es", _("Spanish")), ("pt", _("Portuguese"))
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "baseapp_pages.permissions.PagesPermissionsBackend",
+    "baseapp_comments.permissions.CommentsPermissionsBackend",
 ]

@@ -6,5 +6,3 @@
 -e ./baseapp-reactions
 -e ./baseapp-notifications
 -e ./baseapp-comments
-
-django-channels-graphql-ws @ git+https://github.com/silverlogic/DjangoChannelsGraphqlWs.git@5378558e9137e4bd34f55bf478f2764c5ec453a9
