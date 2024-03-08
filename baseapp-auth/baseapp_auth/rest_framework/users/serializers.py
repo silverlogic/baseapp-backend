@@ -35,6 +35,7 @@ class UserBaseSerializer(ModelSerializer):
             "avatar",
             "first_name",
             "last_name",
+            "phone_number",
         )
         private_fields = (
             "email",

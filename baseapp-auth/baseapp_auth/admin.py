@@ -42,7 +42,7 @@ class AbstractUserAdmin(UserAdmin):
                 ),
             },
         ),
-        (_("Profile"), {"fields": (("first_name", "last_name"),)}),
+        (_("Profile"), {"fields": (("first_name", "last_name", "phone_number"),)}),
     )
     add_fieldsets = (
         (
@@ -66,7 +66,7 @@ class AbstractUserAdmin(UserAdmin):
         "is_password_expired",
     )
     list_filter = ("date_joined", "is_superuser", "is_active")
-    search_fields = ("first_name", "last_name", "email")
+    search_fields = ("first_name", "last_name", "email", "phone_number")
     ordering = ("id",)
     filter_horizontal = ()
     actions = ["force_expire_password"]

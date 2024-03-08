@@ -6,6 +6,7 @@ from django.db.models import TextChoices
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
+from phonenumber_field.modelfields import PhoneNumberField
 
 from .managers import UserManager
 
@@ -28,6 +29,7 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser):
     # Profile
     first_name = models.CharField(max_length=100, blank=True)
     last_name = models.CharField(max_length=100, blank=True)
+    phone_number = PhoneNumberField(blank=True, null=True, unique=True)
 
     is_active = models.BooleanField(
         _("active"),
