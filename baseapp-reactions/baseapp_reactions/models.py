@@ -103,7 +103,7 @@ class ReactableModel(models.Model):
     reactions = GenericRelation(
         SwappedReaction,
         content_type_field="target_content_type",
-        object_id_field="target_object_id"
+        object_id_field="target_object_id",
     )
 
     class Meta:

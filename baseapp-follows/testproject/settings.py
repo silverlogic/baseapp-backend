@@ -27,7 +27,10 @@ CELERY_BEAT_SCHEDULE = {
 
 # Auth
 AUTH_USER_MODEL = "testapp.User"
-AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "baseapp_auth.permissions.UsersPermissionsBackend",
+]
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.PBKDF2PasswordHasher"]
 
 # Sites

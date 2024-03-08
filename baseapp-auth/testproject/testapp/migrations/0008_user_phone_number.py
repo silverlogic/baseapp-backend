@@ -3,7 +3,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("testapp", "0007_user_groups_user_is_staff_user_user_permissions"),
     ]

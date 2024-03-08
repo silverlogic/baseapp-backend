@@ -11,7 +11,16 @@ from phonenumber_field.modelfields import PhoneNumberField
 from .managers import UserManager
 
 
-class AbstractUser(PermissionsMixin, AbstractBaseUser):
+def use_relay_model():
+    try:
+        from baseapp_core.graphql.models import RelayModel
+
+        return RelayModel
+    except ImportError:
+        return object
+
+
+class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model()):
     email = CaseInsensitiveEmailField(unique=True, db_index=True)
     is_email_verified = models.BooleanField(default=False)
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
@@ -54,6 +63,17 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser):
         abstract = True
         verbose_name = _("user")
         verbose_name_plural = _("users")
+        permissions = [
+            ("view_all_users", _("can view all users")),
+            ("view_user_email", _("can view user's email field")),
+            ("view_user_phone_number", _("can view user's phone number field")),
+            ("view_user_is_superuser", _("can view user's is_superuser field")),
+            ("view_user_is_staff", _("can view user's is_staff field")),
+            ("view_user_is_email_verified", _("can view user's is_email_verified field")),
+            ("view_user_password_changed_date", _("can view user's password_changed_date field")),
+            ("view_user_new_email", _("can view user's new_email field")),
+            ("view_user_is_new_email_confirmed", _("can view user's is_new_email_confirmed field")),
+        ]
 
     def __str__(self):
         return self.get_full_name()
