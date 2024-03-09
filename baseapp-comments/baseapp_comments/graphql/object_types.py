@@ -85,7 +85,6 @@ class CommentObjectType(DjangoObjectType):
     @classmethod
     def get_node(self, info, id):
         node = super().get_node(info, id)
-        print("node", node)
         if not info.context.user.has_perm("baseapp_comments.view_comment", node):
             return None
         return node
