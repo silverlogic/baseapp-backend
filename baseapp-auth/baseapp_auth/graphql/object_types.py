@@ -1,5 +1,6 @@
 import graphene
-from baseapp_core.graphql import DjangoObjectType
+from avatar.templatetags.avatar_tags import avatar_url
+from baseapp_core.graphql import DjangoObjectType, File
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from graphene import relay
@@ -27,6 +28,8 @@ class AbstractUserObjectType(object):
     is_authenticated = graphene.Boolean()
     full_name = graphene.String()
     short_name = graphene.String()
+
+    avatar = graphene.Field(File, width=graphene.Int(), height=graphene.Int())
 
     # Make them not required
     email = graphene.String()
@@ -64,6 +67,9 @@ class AbstractUserObjectType(object):
         )
         interfaces = interfaces
         filterset_class = UsersFilter
+
+    def resolve_avatar(self, info, width, height):
+        return File(url=avatar_url(self, width, height))
 
     def resolve_metadata(self, info):
         return MetadataObjectType(
