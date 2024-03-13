@@ -1,14 +1,13 @@
 import factory
 import swapper
+from baseapp_core.tests.factories import UserFactory
 from django.contrib.contenttypes.models import ContentType
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
 
-# UserFactory = get_user_factory()
-
 
 class AbstractReactionFactory(factory.django.DjangoModelFactory):
-    # TO DO: user = factory.SubFactory(UserFactory)
+    user = factory.SubFactory(UserFactory)
     reaction_type = factory.Faker("random_element", elements=Reaction.ReactionTypes)
     target_object_id = factory.SelfAttribute("target.id")
     target_content_type = factory.LazyAttribute(

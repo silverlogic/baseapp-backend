@@ -1,12 +1,11 @@
 from baseapp_auth.models import AbstractUser
-from baseapp_core.graphql.models import RelayModel
 from django.utils import timezone
 from model_utils import FieldTracker
 
 from baseapp_follows.models import FollowableModel
 
 
-class User(AbstractUser, RelayModel, FollowableModel):
+class User(AbstractUser, FollowableModel):
     # FieldTracker doesn't work with abstract model classes
     tracker = FieldTracker(fields=["is_superuser", "password"])
 

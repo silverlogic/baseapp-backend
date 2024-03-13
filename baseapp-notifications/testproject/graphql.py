@@ -1,13 +1,13 @@
 import graphene
+from baseapp_auth.graphql.queries import UsersQueries
 
 from baseapp_notifications.graphql.mutations import NotificationsMutations
 from baseapp_notifications.graphql.subscriptions import NotificationsSubscription
-from testproject.testapp.graphql.queries import UsersQuery
 
 
 class Query(
     graphene.ObjectType,
-    UsersQuery,
+    UsersQueries,
 ):
     pass
 

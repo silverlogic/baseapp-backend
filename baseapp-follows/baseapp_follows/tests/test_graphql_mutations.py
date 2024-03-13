@@ -1,6 +1,6 @@
 import pytest
 import swapper
-from baseapp_auth.tests.factories import UserFactory
+from baseapp_core.tests.factories import UserFactory
 
 Follow = swapper.load_model("baseapp_follows", "Follow")
 

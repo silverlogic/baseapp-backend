@@ -140,6 +140,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/3.2/topics/i18n/
 
 LANGUAGE_CODE = "en-us"
+LANGUAGES = [("en", _("English"))]
 
 TIME_ZONE = "UTC"
 
@@ -148,8 +149,6 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
-
-LANGUAGES = [("en", _("English"))]
 
 
 # Static files (CSS, JavaScript, Images)
@@ -213,3 +212,8 @@ REST_FRAMEWORK = {
     "SEARCH_PARAM": "q",
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
 }
+
+BASEAPP_AUTH_USER_FACTORY = "baseapp_core.tests.factories.UserFactory"
+
+# Notifications
+NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"

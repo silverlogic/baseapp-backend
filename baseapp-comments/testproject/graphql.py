@@ -1,14 +1,14 @@
 import graphene
+from baseapp_auth.graphql.queries import UsersQueries
 from baseapp_core.graphql import DeleteNode
 from graphene import relay
 
 from baseapp_comments.graphql.mutations import CommentsMutations
 from baseapp_comments.graphql.queries import CommentsQueries
 from baseapp_comments.graphql.subscriptions import CommentsSubscriptions
-from testproject.testapp.graphql.queries import UsersQuery
 
 
-class Query(graphene.ObjectType, CommentsQueries, UsersQuery):
+class Query(graphene.ObjectType, CommentsQueries, UsersQueries):
     node = relay.node.NodeField(relay.Node)
 
 

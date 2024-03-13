@@ -1,7 +1,8 @@
 import django_filters
+import swapper
 from django.db.models import Q
 
-from ..models import Comment
+Comment = swapper.load_model("baseapp_comments", "Comment")
 
 
 class CommentFilter(django_filters.FilterSet):

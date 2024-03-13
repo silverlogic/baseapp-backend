@@ -4,6 +4,7 @@ import baseapp_auth.rest_framework.urls.auth_mfa as auth_mfa_urls
 import baseapp_auth.rest_framework.urls.auth_mfa_jwt as auth_mfa_jwt_urls
 import baseapp_auth.rest_framework.urls.pre_auth as pre_auth_urls
 from baseapp_auth.rest_framework.routers.account import account_router
+from baseapp_core.graphql import GraphQLView
 from django.contrib import admin
 from django.urls import include, re_path
 
@@ -23,4 +24,5 @@ v1_urlpatterns = [
 urlpatterns = [
     re_path(r"^admin/", admin.site.urls),
     re_path(r"v1/", include((v1_urlpatterns, "v1"), namespace="v1")),
+    re_path(r"graphql", GraphQLView.as_view(graphiql=True)),
 ]

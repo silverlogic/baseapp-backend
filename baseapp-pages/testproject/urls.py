@@ -1,6 +1,6 @@
+from baseapp_core.graphql import GraphQLView
 from django.contrib import admin
 from django.urls import path
-from graphene_django.views import GraphQLView
 
 __all__ = [
     "urlpatterns",
