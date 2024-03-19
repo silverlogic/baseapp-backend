@@ -51,3 +51,6 @@ def test_user_can_report(django_user_client, graphql_user_client):
     content = response.json()
     assert content["data"]["reportCreate"]["report"]["node"]["reportType"] == "SPAM"
     assert Report.objects.count() == 1
+
+    user2.refresh_from_db()
+    assert user2.reports_count["total"] == 1

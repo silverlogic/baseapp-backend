@@ -23,6 +23,7 @@ class AbstractBaseReport(TimeStampedModel):
         SPAM = 1, _("Spam")
         INAPPROPRIATE = 2, _("Inappropriate")
         FAKE = 3, _("Fake")
+        OTHER = 4, _("Other")
 
         @property
         def description(self):
