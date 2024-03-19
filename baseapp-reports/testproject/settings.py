@@ -21,7 +21,6 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "baseapp_auth.permissions.UsersPermissionsBackend",
     "baseapp_reports.permissions.ReportsPermissionsBackend",
-
 ]
 
 BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False

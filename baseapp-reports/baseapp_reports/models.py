@@ -95,9 +95,7 @@ def update_reports_count(target):
     target.save(update_fields=["reports_count"])
 
 
-SwappedReport = swapper.load_model(
-    "baseapp_reports", "Report", required=False, require_ready=False
-)
+SwappedReport = swapper.load_model("baseapp_reports", "Report", required=False, require_ready=False)
 
 
 class ReportableModel(models.Model):

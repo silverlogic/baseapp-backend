@@ -1,19 +1,10 @@
 import graphene
 import swapper
-from baseapp_core.graphql import RelayMutation, login_required
-from baseapp_core.utils import get_content_type_by_natural_key
+from baseapp_core.graphql import RelayMutation, get_obj_from_relay_id, login_required
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
-from graphql_relay import to_global_id
 from graphql_relay.connection.arrayconnection import offset_to_cursor
-from graphql_relay.node.node import from_global_id
-from baseapp_core.graphql import (
-    RelayMutation,
-    get_obj_from_relay_id,
-    get_pk_from_relay_id,
-    login_required,
-)
 
 from .object_types import ReportNode, ReportsInterface, ReportTypesEnum
 
@@ -33,6 +24,8 @@ class ReportCreate(RelayMutation):
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
+        report_type = input.get("report_type")
+        report_subject = input.get("report_subject")
 
         if not info.context.user.has_perm("baseapp_reports.add_report", target):
             raise GraphQLError(
@@ -42,21 +35,21 @@ class ReportCreate(RelayMutation):
 
         content_type = ContentType.objects.get_for_model(target)
 
-
         report = Report.objects.create(
             user=info.context.user,
             target_object_id=target.pk,
             target_content_type=content_type,
-            defaults={"report_type": report_type},
+            report_type=report_type,
+            report_subject=report_subject,
         )
-       
+
         target.refresh_from_db()
 
         return ReportCreate(
-            reaction=ReportNode._meta.connection.Edge(node=report, cursor=offset_to_cursor(0)),
+            report=ReportNode._meta.connection.Edge(node=report, cursor=offset_to_cursor(0)),
             target=target,
         )
 
 
 class ReportsMutations(object):
-    reaction_toggle = ReportCreate.Field()
+    report_create = ReportCreate.Field()

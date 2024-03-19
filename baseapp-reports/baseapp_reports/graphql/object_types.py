@@ -46,7 +46,7 @@ class ReportsInterface(relay.Node):
 
 class ReportNode(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
     target = graphene.Field(relay.Node)
-    reaction_type = graphene.Field(ReportTypesEnum)
+    report_type = graphene.Field(ReportTypesEnum)
 
     class Meta:
         interfaces = (relay.Node,)
@@ -54,7 +54,8 @@ class ReportNode(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
         fields = (
             "id",
             "user",
-            "reaction_type",
+            "report_type",
+            "report_subject",
             "created",
             "modified",
             "target",
