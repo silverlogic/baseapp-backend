@@ -1,5 +1,4 @@
 import pghistory
-import pgtrigger
 import swapper
 from baseapp_core.graphql import RelayModel
 from baseapp_reactions.models import ReactableModel
@@ -7,9 +6,12 @@ from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.db.models.signals import post_delete
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
+from .managers import NonDeletedComments
+from .status import CommentStatus
 from .validators import blocked_words_validator
 
 SwappedComment = swapper.load_model(
@@ -35,18 +37,6 @@ class AbstractCommentableModel(models.Model):
 
     class Meta:
         abstract = True
-
-
-class CommentStatus(models.IntegerChoices):
-    DELETED = 0, _("deleted")
-    PUBLISHED = 1, _("published")
-
-
-class NonDeletedComments(models.Manager):
-    """Automatically filters out soft deleted objects from QuerySets"""
-
-    def get_queryset(self):
-        return super(NonDeletedComments, self).get_queryset().exclude(status=CommentStatus.DELETED)
 
 
 class AbstractComment(TimeStampedModel, AbstractCommentableModel, ReactableModel, RelayModel):
@@ -134,9 +124,6 @@ class AbstractComment(TimeStampedModel, AbstractCommentableModel, ReactableModel
                 ]
             ),
         ]
-        triggers = [
-            pgtrigger.SoftDelete(name="soft_delete", field="status", value=CommentStatus.DELETED)
-        ]
         permissions = [
             ("pin_comment", _("can pin comments")),
             ("report_comment", _("can report comments")),
@@ -147,6 +134,16 @@ class AbstractComment(TimeStampedModel, AbstractCommentableModel, ReactableModel
 
     def __str__(self):
         return "Comment #%s by %s" % (self.id, self.user_id)
+
+    def delete(self, *args, **kwargs):
+        self.status = CommentStatus.DELETED
+        self.save(update_fields=["status"])
+        post_delete.send(
+            sender=SwappedComment,
+            instance=self,
+            origin=self,
+            using=self._state.db,
+        )
 
 
 @pghistory.track(pghistory.Snapshot(), exclude=["comments_count", "reactions_count"])
