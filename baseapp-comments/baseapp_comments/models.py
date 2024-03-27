@@ -54,7 +54,7 @@ class AbstractComment(TimeStampedModel, AbstractCommentableModel, ReactableModel
         settings.AUTH_USER_MODEL,
         verbose_name=_("user"),
         related_name="comments",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
