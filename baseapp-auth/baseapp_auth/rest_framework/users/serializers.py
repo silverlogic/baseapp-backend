@@ -138,5 +138,6 @@ class ConfirmEmailSerializer(serializers.Serializer):
         instance.save()
         return instance
 
+
 class UserPermissionSerializer(serializers.Serializer):
     perm = serializers.CharField(required=True)
