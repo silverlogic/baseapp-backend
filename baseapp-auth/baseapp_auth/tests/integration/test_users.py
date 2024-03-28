@@ -6,6 +6,7 @@ from avatar.models import Avatar
 from baseapp_auth.rest_framework.routers.account import account_router
 from baseapp_auth.rest_framework.users.views import UsersViewSet
 from baseapp_auth.tests.factories import PasswordValidationFactory
+from django.contrib.auth.models import Permission
 from baseapp_auth.tests.mixins import ApiMixin
 from baseapp_auth.tokens import ConfirmEmailTokenGenerator
 from baseapp_auth.utils.referral_utils import get_user_referral_model
@@ -294,3 +295,29 @@ class TestConfirmEmail(ApiMixin):
     def test_confirm_email_no_user(self, client, data):
         r = client.post(self.reverse(kwargs={"pk": self.user.pk + 1}), data)
         h.responseBadRequest(r)
+
+
+class TestUserPermission(ApiMixin):
+    view_name = "users-permissions"
+
+    def test_can_get_their_permission(self, user_client):
+        perm = Permission.objects.create(codename="test_perm", name="Test", content_type_id=1)
+        user_client.user.user_permissions.add(perm)
+        r = user_client.get(self.reverse())
+        h.responseOk(r)
+
+    def test_guest_cannot_get_permission(self, client):
+        r = client.get(self.reverse())
+        h.responseUnauthorized(r)
+
+    def test_user_can_check_their_permission(self, user_client):
+        perm = Permission.objects.create(codename="test_perm", name="Test", content_type_id=1)
+        user_client.user.user_permissions.add(perm)
+        r = user_client.post(self.reverse(), {"perm": "admin.test_perm"})
+        h.responseOk(r)
+        assert r.data["has_perm"]
+
+    def test_user_get_false_without_permission(self, user_client):
+        r = user_client.post(self.reverse(), {"perm": "admin.test_perm"})
+        h.responseOk(r)
+        assert not r.data["has_perm"]

@@ -18,6 +18,7 @@ from .parsers import SafeJSONParser
 from .serializers import (
     ChangePasswordSerializer,
     ConfirmEmailSerializer,
+    UserPermissionSerializer,
     UserSerializer,
 )
 
@@ -99,3 +100,15 @@ class UsersViewSet(
         else:
             user.delete()
         return response.Response(data={}, status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=False, methods=["get", "post"], serializer_class=UserPermissionSerializer)
+    def permissions(self, request):
+        user = request.user
+        if request.method == "GET":
+            permissions = user.get_all_permissions()
+            return response.Response({"permissions": permissions})
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        return response.Response({"has_perm": user.has_perm(serializer.data["perm"])})
