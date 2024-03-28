@@ -29,7 +29,7 @@ def default_comments_count():
 
 class AbstractCommentableModel(models.Model):
     comments_count = models.JSONField(
-        default=default_comments_count, verbose_name=_("comments count")
+        default=default_comments_count, verbose_name=_("comments count"), editable=False
     )
     is_comments_enabled = models.BooleanField(default=True, verbose_name=_("is comments enabled"))
 
