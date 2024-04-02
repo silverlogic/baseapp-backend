@@ -3,7 +3,6 @@ from datetime import timedelta
 import baseapp_auth.tests.helpers as h
 import pytest
 from avatar.models import Avatar
-from baseapp_auth.rest_framework.routers.account import account_router
 from baseapp_auth.tests.factories import PasswordValidationFactory
 from baseapp_auth.tests.mixins import ApiMixin
 from baseapp_auth.tokens import ConfirmEmailTokenGenerator
