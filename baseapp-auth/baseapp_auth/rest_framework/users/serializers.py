@@ -137,3 +137,7 @@ class ConfirmEmailSerializer(serializers.Serializer):
         instance.is_email_verified = True
         instance.save()
         return instance
+
+
+class UserPermissionSerializer(serializers.Serializer):
+    perm = serializers.CharField(required=True)
