@@ -1,6 +1,8 @@
 from baseapp_core.rest_framework.decorators import action
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.http import Http404
+from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
 from rest_framework import (
     filters,
@@ -11,6 +13,7 @@ from rest_framework import (
     status,
     viewsets,
 )
+from rest_framework_nested.viewsets import NestedViewSetMixin
 
 User = get_user_model()
 
@@ -18,6 +21,7 @@ from .parsers import SafeJSONParser
 from .serializers import (
     ChangePasswordSerializer,
     ConfirmEmailSerializer,
+    UserManagePermissionSerializer,
     UserPermissionSerializer,
     UserSerializer,
 )
@@ -112,3 +116,31 @@ class UsersViewSet(
         serializer.is_valid(raise_exception=True)
 
         return response.Response({"has_perm": user.has_perm(serializer.data["perm"])})
+
+
+class PermissionsViewSet(
+    NestedViewSetMixin, viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateModelMixin
+):
+    pagination_class = None
+    serializer_class = UserManagePermissionSerializer
+    permission_classes = [
+        permissions.IsAuthenticated,
+    ]
+    parent_lookup_kwargs = {"user_pk": "user__id"}
+
+    def get_user(self):
+        user_pk = self.kwargs.get("user_pk", None)
+        return get_object_or_404(User, pk=user_pk) if user_pk else None
+
+    def get_queryset(self):
+        user = self.get_user()
+        if user:
+            if not self.request.user.has_perm("users.change_user"):
+                raise serializers.ValidationError(
+                    {"detail": "You do not have permission to perform this action."}
+                )
+            return user.user_permissions.all().select_related("content_type")
+        return Permission.objects.all().select_related("content_type")
+
+    def get_serializer_context(self):
+        return {**super().get_serializer_context(), "user": self.get_user()}

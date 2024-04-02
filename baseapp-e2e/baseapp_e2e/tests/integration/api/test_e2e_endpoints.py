@@ -42,7 +42,6 @@ class TestLoadData(TestBaseE2E):
     def test_load_data(self, data, client):
         assert User.objects.count() == 0
         r = client.post(self.endpoint_url, data=json.dumps(data), content_type="application/json")
-        print(r.data)
         h.responseOk(r)
 
         assert User.objects.count() == len(data["objects"])

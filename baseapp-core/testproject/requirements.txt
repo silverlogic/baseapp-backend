@@ -2,6 +2,7 @@
 -e ./baseapp-core
 
 djangorestframework-simplejwt[crypto]>=5.2.2
+drf-nested-routers==0.93.5
 
 # test
 freezegun==1.2.1
