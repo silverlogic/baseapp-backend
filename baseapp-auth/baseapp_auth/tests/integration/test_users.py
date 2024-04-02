@@ -4,7 +4,6 @@ import baseapp_auth.tests.helpers as h
 import pytest
 from avatar.models import Avatar
 from baseapp_auth.rest_framework.routers.account import account_router
-from baseapp_auth.rest_framework.users.views import UsersViewSet
 from baseapp_auth.tests.factories import PasswordValidationFactory
 from baseapp_auth.tests.mixins import ApiMixin
 from baseapp_auth.tokens import ConfirmEmailTokenGenerator
@@ -13,6 +12,7 @@ from baseapp_referrals.utils import get_referral_code
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
 User = get_user_model()
@@ -25,10 +25,6 @@ skip_if_no_referrals = pytest.mark.skipif(
 )
 
 UserReferral = get_user_referral_model()
-
-account_router.register(
-    r"users", UsersViewSet, basename="users"
-)  # We expect the main app to register the viewset
 
 
 class TestUsersRetrieve(ApiMixin):
@@ -321,3 +317,69 @@ class TestUserPermission(ApiMixin):
         r = user_client.post(self.reverse(), {"perm": "admin.test_perm"})
         h.responseOk(r)
         assert not r.data["has_perm"]
+
+
+class TestUserPermissionList(ApiMixin):
+    view_name = "user-permissions-list"
+
+    def test_guest_cannot_get_user_permissions(self, client):
+        print(account_router.urls, "users_router_nested")
+
+        content_type = ContentType.objects.all().first()
+        perm = Permission.objects.filter(content_type_id=content_type).first()
+        user = UserFactory()
+        user.user_permissions.add(perm)
+        r = client.get(self.reverse(kwargs={"user_pk": user.pk}))
+        h.responseUnauthorized(r)
+
+    def test_user_without_perm_cannot_get_user_permissions(self, user_client):
+        content_type = ContentType.objects.all().first()
+        perm = Permission.objects.filter(content_type_id=content_type).first()
+        user = UserFactory()
+        user.user_permissions.add(perm)
+        r = user_client.get(self.reverse(kwargs={"user_pk": user.pk}))
+        h.responseBadRequest(r)
+        assert "You do not have permission to perform this action." == r.data["detail"]
+
+    def test_user_with_perm_can_get_user_permissions(self, user_client):
+        content_type = ContentType.objects.all().first()
+        perm = Permission.objects.filter(content_type_id=content_type).first()
+        user = UserFactory()
+        user.user_permissions.add(perm)
+        p = Permission.objects.get(codename="change_user")
+        p.content_type.app_label = "users"
+        p.content_type.save()
+        user_client.user.user_permissions.add(p)
+        user_client.user.refresh_from_db()
+        r = user_client.get(self.reverse(kwargs={"user_pk": user.pk}))
+        print(user_client.user.user_permissions.all(), "PERM")
+
+        h.responseOk(r)
+
+    def test_user_with_perm_can_up_user_permissions(self, user_client):
+        content_type = ContentType.objects.all().first()
+        perm = Permission.objects.filter(content_type_id=content_type).first()
+        user = UserFactory()
+        user.user_permissions.add(perm)
+        p = Permission.objects.get(codename="change_user")
+        p.content_type.app_label = "users"
+        p.content_type.save()
+        user_client.user.user_permissions.add(p)
+        r = user_client.post(
+            self.reverse(kwargs={"user_pk": user.pk}), data={"codename": "delete_user"}
+        )
+        h.responseCreated(r)
+        assert user.user_permissions.count() == 2
+
+    def test_user_with_perm_can_set_user_permissions(self, user_client):
+        user = UserFactory()
+        p = Permission.objects.get(codename="change_user")
+        p.content_type.app_label = "users"
+        p.content_type.save()
+        user_client.user.user_permissions.add(p)
+        r = user_client.post(
+            self.reverse(kwargs={"user_pk": user.pk}),
+            data={"permissions": ["change_user", "delete_user"]},
+        )
+        h.responseCreated(r)
+        assert user.user_permissions.count() == 2

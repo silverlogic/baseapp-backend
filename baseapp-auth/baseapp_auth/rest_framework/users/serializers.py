@@ -5,6 +5,8 @@ from baseapp_auth.utils.referral_utils import get_user_referral_model, use_refer
 from baseapp_core.rest_framework.serializers import ModelSerializer
 from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
@@ -141,3 +143,46 @@ class ConfirmEmailSerializer(serializers.Serializer):
 
 class UserPermissionSerializer(serializers.Serializer):
     perm = serializers.CharField(required=True)
+
+
+class UserContentTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContentType
+        fields = ["app_label", "model"]
+
+
+class UserManagePermissionSerializer(serializers.ModelSerializer):
+    content_type = UserContentTypeSerializer(read_only=True)
+    permissions = serializers.ListField(
+        child=serializers.CharField(), write_only=True, required=False
+    )
+
+    class Meta:
+        model = Permission
+        fields = ["id", "codename", "content_type", "permissions"]
+        extra_kwargs = {
+            "codename": {"required": False},
+        }
+
+    def create(self, validated_data):
+        user = self.context["user"]
+        if not user:
+            raise serializers.ValidationError({"user": "User does not exist."})
+        if not self.context["request"].user.has_perm("users.change_user"):
+            raise serializers.ValidationError(
+                {"detail": "You do not have permission to perform this action."}
+            )
+        perms = validated_data.pop("permissions", [])
+        if len(perms) > 0:
+            permissions = Permission.objects.filter(codename__in=perms)
+            user.user_permissions.set(permissions)
+
+        if validated_data.get("codename"):
+            permission = Permission.objects.filter(codename=validated_data["codename"]).first()
+            if not permission:
+                raise serializers.ValidationError(
+                    {"codename": "Permission with this codename does not exist."}
+                )
+            user.user_permissions.add(permission)
+            return permission
+        return validated_data
