@@ -323,8 +323,6 @@ class TestUserPermissionList(ApiMixin):
     view_name = "user-permissions-list"
 
     def test_guest_cannot_get_user_permissions(self, client):
-        print(account_router.urls, "users_router_nested")
-
         content_type = ContentType.objects.all().first()
         perm = Permission.objects.filter(content_type_id=content_type).first()
         user = UserFactory()
@@ -352,8 +350,6 @@ class TestUserPermissionList(ApiMixin):
         user_client.user.user_permissions.add(p)
         user_client.user.refresh_from_db()
         r = user_client.get(self.reverse(kwargs={"user_pk": user.pk}))
-        print(user_client.user.user_permissions.all(), "PERM")
-
         h.responseOk(r)
 
     def test_user_with_perm_can_up_user_permissions(self, user_client):
