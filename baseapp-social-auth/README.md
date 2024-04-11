@@ -10,10 +10,10 @@ Use this package to login/signup using social networks (Facebook, Google and oth
 
 ### Install the package
 
-Add to `requirements/base.txt`:
+Install in your environment:
 
-```
-baseapp-social-auth @ git+https://github.com/silverlogic/baseapp-backend.git@v0.1#subdirectory=baseapp-social-auth
+```bash
+pip install baseapp-social-auth
 ```
 
 ### Add to your routes

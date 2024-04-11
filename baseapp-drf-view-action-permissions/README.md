@@ -4,10 +4,10 @@ This app uses django provided permission and group model and provides the abilit
 
 ## Install the package
 
-Add to `requirements/base.txt` (replacing everything inside brackets):
+Install in your environment:
 
 ```bash
-baseapp-drf-view-action-permissions @ git+https://github.com/silverlogic/baseapp-backend.git@v0.1#subdirectory=baseapp-drf-view-action-permissions
+pip install baseapp-drf-view-action-permissions
 ```
 
 ## Add the app to your project INSTALLED_APPS

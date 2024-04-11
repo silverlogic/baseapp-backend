@@ -4,10 +4,10 @@ This app provides integration with Cloudflare Stream, where you can upload [dire
 
 ## Install the package
 
-Add to `requirements/base.txt`:
+Install in your environment:
 
 ```bash
-baseapp-cloudflare-stream-field @ git+https://github.com/silverlogic/baseapp-backend.git@v0.1#subdirectory=baseapp-cloudflare-stream-field
+pip install baseapp-cloudflare-stream-field
 ```
 
 Add the following to your `settings/base.py`:
