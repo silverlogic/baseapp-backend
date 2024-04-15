@@ -4,11 +4,10 @@ Reusable app to enable url shortening.
 
 ## How to install:
 
-Add dependencies to your `requirements/base.txt` file:
+Install in your environment:
 
-```
-baseapp-core @ git+https://github.com/silverlogic/baseapp-backend.git@v0.1#subdirectory=baseapp-core
-baseapp-reactions @ git+https://github.com/silverlogic/baseapp-backend.git@v0.1#subdirectory=baseapp-url-shortening
+```bash
+pip install baseapp-url-shortening
 ```
 
 And run provision or manually `pip install -r requirements/base.ext`

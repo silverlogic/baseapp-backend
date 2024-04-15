@@ -35,7 +35,6 @@ query {
   }
 }
 ```
-```
 
 ### Utilities
 
@@ -45,10 +44,10 @@ There is a [test project](testproject/) with a complete demo set up.
 
 ## Installation
 
-Add to requirements of yor project (replacing everything inside brackets):
+Install in your environment:
 
 ```bash
-baseapp-auth @ git+https://github.com/silverlogic/baseapp-backend.git@v0.1#subdirectory=baseapp-auth
+pip install baseapp-auth
 ```
 
 ### Settings
