@@ -1,4 +1,5 @@
 import pytest
+from baseapp_reactions.tests.factories import ReactionFactory
 from django.test import override_settings
 
 from .factories import CommentFactory
@@ -97,6 +98,64 @@ def test_order_by_pinned_last(graphql_client):
 
     response = graphql_client(
         VIEW_ALL_QUERY, variables={"id": target.relay_id, "orderBy": "is_pinned"}
+    )
+    content = response.json()
+
+    assert len(content["data"]["node"]["comments"]["edges"]) == 2
+    assert content["data"]["node"]["comments"]["edges"][-1]["node"]["id"] == comment.relay_id
+
+
+def test_order_by_reactions_total_desc(graphql_client):
+    target = CommentFactory()
+    CommentFactory(target=target)
+    comment = CommentFactory(target=target)
+    ReactionFactory(target=comment)
+
+    response = graphql_client(
+        VIEW_ALL_QUERY, variables={"id": target.relay_id, "orderBy": "-reactions_count_total"}
+    )
+    content = response.json()
+    assert len(content["data"]["node"]["comments"]["edges"]) == 2
+    assert content["data"]["node"]["comments"]["edges"][0]["node"]["id"] == comment.relay_id
+
+
+def test_order_by_reactions_total_asc(graphql_client):
+    target = CommentFactory()
+    CommentFactory(target=target)
+    comment = CommentFactory(target=target)
+    ReactionFactory(target=comment)
+
+    response = graphql_client(
+        VIEW_ALL_QUERY, variables={"id": target.relay_id, "orderBy": "reactions_count_total"}
+    )
+    content = response.json()
+
+    assert len(content["data"]["node"]["comments"]["edges"]) == 2
+    assert content["data"]["node"]["comments"]["edges"][-1]["node"]["id"] == comment.relay_id
+
+
+def test_order_by_replies_total_desc(graphql_client):
+    target = CommentFactory()
+    CommentFactory(target=target)
+    comment = CommentFactory(target=target)
+    CommentFactory(target=target, in_reply_to=comment)
+
+    response = graphql_client(
+        VIEW_ALL_QUERY, variables={"id": target.relay_id, "orderBy": "-replies_count_total"}
+    )
+    content = response.json()
+    assert len(content["data"]["node"]["comments"]["edges"]) == 2
+    assert content["data"]["node"]["comments"]["edges"][0]["node"]["id"] == comment.relay_id
+
+
+def test_order_by_replies_total_asc(graphql_client):
+    target = CommentFactory()
+    CommentFactory(target=target)
+    comment = CommentFactory(target=target, is_pinned=True)
+    CommentFactory(target=target, in_reply_to=comment)
+
+    response = graphql_client(
+        VIEW_ALL_QUERY, variables={"id": target.relay_id, "orderBy": "replies_count_total"}
     )
     content = response.json()
 
