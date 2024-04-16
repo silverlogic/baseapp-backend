@@ -2,6 +2,7 @@ import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
 from baseapp_core.graphql import DjangoObjectType
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
@@ -22,12 +23,22 @@ def create_object_type_from_enum(name, enum):
 ReactionsCount = create_object_type_from_enum("ReactionsCount", Reaction.ReactionTypes)
 
 
-class ReactionsNode(relay.Node):
+class ReactionsInterface(relay.Node):
     reactions_count = graphene.Field(ReactionsCount)
-    reactions = DjangoFilterConnectionField(lambda: ReactionNode)
-    my_reaction = graphene.Field(lambda: ReactionNode, required=False)
+    reactions = DjangoFilterConnectionField(lambda: ReactionObjectType)
+    is_reactions_enabled = graphene.Boolean(required=True)
+    my_reaction = graphene.Field(lambda: ReactionObjectType, required=False)
 
     def resolve_reactions(self, info, **kwargs):
+        if not getattr(self, "is_reactions_enabled", True):
+            return Reaction.objects.none()
+
+        CAN_ANONYMOUS_VIEW_REACTIONS = getattr(
+            settings, "BASEAPP_REACTIONS_CAN_ANONYMOUS_VIEW_REACTIONSS", True
+        )
+        if not CAN_ANONYMOUS_VIEW_REACTIONS and not info.context.user.is_authenticated:
+            return Reaction.objects.none()
+
         target_content_type = ContentType.objects.get_for_model(self)
         return Reaction.objects.filter(
             target_content_type=target_content_type,
@@ -44,7 +55,7 @@ class ReactionsNode(relay.Node):
             ).first()
 
 
-class ReactionNode(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
+class ReactionObjectType(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
     target = graphene.Field(relay.Node)
     reaction_type = graphene.Field(ReactionTypesEnum)
 
@@ -62,3 +73,10 @@ class ReactionNode(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
         filter_fields = {
             "id": ["exact"],
         }
+
+    @classmethod
+    def get_node(self, info, id):
+        node = super().get_node(info, id)
+        if not info.context.user.has_perm("baseapp_comments.view_comment", node):
+            return None
+        return node

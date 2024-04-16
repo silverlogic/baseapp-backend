@@ -1,4 +1,5 @@
 import swapper
+from baseapp_core.graphql import RelayModel
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -18,7 +19,7 @@ def default_reactions_count():
     return d
 
 
-class AbstractBaseReaction(TimeStampedModel):
+class AbstractBaseReaction(TimeStampedModel, RelayModel):
     class ReactionTypes(models.IntegerChoices):
         LIKE = 1, _("like")
         DISLIKE = -1, _("dislike")
@@ -99,15 +100,13 @@ SwappedReaction = swapper.load_model(
 
 
 class ReactableModel(models.Model):
-    reactions_count = models.JSONField(default=default_reactions_count)
+    reactions_count = models.JSONField(default=default_reactions_count, editable=False)
     reactions = GenericRelation(
         SwappedReaction,
         content_type_field="target_content_type",
         object_id_field="target_object_id",
     )
+    is_reactions_enabled = models.BooleanField(default=True)
 
     class Meta:
         abstract = True
-
-    def get_my_permissions(self, request):
-        raise NotImplementedError

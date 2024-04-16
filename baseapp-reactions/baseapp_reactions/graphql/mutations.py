@@ -5,18 +5,17 @@ from baseapp_core.utils import get_content_type_by_natural_key
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
-from graphql_relay import to_global_id
 from graphql_relay.connection.arrayconnection import offset_to_cursor
 from graphql_relay.node.node import from_global_id
 
-from .object_types import ReactionNode, ReactionsNode, ReactionTypesEnum
+from .object_types import ReactionObjectType, ReactionsInterface, ReactionTypesEnum
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
 
 
 class ReactionToggle(RelayMutation):
-    reaction = graphene.Field(ReactionNode._meta.connection.Edge, required=False)
-    target = graphene.Field(ReactionsNode)
+    reaction = graphene.Field(ReactionObjectType._meta.connection.Edge, required=False)
+    target = graphene.Field(ReactionsInterface)
     reaction_deleted_id = graphene.ID(required=False)
 
     class Input:
@@ -44,14 +43,11 @@ class ReactionToggle(RelayMutation):
         else:
             content_type = ContentType.objects.get_for_model(target)
 
-        # check https://github.com/queplanta/backend/blob/master/accounts/permissions.py#L9
-        if "reaction-add" not in target.get_my_permissions(info.context):
+        if not info.context.user.has_perm("baseapp_reactions.add_reaction", target):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
             )
-            # return cls(e)
-        # target.has_permission(info.context, 'reaction')
 
         reaction, created = Reaction.objects.get_or_create(
             user=info.context.user,
@@ -61,18 +57,18 @@ class ReactionToggle(RelayMutation):
         )
         if not created:
             if reaction.reaction_type == reaction_type:
-                if "reaction-delete" not in target.get_my_permissions(info.context):
+                if not info.context.user.has_perm("baseapp_reactions.delete_reaction", reaction):
                     raise GraphQLError(
                         str(_("You don't have permission to perform this action")),
                         extensions={"code": "permission_required"},
                     )
 
-                reaction_deleted_id = to_global_id(ReactionNode._meta.name, reaction.pk)
+                reaction_deleted_id = reaction.relay_id
                 reaction.delete()
                 target.refresh_from_db()
                 return ReactionToggle(target=target, reaction_deleted_id=reaction_deleted_id)
 
-            if "reaction-change" not in target.get_my_permissions(info.context):
+            if not info.context.user.has_perm("baseapp_reactions.change_reaction", reaction):
                 raise GraphQLError(
                     str(_("You don't have permission to perform this action")),
                     extensions={"code": "permission_required"},
@@ -84,7 +80,9 @@ class ReactionToggle(RelayMutation):
         target.refresh_from_db()
 
         return ReactionToggle(
-            reaction=ReactionNode._meta.connection.Edge(node=reaction, cursor=offset_to_cursor(0)),
+            reaction=ReactionObjectType._meta.connection.Edge(
+                node=reaction, cursor=offset_to_cursor(0)
+            ),
             target=target,
         )
 

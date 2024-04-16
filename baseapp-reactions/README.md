@@ -10,13 +10,29 @@ Install in your environment:
 pip install baseapp-reactions
 ```
 
-And run provision or manually `pip install -r requirements/base.ext`
-
 If you want to develop, [install using this other guide](#how-to-develop).
 
 ## How to use
 
 Add `baseapp_reactions` to your project's `INSTALLED_APPS`
+
+```python
+INSTALLED_APPS = [
+    # ...
+    "baseapp_reactions",
+    # ...
+]
+```
+
+Add `baseapp_reactions.permissions.ReactionsPermissionsBackend` to the `AUTHENTICATION_BACKENDS` list in your django settings file.
+
+```python
+AUTHENTICATION_BACKENDS = [
+    # ...
+    "baseapp_reactions.permissions.ReactionsPermissionsBackend",
+    # ...
+]
+```
 
 Now make sure all models you'd like to get reactions also inherits `ReactableModel`, like:
 
@@ -27,23 +43,23 @@ class Comment(models.Model, ReactableModel):
     body = models.Textfield()
 ```
 
-Also make sure your GraphQL object types extends `ReactionsNode` interface:
+Also make sure your GraphQL object types extends `ReactionsInterface` interface:
 
 ```python
-from baseapp_reactions.graphql.object_types import ReactionsNode
+from baseapp_reactions.graphql.object_types import ReactionsInterface
 
 class CommentNode(DjangoObjectType):
     class Meta:
-        interfaces = (relay.Node, ReactionsNode)
+        interfaces = (relay.Node, ReactionsInterface)
 ```
 
-Expose `ReactionsMutations` and `ReactionsQuery` in your GraphQL/graphene endpoint, like:
+Expose `ReactionsMutations` and `ReactionsQueries` in your GraphQL/graphene endpoint, like:
 
 ```python
 from baseapp_reactions.graphql.mutations import ReactionsMutations
-from baseapp_reactions.graphql.queries import ReactionsQuery
+from baseapp_reactions.graphql.queries import ReactionsQueries
 
-class Query(graphene.ObjectType, ReactionsQuery):
+class Query(graphene.ObjectType, ReactionsQueries):
     pass
 
 class Mutation(graphene.ObjectType, ReactionsMutations):
@@ -52,7 +68,7 @@ class Mutation(graphene.ObjectType, ReactionsMutations):
 schema = graphene.Schema(query=Query, mutation=Mutation)
 ```
 
-This will expose `reactionToggle` mutation and add fields and connections to all your GraphqlQL Object Types using interface `ReactionsNode`.
+This will expose `reactionToggle` mutation and add fields and connections to all your GraphqlQL Object Types using interface `ReactionsInterface`.
 
 Example:
 
@@ -118,30 +134,6 @@ Now in your `settings/base.py` make sure to tell baseapp-reactions what is your 
 ```python
 BASEAPP_REACTIONS_REACTION_MODEL = 'reactions.Reaction'
 ```
-
-## Writing test cases in your project
-
-There is a `AbstractReactionFactory` which helps you write other factories:
-
-```
-import factory
-from baseapp_reactions.tests.factories import AbstractReactionFactory
-
-class CommentFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = "comments.Comment"
-
-
-class CommentReactionFactory(AbstractReactionFactory):
-    target = factory.SubFactory(CommentFactory)
-
-    class Meta:
-        model = "baseapp_reactions.Reaction"
-        # OR if you have a custom model, point to it:
-        model = "reactions.Reaction"
-```
-
-In the above example we have a easy way to make reactions to any comment into the database for testing proporses using `CommentReactionFactory`.
 
 ## How to develop
 
