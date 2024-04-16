@@ -11,3 +11,7 @@ class TestURLShortening:
         r = client.get(instance.short_url_path)
         assert r.status_code == 302
         assert r.url == instance.full_url
+
+    def test_redirect_nonexistent_short_code(self, client):
+        response = client.get("/c/invalid_code")
+        assert response.status_code == 404

@@ -1,3 +1,4 @@
 # baseapp dependencies
 -e ./baseapp-core
 -e ./baseapp-url-shortening
+-r ../../baseapp-core/testproject/requirements.txt
