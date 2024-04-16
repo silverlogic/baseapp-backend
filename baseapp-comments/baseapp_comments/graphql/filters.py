@@ -12,6 +12,8 @@ class CommentFilter(django_filters.FilterSet):
         fields=(
             ("created", "created"),
             ("is_pinned", "is_pinned"),
+            ("reactions_count__total", "reactions_count_total"),
+            ("comments_count__total", "replies_count_total"),
         )
     )
 
