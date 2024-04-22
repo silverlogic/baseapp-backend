@@ -133,7 +133,7 @@ class SuperuserUpdateLog(TimeStampedModel):
     assigner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="superuser_assigner_logs",
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
     )
     assignee = models.ForeignKey(
         settings.AUTH_USER_MODEL,

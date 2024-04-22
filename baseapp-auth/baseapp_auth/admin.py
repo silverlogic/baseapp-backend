@@ -125,6 +125,8 @@ class SuperuserUpdateLogAdmin(admin.ModelAdmin):
         )
 
     def has_delete_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
         return False
 
 
