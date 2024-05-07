@@ -1,0 +1,11 @@
+# baseapp dependencies
+-r ../../baseapp-core/testproject/requirements.txt
+
+-e ./baseapp-core[graphql]
+-e ./baseapp-auth
+-e ./baseapp-blocks
+-e ./baseapp-profiles
+-e ./baseapp-follows
+-e ./baseapp-comments
+-e ./baseapp-reactions
+-e ./baseapp-reports
