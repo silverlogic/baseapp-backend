@@ -3,6 +3,7 @@ import pgtrigger
 import swapper
 from baseapp_core.graphql import RelayModel
 from baseapp_reactions.models import ReactableModel
+from baseapp_reports.models import ReportableModel
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -49,7 +50,9 @@ class NonDeletedComments(models.Manager):
         return super(NonDeletedComments, self).get_queryset().exclude(status=CommentStatus.DELETED)
 
 
-class AbstractComment(TimeStampedModel, AbstractCommentableModel, ReactableModel, RelayModel):
+class AbstractComment(
+    TimeStampedModel, AbstractCommentableModel, ReactableModel, ReportableModel, RelayModel
+):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name=_("user"),
