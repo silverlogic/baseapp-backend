@@ -7,6 +7,7 @@ INSTALLED_APPS += [
     "baseapp_notifications",
     "baseapp_reactions",
     "baseapp_comments",
+    "baseapp_reports",
     "baseapp_auth",
     "testproject.testapp",
 ]
