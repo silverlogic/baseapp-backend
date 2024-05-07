@@ -6,6 +6,13 @@ from django.utils.deconstruct import deconstructible
 from django.utils.translation import gettext_lazy as _
 
 
+class CaseInsensitiveCharField(models.CharField):
+    description = _("Case insensitive character")
+
+    def db_type(self, connection):
+        return "citext"
+
+
 class CaseInsensitiveTextField(models.TextField):
     description = _("Case insensitive text")
 

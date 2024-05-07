@@ -10,7 +10,7 @@ class ShortUrl(TimeStampedModel):
 
     @property
     def short_url_path(self) -> str:
-        return reverse("short_url_redirect_full_url", kwargs=dict(short_code=self.short_code))
+        return reverse("v1:short_url_redirect_full_url", kwargs=dict(short_code=self.short_code))
 
     def save(self, *args, **kwargs):
         creating = not self.pk
