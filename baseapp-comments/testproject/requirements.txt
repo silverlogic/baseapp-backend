@@ -6,3 +6,4 @@
 -e ./baseapp-reactions
 -e ./baseapp-notifications
 -e ./baseapp-comments
+-e ./baseapp-reports
