@@ -8,6 +8,7 @@ INSTALLED_APPS += [
     "django_quill",
     "baseapp_reactions",
     "baseapp_comments",
+    "baseapp_reports",
     "baseapp_auth",
     "testproject.testapp",
 ]
