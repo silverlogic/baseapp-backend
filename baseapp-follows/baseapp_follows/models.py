@@ -17,6 +17,15 @@ class AbstractBaseFollow(TimeStampedModel, RelayModel):
     actor_object_id = models.PositiveIntegerField(blank=True, null=True)
     actor = GenericForeignKey("actor_content_type", "actor_object_id")
 
+    new_actor = models.ForeignKey(
+        swapper.get_model_name('baseapp_profiles', 'Profile'),
+        verbose_name=_("profile"),
+        related_name="comments",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+
     target_is_following_back = models.BooleanField(default=False)
 
     target_content_type = models.ForeignKey(
@@ -28,6 +37,15 @@ class AbstractBaseFollow(TimeStampedModel, RelayModel):
     )
     target_object_id = models.PositiveIntegerField(blank=True, null=True, db_index=True)
     target = GenericForeignKey("target_content_type", "target_object_id")
+
+    new_target = models.ForeignKey(
+        swapper.get_model_name('baseapp_profiles', 'Profile'),
+        verbose_name=_("profile"),
+        related_name="comments",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         abstract = True
