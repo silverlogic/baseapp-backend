@@ -152,7 +152,12 @@ class AbstractComment(
         return "Comment #%s by %s" % (self.id, self.user_id)
 
 
-@pghistory.track(pghistory.Snapshot(), exclude=["comments_count", "reactions_count"])
+@pghistory.track(
+    pghistory.InsertEvent(),
+    pghistory.UpdateEvent(),
+    pghistory.DeleteEvent(),
+    exclude=["comments_count", "reactions_count"],
+)
 class Comment(AbstractComment):
     class Meta(AbstractComment.Meta):
         abstract = False
