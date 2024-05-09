@@ -24,6 +24,12 @@ if apps.is_installed("baseapp_pages"):
     interfaces += (PageInterface,)
 
 
+if apps.is_installed("baseapp_ratings"):
+    from baseapp_ratings.graphql.object_types import RatingsInterface
+
+    interfaces += (RatingsInterface,)
+
+
 class AbstractUserObjectType(object):
     is_authenticated = graphene.Boolean()
     full_name = graphene.String()

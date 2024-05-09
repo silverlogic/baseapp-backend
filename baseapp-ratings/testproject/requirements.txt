@@ -1,0 +1,6 @@
+# baseapp dependencies
+-r ../../baseapp-core/testproject/requirements.txt
+
+-e ./baseapp-core[graphql]
+-e ./baseapp-auth
+-e ./baseapp-ratings
