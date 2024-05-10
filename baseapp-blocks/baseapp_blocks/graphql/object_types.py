@@ -36,9 +36,11 @@ class BlocksInterface(relay.Node):
     def resolve_is_blocked_by_me(self, info, **kwargs):
         if not info.context.user.is_authenticated:
             return False
+
+        profile = info.context.user.get_venue_or_band()
         return Block.objects.filter(
-            actor_content_type=ContentType.objects.get_for_model(info.context.user),
-            actor_object_id=info.context.user.id,
+            actor_content_type=ContentType.objects.get_for_model(profile),
+            actor_object_id=profile.id,
             target_content_type=ContentType.objects.get_for_model(self),
             target_object_id=self.id,
         ).exists()
