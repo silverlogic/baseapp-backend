@@ -17,6 +17,9 @@ If you want to develop, [install using this other guide](#how-to-develop).
 
 Add `baseapp_blocks` to your project's `INSTALLED_APPS`
 
+Add `baseapp_blocks.permissions.BlocksPermissionsBackend` to the `AUTHENTICATION_BACKENDS` list in your django settings file.
+
+
 Now make sure all models you'd like to get blocks also inherits `BlockableModel`, like:
 
 ```python
