@@ -66,6 +66,7 @@ class EmailTemplate(TimeStampedModel):
         use_base_template=False,
         extended_with="",
         attachments=[],
+        custom_subject="",
     ):
         if not self.html_content:
             raise Exception("HTML content required to send e-mail")
@@ -75,10 +76,10 @@ class EmailTemplate(TimeStampedModel):
         else:
             base_template_route = extended_with or settings.DEFAULT_EMAIL_TEMPLATE
 
-        html_content, text_content, subject = get_full_copy_template(
+        html_content, text_content, copy_template_subject = get_full_copy_template(
             self, context, use_base_template, base_template_route
         )
-
+        subject = custom_subject if custom_subject else copy_template_subject
         mail = EmailMultiAlternatives(
             subject, text_content, from_email=settings.DEFAULT_FROM_EMAIL, to=recipients
         )

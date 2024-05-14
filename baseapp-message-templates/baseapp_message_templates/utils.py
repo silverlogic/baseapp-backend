@@ -3,6 +3,7 @@ import uuid
 from itertools import islice
 from typing import Iterator
 
+from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.core.mail import EmailMessage
 from django.utils.deconstruct import deconstructible
 
@@ -21,7 +22,13 @@ class random_name_in(object):
 def attach_files(mail: EmailMessage, attachments):
     for attachment in attachments:
         attachment_file = attachment.file if hasattr(attachment, "file") else attachment
-        name = attachment.filename if hasattr(attachment, "filename") else attachment_file.name
+        if isinstance(attachment, TemporaryUploadedFile) or isinstance(
+            attachment, InMemoryUploadedFile
+        ):
+            name = attachment.name
+        else:
+            name = attachment.filename if hasattr(attachment, "filename") else attachment_file.name
+
         mail.attach(name, attachment_file.read())
 
 

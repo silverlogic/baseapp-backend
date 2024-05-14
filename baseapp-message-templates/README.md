@@ -177,7 +177,9 @@ The only required parameter for `send` is `recipients`, which is a list of one o
 
 The `use_base_template` flag will determine whether this message should extend from a base HTML template. If set to `True`, the message will extend from the base template that is located at a certain path. This path will either be the value of `extended_with` if provided, or the value of `DEFAULT_EMAIL_TEMPLATE`. 
 
-Finally, the `attachments` parameter is a list of one or more files that will be send along with this particular message. These attachments will be sent along with any static attachments that have been attached to the template itself through `Attachment`.
+The `attachments` parameter is a list of one or more files that will be send along with this particular message. These attachments will be sent along with any static attachments that have been attached to the template itself through `Attachment`.
+
+Finally, the `subject` parameter is a string, which will override the copy template subject if passed.
 
 ```py
 from baseapp_message_templates.models import EmailTemplate
@@ -190,6 +192,12 @@ context = {"content": "Hello."}
 extended_with = "apps/base/templates/test-template.html"
 
 template.send(recipients, context, True, extended_with)
+
+# example with attachments and custom subject
+attachments = [attch_1, ...]
+subject = f'Custom subject {var}'
+template.send(recipients, context, True, extended_with, 
+              attachments=attachments, subject=subject)
 ```
 
 ### SmsTemplate Model
