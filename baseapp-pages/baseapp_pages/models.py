@@ -46,7 +46,11 @@ class URLPath(TimeStampedModel, RelayModel):
         return self.path
 
 
-@pghistory.track(pghistory.Snapshot())
+@pghistory.track(
+    pghistory.InsertEvent(),
+    pghistory.UpdateEvent(),
+    pghistory.DeleteEvent(),
+)
 class Metadata(TimeStampedModel, RelayModel):
     target_content_type = models.ForeignKey(
         ContentType,
@@ -133,7 +137,11 @@ def conditional_decorator(dec, condition):
     return decorator
 
 
-@pghistory.track(pghistory.Snapshot())
+@pghistory.track(
+    pghistory.InsertEvent(),
+    pghistory.UpdateEvent(),
+    pghistory.DeleteEvent(),
+)
 class Page(AbstractPage):
     class Meta:
         swappable = swapper.swappable_setting("baseapp_pages", "Page")
