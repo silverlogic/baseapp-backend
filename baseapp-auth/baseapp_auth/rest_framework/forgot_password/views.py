@@ -21,11 +21,19 @@ class ForgotPasswordBaseViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        associated_user = User.objects.get(email=serializer.data["email"])
-        token = self.get_urlsafe_user_token(associated_user)
-        info = {"email": associated_user.email, "token": token}
-        send_password_reset_email(info)
-        return response.Response(ForgotPasswordSerializer(info).data, status=status.HTTP_200_OK)
+        associated_user = getattr(serializer, "user", None)
+
+        if associated_user is not None:
+            token = self.get_urlsafe_user_token(associated_user)
+            info = {"email": associated_user.email, "token": token}
+            send_password_reset_email(info)
+
+        return response.Response(
+            {
+                "message": "A reset password link will be sent to you if an account is registered under that email."
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class ForgotPasswordViewSet(ForgotPasswordBaseViewSet):

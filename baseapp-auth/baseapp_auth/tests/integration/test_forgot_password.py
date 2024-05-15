@@ -25,21 +25,30 @@ class TestForgotPassword(ApiMixin):
 
     def test_when_email_doesnt_exist(self, data, client):
         r = client.post(self.reverse(), data)
-        h.responseBadRequest(r)
-        assert r.data["email"] == ["Email does not exist."]
+        h.responseOk(r)
+        assert (
+            r.data["message"]
+            == "A reset password link will be sent to you if an account is registered under that email."
+        )
 
     def test_when_email_exist(self, client, data, outbox, deep_link_mock_success):
         UserFactory(email=data["email"])
         r = client.post(self.reverse(), data)
         h.responseOk(r)
-        assert r.data["email"] == "admin@tsl.io"
+        assert (
+            r.data["message"]
+            == "A reset password link will be sent to you if an account is registered under that email."
+        )
         assert len(outbox) == 1
 
     def test_fetch_deep_link_error(self, client, data, outbox, deep_link_mock_error):
         UserFactory(email=data["email"])
         r = client.post(self.reverse(), data)
         h.responseOk(r)
-        assert r.data["email"] == "admin@tsl.io"
+        assert (
+            r.data["message"]
+            == "A reset password link will be sent to you if an account is registered under that email."
+        )
         assert len(outbox) == 1
 
     def test_sends_reset_email(self, client, data, outbox):
