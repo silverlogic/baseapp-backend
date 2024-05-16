@@ -11,6 +11,8 @@ except InvalidCacheBackendError:
 
 class File(graphene.ObjectType):
     url = graphene.String(required=True)
+    width = graphene.String(required=False)
+    height = graphene.String(required=False)
     # contentType = graphene.String()
     # bytes = graphene.Int()
 
@@ -40,16 +42,21 @@ class ThumbnailField(graphene.Field):
                 cache_key = self._get_cache_key(instance, width, height)
                 value_from_cache = cache.get(cache_key)
                 if value_from_cache:
-                    return File(url=value_from_cache)
+                    return File(**value_from_cache)
 
             thumbnailer = get_thumbnailer(instance)
-            url = thumbnailer.get_thumbnail({"size": (width, height)}).url
-            absolute_url = info.context.build_absolute_uri(url)
+            thumbnail = thumbnailer.get_thumbnail({"size": (width, height)})
+            absolute_url = info.context.build_absolute_uri(thumbnail.url)
 
             if cache:
-                cache.set(cache_key, absolute_url, timeout=None)
+                thumbnail_args = {
+                    "url": absolute_url,
+                    "width": thumbnail.width,
+                    "height": thumbnail.height,
+                }
+                cache.set(cache_key, thumbnail_args, timeout=None)
 
-            return File(url=absolute_url)
+            return File(**thumbnail_args)
 
         return built_thumbnail
 
