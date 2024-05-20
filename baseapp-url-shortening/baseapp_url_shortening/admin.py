@@ -12,5 +12,5 @@ class ShortUrlAdmin(admin.ModelAdmin):
 
     def shortened_url(self, instance: ShortUrl) -> str | None:
         if front_url := getattr(settings, "FRONT_URL", None):
-            return urllib.parse.urljoin(front_url, instance.short_url_path).replace("/v1/", "/")
+            return urllib.parse.urljoin(front_url, instance.public_short_url)
         return None
