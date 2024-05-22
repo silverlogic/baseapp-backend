@@ -154,7 +154,7 @@ To publish a new version to pypi you need to:
 - update `version` in `setup.cfg` of the respective baseapp package
 - make sure that builds pass
 - create a release on github
-  - choose to create a new tag (named as `baseapp-<PACKAGE>@v<version>` e.g. baseapp-core@v1.2.3)
+  - choose to create a new tag (named as `baseapp-<PACKAGE>@v<version>` e.g. baseapp-core@v1.2.3), use the same version as in `setup.cfg`
   - use the same name for release title
   - optionally add changelog text
 
