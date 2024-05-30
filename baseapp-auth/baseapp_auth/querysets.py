@@ -1,8 +1,9 @@
-from constance import config
 from django.db import models
 from django.db.models import ExpressionWrapper, F, Q, Value
 from django.db.models.functions import Cast
 from django.utils import timezone
+
+from constance import config
 
 
 class UserQuerySet(models.QuerySet):

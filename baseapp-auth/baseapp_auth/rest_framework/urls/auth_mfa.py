@@ -1,6 +1,7 @@
+from django.urls import include, re_path
+
 import baseapp_auth.rest_framework.urls.mfa as mfa_urls
 from baseapp_core.rest_framework.routers import DefaultRouter
-from django.urls import include, re_path
 
 mfa_login_router = DefaultRouter(trailing_slash=False)
 

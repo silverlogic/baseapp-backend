@@ -1,8 +1,9 @@
+from django.apps import apps
+from django.contrib.auth import get_user_model
+
 import graphene
 from avatar.templatetags.avatar_tags import avatar_url
 from baseapp_core.graphql import DjangoObjectType, File
-from django.apps import apps
-from django.contrib.auth import get_user_model
 from graphene import relay
 
 from .filters import UsersFilter

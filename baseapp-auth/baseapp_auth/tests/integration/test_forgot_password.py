@@ -1,11 +1,12 @@
 import re
 from unittest.mock import patch
 
+from django.conf import settings
+
 import baseapp_auth.tests.helpers as h
 import pytest
 from baseapp_auth.tests.factories import PasswordValidationFactory
 from baseapp_auth.tests.mixins import ApiMixin
-from django.conf import settings
 
 pytestmark = pytest.mark.django_db
 

@@ -1,10 +1,11 @@
-import baseapp_auth.tests.helpers as h
-import pytest
-from baseapp_auth.tests.mixins import ApiMixin
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 from django.utils import timezone
 from django.utils.timezone import timedelta
+
+import baseapp_auth.tests.helpers as h
+import pytest
+from baseapp_auth.tests.mixins import ApiMixin
 from freezegun import freeze_time
 
 User = get_user_model()

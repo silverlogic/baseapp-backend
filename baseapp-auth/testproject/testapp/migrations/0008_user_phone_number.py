@@ -1,5 +1,6 @@
-import phonenumber_field.modelfields
 from django.db import migrations
+
+import phonenumber_field.modelfields
 
 
 class Migration(migrations.Migration):

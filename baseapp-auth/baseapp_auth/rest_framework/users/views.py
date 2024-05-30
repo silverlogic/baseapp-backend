@@ -1,7 +1,6 @@
 from baseapp_core.rest_framework.decorators import action
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
-from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
 from rest_framework import (
@@ -20,7 +19,6 @@ User = get_user_model()
 from .parsers import SafeJSONParser
 from .serializers import (
     ChangePasswordSerializer,
-    ConfirmEmailSerializer,
     UserManagePermissionSerializer,
     UserPermissionSerializer,
     UserSerializer,
@@ -74,22 +72,6 @@ class UsersViewSet(
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return response.Response({"detail": "success"})
-
-    @action(
-        detail=True,
-        methods=["POST"],
-        permission_classes=[],
-        serializer_class=ConfirmEmailSerializer,
-    )
-    def confirm_email(self, request, pk=None, *args, **kwargs):
-        try:
-            user = self.get_object()
-        except Http404:
-            raise serializers.ValidationError(_("Invalid token"))
-        serializer = self.get_serializer(data=request.data, instance=user)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return response.Response({})
 
     @action(
         detail=False,

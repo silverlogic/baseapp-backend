@@ -1,12 +1,13 @@
 from unittest.mock import patch
 
+from django.conf import settings
+from django.contrib.auth import get_user_model
+
 import baseapp_auth.tests.helpers as h
 import pytest
 from baseapp_auth.tests.mixins import ApiMixin
 from baseapp_core.exceptions import DeepLinkFetchError
 from baseapp_referrals.utils import get_referral_code
-from django.conf import settings
-from django.contrib.auth import get_user_model
 
 User = get_user_model()
 UserFactory = h.get_user_factory()

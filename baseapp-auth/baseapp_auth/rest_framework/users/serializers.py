@@ -1,14 +1,16 @@
 from datetime import timedelta
 
-from avatar.models import Avatar
-from baseapp_auth.utils.referral_utils import get_user_referral_model, use_referrals
-from baseapp_core.rest_framework.serializers import ModelSerializer
-from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from constance import config
+
+from avatar.models import Avatar
+from baseapp_auth.utils.referral_utils import get_user_referral_model, use_referrals
+from baseapp_core.rest_framework.serializers import ModelSerializer
+from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
 from rest_framework import serializers
 
 User = get_user_model()
@@ -21,6 +23,7 @@ from .fields import AvatarField
 
 class UserBaseSerializer(ModelSerializer):
     avatar = AvatarField(required=False, allow_null=True)
+    verification_required = serializers.SerializerMethodField()
     referral_code = serializers.SerializerMethodField()
     referred_by_code = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
@@ -30,6 +33,7 @@ class UserBaseSerializer(ModelSerializer):
             "id",
             "email",
             "is_email_verified",
+            "verification_required",
             "new_email",
             "is_new_email_confirmed",
             "referral_code",
@@ -42,6 +46,7 @@ class UserBaseSerializer(ModelSerializer):
         private_fields = (
             "email",
             "is_email_verified",
+            "verification_required",
             "new_email",
             "is_new_email_confirmed",
             "referral_code",
@@ -49,9 +54,13 @@ class UserBaseSerializer(ModelSerializer):
         read_only_fields = (
             "email",
             "is_email_verified",
+            "verification_required",
             "new_email",
             "is_new_email_confirmed",
         )
+        
+    def get_verification_required(self, user):
+        return config.EMAIL_VERIFICATION_REQUIRED
 
     def get_referral_code(self, user):
         if use_referrals():
@@ -125,20 +134,6 @@ class ChangePasswordSerializer(serializers.Serializer):
         user = self.context["request"].user
         user.set_password(self.data["new_password"])
         user.save()
-
-
-class ConfirmEmailSerializer(serializers.Serializer):
-    token = serializers.CharField()
-
-    def validate_token(self, token):
-        if not ConfirmEmailTokenGenerator().check_token(self.instance, token):
-            raise serializers.ValidationError(_("Invalid token"))
-        return token
-
-    def update(self, instance, validated_data):
-        instance.is_email_verified = True
-        instance.save()
-        return instance
 
 
 class UserPermissionSerializer(serializers.Serializer):

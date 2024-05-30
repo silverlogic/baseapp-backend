@@ -1,5 +1,6 @@
-import swapper
 from django.conf import settings
+
+import swapper
 
 
 def use_referrals():

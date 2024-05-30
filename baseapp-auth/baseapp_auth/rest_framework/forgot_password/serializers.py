@@ -1,4 +1,3 @@
-from baseapp_auth.password_validators import apply_password_validators
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core import signing
@@ -6,6 +5,8 @@ from django.core.signing import SignatureExpired
 from django.utils.encoding import DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode
 from django.utils.translation import gettext_lazy as _
+
+from baseapp_auth.password_validators import apply_password_validators
 from rest_framework import serializers
 from rest_framework_simplejwt.authentication import JWTAuthentication
 

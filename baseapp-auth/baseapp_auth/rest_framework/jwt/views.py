@@ -1,5 +1,6 @@
-from baseapp_core.rest_framework.decorators import action
 from django.utils.module_loading import import_string
+
+from baseapp_core.rest_framework.decorators import action
 from rest_framework.serializers import Serializer
 from rest_framework.viewsets import GenericViewSet
 from rest_framework_simplejwt.settings import api_settings

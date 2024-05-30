@@ -1,8 +1,9 @@
+from django.contrib.auth import get_user_model
+from django.utils.translation import gettext as _
+
 from baseapp_auth.password_validators import apply_password_validators
 from baseapp_auth.utils.referral_utils import get_user_referral_model, use_referrals
 from baseapp_referrals.utils import get_user_from_referral_code
-from django.contrib.auth import get_user_model
-from django.utils.translation import gettext as _
 from rest_framework import serializers
 
 User = get_user_model()
