@@ -16,14 +16,13 @@ from rest_framework import serializers
 User = get_user_model()
 
 from baseapp_auth.password_validators import apply_password_validators
-from baseapp_auth.tokens import ConfirmEmailTokenGenerator
 
 from .fields import AvatarField
 
 
 class UserBaseSerializer(ModelSerializer):
     avatar = AvatarField(required=False, allow_null=True)
-    verification_required = serializers.SerializerMethodField()
+    email_verification_required = serializers.SerializerMethodField()
     referral_code = serializers.SerializerMethodField()
     referred_by_code = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
@@ -33,7 +32,7 @@ class UserBaseSerializer(ModelSerializer):
             "id",
             "email",
             "is_email_verified",
-            "verification_required",
+            "email_verification_required",
             "new_email",
             "is_new_email_confirmed",
             "referral_code",
@@ -46,7 +45,7 @@ class UserBaseSerializer(ModelSerializer):
         private_fields = (
             "email",
             "is_email_verified",
-            "verification_required",
+            "email_verification_required",
             "new_email",
             "is_new_email_confirmed",
             "referral_code",
@@ -54,12 +53,12 @@ class UserBaseSerializer(ModelSerializer):
         read_only_fields = (
             "email",
             "is_email_verified",
-            "verification_required",
+            "email_verification_required",
             "new_email",
             "is_new_email_confirmed",
         )
         
-    def get_verification_required(self, user):
+    def get_email_verification_required(self, user):
         return config.EMAIL_VERIFICATION_REQUIRED
 
     def get_referral_code(self, user):
