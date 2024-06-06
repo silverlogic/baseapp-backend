@@ -67,6 +67,8 @@ class ProfilableModel(models.Model):
         related_name="%(class)s",
         on_delete=models.CASCADE,
         verbose_name=_("profile"),
+        null=True,
+        blank=True,
     )
 
     class Meta:
