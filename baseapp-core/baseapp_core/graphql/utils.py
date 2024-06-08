@@ -16,6 +16,12 @@ def get_obj_from_relay_id(info: graphene.ResolveInfo, relay_id):
 
 
 def get_obj_relay_id(obj):
-    registry = get_global_registry()
-    object_type = registry.get_type_for_model(obj._meta.concrete_model)
+    object_type = _cache_object_type(obj)
     return to_global_id(object_type._meta.name, obj.pk)
+
+
+def _cache_object_type(obj):
+    if not hasattr(obj, '_graphql_object_type'):
+        registry = get_global_registry()
+        obj._graphql_object_type = registry.get_type_for_model(obj._meta.concrete_model)
+    return obj._graphql_object_type

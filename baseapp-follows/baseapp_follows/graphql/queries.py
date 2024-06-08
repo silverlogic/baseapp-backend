@@ -1,7 +1,7 @@
 from baseapp_core.graphql import Node
 
-from .object_types import FollowNode
+from .object_types import FollowObjectType
 
 
 class FollowQuery:
-    follow = Node.Field(FollowNode)
+    follow = Node.Field(FollowObjectType)

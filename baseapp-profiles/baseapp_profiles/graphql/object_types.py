@@ -1,12 +1,14 @@
+from typing import Any
 import django_filters
 import graphene
 import swapper
 from baseapp_auth.graphql import PermissionsInterface
 from baseapp_core.graphql import DjangoObjectType, ThumbnailField
+from baseapp_pages.graphql import PageInterface
+from baseapp_follows.graphql.interfaces import FollowsInterface
+# from baseapp_pages.graphql.interfaces import PageInterface
 from django.db.models import Q
 from graphene import relay
-from graphene_django.filter import DjangoFilterConnectionField
-
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
@@ -14,10 +16,33 @@ Profile = swapper.load_model("baseapp_profiles", "Profile")
 class ProfileInterface(relay.Node):
     profile = graphene.Field(lambda: ProfileObjectType)
 
+
 class ProfileFilter(django_filters.FilterSet):
     class Meta:
         model = Profile
         fields = ["name"]
+
+
+class ProfileMetadata:
+    def __init__(self, instance, info):
+        self.instance = instance
+        self.info = info
+    
+    @property
+    def meta_title(self):
+        return self.instance.name
+
+    @property
+    def meta_description(self):
+        return self.instance.name
+    
+    @property
+    def meta_og_type(self):
+        return "profile"
+    
+    @property
+    def meta_og_image(self):
+        return self.instance.image
 
 
 class ProfileObjectType(DjangoObjectType):
@@ -25,9 +50,9 @@ class ProfileObjectType(DjangoObjectType):
     image = ThumbnailField(required=False)
 
     class Meta:
-        interfaces = (relay.Node, PermissionsInterface)
+        interfaces = (relay.Node, PermissionsInterface, PageInterface, FollowsInterface)
         model = Profile
-        fields = ("pk", "name", "status", "image", "owner", "target", "created", "modified")
+        fields = ("pk", "name", "image", "target", "status", "owner", "created", "modified")
         filterset_class = ProfileFilter
 
     @classmethod
@@ -48,3 +73,7 @@ class ProfileObjectType(DjangoObjectType):
             return queryset.filter(
                 Q(status=Profile.ProfileStatus.PUBLIC) | Q(owner=info.context.user)
             )
+    
+    @classmethod
+    def resolve_metadata(cls, instance, info):
+        return ProfileMetadata(instance, info)

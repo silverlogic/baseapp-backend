@@ -1,16 +1,10 @@
 import graphene
 import swapper
-from baseapp_core.graphql import (
-  RelayMutation,
-  login_required,
-  get_obj_from_relay_id
-)
-from baseapp_core.utils import get_content_type_by_natural_key
+from baseapp_core.graphql import RelayMutation, get_obj_from_relay_id, login_required
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from graphql_relay.connection.arrayconnection import offset_to_cursor
-from graphql_relay.node.node import from_global_id
 
 from .object_types import ReactionObjectType, ReactionsInterface, ReactionTypesEnum
 
@@ -43,7 +37,9 @@ class ReactionToggle(RelayMutation):
 
         if input.get("profile_object_id"):
             profile = get_obj_from_relay_id(info, input.get("profile_object_id"))
-            if not info.context.user.has_perm("baseapp_reactions.add_reaction_with_profile", profile):
+            if not info.context.user.has_perm(
+                "baseapp_reactions.add_reaction_with_profile", profile
+            ):
                 raise GraphQLError(
                     str(_("You don't have permission to perform this action")),
                     extensions={"code": "permission_required"},

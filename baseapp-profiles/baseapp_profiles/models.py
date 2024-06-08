@@ -8,8 +8,13 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
+from baseapp_blocks.models import BlockableModel
+from baseapp_follows.models import FollowableModel
+from baseapp_reports.models import ReportableModel
+from baseapp_comments.models import CommentableModel
 
-class AbstractProfile(TimeStampedModel, RelayModel):
+
+class AbstractProfile(TimeStampedModel, FollowableModel, BlockableModel, ReportableModel, CommentableModel, RelayModel):
     class ProfileStatus(models.IntegerChoices):
         PUBLIC = 1, _("public")
         PRIVATE = 2, _("private")
@@ -59,6 +64,9 @@ class AbstractProfile(TimeStampedModel, RelayModel):
 
     def __str__(self):
         return self.name or str(self.pk)
+    
+    def user_has_perm(self, user, perm=None):
+        return user.has_perm(perm or "baseapp_profiles.use_profile", self)
 
 
 class ProfilableModel(models.Model):

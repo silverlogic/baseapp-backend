@@ -4,3 +4,4 @@
 -e ./baseapp-core[graphql]
 -e ./baseapp-auth
 -e ./baseapp-follows
+-e ./baseapp-profiles
