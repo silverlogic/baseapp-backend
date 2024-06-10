@@ -1,10 +1,10 @@
 from datetime import timedelta
-from constance import config
 
 from avatar.models import Avatar
 from baseapp_auth.utils.referral_utils import get_user_referral_model, use_referrals
 from baseapp_core.rest_framework.serializers import ModelSerializer
 from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
+from constance import config
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
