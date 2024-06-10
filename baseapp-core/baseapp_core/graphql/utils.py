@@ -21,7 +21,7 @@ def get_obj_relay_id(obj):
 
 
 def _cache_object_type(obj):
-    if not hasattr(obj, '_graphql_object_type'):
+    if not hasattr(obj, "_graphql_object_type"):
         registry = get_global_registry()
         obj._graphql_object_type = registry.get_type_for_model(obj._meta.concrete_model)
     return obj._graphql_object_type

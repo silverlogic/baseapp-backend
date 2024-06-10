@@ -9,3 +9,4 @@
 -e ./baseapp-reports
 -e ./baseapp-profiles
 -e ./baseapp-pages
+-e ./baseapp-blocks
