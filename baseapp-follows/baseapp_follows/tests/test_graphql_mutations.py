@@ -59,9 +59,6 @@ def test_user_can_follow(django_user_client, graphql_user_client):
     response = graphql_user_client(FOLLOW_TOGGLE_GRAPHQL, variables=variables)
 
     content = response.json()
-    import pdb
-
-    pdb.set_trace()
     assert content["data"]["followToggle"]["target"]["followersCount"] == 1
     assert content["data"]["followToggle"]["actor"]["followingCount"] == 1
 

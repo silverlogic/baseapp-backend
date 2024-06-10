@@ -13,4 +13,4 @@ class FollowsPermissionsBackend(BaseBackend):
             return user_obj.has_perm("baseapp_profiles.use_profile", obj)
         if perm == "baseapp_follows.delete_follow":
             if isinstance(obj, Follow):
-                return user_obj.has_perm("baseapp_profiles.use_profile", obj.actor)
+                return obj.user_id == user_obj.id or user_obj.has_perm("baseapp_profiles.use_profile", obj.actor)
