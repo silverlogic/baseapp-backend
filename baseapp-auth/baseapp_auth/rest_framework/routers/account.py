@@ -29,6 +29,12 @@ from rest_framework_nested.routers import NestedSimpleRouter  # noqa
 
 account_router.register(r"change-email", ChangeEmailViewSet, basename="change-email")
 
+# Confirm Email
+from baseapp_auth.rest_framework.confirm_email.views import (
+    ConfirmEmailViewSet,
+)  # noqa
+
+account_router.register(r"confirm-email", ConfirmEmailViewSet, basename="confirm-email")
 
 account_router.register(r"users", UsersViewSet, basename="users")
 

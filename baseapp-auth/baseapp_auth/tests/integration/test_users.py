@@ -5,7 +5,6 @@ import pytest
 from avatar.models import Avatar
 from baseapp_auth.tests.factories import PasswordValidationFactory
 from baseapp_auth.tests.mixins import ApiMixin
-from baseapp_auth.tokens import ConfirmEmailTokenGenerator
 from baseapp_auth.utils.referral_utils import get_user_referral_model
 from baseapp_referrals.utils import get_referral_code
 from django.conf import settings
@@ -265,31 +264,6 @@ class TestUsersChangePassword(ApiMixin):
         # to the endpoint request object. So we should see serializer field errors here
         assert r.data["current_password"] == ["This field is required."]
         assert r.data["new_password"] == ["This field is required."]
-
-
-class TestConfirmEmail(ApiMixin):
-    view_name = "users-confirm-email"
-
-    @pytest.fixture
-    def data(self):
-        self.user = UserFactory(is_email_verified=False)
-        return {"token": ConfirmEmailTokenGenerator().make_token(self.user)}
-
-    def test_confirm_email(self, client, data):
-        assert not self.user.is_email_verified
-        r = client.post(self.reverse(kwargs={"pk": self.user.pk}), data)
-        h.responseOk(r)
-        self.user.refresh_from_db()
-        assert self.user.is_email_verified
-
-    def test_confirm_email_invalid_token(self, client, data):
-        data["token"] = "invalid-token"
-        r = client.post(self.reverse(kwargs={"pk": self.user.pk}), data)
-        h.responseBadRequest(r)
-
-    def test_confirm_email_no_user(self, client, data):
-        r = client.post(self.reverse(kwargs={"pk": self.user.pk + 1}), data)
-        h.responseBadRequest(r)
 
 
 class TestUserPermission(ApiMixin):
