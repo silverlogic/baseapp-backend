@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ("baseapp_notifications", "0001_initial"),
-        swapper.dependency("baseapp_notifications", "NotificationSetting")
+        swapper.dependency("baseapp_notifications", "NotificationSetting"),
     ]
 
     operations = [
@@ -56,7 +56,9 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                "swappable": swapper.swappable_setting("baseapp_notifications", "NotificationSetting"),
+                "swappable": swapper.swappable_setting(
+                    "baseapp_notifications", "NotificationSetting"
+                ),
             },
         ),
     ]

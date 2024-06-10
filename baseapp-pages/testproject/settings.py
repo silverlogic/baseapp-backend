@@ -10,6 +10,7 @@ INSTALLED_APPS += [
     "baseapp_comments",
     "baseapp_reports",
     "baseapp_profiles",
+    "baseapp_blocks",
     "baseapp_auth",
     "testproject.testapp",
 ]
