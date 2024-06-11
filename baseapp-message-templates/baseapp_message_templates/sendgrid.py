@@ -32,14 +32,16 @@ def send_personalized_mail(copy_template, personalization: Personalization, atta
     return mail.send(fail_silently=True)
 
 
-def mass_send_personalized_mail(copy_template, personalizations: Iterable[Personalization]):
+def mass_send_personalized_mail(
+    copy_template, personalizations: Iterable[Personalization], attachments=[]
+):
     """
     Easy wrapper for sending personalized messages of the same Sendgrid template.
     Recipients data is configured through Sendgrid personalizations.
     """
     success = 0
     template_id = copy_template.sendgrid_template_id
-    attachments = copy_template.static_attachments.all()
+    attachments = copy_template.static_attachments.all() + attachments
 
     for personalizations in chunk(personalizations, MAX_SENDGRID_PERSONALIZATIONS_PER_API_REQUEST):
         mail = SengridMessage(
