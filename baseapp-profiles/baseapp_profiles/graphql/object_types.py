@@ -2,10 +2,11 @@ import django_filters
 import graphene
 import swapper
 from baseapp_auth.graphql import PermissionsInterface
-from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import DjangoObjectType, ThumbnailField
 from django.db.models import Q
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
+
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
@@ -21,6 +22,7 @@ class ProfileFilter(django_filters.FilterSet):
 
 class ProfileObjectType(DjangoObjectType):
     target = graphene.Field(lambda: ProfileInterface)
+    image = ThumbnailField(required=False)
 
     class Meta:
         interfaces = (relay.Node, PermissionsInterface)
