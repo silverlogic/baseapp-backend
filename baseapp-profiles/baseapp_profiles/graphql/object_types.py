@@ -5,13 +5,13 @@ from baseapp_auth.graphql import PermissionsInterface
 from baseapp_core.graphql import DjangoObjectType
 from django.db.models import Q
 from graphene import relay
+from graphene_django.filter import DjangoFilterConnectionField
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
 class ProfileInterface(relay.Node):
     profile = graphene.Field(lambda: ProfileObjectType)
-
 
 class ProfileFilter(django_filters.FilterSet):
     class Meta:
@@ -25,7 +25,7 @@ class ProfileObjectType(DjangoObjectType):
     class Meta:
         interfaces = (relay.Node, PermissionsInterface)
         model = Profile
-        fields = ("pk",)
+        fields = ("pk", "name", "status", "image", "owner", "target", "created", "modified")
         filterset_class = ProfileFilter
 
     @classmethod
