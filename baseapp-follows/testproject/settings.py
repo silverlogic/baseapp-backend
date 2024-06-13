@@ -1,6 +1,7 @@
 from baseapp_core.settings.env import env
 from baseapp_core.tests.settings import *  # noqa
 from celery.schedules import crontab
+from urllib.parse import urljoin
 
 APPS_DIR = BASE_DIR
 
@@ -36,10 +37,11 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.PBKDF2PasswordHasher"]
 # Sites
 URL = env("URL", "", required=False)
 FRONT_URL = env("FRONT_URL", "", required=False)
-FRONT_CONFIRM_EMAIL_URL = FRONT_URL + "/confirm-email/{id}/{token}"
-FRONT_FORGOT_PASSWORD_URL = FRONT_URL + "/forgot-password/{token}"
-FRONT_CHANGE_EMAIL_CONFIRM_URL = FRONT_URL + "/change-email/{id}/{token}"
-FRONT_CHANGE_EMAIL_VERIFY_URL = FRONT_URL + "/change-email-verify/{id}/{token}"
+FRONT_CONFIRM_EMAIL_URL = urljoin(FRONT_URL, "confirm-email/{id}/{token}")
+FRONT_FORGOT_PASSWORD_URL = urljoin(FRONT_URL, "forgot-password/{token}")
+FRONT_CHANGE_EMAIL_CONFIRM_URL = urljoin(FRONT_URL, "change-email/{id}/{token}")
+FRONT_CHANGE_EMAIL_VERIFY_URL = urljoin(FRONT_URL, "change-email-verify/{id}/{token}")
+FRONT_CHANGE_EXPIRED_PASSWORD_URL = urljoin(FRONT_URL, "change-expired-password/{token}")
 
 # IOS Deep Links
 IOS_CONFIRM_EMAIL_DEEP_LINK = False

@@ -1,17 +1,15 @@
-from urllib.parse import urljoin
-
 from baseapp_core.deep_links import get_deep_link
 from baseapp_core.exceptions import DeepLinkFetchError
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
-from django.urls import reverse
 
 User = get_user_model()
 from .tokens import (
     ChangeEmailConfirmTokenGenerator,
     ChangeEmailVerifyTokenGenerator,
+    ChangeExpiredPasswordTokenGenerator,
     ConfirmEmailTokenGenerator,
 )
 
@@ -205,8 +203,10 @@ def remove_superuser_notification_email(non_superuser, assigner):
         )
 
 
-def send_password_expired_email(user: User):
-    context = dict(url=urljoin(settings.URL, reverse("change-expired-password")))
+def send_password_expired_email(user):
+    token = ChangeExpiredPasswordTokenGenerator().make_token(user)
+    url = settings.FRONT_CHANGE_EXPIRED_PASSWORD_URL.format(token=token)
+    context = dict(url=url)
     subject = render_to_string("users/emails/password-expired-subject.txt.j2", context).strip()
     message = render_to_string("users/emails/password-expired-body.txt.j2", context)
     html_message = render_to_string("users/emails/password-expired-body.html.j2", context)

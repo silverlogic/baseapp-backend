@@ -60,13 +60,13 @@ class TestLoginBase(ApiMixin):
         h.responseOk(r)
 
     @override_config(USER_PASSWORD_EXPIRATION_INTERVAL=1)
-    def check_cant_login_with_expired_password(self, client, data):
+    def check_login_with_expired_password_redirects_to_change_expired_password(self, client, data):
         user = UserFactory(email=data["email"], password=data["password"])
         user.password_changed_date = timezone.now() - timezone.timedelta(days=1)
         user.save()
         r = self.send_login_request(client, data)
-        h.responseUnauthorized(r)
-        assert r.data.get("password") is not None
+        h.responseOk(r)
+        assert "change-expired-password" in r.data["redirect_url"]
 
 
 class TestLoginAuthToken(TestLoginBase):
@@ -88,8 +88,8 @@ class TestLoginAuthToken(TestLoginBase):
     def test_can_login_with_not_expired_password(self, client, data):
         self.check_can_login_with_not_expired_password(client, data)
 
-    def test_cant_login_with_expired_password(self, client, data):
-        self.check_cant_login_with_expired_password(client, data)
+    def test_login_with_expired_password_redirects_to_change_expired_password(self, client, data):
+        self.check_login_with_expired_password_redirects_to_change_expired_password(client, data)
 
 
 class TestJwtRefresh(ApiMixin):
@@ -123,8 +123,8 @@ class TestLoginJwt(TestLoginBase):
     def test_can_login_with_not_expired_password(self, client, data):
         self.check_can_login_with_not_expired_password(client, data)
 
-    def test_cant_login_with_expired_password(self, client, data):
-        self.check_cant_login_with_expired_password(client, data)
+    def test_login_with_expired_password_redirects_to_change_expired_password(self, client, data):
+        self.check_login_with_expired_password_redirects_to_change_expired_password(client, data)
 
     def test_jwt_token_contains_user_data(self, client, data):
         user = UserFactory(email=data["email"], password=data["password"])
@@ -159,8 +159,8 @@ class TestLoginMfaAuthToken(TestLoginBase):
     def test_can_login_with_not_expired_password(self, client, data):
         self.check_can_login_with_not_expired_password(client, data)
 
-    def test_cant_login_with_expired_password(self, client, data):
-        self.check_cant_login_with_expired_password(client, data)
+    def test_login_with_expired_password_redirects_to_change_expired_password(self, client, data):
+        self.check_login_with_expired_password_redirects_to_change_expired_password(client, data)
 
     def test_receives_first_step_mfa_response(self, client, active_user_with_application_otp):
         user = active_user_with_application_otp
@@ -198,8 +198,8 @@ class TestLoginMfaJwt(TestLoginBase):
     def test_can_login_with_not_expired_password(self, client, data):
         self.check_can_login_with_not_expired_password(client, data)
 
-    def test_cant_login_with_expired_password(self, client, data):
-        self.check_cant_login_with_expired_password(client, data)
+    def test_login_with_expired_password_redirects_to_change_expired_password(self, client, data):
+        self.check_login_with_expired_password_redirects_to_change_expired_password(client, data)
 
     def test_receives_first_step_mfa_response(self, client, active_user_with_application_otp):
         user = active_user_with_application_otp
