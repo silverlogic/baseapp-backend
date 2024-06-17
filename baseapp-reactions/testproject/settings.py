@@ -1,5 +1,6 @@
-from baseapp_core.tests.settings import *  # noqa
 from django.utils.translation import gettext_lazy as _
+
+from baseapp_core.tests.settings import *  # noqa
 
 # Application definition
 INSTALLED_APPS += [
@@ -11,6 +12,7 @@ INSTALLED_APPS += [
     "baseapp_auth",
     "baseapp_profiles",
     "baseapp_blocks",
+    "baseapp_follows",
     "baseapp_pages",
     "testproject.testapp",
 ]

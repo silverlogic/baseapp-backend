@@ -1,4 +1,5 @@
 import graphene
+import swapper
 from avatar.templatetags.avatar_tags import avatar_url
 from baseapp_core.graphql import DjangoObjectType, File
 from django.apps import apps
@@ -24,6 +25,14 @@ if apps.is_installed("baseapp_pages"):
     interfaces += (PageInterface,)
 
 
+
+if apps.is_installed("baseapp_profiles"):
+    from baseapp_profiles.graphql.object_types import ProfileObjectType, ProfileInterface
+    Profile = swapper.load_model("baseapp_profiles", "Profile")
+
+    interfaces += (ProfileInterface,)
+
+
 class AbstractUserObjectType(object):
     is_authenticated = graphene.Boolean()
     full_name = graphene.String()
@@ -40,6 +49,8 @@ class AbstractUserObjectType(object):
     password_changed_date = graphene.DateTime()
     new_email = graphene.String()
     is_new_email_confirmed = graphene.Boolean()
+
+    profiles = graphene.List(lambda: ProfileObjectType)
 
     class Meta:
         model = User
@@ -64,6 +75,7 @@ class AbstractUserObjectType(object):
             "comments",
             "reactions",
             "last_login",
+            "profiles",
         )
         interfaces = interfaces
         filterset_class = UsersFilter
@@ -109,6 +121,11 @@ class AbstractUserObjectType(object):
     def resolve_is_new_email_confirmed(self, info):
         return view_user_private_field(self, info, "is_new_email_confirmed")
 
+    def resolve_profiles(self, info):
+        if not info.context.user.is_authenticated or self.id != info.context.user.id:
+            return Profile.objects.none()
+        return Profile.objects.filter(Q(owner_id=info.context.user.id) | Q(members__user_id=info.context.user.id))
+
     @classmethod
     def get_queryset(cls, queryset, info):
         if info.context.user.is_anonymous:
@@ -123,7 +140,7 @@ class AbstractUserObjectType(object):
         return node
 
 
-class UserObjectType(AbstractUserObjectType, DjangoObjectType):
+class UserObjectType(AbstractUserObjectType, DjangoObjectType):  
     class Meta(AbstractUserObjectType.Meta):
         pass
 
