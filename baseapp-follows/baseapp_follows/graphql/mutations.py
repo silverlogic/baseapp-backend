@@ -6,13 +6,14 @@ from graphql.error import GraphQLError
 from graphql_relay import offset_to_cursor
 
 from .interfaces import FollowsInterface
-from .object_types import FollowObjectType
 
 Follow = swapper.load_model("baseapp_follows", "Follow")
 
 
 class FollowToggle(RelayMutation):
-    follow = graphene.Field(FollowObjectType._meta.connection.Edge, required=False)
+    follow = graphene.Field(
+        lambda: Follow.get_graphql_object_type()._meta.connection.Edge, required=False
+    )
     target = graphene.Field(FollowsInterface)
     actor = graphene.Field(FollowsInterface)
     follow_deleted_id = graphene.ID(required=False)
@@ -24,6 +25,8 @@ class FollowToggle(RelayMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
+        FollowObjectType = Follow.get_graphql_object_type()
+
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
         actor = get_obj_from_relay_id(info, input.get("actor_object_id"))
 

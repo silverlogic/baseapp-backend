@@ -12,7 +12,7 @@ class RelayModel(models.Model):
     def relay_id(self):
         return get_obj_relay_id(self)
 
-    @property
-    def GraphQLObjectType(self):
-        ot = _cache_object_type(self)
+    @classmethod
+    def get_graphql_object_type(cls):
+        ot = _cache_object_type(cls)
         return ot

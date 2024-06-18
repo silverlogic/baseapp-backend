@@ -1,7 +1,8 @@
-from baseapp_core.graphql import Node
+import swapper
+from baseapp_core.graphql import Node, get_object_type_for_model
 
-from .object_types import FollowObjectType
+Follow = swapper.load_model("baseapp_follows", "Follow")
 
 
 class FollowQuery:
-    follow = Node.Field(FollowObjectType)
+    follow = Node.Field(get_object_type_for_model(Follow))

@@ -17,7 +17,7 @@ class AbstractBaseFollow(TimeStampedModel, RelayModel):
 
     actor = models.ForeignKey(
         swapper.get_model_name("baseapp_profiles", "Profile"),
-        verbose_name=_("profile"),
+        verbose_name=_("actor"),
         related_name="following",
         on_delete=models.CASCADE,
     )
@@ -26,7 +26,7 @@ class AbstractBaseFollow(TimeStampedModel, RelayModel):
 
     target = models.ForeignKey(
         swapper.get_model_name("baseapp_profiles", "Profile"),
-        verbose_name=_("profile"),
+        verbose_name=_("target"),
         related_name="followers",
         on_delete=models.CASCADE,
     )
@@ -92,6 +92,12 @@ class AbstractBaseFollow(TimeStampedModel, RelayModel):
     def update_following_count(self, actor):
         actor.following_count = actor.following.count()
         actor.save(update_fields=["following_count"])
+
+    @classmethod
+    def get_graphql_object_type(cls):
+        from .graphql.object_types import FollowObjectType
+
+        return FollowObjectType
 
 
 class Follow(AbstractBaseFollow):
