@@ -1,7 +1,7 @@
 {% extends 'emails/base.txt.j2' %}
 
 {% block content %}
-Welcome,
+{% trans %}Welcome,{% endtrans %}
 
-To confirm your email address go to {{ confirm_url }}
+{% trans %}To confirm your email address go to {{ confirm_url }}{% endtrans %}
 {% endblock content %}

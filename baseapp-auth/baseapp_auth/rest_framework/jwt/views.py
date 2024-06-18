@@ -1,5 +1,6 @@
 from baseapp_core.rest_framework.decorators import action
 from django.utils.module_loading import import_string
+from django.utils.translation import gettext_lazy as _
 from rest_framework.serializers import Serializer
 from rest_framework.viewsets import GenericViewSet
 from rest_framework_simplejwt.settings import api_settings
@@ -15,7 +16,7 @@ class JWTAuthViewSet(TokenObtainPairView, TokenRefreshView, GenericViewSet):
         elif self.action == "refresh":
             return import_string(api_settings.TOKEN_REFRESH_SERIALIZER)
 
-        raise Exception("Unsupported action for JWTAuthViewSet")
+        raise Exception(_("Unsupported action for JWTAuthViewSet"))
 
     @action(detail=False, methods=["POST"])
     @redirect_if_user_has_expired_password
