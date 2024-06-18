@@ -72,3 +72,7 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-blocks
+  baseapp-profiles:
+    uses: ./.github/workflows/project-workflow.yml
+    with:
+      project: baseapp-profiles

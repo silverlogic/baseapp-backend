@@ -1,12 +1,9 @@
-from typing import Any
 import django_filters
 import graphene
 import swapper
 from baseapp_auth.graphql import PermissionsInterface
 from baseapp_core.graphql import DjangoObjectType, ThumbnailField
-from baseapp_pages.graphql import PageInterface
-from baseapp_follows.graphql.interfaces import FollowsInterface
-# from baseapp_pages.graphql.interfaces import PageInterface
+from django.apps import apps
 from django.db.models import Q
 from graphene import relay
 
@@ -27,7 +24,7 @@ class ProfileMetadata:
     def __init__(self, instance, info):
         self.instance = instance
         self.info = info
-    
+
     @property
     def meta_title(self):
         return self.instance.name
@@ -35,14 +32,27 @@ class ProfileMetadata:
     @property
     def meta_description(self):
         return self.instance.name
-    
+
     @property
     def meta_og_type(self):
         return "profile"
-    
+
     @property
     def meta_og_image(self):
         return self.instance.image
+
+
+interfaces = [relay.Node, PermissionsInterface]
+if apps.is_installed("baseapp_pages"):
+    from baseapp_pages.graphql import PageInterface
+
+    interfaces.append(PageInterface)
+
+
+if apps.is_installed("baseapp_follows"):
+    from baseapp_follows.graphql.interfaces import FollowsInterface
+
+    interfaces.append(FollowsInterface)
 
 
 class ProfileObjectType(DjangoObjectType):
@@ -50,7 +60,7 @@ class ProfileObjectType(DjangoObjectType):
     image = ThumbnailField(required=False)
 
     class Meta:
-        interfaces = (relay.Node, PermissionsInterface, PageInterface, FollowsInterface)
+        interfaces = interfaces
         model = Profile
         fields = ("pk", "name", "image", "target", "status", "owner", "created", "modified")
         filterset_class = ProfileFilter
@@ -73,7 +83,7 @@ class ProfileObjectType(DjangoObjectType):
             return queryset.filter(
                 Q(status=Profile.ProfileStatus.PUBLIC) | Q(owner=info.context.user)
             )
-    
+
     @classmethod
     def resolve_metadata(cls, instance, info):
         return ProfileMetadata(instance, info)

@@ -15,12 +15,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="profile",
             name="blockers_count",
-            field=models.PositiveIntegerField(default=0, editable=False),
+            field=models.PositiveIntegerField(db_default=0, editable=False),
         ),
         migrations.AddField(
             model_name="profile",
             name="blocking_count",
-            field=models.PositiveIntegerField(default=0, editable=False),
+            field=models.PositiveIntegerField(db_default=0, editable=False),
         ),
         migrations.AddField(
             model_name="profile",
