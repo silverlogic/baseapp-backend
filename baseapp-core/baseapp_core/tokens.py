@@ -2,6 +2,7 @@ from django.core.signing import BadSignature, dumps, loads
 from django.utils.encoding import DjangoUnicodeDecodeError, force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
+
 class TokenGenerator(object):
     def make_token(self, obj):
         token = dumps(self.get_signing_value(obj), salt=self.key_salt)
@@ -24,7 +25,7 @@ class TokenGenerator(object):
         try:
             decoded_token = urlsafe_base64_decode(token).decode("utf-8")
             return loads(decoded_token, salt=self.key_salt, max_age=self.max_age)
-        except (BadSignature, DjangoUnicodeDecodeError):
+        except (BadSignature, DjangoUnicodeDecodeError, UnicodeDecodeError):
             return None
 
     @property
