@@ -9,11 +9,6 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
-# from baseapp_blocks.models import BlockableModel
-# from baseapp_follows.models import FollowableModel
-# from baseapp_reports.models import ReportableModel
-# from baseapp_comments.models import CommentableModel
-
 inheritances = [TimeStampedModel]
 if apps.is_installed("baseapp_blocks"):
     from baseapp_blocks.models import BlockableModel

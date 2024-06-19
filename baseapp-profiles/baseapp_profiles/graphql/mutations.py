@@ -2,13 +2,12 @@ import graphene
 import swapper
 from baseapp_core.graphql import (
     SerializerMutation,
+    get_object_type_for_model,
     get_pk_from_relay_id,
     login_required,
 )
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
-
-from .object_types import ProfileObjectType
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
@@ -23,7 +22,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 
 class ProfileCreate(SerializerMutation):
-    profile = graphene.Field(ProfileObjectType._meta.connection.Edge)
+    profile = graphene.Field(lambda: Profile.get_graphql_object_type()._meta.connection.Edge)
 
     class Meta:
         serializer_class = ProfileSerializer
@@ -38,6 +37,7 @@ class ProfileCreate(SerializerMutation):
 
     @classmethod
     def perform_mutate(cls, serializer, info):
+        ProfileObjectType = Profile.get_graphql_object_type()
         obj = serializer.save()
         return cls(
             errors=None,
@@ -46,7 +46,7 @@ class ProfileCreate(SerializerMutation):
 
 
 class ProfileEdit(SerializerMutation):
-    profile = graphene.Field(ProfileObjectType)
+    profile = graphene.Field(get_object_type_for_model(Profile))
 
     class Meta:
         serializer_class = ProfileSerializer
