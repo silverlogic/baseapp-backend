@@ -6,7 +6,6 @@ import pytest
 from baseapp_auth.tests.factories import PasswordValidationFactory
 from baseapp_auth.tests.mixins import ApiMixin
 from django.conf import settings
-from django.test import override_settings
 
 pytestmark = pytest.mark.django_db
 
@@ -75,7 +74,6 @@ class TestResetPassword(ApiMixin):
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
 
-    @override_settings(FRONT_FORGOT_PASSWORD_URL="http://localhost:3000/forgot-password/{token}")
     def test_can_reset_password_with_token_from_email(
         self, client, outbox, data_email, deep_link_mock_error
     ):
@@ -98,7 +96,6 @@ class TestResetPassword(ApiMixin):
         user.refresh_from_db()
         assert user.check_password("blub")
 
-    @override_settings(FRONT_FORGOT_PASSWORD_URL="http://localhost:3000/forgot-password/{token}")
     def test_cant_reset_password_after_resetting_with_samelink(
         self, client, outbox, data_email, deep_link_mock_error
     ):
@@ -132,7 +129,6 @@ class TestResetPassword(ApiMixin):
         user.refresh_from_db()
         assert user.check_password("blub")
 
-    @override_settings(FRONT_FORGOT_PASSWORD_URL="http://localhost:3000/forgot-password/{token}")
     def test_cannot_reset_password_with_invalid_password(
         self, client, outbox, data_email, deep_link_mock_error
     ):
