@@ -1,6 +1,7 @@
 import pytest
 import swapper
 from baseapp_comments.tests.factories import CommentFactory
+from baseapp_profiles.tests.factories import ProfileFactory
 
 from baseapp_reactions.tests.factories import ReactionFactory
 
@@ -96,3 +97,39 @@ def test_user_can_remove_reaction(django_user_client, graphql_user_client):
     assert comment.reactions_count["total"] == 0
     assert comment.reactions_count["LIKE"] == 0
     assert comment.reactions_count["DISLIKE"] == 0
+
+
+def test_user_can_react_with_profile(django_user_client, graphql_user_client):
+    profile = ProfileFactory(owner=django_user_client.user)
+    target = CommentFactory()
+
+    graphql_user_client(
+        REACTION_TOGGLE_GRAPHQL,
+        variables={
+            "input": {
+                "targetObjectId": target.relay_id,
+                "reactionType": ReactionTypes.DISLIKE.name,
+                "profileObjectId": profile.relay_id,
+            }
+        },
+    )
+    assert Reaction.objects.count() == 1
+
+
+def test_user_cant_react_with_profile(graphql_user_client):
+    profile = ProfileFactory()
+    target = CommentFactory()
+
+    response = graphql_user_client(
+        REACTION_TOGGLE_GRAPHQL,
+        variables={
+            "input": {
+                "targetObjectId": target.relay_id,
+                "reactionType": ReactionTypes.DISLIKE.name,
+                "profileObjectId": profile.relay_id,
+            }
+        },
+    )
+    content = response.json()
+    assert content["errors"][0]["extensions"]["code"] == "permission_required"
+    assert Reaction.objects.all().count() == 0
