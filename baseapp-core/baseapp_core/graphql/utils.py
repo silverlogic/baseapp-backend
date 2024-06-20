@@ -30,4 +30,5 @@ def _cache_object_type(obj):
 def get_object_type_for_model(model):
     def get_object_type():
         return model.get_graphql_object_type()
+
     return get_object_type
