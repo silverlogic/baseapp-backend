@@ -1,3 +1,4 @@
+from baseapp_auth.exceptions import UserPasswordExpiredException
 from django.contrib.auth import authenticate, get_user_model
 from django.utils.translation import gettext_lazy as _
 from rest_framework import exceptions, serializers
@@ -9,15 +10,7 @@ User = get_user_model()
 class LoginPasswordExpirationMixin:
     def check_password_expiration(self, user):
         if user.is_password_expired:
-            raise exceptions.AuthenticationFailed(
-                {
-                    "password": [
-                        _(
-                            "Your password has expired. Please reset it or contact the administrator."
-                        )
-                    ]
-                }
-            )
+            raise UserPasswordExpiredException(user=user)
 
 
 class LoginSerializer(LoginPasswordExpirationMixin, serializers.Serializer):
@@ -39,3 +32,7 @@ class LoginSerializer(LoginPasswordExpirationMixin, serializers.Serializer):
 
     def create(self, validated_data):
         return Token.objects.get_or_create(user=self.user)[0]
+
+
+class LoginChangeExpiredPasswordRedirectSerializer(serializers.Serializer):
+    redirect_url = serializers.CharField()

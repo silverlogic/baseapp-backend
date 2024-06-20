@@ -34,3 +34,11 @@ account_router.register(r"users", UsersViewSet, basename="users")
 
 users_router_nested = NestedSimpleRouter(account_router, r"users", lookup="user")
 users_router_nested.register(r"permissions", PermissionsViewSet, basename="user-permissions")
+
+from baseapp_auth.rest_framework.change_expired_password.views import (
+    ChangeExpiredPasswordViewSet,
+)  # noqa
+
+account_router.register(
+    r"change-expired-password", ChangeExpiredPasswordViewSet, basename="change-expired-password"
+)

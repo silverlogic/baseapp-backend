@@ -135,4 +135,5 @@ General development instructions can be found in [main README](..#testing)
 
 ```py
 BA_AUTH_PRE_AUTH_TOKEN_EXPIRATION_TIME_DELTA: datetime.timedelta
+BA_AUTH_CHANGE_EXPIRED_PASSWORD_TOKEN_EXPIRATION_TIME_DELTA: datetime.timedelta
 ```

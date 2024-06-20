@@ -40,6 +40,7 @@ FRONT_CONFIRM_EMAIL_URL = FRONT_URL + "/confirm-email/{id}/{token}"
 FRONT_FORGOT_PASSWORD_URL = FRONT_URL + "/forgot-password/{token}"
 FRONT_CHANGE_EMAIL_CONFIRM_URL = FRONT_URL + "/change-email/{id}/{token}"
 FRONT_CHANGE_EMAIL_VERIFY_URL = FRONT_URL + "/change-email-verify/{id}/{token}"
+FRONT_CHANGE_EXPIRED_PASSWORD_URL = FRONT_URL + "/change-expired-password/{token}"
 
 # IOS Deep Links
 IOS_CONFIRM_EMAIL_DEEP_LINK = False
