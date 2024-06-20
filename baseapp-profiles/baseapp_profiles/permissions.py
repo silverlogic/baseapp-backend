@@ -14,7 +14,10 @@ class ProfilesPermissionsBackend(BaseBackend):
                 if obj.status == Profile.ProfileStatus.PUBLIC:
                     return True
                 else:
-                    return obj.owner_id == user_obj.id or obj.members.filter(user_id=user_obj.id).exists()
+                    return (
+                        obj.owner_id == user_obj.id
+                        or obj.members.filter(user_id=user_obj.id).exists()
+                    )
 
         if perm in ["baseapp_profiles.change_profile", "baseapp_profiles.delete_profile"]:
             if user_obj.is_authenticated and isinstance(obj, Profile):
@@ -27,4 +30,6 @@ class ProfilesPermissionsBackend(BaseBackend):
 
         if perm == "baseapp_profiles.use_profile" and obj:
             if isinstance(obj, Profile):
-                return obj.owner_id == user_obj.id or obj.members.filter(user_id=user_obj.id).exists()
+                return (
+                    obj.owner_id == user_obj.id or obj.members.filter(user_id=user_obj.id).exists()
+                )

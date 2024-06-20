@@ -1,15 +1,43 @@
 import swapper
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import random_name_in
+from django.apps import apps
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
+from baseapp_profiles.managers import ProfileManager
 
-class AbstractProfile(TimeStampedModel, RelayModel):
+inheritances = [TimeStampedModel]
+if apps.is_installed("baseapp_blocks"):
+    from baseapp_blocks.models import BlockableModel
+
+    inheritances.append(BlockableModel)
+
+
+if apps.is_installed("baseapp_follows"):
+    from baseapp_follows.models import FollowableModel
+
+    inheritances.append(FollowableModel)
+
+if apps.is_installed("baseapp_reports"):
+    from baseapp_reports.models import ReportableModel
+
+    inheritances.append(ReportableModel)
+
+if apps.is_installed("baseapp_comments"):
+    from baseapp_comments.models import CommentableModel
+
+    inheritances.append(CommentableModel)
+
+inheritances.append(RelayModel)
+
+
+class AbstractProfile(*inheritances):
     class ProfileStatus(models.IntegerChoices):
         PUBLIC = 1, _("public")
         PRIVATE = 2, _("private")
@@ -43,22 +71,26 @@ class AbstractProfile(TimeStampedModel, RelayModel):
         settings.AUTH_USER_MODEL,
         related_name="profiles_owner",
         on_delete=models.CASCADE,
-        verbose_name=_("user"),
+        verbose_name=_("owner"),
         db_constraint=False,
     )
 
-    # members = models.ManyToManyField(
-    #     settings.AUTH_USER_MODEL,
-    #     related_name="profiles",
-    #     through=swapper.get_model_name("baseapp_profiles", "Profile"),
-    #     through_fields=("profile", "user"),
-    # )
+    objects = ProfileManager()
 
     class Meta:
         abstract = True
 
     def __str__(self):
         return self.name or str(self.pk)
+
+    def user_has_perm(self, user, perm=None):
+        return user.has_perm(perm or "baseapp_profiles.use_profile", self)
+
+    def get_all_users(self):
+        User = get_user_model()
+        return User.objects.filter(
+            models.Q(profiles_owner=self) | models.Q(profile_members__profile=self)
+        ).distinct()
 
 
 class ProfilableModel(models.Model):
@@ -76,7 +108,7 @@ class ProfilableModel(models.Model):
 
 
 class Profile(AbstractProfile):
-    class Meta:
+    class Meta(AbstractProfile.Meta):
         swappable = swapper.swappable_setting("baseapp_profiles", "Profile")
         unique_together = [("target_content_type", "target_object_id")]
         permissions = [
@@ -109,6 +141,7 @@ class AbstractProfileUserRole(models.Model):
 
     class Meta:
         abstract = True
+        unique_together = [("user", "profile")]
 
     def __str__(self):
         return f"{self.user} as {self.role} in {self.profile}"

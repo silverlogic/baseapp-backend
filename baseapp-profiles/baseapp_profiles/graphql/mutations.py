@@ -2,60 +2,27 @@ import graphene
 import swapper
 from baseapp_core.graphql import (
     SerializerMutation,
+    get_object_type_for_model,
     get_pk_from_relay_id,
     login_required,
 )
-from django.contrib.contenttypes.models import ContentType
-from django.db.models import Q
-from django.utils.translation import get_language
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
-
-from ..models import URLPath
-from .object_types import ProfileObjectType
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
 class ProfileSerializer(serializers.ModelSerializer):
     user = serializers.HiddenField(default=serializers.CurrentUserDefault())
-    url_path = serializers.CharField(required=False, allow_blank=True)
-    title = serializers.CharField(required=False, allow_blank=True)
-    body = serializers.CharField(required=False, allow_blank=True)
+    name = serializers.CharField(required=True)
 
     class Meta:
         model = Profile
-        fields = ("user", "title", "body", "url_path")
-
-    def validate_url_path(self, value):
-        language = get_language()
-        queryset = URLPath.objects.filter(
-            Q(language=language) | Q(language__isnull=True), path=value
-        )
-        if self.instance:
-            queryset = queryset.exclude(
-                target_content_type=ContentType.objects.get_for_model(self.instance),
-                target_object_id=self.instance.pk,
-            )
-
-        if queryset.exists():
-            raise serializers.ValidationError(_("URL Path already being used"))
-
-        return value
-
-    def save(self, **kwargs):
-        url_path = self.validated_data.pop("url_path", None)
-        instance = super().save(**kwargs)
-        language = get_language()
-        if url_path:
-            URLPath.objects.create(
-                target=instance, path=url_path, language=language, is_active=True
-            )
-        return instance
+        fields = ("user", "name")
 
 
 class ProfileCreate(SerializerMutation):
-    profile = graphene.Field(ProfileObjectType._meta.connection.Edge)
+    profile = graphene.Field(lambda: Profile.get_graphql_object_type()._meta.connection.Edge)
 
     class Meta:
         serializer_class = ProfileSerializer
@@ -70,6 +37,7 @@ class ProfileCreate(SerializerMutation):
 
     @classmethod
     def perform_mutate(cls, serializer, info):
+        ProfileObjectType = Profile.get_graphql_object_type()
         obj = serializer.save()
         return cls(
             errors=None,
@@ -78,7 +46,7 @@ class ProfileCreate(SerializerMutation):
 
 
 class ProfileEdit(SerializerMutation):
-    profile = graphene.Field(ProfileObjectType)
+    profile = graphene.Field(get_object_type_for_model(Profile))
 
     class Meta:
         serializer_class = ProfileSerializer

@@ -57,25 +57,6 @@ class Migration(migrations.Migration):
     ]
 ```
 
-Apply the migration
-<!-- 
-Then edit your profilable model and remove the profile field:
+- Apply the migration
 
-Then create a new migration to remove the profile field
-
-```
-class User(ProfilableModel):
-    profile = models.OneToOneField(
-        settings.BASEAPP_PROFILES_PROFILE_MODEL,
-        related_name="%(class)s",
-        on_delete=models.CASCADE,
-        verbose_name=_("profile"),
-        null=True,
-    )
-``` -->
-
-
-
-- signals to update profile, can be pgtriggers
-- migrate code (front and back) to only update/view profile directly without the need for signals
-- remove signals/triggers
+- Add signals to update profile when the target model changes, can be pgtriggers
