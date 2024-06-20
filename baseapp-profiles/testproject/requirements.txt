@@ -7,5 +7,7 @@
 -e ./baseapp-comments
 -e ./baseapp-reactions
 -e ./baseapp-profiles
-
-django-notifications-hq==1.8.2
+-e ./baseapp-blocks
+-e ./baseapp-reports
+-e ./baseapp-pages
+-e ./baseapp-follows
