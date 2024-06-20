@@ -1,0 +1,11 @@
+# baseapp dependencies
+-r ../../baseapp-core/testproject/requirements.txt
+
+-e ./baseapp-core[graphql]
+-e ./baseapp-auth
+-e ./baseapp-notifications
+-e ./baseapp-comments
+-e ./baseapp-reactions
+-e ./baseapp-profiles
+
+django-notifications-hq==1.8.2
