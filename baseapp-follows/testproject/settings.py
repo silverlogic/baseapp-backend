@@ -13,6 +13,12 @@ INSTALLED_APPS += [
     "baseapp_auth",
     "testproject.testapp",
     "baseapp_follows",
+    "baseapp_profiles",
+    "baseapp_pages",
+    "baseapp_reactions",
+    "baseapp_reports",
+    "baseapp_comments",
+    "baseapp_blocks",
 ]
 
 ROOT_URLCONF = "testproject.urls"
@@ -30,6 +36,8 @@ AUTH_USER_MODEL = "testapp.User"
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "baseapp_auth.permissions.UsersPermissionsBackend",
+    "baseapp_profiles.permissions.ProfilesPermissionsBackend",
+    "baseapp_follows.permissions.FollowsPermissionsBackend",
 ]
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.PBKDF2PasswordHasher"]
 
