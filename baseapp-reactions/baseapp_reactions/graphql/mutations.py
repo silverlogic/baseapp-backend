@@ -1,12 +1,10 @@
 import graphene
 import swapper
-from baseapp_core.graphql import RelayMutation, login_required
-from baseapp_core.utils import get_content_type_by_natural_key
+from baseapp_core.graphql import RelayMutation, get_obj_from_relay_id, login_required
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from graphql_relay.connection.arrayconnection import offset_to_cursor
-from graphql_relay.node.node import from_global_id
 
 from .object_types import ReactionObjectType, ReactionsInterface, ReactionTypesEnum
 
@@ -20,28 +18,16 @@ class ReactionToggle(RelayMutation):
 
     class Input:
         target_object_id = graphene.ID(required=True)
-        target_content_type = graphene.String(
-            required=False,
-            description=_(
-                "This overrides the GraphQL Type found in Relay's Global ID. Please use app.Model format."
-            ),
-        )
+        profile_object_id = graphene.ID(required=False)
         reaction_type = graphene.Field(ReactionTypesEnum, required=True)
 
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        gid_type, gid = from_global_id(input.get("target_object_id"))
-        object_type = info.schema.get_type(gid_type)
-        target = object_type.graphene_type.get_node(info, gid)
+        target = get_obj_from_relay_id(info, input.get("target_object_id"))
+        target_content_type = ContentType.objects.get_for_model(target)
         reaction_type = input["reaction_type"]
-
-        target_content_type = input.get("target_content_type")
-        if target_content_type:
-            content_type = get_content_type_by_natural_key(target_content_type)
-            target = content_type.get_object_for_this_type(pk=gid)
-        else:
-            content_type = ContentType.objects.get_for_model(target)
+        profile = None
 
         if not info.context.user.has_perm("baseapp_reactions.add_reaction", target):
             raise GraphQLError(
@@ -49,11 +35,21 @@ class ReactionToggle(RelayMutation):
                 extensions={"code": "permission_required"},
             )
 
+        if input.get("profile_object_id"):
+            profile = get_obj_from_relay_id(info, input.get("profile_object_id"))
+            if not info.context.user.has_perm(
+                "baseapp_reactions.add_reaction_with_profile", profile
+            ):
+                raise GraphQLError(
+                    str(_("You don't have permission to perform this action")),
+                    extensions={"code": "permission_required"},
+                )
+
         reaction, created = Reaction.objects.get_or_create(
-            user=info.context.user,
+            profile=profile,
             target_object_id=target.pk,
-            target_content_type=content_type,
-            defaults={"reaction_type": reaction_type},
+            target_content_type=target_content_type,
+            defaults={"reaction_type": reaction_type, "user": info.context.user},
         )
         if not created:
             if reaction.reaction_type == reaction_type:
