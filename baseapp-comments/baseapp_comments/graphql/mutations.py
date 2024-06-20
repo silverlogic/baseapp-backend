@@ -50,7 +50,7 @@ class CommentCreate(RelayMutation):
             comment.profile = get_obj_from_relay_id(info, input.get("profile_object_id"))
 
             if not info.context.user.has_perm(
-                "baseapp_comments.comment_with_profile", comment.profile
+                "baseapp_comments.add_comment_with_profile", comment.profile
             ):
                 raise GraphQLError(
                     str(_("You don't have permission to perform this action")),
