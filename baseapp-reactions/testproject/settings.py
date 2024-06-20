@@ -9,6 +9,10 @@ INSTALLED_APPS += [
     "baseapp_comments",
     "baseapp_reports",
     "baseapp_auth",
+    "baseapp_profiles",
+    "baseapp_blocks",
+    "baseapp_follows",
+    "baseapp_pages",
     "testproject.testapp",
 ]
 
@@ -23,6 +27,7 @@ LANGUAGES = [("en", _("English")), ("es", _("Spanish")), ("pt", _("Portuguese"))
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "baseapp_auth.permissions.UsersPermissionsBackend",
+    "baseapp_profiles.permissions.ProfilesPermissionsBackend",
     "baseapp_comments.permissions.CommentsPermissionsBackend",
     "baseapp_reactions.permissions.ReactionsPermissionsBackend",
 ]
