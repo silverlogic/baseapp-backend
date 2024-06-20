@@ -163,7 +163,7 @@ from baseapp_comments.permissions import CommentsPermissionsBackend
 
 class MyCommentsPermissionsBackend(CommentsPermissionsBackend):
     def has_perm(self, user_obj, perm, obj=None):
-        if perm == "baseapp_comments.comment_with_profile":
+        if perm == "baseapp_comments.add_comment_with_profile":
             return obj.owner_id == user.id  # only the profile's owner can use
 
         return super().has_perm(user_obj, perm, obj)

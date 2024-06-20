@@ -38,3 +38,6 @@ class CommentsPermissionsBackend(BaseBackend):
         if perm == "baseapp_comments.pin_comment" and obj is not None:
             # Anyone with permission can pin any comment
             return user_obj.has_perm(perm)
+
+        if perm == "baseapp_comments.add_comment_with_profile" and obj:
+            return user_obj.has_perm("baseapp_profiles.use_profile", obj)
