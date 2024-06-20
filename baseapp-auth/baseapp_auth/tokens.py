@@ -51,17 +51,6 @@ class ChangeExpiredPasswordTokenGenerator(TokenGenerator):
     def get_signing_value(self, user):
         return [user.pk, user.email]
 
-    def make_token(self, obj):
-        encoded_token = urlsafe_base64_encode(force_bytes(super().make_token(obj)))
-        return encoded_token
-
-    def decode_token(self, token):
-        try:
-            decoded_token = urlsafe_base64_decode(token).decode("utf-8")
-            return super().decode_token(decoded_token)
-        except DjangoUnicodeDecodeError:
-            return None
-
     @property
     def max_age(self) -> int | None:
         if (
