@@ -195,6 +195,10 @@ CONSTANCE_CONFIG = OrderedDict(
                 "The time interval (in days) after which a user will need to reset their password.",
             ),
         ),
+        (
+            "EMAIL_VERIFICATION_REQUIRED",
+            (False, "Require email verification for new users."),
+        ),
     ]
 )
 
