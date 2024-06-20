@@ -50,7 +50,7 @@ if apps.is_installed("baseapp_pages"):
 
 
 if apps.is_installed("baseapp_follows"):
-    from baseapp_follows.graphql.interfaces import FollowsInterface
+    from baseapp_follows.graphql import FollowsInterface
 
     interfaces.append(FollowsInterface)
 
