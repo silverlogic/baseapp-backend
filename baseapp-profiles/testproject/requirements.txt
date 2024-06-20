@@ -9,5 +9,4 @@
 -e ./baseapp-profiles
 -e ./baseapp-blocks
 -e ./baseapp-reports
-
-django-notifications-hq==1.8.2
+-e ./baseapp-pages
