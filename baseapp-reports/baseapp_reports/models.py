@@ -109,6 +109,3 @@ class ReportableModel(models.Model):
 
     class Meta:
         abstract = True
-
-    def get_my_permissions(self, request):
-        raise NotImplementedError
