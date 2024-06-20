@@ -15,8 +15,8 @@ class Migration(migrations.Migration):
     dependencies = [
         ("contenttypes", "0002_remove_content_type_name"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        swapper.dependency('baseapp_profiles', 'Profile'),
-        swapper.dependency('baseapp_profiles', 'ProfileUserRole'),
+        swapper.dependency("baseapp_profiles", "Profile"),
+        swapper.dependency("baseapp_profiles", "ProfileUserRole"),
     ]
 
     operations = [
@@ -68,7 +68,7 @@ class Migration(migrations.Migration):
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="profiles_owner",
                         to=settings.AUTH_USER_MODEL,
-                        verbose_name="user",
+                        verbose_name="owner",
                     ),
                 ),
                 (
@@ -104,7 +104,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="members",
-                        to=swapper.get_model_name('baseapp_profiles', 'Profile'),
+                        to=swapper.get_model_name("baseapp_profiles", "Profile"),
                         verbose_name="profile",
                     ),
                 ),
