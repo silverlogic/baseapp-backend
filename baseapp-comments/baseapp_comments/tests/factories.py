@@ -34,13 +34,10 @@ class AbstractCommentFactory(factory.django.DjangoModelFactory):
     target_object_id = factory.LazyAttribute(get_obj_pk("target"))
     target_content_type = factory.LazyAttribute(get_content_type("target"))
 
-    profile_object_id = factory.LazyAttribute(get_obj_pk("profile"))
-    profile_content_type = factory.LazyAttribute(get_content_type("profile"))
-
     def __setattr__(self, name, value):
         super().__setattr__(name, value)
 
-        if name in ["target", "profile"]:
+        if name in ["target"]:
             setattr(self, f"{name}_content_type", ContentType.objects.get_for_model(value))
             setattr(self, f"{name}_object_id", value.id)
 
