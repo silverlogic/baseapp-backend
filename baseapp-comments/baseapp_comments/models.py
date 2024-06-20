@@ -13,10 +13,6 @@ from model_utils.models import TimeStampedModel
 
 from .validators import blocked_words_validator
 
-SwappedComment = swapper.load_model(
-    "baseapp_comments", "Comment", required=False, require_ready=False
-)
-
 
 def default_comments_count():
     return {
@@ -62,20 +58,14 @@ class AbstractComment(
         blank=True,
     )
 
-    profile_content_type = models.ForeignKey(
-        ContentType,
-        verbose_name=_("profile content type"),
-        blank=True,
-        null=True,
-        related_name="comments_outbox",
+    profile = models.ForeignKey(
+        swapper.get_model_name("baseapp_profiles", "Profile"),
+        verbose_name=_("profile"),
+        related_name="comments",
         on_delete=models.CASCADE,
-        db_index=True,
+        null=True,
+        blank=True,
     )
-    profile_object_id = models.PositiveIntegerField(
-        _("profile object id"), blank=True, null=True, db_index=True
-    )
-    profile = GenericForeignKey("profile_content_type", "profile_object_id")
-    profile.short_description = _("profile")  # because GenericForeignKey doens't have verbose_name
 
     body = models.TextField(
         blank=True, null=True, validators=[blocked_words_validator], verbose_name=_("body")
@@ -144,6 +134,7 @@ class AbstractComment(
             ("pin_comment", _("can pin comments")),
             ("report_comment", _("can report comments")),
             ("view_all_comments", _("can view all comments")),
+            ("add_comment_with_profile", _("can add comments with profile")),
         ]
         verbose_name = _("comment")
         verbose_name_plural = _("comments")
