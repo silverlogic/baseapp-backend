@@ -3,6 +3,7 @@
 import django.db.models.deletion
 import django.utils.timezone
 import model_utils.fields
+import swapper
 from django.conf import settings
 from django.db import migrations, models
 
@@ -12,6 +13,7 @@ class Migration(migrations.Migration):
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ("baseapp_notifications", "0001_initial"),
+        swapper.dependency("baseapp_notifications", "NotificationSetting"),
     ]
 
     operations = [
@@ -54,7 +56,9 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                "swappable": "BASEAPP_NOTIFICATIONS_NOTIFICATIONSETTING_MODEL",
+                "swappable": swapper.swappable_setting(
+                    "baseapp_notifications", "NotificationSetting"
+                ),
             },
         ),
     ]
