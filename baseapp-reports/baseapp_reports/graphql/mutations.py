@@ -6,13 +6,13 @@ from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from graphql_relay.connection.arrayconnection import offset_to_cursor
 
-from .object_types import ReportNode, ReportsInterface, ReportTypesEnum
+from .object_types import ReportObjectType, ReportsInterface, ReportTypesEnum
 
 Report = swapper.load_model("baseapp_reports", "Report")
 
 
 class ReportCreate(RelayMutation):
-    report = graphene.Field(ReportNode._meta.connection.Edge, required=False)
+    report = graphene.Field(ReportObjectType._meta.connection.Edge, required=False)
     target = graphene.Field(ReportsInterface)
 
     class Input:
@@ -46,7 +46,7 @@ class ReportCreate(RelayMutation):
         target.refresh_from_db()
 
         return ReportCreate(
-            report=ReportNode._meta.connection.Edge(node=report, cursor=offset_to_cursor(0)),
+            report=ReportObjectType._meta.connection.Edge(node=report, cursor=offset_to_cursor(0)),
             target=target,
         )
 
