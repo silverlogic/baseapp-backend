@@ -1,8 +1,7 @@
 from baseapp_core.graphql import Node
 
-from .object_types import ReportNode
+from .object_types import ReportObjectType
 
 
-class ReportsQuery:
-    # TO DO: fix permission, follow target until its not a Comment anymore and check if request.user has permission to see
-    report = Node.Field(ReportNode)
+class ReportsQueries:
+    report = Node.Field(ReportObjectType)
