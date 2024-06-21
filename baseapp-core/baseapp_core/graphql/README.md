@@ -180,8 +180,10 @@ class User(RelayModel):
     # ...
 ```
 
-This will add the following methods to your model:
-- `relay_id` - Relay global id, base64 of `{ObjectType}:{pk}`
+This will add the following methods and properties to your model:
+- `relay_id` - Relay global ID property, base64 of `{ObjectType}:{pk}`
+- `get_graphql_object_type` - Class method that, return the model's `DjangoObjectType` class
+
 
 So you can access the relay id of your model like:
 
@@ -321,6 +323,24 @@ class ChangePassword(RelayMutation):
     def mutate_and_get_payload(cls, root, info, **input):
         # ...
 ```
+
+### get_object_type_for_model
+
+Returns a function that will return the `DjangoObjectType` class for a model, like:
+
+```python
+import swapper
+from baseapp_core.graphql import get_object_type_for_model
+
+Profile = swapper.load_model("baseapp_profiles", "Profile")
+
+class UserObjectType(DjangoObjectType):
+    profile = graphene.Field(get_object_type_for_model(Profile))
+
+    class Meta:
+        model = User
+```
+
 
 ## Testing
 

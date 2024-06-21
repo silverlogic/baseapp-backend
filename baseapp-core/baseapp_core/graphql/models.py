@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils.functional import cached_property
 
-from .utils import get_obj_relay_id
+from .utils import _cache_object_type, get_obj_relay_id
 
 
 class RelayModel(models.Model):
@@ -11,3 +11,8 @@ class RelayModel(models.Model):
     @cached_property
     def relay_id(self):
         return get_obj_relay_id(self)
+
+    @classmethod
+    def get_graphql_object_type(cls):
+        ot = _cache_object_type(cls)
+        return ot
