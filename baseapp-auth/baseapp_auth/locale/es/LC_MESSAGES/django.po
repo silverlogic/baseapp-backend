@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-24 13:40+0000\n"
-"PO-Revision-Date: 2024-06-24 13:42+0000\n"
+"POT-Creation-Date: 2024-06-24 18:21+0000\n"
+"PO-Revision-Date: 2024-06-24 21:24+0000\n"
 "Last-Translator:   <pr@tsl.io>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
@@ -153,6 +153,12 @@ msgstr "Tu cambio de correo electrónico ya ha sido confirmado."
 msgid "Your email change must be confirmed first."
 msgstr "Tu cambio de correo electrónico debe ser confirmado primero."
 
+msgid "New password cannot be the same as the current password."
+msgstr "La nueva contraseña no puede ser igual a la contraseña actual."
+
+msgid "success"
+msgstr "éxito"
+
 msgid ""
 "A reset password link will be sent to you if an account is registered under "
 "that email."
@@ -162,12 +168,6 @@ msgstr ""
 
 msgid "Unsupported action for JWTAuthViewSet"
 msgstr "Acción no soportada para JWTAuthViewSet"
-
-msgid ""
-"Your password has expired. Please reset it or contact the administrator."
-msgstr ""
-"Tu contraseña ha expirado. Por favor restablécela o contacta al "
-"administrador."
 
 msgid "Unable to login with provided credentials."
 msgstr "No se puede iniciar sesión con las credenciales proporcionadas."
@@ -189,9 +189,6 @@ msgstr "Ya has sido referido por alguien."
 
 msgid "That is not your current password."
 msgstr "Esta no es tu contraseña actual."
-
-msgid "Invalid token"
-msgstr "Token inválido"
 
 msgid "User does not exist."
 msgstr "Usuario no existe."
@@ -341,16 +338,28 @@ msgstr ""
 "Por favor, tenga en cuenta que, %(assignee)s ha sido eliminado como "
 "superusuario. Hecho por %(assigner)s."
 
+msgid ""
+"Great to have you on board! Let's make sure your email is all set. Please "
+"confirm your email address by clicking the button below:"
+msgstr ""
+"¡Genial tenerte a bordo! Asegurémonos de que tu correo electrónico esté "
+"configurado. Confirma tu dirección de correo electrónico haciendo clic en el"
+" botón de abajo:"
+
+#| msgid "Confirm email"
+msgid "Confirm Email Address"
+msgstr "Confirmar dirección de correo electrónico"
+
+msgid "Didn't sign up?"
+msgstr "¿No te has registrado?"
+
+#| msgid "If you did not request this email, you can safely ignore it."
+msgid "No worries, you can safely ignore this email."
+msgstr ""
+"No te preocupes, puedes ignorar este correo electrónico de forma segura."
+
 msgid "Welcome,"
 msgstr "Ben venido"
-
-msgid "To confirm your email address, click the button below:"
-msgstr ""
-"Para confirmar su dirección de correo electrónico, haga clic en el botón a "
-"continuación:"
-
-msgid "Confirm email"
-msgstr "Confirmar correo electrónico"
 
 #, python-format
 msgid "To confirm your email address go to %(confirm_url)s"
@@ -359,3 +368,17 @@ msgstr ""
 
 msgid "Welcome!"
 msgstr "Bienvenido"
+
+#~ msgid ""
+#~ "Your password has expired. Please reset it or contact the administrator."
+#~ msgstr ""
+#~ "Tu contraseña ha expirado. Por favor restablécela o contacta al "
+#~ "administrador."
+
+#~ msgid "Invalid token"
+#~ msgstr "Token inválido"
+
+#~ msgid "To confirm your email address, click the button below:"
+#~ msgstr ""
+#~ "Para confirmar su dirección de correo electrónico, haga clic en el botón a "
+#~ "continuación:"
