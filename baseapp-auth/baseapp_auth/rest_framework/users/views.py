@@ -15,6 +15,8 @@ from rest_framework_nested.viewsets import NestedViewSetMixin
 
 User = get_user_model()
 
+from django.utils.translation import gettext_lazy as _
+
 from .parsers import SafeJSONParser
 from .serializers import (
     ChangePasswordSerializer,
