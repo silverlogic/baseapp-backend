@@ -1,118 +1,213 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-    <head>
-        <meta name="viewport" content="width=device-width" />
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-        <style type="text/css">
-            :root {
-                --primary-main: #5852F2;
-                --grey-900: #161C24;
-                --grey-600: #637381;
-            }
-            img {
-                max-width: 100%;
-            }
-            body {
-                -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: none; width: 100% !important; height: 100%; line-height: 1.6em;
-            }
-            body {
-                background-color: #f6f6f6;
-            }
-            .heading-h5 {
-                font-size: 20px;
-                font-weight: 700;
-                color: #161C24;
-            }
-            .paragraph {
-                font-size: 14px;
-                font-weight: 400;
-                color: #161C24;
-            }
-            .caption {
-                color: #637381;
-                font-size: 12px;
-                font-weight: 400;
-                text-align: center;
-            }
-            @media only screen and (max-width: 640px) {
-                body {
-                    padding: 0 !important;
-                }
-                h1 {
-                    font-weight: 800 !important; margin: 20px 0 5px !important;
-                }
-                h2 {
-                    font-weight: 800 !important; margin: 20px 0 5px !important;
-                }
-                h3 {
-                    font-weight: 800 !important; margin: 20px 0 5px !important;
-                }
-                h4 {
-                    font-weight: 800 !important; margin: 20px 0 5px !important;
-                }
-                h1 {
-                    font-size: 22px !important;
-                }
-                h2 {
-                    font-size: 18px !important;
-                }
-                h3 {
-                    font-size: 16px !important;
-                }
-                .container {
-                    padding: 0 !important; width: 100% !important;
-                }
-                .content {
-                    padding: 0 !important;
-                }
-                .content-wrap {
-                    padding: 10px !important;
-                }
-            }
-        </style>
-    </head>
+<html>
+  <head xmlns="http://www.w3.org/1999/xhtml">
+    <meta name="viewport" content="width=device-width" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <style type="text/css">
+      /* Globals */
+      :root {
+        --font-family: 'Public Sans', 'Roboto', sans-serif;
 
-    <body itemscope itemtype="http://schema.org/EmailMessage" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: none; width: 100% !important; height: 100%; line-height: 1.6em; background-color: white; margin: 0;" bgcolor="white">
-        <table class="body-wrap" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; width: 100%; background-color: lightgray; margin: 0;" bgcolor="#f6f6f6"><tr style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;"><td style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0;" valign="top"></td>
-                <td class="container" width="600" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; display: block !important; max-width: 600px !important; clear: both !important; margin: 0 auto;" valign="top">
-                    <div style="background-color: #5852F2;border-radius: 10px;border-bottom: #161C24;border-bottom-style: solid;border-top: #5852F2;border-top-style: solid;border-width: 9px; box-shadow: 1px 1px 48px 0px #888888;">
-                        <div style="background-color: #5852F2;padding: 28px;">
-                            <img src="{{ static('emails/logo.png') }}" alt="logo" />
-                        </div>
-                        <div class="content" style="background-color: white;font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; max-width: 600px; display: block; margin: 0 auto; padding: 8px;">
-                            <table class="main" width="100%" cellpadding="0" cellspacing="0" itemprop="action" itemscope itemtype="http://schema.org/ConfirmAction" style="background-size: 330px 150px, 330px 150px; font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; background-color: #fff; margin: 0;" bgcolor="#fff">
-                                <tr style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                                    <td class="content-wrap" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0; padding: 20px;" valign="top">
-                                        <table width="100%" cellpadding="0" cellspacing="0" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                                            {% block content %}
-                                            {% endblock %}
-                                            {% block footer %}
-                                            {% endblock %}
-                                        </table>
-                                    </td>
-                                </tr>
-                            </table>
-                        </div>
-                        <div style="background-color: #161C24;padding: 28px;color:white;text-align:center;">
-                            <img src="{{ static('logos/white.png') }}" alt="logo" />
-                            <p class="caption">
-                                Streamlining development with a versatile modular template for all people. Innovate, integrate, and launch faster.
-                            </p>
-                            <p style="text-align: center;">
-                                <a href="https://www.x.com/"><img src="{{ static('social/flat-x.png') }}" alt="x" /></a>
-                                <a href="https://www.youtube.com/"><img src="{{ static('social/flat-youtube.png') }}" alt="youtube" /></a>
-                                <a href="https://www.instagram.com/"><img src="{{ static('social/flat-instagram.png') }}" alt="instagram" /></a>
-                                <a href="https://www.linkedin.com/"><img src="{{ static('social/flat-linkedin.png') }}" alt="linkedin" /></a>
-                                <a href="https://www.facebook.com/"><img src="{{ static('social/flat-facebook.png') }}" alt="facebook" /></a>
-                            </p>
-                            <p class="caption">
-                                123 Sample Street, Floor 1<br />
-                                Boca Raton, FL, 12345
-                            </p>
-                        </div>
-                    </div>
-                </td>
-            </tr>
-        </table>
-    </body>
+        --surface-a50: #ffffff;
+        --surface-50: #F7F7F7;
+        --surface-300: #B7BBBF;
+        --surface-500: #5D6770;
+        --surface-700: #363D43;
+        --surface-900: #15171A;
+
+        --primary-main: #5852F2;
+        --primary-contrast: var(--surface-a50);
+
+        --elevation-2: 0px 3px 1px -2px rgba(0, 0, 0, 0.20), 0px 2px 2px 0px rgba(0, 0, 0, 0.14), 0px 1px 5px 0px rgba(0, 0, 0, 0.12);
+      }
+
+      body {
+        margin: 0px;
+        color: var(--surface-900);
+      }
+
+      p {
+        margin: 0px;
+      }
+
+
+      /* Containers */
+      .wrapper {
+        background-color: var(--surface-50);
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        margin: 16px;
+      }
+
+      .container {
+        background-color: var(--surface-a50);
+        border-radius: 12px;
+        max-width: 512px;
+        width: 100%;
+        overflow: auto;
+        display: grid;
+      }
+
+      .header {
+        padding: 32px;
+        display: flex;
+        background-color: var(--primary-main);
+        align-items: center;
+        justify-content: flex-start;
+      }
+
+      .content {
+        display: grid;
+        gap: 24px;
+        align-items: center;
+        justify-items: center;
+        padding: 32px 48px;
+      }
+
+      .footer {
+        background-color: var(--surface-700);
+        color: var(--primary-contrast);
+        display: grid;
+        gap: 32px;
+        padding: 48px;
+        justify-items: center;
+      }
+
+      .social-media-container {
+        display: grid;
+        gap: 24px;
+        justify-items: center;
+        align-items: center;
+        grid-template-columns: repeat(1, max-content)
+      }
+
+
+      /* Typography */
+      .t-body2 {
+        font-family: var(--font-family);
+        font-size: 14px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: 143%;
+        letter-spacing: 0.17px;
+      }
+
+      .t-h6 {
+        font-family: var(--font-family);
+        font-size: 20px;
+        font-style: normal;
+        font-weight: 500;
+        line-height: 160%;
+        letter-spacing: 0.15px;
+      }
+
+      .t-button {
+        font-family: var(--font-family);
+        font-size: 15px;
+        font-style: normal;
+        font-weight: 600;
+        line-height: 26px;
+        letter-spacing: 0.17px;
+      }
+
+      .t-caption {
+        font-family: var(--font-family);
+        font-size: 12px;
+        font-style: normal;
+        font-weight: 400;
+        line-height: 166%;
+        letter-spacing: 0.4px;
+      }
+
+
+      /* Components */
+      .heading {
+        width: 100%;
+      }
+
+      .button {
+        display: flex;
+        padding: 8px 22px;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        border-radius: 8px;
+        background: var(--primary-main);
+        box-shadow: var(--elevation-2);
+        cursor: pointer;
+        width: fit-content;
+        color: var(--primary-contrast);
+        text-decoration: none;
+      }
+
+      .anchor {
+        cursor: pointer;
+        text-decoration: none;
+      }
+
+      .image {
+        max-width: 512px;
+        width: 100%;
+      }
+
+      .overflowing-image {
+        max-width: 512px;
+        width: calc(100% + 92px);
+      }
+
+      .logo {
+        width: 100%;
+      }
+
+      .social-logo {
+        height: 24px;
+        width: 24px;
+      }
+
+      .footer-caption {
+        color: var(--surface-500);
+        text-align: center;
+        white-space: pre-line;
+      }
+    </style>
+  </head>
+  <body itemscope itemtype="http://schema.org/EmailMessage">
+    <div class="wrapper">
+      <div class="container">
+        <header class="header">
+          <img class="logo" src="{{ static('emails/logo.png') }}" alt="Logo" />
+        </header>
+        <div class="content">
+          {% block content %}{% endblock %}
+          {{ template_content|safe }}
+        </div>
+        <footer class="footer">
+          <img src="{{ static('emails/logo.png') }}" alt="Logo" />
+          <p class="footer-caption t-caption">Streamlining development with a versatile modular template for all people. Innovate, integrate, and launch faster. </p>
+          <div class="social-media-container">
+            <a class="anchor" target="_blank" rel="noopener noreferrer" href="https://www.x.com/">
+                <img class="social-logo" alt="X Logo" src="{{ static('social/flat-x.png') }}" />
+            </a>
+            <a class="anchor" target="_blank" rel="noopener noreferrer" href="https://www.youtube.com/">
+                <img class="social-logo" alt="Youtube Logo" src="{{ static('social/flat-youtube.png') }}" />
+            </a>
+            <a class="anchor" target="_blank" rel="noopener noreferrer" href="https://www.instagram.com/">
+                <img class="social-logo" alt="Instagram Logo" src="{{ static('social/flat-instagram.png') }}" />
+            </a>
+            <a class="anchor" target="_blank" rel="noopener noreferrer" href="https://www.linkedin.com/">
+                <img class="social-logo" alt="LinkedIn Logo" src="{{ static('social/flat-linkedin.png') }}" />
+            </a>
+            <a class="anchor" target="_blank" rel="noopener noreferrer" href="https://www.facebook.com/">
+                <img class="social-logo" alt="Facebook Logo" src="{{ static('social/flat-facebook.png') }}" />
+            </a>
+          </div>
+          <p class="footer-caption t-caption">
+            123 Sample Street, Floor 1 <br />
+            Boca Raton, FL, 12345
+          </p>
+        </footer>
+      </div>
+    </div>
+  </body>
 </html>
