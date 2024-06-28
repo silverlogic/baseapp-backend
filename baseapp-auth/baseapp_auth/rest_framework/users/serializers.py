@@ -40,6 +40,7 @@ class UserBaseSerializer(ModelSerializer):
             "first_name",
             "last_name",
             "phone_number",
+            "preferred_language",
         )
         private_fields = (
             "email",
@@ -48,6 +49,7 @@ class UserBaseSerializer(ModelSerializer):
             "new_email",
             "is_new_email_confirmed",
             "referral_code",
+            "preferred_language",
         )
         read_only_fields = (
             "email",
