@@ -24,6 +24,7 @@ class AbstractUserAdmin(UserAdmin):
                 "fields": (
                     "email",
                     "password",
+                    "preferred_language",
                     "date_joined",
                     "last_login",
                     "password_changed_date",
