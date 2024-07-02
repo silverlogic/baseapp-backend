@@ -25,3 +25,6 @@ class ReactionsPermissionsBackend(BaseBackend):
 
                     # Anyone with permission can change and delete any reaction
                     return user_obj.has_perm(perm)
+
+        if perm == "baseapp_reactions.add_reaction_with_profile" and obj:
+            return user_obj.has_perm("baseapp_profiles.use_profile", obj)

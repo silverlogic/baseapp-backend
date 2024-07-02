@@ -1,8 +1,7 @@
 import pytest
 import swapper
-from baseapp_auth.tests.factories import UserFactory
+from baseapp_profiles.tests.factories import ProfileFactory
 from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.models import ContentType
 
 Follow = swapper.load_model("baseapp_follows", "Follow")
 
@@ -12,67 +11,61 @@ User = get_user_model()
 
 
 def test_follow_and_unfollow():
-    user1 = UserFactory()
-    user2 = UserFactory()
+    profile1 = ProfileFactory()
+    profile2 = ProfileFactory()
 
     follow = Follow.objects.create(
-        actor_content_type=ContentType.objects.get_for_model(user1),
-        actor_object_id=user1.id,
-        target_content_type=ContentType.objects.get_for_model(user2),
-        target_object_id=user2.id,
+        actor=profile1,
+        target=profile2,
     )
 
-    user1.refresh_from_db()
-    user2.refresh_from_db()
+    profile1.refresh_from_db()
+    profile2.refresh_from_db()
 
-    assert user1.following_count == 1
-    assert user2.followers_count == 1
+    assert profile1.following_count == 1
+    assert profile2.followers_count == 1
 
     follow.delete()
 
-    user1.refresh_from_db()
-    user2.refresh_from_db()
+    profile1.refresh_from_db()
+    profile2.refresh_from_db()
 
-    assert user1.following_count == 0
-    assert user2.followers_count == 0
+    assert profile1.following_count == 0
+    assert profile2.followers_count == 0
 
 
 def test_target_is_following_back():
-    user1 = UserFactory()
-    user2 = UserFactory()
+    profile1 = ProfileFactory()
+    profile2 = ProfileFactory()
 
     original = Follow.objects.create(
-        actor_content_type=ContentType.objects.get_for_model(user1),
-        actor_object_id=user1.id,
-        target_content_type=ContentType.objects.get_for_model(user2),
-        target_object_id=user2.id,
+        actor=profile1,
+        target=profile2,
     )
 
     reciprocal = Follow.objects.create(
-        actor_content_type=ContentType.objects.get_for_model(user2),
-        actor_object_id=user2.id,
-        target_content_type=ContentType.objects.get_for_model(user1),
-        target_object_id=user1.id,
+        actor=profile2,
+        target=profile1,
     )
 
-    user1.refresh_from_db()
-    user2.refresh_from_db()
+    profile1.refresh_from_db()
+    profile2.refresh_from_db()
     original.refresh_from_db()
     reciprocal.refresh_from_db()
 
-    assert user1.following_count == 1
-    assert user2.followers_count == 1
+    assert profile1.following_count == 1
+    assert profile2.followers_count == 1
     assert original.target_is_following_back is True
     assert reciprocal.target_is_following_back is True
 
     reciprocal.delete()
 
-    user1.refresh_from_db()
-    user2.refresh_from_db()
+    profile1.refresh_from_db()
+    profile2.refresh_from_db()
     original.refresh_from_db()
 
-    assert user1.following_count == 1  # user1 still follows user2
-    assert user2.following_count == 0  # user2 no longer follows user1
-    assert user2.followers_count == 1  # user2 still has user1 as a follower
-    assert user1.followers_count == 0  # user1 has no followers anymore
-    assert original.target_is_following_back is False  # user2 no longer follows back user1
+    assert profile1.following_count == 1  # profile1 still follows profile2
+    assert profile2.following_count == 0  # profile2 no longer follows profile1
+    assert profile2.followers_count == 1  # profile2 still has profile1 as a follower
+    assert profile1.followers_count == 0  # profile1 has no followers anymore
+    assert original.target_is_following_back is False  # profile2 no longer follows back profile1

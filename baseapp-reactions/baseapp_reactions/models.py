@@ -33,6 +33,16 @@ class AbstractBaseReaction(TimeStampedModel, RelayModel):
         related_name="reactions",
         on_delete=models.CASCADE,
     )
+
+    profile = models.ForeignKey(
+        swapper.get_model_name("baseapp_profiles", "Profile"),
+        verbose_name=_("profile"),
+        related_name="reactions",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+
     reaction_type = models.IntegerField(choices=ReactionTypes.choices, default=ReactionTypes.LIKE)
 
     target_content_type = models.ForeignKey(
