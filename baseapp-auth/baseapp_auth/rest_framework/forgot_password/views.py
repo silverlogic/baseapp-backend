@@ -4,6 +4,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core import signing
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+from django.utils.translation import gettext_lazy as _
 from rest_framework import mixins, response, status, viewsets
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -30,7 +31,9 @@ class ForgotPasswordBaseViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin
 
         return response.Response(
             {
-                "message": "A reset password link will be sent to you if an account is registered under that email."
+                "message": _(
+                    "A reset password link will be sent to you if an account is registered under that email."
+                )
             },
             status=status.HTTP_200_OK,
         )

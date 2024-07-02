@@ -160,10 +160,10 @@ class UserManagePermissionSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = self.context["user"]
         if not user:
-            raise serializers.ValidationError({"user": "User does not exist."})
+            raise serializers.ValidationError({"user": _("User does not exist.")})
         if not self.context["request"].user.has_perm("users.change_user"):
             raise serializers.ValidationError(
-                {"detail": "You do not have permission to perform this action."}
+                {"detail": _("You do not have permission to perform this action.")}
             )
         perms = validated_data.pop("permissions", [])
         if len(perms) > 0:
@@ -174,7 +174,7 @@ class UserManagePermissionSerializer(serializers.ModelSerializer):
             permission = Permission.objects.filter(codename=validated_data["codename"]).first()
             if not permission:
                 raise serializers.ValidationError(
-                    {"codename": "Permission with this codename does not exist."}
+                    {"codename": _("Permission with this codename does not exist.")}
                 )
             user.user_permissions.add(permission)
             return permission

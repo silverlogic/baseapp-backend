@@ -1,6 +1,6 @@
 {% extends 'emails/base.txt.j2' %}
 
 {% block content %}
-Hello Superusers,
-Please be notified that, {{ assignee }} has been removed as superuser. Made by {{ assigner }}.
+{% trans %}Hello Superusers,{% endtrans %}
+{% trans %}Please be notified that, {{ assignee }} has been removed as superuser. Made by {{ assigner }}.{% endtrans %}
 {% endblock content %}

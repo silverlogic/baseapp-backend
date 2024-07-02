@@ -1,3 +1,4 @@
 include README.md
 recursive-include baseapp_notifications/templates *
 recursive-include baseapp_notifications/static *
+recursive-include baseapp_notifications/locale *

@@ -15,6 +15,8 @@ from rest_framework_nested.viewsets import NestedViewSetMixin
 
 User = get_user_model()
 
+from django.utils.translation import gettext_lazy as _
+
 from .parsers import SafeJSONParser
 from .serializers import (
     ChangePasswordSerializer,
@@ -118,7 +120,7 @@ class PermissionsViewSet(
         if user:
             if not self.request.user.has_perm("users.change_user"):
                 raise serializers.ValidationError(
-                    {"detail": "You do not have permission to perform this action."}
+                    {"detail": _("You do not have permission to perform this action.")}
                 )
             return user.user_permissions.all().select_related("content_type")
         return Permission.objects.all().select_related("content_type")
