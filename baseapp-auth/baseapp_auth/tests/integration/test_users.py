@@ -53,6 +53,7 @@ class TestUsersRetrieve(ApiMixin):
             "first_name",
             "last_name",
             "phone_number",
+            "preferred_language",
         }
         actual = set(r.data.keys())
         assert expected == actual

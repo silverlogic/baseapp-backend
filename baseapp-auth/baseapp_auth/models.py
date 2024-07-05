@@ -57,6 +57,8 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model()):
 
     objects = UserManager()
 
+    preferred_language = models.CharField(max_length=9, choices=settings.LANGUAGES, default="en")
+
     USERNAME_FIELD = "email"
 
     class Meta:
