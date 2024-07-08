@@ -41,7 +41,6 @@ class FollowsInterface(relay.Node):
             profile
             and Follow.objects.filter(
                 actor_id=profile.id,
-                target_content_type=ContentType.objects.get_for_model(self),
                 target_id=self.id,
             ).exists()
         )
