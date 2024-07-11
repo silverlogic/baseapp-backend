@@ -1,3 +1,4 @@
+import logging
 from typing import Iterable
 
 from django.conf import settings
@@ -7,6 +8,7 @@ from sendgrid.helpers.mail import Personalization, To
 from .utils import attach_files, chunk
 
 MAX_SENDGRID_PERSONALIZATIONS_PER_API_REQUEST = 1000
+logger = logging.getLogger(__name__)
 
 
 class SengridMessage(EmailMessage):
@@ -39,19 +41,16 @@ def mass_send_personalized_mail(
     Easy wrapper for sending personalized messages of the same Sendgrid template.
     Recipients data is configured through Sendgrid personalizations.
     """
-    success = 0
     template_id = copy_template.sendgrid_template_id
-    attachments = copy_template.static_attachments.all() + attachments
+    attachments = list(copy_template.static_attachments.all()) + attachments
 
     for personalizations in chunk(personalizations, MAX_SENDGRID_PERSONALIZATIONS_PER_API_REQUEST):
-        mail = SengridMessage(
-            template_id=template_id,
-            personalizations=personalizations,
-        )
+        mail = SengridMessage(template_id=template_id, personalizations=personalizations)
         attach_files(mail, attachments)
-        ret = mail.send(fail_silently=True)
-        success += ret
-    return success
+        try:
+            mail.send(fail_silently=True)
+        except Exception as e:
+            logger.error(f"Error: {e} while sending mass email")
 
 
 def get_personalization(recipient_email: str, context={}):
