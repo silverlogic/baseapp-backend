@@ -13,7 +13,7 @@ def test_generate_download_url_not_ready(setup_video_not_ready):
     with patch(
         "baseapp_cloudflare_stream_field.tasks.generate_download_url.apply_async"
     ) as mock_apply_async:
-        generate_download_url(content_type.pk, obj.pk, "video", retries=1)
+        generate_download_url(content_type.pk, obj.pk, "video")
 
         mock_apply_async.assert_called_once_with(
             kwargs={
