@@ -35,6 +35,11 @@ def video_uid():
 
 
 @pytest.fixture
+def clipped_video_uid():
+    return "64b280da11154c63862de71560b9a684"
+
+
+@pytest.fixture
 def setup_video_not_ready(video_uid):
     with patch("baseapp_cloudflare_stream_field.tasks.refresh_from_cloudflare.apply_async"):
         content_type = ContentType.objects.get_for_model(Post)
@@ -60,11 +65,24 @@ def setup_video_ready_with_url(video_uid):
         content_type = ContentType.objects.get_for_model(Post)
         obj = Post.objects.create()
         obj.video = {
-            "status": {"state": "ready"},
+            "status": {"state": "ready", "errorReasonCode": None, "clippedFrom": None},
             "meta": {"download_url": "http://existing.download.url"},
             "uid": video_uid,
         }
         obj.save()
+    return content_type, obj
+
+
+@pytest.fixture
+def setup_video_ready_with_error(video_uid):
+    content_type = ContentType.objects.get_for_model(Post)
+    obj = Post.objects.create()
+    obj.video = {
+        "status": {"state": "ready", "errorReasonCode": "ERR_DURATION_EXCEED_CONSTRAINT"},
+        "meta": {},
+        "uid": video_uid,
+    }
+    obj.save()
     return content_type, obj
 
 
@@ -86,6 +104,7 @@ def mock_get_video_data(use_httpretty, account_id, video_uid):
                         "name": "My First Stream Video",
                     },
                     "created": "2020-10-16T20:20:17.872170843Z",
+                    "clippedFrom": None,
                     "size": 9032701,
                 },
                 "success": True,
@@ -262,7 +281,7 @@ def mock_download_video(use_httpretty, account_id, video_uid):
 
 
 @pytest.fixture
-def mock_clip_video(use_httpretty, account_id, video_uid):
+def mock_clip_video(use_httpretty, account_id, clipped_video_uid, video_uid):
     httpretty.register_uri(
         httpretty.POST,
         f"https://api.cloudflare.com/client/v4/accounts/{account_id}/stream/clip",
@@ -272,6 +291,7 @@ def mock_clip_video(use_httpretty, account_id, video_uid):
                 "messages": [],
                 "success": True,
                 "result": {
+                    "uid": clipped_video_uid,
                     "allowedOrigins": ["example.com"],
                     "clippedFromVideoUID": video_uid,
                     "created": "2014-01-02T02:20:00Z",
