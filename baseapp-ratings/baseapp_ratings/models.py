@@ -4,7 +4,6 @@ from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
-
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
@@ -14,6 +13,14 @@ class AbstractBaseRate(TimeStampedModel, RelayModel):
         settings.AUTH_USER_MODEL,
         related_name="ratings",
         on_delete=models.CASCADE,
+    )
+    profile = models.ForeignKey(
+        swapper.get_model_name("baseapp_profiles", "Profile"),
+        verbose_name=_("profile"),
+        related_name="ratings",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
 
     target_content_type = models.ForeignKey(
@@ -47,7 +54,6 @@ class AbstractBaseRate(TimeStampedModel, RelayModel):
         super().delete(*args, **kwargs)
 
         self.update_ratings_indicators()
-
 
     def update_ratings_indicators(self):
         target = self.target
