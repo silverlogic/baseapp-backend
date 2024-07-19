@@ -121,11 +121,16 @@ def send_email_notification(to, context):
 
 def can_user_receive_notification(user_id, verb, channel):
     NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationSetting")
-    user_setting = NotificationSetting.objects.filter(
-        Q(channel=channel) | Q(channel=NotificationSetting.NotificationChannelTypes.ALL),
-        user_id=user_id,
-        verb=get_setting_from_verb(verb),
-    ).first()
+    user_setting = (
+        NotificationSetting.objects.filter(
+            Q(channel=channel) | Q(channel=NotificationSetting.NotificationChannelTypes.ALL),
+            Q(verb=get_setting_from_verb(verb)) | Q(verb="_ALL_"),
+            user_id=user_id,
+        )
+        .order_by("is_active")
+        .first()
+    )
+
     if user_setting:
         return user_setting.is_active
     return True
