@@ -13,7 +13,9 @@ class CurrentProfileMiddleware(BaseMiddleware):
         if not request.user.is_authenticated:
             return
 
-        if current_profile_header:
+        if not current_profile_header:
+            request.user.current_profile = request.user.profile
+        else:
             pk = get_pk_from_relay_id(current_profile_header)
             if pk:
                 profile = Profile.objects.filter(pk=pk).first()

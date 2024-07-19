@@ -14,10 +14,9 @@ class CurrentProfileMiddlewareTest(TestCase):
     def test_set_user_current_profile(self):
         request = self.factory.get("/some-path/")
         request.user = UserFactory()
-        profile = ProfileFactory(owner=request.user)
-        request.META["HTTP_CURRENT_PROFILE"] = profile.relay_id
+        request.META["HTTP_CURRENT_PROFILE"] = request.user.profile.relay_id
         self.middleware(request)
-        self.assertEqual(request.user.current_profile, profile)
+        self.assertEqual(request.user.current_profile, request.user.profile)
 
     def test_cant_use_anothers_profile(self):
         request = self.factory.get("/some-path/")
@@ -43,3 +42,9 @@ class CurrentProfileMiddlewareTest(TestCase):
         request.META["HTTP_CURRENT_PROFILE"] = "InvalidBase64%"
         self.middleware(request)
         self.assertEqual(request.user.current_profile, None)
+
+    def test_default_profile_when_not_passing_header(self):
+        request = self.factory.get("/some-path/")
+        request.user = UserFactory()
+        self.middleware(request)
+        self.assertEqual(request.user.current_profile, request.user.profile)

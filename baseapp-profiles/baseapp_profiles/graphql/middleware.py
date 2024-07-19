@@ -20,14 +20,18 @@ class CurrentProfileMiddleware(object):
 
         if not info.context.user.is_authenticated:
             info.context.user.current_profile = None
-            return next(root, info, **args)
 
-        if current_profile_header and not hasattr(info.context.user, "current_profile"):
-            info.context.user.current_profile = None
-            pk = get_pk_from_relay_id(current_profile_header)
-            if pk:
-                profile = Profile.objects.filter(pk=pk).first()
-                if profile and info.context.user.has_perm("baseapp_profiles.use_profile", profile):
-                    info.context.user.current_profile = profile
+        if not hasattr(info.context.user, "current_profile"):
+            if not current_profile_header:
+                info.context.user.current_profile = info.context.user.profile
+            else:
+                info.context.user.current_profile = None
+                pk = get_pk_from_relay_id(current_profile_header)
+                if pk:
+                    profile = Profile.objects.filter(pk=pk).first()
+                    if profile and info.context.user.has_perm(
+                        "baseapp_profiles.use_profile", profile
+                    ):
+                        info.context.user.current_profile = profile
 
         return next(root, info, **args)
