@@ -3,6 +3,7 @@
 import django.db.models.deletion
 import django.utils.timezone
 import model_utils.fields
+import swapper
 from django.conf import settings
 from django.db import migrations, models
 
@@ -14,6 +15,7 @@ class Migration(migrations.Migration):
     dependencies = [
         ("contenttypes", "0002_remove_content_type_name"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        swapper.dependency("baseapp_ratings", "Rate"),
     ]
 
     operations = [
@@ -62,7 +64,7 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                "swappable": "BASEAPP_RATINGS_RATE_MODEL",
+                "swappable": swapper.swappable_setting("baseapp_ratings", "Rate"),
                 "unique_together": {("user", "target_content_type", "target_object_id")},
             },
         ),

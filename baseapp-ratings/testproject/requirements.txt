@@ -3,4 +3,12 @@
 
 -e ./baseapp-core[graphql]
 -e ./baseapp-auth
+-e ./baseapp-reactions
+-e ./baseapp-notifications
+-e ./baseapp-comments
+-e ./baseapp-reports
+-e ./baseapp-profiles
+-e ./baseapp-pages
+-e ./baseapp-blocks
+-e ./baseapp-follows
 -e ./baseapp-ratings

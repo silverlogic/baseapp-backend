@@ -1,7 +1,7 @@
 import pytest
 import swapper
 from baseapp_core.tests.factories import UserFactory
-
+from baseapp_profiles.tests.factories import ProfileFactory
 from django.test import override_settings
 
 RateModel = swapper.load_model("baseapp_ratings", "Rate")
@@ -32,18 +32,6 @@ def test_anon_cant_rate(graphql_client):
 
     response = graphql_client(
         REACTION_TOGGLE_GRAPHQL,
-        variables={"input": {"targetObjectId": user.relay_id, "value": 4}},
-    )
-    content = response.json()
-    assert content["errors"][0]["message"] == "authentication required"
-    assert RateModel.objects.count() == 0
-
-
-def test_user_can_add_rate(graphql_user_client):
-    user = UserFactory()
-
-    response = graphql_user_client(
-        REACTION_TOGGLE_GRAPHQL,
         variables={
             "input": {
                 "targetObjectId": user.relay_id,
@@ -51,16 +39,35 @@ def test_user_can_add_rate(graphql_user_client):
             }
         },
     )
+    content = response.json()
+    assert content["errors"][0]["message"] == "authentication required"
+    assert RateModel.objects.count() == 0
+
+
+def test_user_can_add_rate(django_user_client, graphql_user_client):
+    user = UserFactory()
+    profile = ProfileFactory(owner=django_user_client.user)
+
+    response = graphql_user_client(
+        REACTION_TOGGLE_GRAPHQL,
+        variables={
+            "input": {
+                "targetObjectId": user.relay_id,
+                "profileId": profile.relay_id,
+                "value": 4,
+            }
+        },
+    )
 
     content = response.json()
-
     assert RateModel.objects.count() == 1
     assert content["data"]["createRate"]["rate"]["node"]["value"] == 4
     assert content["data"]["createRate"]["rate"]["node"]["target"]["pk"] == user.pk
 
 
-def test_user_cant_add_rate_if_its_higher_than_max_value(graphql_user_client):
+def test_user_cant_add_rate_if_its_higher_than_max_value(django_user_client, graphql_user_client):
     user = UserFactory()
+    profile = ProfileFactory(owner=django_user_client.user)
 
     with override_settings(BASEAPP_MAX_RATING_VALUE=3):
         response = graphql_user_client(
@@ -68,7 +75,8 @@ def test_user_cant_add_rate_if_its_higher_than_max_value(graphql_user_client):
             variables={
                 "input": {
                     "targetObjectId": user.relay_id,
-                    "value": 6,
+                    "profileId": profile.relay_id,
+                    "value": 4,
                 }
             },
         )

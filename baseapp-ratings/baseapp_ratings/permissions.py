@@ -1,6 +1,6 @@
 import swapper
-from django.contrib.auth.backends import BaseBackend
 from django.conf import settings
+from django.contrib.auth.backends import BaseBackend
 
 RateModel = swapper.load_model("baseapp_ratings", "Rate")
 
@@ -9,6 +9,9 @@ class RatingsPermissionsBackend(BaseBackend):
     def has_perm(self, user_obj, perm, obj=None):
         if perm == "baseapp_ratings.add_rate":
             return user_obj.is_authenticated and getattr(obj, "is_ratings_enabled", False)
+
+        if perm == "baseapp_ratings.add_rate_with_profile" and obj:
+            return user_obj.has_perm("baseapp_profiles.use_profile", obj)
 
         if perm == "baseapp_ratings.view_rate":
             return True
