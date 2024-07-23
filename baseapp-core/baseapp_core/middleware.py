@@ -2,6 +2,8 @@ import threading
 import uuid
 import zoneinfo
 
+from ipware import get_client_ip
+
 import pghistory
 from django.conf import settings
 from django.core.handlers.asgi import ASGIRequest as DjangoASGIRequest
@@ -11,6 +13,30 @@ from django.utils.deprecation import MiddlewareMixin
 from pghistory import config
 
 threading_local = threading.local()
+
+# The default meta precedence order
+IPWARE_META_PRECEDENCE_ORDER = (
+      "X_FORWARDED_FOR",
+      "HTTP_X_FORWARDED_FOR",
+      "HTTP_CLIENT_IP",
+      "HTTP_X_REAL_IP",
+      "HTTP_X_FORWARDED",
+      "HTTP_X_CLUSTER_CLIENT_IP",
+      "HTTP_FORWARDED_FOR",
+      "HTTP_FORWARDED",
+      "HTTP_CF_CONNECTING_IP",
+      "X-CLIENT-IP",
+      "X-REAL-IP",
+      "X-CLUSTER-CLIENT-IP",
+      "X_FORWARDED",
+      "FORWARDED_FOR",
+      "CF-CONNECTING-IP",
+      "TRUE-CLIENT-IP",
+      "FASTLY-CLIENT-IP",
+      "FORWARDED",
+      "CLIENT-IP",
+      "REMOTE_ADDR",
+  )
 
 
 class AdminTimezoneMiddleware(MiddlewareMixin):
@@ -70,7 +96,9 @@ def HistoryMiddleware(get_response):
                 if hasattr(request, "user") and hasattr(request.user, "pk")
                 else None
             )
-            with pghistory.context(user=user, url=request.path):
+            client_ip, is_routable = get_client_ip(request, request_header_order=IPWARE_META_PRECEDENCE_ORDER)
+
+            with pghistory.context(user=user, url=request.path, clinet_ip=client_ip, is_ip_routable=is_routable):
                 if isinstance(request, DjangoWSGIRequest):  # pragma: no branch
                     request.__class__ = WSGIRequest
                 elif isinstance(request, DjangoASGIRequest):  # pragma: no branch
