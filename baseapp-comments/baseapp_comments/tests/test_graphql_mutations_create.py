@@ -1,6 +1,6 @@
 import pytest
 import swapper
-from baseapp_core.tests.factories import UserFactory
+from baseapp_profiles.tests.factories import ProfileFactory
 
 from .factories import CommentFactory
 
@@ -20,6 +20,11 @@ COMMENT_CREATE_GRAPHQL = """
             errors {
                 field
                 messages
+            }
+            _debug {
+                exceptions {
+                    stack
+                }
             }
         }
     }
@@ -93,11 +98,11 @@ def test_user_can_reply(graphql_user_client):
     assert parent.comments_count["replies"] == 1
 
 
-def test_user_cant_comment_with_profile(graphql_user_client):
-    profile = UserFactory()
+def test_user_can_comment_with_profile(django_user_client, graphql_user_client):
+    profile = ProfileFactory(owner=django_user_client.user)
     target = CommentFactory()
 
-    respose = graphql_user_client(
+    graphql_user_client(
         COMMENT_CREATE_GRAPHQL,
         variables={
             "input": {
@@ -107,6 +112,23 @@ def test_user_cant_comment_with_profile(graphql_user_client):
             }
         },
     )
-    content = respose.json()
+    assert Comment.objects.exclude(pk=target.pk).count() == 1
+
+
+def test_user_cant_comment_with_profile(graphql_user_client):
+    profile = ProfileFactory()
+    target = CommentFactory()
+
+    response = graphql_user_client(
+        COMMENT_CREATE_GRAPHQL,
+        variables={
+            "input": {
+                "targetObjectId": target.relay_id,
+                "body": "my comment",
+                "profileObjectId": profile.relay_id,
+            }
+        },
+    )
+    content = response.json()
     assert content["errors"][0]["extensions"]["code"] == "permission_required"
     assert Comment.objects.exclude(pk=target.pk).count() == 0

@@ -24,8 +24,8 @@ ReportsCount = create_object_type_from_enum("ReportsCount", Report.ReportTypes)
 
 class ReportsInterface(relay.Node):
     reports_count = graphene.Field(ReportsCount)
-    reports = DjangoFilterConnectionField(lambda: ReportNode)
-    my_reports = graphene.Field(lambda: ReportNode, required=False)
+    reports = DjangoFilterConnectionField(lambda: ReportObjectType)
+    my_reports = graphene.Field(lambda: ReportObjectType, required=False)
 
     def resolve_reactions(self, info, **kwargs):
         target_content_type = ContentType.objects.get_for_model(self)
@@ -44,7 +44,7 @@ class ReportsInterface(relay.Node):
             ).first()
 
 
-class ReportNode(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
+class ReportObjectType(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
     target = graphene.Field(relay.Node)
     report_type = graphene.Field(ReportTypesEnum)
 
