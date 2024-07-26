@@ -76,3 +76,7 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-blocks
+  baseapp-ratings:
+    uses: ./.github/workflows/project-workflow.yml
+    with:
+      project: baseapp-ratings
