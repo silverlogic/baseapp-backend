@@ -1,6 +1,6 @@
 import pytest
 import swapper
-from baseapp_core.tests.factories import UserFactory
+from baseapp_profiles.tests.factories import ProfileFactory
 
 Follow = swapper.load_model("baseapp_follows", "Follow")
 
@@ -28,13 +28,13 @@ mutation FollowToggle($input: FollowToggleInput!) {
 
 
 def test_anon_cant_follow(graphql_client):
-    user1 = UserFactory()
-    user2 = UserFactory()
+    profile1 = ProfileFactory()
+    profile2 = ProfileFactory()
 
     variables = {
         "input": {
-            "actorObjectId": user1.relay_id,
-            "targetObjectId": user2.relay_id,
+            "actorObjectId": profile1.relay_id,
+            "targetObjectId": profile2.relay_id,
         }
     }
 
@@ -46,32 +46,31 @@ def test_anon_cant_follow(graphql_client):
 
 
 def test_user_can_follow(django_user_client, graphql_user_client):
-    user1 = django_user_client.user
-    user2 = UserFactory()
+    profile1 = ProfileFactory(owner=django_user_client.user)
+    profile2 = ProfileFactory()
 
     variables = {
         "input": {
-            "actorObjectId": user1.relay_id,
-            "targetObjectId": user2.relay_id,
+            "actorObjectId": profile1.relay_id,
+            "targetObjectId": profile2.relay_id,
         }
     }
 
     response = graphql_user_client(FOLLOW_TOGGLE_GRAPHQL, variables=variables)
 
     content = response.json()
-
     assert content["data"]["followToggle"]["target"]["followersCount"] == 1
     assert content["data"]["followToggle"]["actor"]["followingCount"] == 1
 
 
 def test_user_can_unfollow(django_user_client, graphql_user_client):
-    user1 = django_user_client.user
-    user2 = UserFactory()
+    profile1 = ProfileFactory(owner=django_user_client.user)
+    profile2 = ProfileFactory()
 
     variables = {
         "input": {
-            "actorObjectId": user1.relay_id,
-            "targetObjectId": user2.relay_id,
+            "actorObjectId": profile1.relay_id,
+            "targetObjectId": profile2.relay_id,
         }
     }
 
@@ -89,14 +88,14 @@ def test_user_can_unfollow(django_user_client, graphql_user_client):
 
 
 def test_user_cant_unfollow_others_follow(django_user_client, graphql_user_client):
-    user1 = django_user_client.user
-    user2 = UserFactory()
-    user3 = UserFactory()
+    profile1 = ProfileFactory(owner=django_user_client.user)
+    profile2 = ProfileFactory()
+    profile3 = ProfileFactory()
 
     variables = {
         "input": {
-            "actorObjectId": user1.relay_id,
-            "targetObjectId": user2.relay_id,
+            "actorObjectId": profile1.relay_id,
+            "targetObjectId": profile2.relay_id,
         }
     }
 
@@ -108,8 +107,8 @@ def test_user_cant_unfollow_others_follow(django_user_client, graphql_user_clien
 
     variables = {
         "input": {
-            "actorObjectId": user3.relay_id,
-            "targetObjectId": user2.relay_id,
+            "actorObjectId": profile3.relay_id,
+            "targetObjectId": profile2.relay_id,
         }
     }
 

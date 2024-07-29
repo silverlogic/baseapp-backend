@@ -80,5 +80,18 @@ jobs:
     with:
       project: baseapp-reports
     secrets: inherit
-
-  
+  baseapp-blocks:
+    uses: ./.github/workflows/publish-workflow.yml
+    with:
+      project: baseapp-blocks
+    secrets: inherit
+  baseapp-profiles:
+    uses: ./.github/workflows/publish-workflow.yml
+    with:
+      project: baseapp-profiles
+    secrets: inherit
+  baseapp-ratings:
+    uses: ./.github/workflows/publish-workflow.yml
+    with:
+      project: baseapp-ratings
+    secrets: inherit
