@@ -1,20 +1,28 @@
-import swapper
+import logging
+
+from baseapp_core.swappable import get_apps_model
 from django.db import migrations
 
 
 class Migration(migrations.Migration):
     def forwards_func(apps, _):
-        Profile = swapper.load_model("baseapp_profiles", "Profile")
+        Profile = get_apps_model(apps, "baseapp_profiles", "Profile")
         Comment = apps.get_model("baseapp_comments", "Comment")
         CommentEvent = apps.get_model("baseapp_comments", "CommentEvent")
 
         for comment in Comment.objects.filter(
             new_profile_id__isnull=True, profile_object_id__isnull=False
         ):
-            profile = Profile.objects.get(
-                target_content_type_id=comment.profile_content_type_id,
-                target_object_id=comment.profile_object_id,
-            )
+            try:
+                profile = Profile.objects.get(
+                    target_content_type_id=comment.profile_content_type_id,
+                    target_object_id=comment.profile_object_id,
+                )
+            except Profile.DoesNotExist:
+                logging.error(
+                    f"Can't find {comment.profile_content_type.model} with PK {comment.profile_object_id}"
+                )
+                continue
 
             comment.new_profile = profile
             comment.save(update_fields=["new_profile"])
@@ -22,10 +30,16 @@ class Migration(migrations.Migration):
         for comment in CommentEvent.objects.filter(
             new_profile_id__isnull=True, profile_object_id__isnull=False
         ):
-            profile = Profile.objects.get(
-                target_content_type_id=comment.profile_content_type_id,
-                target_object_id=comment.profile_object_id,
-            )
+            try:
+                profile = Profile.objects.get(
+                    target_content_type_id=comment.profile_content_type_id,
+                    target_object_id=comment.profile_object_id,
+                )
+            except Profile.DoesNotExist:
+                logging.error(
+                    f"Can't find {comment.profile_content_type.model} with PK {comment.profile_object_id}"
+                )
+                continue
 
             comment.new_profile = profile
             comment.save(update_fields=["new_profile"])

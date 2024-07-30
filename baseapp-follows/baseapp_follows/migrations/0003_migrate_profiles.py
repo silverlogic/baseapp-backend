@@ -1,10 +1,10 @@
-import swapper
+from baseapp_core.swappable import get_apps_model
 from django.db import migrations
 
 
 class Migration(migrations.Migration):
     def forwards_func(apps, _):
-        Profile = swapper.load_model("baseapp_profiles", "Profile")
+        Profile = get_apps_model(apps, "baseapp_profiles", "Profile")
         Follow = apps.get_model("baseapp_follows", "Follow")
 
         for follow in Follow.objects.filter(new_actor__isnull=True, actor_object_id__isnull=False):

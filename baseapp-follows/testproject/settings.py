@@ -1,6 +1,7 @@
 from baseapp_core.settings.env import env
 from baseapp_core.tests.settings import *  # noqa
 from celery.schedules import crontab
+from django.utils.translation import gettext_lazy as _
 
 APPS_DIR = BASE_DIR
 
@@ -76,3 +77,6 @@ JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.User
 
 # Baseapp Auth
 BASEAPP_AUTH_USER_FACTORY = "testproject.testapp.tests.factories.UserFactory"
+
+LANGUAGE_CODE = "en"
+LANGUAGES = [("en", _("English")), ("es", _("Spanish")), ("pt", _("Portuguese"))]
