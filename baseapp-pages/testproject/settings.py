@@ -12,6 +12,7 @@ INSTALLED_APPS += [
     "baseapp_profiles",
     "baseapp_blocks",
     "baseapp_auth",
+    "baseapp_follows",
     "testproject.testapp",
 ]
 
