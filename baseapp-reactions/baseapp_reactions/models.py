@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.db.models import Count
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
@@ -71,37 +72,49 @@ class AbstractBaseReaction(TimeStampedModel, RelayModel):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
-        update_reactions_count(self.target)
+        self.update_reactions_count(self.target)
 
     def delete(self, *args, **kwargs):
         super().delete(*args, **kwargs)
 
-        update_reactions_count(self.target)
+        self.update_reactions_count(self.target)
+
+    def update_reactions_count(self, target):
+        if not target:
+            return
+
+        ReactionModel = swapper.load_model("baseapp_reactions", "Reaction")
+        target_content_type = ContentType.objects.get_for_model(target)
+
+        # Annotate and group by reaction_type
+        reaction_counts = (
+            ReactionModel.objects.filter(
+                target_content_type=target_content_type, target_object_id=target.pk
+            )
+            .values("reaction_type")
+            .annotate(count=Count("id"))
+        )
+
+        # Initialize the counts dictionary
+        counts = {str(reaction_type.name): 0 for reaction_type in ReactionModel.ReactionTypes}
+        counts["total"] = 0
+
+        # Update the counts dictionary with the results from the query
+        for reaction_count in reaction_counts:
+            reaction_type_value = reaction_count["reaction_type"]
+            reaction_type_name = ReactionModel.ReactionTypes(reaction_type_value).name
+            counts[reaction_type_name] = reaction_count["count"]
+            counts["total"] += reaction_count["count"]
+
+        # Assuming `target` has a `reactions_count` field of type JSONField or similar
+        target.reactions_count = counts
+        target.save(update_fields=["reactions_count"])
 
 
 class Reaction(AbstractBaseReaction):
     class Meta:
         unique_together = [["user", "target_content_type", "target_object_id"]]
         swappable = swapper.swappable_setting("baseapp_reactions", "Reaction")
-
-
-def update_reactions_count(target):
-    if not target:
-        return
-    counts = default_reactions_count()
-    ReactionModel = swapper.load_model("baseapp_reactions", "Reaction")
-    target_content_type = ContentType.objects.get_for_model(target)
-    for reaction_type in ReactionModel.ReactionTypes:
-        # TO DO: improve performance by removing the FOR and making 1 query to return counts for all types at once
-        counts[reaction_type.name] = ReactionModel.objects.filter(
-            target_content_type=target_content_type,
-            target_object_id=target.pk,
-            reaction_type=reaction_type,
-        ).count()
-        counts["total"] += counts[reaction_type.name]
-
-    target.reactions_count = counts
-    target.save(update_fields=["reactions_count"])
 
 
 SwappedReaction = swapper.load_model(
