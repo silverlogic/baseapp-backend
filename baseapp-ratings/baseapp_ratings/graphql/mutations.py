@@ -18,7 +18,7 @@ RateModel = swapper.load_model("baseapp_ratings", "Rate")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
-class CreateRate(RelayMutation):
+class RateCreate(RelayMutation):
     rate = graphene.Field(RatingObjectType._meta.connection.Edge, required=False)
     target = graphene.Field(RatingsInterface)
 
@@ -71,11 +71,11 @@ class CreateRate(RelayMutation):
 
         target.refresh_from_db()
 
-        return CreateRate(
+        return RateCreate(
             rate=RatingObjectType._meta.connection.Edge(node=rate, cursor=offset_to_cursor(0)),
             target=target,
         )
 
 
 class RatingsMutations(object):
-    create_rate = CreateRate.Field()
+    rate_create = RateCreate.Field()

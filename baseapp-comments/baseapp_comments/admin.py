@@ -8,7 +8,7 @@ Comment = swapper.load_model("baseapp_comments", "Comment")
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
     search_fields = ("body",)
-    raw_id_fields = ("user", "in_reply_to")
+    raw_id_fields = ("user", "profile", "in_reply_to")
     list_display = (
         "id",
         "user",
