@@ -3,6 +3,7 @@
 import django.db.models.deletion
 import django.utils.timezone
 import model_utils.fields
+import swapper
 from django.conf import settings
 from django.db import migrations, models
 
@@ -13,6 +14,7 @@ class Migration(migrations.Migration):
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ("contenttypes", "0002_remove_content_type_name"),
+        swapper.dependency("baseapp_reactions", "Reaction"),
     ]
 
     operations = [
@@ -71,7 +73,7 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                "swappable": "BASEAPP_REACTIONS_REACTION_MODEL",
+                "swappable": swapper.swappable_setting("baseapp_reactions", "Reaction"),
                 "unique_together": {("user", "target_content_type", "target_object_id")},
             },
         ),

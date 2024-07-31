@@ -7,6 +7,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("testapp", "0008_user_phone_number"),
+        ("baseapp_auth", "0004_alter_superuserupdatelog_assigner"),
     ]
 
     operations = [

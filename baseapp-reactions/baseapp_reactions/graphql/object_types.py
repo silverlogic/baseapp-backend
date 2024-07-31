@@ -1,13 +1,14 @@
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
-from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import DjangoObjectType, get_pk_from_relay_id
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
+Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 ReactionTypesEnum = graphene.Enum.from_enum(Reaction.ReactionTypes)
 
@@ -27,7 +28,11 @@ class ReactionsInterface(relay.Node):
     reactions_count = graphene.Field(ReactionsCount)
     reactions = DjangoFilterConnectionField(lambda: ReactionObjectType)
     is_reactions_enabled = graphene.Boolean(required=True)
-    my_reaction = graphene.Field(lambda: ReactionObjectType, required=False)
+    my_reaction = graphene.Field(
+        lambda: ReactionObjectType,
+        required=False,
+        profile_id=graphene.ID(required=False),
+    )
 
     def resolve_reactions(self, info, **kwargs):
         if not getattr(self, "is_reactions_enabled", True):
@@ -45,13 +50,19 @@ class ReactionsInterface(relay.Node):
             target_object_id=self.pk,
         ).order_by("-created")
 
-    def resolve_my_reaction(self, info, **kwargs):
+    def resolve_my_reaction(self, info, profile_id=None, **kwargs):
         if info.context.user.is_authenticated:
-            target_content_type = ContentType.objects.get_for_model(self)
+            if profile_id:
+                pk = get_pk_from_relay_id(profile_id)
+                profile = Profile.objects.get_if_member(pk=pk, user=info.context.user)
+            else:
+                profile = info.context.user.current_profile
+            if not profile:
+                return None
             return Reaction.objects.filter(
-                target_content_type=target_content_type,
+                target_content_type=ContentType.objects.get_for_model(self),
                 target_object_id=self.pk,
-                user=info.context.user,
+                profile_id=profile.pk,
             ).first()
 
 

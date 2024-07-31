@@ -1,6 +1,7 @@
 from baseapp_core.settings.env import env
 from baseapp_core.tests.settings import *  # noqa
 from celery.schedules import crontab
+from django.utils.translation import gettext_lazy as _
 
 APPS_DIR = BASE_DIR
 
@@ -13,6 +14,12 @@ INSTALLED_APPS += [
     "baseapp_auth",
     "testproject.testapp",
     "baseapp_follows",
+    "baseapp_profiles",
+    "baseapp_pages",
+    "baseapp_reactions",
+    "baseapp_reports",
+    "baseapp_comments",
+    "baseapp_blocks",
 ]
 
 ROOT_URLCONF = "testproject.urls"
@@ -30,6 +37,8 @@ AUTH_USER_MODEL = "testapp.User"
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "baseapp_auth.permissions.UsersPermissionsBackend",
+    "baseapp_profiles.permissions.ProfilesPermissionsBackend",
+    "baseapp_follows.permissions.FollowsPermissionsBackend",
 ]
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.PBKDF2PasswordHasher"]
 
@@ -68,3 +77,6 @@ JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.User
 
 # Baseapp Auth
 BASEAPP_AUTH_USER_FACTORY = "testproject.testapp.tests.factories.UserFactory"
+
+LANGUAGE_CODE = "en"
+LANGUAGES = [("en", _("English")), ("es", _("Spanish")), ("pt", _("Portuguese"))]

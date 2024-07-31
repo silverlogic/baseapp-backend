@@ -1,13 +1,13 @@
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
-from baseapp_core.graphql import DjangoObjectType
-
+from baseapp_core.graphql import DjangoObjectType, get_pk_from_relay_id
 from django.contrib.contenttypes.models import ContentType
 from graphene import relay
 from graphene_django import DjangoConnectionField
 
 RateModel = swapper.load_model("baseapp_ratings", "Rate")
+Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
 class RatingsInterface(relay.Node):
@@ -16,7 +16,11 @@ class RatingsInterface(relay.Node):
     ratings_average = graphene.Float()
     ratings = DjangoConnectionField(lambda: RatingObjectType)
     is_ratings_enabled = graphene.Boolean(required=True)
-    my_rating = graphene.Field(lambda: RatingObjectType, required=False)
+    my_rating = graphene.Field(
+        lambda: RatingObjectType,
+        required=False,
+        profile_id=graphene.ID(required=False),
+    )
 
     def resolve_ratings(self, info, **kwargs):
         if not getattr(self, "is_ratings_enabled", True):
@@ -31,13 +35,20 @@ class RatingsInterface(relay.Node):
             target_object_id=self.pk,
         ).order_by("-created")
 
-    def resolve_my_rating(self, info, **kwargs):
+    def resolve_my_rating(self, info, profile_id, **kwargs):
         if info.context.user.is_authenticated:
-            target_content_type = ContentType.objects.get_for_model(self)
+            if profile_id:
+                pk = get_pk_from_relay_id(profile_id)
+                profile = Profile.objects.get_if_member(pk=pk, user=info.context.user)
+            else:
+                profile = info.context.user.current_profile
+            if not profile:
+                return None
             return RateModel.objects.filter(
-                target_content_type=target_content_type,
+                target_content_type=ContentType.objects.get_for_model(self),
                 target_object_id=self.pk,
                 user=info.context.user,
+                profile=info.context.user.current_profile,
             ).first()
 
 
@@ -50,6 +61,7 @@ class RatingObjectType(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
         fields = (
             "id",
             "user",
+            "profile",
             "created",
             "modified",
             "target",

@@ -60,7 +60,6 @@ class CommentsInterface(relay.Node):
 
 class CommentObjectType(DjangoObjectType):
     target = graphene.Field(CommentsInterface)
-    profile = graphene.Field(relay.Node)
     status = graphene.Field(CommentStatusEnum)
 
     class Meta:
