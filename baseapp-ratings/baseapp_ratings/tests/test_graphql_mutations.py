@@ -8,8 +8,8 @@ RateModel = swapper.load_model("baseapp_ratings", "Rate")
 pytestmark = pytest.mark.django_db
 
 REACTION_TOGGLE_GRAPHQL = """
-    mutation CreateRateMutation($input: CreateRateInput!) {
-        createRate(input: $input) {
+    mutation RateCreateMutation($input: RateCreateInput!) {
+        rateCreate(input: $input) {
             rate {
                 node {
                     id
@@ -59,8 +59,8 @@ def test_user_can_add_rate(django_user_client, graphql_user_client):
 
     content = response.json()
     assert RateModel.objects.count() == 1
-    assert content["data"]["createRate"]["rate"]["node"]["value"] == 4
-    assert content["data"]["createRate"]["rate"]["node"]["target"]["pk"] == user.pk
+    assert content["data"]["rateCreate"]["rate"]["node"]["value"] == 4
+    assert content["data"]["rateCreate"]["rate"]["node"]["target"]["pk"] == user.pk
 
 
 def test_user_cant_add_rate_if_its_higher_than_max_value(django_user_client, graphql_user_client):

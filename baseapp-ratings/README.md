@@ -68,7 +68,7 @@ class Mutation(graphene.ObjectType, RatingsMutations):
 schema = graphene.Schema(query=Query, mutation=Mutation)
 ```
 
-This will expose `createRate` mutation and add fields and connections to all your GraphqlQL Object Types using interface `RatingsInterface`.
+This will expose `rateCreate` mutation and add fields and connections to all your GraphqlQL Object Types using interface `RatingsInterface`.
 
 Example:
 
