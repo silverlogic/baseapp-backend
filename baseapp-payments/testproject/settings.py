@@ -12,6 +12,7 @@ INSTALLED_APPS += [
     "django.contrib.sites",
     # Third party
     "djstripe",
+    "baseapp_message_templates",
     "baseapp_payments",
 ]
 
