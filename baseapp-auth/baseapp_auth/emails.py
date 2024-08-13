@@ -1,9 +1,8 @@
 from baseapp_core.deep_links import get_deep_link
 from baseapp_core.exceptions import DeepLinkFetchError
+from baseapp_message_templates.email_utils import send_template_email
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
-from django.template.loader import render_to_string
 
 User = get_user_model()
 from .tokens import (
@@ -36,16 +35,9 @@ def send_welcome_email(user):
         confirm_url = web_url
     else:
         confirm_url = deep_link["url"]
-    context = {"user": user, "confirm_url": confirm_url}
-    subject = render_to_string("users/emails/welcome-subject.txt.j2", context=context).strip()
-    message = render_to_string("users/emails/welcome-body.txt.j2", context=context)
-    html_message = render_to_string("users/emails/welcome-body.html.j2", context=context)
-    send_mail(
-        subject,
-        message,
-        html_message=html_message,
-        from_email=None,
-        recipient_list=[user.email],
+    context = {"confirm_url": confirm_url}
+    send_template_email(
+        template_name="Email Verification", recipients=[user.email], context=context
     )
 
 
@@ -66,17 +58,8 @@ def send_password_reset_email(info):
         url = fallback_url
     else:
         url = deep_link["url"]
-    context = {"url": url}
-    subject = render_to_string("users/emails/password-reset-subject.txt.j2", context).strip()
-    message = render_to_string("users/emails/password-reset-body.txt.j2", context)
-    html_message = render_to_string("users/emails/password-reset-body.html.j2", context)
-    send_mail(
-        subject,
-        message,
-        html_message=html_message,
-        from_email=None,
-        recipient_list=[info["email"]],
-    )
+    context = {"reset_url": url}
+    send_template_email(template_name="Password Reset", recipients=[info["email"]], context=context)
 
 
 def send_change_email_confirm_email(user):
@@ -101,16 +84,11 @@ def send_change_email_confirm_email(user):
         url = fallback_url
     else:
         url = deep_link["url"]
-    context = {"url": url, "new_email": user.new_email}
-    subject = render_to_string("users/emails/change-email-confirm-subject.txt.j2", context).strip()
-    message = render_to_string("users/emails/change-email-confirm-body.txt.j2", context)
-    html_message = render_to_string("users/emails/change-email-confirm-body.html.j2", context)
-    send_mail(
-        subject,
-        message,
-        html_message=html_message,
-        from_email=None,
-        recipient_list=[user.email],
+    context = {"confirm_url": url}
+    send_template_email(
+        template_name="Email Address Change Confirmation",
+        recipients=[user.new_email],
+        context=context,
     )
 
 
@@ -136,84 +114,50 @@ def send_change_email_verify_email(user):
         url = fallback_url
     else:
         url = deep_link["url"]
-    context = {"url": url}
-    subject = render_to_string("users/emails/change-email-verify-subject.txt.j2", context).strip()
-    message = render_to_string("users/emails/change-email-verify-body.txt.j2", context)
-    html_message = render_to_string("users/emails/change-email-verify-body.html.j2", context)
-    send_mail(
-        subject,
-        message,
-        html_message=html_message,
-        from_email=None,
-        recipient_list=[user.new_email],
+    context = {"new_email": user.new_email, "verify_url": url}
+    send_template_email(
+        template_name="Email Address Change Verification",
+        recipients=[user.email],
+        context=context,
     )
 
 
 def new_superuser_notification_email(new_superuser, assigner):
-    context = {"assigner": assigner, "assignee": new_superuser}
+    context = {"assigner": assigner.email, "assignee": new_superuser.email}
     superusers = (
         User.objects.filter(is_superuser=True)
         .exclude(email__in=[new_superuser.email, assigner.email])
         .all()
     )
     recipient_list = list(superusers.values_list("email", flat=True))
-
-    subject = f"{new_superuser.email} has been made superuser by {assigner.email}"
-    message = render_to_string(
-        "users/emails/new-superuser-notification-email.txt.j2", context=context
+    send_template_email(
+        template_name="Superuser Added",
+        recipients=recipient_list,
+        context=context,
     )
-    html_message = render_to_string(
-        "users/emails/new-superuser-notification-email.html.j2", context=context
-    )
-    if recipient_list:
-        send_mail(
-            subject,
-            message,
-            html_message=html_message,
-            from_email=None,
-            recipient_list=recipient_list,
-        )
 
 
 def remove_superuser_notification_email(non_superuser, assigner):
-    context = {"assigner": assigner, "assignee": non_superuser}
+    context = {"assigner": assigner.email, "assignee": non_superuser.email}
     superusers = (
         User.objects.filter(is_superuser=True)
         .exclude(email__in=[non_superuser.email, assigner.email])
         .all()
     )
     recipient_list = list(superusers.values_list("email", flat=True))
-
-    subject = f"{non_superuser.email} has been removed from superuser by {assigner.email}"
-    message = render_to_string(
-        "users/emails/remove-superuser-notification-email.txt.j2",
+    send_template_email(
+        template_name="Superuser Removed",
+        recipients=recipient_list,
         context=context,
     )
-    html_message = render_to_string(
-        "users/emails/remove-superuser-notification-email.html.j2",
-        context=context,
-    )
-    if recipient_list:
-        send_mail(
-            subject,
-            message,
-            html_message=html_message,
-            from_email=None,
-            recipient_list=recipient_list,
-        )
 
 
 def send_password_expired_email(user):
     token = ChangeExpiredPasswordTokenGenerator().make_token(user)
     url = settings.FRONT_CHANGE_EXPIRED_PASSWORD_URL.format(token=token)
-    context = dict(url=url)
-    subject = render_to_string("users/emails/password-expired-subject.txt.j2", context).strip()
-    message = render_to_string("users/emails/password-expired-body.txt.j2", context)
-    html_message = render_to_string("users/emails/password-expired-body.html.j2", context)
-    send_mail(
-        subject,
-        message,
-        html_message=html_message,
-        from_email=None,
-        recipient_list=[user.email],
+    context = {"update_password_url": url}
+    send_template_email(
+        template_name="Password Expired",
+        recipients=[user.email],
+        context=context,
     )

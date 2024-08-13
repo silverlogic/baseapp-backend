@@ -10,6 +10,7 @@ INSTALLED_APPS += [
     "avatar",
     "trench",
     "rest_framework_simplejwt",
+    "baseapp_message_templates",
     "baseapp_auth",
     "baseapp_profiles",
     "baseapp_reactions",
