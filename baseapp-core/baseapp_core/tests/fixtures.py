@@ -1,3 +1,4 @@
+import base64
 import json
 from io import BytesIO
 
@@ -90,7 +91,7 @@ def image_base64():
 
 @pytest.fixture
 def image_djangofile(image_base64):
-    i = BytesIO(image_base64.encode("utf-8"))
+    i = BytesIO(base64.b64decode(image_base64))
     return ImageFile(i, name="image.png")
 
 

@@ -2,7 +2,12 @@ import django_filters
 import graphene
 import swapper
 from baseapp_auth.graphql import PermissionsInterface
-from baseapp_core.graphql import DjangoObjectType, ThumbnailField
+from baseapp_core.graphql import (
+    DjangoObjectType,
+    ThumbnailField,
+    get_object_type_for_model,
+)
+from baseapp_pages.graphql.meta import AbstractMetadataObjectType
 from django.apps import apps
 from django.db.models import Q
 from graphene import relay
@@ -11,7 +16,7 @@ Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
 class ProfileInterface(relay.Node):
-    profile = graphene.Field(lambda: ProfileObjectType)
+    profile = graphene.Field(get_object_type_for_model(Profile))
 
 
 class ProfileFilter(django_filters.FilterSet):
@@ -20,18 +25,14 @@ class ProfileFilter(django_filters.FilterSet):
         fields = ["name"]
 
 
-class ProfileMetadata:
-    def __init__(self, instance, info):
-        self.instance = instance
-        self.info = info
-
+class ProfileMetadata(AbstractMetadataObjectType):
     @property
     def meta_title(self):
         return self.instance.name
 
     @property
     def meta_description(self):
-        return self.instance.name
+        return None
 
     @property
     def meta_og_type(self):
@@ -61,9 +62,10 @@ if apps.is_installed("baseapp_blocks"):
     interfaces.append(BlocksInterface)
 
 
-class ProfileObjectType(DjangoObjectType):
+class BaseProfileObjectType:
     target = graphene.Field(lambda: ProfileInterface)
     image = ThumbnailField(required=False)
+    banner_image = ThumbnailField(required=False)
 
     class Meta:
         interfaces = interfaces
@@ -93,3 +95,8 @@ class ProfileObjectType(DjangoObjectType):
     @classmethod
     def resolve_metadata(cls, instance, info):
         return ProfileMetadata(instance, info)
+
+
+class ProfileObjectType(DjangoObjectType, BaseProfileObjectType):
+    class Meta(BaseProfileObjectType.Meta):
+        model = Profile

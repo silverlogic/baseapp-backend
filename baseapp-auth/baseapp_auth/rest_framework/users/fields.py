@@ -1,14 +1,8 @@
-from avatar.templatetags.avatar_tags import avatar_url
 from baseapp_core.rest_framework.fields import ThumbnailImageField
 
 
 class AvatarField(ThumbnailImageField):
-    def get_attribute(self, obj):
-        return obj
-
-    def to_representation(self, instance):
-        user = instance
-        return {
-            "full_size": avatar_url(user, 1024),
-            "small": avatar_url(user, 64),
-        }
+    def __init__(self, *args, **kwargs):
+        if "sizes" not in kwargs:
+            kwargs["sizes"] = {"small": (64, 64), "full_size": (1024, 1024)}
+        super().__init__(*args, **kwargs)

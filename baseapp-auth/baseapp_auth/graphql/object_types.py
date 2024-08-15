@@ -1,7 +1,10 @@
 import graphene
 import swapper
-from avatar.templatetags.avatar_tags import avatar_url
-from baseapp_core.graphql import DjangoObjectType, File, get_object_type_for_model
+from baseapp_core.graphql import (
+    DjangoObjectType,
+    ThumbnailField,
+    get_object_type_for_model,
+)
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.db.models import Q
@@ -55,7 +58,7 @@ class AbstractUserObjectType(object):
     full_name = graphene.String()
     short_name = graphene.String()
 
-    avatar = graphene.Field(File, width=graphene.Int(), height=graphene.Int())
+    avatar = ThumbnailField(required=False)
 
     # Make them not required
     email = graphene.String()
@@ -71,8 +74,6 @@ class AbstractUserObjectType(object):
         model = User
         fields = (
             "pk",
-            "first_name",
-            "last_name",
             "full_name",
             "short_name",
             "email",
@@ -96,7 +97,7 @@ class AbstractUserObjectType(object):
         filterset_class = UsersFilter
 
     def resolve_avatar(self, info, width, height):
-        return File(url=avatar_url(self, width, height))
+        return self.profile.image
 
     def resolve_metadata(self, info):
         return MetadataObjectType(
@@ -107,7 +108,7 @@ class AbstractUserObjectType(object):
         return info.context.user.is_authenticated and self.pk == info.context.user.pk
 
     def resolve_full_name(self, info):
-        return self.get_full_name()
+        return self.profile.name
 
     def resolve_short_name(self, info):
         return self.get_short_name()
@@ -138,6 +139,7 @@ class AbstractUserObjectType(object):
 
     @classmethod
     def get_queryset(cls, queryset, info):
+        queryset = queryset.select_related("profile")
         if info.context.user.is_anonymous:
             return queryset.filter(is_active=True)
         return queryset

@@ -1,3 +1,5 @@
+import uuid
+
 import swapper
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import random_name_in
@@ -34,6 +36,11 @@ if apps.is_installed("baseapp_comments"):
 
     inheritances.append(CommentableModel)
 
+if apps.is_installed("baseapp_pages"):
+    from baseapp_pages.models import PageMixin
+
+    inheritances.append(PageMixin)
+
 inheritances.append(RelayModel)
 
 
@@ -50,6 +57,10 @@ class AbstractProfile(*inheritances):
     image = models.ImageField(
         _("image"), upload_to=random_name_in("profile_images"), blank=True, null=True
     )
+    banner_image = models.ImageField(
+        _("banner image"), upload_to=random_name_in("profile_banner_images"), blank=True, null=True
+    )
+    biography = models.TextField(_("biography"), blank=True, null=True)
 
     target_content_type = models.ForeignKey(
         ContentType,
@@ -91,6 +102,26 @@ class AbstractProfile(*inheritances):
         return User.objects.filter(
             models.Q(profiles_owner=self) | models.Q(profile_members__profile=self)
         ).distinct()
+
+    def generate_url_path(self, random=False):
+        if random:
+            return f"profile/{uuid.uuid4()}"
+        return f"profile/{self.pk}"
+
+    def create_url_path(self):
+        from baseapp_pages.models import URLPath
+
+        url_path = self.generate_url_path()
+        if URLPath.objects.filter(path=url_path).exists():
+            url_path = self.generate_url_path(random=True)
+        self.url_paths.create(path=url_path, language=None, is_active=True)
+
+    # def save(self, *args, **kwargs):
+    #     created = self._state.adding
+    #     super().save(*args, **kwargs)
+
+    #     if created:
+    #         self.create_url_path()
 
 
 class ProfilableModel(models.Model):
