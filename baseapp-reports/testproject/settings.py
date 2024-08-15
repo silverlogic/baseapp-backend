@@ -6,6 +6,11 @@ INSTALLED_APPS += [
     "graphene_django",
     "baseapp_reports",
     "baseapp_auth",
+    "baseapp_profiles",
+    "baseapp_reactions",
+    "baseapp_comments",
+    "baseapp_follows",
+    "baseapp_blocks",
     "testproject.testapp",
 ]
 

@@ -2,7 +2,6 @@ from datetime import timedelta
 
 import baseapp_auth.tests.helpers as h
 import pytest
-from avatar.models import Avatar
 from baseapp_auth.tests.factories import PasswordValidationFactory
 from baseapp_auth.tests.mixins import ApiMixin
 from baseapp_auth.utils.referral_utils import get_user_referral_model
@@ -139,14 +138,17 @@ class TestUsersUpdate(ApiMixin):
         data = {"avatar": image_base64}
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.pk}), data)
         h.responseOk(r)
-        assert Avatar.objects.exists()
+        user_client.user.profile.refresh_from_db()
+        assert user_client.user.profile.image is not None
 
     def test_can_clear_avatar(self, user_client, image_djangofile):
-        Avatar.objects.create(user=user_client.user, primary=True, avatar=image_djangofile)
+        user_client.user.profile.image = image_djangofile
+        user_client.user.profile.save()
         data = {"avatar": None}
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.pk}), data)
         h.responseOk(r)
-        assert not Avatar.objects.exists()
+        user_client.user.profile.refresh_from_db()
+        assert not user_client.user.profile.image
 
 
 class TestUsersList(ApiMixin):

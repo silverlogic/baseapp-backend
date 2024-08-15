@@ -1,6 +1,5 @@
 from datetime import timedelta
 
-from avatar.models import Avatar
 from baseapp_auth.utils.referral_utils import get_user_referral_model, use_referrals
 from baseapp_core.rest_framework.serializers import ModelSerializer
 from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
@@ -12,11 +11,11 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
+from .fields import AvatarField
+
 User = get_user_model()
 
 from baseapp_auth.password_validators import apply_password_validators
-
-from .fields import AvatarField
 
 
 class UserBaseSerializer(ModelSerializer):
@@ -94,9 +93,10 @@ class UserSerializer(UserBaseSerializer):
         if "avatar" in validated_data:
             avatar = validated_data.pop("avatar")
             if avatar:
-                Avatar.objects.create(user=instance, primary=True, avatar=avatar)
+                instance.profile.image = avatar
             else:
-                instance.avatar_set.all().delete()
+                instance.profile.image = None
+            instance.profile.save(update_fields=["image"])
 
         return super().update(instance, validated_data)
 

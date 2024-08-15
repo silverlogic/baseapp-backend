@@ -11,6 +11,12 @@ INSTALLED_APPS += [
     "trench",
     "rest_framework_simplejwt",
     "baseapp_auth",
+    "baseapp_profiles",
+    "baseapp_reactions",
+    "baseapp_comments",
+    "baseapp_follows",
+    "baseapp_blocks",
+    "baseapp_reports",
     "testproject.testapp",
     "graphene_django",
 ]

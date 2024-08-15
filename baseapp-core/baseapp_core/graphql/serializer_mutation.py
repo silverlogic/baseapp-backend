@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404
 from graphene.types import InputField
 from graphene.types.mutation import MutationOptions
 from graphene.types.objecttype import yank_fields_from_attrs
+from graphene.utils.str_converters import to_snake_case
 from graphene_django.rest_framework.serializer_converter import convert_serializer_field
 from graphene_django.types import ErrorType
 from rest_framework import serializers
@@ -110,6 +111,12 @@ class SerializerMutation(RelayMutation):
     def get_serializer_kwargs(cls, root, info, **input):
         lookup_field = cls._meta.lookup_field
         model_class = cls._meta.model_class
+
+        for file_field_name, file_field_values in info.context.FILES.lists():
+            if len(file_field_values) == 1:
+                input[to_snake_case(file_field_name)] = file_field_values[0]
+            else:
+                input[to_snake_case(file_field_name)] = file_field_values
 
         if model_class:
             if "update" in cls._meta.model_operations and lookup_field in input:

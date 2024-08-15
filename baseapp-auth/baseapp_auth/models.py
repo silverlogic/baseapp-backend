@@ -1,4 +1,5 @@
 from baseapp_core.models import CaseInsensitiveEmailField
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
@@ -20,7 +21,15 @@ def use_relay_model():
         return object
 
 
-class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model()):
+def use_profile_model():
+    if apps.is_installed("baseapp_blocks"):
+        from baseapp_profiles.models import ProfilableModel
+
+        return ProfilableModel
+    return object
+
+
+class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_profile_model()):
     email = CaseInsensitiveEmailField(unique=True, db_index=True)
     is_email_verified = models.BooleanField(default=False)
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
@@ -84,9 +93,9 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model()):
         return self.email
 
     def get_full_name(self):
-        if self.first_name and self.last_name:
-            return f"{self.first_name} {self.last_name}".strip()
-        return self.email
+        names = [self.first_name, self.last_name]
+        full_name = " ".join([name for name in names if name]).strip()
+        return full_name or self.email
 
     def save(self, *args, **kwargs):
         if hasattr(self, "tracker"):
