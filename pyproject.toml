@@ -1,6 +1,9 @@
 [build-system]
-requires = ['setuptools>=40.8.0']
+requires = ['setuptools>=64', 'wheel', 'setuptools_scm[toml]>=8']
 build-backend = 'setuptools.build_meta'
+
+[tool.setuptools_scm]
+tag_regex = "^baseapp@v(?P<version>[vV]?\\d+(?:\\.\\d+){0,2}[^\\+]*)(?:\\+.*)?$"
 
 [tool.black]
 line-length = 100
