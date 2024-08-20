@@ -68,7 +68,7 @@ class ProfileObjectType(DjangoObjectType):
     class Meta:
         interfaces = interfaces
         model = Profile
-        fields = ("pk", "name", "image", "target", "status", "owner", "created", "modified")
+        fields = "__all__"
         filterset_class = ProfileFilter
 
     @classmethod
