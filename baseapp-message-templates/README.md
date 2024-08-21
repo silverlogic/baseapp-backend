@@ -114,15 +114,39 @@ This model is responsible for customizing your e-mail template and sending mail.
 
 ## Sending mail via SendGrid template
 
-If a `sendgrid_template_id` is provided on an instance of `EmailTemplate`, a SendGrid template can be used to send mail. In order to send mail via SendGrid template, at least one `Personalization` must first be created. Each `Personalization`will contain the email of a recipient and any context that must be provided to the template. A `Personalization` can be created like so:
+If a `sendgrid_template_id` is provided on an instance of `EmailTemplate`, a SendGrid template can be used to send mail. In order to send mail via SendGrid template, you can use the `send_sendgrid_email` util, or manually do so by creating at least one `Personalization`. Each `Personalization`will contain the email of a recipient and any context that must be provided to the template. A `Personalization` can be created like so:
 
 ```py
+# This step is only necessary if not using the `send_sendgrid_email` util
 from baseapp_message_templates.sendgrid import get_personalization
 
 personalization = get_personalization("john@test.com", {"message": "Hello there."})
 ```
 
-### Sending mail to one recipient
+### Sending sendgrid emails
+
+The `send_sendgrid_email` in `email_utils` automatically handles the fetching of the email template and the creation of the personalizations. The function takes two arguments: `template_name`, which is the name of the `EmailTemplate` to be used, and `content`, which is a list of tuples containing a recipient email and message pair.
+
+```py
+from baseapp_message_templates.email_utils import send_sendgrid_email
+ # Template name: "Test Template"
+ # Recipient: "john@test.com"
+ # Message: "Hello there."
+
+send_sendgrid_email("Test Template", [("john@test.com", "Hello there.")])
+```
+
+This util automatically handles sending multiple messages to multiple recipients. You just need to provide the recipient/message tuple in the content list.
+
+```py
+from baseapp_message_templates.email_utils import send_sendgrid_email
+
+send_sendgrid_email("Test Template", [("john@test.com", "Hello there."), ("jane@test.com", "Hi!")])
+```
+If needed, it is possible to manully send emails using the `send_via_sendgrid` or `mass_send_via_sendgrid` methods.
+
+
+### Manually sending mail to one recipient
 
 The `send_via_sendgrid` method of `EmailTemplate` can be used to send a single email to one recipient. The method takes one `Personalization` as an argument, as well as an optional list of `attachments` that can be sent along with this particular message.
 
@@ -137,7 +161,7 @@ personalization = get_personalization("john@test.com", {"message": "Hello there.
 template.send_via_sendgrid(personalization)
 ```
 
-### Sending mail to multiple recipients
+### Manually sending mail to multiple recipients
 
 The `mass_send_via_sendgrid` method of `EmailTemplate` can be used to send multiple instances of a template to multiple recipients. The method takes a list of `Personalization` objects as an argument, and each `Personalization` will send a separate message to each recipient with its own context.
 
@@ -171,9 +195,9 @@ After saving, the content of the text field will no longer contain the raw HTML 
 
 ### Sending
 
-Once you've added `html_content` to your template, either programatically or through the Django Admin, a message can now be sent through the `send` method of `EmailTemplate`. 
+Once you've added `html_content` to your template, either programatically or through the Django Admin, a message can now be sent through the `send_template_email` util in `email_utils`. This util is a simple wrapper for fetching the email template and sending it using the template's `send` method.
 
-The only required parameter for `send` is `recipients`, which is a list of one or more strings containing the e-mail addresses of the recipients. A `context` dict can be passed in optionally if the HTML content is expected one or more key/value pairs to be provided.
+There are two required parameters: `template_name`, which is the name of the `EmailTemplate` to be used, and `recipients`, which is a list of one or more strings containing the e-mail addresses of the recipients. A `context` dict can be passed in optionally if the HTML content is expected one or more key/value pairs to be provided.
 
 The `use_base_template` flag will determine whether this message should extend from a base HTML template. If set to `True`, the message will extend from the base template that is located at a certain path. This path will either be the value of `extended_with` if provided, or the value of `DEFAULT_EMAIL_TEMPLATE`. 
 
@@ -182,6 +206,23 @@ The `attachments` parameter is a list of one or more files that will be send alo
 Finally, the `subject` parameter is a string, which will override the copy template subject if passed.
 
 ```py
+from baseapp_message_templates.email_utils import send_template_email
+
+# The name of the template to be used in this example is `Test Template`
+recipients = ["john@test.com"]
+context = {"content": "Hello."}
+extended_with = "apps/base/templates/test-template.html"
+
+send_template_email("Test Template", recipients, context, True, extended_with)
+
+# Example with attachments and custom subject
+attachments = [attch_1, ...]
+subject = f'Custom subject {var}'
+send_template_email("Test Template", recipients, context, True, extended_with, 
+              attachments=attachments, subject=subject)
+
+
+# If needed, you can also manually send emails by fetching the necessary template:
 from baseapp_message_templates.models import EmailTemplate
 
 
@@ -192,13 +233,8 @@ context = {"content": "Hello."}
 extended_with = "apps/base/templates/test-template.html"
 
 template.send(recipients, context, True, extended_with)
-
-# example with attachments and custom subject
-attachments = [attch_1, ...]
-subject = f'Custom subject {var}'
-template.send(recipients, context, True, extended_with, 
-              attachments=attachments, subject=subject)
 ```
+
 
 ### SmsTemplate Model
 

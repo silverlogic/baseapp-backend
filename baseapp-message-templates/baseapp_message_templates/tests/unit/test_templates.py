@@ -2,6 +2,10 @@ import pytest
 
 import baseapp_message_templates.tests.factories as f
 from baseapp_message_templates.custom_templates import get_full_copy_template
+from baseapp_message_templates.email_utils import (
+    send_sendgrid_email,
+    send_template_email,
+)
 from baseapp_message_templates.sendgrid import get_personalization
 from baseapp_message_templates.sms_utils import get_sms_message
 
@@ -21,12 +25,13 @@ class TestEmailTemplates:
         return template_data
 
     def test_auto_generate_plain_text(self, data):
-        html_content, text_content, subject = get_full_copy_template(self.template)
+        _html_content, text_content, subject = get_full_copy_template(self.template)
 
         assert text_content == "Hello"
+        assert subject == "This is a test"
 
     def test_send_mail(self, outbox, data):
-        self.template.send(["test@test.com"])
+        send_template_email("Test Template", ["test@test.com"])
 
         assert len(outbox) == 1
 
@@ -57,12 +62,20 @@ class TestEmailTemplates:
 
     def test_send_via_sendgrid(self, outbox, data):
         recipient = "test@test.com"
-        context = {"message": "Hello!"}
-        personalization = get_personalization(recipient, context)
-
-        self.template.send_via_sendgrid(personalization)
+        context = "Hello!"
+        send_sendgrid_email("Test Template", [(recipient, context)])
 
         assert len(outbox) == 1
+
+    def test_mass_send_via_sendgrid(self, outbox, data):
+        recipient_1 = "john@test.com"
+        context_1 = "Hello!"
+        recipient_2 = "jane@test.com"
+        context_2 = "Hi!"
+        send_sendgrid_email("Test Template", [(recipient_1, context_1), (recipient_2, context_2)])
+
+        assert len(outbox) == 1
+        assert len(outbox[0].personalizations) == 2
 
 
 class TestSmsTemplates:
