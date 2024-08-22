@@ -134,8 +134,7 @@ class TestLoginJwt(TestLoginBase):
 
         assert validated_token["id"] == user.id
         assert validated_token["email"] == user.email
-        assert validated_token["first_name"] == user.first_name
-        assert validated_token["last_name"] == user.last_name
+        assert validated_token["name"] == user.first_name
 
 
 class TestLoginMfaAuthToken(TestLoginBase):

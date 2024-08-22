@@ -19,6 +19,7 @@ from baseapp_auth.password_validators import apply_password_validators
 
 
 class UserBaseSerializer(ModelSerializer):
+    name = serializers.CharField(required=False, allow_blank=True, source="first_name")
     avatar = AvatarField(required=False, allow_null=True)
     email_verification_required = serializers.SerializerMethodField()
     referral_code = serializers.SerializerMethodField()
@@ -36,8 +37,7 @@ class UserBaseSerializer(ModelSerializer):
             "referral_code",
             "referred_by_code",
             "avatar",
-            "first_name",
-            "last_name",
+            "name",
             "phone_number",
             "preferred_language",
         )
