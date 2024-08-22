@@ -49,8 +49,7 @@ class TestUsersRetrieve(ApiMixin):
             "is_new_email_confirmed",
             "referral_code",
             "avatar",
-            "first_name",
-            "last_name",
+            "name",
             "phone_number",
             "preferred_language",
         }
@@ -61,7 +60,7 @@ class TestUsersRetrieve(ApiMixin):
         user = UserFactory()
         r = user_client.get(self.reverse(kwargs={"pk": user.pk}))
         h.responseOk(r)
-        expected = {"id", "avatar", "first_name", "last_name", "phone_number"}
+        expected = {"id", "avatar", "name", "phone_number"}
         actual = set(r.data.keys())
         assert expected == actual
 
@@ -168,7 +167,7 @@ class TestUsersList(ApiMixin):
         r = user_client.get(self.reverse(query_params={"q": "John Smith"}))
         h.responseOk(r)
         assert len(r.data["results"]) == 1
-        assert r.data["results"][0]["first_name"] == "John"
+        assert r.data["results"][0]["name"] == "John"
 
 
 class TestUsersMe(ApiMixin):
