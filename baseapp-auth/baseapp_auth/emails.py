@@ -87,7 +87,7 @@ def send_change_email_confirm_email(user):
     context = {"confirm_url": url}
     send_template_email(
         template_name="Email Address Change Confirmation",
-        recipients=[user.new_email],
+        recipients=[user.email],
         context=context,
     )
 
@@ -117,7 +117,7 @@ def send_change_email_verify_email(user):
     context = {"new_email": user.new_email, "verify_url": url}
     send_template_email(
         template_name="Email Address Change Verification",
-        recipients=[user.email],
+        recipients=[user.new_email],
         context=context,
     )
 
