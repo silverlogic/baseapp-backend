@@ -1,0 +1,97 @@
+name: Sonar Actions
+run-name: ${{ github.actor }} is checking ${{ github.ref }} branch 🚀
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  baseapp-auth:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-auth
+    secrets: inherit
+  baseapp-cloudflare-stream-field:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-cloudflare-stream-field
+    secrets: inherit
+  baseapp-core:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-core
+    secrets: inherit
+  baseapp-drf-view-action-permissions:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-drf-view-action-permissions
+    secrets: inherit
+  baseapp-message-templates:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-message-templates
+    secrets: inherit
+  baseapp-payments:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-payments
+    secrets: inherit
+  baseapp-reactions:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-reactions
+    secrets: inherit
+  baseapp-social-auth:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-social-auth
+    secrets: inherit
+  baseapp-e2e:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-e2e
+    secrets: inherit
+  baseapp-notifications:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-notifications
+    secrets: inherit
+  baseapp-url-shortening:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-url-shortening
+    secrets: inherit
+  baseapp-follows:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-follows
+    secrets: inherit
+  baseapp-pages:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-pages
+    secrets: inherit
+  baseapp-comments:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-comments
+    secrets: inherit
+  baseapp-reports:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-reports
+    secrets: inherit
+  baseapp-blocks:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-blocks
+    secrets: inherit
+  baseapp-profiles:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-profiles
+    secrets: inherit
+  baseapp-ratings:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-ratings
+    secrets: inherit
