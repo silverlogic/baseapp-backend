@@ -10,7 +10,7 @@ def send_template_email(template_name, *args, **kwargs):
 
     try:
         template = EmailTemplate.objects.get(name=template_name)
-        template.send(*args, **kwargs)
+        template.send(use_base_template=True, *args, **kwargs)
     except EmailTemplate.DoesNotExist:
         logger.error(f'Email template "{template_name}" not found.')
 
