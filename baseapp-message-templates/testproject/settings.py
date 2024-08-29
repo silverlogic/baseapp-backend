@@ -12,7 +12,4 @@ INSTALLED_APPS += [
     "baseapp_message_templates",
 ]
 
-
 ROOT_URLCONF = "testproject.urls"
-
-DEFAULT_EMAIL_TEMPLATE = "emails/base"
