@@ -19,6 +19,7 @@ class TestEmailTemplates:
             "name": "Test Template",
             "subject": "This is a test",
             "html_content": "<p>Hello</p>",
+            "plain_text_content": "Hello",
             "sendgrid_template_id": "1234",
         }
         self.template = f.EmailTemplateFactory(**template_data)
@@ -38,10 +39,11 @@ class TestEmailTemplates:
         assert outbox[0].to == ["test@test.com"]
         assert outbox[0].subject == data["subject"]
         assert outbox[0].body == "Hello"
-        assert outbox[0].alternatives[0][0] == data["html_content"]
+        assert data["html_content"] in outbox[0].alternatives[0][0]
 
     def test_send_mail_with_context(self, outbox, data):
         self.template.html_content = "<p>{{content}}</p>"
+        self.template.plain_text_content = "{{content}}"
         context = {"content": "Test Content"}
         self.template.send(["test@test.com"], context)
 

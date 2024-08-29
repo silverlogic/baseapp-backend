@@ -197,13 +197,15 @@ After saving, the content of the text field will no longer contain the raw HTML 
 
 Once you've added `html_content` to your template, either programatically or through the Django Admin, a message can now be sent through the `send_template_email` util in `email_utils`. This util is a simple wrapper for fetching the email template and sending it using the template's `send` method.
 
-There are two required parameters: `template_name`, which is the name of the `EmailTemplate` to be used, and `recipients`, which is a list of one or more strings containing the e-mail addresses of the recipients. A `context` dict can be passed in optionally if the HTML content is expected one or more key/value pairs to be provided.
+Regardless of the method used, there are two required parameters: `template_name`, which is the name of the `EmailTemplate` to be used, and `recipients`, which is a list of one or more strings containing the e-mail addresses of the recipients. A `context` dict can be passed in optionally if the HTML content is expected one or more key/value pairs to be provided.
 
-The `use_base_template` flag will determine whether this message should extend from a base HTML template. If set to `True`, the message will extend from the base template that is located at a certain path. This path will either be the value of `extended_with` if provided, or the value of `DEFAULT_EMAIL_TEMPLATE`. 
+The other (optional) params are: `use_base_template`, `extended_with`, `attachments` and `custom_subject`.
+
+The `use_base_template` param will determine whether the message should extend from a base HTML template. If set to `True`, the message will extend from a base template that can be either the base template set in the `DEFAULT_EMAIL_TEMPLATE` setting, or a path to a custom template - which must be provided to the `extended_with` param. Keep in mind that the `send_template_email` util will default `use_base_template` to `True`. 
 
 The `attachments` parameter is a list of one or more files that will be send along with this particular message. These attachments will be sent along with any static attachments that have been attached to the template itself through `Attachment`.
 
-Finally, the `subject` parameter is a string, which will override the copy template subject if passed.
+Finally, the `custom_subject` parameter is a string, which will override the copy template subject if passed.
 
 ```py
 from baseapp_message_templates.email_utils import send_template_email

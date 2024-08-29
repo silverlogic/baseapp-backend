@@ -12,5 +12,4 @@ INSTALLED_APPS += [
     "baseapp_message_templates",
 ]
 
-
 ROOT_URLCONF = "testproject.urls"

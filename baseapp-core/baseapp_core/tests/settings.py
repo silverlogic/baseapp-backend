@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "djmail",
+    "django_jinja",
     "baseapp_core",
     "easy_thumbnails",
     "constance",
@@ -74,7 +75,7 @@ FRONT_URL = env("FRONT_URL", "", required=False)
 
 TEMPLATES = [
     {
-        "BACKEND": "django_jinja.backend.Jinja2",
+        "BACKEND": "django_jinja.jinja2.Jinja2",
         "DIRS": [str(APPS_DIR / "templates")],
         "APP_DIRS": True,
         "OPTIONS": {
@@ -96,6 +97,8 @@ TEMPLATES = [
         },
     },
 ]
+
+DEFAULT_EMAIL_TEMPLATE = "emails/base"
 
 ASGI_APPLICATION = "baseapp_core.asgi.application"
 WSGI_APPLICATION = "baseapp_core.wsgi.application"
