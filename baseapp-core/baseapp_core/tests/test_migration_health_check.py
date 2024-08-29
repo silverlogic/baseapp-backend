@@ -1,9 +1,25 @@
+import json
+
 from django.apps import apps
 from django.db import DEFAULT_DB_ALIAS, connections
-from django.db.migrations.autodetector import MigrationAutodetector
+from django.db.migrations.autodetector import Migration, MigrationAutodetector
 from django.db.migrations.executor import MigrationExecutor
+from django.db.migrations.operations.fields import AlterField
 from django.db.migrations.state import ProjectState
+from django.db.models import Field
 from django.test import TestCase
+
+
+class MigrationJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Field):  # django field
+            return "__cant_serialize__"
+        if isinstance(obj, Migration) or isinstance(obj, AlterField):
+            return obj.__dict__
+        try:
+            return super().default(obj)
+        except ValueError:
+            return f"__cant_serialize__ instance of {obj.__class__}"
 
 
 class TestMigrationHealthCheck(TestCase):
@@ -33,9 +49,12 @@ class TestMigrationHealthCheck(TestCase):
         changes = autodetector.changes(graph=executor.loader.graph)
         changes.pop("avatar", None)  # out of our control
         changes.pop("silk", None)  # out of our control
+
         if changes:
+            migrations_missing = json.dumps(changes, indent=4, cls=MigrationJSONEncoder)
             self.fail(
                 "Your models have changes that are not yet reflected "
                 "in a migration. You should add them now. "
-                "Relevant app(s): %s" % changes.keys()
+                "Relevant app(s): %s\n"
+                "Migrations missing:\n%s" % (changes.keys(), migrations_missing)
             )
