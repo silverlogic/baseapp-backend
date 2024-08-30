@@ -7,7 +7,7 @@ from baseapp_core.graphql import (
     ThumbnailField,
     get_object_type_for_model,
 )
-from baseapp_pages.graphql.meta import AbstractMetadataObjectType
+from baseapp_pages.meta import AbstractMetadataObjectType
 from django.apps import apps
 from django.db.models import Q
 from graphene import relay

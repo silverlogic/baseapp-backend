@@ -11,6 +11,8 @@ from graphene import relay
 
 from baseapp_pages.models import AbstractPage, Metadata, URLPath
 
+from ..meta import AbstractMetadataObjectType
+
 Page = swapper.load_model("baseapp_pages", "Page")
 PageStatusEnum = graphene.Enum.from_enum(Page.PageStatus)
 
@@ -22,19 +24,15 @@ class PageInterface(relay.Node):
 
     @classmethod
     def resolve_url_path(cls, instance, info, **kwargs):
-        return URLPath.objects.filter(
-            target_content_type=ContentType.objects.get_for_model(instance),
-            target_object_id=instance.id,
-            language=get_language(),
-            is_active=True,
-        ).first()
+        return instance.url_path
 
     @classmethod
     def resolve_url_paths(cls, instance, info, **kwargs):
-        return URLPath.objects.filter(
-            target_content_type=ContentType.objects.get_for_model(instance),
-            target_object_id=instance.id,
-        )
+        return instance.url_paths.all()
+        # return URLPath.objects.filter(
+        #     target_content_type=ContentType.objects.get_for_model(instance),
+        #     target_object_id=instance.id,
+        # )
 
     @classmethod
     def resolve_metadata(cls, instance, info, **kwargs):
@@ -135,3 +133,9 @@ class MetadataObjectType(DjangoObjectType):
         interfaces = []
         model = Metadata
         exclude = ("id",)
+
+    @classmethod
+    def is_type_of(cls, root, info):
+        if isinstance(root, AbstractMetadataObjectType):
+            return True
+        return super().is_type_of(root, info)

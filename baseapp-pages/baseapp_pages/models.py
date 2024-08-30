@@ -7,6 +7,8 @@ from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.db.models import Q
+from django.utils.translation import get_language
 from django.utils.translation import gettext_lazy as _
 from django_quill.fields import QuillField
 from model_utils.models import TimeStampedModel
@@ -93,6 +95,13 @@ class PageMixin(models.Model):
 
     class Meta:
         abstract = True
+
+    @property
+    def url_path(self):
+        # returns the most probable url path based on current session
+        return self.url_paths.filter(
+            Q(is_active=True) & Q(language=get_language()) | Q(language__isnull=True)
+        ).first()
 
 
 class AbstractPage(PageMixin, TimeStampedModel, RelayModel, CommentableModel):
