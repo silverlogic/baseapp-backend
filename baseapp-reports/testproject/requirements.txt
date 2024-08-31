@@ -9,3 +9,5 @@
 -e ./baseapp-comments
 -e ./baseapp-blocks
 -e ./baseapp-follows
+-e ./baseapp-pages
+-e ./baseapp-notifications
