@@ -9,3 +9,5 @@
 -e ./baseapp-comments
 -e ./baseapp-reactions
 -e ./baseapp-reports
+-e ./baseapp-pages
+-e ./baseapp-notifications

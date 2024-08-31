@@ -10,3 +10,4 @@
 -e ./baseapp-reports
 -e ./baseapp-blocks
 -e ./baseapp-follows
+-e ./baseapp-pages
