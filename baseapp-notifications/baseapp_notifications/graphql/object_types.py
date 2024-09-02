@@ -5,6 +5,7 @@ from baseapp_core.graphql import DjangoObjectType
 from graphene import relay
 from graphene_django import DjangoConnectionField
 from graphene_django.filter import DjangoFilterConnectionField
+from graphene.types.generic import GenericScalar
 
 from ..utils import can_user_receive_notification
 from .filters import NotificationFilter
@@ -52,6 +53,7 @@ class NotificationNode(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
     actor = graphene.Field(relay.Node)
     target = graphene.Field(relay.Node)
     action_object = graphene.Field(relay.Node)
+    data = GenericScalar(required=False)
 
     class Meta:
         interfaces = (relay.Node,)
