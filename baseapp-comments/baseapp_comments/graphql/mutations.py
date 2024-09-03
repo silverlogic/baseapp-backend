@@ -56,6 +56,8 @@ class CommentCreate(RelayMutation):
                     str(_("You don't have permission to perform this action")),
                     extensions={"code": "permission_required"},
                 )
+        else:
+            comment.profile = info.context.user.profile
 
         if input.get("in_reply_to_id"):
             comment.in_reply_to = get_obj_from_relay_id(info, input.get("in_reply_to_id"))
