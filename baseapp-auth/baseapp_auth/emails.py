@@ -158,12 +158,14 @@ def new_superuser_notification_email(new_superuser, assigner):
     )
     recipient_list = list(superusers.values_list("email", flat=True))
 
-    subject = f"{new_superuser.email} has been made superuser by {assigner.email}"
+    subject = render_to_string(
+        "users/emails/new-superuser-notification-email-subject.txt.j2", context
+    ).strip()
     message = render_to_string(
-        "users/emails/new-superuser-notification-email.txt.j2", context=context
+        "users/emails/new-superuser-notification-email-body.txt.j2", context=context
     )
     html_message = render_to_string(
-        "users/emails/new-superuser-notification-email.html.j2", context=context
+        "users/emails/new-superuser-notification-email-body.html.j2", context=context
     )
     if recipient_list:
         send_mail(
