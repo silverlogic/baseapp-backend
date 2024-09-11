@@ -80,7 +80,7 @@ class TestResetPassword(ApiMixin):
         user = UserFactory(email=data_email["email"])
         client.post(self.reverse("forgot-password-list"), data_email)
 
-        message_body = outbox[0].body
+        message_body = outbox[0].alternatives[0][0]
         match = re.search(self.search_param, message_body)
         assert match
 
@@ -102,7 +102,7 @@ class TestResetPassword(ApiMixin):
         user = UserFactory(email=data_email["email"])
         client.post(self.reverse("forgot-password-list"), data_email)
 
-        message_body = outbox[0].body
+        message_body = outbox[0].alternatives[0][0]
         match = re.search(self.search_param, message_body)
         assert match
 
@@ -136,7 +136,7 @@ class TestResetPassword(ApiMixin):
         UserFactory(email=data_email["email"])
         client.post(self.reverse("forgot-password-list"), data_email)
 
-        message_body = outbox[0].body
+        message_body = outbox[0].alternatives[0][0]
         match = re.search(self.search_param, message_body)
         assert match
 

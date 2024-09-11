@@ -11,6 +11,7 @@ INSTALLED_APPS += [
     "trench",
     "rest_framework_simplejwt",
     "baseapp_auth",
+    "baseapp_message_templates",
     "baseapp_profiles",
     "baseapp_reactions",
     "baseapp_comments",
