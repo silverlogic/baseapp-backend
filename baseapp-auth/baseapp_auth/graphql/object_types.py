@@ -96,10 +96,10 @@ class AbstractUserObjectType(object):
         interfaces = interfaces
         filterset_class = UsersFilter
 
-    def resolve_avatar(self, info, width, height):
+    def resolve_avatar(self, *args, **kwargs):
         return self.profile.image
 
-    def resolve_metadata(self, info):
+    def resolve_metadata(self, *args, **kwargs):
         return MetadataObjectType(
             meta_title=self.get_full_name(),
         )
@@ -107,10 +107,10 @@ class AbstractUserObjectType(object):
     def resolve_is_authenticated(self, info):
         return info.context.user.is_authenticated and self.pk == info.context.user.pk
 
-    def resolve_full_name(self, info):
+    def resolve_full_name(self, *args, **kwargs):
         return self.profile.name
 
-    def resolve_short_name(self, info):
+    def resolve_short_name(self, *args, **kwargs):
         return self.get_short_name()
 
     def resolve_email(self, info):
