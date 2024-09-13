@@ -1,0 +1,9 @@
+{% extends 'emails/base.txt.j2' %}
+
+{% block content %}
+{% trans %}Hello Superusers,{% endtrans %}
+
+{% trans %}Please be notified that {{ assignee }} is a superuser now assigned by {{ assigner }}.{% endtrans %}
+
+{% trans %}If this was unexpected, please contact our support team.{% endtrans %}
+{% endblock content %}
