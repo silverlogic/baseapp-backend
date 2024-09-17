@@ -13,7 +13,7 @@ User = get_user_model()
 
 class ConfirmEmailViewSet(mixins.UpdateModelMixin, viewsets.GenericViewSet):
     serializer_class = ConfirmEmailSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
         return User.objects.all()
