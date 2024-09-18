@@ -107,3 +107,11 @@ def deep_link_mock_success(use_httpretty):
 @pytest.fixture
 def deep_link_mock_error(use_httpretty):
     httpretty.register_uri(httpretty.POST, "https://api.branch.io/v1/url", status=400)
+
+
+@pytest.fixture(scope="session")
+def celery_config():
+    from celery import Celery
+
+    app = Celery("apps")
+    return app.config_from_object("django.conf:settings", namespace="CELERY")
