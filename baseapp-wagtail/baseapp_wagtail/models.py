@@ -74,3 +74,6 @@ class StandardPage(DefaultPageModel):
     class Meta:
         verbose_name = _("Standard page")
         verbose_name_plural = _("Standard pages")
+
+
+# TODO: make classes above swappable.
