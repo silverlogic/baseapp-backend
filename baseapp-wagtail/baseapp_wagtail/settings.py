@@ -1,11 +1,16 @@
 from baseapp_core.tests.settings import *  # noqa
 
+if 'INSTALLED_APPS' not in globals():
+    INSTALLED_APPS = []
+if 'MIDDLEWARE' not in globals():
+    MIDDLEWARE = []
 
 INSTALLED_APPS += [
     # wagtail
     "wagtail.contrib.settings",
     "wagtail.contrib.redirects",
     "wagtail.embeds",
+    "wagtail.sites",
     "wagtail.users",
     "wagtail.snippets",
     "wagtail.documents",
@@ -27,7 +32,6 @@ INSTALLED_APPS += [
 MIDDLEWARE += [
     'wagtail.contrib.redirects.middleware.RedirectMiddleware',
 ]
-
 
 # Locale settings
 LANGUAGE_CODE = "en-us"
