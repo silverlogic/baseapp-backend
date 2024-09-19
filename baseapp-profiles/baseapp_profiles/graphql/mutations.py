@@ -50,9 +50,18 @@ class ProfileCreateSerializer(BaseProfileSerializer):
 
 
 class ProfileUpdateSerializer(BaseProfileSerializer):
+    phone_number = serializers.CharField(required=False)
+
+    class Meta(BaseProfileSerializer.Meta):
+        fields = BaseProfileSerializer.Meta.fields + ("phone_number",)
+
     def update(self, instance, validated_data):
         url_path = validated_data.pop("url_path", None)
+        phone_number = validated_data.pop("phone_number", None)
         instance = super().update(instance, validated_data)
+        if phone_number and hasattr(instance.owner, "phone_number"):
+            instance.owner.phone_number = phone_number
+            instance.owner.save(update_fields=["phone_number"])
         if url_path:
             instance.url_paths.all().delete()
             URLPath.objects.create(path=url_path, target=instance, is_active=True)
