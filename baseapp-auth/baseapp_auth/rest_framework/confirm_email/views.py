@@ -13,7 +13,7 @@ User = get_user_model()
 
 class ConfirmEmailViewSet(mixins.UpdateModelMixin, viewsets.GenericViewSet):
     serializer_class = ConfirmEmailSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
         return User.objects.all()
@@ -28,7 +28,7 @@ class ConfirmEmailViewSet(mixins.UpdateModelMixin, viewsets.GenericViewSet):
         serializer.save()
         return Response({}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["POST"])
+    @action(detail=False, methods=["POST"], permission_classes=[permissions.IsAuthenticated])
     def resend_confirm(self, request, *args, **kwargs):
         user = request.user
         if user.is_email_verified:

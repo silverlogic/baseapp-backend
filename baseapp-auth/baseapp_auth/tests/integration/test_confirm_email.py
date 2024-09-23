@@ -16,9 +16,10 @@ class TestConfirmEmailRequest(ApiMixin):
         self.user = UserFactory(is_email_verified=False)
         return {"token": ConfirmEmailTokenGenerator().make_token(self.user)}
 
-    def test_guest_cant_request(self, client, data):
+    # We're changing this from test_guest_cant_request to test_guest_can_request since we want the unlogged user to be able to confirm their email
+    def test_guest_can_request(self, client, data):
         r = client.put(self.reverse(kwargs={"pk": self.user.pk}), data)
-        h.responseUnauthorized(r)
+        h.responseOk(r)
 
     def test_user_can_request(self, user_client, data, deep_link_mock_success):
         r = user_client.put(self.reverse(kwargs={"pk": self.user.pk}), data)
@@ -38,11 +39,11 @@ class TestConfirmEmailRequest(ApiMixin):
     def test_confirm_email_invalid_token(self, client, data):
         data["token"] = "invalid-token"
         r = client.put(self.reverse(kwargs={"pk": self.user.pk}), data)
-        h.responseUnauthorized(r)
+        h.responseBadRequest(r)
 
     def test_confirm_email_no_user(self, client, data):
         r = client.put(self.reverse(kwargs={"pk": self.user.pk + 1}), data)
-        h.responseUnauthorized(r)
+        h.responseBadRequest(r)
 
 
 class TestChangeEmailResendConfirm(ApiMixin):

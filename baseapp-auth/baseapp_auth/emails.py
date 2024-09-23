@@ -5,13 +5,14 @@ from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 
-User = get_user_model()
 from .tokens import (
     ChangeEmailConfirmTokenGenerator,
     ChangeEmailVerifyTokenGenerator,
     ChangeExpiredPasswordTokenGenerator,
     ConfirmEmailTokenGenerator,
 )
+
+User = get_user_model()
 
 
 def send_welcome_email(user):
