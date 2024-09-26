@@ -62,6 +62,12 @@ if apps.is_installed("baseapp_blocks"):
     interfaces.append(BlocksInterface)
 
 
+if apps.is_installed("baseapp_chats"):
+    from baseapp_chats.graphql.interfaces import ChatRoomsInterface
+
+    interfaces.append(ChatRoomsInterface)
+
+
 class BaseProfileObjectType:
     target = graphene.Field(lambda: ProfileInterface)
     image = ThumbnailField(required=False)

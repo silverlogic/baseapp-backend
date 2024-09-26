@@ -116,6 +116,13 @@ class AbstractProfile(*inheritances):
             url_path = self.generate_url_path(random=True)
         self.url_paths.create(path=url_path, language=None, is_active=True)
 
+    def check_if_member(self, user):
+        return (
+            self.__class__.objects.filter(pk=self.pk)
+            .filter(models.Q(members__user=user) | models.Q(owner=user))
+            .exists()
+        )
+
     # def save(self, *args, **kwargs):
     #     created = self._state.adding
     #     super().save(*args, **kwargs)
