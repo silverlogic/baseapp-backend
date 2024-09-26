@@ -22,7 +22,7 @@ def use_relay_model():
 
 
 def use_profile_model():
-    if apps.is_installed("baseapp_blocks"):
+    if apps.is_installed("baseapp_profiles"):
         from baseapp_profiles.models import ProfilableModel
 
         return ProfilableModel
