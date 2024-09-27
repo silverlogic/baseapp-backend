@@ -108,7 +108,7 @@ def test_user_can_comment_with_profile(django_user_client, graphql_user_client):
             "input": {
                 "targetObjectId": target.relay_id,
                 "body": "my comment",
-                "profileObjectId": profile.relay_id,
+                "profileId": profile.relay_id,
             }
         },
     )
@@ -125,7 +125,7 @@ def test_user_cant_comment_with_profile(graphql_user_client):
             "input": {
                 "targetObjectId": target.relay_id,
                 "body": "my comment",
-                "profileObjectId": profile.relay_id,
+                "profileId": profile.relay_id,
             }
         },
     )

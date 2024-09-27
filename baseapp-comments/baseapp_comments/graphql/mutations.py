@@ -30,7 +30,7 @@ class CommentCreate(RelayMutation):
     class Input:
         target_object_id = graphene.ID(required=True)
         in_reply_to_id = graphene.ID(required=False)
-        profile_object_id = graphene.ID(required=False)
+        profile_id = graphene.ID(required=False)
         body = graphene.String(required=True)
 
     @classmethod
@@ -46,8 +46,12 @@ class CommentCreate(RelayMutation):
 
         comment = Comment(user=info.context.user, target=target, body=input.get("body"))
 
-        if input.get("profile_object_id"):
-            comment.profile = get_obj_from_relay_id(info, input.get("profile_object_id"))
+        if input.get("profile_id") or info.context.user.current_profile:
+            comment.profile = (
+                get_obj_from_relay_id(info, input.get("profile_id"))
+                if input.get("profile_id")
+                else info.context.user.current_profile
+            )
 
             if not info.context.user.has_perm(
                 "baseapp_comments.add_comment_with_profile", comment.profile
