@@ -1,3 +1,5 @@
+import time
+
 import baseapp_auth.tests.helpers as h
 import pytest
 from baseapp_auth.tests.mixins import ApiMixin
@@ -5,6 +7,8 @@ from baseapp_auth.tokens import (
     ChangeEmailConfirmTokenGenerator,
     ChangeEmailVerifyTokenGenerator,
 )
+from django.test import override_settings
+from django.utils.timezone import timedelta
 
 pytestmark = pytest.mark.django_db
 
@@ -64,9 +68,20 @@ class TestChangeEmailConfirm(ApiMixin):
         token = ChangeEmailConfirmTokenGenerator().make_token(self.user)
         return {"token": token}
 
+    @override_settings(
+        BA_AUTH_CHANGE_EMAIL_CONFIRM_TOKEN_EXPIRATION_TIME_DELTA=timedelta(minutes=5)
+    )
     def test_guest_can_confirm(self, client, data, deep_link_mock_success):
         r = client.post(self.reverse(), data)
         h.responseOk(r)
+
+    @override_settings(
+        BA_AUTH_CHANGE_EMAIL_CONFIRM_TOKEN_EXPIRATION_TIME_DELTA=timedelta(seconds=1)
+    )
+    def test_guest_cant_confirm_with_expired_token(self, client, data, deep_link_mock_success):
+        time.sleep(1.1)
+        r = client.post(self.reverse(), data)
+        h.responseBadRequest(r)
 
     def test_guest_can_confirm_deep_link_error(self, client, data, deep_link_mock_error):
         r = client.post(self.reverse(), data)
@@ -111,33 +126,76 @@ class TestChangeEmailVerify(ApiMixin):
         token = ChangeEmailVerifyTokenGenerator().make_token(self.user)
         return {"token": token}
 
+    @override_settings(BA_AUTH_CHANGE_EMAIL_VERIFY_TOKEN_EXPIRATION_TIME_DELTA=timedelta(minutes=5))
     def test_guest_can_verify(self, client, data):
         r = client.post(self.reverse(), data)
         h.responseOk(r)
 
+    @override_settings(BA_AUTH_CHANGE_EMAIL_VERIFY_TOKEN_EXPIRATION_TIME_DELTA=timedelta(seconds=1))
+    def test_guest_cant_verify_with_expired_token(self, client, data):
+        time.sleep(1.1)
+        r = client.post(self.reverse(), data)
+        h.responseBadRequest(r)
+
+    @override_settings(BA_AUTH_CHANGE_EMAIL_VERIFY_TOKEN_EXPIRATION_TIME_DELTA=timedelta(minutes=5))
     def test_changes_users_email(self, client, data):
         r = client.post(self.reverse(), data)
         h.responseOk(r)
         self.user.refresh_from_db()
         assert self.user.email == "new@example.com"
 
+    @override_settings(BA_AUTH_CHANGE_EMAIL_VERIFY_TOKEN_EXPIRATION_TIME_DELTA=timedelta(seconds=1))
+    def test_cant_change_users_email_with_expired_token(self, client, data):
+        time.sleep(1.1)
+        r = client.post(self.reverse(), data)
+        h.responseBadRequest(r)
+        self.user.refresh_from_db()
+        assert self.user.email != "new@example.com"
+
+    @override_settings(BA_AUTH_CHANGE_EMAIL_VERIFY_TOKEN_EXPIRATION_TIME_DELTA=timedelta(minutes=5))
     def test_resets_users_new_email(self, client, data):
         r = client.post(self.reverse(), data)
         h.responseOk(r)
         self.user.refresh_from_db()
         assert not self.user.new_email
 
+    @override_settings(BA_AUTH_CHANGE_EMAIL_VERIFY_TOKEN_EXPIRATION_TIME_DELTA=timedelta(seconds=1))
+    def test_dont_reset_users_new_email(self, client, data):
+        time.sleep(1.1)
+        r = client.post(self.reverse(), data)
+        h.responseBadRequest(r)
+        self.user.refresh_from_db()
+        assert self.user.new_email
+
+    @override_settings(BA_AUTH_CHANGE_EMAIL_VERIFY_TOKEN_EXPIRATION_TIME_DELTA=timedelta(minutes=5))
     def test_resets_users_is_new_email_confirmed(self, client, data):
         r = client.post(self.reverse(), data)
         h.responseOk(r)
         self.user.refresh_from_db()
         assert not self.user.is_new_email_confirmed
 
+    @override_settings(BA_AUTH_CHANGE_EMAIL_VERIFY_TOKEN_EXPIRATION_TIME_DELTA=timedelta(seconds=1))
+    def test_dont_users_is_new_email_confirmed(self, client, data):
+        time.sleep(1.1)
+        r = client.post(self.reverse(), data)
+        h.responseBadRequest(r)
+        self.user.refresh_from_db()
+        assert self.user.is_new_email_confirmed
+
+    @override_settings(BA_AUTH_CHANGE_EMAIL_VERIFY_TOKEN_EXPIRATION_TIME_DELTA=timedelta(minutes=5))
     def test_users_is_email_verified_set(self, client, data):
         r = client.post(self.reverse(), data)
         h.responseOk(r)
         self.user.refresh_from_db()
         assert self.user.is_email_verified
+
+    @override_settings(BA_AUTH_CHANGE_EMAIL_VERIFY_TOKEN_EXPIRATION_TIME_DELTA=timedelta(seconds=1))
+    def test_users_is_email_verified_not_set(self, client, data):
+        time.sleep(1.1)
+        r = client.post(self.reverse(), data)
+        h.responseBadRequest(r)
+        self.user.refresh_from_db()
+        assert not self.user.is_email_verified
 
     def test_when_user_doesnt_exist(self, client, data):
         r = client.post(self.reverse(kwargs={"pk": self.user.id + 1}), data)
