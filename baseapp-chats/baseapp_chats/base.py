@@ -76,7 +76,7 @@ class AbstractBaseMessage(TimeStampedModel, RelayModel):
     )
 
     in_reply_to = models.ForeignKey(
-        "self",
+        swapper.get_model_name("baseapp_chats", "Message"),
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

@@ -183,7 +183,7 @@ def test_can_list_messages_from_participating_room(graphql_user_client, django_u
     )
 
 
-def test_cant_list_messages_from_non_participating_room(graphql_user_client, django_user_client):
+def test_cant_list_messages_from_non_participating_room(graphql_user_client):
     user = UserFactory()
     room = ChatRoomFactory(created_by=user)
 

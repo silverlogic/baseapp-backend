@@ -18,7 +18,7 @@ UnreadMessageCount = swapper.load_model("baseapp_chats", "UnreadMessageCount")
 Message = swapper.load_model("baseapp_chats", "Message")
 
 
-class ChatRoomParticipantObjectType(DjangoObjectType):
+class BaseChatRoomParticipantObjectType:
     class Meta:
         interfaces = (relay.Node,)
         model = ChatRoomParticipant
@@ -26,10 +26,15 @@ class ChatRoomParticipantObjectType(DjangoObjectType):
         filter_fields = ("profile__target_content_type",)
 
 
+class ChatRoomParticipantObjectType(BaseChatRoomParticipantObjectType, DjangoObjectType):
+    class Meta(BaseChatRoomParticipantObjectType.Meta):
+        pass
+
+
 VerbsEnum = graphene.Enum.from_enum(Message.Verbs)
 
 
-class MessageObjectType(DjangoObjectType):
+class BaseMessageObjectType:
     action_object = graphene.Field(relay.Node)
     verb = graphene.Field(VerbsEnum)
     content = graphene.String(required=False)
@@ -62,7 +67,12 @@ class MessageObjectType(DjangoObjectType):
             return None
 
 
-class ChatRoomObjectType(DjangoObjectType):
+class MessageObjectType(BaseMessageObjectType, DjangoObjectType):
+    class Meta(BaseMessageObjectType.Meta):
+        pass
+
+
+class BaseChatRoomObjectType:
     all_messages = DjangoFilterConnectionField(get_object_type_for_model(Message))
     participants = DjangoConnectionField(get_object_type_for_model(ChatRoomParticipant))
     unread_messages_count = graphene.Int(profile_id=graphene.ID(required=False))
@@ -102,3 +112,8 @@ class ChatRoomObjectType(DjangoObjectType):
         model = ChatRoom
         fields = ("id", "last_message_time", "last_message", "participants", "name", "image")
         filterset_class = ChatRoomFilter
+
+
+class ChatRoomObjectType(BaseChatRoomObjectType, DjangoObjectType):
+    class Meta(BaseChatRoomObjectType.Meta):
+        pass

@@ -4,6 +4,7 @@ import baseapp_core.models
 import django.db.models.deletion
 import django.utils.timezone
 import model_utils.fields
+import swapper
 from django.conf import settings
 from django.db import migrations, models
 
@@ -14,8 +15,13 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("contenttypes", "0002_remove_content_type_name"),
-        migrations.swappable_dependency(settings.BASEAPP_PROFILES_PROFILE_MODEL),
+        swapper.dependency("baseapp_profiles", "Profile"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        swapper.dependency("baseapp_chats", "ChatRoom"),
+        swapper.dependency("baseapp_chats", "ChatRoomParticipant"),
+        swapper.dependency("baseapp_chats", "Message"),
+        swapper.dependency("baseapp_chats", "MessageStatus"),
+        swapper.dependency("baseapp_chats", "UnreadMessageCount"),
     ]
 
     operations = [
@@ -68,7 +74,7 @@ class Migration(migrations.Migration):
             options={
                 "ordering": ["-last_message_time", "-created"],
                 "abstract": False,
-                "swappable": "BASEAPP_CHATS_CHATROOM_MODEL",
+                "swappable": swapper.swappable_setting("baseapp_chats", "ChatRoom"),
             },
         ),
         migrations.CreateModel(
@@ -121,7 +127,7 @@ class Migration(migrations.Migration):
                         null=True,
                         on_delete=django.db.models.deletion.SET_NULL,
                         related_name="replies",
-                        to=settings.BASEAPP_CHATS_MESSAGE_MODEL,
+                        to=swapper.get_model_name("baseapp_chats", "Message"),
                     ),
                 ),
                 (
@@ -130,7 +136,7 @@ class Migration(migrations.Migration):
                         blank=True,
                         null=True,
                         on_delete=django.db.models.deletion.CASCADE,
-                        to=settings.BASEAPP_PROFILES_PROFILE_MODEL,
+                        to=swapper.get_model_name("baseapp_profiles", "Profile"),
                     ),
                 ),
                 (
@@ -140,7 +146,7 @@ class Migration(migrations.Migration):
                         null=True,
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="messages",
-                        to=settings.BASEAPP_CHATS_CHATROOM_MODEL,
+                        to=swapper.get_model_name("baseapp_chats", "ChatRoom"),
                     ),
                 ),
                 (
@@ -156,7 +162,7 @@ class Migration(migrations.Migration):
             options={
                 "ordering": ["-created"],
                 "abstract": False,
-                "swappable": "BASEAPP_CHATS_MESSAGE_MODEL",
+                "swappable": swapper.swappable_setting("baseapp_chats", "Message"),
             },
         ),
         migrations.CreateModel(
@@ -188,7 +194,7 @@ class Migration(migrations.Migration):
                         blank=True,
                         null=True,
                         on_delete=django.db.models.deletion.CASCADE,
-                        to=settings.BASEAPP_PROFILES_PROFILE_MODEL,
+                        to=swapper.get_model_name("baseapp_profiles", "Profile"),
                     ),
                 ),
                 (
@@ -196,14 +202,14 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="participants",
-                        to=settings.BASEAPP_CHATS_CHATROOM_MODEL,
+                        to=swapper.get_model_name("baseapp_chats", "ChatRoom"),
                     ),
                 ),
             ],
             options={
                 "ordering": ["created"],
                 "abstract": False,
-                "swappable": "BASEAPP_CHATS_CHATROOMPARTICIPANT_MODEL",
+                "swappable": swapper.swappable_setting("baseapp_chats", "ChatRoomParticipant"),
             },
         ),
         migrations.AddField(
@@ -213,7 +219,7 @@ class Migration(migrations.Migration):
                 blank=True,
                 null=True,
                 on_delete=django.db.models.deletion.SET_NULL,
-                to=settings.BASEAPP_CHATS_MESSAGE_MODEL,
+                to=swapper.get_model_name("baseapp_chats", "Message"),
             ),
         ),
         migrations.CreateModel(
@@ -230,21 +236,21 @@ class Migration(migrations.Migration):
                     "profile",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        to=settings.BASEAPP_PROFILES_PROFILE_MODEL,
+                        to=swapper.get_model_name("baseapp_profiles", "Profile"),
                     ),
                 ),
                 (
                     "room",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        to=settings.BASEAPP_CHATS_CHATROOM_MODEL,
+                        to=swapper.get_model_name("baseapp_chats", "ChatRoom"),
                     ),
                 ),
             ],
             options={
                 "ordering": ["id"],
                 "abstract": False,
-                "swappable": "BASEAPP_CHATS_UNREADMESSAGECOUNT_MODEL",
+                "swappable": swapper.swappable_setting("baseapp_chats", "UnreadMessageCount"),
                 "unique_together": {("room_id", "profile_id")},
             },
         ),
@@ -264,20 +270,20 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="statuses",
-                        to=settings.BASEAPP_CHATS_MESSAGE_MODEL,
+                        to=swapper.get_model_name("baseapp_chats", "Message"),
                     ),
                 ),
                 (
                     "profile",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        to=settings.BASEAPP_PROFILES_PROFILE_MODEL,
+                        to=swapper.get_model_name("baseapp_profiles", "Profile"),
                     ),
                 ),
             ],
             options={
                 "abstract": False,
-                "swappable": "BASEAPP_CHATS_MESSAGESTATUS_MODEL",
+                "swappable": swapper.swappable_setting("baseapp_chats", "MessageStatus"),
                 "unique_together": {("message_id", "profile_id")},
             },
         ),
