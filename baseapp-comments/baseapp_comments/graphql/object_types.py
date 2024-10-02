@@ -87,3 +87,23 @@ class CommentObjectType(DjangoObjectType):
         if not info.context.user.has_perm("baseapp_comments.view_comment", node):
             return None
         return node
+
+    @classmethod
+    def get_queryset(cls, queryset, info):
+        user = info.context.user
+        if user.is_anonymous:
+            return super().get_queryset(queryset, info)
+
+        profile = user.current_profile
+
+        if not profile:
+            return super().get_queryset(queryset, info)
+
+        bloked_profile_ids = profile.blocking.values_list("target_id", flat=True)
+        bloker_profile_ids = profile.blockers.values_list("actor_id", flat=True)
+
+        qs = queryset.exclude(profile__id__in=bloked_profile_ids).exclude(
+            profile__id__in=bloker_profile_ids
+        )
+
+        return super().get_queryset(qs, info)
