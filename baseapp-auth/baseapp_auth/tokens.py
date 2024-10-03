@@ -12,6 +12,19 @@ class ChangeEmailConfirmTokenGenerator(TokenGenerator):
     def get_signing_value(self, user):
         return [user.id, user.new_email, user.is_new_email_confirmed]
 
+    @property
+    def max_age(self) -> int | None:
+        if (
+            time_delta := getattr(
+                settings, "BA_AUTH_CHANGE_EMAIL_CONFIRM_TOKEN_EXPIRATION_TIME_DELTA", None
+            )
+            or timedelta(days=1)  # default to 1 day
+        ) and isinstance(time_delta, timedelta):
+            return int(floor(time_delta.total_seconds()))
+        raise ImproperlyConfigured(
+            "BA_AUTH_CHANGE_EMAIL_CONFIRM_TOKEN_EXPIRATION_TIME_DELTA must be a timedelta"
+        )
+
 
 class ChangeEmailVerifyTokenGenerator(TokenGenerator):
     key_salt = "verify-email"
@@ -19,12 +32,38 @@ class ChangeEmailVerifyTokenGenerator(TokenGenerator):
     def get_signing_value(self, user):
         return [user.id, user.new_email, user.is_new_email_confirmed]
 
+    @property
+    def max_age(self) -> int | None:
+        if (
+            time_delta := getattr(
+                settings, "BA_AUTH_CHANGE_EMAIL_VERIFY_TOKEN_EXPIRATION_TIME_DELTA", None
+            )
+            or timedelta(days=1)  # default to 1 day
+        ) and isinstance(time_delta, timedelta):
+            return int(floor(time_delta.total_seconds()))
+        raise ImproperlyConfigured(
+            "BA_AUTH_CHANGE_EMAIL_VERIFY_TOKEN_EXPIRATION_TIME_DELTA must be a timedelta"
+        )
+
 
 class ConfirmEmailTokenGenerator(TokenGenerator):
     key_salt = "confirm_email"
 
     def get_signing_value(self, user):
         return [user.pk, user.email]
+
+    @property
+    def max_age(self) -> int | None:
+        if (
+            time_delta := getattr(
+                settings, "BA_AUTH_CONFIRM_EMAIL_TOKEN_EXPIRATION_TIME_DELTA", None
+            )
+            or timedelta(days=1)  # default to 1 day
+        ) and isinstance(time_delta, timedelta):
+            return int(floor(time_delta.total_seconds()))
+        raise ImproperlyConfigured(
+            "BA_AUTH_CONFIRM_EMAIL_TOKEN_EXPIRATION_TIME_DELTA must be a timedelta"
+        )
 
 
 class PreAuthTokenGenerator(TokenGenerator):
@@ -42,7 +81,7 @@ class PreAuthTokenGenerator(TokenGenerator):
                     "BA_AUTH_PRE_AUTH_TOKEN_EXPIRATION_TIME_DELTA must be a timedelta"
                 )
             return int(floor(_time_delta.total_seconds()))
-        return None
+        return int(floor(timedelta(days=7).total_seconds()))  # default to 7 days
 
 
 class ChangeExpiredPasswordTokenGenerator(TokenGenerator):
@@ -57,6 +96,7 @@ class ChangeExpiredPasswordTokenGenerator(TokenGenerator):
             time_delta := getattr(
                 settings, "BA_AUTH_CHANGE_EXPIRED_PASSWORD_TOKEN_EXPIRATION_TIME_DELTA", None
             )
+            or timedelta(minutes=5)  # default to 5 minutes
         ) and isinstance(time_delta, timedelta):
             return int(floor(time_delta.total_seconds()))
         raise ImproperlyConfigured(
