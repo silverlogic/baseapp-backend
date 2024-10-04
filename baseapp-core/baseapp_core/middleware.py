@@ -13,6 +13,7 @@ from pghistory import config
 
 threading_local = threading.local()
 
+
 # The default meta precedence order
 IPWARE_META_PRECEDENCE_ORDER = (
     "X_FORWARDED_FOR",
@@ -100,7 +101,7 @@ def HistoryMiddleware(get_response):
             )
 
             with pghistory.context(
-                user=user, url=request.path, clinet_ip=client_ip, is_ip_routable=is_routable
+                user=user, url=request.path, ip_address=client_ip, is_ip_routable=is_routable
             ):
                 if isinstance(request, DjangoWSGIRequest):  # pragma: no branch
                     request.__class__ = WSGIRequest

@@ -6,7 +6,7 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-auth
-      custom_pytest: "pytest --ds=testproject.settings_referrals -m referrals baseapp-auth/baseapp_auth/tests"
+      second_pytest: "pytest --ds=testproject.settings_referrals -m referrals baseapp-auth/baseapp_auth/tests"
   baseapp-auth-baseapp_referrals:
     uses: ./.github/workflows/project-workflow.yml
     with:
