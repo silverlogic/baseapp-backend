@@ -90,6 +90,10 @@ class AbstractProfile(*inheritances):
 
     class Meta:
         abstract = True
+        unique_together = [("target_content_type", "target_object_id")]
+        permissions = [
+            ("use_profile", _("can use profile")),
+        ]
 
     def __str__(self):
         return self.name or str(self.pk)
@@ -148,10 +152,6 @@ class ProfilableModel(models.Model):
 class Profile(AbstractProfile):
     class Meta(AbstractProfile.Meta):
         swappable = swapper.swappable_setting("baseapp_profiles", "Profile")
-        unique_together = [("target_content_type", "target_object_id")]
-        permissions = [
-            ("use_profile", _("can use profile")),
-        ]
 
 
 class AbstractProfileUserRole(models.Model):
@@ -186,6 +186,5 @@ class AbstractProfileUserRole(models.Model):
 
 
 class ProfileUserRole(AbstractProfileUserRole):
-    class Meta:
+    class Meta(AbstractProfileUserRole.Meta):
         swappable = swapper.swappable_setting("baseapp_profiles", "ProfileUserRole")
-        unique_together = [("user", "profile")]
