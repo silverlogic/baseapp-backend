@@ -63,7 +63,30 @@ def test_active_url_path_no_language(django_user_client, graphql_user_client):
     response = graphql_user_client(GET_PAGE_BY_PATH, variables={"path": url_path.path})
 
     content = response.json()
-    assert content["data"]["urlPath"]["path"] == "/test-page/"
+    assert content["data"]["urlPath"]["path"] == url_path.path
+
+
+def test_active_url_path_on_object_type(django_user_client, graphql_user_client):
+    page = PageFactory(user=django_user_client.user)
+    URLPathFactory(target=page, language=None, path="/old-test-page/", is_active=False)
+    url_path = URLPathFactory(target=page, language=None, path="/test-page/", is_active=True)
+
+    response = graphql_user_client(
+        query="""
+            query Page($id: ID!) {
+                page(id: $id) {
+                    urlPath {
+                        id
+                        path
+                    }
+                }
+            }
+        """,
+        variables={"id": page.relay_id},
+    )
+
+    content = response.json()
+    assert content["data"]["page"]["urlPath"]["path"] == url_path.path
 
 
 def test_deliver_localized_title_and_body(django_user_client, graphql_user_client):
