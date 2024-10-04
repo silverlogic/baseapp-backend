@@ -1,9 +1,10 @@
 from django.db import connection
 from django.test import TestCase
+
 from baseapp_core.models import (
     CaseInsensitiveCharField,
-    CaseInsensitiveTextField,
     CaseInsensitiveEmailField,
+    CaseInsensitiveTextField,
 )
 
 

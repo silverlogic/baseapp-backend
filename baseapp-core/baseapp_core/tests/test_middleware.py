@@ -1,8 +1,10 @@
-from baseapp_core.tests.factories import UserFactory
+from unittest.mock import patch
+
 from django.http import HttpResponse
 from django.test import RequestFactory, TestCase
-from unittest.mock import patch
+
 from baseapp_core.middleware import HistoryMiddleware
+from baseapp_core.tests.factories import UserFactory
 
 
 class HistoryMiddlewareTest(TestCase):

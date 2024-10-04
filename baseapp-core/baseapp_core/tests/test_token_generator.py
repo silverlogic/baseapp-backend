@@ -1,6 +1,7 @@
 import pytest
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+
 from baseapp_core.tokens import TokenGenerator
 
 
