@@ -97,6 +97,11 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_pr
         full_name = " ".join([name for name in names if name]).strip()
         return full_name or self.email
 
+    @property
+    def avatar(self):
+        # TODO: deprecate
+        return self.profile.image if self.profile_id else None
+
     def save(self, *args, **kwargs):
         if hasattr(self, "tracker"):
             with self.tracker:
