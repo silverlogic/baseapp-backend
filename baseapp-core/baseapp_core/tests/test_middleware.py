@@ -1,13 +1,13 @@
 from unittest.mock import patch
 
 from django.http import HttpResponse
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, override_settings
 
 from baseapp_core.middleware import HistoryMiddleware
 from baseapp_core.tests.factories import UserFactory
 
 
-class HistoryMiddlewareTest(TestCase):
+class HistoryMiddlewareTest:
     def setUp(self):
         self.factory = RequestFactory()
         self.get_response = lambda request: HttpResponse("OK")
@@ -71,6 +71,7 @@ class HistoryMiddlewareTest(TestCase):
 
     @patch("baseapp_core.middleware.get_client_ip")
     @patch("baseapp_core.middleware.pghistory.context")
+    @override_settings(PGHISTORY_MIDDLEWARE_METHODS=("GET", "POST", "PATCH", "DELETE"))
     def test_history_middleware_with_unsupported_method(self, mock_context, mock_get_client_ip):
         request = self.factory.put("/some-path/")
         request.user = UserFactory()

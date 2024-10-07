@@ -1,5 +1,4 @@
 from django.db import connection
-from django.test import TestCase
 
 from baseapp_core.models import (
     CaseInsensitiveCharField,
@@ -8,7 +7,7 @@ from baseapp_core.models import (
 )
 
 
-class TestCaseInsensitiveFields(TestCase):
+class TestCaseInsensitiveFields:
 
     def test_case_insensitive_char_field_db_type(self):
         field = CaseInsensitiveCharField()
