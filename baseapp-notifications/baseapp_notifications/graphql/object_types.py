@@ -3,9 +3,9 @@ import graphene_django_optimizer as gql_optimizer
 import swapper
 from baseapp_core.graphql import DjangoObjectType
 from graphene import relay
+from graphene.types.generic import GenericScalar
 from graphene_django import DjangoConnectionField
 from graphene_django.filter import DjangoFilterConnectionField
-from graphene.types.generic import GenericScalar
 
 from ..utils import can_user_receive_notification
 from .filters import NotificationFilter
