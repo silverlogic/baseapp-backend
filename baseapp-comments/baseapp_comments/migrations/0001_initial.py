@@ -11,6 +11,7 @@ from django.db import migrations, models
 
 import baseapp_comments.models
 import baseapp_comments.validators
+import swapper
 
 
 class Migration(migrations.Migration):
@@ -20,6 +21,7 @@ class Migration(migrations.Migration):
         ("contenttypes", "0002_remove_content_type_name"),
         ("pghistory", "0005_events_middlewareevents"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        swapper.dependency("baseapp_comments", "Comment"),
     ]
 
     operations = [
@@ -108,7 +110,7 @@ class Migration(migrations.Migration):
                         null=True,
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="comments",
-                        to="baseapp_comments.comment",
+                        to=swapper.get_model_name("baseapp_comments", "Comment"),
                         verbose_name="in reply to",
                     ),
                 ),
@@ -147,6 +149,7 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
+                "swappable": swapper.swappable_setting("baseapp_comments", "Comment"),
                 "verbose_name": "comment",
                 "verbose_name_plural": "comments",
                 "ordering": ["-is_pinned", "-created"],
@@ -240,7 +243,7 @@ class Migration(migrations.Migration):
                         on_delete=django.db.models.deletion.DO_NOTHING,
                         related_name="+",
                         related_query_name="+",
-                        to="baseapp_comments.comment",
+                        to=swapper.get_model_name("baseapp_comments", "Comment"),
                         verbose_name="in reply to",
                     ),
                 ),

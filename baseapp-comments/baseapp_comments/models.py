@@ -98,7 +98,7 @@ class AbstractComment(
     target.short_description = _("target")  # because GenericForeignKey doens't have verbose_name
 
     in_reply_to = models.ForeignKey(
-        "self",
+        to=swapper.get_model_name("baseapp_comments", "Comment"),
         verbose_name=_("in reply to"),
         blank=True,
         null=True,
@@ -143,12 +143,6 @@ class AbstractComment(
         return "Comment #%s by %s" % (self.id, self.user_id)
 
 
-@pghistory.track(
-    pghistory.InsertEvent(),
-    pghistory.UpdateEvent(),
-    pghistory.DeleteEvent(),
-    exclude=["comments_count", "reactions_count"],
-)
 class Comment(AbstractComment):
     class Meta(AbstractComment.Meta):
         abstract = False
