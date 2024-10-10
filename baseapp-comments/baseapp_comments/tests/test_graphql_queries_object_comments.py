@@ -41,6 +41,7 @@ VIEW_ALL_QUERY = """
 
 
 def test_anon_see_comments_and_replies(graphql_client):
+    import pdb; pdb.set_trace()
     target = CommentFactory()
     comment = CommentFactory(target=target)
     CommentFactory.create_batch(target=target, in_reply_to=comment, size=2)

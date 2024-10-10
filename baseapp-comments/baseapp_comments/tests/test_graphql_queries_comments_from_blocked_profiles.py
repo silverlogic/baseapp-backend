@@ -7,6 +7,8 @@ from .factories import CommentFactory
 
 pytestmark = pytest.mark.django_db
 
+import swapper
+
 VIEW_ALL_QUERY = """
     query {
         allComments {
@@ -33,6 +35,10 @@ VIEW_ALL_QUERY = """
 """
 
 
+Comment = swapper.load_model("baseapp_comments", "Comment")
+app_label = Comment._meta.app_label
+
+
 def test_user_cant_see_comment_made_by_bloker_profile(django_user_client, graphql_user_client):
     """
     Scenario:
@@ -45,7 +51,7 @@ def test_user_cant_see_comment_made_by_bloker_profile(django_user_client, graphq
     """
 
     perm = Permission.objects.get(
-        content_type__app_label="baseapp_comments", codename="view_all_comments"
+        content_type__app_label=f"{app_label}", codename="view_all_comments"
     )
     django_user_client.user.user_permissions.add(perm)
 
@@ -77,7 +83,7 @@ def test_user_cant_see_comment_made_by_bloked_profile(django_user_client, graphq
     """
 
     perm = Permission.objects.get(
-        content_type__app_label="baseapp_comments", codename="view_all_comments"
+        content_type__app_label=f"{app_label}", codename="view_all_comments"
     )
     django_user_client.user.user_permissions.add(perm)
 
