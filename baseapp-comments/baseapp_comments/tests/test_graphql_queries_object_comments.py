@@ -3,6 +3,7 @@ from baseapp_reactions.tests.factories import ReactionFactory
 from django.test import override_settings
 
 from .factories import CommentFactory
+from baseapp_core.tests.factories import UserFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -40,11 +41,12 @@ VIEW_ALL_QUERY = """
 """
 
 
-def test_anon_see_comments_and_replies(graphql_client):
-    import pdb; pdb.set_trace()
+def test_anon_see_comments_and_replies(django_user_client, graphql_client):
     target = CommentFactory()
-    comment = CommentFactory(target=target)
-    CommentFactory.create_batch(target=target, in_reply_to=comment, size=2)
+    user = django_user_client.user
+    replying_user = UserFactory()
+    comment = CommentFactory(target=target, user=user)
+    CommentFactory.create_batch(target=target, in_reply_to=comment, size=2, user=replying_user)
 
     response = graphql_client(VIEW_ALL_QUERY, variables={"id": target.relay_id})
     content = response.json()
