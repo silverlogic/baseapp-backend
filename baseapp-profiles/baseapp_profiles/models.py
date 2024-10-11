@@ -127,6 +127,12 @@ class AbstractProfile(*inheritances):
             .exists()
         )
 
+    @classmethod
+    def get_graphql_object_type(cls):
+        from .graphql.object_types import ProfileObjectType
+
+        return ProfileObjectType
+
     # def save(self, *args, **kwargs):
     #     created = self._state.adding
     #     super().save(*args, **kwargs)
@@ -154,7 +160,7 @@ class Profile(AbstractProfile):
         swappable = swapper.swappable_setting("baseapp_profiles", "Profile")
 
 
-class AbstractProfileUserRole(models.Model):
+class AbstractProfileUserRole(RelayModel, models.Model):
     class ProfileRoles(models.IntegerChoices):
         ADMIN = 1, _("admin")
         MANAGER = 2, _("manager")
@@ -183,6 +189,12 @@ class AbstractProfileUserRole(models.Model):
 
     def __str__(self):
         return f"{self.user} as {self.role} in {self.profile}"
+
+    @classmethod
+    def get_graphql_object_type(cls):
+        from .graphql.object_types import ProfileUserRoleObjectType
+
+        return ProfileUserRoleObjectType
 
 
 class ProfileUserRole(AbstractProfileUserRole):
