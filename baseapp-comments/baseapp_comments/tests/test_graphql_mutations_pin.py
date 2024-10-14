@@ -4,6 +4,8 @@ from django.test import override_settings
 
 from .factories import CommentFactory
 
+import swapper
+
 pytestmark = pytest.mark.django_db
 
 COMMENT_PIN_GRAPHQL = """
@@ -70,8 +72,10 @@ def test_superuser_can_pin_comment(django_user_client, graphql_user_client):
 
 
 def test_user_with_permission_can_pin_comment(django_user_client, graphql_user_client):
+    Comment = swapper.load_model("baseapp_comments", "Comment")
+    app_label = Comment._meta.app_label
     perm = Permission.objects.get(
-        content_type__app_label="baseapp_comments", codename="pin_comment"
+        content_type__app_label=app_label, codename="pin_comment"
     )
     django_user_client.user.user_permissions.add(perm)
 
@@ -84,6 +88,7 @@ def test_user_with_permission_can_pin_comment(django_user_client, graphql_user_c
     )
     content = response.json()
     comment.refresh_from_db()
+
     assert content["data"]["commentPin"]["comment"]["isPinned"] is True
     assert comment.is_pinned is True
     assert comment.is_pinned is True

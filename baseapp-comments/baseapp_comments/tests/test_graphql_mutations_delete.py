@@ -88,8 +88,9 @@ def test_superuser_can_delete_comment(django_user_client, graphql_user_client):
 
 
 def test_user_with_permission_can_delete_comment(django_user_client, graphql_user_client):
+    app_label = Comment._meta.app_label
     perm = Permission.objects.get(
-        content_type__app_label="baseapp_comments", codename="delete_comment"
+        content_type__app_label=app_label, codename="delete_comment"
     )
     django_user_client.user.user_permissions.add(perm)
 
@@ -100,6 +101,7 @@ def test_user_with_permission_can_delete_comment(django_user_client, graphql_use
         variables={"input": {"id": comment.relay_id}},
     )
     content = response.json()
+
     assert content["data"]["commentDelete"]["deletedId"] == comment.relay_id
     assert Comment.objects_visible.count() == 0
 
@@ -107,7 +109,6 @@ def test_user_with_permission_can_delete_comment(django_user_client, graphql_use
 def test_update_comments_counts_after_delete_comment(django_user_client, graphql_user_client):
     target = CommentFactory()
     parent = CommentFactory(target=target)
-
     comment = CommentFactory(user=django_user_client.user, target=target, in_reply_to=parent)
 
     assert target.comments_count["total"] == 2

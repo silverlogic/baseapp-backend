@@ -44,7 +44,7 @@ def test_anon_cant_comment(graphql_client):
 
 
 def test_user_can_comment(graphql_user_client):
-    target = CommentFactory()
+    target = CommentFactory(body="my body test")
 
     graphql_user_client(
         COMMENT_CREATE_GRAPHQL,
@@ -83,6 +83,7 @@ def test_user_can_reply(graphql_user_client):
             }
         },
     )
+
     comment = Comment.objects.filter(in_reply_to=parent).get()
     target.refresh_from_db()
     parent.refresh_from_db()
