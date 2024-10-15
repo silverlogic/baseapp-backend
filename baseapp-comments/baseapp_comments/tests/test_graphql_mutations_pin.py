@@ -1,4 +1,5 @@
 import pytest
+import swapper
 from django.contrib.auth.models import Permission
 from django.test import override_settings
 
@@ -70,9 +71,9 @@ def test_superuser_can_pin_comment(django_user_client, graphql_user_client):
 
 
 def test_user_with_permission_can_pin_comment(django_user_client, graphql_user_client):
-    perm = Permission.objects.get(
-        content_type__app_label="baseapp_comments", codename="pin_comment"
-    )
+    Comment = swapper.load_model("baseapp_comments", "Comment")
+    app_label = Comment._meta.app_label
+    perm = Permission.objects.get(content_type__app_label=app_label, codename="pin_comment")
     django_user_client.user.user_permissions.add(perm)
 
     target = CommentFactory()
