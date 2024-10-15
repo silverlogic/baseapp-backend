@@ -1,4 +1,5 @@
 import pytest
+import swapper
 from baseapp_blocks.tests.factories import BlockFactory
 from baseapp_profiles.tests.factories import ProfileFactory
 from django.contrib.auth.models import Permission
@@ -32,6 +33,9 @@ VIEW_ALL_QUERY = """
     }
 """
 
+Comment = swapper.load_model("baseapp_comments", "Comment")
+app_label = Comment._meta.app_label
+
 
 def test_user_cant_see_comment_made_by_bloker_profile(django_user_client, graphql_user_client):
     """
@@ -45,7 +49,7 @@ def test_user_cant_see_comment_made_by_bloker_profile(django_user_client, graphq
     """
 
     perm = Permission.objects.get(
-        content_type__app_label="baseapp_comments", codename="view_all_comments"
+        content_type__app_label=app_label, codename="view_all_comments"
     )
     django_user_client.user.user_permissions.add(perm)
 
@@ -77,7 +81,7 @@ def test_user_cant_see_comment_made_by_bloked_profile(django_user_client, graphq
     """
 
     perm = Permission.objects.get(
-        content_type__app_label="baseapp_comments", codename="view_all_comments"
+        content_type__app_label=app_label, codename="view_all_comments"
     )
     django_user_client.user.user_permissions.add(perm)
 

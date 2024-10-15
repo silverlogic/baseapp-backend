@@ -12,6 +12,7 @@ from ..models import CommentStatus, default_comments_count
 from .filters import CommentFilter
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
+app_label = Comment._meta.app_label
 
 CommentStatusEnum = graphene.Enum.from_enum(CommentStatus)
 
@@ -84,7 +85,7 @@ class CommentObjectType(DjangoObjectType):
     @classmethod
     def get_node(self, info, id):
         node = super().get_node(info, id)
-        if not info.context.user.has_perm("baseapp_comments.view_comment", node):
+        if not info.context.user.has_perm(f"{app_label}.view_comment", node):
             return None
         return node
 
