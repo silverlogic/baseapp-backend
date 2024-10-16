@@ -1,7 +1,6 @@
+import swapper
 from baseapp_core.swappable import get_apps_model
 from django.db import migrations
-
-import swapper
 
 
 class Migration(migrations.Migration):
@@ -10,7 +9,9 @@ class Migration(migrations.Migration):
         Follow = get_apps_model(apps, "baseapp_follows", "Follow")
 
         if not swapper.is_swapped("baseapp_follows", "Follow"):
-            for follow in Follow.objects.filter(new_actor__isnull=True, actor_object_id__isnull=False):
+            for follow in Follow.objects.filter(
+                new_actor__isnull=True, actor_object_id__isnull=False
+            ):
                 follow.new_actor = Profile.objects.get(
                     target_content_type_id=follow.actor_content_type_id,
                     target_object_id=follow.actor_object_id,
@@ -30,7 +31,9 @@ class Migration(migrations.Migration):
         Follow = apps.get_apps_model("baseapp_follows", "Follow")
 
         if not swapper.is_swapped("baseapp_follows", "Follow"):
-            for follow in Follow.objects.filter(new_actor__isnull=False, actor_object_id__isnull=True):
+            for follow in Follow.objects.filter(
+                new_actor__isnull=False, actor_object_id__isnull=True
+            ):
                 follow.actor_content_type = follow.new_actor.target_content_type
                 follow.actor_object_id = follow.new_actor.target_object_id
 
