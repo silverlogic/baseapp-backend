@@ -1,9 +1,8 @@
+import swapper
 from baseapp_core.graphql import Node
 from graphene_django.filter import DjangoFilterConnectionField
 
 from .object_types import CommentObjectType
-
-import swapper
 
 
 class CommentsQueries:

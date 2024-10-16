@@ -1,9 +1,8 @@
 import logging
 
+import swapper
 from baseapp_core.swappable import get_apps_model
 from django.db import migrations
-
-import swapper
 
 
 class Migration(migrations.Migration):

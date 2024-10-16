@@ -6,12 +6,12 @@ import django.utils.timezone
 import model_utils.fields
 import pgtrigger.compiler
 import pgtrigger.migrations
+import swapper
 from django.conf import settings
 from django.db import migrations, models
 
 import baseapp_comments.models
 import baseapp_comments.validators
-import swapper
 
 
 class Migration(migrations.Migration):
