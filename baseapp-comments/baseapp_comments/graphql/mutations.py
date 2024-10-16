@@ -65,9 +65,7 @@ class CommentCreate(RelayMutation):
         if input.get("in_reply_to_id"):
             comment.in_reply_to = get_obj_from_relay_id(info, input.get("in_reply_to_id"))
 
-            if not info.context.user.has_perm(
-                f"{app_label}.reply_comment", comment.in_reply_to
-            ):
+            if not info.context.user.has_perm(f"{app_label}.reply_comment", comment.in_reply_to):
                 raise GraphQLError(
                     str(_("You don't have permission to perform this action")),
                     extensions={"code": "permission_required"},
