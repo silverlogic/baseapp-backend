@@ -1,7 +1,6 @@
+import swapper
 from baseapp_core.swappable import get_apps_model
 from django.db import migrations
-
-import swapper
 
 
 class Migration(migrations.Migration):
@@ -53,4 +52,3 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(forwards_func, reverse_func),
     ]
-
