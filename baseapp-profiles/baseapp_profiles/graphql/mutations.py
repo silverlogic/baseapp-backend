@@ -13,6 +13,7 @@ from graphql.error import GraphQLError
 from rest_framework import serializers
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
+ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
 
 class BaseProfileSerializer(serializers.ModelSerializer):
@@ -190,9 +191,48 @@ class ProfileDelete(RelayMutation):
         obj.delete()
 
         return ProfileDelete(deleted_id=relay_id)
+    
+
+class ProfileUserRoleCreate(RelayMutation):
+    profile = graphene.Field(lambda: Profile.get_graphql_object_type()._meta.connection.Edge)
+    profile_user_role = graphene.Field(lambda: get_object_type_for_model(ProfileUserRole))
+
+    class Input:
+        profile_id = graphene.ID(required=True)
+        user_id = graphene.ID(required=True)
+        role = graphene.String(required=True)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        profile_id = get_pk_from_relay_id(input.get("profile_id"))
+        user_id = get_pk_from_relay_id(input.get("user_id"))
+        role = input.get("role")
+
+        try:
+            profile = Profile.objects.get(pk=profile_id)
+        except Profile.DoesNotExist:
+            raise ValueError(_("Profile not found"))
+
+        if not info.context.user.has_perm("baseapp_profiles.change_profile", profile):
+            raise GraphQLError(
+                str(_("You don't have permission to perform this action")),
+                extensions={"code": "permission_required"},
+            )
+
+
+        role = ProfileUserRole.objects.create(profile=profile, user_id=user_id, role=role)
+
+        ProfileObjectType = Profile.get_graphql_object_type()
+        return cls(
+            errors=None,
+            profile=ProfileObjectType._meta.connection.Edge(node=profile),
+            profile_user_role=role,
+        )
 
 
 class ProfilesMutations(object):
     # profile_create = ProfileCreate.Field()
     profile_update = ProfileUpdate.Field()
     profile_delete = ProfileDelete.Field()
+    role_create = ProfileUserRoleCreate.Field()
