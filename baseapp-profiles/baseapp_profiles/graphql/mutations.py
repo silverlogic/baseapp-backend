@@ -208,6 +208,7 @@ class ProfileUserRoleCreate(RelayMutation):
         profile_id = get_pk_from_relay_id(input.get("profile_id"))
         user_id = get_pk_from_relay_id(input.get("user_id"))
         role = input.get("role")
+        # TO DO: change for batch create
 
         try:
             profile = Profile.objects.get(pk=profile_id)
