@@ -191,7 +191,7 @@ class ProfileDelete(RelayMutation):
         obj.delete()
 
         return ProfileDelete(deleted_id=relay_id)
-    
+
 
 class ProfileUserRoleCreate(RelayMutation):
     profile = graphene.Field(lambda: Profile.get_graphql_object_type()._meta.connection.Edge)
@@ -220,7 +220,6 @@ class ProfileUserRoleCreate(RelayMutation):
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
             )
-
 
         role = ProfileUserRole.objects.create(profile=profile, user_id=user_id, role=role)
 
