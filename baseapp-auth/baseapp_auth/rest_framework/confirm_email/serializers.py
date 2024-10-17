@@ -7,9 +7,12 @@ class ConfirmEmailSerializer(serializers.Serializer):
     token = serializers.CharField()
 
     def validate_token(self, token):
-        if not ConfirmEmailTokenGenerator().check_token(self.instance, token):
+        try:
+            if not ConfirmEmailTokenGenerator().check_token(self.instance, token):
+                raise serializers.ValidationError(_("Invalid token."))
+            return token
+        except ValueError:
             raise serializers.ValidationError(_("Invalid token."))
-        return token
 
     def update(self, instance, validated_data):
         instance.is_email_verified = True

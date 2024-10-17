@@ -50,12 +50,37 @@ class ProfileCreateSerializer(BaseProfileSerializer):
 
 
 class ProfileUpdateSerializer(BaseProfileSerializer):
+    phone_number = serializers.CharField(required=False)
+    image = serializers.ImageField(required=False, allow_null=True)
+    banner_image = serializers.ImageField(required=False, allow_null=True)
+
+    class Meta(BaseProfileSerializer.Meta):
+        fields = BaseProfileSerializer.Meta.fields + ("phone_number",)
+
+    def should_delete_field(self, data, field_name):
+        return field_name in data and not data[field_name]
+
     def update(self, instance, validated_data):
+        original_data = validated_data.copy()
         url_path = validated_data.pop("url_path", None)
+        phone_number = validated_data.pop("phone_number", None)
+        image = validated_data.pop("image", None)
+        banner_image = validated_data.pop("banner_image", None)
         instance = super().update(instance, validated_data)
+        if phone_number and hasattr(instance.owner, "phone_number"):
+            instance.owner.phone_number = phone_number
+            instance.owner.save(update_fields=["phone_number"])
         if url_path:
             instance.url_paths.all().delete()
             URLPath.objects.create(path=url_path, target=instance, is_active=True)
+        if self.should_delete_field(original_data, "image"):
+            instance.image.delete()
+        elif "image" in original_data:
+            super().update(instance, {"image": image})
+        if self.should_delete_field(original_data, "banner_image"):
+            instance.banner_image.delete()
+        elif "banner_image" in original_data:
+            super().update(instance, {"banner_image": banner_image})
         return instance
 
 

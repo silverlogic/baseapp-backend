@@ -128,6 +128,28 @@ def test_owner_can_update_profile_banner_image(
     assert content["data"]["profileUpdate"]["profile"]["bannerImage"]["url"].startswith("http://")
 
 
+def test_owner_can_delete_profile_image(django_user_client, graphql_user_client):
+    profile = ProfileFactory(owner=django_user_client.user)
+    response = graphql_user_client(
+        PROFILE_UPDATE_GRAPHQL,
+        variables={"input": {"id": profile.relay_id, "image": None}},
+    )
+
+    content = response.json()
+    assert content["data"]["profileUpdate"]["profile"]["image"] is None
+
+
+def test_owner_can_delete_profile_banner_image(django_user_client, graphql_user_client):
+    profile = ProfileFactory(owner=django_user_client.user)
+    response = graphql_user_client(
+        PROFILE_UPDATE_GRAPHQL,
+        variables={"input": {"id": profile.relay_id, "bannerImage": None}},
+    )
+
+    content = response.json()
+    assert content["data"]["profileUpdate"]["profile"]["bannerImage"] is None
+
+
 def test_owner_can_update_profile_banner_image_camel_case(
     django_user_client, graphql_user_client, image_djangofile
 ):

@@ -100,7 +100,7 @@ class PageMixin(models.Model):
     def url_path(self):
         # returns the most probable url path based on current session
         return self.url_paths.filter(
-            Q(is_active=True) & Q(language=get_language()) | Q(language__isnull=True)
+            Q(is_active=True), Q(language=get_language()) | Q(language__isnull=True)
         ).first()
 
 

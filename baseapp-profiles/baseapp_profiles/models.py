@@ -90,6 +90,10 @@ class AbstractProfile(*inheritances):
 
     class Meta:
         abstract = True
+        unique_together = [("target_content_type", "target_object_id")]
+        permissions = [
+            ("use_profile", _("can use profile")),
+        ]
 
     def __str__(self):
         return self.name or str(self.pk)
@@ -116,6 +120,13 @@ class AbstractProfile(*inheritances):
             url_path = self.generate_url_path(random=True)
         self.url_paths.create(path=url_path, language=None, is_active=True)
 
+    def check_if_member(self, user):
+        return (
+            self.__class__.objects.filter(pk=self.pk)
+            .filter(models.Q(members__user=user) | models.Q(owner=user))
+            .exists()
+        )
+
     # def save(self, *args, **kwargs):
     #     created = self._state.adding
     #     super().save(*args, **kwargs)
@@ -141,10 +152,6 @@ class ProfilableModel(models.Model):
 class Profile(AbstractProfile):
     class Meta(AbstractProfile.Meta):
         swappable = swapper.swappable_setting("baseapp_profiles", "Profile")
-        unique_together = [("target_content_type", "target_object_id")]
-        permissions = [
-            ("use_profile", _("can use profile")),
-        ]
 
 
 class AbstractProfileUserRole(models.Model):
@@ -179,6 +186,5 @@ class AbstractProfileUserRole(models.Model):
 
 
 class ProfileUserRole(AbstractProfileUserRole):
-    class Meta:
+    class Meta(AbstractProfileUserRole.Meta):
         swappable = swapper.swappable_setting("baseapp_profiles", "ProfileUserRole")
-        unique_together = [("user", "profile")]

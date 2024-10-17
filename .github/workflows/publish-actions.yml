@@ -95,3 +95,8 @@ jobs:
     with:
       project: baseapp-ratings
     secrets: inherit
+  baseapp-chats:
+    uses: ./.github/workflows/publish-workflow.yml
+    with:
+      project: baseapp-chats
+    secrets: inherit

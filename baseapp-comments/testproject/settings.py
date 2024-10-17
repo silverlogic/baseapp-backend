@@ -23,6 +23,12 @@ AUTH_USER_MODEL = "testapp.User"
 LANGUAGE_CODE = "en"
 LANGUAGES = [("en", _("English")), ("es", _("Spanish")), ("pt", _("Portuguese"))]
 
+MIDDLEWARE = [
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "baseapp_profiles.middleware.CurrentProfileMiddleware",
+]
+
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "baseapp_auth.permissions.UsersPermissionsBackend",
@@ -33,3 +39,8 @@ AUTHENTICATION_BACKENDS = [
 BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False
 
 NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"
+
+# Graphene
+GRAPHENE["MIDDLEWARE"] = (
+    "baseapp_profiles.graphql.middleware.CurrentProfileMiddleware",
+) + GRAPHENE["MIDDLEWARE"]

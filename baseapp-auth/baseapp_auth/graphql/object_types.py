@@ -58,6 +58,9 @@ class AbstractUserObjectType(object):
     full_name = graphene.String()
     short_name = graphene.String()
 
+    first_name = graphene.String(deprecation_reason="Deprecated in favor of fullName and shortName")
+    last_name = graphene.String(deprecation_reason="Deprecated in favor of fullName and shortName")
+
     avatar = ThumbnailField(required=False)
 
     # Make them not required
@@ -74,6 +77,8 @@ class AbstractUserObjectType(object):
         model = User
         fields = (
             "pk",
+            "first_name",
+            "last_name",
             "full_name",
             "short_name",
             "email",
