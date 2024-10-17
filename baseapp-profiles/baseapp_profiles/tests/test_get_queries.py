@@ -80,3 +80,51 @@ def test_another_user_cant_change_profile(graphql_user_client):
     assert not content["data"]["profile"]["canDelete"]
     assert not content["data"]["profile"]["canChangeFull"]
     assert not content["data"]["profile"]["canDeleteFull"]
+
+
+def test_owner_can_view_members(django_user_client, graphql_user_client):
+    response = graphql_user_client(
+        query="""
+            query Profile($id: ID!) {
+                profile(id: $id) {
+                    members {
+                        edges {
+                            node {
+                                id
+                            }
+                        }
+                    }
+                }
+            }
+        """,
+        variables={"id": django_user_client.user.profile.relay_id},
+    )
+
+    content = response.json()
+
+    assert content["data"]["profile"]["members"]
+
+
+def test_another_user_cant_view_members(graphql_user_client):
+    profile = ProfileFactory()
+
+    response = graphql_user_client(
+        query="""
+            query Profile($id: ID!) {
+                profile(id: $id) {
+                    members {
+                        edges {
+                            node {
+                                id
+                            }
+                        }
+                    }
+                }
+            }
+        """,
+        variables={"id": profile.relay_id},
+    )
+
+    content = response.json()
+
+    assert content["data"]["profile"]["members"]

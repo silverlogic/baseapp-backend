@@ -17,16 +17,18 @@ Profile = swapper.load_model("baseapp_profiles", "Profile")
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
 
-RoleTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoles)
+ProfileRoleTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoles)
+ProfileRoleStatusTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoleStatus)
 
 
 class BaseProfileUserRoleObjectType:
-    role = graphene.Field(RoleTypesEnum)
+    role = graphene.Field(ProfileRoleTypesEnum)
+    status = graphene.Field(ProfileRoleStatusTypesEnum)
 
     class Meta:
         model = ProfileUserRole
         interfaces = [relay.Node]
-        fields = ["id", "pk", "user", "role", "created", "modified"]
+        fields = ["id", "pk", "user", "role", "created", "modified", "status"]
         filter_fields = ["role"]
 
 
@@ -119,8 +121,8 @@ class BaseProfileObjectType:
 
     @classmethod
     def resolve_members(cls, instance, info, **kwargs):
-        if not info.context.user.has_perm("baseapp_profiles.use_profile", instance):
-            return instance.members.none()
+        # if not info.context.user.has_perm("baseapp_profiles.use_profile", instance):
+        #     return instance.members.none()
         return instance.members.all()
 
 
