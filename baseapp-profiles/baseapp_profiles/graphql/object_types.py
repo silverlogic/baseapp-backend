@@ -121,8 +121,8 @@ class BaseProfileObjectType:
 
     @classmethod
     def resolve_members(cls, instance, info, **kwargs):
-        # if not info.context.user.has_perm("baseapp_profiles.use_profile", instance):
-        #     return instance.members.none()
+        if not info.context.user.has_perm("baseapp_profiles.view_profile_members", instance):
+            return instance.members.none()
         return instance.members.all()
 
 
