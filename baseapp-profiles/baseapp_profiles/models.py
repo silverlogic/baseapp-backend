@@ -168,6 +168,16 @@ class AbstractProfileUserRole(RelayModel, models.Model):
         @property
         def description(self):
             return self.label
+        
+    class ProfileRoleStatus(models.IntegerChoices):
+        ACTIVE = 1, _("active")
+        PENDING = 2, _("pending")
+        INACTIVE = 3, _("inactive")
+        
+        @property
+        def description(self):
+            return self.label
+        
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -182,7 +192,8 @@ class AbstractProfileUserRole(RelayModel, models.Model):
         verbose_name=_("profile"),
     )
     role = models.IntegerField(choices=ProfileRoles.choices, default=ProfileRoles.MANAGER)
-
+    status = models.IntegerField(choices=ProfileRoleStatus.choices, default=ProfileRoleStatus.PENDING)
+    
     class Meta:
         abstract = True
         unique_together = [("user", "profile")]
