@@ -43,7 +43,5 @@ class ProfilesPermissionsBackend(BaseBackend):
                 return (
                     obj.owner_id == user_obj.id
                     or user_obj.is_superuser
-                    or obj.members.filter(
-                        user_id=user_obj.id
-                    ).exists()
+                    or obj.members.filter(user_id=user_obj.id).exists()
                 )
