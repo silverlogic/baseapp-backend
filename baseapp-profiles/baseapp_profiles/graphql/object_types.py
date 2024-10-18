@@ -85,7 +85,7 @@ if apps.is_installed("baseapp_blocks"):
 
 
 if apps.is_installed("baseapp_chats"):
-    from baseapp_chats.graphql.object_types import ChatRoomsInterface
+    from baseapp_chats.graphql.interfaces import ChatRoomsInterface
 
     interfaces.append(ChatRoomsInterface)
 
