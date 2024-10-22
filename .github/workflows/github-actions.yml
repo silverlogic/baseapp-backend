@@ -84,3 +84,7 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-chats
+  baseapp:
+    uses: ./.github/workflows/project-workflow.yml
+    with:
+      project: baseapp
