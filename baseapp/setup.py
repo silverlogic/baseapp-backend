@@ -4,7 +4,7 @@ with open("README.md", "r") as f:
     long_description = f.read()
 
 setup(
-    name="baseapp",
+    name="baseapp-backend",
     packages=find_packages(),
     long_description=long_description,
     long_description_content_type="text/markdown",
