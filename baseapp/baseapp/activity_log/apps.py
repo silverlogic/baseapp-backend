@@ -1,8 +1,9 @@
 from django.apps import AppConfig
 
 
-class ChatsConfig(AppConfig):
+class PackageConfig(AppConfig):
     default = True
-    name = "baseapp_chats"
+    name = "baseapp.activity_log"
+    label = "baseapp_activity_log"
     verbose_name = "BaseApp Chats"
     default_auto_field = "django.db.models.BigAutoField"
