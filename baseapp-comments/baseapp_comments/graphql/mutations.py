@@ -16,6 +16,7 @@ from graphql.error import GraphQLError
 from .object_types import CommentObjectType, CommentsInterface
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
+app_label = Comment._meta.app_label
 
 
 class CommentForm(forms.ModelForm):
@@ -38,7 +39,7 @@ class CommentCreate(RelayMutation):
     def mutate_and_get_payload(cls, root, info, **input):
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
 
-        if not info.context.user.has_perm("baseapp_comments.add_comment", target):
+        if not info.context.user.has_perm(f"{app_label}.add_comment", target):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
@@ -54,7 +55,7 @@ class CommentCreate(RelayMutation):
             )
 
             if not info.context.user.has_perm(
-                "baseapp_comments.add_comment_with_profile", comment.profile
+                f"{app_label}.add_comment_with_profile", comment.profile
             ):
                 raise GraphQLError(
                     str(_("You don't have permission to perform this action")),
@@ -64,9 +65,7 @@ class CommentCreate(RelayMutation):
         if input.get("in_reply_to_id"):
             comment.in_reply_to = get_obj_from_relay_id(info, input.get("in_reply_to_id"))
 
-            if not info.context.user.has_perm(
-                "baseapp_comments.reply_comment", comment.in_reply_to
-            ):
+            if not info.context.user.has_perm(f"{app_label}.reply_comment", comment.in_reply_to):
                 raise GraphQLError(
                     str(_("You don't have permission to perform this action")),
                     extensions={"code": "permission_required"},
@@ -106,7 +105,7 @@ class CommentUpdate(RelayMutation):
         pk = get_pk_from_relay_id(input.get("id"))
         comment = Comment.objects.get(pk=pk)
 
-        if not info.context.user.has_perm("baseapp_comments.change_comment", comment):
+        if not info.context.user.has_perm(f"{app_label}.change_comment", comment):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
@@ -139,7 +138,7 @@ class CommentPin(RelayMutation):
         pk = get_pk_from_relay_id(input.get("id"))
         comment = Comment.objects.get(pk=pk)
 
-        if not info.context.user.has_perm("baseapp_comments.pin_comment", comment):
+        if not info.context.user.has_perm(f"{app_label}.pin_comment", comment):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
@@ -193,7 +192,7 @@ class CommentDelete(RelayMutation):
         if not obj:
             raise error_exception
 
-        if not info.context.user.has_perm("baseapp_comments.delete_comment", obj):
+        if not info.context.user.has_perm(f"{app_label}.delete_comment", obj):
             raise error_exception
 
         target = obj.target

@@ -26,6 +26,7 @@ def get_obj_pk(field_name):
 
 
 class AbstractCommentFactory(factory.django.DjangoModelFactory):
+    user = factory.SubFactory("baseapp_core.tests.factories.UserFactory")
     body = factory.Faker("text")
 
     class Meta:

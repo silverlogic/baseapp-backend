@@ -88,9 +88,8 @@ def test_superuser_can_delete_comment(django_user_client, graphql_user_client):
 
 
 def test_user_with_permission_can_delete_comment(django_user_client, graphql_user_client):
-    perm = Permission.objects.get(
-        content_type__app_label="baseapp_comments", codename="delete_comment"
-    )
+    app_label = Comment._meta.app_label
+    perm = Permission.objects.get(content_type__app_label=app_label, codename="delete_comment")
     django_user_client.user.user_permissions.add(perm)
 
     comment = CommentFactory()
