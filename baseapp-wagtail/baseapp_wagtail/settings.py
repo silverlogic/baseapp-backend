@@ -46,7 +46,7 @@ WAGTAIL_CONTENT_LANGUAGES = LANGUAGES = [
 
 # Wagtail settings
 WAGTAIL_SITE_NAME = "TMP NAME"  # TODO: Add setting to define.
-WAGTAILADMIN_BASE_URL = "http://localhost:8000/"  # TODO: Dinamize the right way.
+WAGTAILADMIN_BASE_URL = "http://localhost:8000"  # TODO: Dinamize the right way.
 
 # TODO: Add setting to activate.
 # Wagtail Preview

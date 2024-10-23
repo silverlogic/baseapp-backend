@@ -1,7 +1,7 @@
 from urllib.parse import urlparse
-
 from django.conf import settings
 from django.utils.translation import gettext as _
+
 from wagtail.admin.panels import FieldPanel
 from wagtail.api import APIField
 from wagtail.fields import StreamField
@@ -9,7 +9,7 @@ from wagtail.models import Page
 from wagtail.search import index
 from wagtail_headless_preview.models import HeadlessPreviewMixin
 
-from .stream_fields import (
+from .base.stream_fields import (
     FeaturedImageStreamBlock,
     PageBodyStreamField,
     StandardPageStreamBlock,
@@ -20,9 +20,7 @@ class HeadlessPageMixin(HeadlessPreviewMixin):
     @property
     def headless_url(self, request=None, current_site=None):
         url = self.get_url(request, current_site)
-        if self._has_no_domain(url):
-            # TODO: adjust method to only work with headless mode.
-            root_url = settings.FRONT_HEADLESS_URL
+        if (root_url := settings.FRONT_HEADLESS_URL) and url and self._has_no_domain(url):
             return root_url + url
         return url
 
@@ -66,7 +64,7 @@ class DefaultPageModel(HeadlessPageMixin, Page):
         abstract = True
 
 
-class StandardPage(DefaultPageModel):
+class BaseStandardPage(DefaultPageModel):
     body = PageBodyStreamField.create(
         StandardPageStreamBlock(required=False),
     )
@@ -74,6 +72,4 @@ class StandardPage(DefaultPageModel):
     class Meta:
         verbose_name = _("Standard page")
         verbose_name_plural = _("Standard pages")
-
-
-# TODO: make classes above swappable.
+        abstract = True

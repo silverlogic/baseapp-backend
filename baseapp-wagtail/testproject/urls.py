@@ -14,8 +14,11 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from urllib.parse import urlparse
 from django.contrib import admin
+from django.conf import settings
 from django.urls import include, path
+from django.conf.urls.static import static
 
 import baseapp_wagtail.urls as baseapp_wagtail_urls
 
@@ -23,3 +26,10 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include(baseapp_wagtail_urls))
 ]
+
+# The static urls are needed for serving the medias. Usually this is handled by the projects that
+# use this package.
+media_url = urlparse(settings.MEDIA_URL)
+static_url = urlparse(settings.STATIC_URL)
+urlpatterns += static(media_url.path, document_root=settings.MEDIA_ROOT)
+urlpatterns += static(static_url.path, document_root=settings.STATIC_ROOT)
