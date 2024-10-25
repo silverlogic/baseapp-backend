@@ -1,7 +1,7 @@
-import apps.medias.tests.factories as f
-from apps.base.blocks.basic_blocks.banner_block import BannerBlock
-from tests.mixins import TestPageContextMixin
-from tests.utils.blocks_helpers import BlocksHelper
+import baseapp_wagtail.medias.tests.factories as media_factory
+from baseapp_wagtail.base.blocks.custom_blocks.banner_block import BannerBlock
+from baseapp_wagtail.tests.mixins import TestPageContextMixin
+from baseapp_wagtail.tests.utils.blocks_helpers import BlocksHelper
 
 
 class BannerBlockTests(BlocksHelper, TestPageContextMixin):
@@ -13,7 +13,7 @@ class BannerBlockTests(BlocksHelper, TestPageContextMixin):
             {
                 "title": "Banner",
                 "description": "Banner description",
-                "featured_image": {"image": f.CustomImageFactory().pk},
+                "featured_image": media_factory.ImageFactory().pk,
                 "image_position": "left",
             },
         )
@@ -23,6 +23,6 @@ class BannerBlockTests(BlocksHelper, TestPageContextMixin):
 
         self.assertEquals(len(block), 1)
         self.assertEquals(block[0]["value"]["title"], "Banner")
-        self.assertEquals(block[0]["value"]["description"], "Banner description\n")
+        self.assertEquals(block[0]["value"]["description"], "Banner description")
         self.assertEquals(block[0]["value"]["image_position"], "left")
         self.assertIsNotNone(block[0]["value"]["featured_image"])

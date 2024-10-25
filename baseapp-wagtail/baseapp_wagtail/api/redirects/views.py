@@ -1,7 +1,10 @@
 from django.http import Http404
+from django.utils.encoding import uri_to_iri
 from rest_framework.response import Response
+from wagtail.contrib.redirects import models
 from wagtail.contrib.redirects.api import RedirectsAPIViewSet
 from wagtail.contrib.redirects.middleware import get_redirect
+from wagtail.models import Site
 
 from baseapp_wagtail.locale.utils import clear_pathname
 
@@ -31,7 +34,7 @@ class CustomRedirectsAPIViewSet(RedirectsAPIViewSet):
 
     def find_object(self, queryset, request):
         if "html_path" in request.GET and (html_path := request.GET["html_path"]):
-            redirect = get_redirect(
+            redirect = self.get_redirect(
                 request,
                 html_path,
             )
@@ -39,7 +42,7 @@ class CustomRedirectsAPIViewSet(RedirectsAPIViewSet):
             if not redirect:
                 cleaned_html_ath = clear_pathname(html_path)
                 if cleaned_html_ath != html_path:
-                    redirect = get_redirect(
+                    redirect = self.get_redirect(
                         request,
                         cleaned_html_ath,
                     )
@@ -50,6 +53,24 @@ class CustomRedirectsAPIViewSet(RedirectsAPIViewSet):
                 return redirect
 
         return super().find_object(queryset, request)
+
+    def get_redirect(self, request, path):
+        redirect = get_redirect(request, path)
+        if redirect is None:
+            redirect = self._get_redirect(request, path)
+            if redirect is None:
+                redirect = self._get_redirect(request, uri_to_iri(path))
+        return redirect
+
+    def _get_redirect(self, request, path):
+        """
+        If the default get_redirect fails, try to find it with a case insensitive query.
+        """
+        if "\0" in path:  # reject URLs with null characters, which crash on Postgres (#4496)
+            return None
+
+        site = Site.find_for_request(request)
+        return models.Redirect.get_for_site(site).filter(old_path__iexact=path).first()
 
     def get_object(self):
         if self.html_path_queryset:

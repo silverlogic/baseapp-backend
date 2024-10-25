@@ -1,7 +1,8 @@
 from django.urls import reverse
 from rest_framework import status
-from tests.mixins import StandardPageContextMixin
-from tests.models import StandardPage
+
+from baseapp_wagtail.tests.mixins import StandardPageContextMixin
+from baseapp_wagtail.tests.models import StandardPage
 
 
 class PagesSitemapAPIViewSetTests(StandardPageContextMixin):

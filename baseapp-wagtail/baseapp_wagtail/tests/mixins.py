@@ -1,17 +1,17 @@
 import urllib.parse
 
-from django.test import override_settings
+from django.test import TestCase, override_settings
 from django.urls import reverse
-from tests.models import PageForTests, StandardPage
 from wagtail.models import Page, Site
 from wagtail.test.utils import WagtailPageTestCase, WagtailTestUtils
 
-import baseapp_wagtail.medias.tests.utils as medias_factories
+import baseapp_wagtail.medias.tests.factories as medias_factories
 import baseapp_wagtail.tests.factories.user_factories as users_factories
+from baseapp_wagtail.tests.models import PageForTests, StandardPage
 
 
 @override_settings(ALLOWED_HOSTS=["testserver", "localhost"])
-class WagtailBasicMixin(WagtailPageTestCase, WagtailTestUtils):
+class WagtailBasicMixin(WagtailPageTestCase, WagtailTestUtils, TestCase):
     pass
 
 
@@ -42,7 +42,7 @@ class StandardPageContextMixin(WagtailBasicMixin):
         return response
 
     def _get_featured_image_raw_data(self):
-        image = medias_factories.CustomImageFactory()
+        image = medias_factories.ImageFactory()
         return {
             "featured_image-count": "1",
             "featured_image-0-deleted": "",

@@ -1,22 +1,24 @@
 import factory
+from wagtail.documents import get_document_model
+from wagtail.images import get_image_model
 
-from .utils import get_test_document_file, get_test_image_file
+from baseapp_wagtail.tests.utils.media_helper import (
+    get_test_document_file,
+    get_test_image_file,
+)
 
 
-class CustomImageFactory(factory.django.DjangoModelFactory):
-    alt_text = "Test alt text"
-    attribution = "Test image attribution"
-    caption = "Test image caption"
+class ImageFactory(factory.django.DjangoModelFactory):
     title = "Test image"
     file = get_test_image_file()
 
     class Meta:
-        model = "medias.CustomImage"
+        model = get_image_model()
 
 
-class CustomDocumentFactory(factory.django.DjangoModelFactory):
+class DocumentFactory(factory.django.DjangoModelFactory):
     title = "Test document"
     file = get_test_document_file()
 
     class Meta:
-        model = "medias.CustomDocument"
+        model = get_document_model()

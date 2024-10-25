@@ -1,9 +1,9 @@
 from django.urls import reverse
 from rest_framework import status
-from tests.mixins import StandardPageContextMixin
-from tests.models import StandardPage
 
 import baseapp_wagtail.medias.tests.factories as media_factory
+from baseapp_wagtail.tests.mixins import StandardPageContextMixin
+from baseapp_wagtail.tests.models import StandardPage
 
 
 class PagesAPITests(StandardPageContextMixin):
@@ -47,14 +47,14 @@ class DefaultPageModelAPISerializerTests(StandardPageContextMixin):
     def setUp(self):
         super().setUp()
         self.new_page = StandardPage(
-            title="My Inner Page",
-            slug="my-inner-page",
+            title="My Standard Page",
+            slug="my-standard-page",
             live=False,
         )
         self.page.add_child(instance=self.new_page)
 
     def test_page_featured_image(self):
-        image = media_factory.CustomImageFactory()
+        image = media_factory.ImageFactory()
         self.page.featured_image.extend([("featured_image", {"image": image})])
         self.page.save()
         self.page.save_revision().publish()
@@ -71,7 +71,7 @@ class DefaultPageModelAPISerializerTests(StandardPageContextMixin):
         self.new_page.save_revision().publish()
         response = self.client.get(
             reverse("wagtailapi:pages:detail", args=[self.new_page.id]),
-            {"type": "base.InnerPage", "fields": "*"},
+            {"type": "tests.StandardPage", "fields": "*"},
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -88,7 +88,7 @@ class DefaultPageModelAPISerializerTests(StandardPageContextMixin):
         self.new_page.save_revision().publish()
         response = self.client.get(
             reverse("wagtailapi:pages:detail", args=[self.new_page.id]),
-            {"type": "base.InnerPage", "fields": "*"},
+            {"type": "tests.StandardPage", "fields": "*"},
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
