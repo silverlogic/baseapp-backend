@@ -9,6 +9,9 @@ from baseapp_wagtail.settings import (
 
 ROOT_URLCONF = "testproject.urls"
 
+if "BASE_DIR" not in globals():
+    BASE_DIR = None
+
 APPS_DIR = BASE_DIR
 
 # Needed to handle images and documents. Each project will have it's own way of handling media files.

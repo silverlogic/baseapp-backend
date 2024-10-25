@@ -15,7 +15,6 @@ class SitemapAPIViewSet(PagesAPIViewSet):
         "title",
         "url_path",
         "locale",
-        "translations",
         "last_published_at",
     ]
     meta_fields = []

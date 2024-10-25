@@ -5,7 +5,7 @@ from django.utils.translation import gettext as _
 from wagtail.admin.panels import FieldPanel
 from wagtail.api import APIField
 from wagtail.fields import StreamField
-from wagtail.models import Page
+from wagtail.models import Page, PageBase
 from wagtail.search import index
 from wagtail_headless_preview.models import HeadlessPreviewMixin
 
@@ -14,6 +14,13 @@ from .stream_fields import (
     PageBodyStreamField,
     StandardPageStreamBlock,
 )
+
+
+class HeadlessPageBase(PageBase):
+    def __init__(cls, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Guarantee that the jinja2 template will be empty.
+        cls.template = "pages/empty.html"
 
 
 class HeadlessPageMixin(HeadlessPreviewMixin):
@@ -35,7 +42,7 @@ class HeadlessPageMixin(HeadlessPreviewMixin):
         abstract = True
 
 
-class DefaultPageModel(HeadlessPageMixin, Page):
+class DefaultPageModel(HeadlessPageMixin, Page, metaclass=HeadlessPageBase):
     featured_image = StreamField(
         FeaturedImageStreamBlock(max_num=1),
         verbose_name="Featured Image",

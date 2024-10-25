@@ -94,3 +94,8 @@ class DefaultPageModelAPISerializerTests(StandardPageContextMixin):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.json()["meta"]["ancestors"]), 1)
         self.assertEqual(response.json()["meta"]["ancestors"][0]["id"], self.page.get_parent().id)
+
+    def test_path_endpoint_with_locale_prefix(self):
+        response = self.client.get(reverse("wagtailapi:pages:path"), {"html_path": "/es/mypage/"})
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
