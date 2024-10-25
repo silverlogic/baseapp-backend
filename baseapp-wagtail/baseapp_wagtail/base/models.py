@@ -9,7 +9,7 @@ from wagtail.models import Page
 from wagtail.search import index
 from wagtail_headless_preview.models import HeadlessPreviewMixin
 
-from .base.stream_fields import (
+from .stream_fields import (
     FeaturedImageStreamBlock,
     PageBodyStreamField,
     StandardPageStreamBlock,

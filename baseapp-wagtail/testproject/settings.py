@@ -1,5 +1,6 @@
 from baseapp_core.tests.settings import *  # noqa
 from baseapp_wagtail.settings import *  # noqa
+from baseapp_wagtail.settings import WAGTAIL_INSTALLED_APPS, WAGTAIL_INSTALLED_INTERNAL_APPS, WAGTAIL_MIDDLEWARE
 
 ROOT_URLCONF = "testproject.urls"
 
@@ -15,8 +16,14 @@ STATIC_URL = "/static/"
 if 'INSTALLED_APPS' not in globals():
     INSTALLED_APPS = []
 
+if 'MIDDLEWARE' not in globals():
+    MIDDLEWARE = []
+
 INSTALLED_APPS += [
+    *WAGTAIL_INSTALLED_APPS,
+    *WAGTAIL_INSTALLED_INTERNAL_APPS,
     # baseapp_wagtail
-    "baseapp_wagtail",
     "testproject.base",
 ]
+
+MIDDLEWARE += WAGTAIL_MIDDLEWARE

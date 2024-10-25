@@ -1,4 +1,4 @@
-from baseapp_wagtail.models import BaseStandardPage
+from baseapp_wagtail.base.models import BaseStandardPage
 
 from baseapp_wagtail.base.stream_fields import PageBodyStreamField
 

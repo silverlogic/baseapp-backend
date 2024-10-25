@@ -16,22 +16,17 @@ Install in your environment:
 pip install baseapp-wagtail
 ```
 
-<!-- # TODO: Review the following section -->
-### Add to your routes
 
-```python
-from baseapp_social_auth.views import SocialAuthViewSet  # noqa
-router.register(r"social-auth", SocialAuthViewSet, basename="social-auth")
-```
+<!-- # TODO: Add the following items  -->
+1. Add to INSTALLED_APPS
+2. Import settings.py
+3. Load wagtail urls
+4. Setup the page model
+5. Add section to remove wagtail from the project and link this section to the template model
 
-### Add INSTALLED_APPS
+<!-- # TODO: DEV: -->
+1. Explain tests setup_test script.
 
-```python
-INSTALLED_APPS = [
-    ...
-    "baseapp_wagtail",
-    ...
-]
 ```
 
 <!-- # TODO: Review the following section -->

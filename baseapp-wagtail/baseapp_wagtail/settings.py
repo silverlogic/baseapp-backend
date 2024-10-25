@@ -1,11 +1,4 @@
-from baseapp_core.tests.settings import *  # noqa
-
-if 'INSTALLED_APPS' not in globals():
-    INSTALLED_APPS = []
-if 'MIDDLEWARE' not in globals():
-    MIDDLEWARE = []
-
-INSTALLED_APPS += [
+WAGTAIL_INSTALLED_APPS = [
     # wagtail
     "wagtail.contrib.settings",
     "wagtail.contrib.redirects",
@@ -29,7 +22,13 @@ INSTALLED_APPS += [
     "wagtail.contrib.styleguide",  # TODO: Add setting to activate only in development.
 ]
 
-MIDDLEWARE += [
+WAGTAIL_INSTALLED_INTERNAL_APPS = [
+    "baseapp_wagtail",
+    "baseapp_wagtail.base",
+    "baseapp_wagtail.medias",
+]
+
+WAGTAIL_MIDDLEWARE = [
     'wagtail.contrib.redirects.middleware.RedirectMiddleware',
 ]
 
