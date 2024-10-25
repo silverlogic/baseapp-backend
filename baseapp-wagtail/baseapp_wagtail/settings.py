@@ -12,7 +12,7 @@ WAGTAIL_INSTALLED_APPS = [
     "wagtail.admin",
     "wagtail.locales",
     "wagtail.api.v2",  # TODO: Add setting to activate.
-    'wagtail',
+    "wagtail",
     # wagtail dependencies
     "modelcluster",
     "taggit",
@@ -29,7 +29,7 @@ WAGTAIL_INSTALLED_INTERNAL_APPS = [
 ]
 
 WAGTAIL_MIDDLEWARE = [
-    'wagtail.contrib.redirects.middleware.RedirectMiddleware',
+    "wagtail.contrib.redirects.middleware.RedirectMiddleware",
 ]
 
 # Locale settings
@@ -51,8 +51,8 @@ WAGTAILADMIN_BASE_URL = "http://localhost:8000"  # TODO: Dinamize the right way.
 # Wagtail Preview
 FRONT_HEADLESS_URL = "http://localhost:3000"  # TODO: load from settings
 WAGTAIL_HEADLESS_PREVIEW = {
-    "CLIENT_URLS": {"default": f'{FRONT_HEADLESS_URL}/page-preview'},
+    "CLIENT_URLS": {"default": f"{FRONT_HEADLESS_URL}/page-preview"},
     "ENFORCE_TRAILING_SLASH": False,
 }
 
-WAGTAILDOCS_EXTENSIONS = ['csv', 'docx', 'key', 'odt', 'pdf', 'pptx', 'rtf', 'txt', 'xlsx', 'zip']
+WAGTAILDOCS_EXTENSIONS = ["csv", "docx", "key", "odt", "pdf", "pptx", "rtf", "txt", "xlsx", "zip"]

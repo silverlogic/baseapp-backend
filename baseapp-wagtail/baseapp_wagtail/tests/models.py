@@ -2,10 +2,10 @@ from wagtail.blocks import StreamBlock
 from wagtail.fields import StreamField
 
 from baseapp_wagtail.base.blocks import (
-    CustomImageChooserBlock,
-    CustomImageBlock,
-    CustomRichTextBlock,
     BannerBlock,
+    CustomImageBlock,
+    CustomImageChooserBlock,
+    CustomRichTextBlock,
 )
 from baseapp_wagtail.base.models import BaseStandardPage, DefaultPageModel
 

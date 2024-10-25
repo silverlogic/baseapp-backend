@@ -1,6 +1,9 @@
 from django.utils.translation import gettext_lazy as _
-
-from wagtail.images.formats import Format, register_image_format, unregister_image_format
+from wagtail.images.formats import (
+    Format,
+    register_image_format,
+    unregister_image_format,
+)
 
 unregister_image_format(
     Format("fullwidth", _("Full width"), "richtext-image full-width", "width-800")

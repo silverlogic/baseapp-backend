@@ -2,14 +2,12 @@ import urllib.parse
 
 from django.test import override_settings
 from django.urls import reverse
-
+from tests.models import PageForTests, StandardPage
 from wagtail.models import Page, Site
 from wagtail.test.utils import WagtailPageTestCase, WagtailTestUtils
 
 import baseapp_wagtail.medias.tests.utils as medias_factories
 import baseapp_wagtail.tests.factories.user_factories as users_factories
-
-from tests.models import PageForTests, StandardPage
 
 
 @override_settings(ALLOWED_HOSTS=["testserver", "localhost"])
