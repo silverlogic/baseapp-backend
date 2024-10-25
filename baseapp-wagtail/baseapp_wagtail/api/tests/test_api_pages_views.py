@@ -1,11 +1,9 @@
 from django.urls import reverse
-
 from rest_framework import status
-
-import baseapp_wagtail.medias.tests.factories as media_factory
-
 from tests.mixins import StandardPageContextMixin
 from tests.models import StandardPage
+
+import baseapp_wagtail.medias.tests.factories as media_factory
 
 
 class PagesAPITests(StandardPageContextMixin):

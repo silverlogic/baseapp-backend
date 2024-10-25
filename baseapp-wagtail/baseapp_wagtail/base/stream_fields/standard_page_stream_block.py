@@ -1,6 +1,6 @@
 from wagtail.blocks import StreamBlock
 
-from ..blocks import CustomRichTextBlock, BannerBlock
+from ..blocks import BannerBlock, CustomRichTextBlock
 
 
 class StandardPageStreamBlock(StreamBlock):

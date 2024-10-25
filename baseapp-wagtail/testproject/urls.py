@@ -15,17 +15,15 @@ Including another URLconf
 """
 
 from urllib.parse import urlparse
-from django.contrib import admin
+
 from django.conf import settings
-from django.urls import include, path
 from django.conf.urls.static import static
+from django.contrib import admin
+from django.urls import include, path
 
 import baseapp_wagtail.urls as baseapp_wagtail_urls
 
-urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("", include(baseapp_wagtail_urls))
-]
+urlpatterns = [path("admin/", admin.site.urls), path("", include(baseapp_wagtail_urls))]
 
 # The static urls are needed for serving the medias. Usually this is handled by the projects that
 # use this package.

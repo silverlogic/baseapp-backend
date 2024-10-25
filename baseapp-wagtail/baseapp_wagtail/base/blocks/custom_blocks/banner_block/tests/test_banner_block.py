@@ -1,6 +1,5 @@
 import apps.medias.tests.factories as f
 from apps.base.blocks.basic_blocks.banner_block import BannerBlock
-
 from tests.mixins import TestPageContextMixin
 from tests.utils.blocks_helpers import BlocksHelper
 

@@ -1,6 +1,6 @@
 from wagtail.blocks import StreamBlock
 
-from baseapp_wagtail.base.blocks import CustomRichTextBlock, BannerBlock
+from baseapp_wagtail.base.blocks import BannerBlock, CustomRichTextBlock
 
 from ..blocks.test_block import TestBlock
 

@@ -1,7 +1,5 @@
 from django.urls import reverse
-
 from rest_framework import status
-
 from tests.mixins import StandardPageContextMixin
 from tests.models import StandardPage
 
@@ -24,7 +22,7 @@ class PagesSitemapAPIViewSetTests(StandardPageContextMixin):
                 self.assertIsNotNone(page["url_path"])
                 self.assertIsNotNone(page["locale"])
                 self.assertIsNotNone(page["last_published_at"])
-    
+
     def test_sitemap_pages_with_unpublished_page(self):
         new_page = self._add_page()
         response = self.client.get(
