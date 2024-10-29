@@ -1,25 +1,25 @@
+from baseapp_core.settings.env import env
+
 WAGTAIL_INSTALLED_APPS = [
+    # wagtail-headless-preview
+    "wagtail_headless_preview",
     # wagtail
+    "wagtail.api.v2",
     "wagtail.contrib.settings",
     "wagtail.contrib.redirects",
     "wagtail.embeds",
     "wagtail.sites",
-    "wagtail.users",
     "wagtail.snippets",
     "wagtail.documents",
     "wagtail.images",
     "wagtail.search",
     "wagtail.admin",
     "wagtail.locales",
-    "wagtail.api.v2",  # TODO: Add setting to activate.
+    "wagtail.users",
     "wagtail",
     # wagtail dependencies
     "modelcluster",
     "taggit",
-    # wagtail-headless-preview
-    "wagtail_headless_preview",  # TODO: Add setting to activate.
-    # wagtail-styleguide (for development only)
-    "wagtail.contrib.styleguide",  # TODO: Add setting to activate only in development.
 ]
 
 WAGTAIL_INSTALLED_INTERNAL_APPS = [
@@ -44,15 +44,28 @@ WAGTAIL_CONTENT_LANGUAGES = LANGUAGES = [
 ]
 
 # Wagtail settings
-WAGTAIL_SITE_NAME = "TMP NAME"  # TODO: Add setting to define.
-WAGTAILADMIN_BASE_URL = "http://localhost:8000"  # TODO: Dinamize the right way.
+WAGTAILADMIN_BASE_URL = env("URL", default="http://localhost:8000")
 
-# TODO: Add setting to activate.
 # Wagtail Preview
-FRONT_HEADLESS_URL = "http://localhost:3000"  # TODO: load from settings
+FRONT_HEADLESS_URL = env("FRONT_HEADLESS_URL", default="http://localhost:3000/pages")
 WAGTAIL_HEADLESS_PREVIEW = {
     "CLIENT_URLS": {"default": f"{FRONT_HEADLESS_URL}/page-preview"},
     "ENFORCE_TRAILING_SLASH": False,
 }
 
 WAGTAILDOCS_EXTENSIONS = ["csv", "docx", "key", "odt", "pdf", "pptx", "rtf", "txt", "xlsx", "zip"]
+
+"""
+These are the settings that must be defined in the project settings:
+- WAGTAIL_SITE_NAME
+
+And these are the settings that you must add to the .env file:
+- FRONT_HEADLESS_URL | env: FRONT_HEADLESS_URL
+    -- URL of the front-end application that will consume the API. The path of the URL must point
+    to where the pages will be rendered.
+    -- This is a new env var designed only for Wagtail.
+- WAGTAILADMIN_BASE_URL | env: URL
+    -- URL of the Wagtail admin. This shouldn't have the path, unless there is a specific rule in
+    the Nginx, for example.
+    -- This is a recycled env var from the baseapp-core.
+"""
