@@ -74,8 +74,9 @@ Because Wagtail requires a series of settings to work, the package defines the n
     ```
 
 4. Ensure you have the following environment variables (ENV vars) registered. For more details, see [baseapp_wagtail/settings.py](./baseapp_wagtail/settings.py):
-    - `FRONT_HEADLESS_URL`
     - `URL`
+    - `FRONT_HEADLESS_URL`
+    - `FRONT_PAGE_PREVIEW_URL`
 
 #### Register the Wagtail URLs
 

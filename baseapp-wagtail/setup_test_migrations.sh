@@ -7,8 +7,8 @@ DEFAULT_CONTAINER_NAME="baseapp-backend-backend-1"
 
 CONTAINER_NAME=${1:-$DEFAULT_CONTAINER_NAME}
 
-rm -f tests/migrations/0001_initial.py
-echo "Deleted tests/migrations/0001_initial.py"
+rm -f baseapp_wagtail/tests/migrations/0001_initial.py
+echo "Deleted baseapp_wagtail/tests/migrations/0001_initial.py"
 
 docker exec "$CONTAINER_NAME" bash -c "
   cd baseapp-wagtail &&
