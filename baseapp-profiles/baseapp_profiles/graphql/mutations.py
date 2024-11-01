@@ -13,6 +13,7 @@ from graphql.error import GraphQLError
 from rest_framework import serializers
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
+ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
 
 class BaseProfileSerializer(serializers.ModelSerializer):
