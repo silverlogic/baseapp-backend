@@ -3,6 +3,7 @@ import swapper
 from baseapp_auth.graphql import PermissionsInterface
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_reactions.graphql.object_types import ReactionsInterface
+from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from graphene import relay
@@ -59,12 +60,25 @@ class CommentsInterface(relay.Node):
         )
 
 
+comment_interfaces = (
+    relay.Node,
+    CommentsInterface,
+    ReactionsInterface,
+    PermissionsInterface,
+)
+
+if apps.is_installed("baseapp.activity_log"):
+    from baseapp.activity_log.graphql.interfaces import NodeActivityLogInterface
+
+    comment_interfaces += (NodeActivityLogInterface,)
+
+
 class CommentObjectType(DjangoObjectType):
     target = graphene.Field(CommentsInterface)
     status = graphene.Field(CommentStatusEnum)
 
     class Meta:
-        interfaces = (relay.Node, CommentsInterface, ReactionsInterface, PermissionsInterface)
+        interfaces = comment_interfaces
         model = Comment
         fields = (
             "pk",

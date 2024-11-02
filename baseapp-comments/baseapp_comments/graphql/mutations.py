@@ -7,6 +7,7 @@ from baseapp_core.graphql import (
     login_required,
 )
 from django import forms
+from django.apps import apps
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 from graphene_django.forms.mutation import _set_errors_flag_to_context
@@ -37,9 +38,16 @@ class CommentCreate(RelayMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
+        activity_name = f"{app_label}.add_comment"
+
+        if apps.is_installed("baseapp.activity_log"):
+            from baseapp.activity_log.context import set_public_activity
+
+            set_public_activity(verb=activity_name)
+
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
 
-        if not info.context.user.has_perm(f"{app_label}.add_comment", target):
+        if not info.context.user.has_perm(activity_name, target):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
@@ -104,12 +112,18 @@ class CommentUpdate(RelayMutation):
     def mutate_and_get_payload(cls, root, info, **input):
         pk = get_pk_from_relay_id(input.get("id"))
         comment = Comment.objects.get(pk=pk)
+        activity_name = f"{app_label}.change_comment"
 
-        if not info.context.user.has_perm(f"{app_label}.change_comment", comment):
+        if not info.context.user.has_perm(activity_name, comment):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
             )
+
+        if apps.is_installed("baseapp.activity_log"):
+            from baseapp.activity_log.context import set_public_activity
+
+            set_public_activity(verb=activity_name)
 
         comment.is_edited = True
 
@@ -137,12 +151,18 @@ class CommentPin(RelayMutation):
     def mutate_and_get_payload(cls, root, info, **input):
         pk = get_pk_from_relay_id(input.get("id"))
         comment = Comment.objects.get(pk=pk)
+        activity_name = f"{app_label}.pin_comment"
 
-        if not info.context.user.has_perm(f"{app_label}.pin_comment", comment):
+        if not info.context.user.has_perm(activity_name, comment):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
             )
+
+        if apps.is_installed("baseapp.activity_log"):
+            from baseapp.activity_log.context import set_public_activity
+
+            set_public_activity(verb=activity_name)
 
         MAX_PINS_PER_THREAD = getattr(settings, "BASEAPP_COMMENTS_MAX_PINS_PER_THREAD", None)
         if MAX_PINS_PER_THREAD is not None:
