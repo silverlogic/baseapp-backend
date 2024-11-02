@@ -61,6 +61,8 @@ class ProfileMetadata(AbstractMetadataObjectType):
 
 
 interfaces = [relay.Node, PermissionsInterface]
+inheritances = tuple()
+
 if apps.is_installed("baseapp_pages"):
     from baseapp_pages.graphql import PageInterface
 
@@ -85,7 +87,13 @@ if apps.is_installed("baseapp_chats"):
     interfaces.append(ChatRoomsInterface)
 
 
-class BaseProfileObjectType:
+if apps.is_installed("baseapp.activity_log"):
+    from baseapp.activity_log.graphql.interfaces import ProfileActivityLog
+
+    inheritances += (ProfileActivityLog,)
+
+
+class BaseProfileObjectType(*inheritances, object):
     target = graphene.Field(lambda: ProfileInterface)
     image = ThumbnailField(required=False)
     banner_image = ThumbnailField(required=False)
