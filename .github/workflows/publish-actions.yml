@@ -105,3 +105,8 @@ jobs:
     with:
       project: baseapp-wagtail
     secrets: inherit
+  baseapp:
+    uses: ./.github/workflows/publish-workflow.yml
+    with:
+      project: baseapp
+    secrets: inherit
