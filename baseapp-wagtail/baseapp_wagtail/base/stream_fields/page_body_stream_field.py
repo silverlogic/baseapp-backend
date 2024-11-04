@@ -34,7 +34,8 @@ class SectionBlockAdapter(StreamBlockAdapter):
     def media(self):
         streamblock_media = super().media
         return forms.Media(
-            js=streamblock_media._js + ["baseapp_wagtail/js/section-stream-block.js"], css=streamblock_media._css
+            js=streamblock_media._js + ["baseapp_wagtail/js/section-stream-block.js"],
+            css=streamblock_media._css,
         )
 
 

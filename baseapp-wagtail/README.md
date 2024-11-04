@@ -51,10 +51,10 @@ Because Wagtail requires a series of settings to work, the package defines the n
 
     # Wagtail INSTALLED_APPS
     INSTALLED_APPS += [
-        *WAGTAIL_INSTALLED_APPS,
-        *WAGTAIL_INSTALLED_INTERNAL_APPS,
         # baseapp_wagtail
         "testproject.base",
+        *WAGTAIL_INSTALLED_INTERNAL_APPS,
+        *WAGTAIL_INSTALLED_APPS,
     ]
     ```
 
