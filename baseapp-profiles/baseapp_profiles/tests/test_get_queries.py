@@ -4,6 +4,8 @@ from baseapp_pages.tests.factories import URLPathFactory
 from django.contrib.contenttypes.models import ContentType
 
 from .factories import ProfileFactory
+from baseapp_pages.tests.factories import URLPathFactory
+from django.contrib.contenttypes.models import ContentType
 
 pytestmark = pytest.mark.django_db
 
