@@ -48,7 +48,7 @@ WAGTAILADMIN_BASE_URL = env("URL", default="http://localhost:8000")
 
 # Wagtail Preview
 FRONT_HEADLESS_URL = env("FRONT_HEADLESS_URL", default="http://localhost:3000/pages")
-FRONT_PAGE_PREVIEW_URL = env("FRONT_HEADLESS_URL", default="http://localhost:3000/page-preview")
+FRONT_PAGE_PREVIEW_URL = env("FRONT_PAGE_PREVIEW_URL", default="http://localhost:3000/page-preview")
 WAGTAIL_HEADLESS_PREVIEW = {
     "CLIENT_URLS": {"default": f"{FRONT_PAGE_PREVIEW_URL}"},
     "ENFORCE_TRAILING_SLASH": False,
