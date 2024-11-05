@@ -74,15 +74,15 @@ class SubscribeCustomerSerializer(serializers.Serializer):
             and "premium" in self.plan.slug
         ):
             subscription = self.customer.subscribe(
-                plan=self.plan.price,
                 trial_period_days=config.BASEAPP_PAYMENTS_TRIAL_DAYS,
                 default_payment_method=self.validated_data.get("payment_method_id"),
+                items=[{"plan": self.plan.price}],
             )
             send_subscription_trial_start_email(self.customer.email)
         else:
             subscription = self.customer.subscribe(
-                plan=self.plan.price,
                 default_payment_method=self.validated_data.get("payment_method_id"),
+                items=[{"plan": self.plan.price}],
             )
 
         self.subscriber.subscription_start_request(
