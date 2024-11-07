@@ -1,12 +1,11 @@
 import graphene
 from baseapp_auth.graphql.queries import UsersQueries
-from baseapp_core.graphql import DeleteNode
-from baseapp_profiles.graphql.queries import ProfilesQueries
-from graphene import relay
-
 from baseapp_comments.graphql.mutations import CommentsMutations
 from baseapp_comments.graphql.queries import CommentsQueries
 from baseapp_comments.graphql.subscriptions import CommentsSubscriptions
+from baseapp_core.graphql import DeleteNode
+from baseapp_profiles.graphql.queries import ProfilesQueries
+from graphene import relay
 
 
 class Query(graphene.ObjectType, CommentsQueries, UsersQueries, ProfilesQueries):

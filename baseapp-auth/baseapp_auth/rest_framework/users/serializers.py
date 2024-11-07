@@ -3,7 +3,8 @@ from datetime import timedelta
 from baseapp_auth.utils.referral_utils import get_user_referral_model, use_referrals
 from baseapp_core.rest_framework.serializers import ModelSerializer
 from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
-from constance import config
+
+# from constance import config
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
@@ -21,7 +22,6 @@ from baseapp_auth.password_validators import apply_password_validators
 class UserBaseSerializer(ModelSerializer):
     name = serializers.CharField(required=False, allow_blank=True, source="first_name")
     avatar = AvatarField(required=False, allow_null=True)
-    email_verification_required = serializers.SerializerMethodField()
     referral_code = serializers.SerializerMethodField()
     referred_by_code = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
@@ -30,8 +30,6 @@ class UserBaseSerializer(ModelSerializer):
         fields = (
             "id",
             "email",
-            "is_email_verified",
-            "email_verification_required",
             "new_email",
             "is_new_email_confirmed",
             "referral_code",
@@ -43,8 +41,6 @@ class UserBaseSerializer(ModelSerializer):
         )
         private_fields = (
             "email",
-            "is_email_verified",
-            "email_verification_required",
             "new_email",
             "is_new_email_confirmed",
             "referral_code",
@@ -52,14 +48,9 @@ class UserBaseSerializer(ModelSerializer):
         )
         read_only_fields = (
             "email",
-            "is_email_verified",
-            "email_verification_required",
             "new_email",
             "is_new_email_confirmed",
         )
-
-    def get_email_verification_required(self, user):
-        return config.EMAIL_VERIFICATION_REQUIRED
 
     def get_referral_code(self, user):
         if use_referrals():
@@ -69,7 +60,7 @@ class UserBaseSerializer(ModelSerializer):
 
 class UserSerializer(UserBaseSerializer):
     class Meta(UserBaseSerializer.Meta):
-        pass
+        ref_name = "BA_UserSerializer"
 
     def validate_referred_by_code(self, referred_by_code):
         if use_referrals() and referred_by_code:

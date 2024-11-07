@@ -13,9 +13,8 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 from collections import OrderedDict
 from pathlib import Path
 
-from django.utils.translation import gettext_lazy as _
-
 from baseapp_core.settings.env import env
+from django.utils.translation import gettext_lazy as _
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -197,10 +196,6 @@ CONSTANCE_CONFIG = OrderedDict(
                 365 * 2,
                 "The time interval (in days) after which a user will need to reset their password.",
             ),
-        ),
-        (
-            "EMAIL_VERIFICATION_REQUIRED",
-            (False, "Require email verification for new users."),
         ),
     ]
 )

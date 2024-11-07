@@ -3,6 +3,7 @@ import uuid
 import swapper
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import random_name_in
+from baseapp_profiles.managers import ProfileManager
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -11,8 +12,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
-
-from baseapp_profiles.managers import ProfileManager
 
 inheritances = [TimeStampedModel]
 if apps.is_installed("baseapp_blocks"):

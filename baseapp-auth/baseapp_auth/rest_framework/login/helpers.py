@@ -13,6 +13,7 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
+# TODO: Login is now handled by allAuth. Change Expired Password needs to be refactored
 def redirect_if_user_has_expired_password(f: Callable[P, T]) -> Callable[P, T]:
     """
     Decorator that redirects to the change expired password frontend url if the user's password is expired.

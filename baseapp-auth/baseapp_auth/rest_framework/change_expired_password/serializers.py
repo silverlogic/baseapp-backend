@@ -2,7 +2,8 @@ from typing import Optional
 
 from baseapp_auth.exceptions import UserPasswordExpiredException
 from baseapp_auth.password_validators import apply_password_validators
-from baseapp_auth.rest_framework.login.serializers import LoginSerializer
+
+# from baseapp_auth.rest_framework.login.serializers import LoginSerializer
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
@@ -13,6 +14,8 @@ User = get_user_model()
 from baseapp_auth.tokens import ChangeExpiredPasswordTokenGenerator
 
 
+# TODO: Change Expired Password Flow needs to be refactored to work with AllAuth
+# Login is handled by AllAuth
 class ChangeExpiredPasswordSerializer(serializers.Serializer):
     user: Optional[AbstractUser] = None
 
@@ -45,11 +48,7 @@ class ChangeExpiredPasswordSerializer(serializers.Serializer):
                 dict(new_password=[_("New password cannot be the same as the current password.")])
             )
         try:
-            # Make sure the current password is correct
-            login_serializer = LoginSerializer(
-                data=dict(email=self.user.email, password=current_password)
-            )
-            login_serializer.is_valid(raise_exception=True)
+            raise Exception()
         except UserPasswordExpiredException:
             pass
         self.user.set_password(self.data["new_password"])

@@ -4,9 +4,8 @@ import ckeditor.fields
 import django.db.models.deletion
 import django.utils.timezone
 import model_utils.fields
-from django.db import migrations, models
-
 from baseapp_message_templates.utils import random_name_in
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):

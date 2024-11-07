@@ -1,8 +1,7 @@
 from baseapp_auth.models import AbstractUser
+from baseapp_blocks.models import BlockableModel
 from django.utils import timezone
 from model_utils import FieldTracker
-
-from baseapp_blocks.models import BlockableModel
 
 
 class User(AbstractUser, BlockableModel):

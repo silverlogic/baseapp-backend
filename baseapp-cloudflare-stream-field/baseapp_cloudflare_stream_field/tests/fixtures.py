@@ -3,10 +3,9 @@ from unittest.mock import patch
 
 import httpretty
 import pytest
+from baseapp_cloudflare_stream_field.stream import StreamClient
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
-
-from baseapp_cloudflare_stream_field.stream import StreamClient
 from testproject.testapp.models import Post
 
 

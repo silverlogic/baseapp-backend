@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 import pytest
-
 from baseapp_cloudflare_stream_field.tasks import generate_download_url
 
 pytestmark = pytest.mark.django_db
