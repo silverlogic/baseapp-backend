@@ -2,6 +2,7 @@ import graphene
 import swapper
 from baseapp_core.graphql import (
     DjangoObjectType,
+    ThumbnailField,
     get_object_type_for_model,
     get_pk_from_relay_id,
 )
@@ -76,6 +77,7 @@ class BaseChatRoomObjectType:
     all_messages = DjangoFilterConnectionField(get_object_type_for_model(Message))
     participants = DjangoConnectionField(get_object_type_for_model(ChatRoomParticipant))
     unread_messages_count = graphene.Int(profile_id=graphene.ID(required=False))
+    image = ThumbnailField(required=False)
 
     def resolve_all_messages(self, info, **kwargs):
         return self.messages.all().order_by("-created")
@@ -110,7 +112,7 @@ class BaseChatRoomObjectType:
     class Meta:
         interfaces = (relay.Node,)
         model = ChatRoom
-        fields = ("id", "last_message_time", "last_message", "participants", "name", "image")
+        fields = ("id", "last_message_time", "last_message", "participants", "title", "image")
         filterset_class = ChatRoomFilter
 
 
