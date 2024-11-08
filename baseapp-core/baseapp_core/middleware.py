@@ -96,12 +96,22 @@ def HistoryMiddleware(get_response):
                 if hasattr(request, "user") and hasattr(request.user, "pk")
                 else None
             )
+            profile = (
+                request.user.current_profile.pk
+                if hasattr(request.user, "current_profile")
+                and hasattr(request.user.current_profile, "pk")
+                else None
+            )
             client_ip, is_routable = get_client_ip(
                 request, request_header_order=IPWARE_META_PRECEDENCE_ORDER
             )
 
             with pghistory.context(
-                user=user, url=request.path, ip_address=client_ip, is_ip_routable=is_routable
+                user=user,
+                profile=profile,
+                url=request.path,
+                ip_address=client_ip,
+                is_ip_routable=is_routable,
             ):
                 if isinstance(request, DjangoWSGIRequest):  # pragma: no branch
                     request.__class__ = WSGIRequest
