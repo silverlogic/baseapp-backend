@@ -9,7 +9,7 @@ from baseapp_core.graphql import (
 )
 from baseapp_pages.meta import AbstractMetadataObjectType
 from django.apps import apps
-from django.db.models import Q, Case, When, Value, IntegerField
+from django.db.models import Case, IntegerField, Q, Value, When
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
 
@@ -19,6 +19,7 @@ ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
 ProfileRoleTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoles)
 ProfileRoleStatusTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoleStatus)
+
 
 class BaseProfileUserRoleObjectType:
     role = graphene.Field(ProfileRoleTypesEnum)
@@ -94,9 +95,9 @@ class BaseProfileObjectType:
     image = ThumbnailField(required=False)
     banner_image = ThumbnailField(required=False)
     members = DjangoFilterConnectionField(
-        get_object_type_for_model(ProfileUserRole),
-        order_by_status=graphene.String() 
+        get_object_type_for_model(ProfileUserRole), order_by_status=graphene.String()
     )
+
     class Meta:
         interfaces = interfaces
         model = Profile
@@ -132,15 +133,15 @@ class BaseProfileObjectType:
             return instance.members.none()
 
         members_queryset = instance.members.all()
-        
+
         if order_by_status == "custom":
             status_order = Case(
-            When(status=ProfileUserRole.ProfileRoleStatus.PENDING.value, then=Value(1)),
-            When(status=ProfileUserRole.ProfileRoleStatus.INACTIVE.value, then=Value(2)),
-            When(status=ProfileUserRole.ProfileRoleStatus.ACTIVE.value, then=Value(3)),
-            default=Value(4),
-            output_field=IntegerField()
-        )
+                When(status=ProfileUserRole.ProfileRoleStatus.PENDING.value, then=Value(1)),
+                When(status=ProfileUserRole.ProfileRoleStatus.INACTIVE.value, then=Value(2)),
+                When(status=ProfileUserRole.ProfileRoleStatus.ACTIVE.value, then=Value(3)),
+                default=Value(4),
+                output_field=IntegerField(),
+            )
             members_queryset = members_queryset.order_by(status_order)
 
         return members_queryset
