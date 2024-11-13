@@ -2,13 +2,13 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
 
-import baseapp_wagtail.api.tests.factories as f
+import baseapp_wagtail.base.rest_framework.tests.factories as f
 
 
 class RedirectsAPIViewSetTests(TestCase):
     def test_redirect_api_request(self):
         f.RedirectFactory()
-        response = self.client.get(reverse("wagtailapi:redirects:listing"))
+        response = self.client.get(reverse("baseappwagtailapi_base:redirects:listing"))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.json()["items"]), 1)
 
@@ -16,7 +16,7 @@ class RedirectsAPIViewSetTests(TestCase):
         f.RedirectFactory(old_path="/old/path/")
 
         response = self.client.get(
-            reverse("wagtailapi:redirects:find"), {"html_path": "/old/path/"}
+            reverse("baseappwagtailapi_base:redirects:find"), {"html_path": "/old/path/"}
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNotNone(response.json().get("old_path"))
@@ -27,7 +27,7 @@ class RedirectsAPIViewSetTests(TestCase):
         f.RedirectFactory(old_path="/es/old/path/")
 
         response = self.client.get(
-            reverse("wagtailapi:redirects:find"), {"html_path": "/es/old/path/"}
+            reverse("baseappwagtailapi_base:redirects:find"), {"html_path": "/es/old/path/"}
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNotNone(response.json().get("old_path"))
@@ -38,7 +38,7 @@ class RedirectsAPIViewSetTests(TestCase):
         f.RedirectFactory(old_path="/old/path/")
 
         response = self.client.get(
-            reverse("wagtailapi:redirects:find"), {"html_path": "/old/path/"}
+            reverse("baseappwagtailapi_base:redirects:find"), {"html_path": "/old/path/"}
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNotNone(response.json().get("old_path"))
@@ -47,7 +47,7 @@ class RedirectsAPIViewSetTests(TestCase):
 
     def test_redirect_api_find_request_not_found(self):
         response = self.client.get(
-            reverse("wagtailapi:redirects:find"), {"html_path": "/not/found/"}
+            reverse("baseappwagtailapi_base:redirects:find"), {"html_path": "/not/found/"}
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json(), "not found")
@@ -56,7 +56,7 @@ class RedirectsAPIViewSetTests(TestCase):
         f.RedirectFactory(old_path="/old/path/")
 
         response = self.client.get(
-            reverse("wagtailapi:redirects:find"), {"html_path": "/Old/Path/"}
+            reverse("baseappwagtailapi_base:redirects:find"), {"html_path": "/Old/Path/"}
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNotNone(response.json().get("old_path"))
@@ -67,7 +67,7 @@ class RedirectsAPIViewSetTests(TestCase):
         f.RedirectFactory(old_path="/Old/Path/")
 
         response = self.client.get(
-            reverse("wagtailapi:redirects:find"), {"html_path": "/old/path/"}
+            reverse("baseappwagtailapi_base:redirects:find"), {"html_path": "/old/path/"}
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNotNone(response.json().get("old_path"))
@@ -79,7 +79,7 @@ class RedirectsAPIViewSetTests(TestCase):
         f.RedirectFactory(old_path="/olD/patH/")
 
         response = self.client.get(
-            reverse("wagtailapi:redirects:find"), {"html_path": "/old/path/"}
+            reverse("baseappwagtailapi_base:redirects:find"), {"html_path": "/old/path/"}
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNotNone(response.json().get("old_path"))

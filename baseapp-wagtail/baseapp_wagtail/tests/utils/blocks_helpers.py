@@ -26,7 +26,9 @@ class BlocksHelper:
         params = {"type": type(page)._meta.app_label + "." + type(page).__name__, "fields": "*"}
         if extra_params:
             params.update(extra_params)
-        return self.client.get(reverse("wagtailapi:pages:detail", args=[page.id]), params)
+        return self.client.get(
+            reverse("baseappwagtailapi_base:pages:detail", args=[page.id]), params
+        )
 
     def get_page_by_path(self, page, extra_params=None):
         url_parts = page.get_url_parts()
@@ -34,7 +36,7 @@ class BlocksHelper:
         params = {"html_path": page_path, "fields": "*"}
         if extra_params:
             params.update(extra_params)
-        return self.client.get(reverse("wagtailapi:pages:path"), params)
+        return self.client.get(reverse("baseappwagtailapi_base:pages:path"), params)
 
     def get_response_body_blocks(self, response):
         body = response.json().get("body", [])

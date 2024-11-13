@@ -83,7 +83,7 @@ class StandardPageTests(BasicPageTestsMixin):
         self.page.save()
         self.page.save_revision().publish()
         response = self.client.get(
-            reverse("wagtailapi:pages:detail", args=[self.page.id]),
+            reverse("baseappwagtailapi_base:pages:detail", args=[self.page.id]),
             {"type": self.page_type, "fields": "*"},
         )
 

@@ -10,7 +10,7 @@ class PagesSitemapAPIViewSetTests(StandardPageContextMixin):
         new_page = self._add_page()
         new_page.save_revision().publish()
         response = self.client.get(
-            reverse("wagtailapi:sitemap/pages:listing"),
+            reverse("baseappwagtailapi_base:sitemap/pages:listing"),
             {"fields": "*"},
         )
 
@@ -27,7 +27,7 @@ class PagesSitemapAPIViewSetTests(StandardPageContextMixin):
     def test_sitemap_pages_with_unpublished_page(self):
         new_page = self._add_page()
         response = self.client.get(
-            reverse("wagtailapi:sitemap/pages:listing"),
+            reverse("baseappwagtailapi_base:sitemap/pages:listing"),
             {"fields": "*"},
         )
 

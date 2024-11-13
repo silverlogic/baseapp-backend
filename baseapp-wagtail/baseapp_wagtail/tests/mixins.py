@@ -1,12 +1,12 @@
 import urllib.parse
 
+from baseapp_core.tests.factories import UserFactory
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from wagtail.models import Page, Site
 from wagtail.test.utils import WagtailPageTestCase, WagtailTestUtils
 
 import baseapp_wagtail.medias.tests.factories as medias_factories
-import baseapp_wagtail.tests.factories.user_factories as users_factories
 from baseapp_wagtail.tests.models import PageForTests, StandardPage
 
 
@@ -18,7 +18,7 @@ class WagtailBasicMixin(WagtailPageTestCase, WagtailTestUtils, TestCase):
 class StandardPageContextMixin(WagtailBasicMixin):
     @classmethod
     def setUpTestData(cls):
-        cls.user = users_factories.UserFactory(username="test_user")
+        cls.user = UserFactory(username="test_user")
         cls.site, _ = Site.objects.get_or_create(
             is_default_site=True,
             defaults={

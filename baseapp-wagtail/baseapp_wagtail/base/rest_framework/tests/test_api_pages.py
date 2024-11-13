@@ -15,7 +15,7 @@ class PagesAPITests(StandardPageContextMixin):
         self.page.add_child(instance=new_page)
         new_page.save_revision().publish()
         response = self.client.get(
-            reverse("wagtailapi:pages:detail", args=[new_page.id]),
+            reverse("baseappwagtailapi_base:pages:detail", args=[new_page.id]),
             {"type": "tests.StandardPage", "fields": "*"},
         )
 
@@ -23,7 +23,9 @@ class PagesAPITests(StandardPageContextMixin):
         self.assertEqual(response.json()["meta"]["url_path"], "/mypage/mypage-child/")
 
     def test_path_endpoint(self):
-        response = self.client.get(reverse("wagtailapi:pages:path"), {"html_path": "/mypage/"})
+        response = self.client.get(
+            reverse("baseappwagtailapi_base:pages:path"), {"html_path": "/mypage/"}
+        )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json()["id"], self.page.id)
@@ -37,7 +39,9 @@ class PagesAPITests(StandardPageContextMixin):
 
         new_page.save_revision().publish()
 
-        response = self.client.get(reverse("wagtailapi:pages:path"), {"html_path": "/mypage/"})
+        response = self.client.get(
+            reverse("baseappwagtailapi_base:pages:path"), {"html_path": "/mypage/"}
+        )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json()["id"], self.page.id)
@@ -60,7 +64,7 @@ class DefaultPageModelAPISerializerTests(StandardPageContextMixin):
         self.page.save_revision().publish()
 
         response = self.client.get(
-            reverse("wagtailapi:pages:detail", args=[self.page.id]),
+            reverse("baseappwagtailapi_base:pages:detail", args=[self.page.id]),
             {"type": "tests.StandardPage", "fields": "*"},
         )
 
@@ -70,7 +74,7 @@ class DefaultPageModelAPISerializerTests(StandardPageContextMixin):
     def test_page_ancestors(self):
         self.new_page.save_revision().publish()
         response = self.client.get(
-            reverse("wagtailapi:pages:detail", args=[self.new_page.id]),
+            reverse("baseappwagtailapi_base:pages:detail", args=[self.new_page.id]),
             {"type": "tests.StandardPage", "fields": "*"},
         )
 
@@ -87,7 +91,7 @@ class DefaultPageModelAPISerializerTests(StandardPageContextMixin):
         self.page.save()
         self.new_page.save_revision().publish()
         response = self.client.get(
-            reverse("wagtailapi:pages:detail", args=[self.new_page.id]),
+            reverse("baseappwagtailapi_base:pages:detail", args=[self.new_page.id]),
             {"type": "tests.StandardPage", "fields": "*"},
         )
 
@@ -96,6 +100,8 @@ class DefaultPageModelAPISerializerTests(StandardPageContextMixin):
         self.assertEqual(response.json()["meta"]["ancestors"][0]["id"], self.page.get_parent().id)
 
     def test_path_endpoint_with_locale_prefix(self):
-        response = self.client.get(reverse("wagtailapi:pages:path"), {"html_path": "/es/mypage/"})
+        response = self.client.get(
+            reverse("baseappwagtailapi_base:pages:path"), {"html_path": "/es/mypage/"}
+        )
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
