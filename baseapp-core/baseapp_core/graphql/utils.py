@@ -24,6 +24,11 @@ def _cache_object_type(obj):
     if not hasattr(obj, "_graphql_object_type"):
         registry = get_global_registry()
         obj._graphql_object_type = registry.get_type_for_model(obj._meta.concrete_model)
+
+        # if not found for concret_model, try with the base model
+        if not obj._graphql_object_type:
+            obj._graphql_object_type = registry.get_type_for_model(obj._meta.model)
+
     return obj._graphql_object_type
 
 

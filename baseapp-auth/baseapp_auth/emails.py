@@ -187,13 +187,16 @@ def remove_superuser_notification_email(non_superuser, assigner):
     )
     recipient_list = list(superusers.values_list("email", flat=True))
 
-    subject = f"{non_superuser.email} has been removed from superuser by {assigner.email}"
+    subject = render_to_string(
+        "users/emails/remove-superuser-notification-email-subject.txt.j2",
+        context,
+    ).strip()
     message = render_to_string(
-        "users/emails/remove-superuser-notification-email.txt.j2",
+        "users/emails/remove-superuser-notification-email-body.txt.j2",
         context=context,
     )
     html_message = render_to_string(
-        "users/emails/remove-superuser-notification-email.html.j2",
+        "users/emails/remove-superuser-notification-email-body.html.j2",
         context=context,
     )
     if recipient_list:

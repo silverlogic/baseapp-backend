@@ -9,7 +9,10 @@ on:
       app_name:
         required: false
         type: string
-      custom_pytest:
+      custom_tests_path:
+        required: false
+        type: string
+      second_pytest:
         required: false
         type: string
 
@@ -57,17 +60,24 @@ jobs:
       - name: pytest
         if: steps.requirements_installation.outcome == 'success'
         run: |
-          app_name=$(echo "${{ inputs.project }}" | tr '-' '_')
-          if [ "${{ inputs.app_name }}" ]
-            then app_name="${{ inputs.app_name }}"
-          else 
+          if [ "${{ inputs.custom_tests_path }}" ]
+          then
+            tests_path="${{ inputs.custom_tests_path }}"
+          else
             app_name=$(echo "${{ inputs.project }}" | tr '-' '_')
+            if [ "${{ inputs.app_name }}" ]
+            then
+              app_name="${{ inputs.app_name }}"
+            else
+              app_name=$(echo "${{ inputs.project }}" | tr '-' '_')
+            fi
+            tests_path="${{ inputs.project }}/${app_name}/tests"
           fi
-          tests_path="${{ inputs.project }}/${app_name}/tests"
           docker compose exec backend pytest ${tests_path}
-          echo "Running custom pytest command"
-          if [ "${{ inputs.custom_pytest }}" ]
-            then eval "docker compose exec backend ${{ inputs.custom_pytest }}"
+          if [ "${{ inputs.second_pytest }}" ]
+          then
+            echo "Running second pytest command"
+            eval "docker compose exec backend ${{ inputs.second_pytest }}"
           fi
 
       - name: docker compose down
