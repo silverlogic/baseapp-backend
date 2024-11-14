@@ -1,3 +1,5 @@
+import swapper
+
 from datetime import timedelta
 
 from baseapp_auth.utils.referral_utils import get_user_referral_model, use_referrals
@@ -14,21 +16,29 @@ from rest_framework import serializers
 from .fields import AvatarField
 
 User = get_user_model()
+Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 from baseapp_auth.password_validators import apply_password_validators
 
+class ProfileSerializer(ModelSerializer):
+    url_path = serializers.SlugField(required=False)
+
+    class Meta:
+        model = Profile
+        fields = ("id", "name", "image", "url_path")
+
 
 class UserBaseSerializer(ModelSerializer):
-    name = serializers.CharField(required=False, allow_blank=True, source="first_name")
-    avatar = AvatarField(required=False, allow_null=True)
+    profile = ProfileSerializer(read_only=True)
     email_verification_required = serializers.SerializerMethodField()
     referral_code = serializers.SerializerMethodField()
     referred_by_code = serializers.CharField(required=False, allow_blank=True, write_only=True)
-
+    
     class Meta:
         model = User
         fields = (
             "id",
+            "profile",
             "email",
             "is_email_verified",
             "email_verification_required",
@@ -36,8 +46,6 @@ class UserBaseSerializer(ModelSerializer):
             "is_new_email_confirmed",
             "referral_code",
             "referred_by_code",
-            "avatar",
-            "name",
             "phone_number",
             "preferred_language",
         )
