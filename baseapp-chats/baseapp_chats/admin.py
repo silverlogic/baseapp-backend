@@ -4,6 +4,7 @@ from django.contrib import admin
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
 Message = swapper.load_model("baseapp_chats", "Message")
+MessageStatus = swapper.load_model("baseapp_chats", "MessageStatus")
 
 
 class ChatRoomParticipantInline(admin.TabularInline):
@@ -18,11 +19,17 @@ class ChatRoomParticipantAdmin(admin.ModelAdmin):
     search_fields = ["profile", "room"]
 
 
+class MessageStatusInline(admin.TabularInline):
+    model = MessageStatus
+    extra = 0
+
+
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
     list_display = ("profile", "verb", "action_object", "room", "timesince")
     list_filter = ["verb"]
     search_fields = ["content", "profile", "action_object", "room"]
+    inlines = [MessageStatusInline]
 
 
 @admin.register(ChatRoom)

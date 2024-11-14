@@ -39,6 +39,7 @@ class BaseMessageObjectType:
     action_object = graphene.Field(relay.Node)
     verb = graphene.Field(VerbsEnum)
     content = graphene.String(required=False)
+    is_read = graphene.Boolean(profile_id=graphene.ID(required=False))
 
     class Meta:
         interfaces = (relay.Node,)
@@ -54,6 +55,7 @@ class BaseMessageObjectType:
             "action_object",
             "extra_data",
             "in_reply_to",
+            "is_read",
         )
         filter_fields = ("verb",)
 
@@ -66,6 +68,19 @@ class BaseMessageObjectType:
             return message
         except cls._meta.model.DoesNotExist:
             return None
+
+    def resolve_is_read(self, info, profile_id=None, **kwargs):
+        if profile_id:
+            profile_pk = get_pk_from_relay_id(profile_id)
+            profile = Profile.objects.get_if_member(pk=profile_pk, user=info.context.user)
+            if not profile:
+                return None
+        else:
+            profile_pk = info.context.user.current_profile.pk
+
+        message_status = self.statuses.filter(profile_id=profile_pk).first()
+
+        return message_status and message_status.is_read
 
 
 class MessageObjectType(BaseMessageObjectType, DjangoObjectType):
