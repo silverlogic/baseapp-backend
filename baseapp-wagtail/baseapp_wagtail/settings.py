@@ -55,6 +55,7 @@ WAGTAIL_HEADLESS_PREVIEW = {
 }
 
 WAGTAILDOCS_EXTENSIONS = ["csv", "docx", "key", "odt", "pdf", "pptx", "rtf", "txt", "xlsx", "zip"]
+WAGTAILIMAGES_IMAGE_MODEL = "baseapp_wagtail_medias.CustomImage"
 
 """
 These are the settings that must be defined in the project settings:
