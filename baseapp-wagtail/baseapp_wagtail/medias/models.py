@@ -1,6 +1,8 @@
 from collections import OrderedDict
 
+from django.conf import settings
 from django.db import models
+from wagtail.documents.models import AbstractDocument, Document
 from wagtail.images.models import AbstractImage, AbstractRendition, Image
 
 
@@ -34,3 +36,17 @@ class CustomRendition(AbstractRendition):
                 ("alt", self.alt),
             ]
         )
+
+
+class CustomDocument(AbstractDocument):
+    admin_form_fields = Document.admin_form_fields
+
+    @property
+    def url(self):
+        """
+        Property based on image AbstractRendition.full_url property.
+        """
+        url = super().url
+        if hasattr(settings, "WAGTAILADMIN_BASE_URL") and url.startswith("/"):
+            url = settings.WAGTAILADMIN_BASE_URL + url
+        return url

@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 import baseapp_wagtail.medias.tests.factories as f
 from baseapp_wagtail.medias.models import CustomImage
@@ -26,3 +26,10 @@ class TestCustomImageModel(TestCase):
 
     def test_default_alt_text_without_alt_text(self):
         self.assertEqual(self.image.default_alt_text, "")
+
+
+@override_settings(WAGTAILADMIN_BASE_URL="http://example.com/")
+class TestCustomDocumentModel(TestCase):
+    def test_file_extension_field(self):
+        document = f.DocumentFactory()
+        self.assertTrue(document.url.startswith("http://example.com/"))

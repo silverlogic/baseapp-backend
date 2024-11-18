@@ -54,8 +54,9 @@ WAGTAIL_HEADLESS_PREVIEW = {
     "ENFORCE_TRAILING_SLASH": False,
 }
 
-WAGTAILDOCS_EXTENSIONS = ["csv", "docx", "key", "odt", "pdf", "pptx", "rtf", "txt", "xlsx", "zip"]
 WAGTAILIMAGES_IMAGE_MODEL = "baseapp_wagtail_medias.CustomImage"
+WAGTAILDOCS_DOCUMENT_MODEL = "baseapp_wagtail_medias.CustomDocument"
+WAGTAILDOCS_EXTENSIONS = ["csv", "docx", "key", "odt", "pdf", "pptx", "rtf", "txt", "xlsx", "zip"]
 
 """
 These are the settings that must be defined in the project settings:
