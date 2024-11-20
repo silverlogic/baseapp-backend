@@ -2,8 +2,11 @@ from typing import List
 
 from ckeditor.fields import RichTextField
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.models import ContentType
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
+from django.utils.translation import get_language
 from model_utils.models import TimeStampedModel
 
 from .custom_templates import get_full_copy_template
@@ -16,6 +19,36 @@ class CaseInsensitiveCharField(models.CharField):
 
     def db_type(self, connection):
         return "citext"
+
+
+class TemplateTranslation(TimeStampedModel):
+    target_content_type = models.ForeignKey(
+        ContentType,
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+    )
+    target_object_id = models.PositiveIntegerField(blank=True, null=True)
+    target = GenericForeignKey("target_content_type", "target_object_id")
+    language = models.CharField(max_length=10, choices=settings.LANGUAGES, default="en")
+    subject = models.CharField(
+        max_length=255, blank=True, null=True, help_text="Email subject line"
+    )
+    html_content = RichTextField(
+        blank=True,
+        help_text="Text that will be inputted into Template html version",
+        null=True,
+    )
+    plain_text_content = RichTextField(
+        blank=True,
+        help_text="Text that will be inputted into Template plain text version",
+    )
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["target_content_type", "target_object_id", "language"]),
+        ]
+        unique_together = [["target_content_type", "target_object_id", "language"]]
 
 
 class EmailTemplate(TimeStampedModel):
@@ -32,18 +65,11 @@ class EmailTemplate(TimeStampedModel):
         null=True,
     )
 
-    # Core
-    subject = models.CharField(
-        max_length=255, blank=True, null=True, help_text="Email subject line"
-    )
-    html_content = RichTextField(
-        blank=True,
-        help_text="Text that will be inputted into Template html version",
-        null=True,
-    )
-    plain_text_content = RichTextField(
-        blank=True,
-        help_text="Text that will be inputted into Template plain text version",
+    # Translations
+    translations = GenericRelation(
+        TemplateTranslation,
+        object_id_field="target_object_id",
+        content_type_field="target_content_type",
     )
 
     class Meta:
@@ -62,22 +88,28 @@ class EmailTemplate(TimeStampedModel):
     def send(
         self,
         recipients: List[str],
-        context={},
+        context=None,
         use_base_template=False,
         extended_with="",
-        attachments=[],
+        attachments=None,
         custom_subject="",
+        language=None,
     ):
-        if not self.html_content:
-            raise Exception("HTML content required to send e-mail")
+        if self.translations.count() == 0:
+            raise ValueError("At least one translation is required to send e-mail")
+
+        if attachments is None:
+            attachments = []
 
         if not use_base_template:
             base_template_route = ""
         else:
             base_template_route = extended_with or settings.DEFAULT_EMAIL_TEMPLATE
 
+        language = language or get_language()
+
         html_content, text_content, copy_template_subject = get_full_copy_template(
-            self, context, use_base_template, base_template_route
+            self, context, use_base_template, base_template_route, language
         )
         subject = custom_subject if custom_subject else copy_template_subject
         mail = EmailMultiAlternatives(

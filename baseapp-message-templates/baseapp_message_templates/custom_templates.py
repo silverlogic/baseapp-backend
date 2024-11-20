@@ -3,6 +3,7 @@ from copy import deepcopy
 
 import nh3
 from bs4 import BeautifulSoup
+from django.db.models import Case, Q, When
 from django.template import Context, Template
 from django.template.loader import render_to_string
 
@@ -61,33 +62,47 @@ def _wrap_in_base_template(
 # returns tuple of copy template (html message with context, message with context, subject with context)
 def get_full_copy_template(
     copy_template,
-    context={},
+    context=None,
     use_base_template=False,
     extended_with="",
+    language=None,
 ):
-    # if custom plain text hasn't been provided, we create it automatically from the HTML
-    plain_text = (
-        copy_template.plain_text_content
-        if copy_template.plain_text_content
-        else _get_text_from_html(copy_template.html_content)
+    if context is None:
+        context = {}
+    # TODO: Do we want to default to English if the language is not provided? Or should we raise an exception?
+    content_translation = (
+        copy_template.translations.filter(Q(language=language) | Q(language="en"))
+        .order_by(
+            Case(
+                When(language=language, then=0),
+                When(language="en", then=1),
+                default=2,
+            )
+        )
+        .first()
     )
+
+    base_html = content_translation.html_content
+
+    # if custom plain text hasn't been provided, we create it automatically from the HTML
+    base_plain_text = content_translation.plain_text_content or _get_text_from_html(base_html)
 
     if use_base_template:
         copy_message_html, copy_message_txt = _wrap_in_base_template(
-            copy_template.html_content,
-            plain_text,
+            base_html,
+            base_plain_text,
             extended_with,
         )
 
     else:
-        copy_message_html = copy_template.html_content
-        copy_message_txt = plain_text
+        copy_message_html = base_html
+        copy_message_txt = base_plain_text
 
     render_template_context = Context(context)
 
     html_message = _produce(copy_message_html, render_template_context)
     message = _produce(copy_message_txt, render_template_context)
-    subject = _produce(copy_template.subject, render_template_context)
+    subject = _produce(content_translation.subject, render_template_context)
 
     return html_message, message, subject
 
