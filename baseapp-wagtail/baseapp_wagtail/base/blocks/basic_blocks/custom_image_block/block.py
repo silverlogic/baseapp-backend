@@ -27,4 +27,4 @@ class CustomImageBlock(StructBlock):
 
     class Meta:
         icon = "image"
-        template = "medias/blocks/image_block.html"
+        template = "base/blocks/empty.html"

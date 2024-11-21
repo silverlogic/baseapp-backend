@@ -16,7 +16,7 @@ class ExternalLinkHandler(LinkHandler):
     @classmethod
     def expand_db_attributes(cls, attrs):
         href = attrs["href"]
-        return '<a href="%s" target="_blank">' % escape(href)
+        return '<a href="%s" target="_blank" rel="noopener noreferrer">' % escape(href)
 
 
 class EmailLinkHandler(LinkHandler):

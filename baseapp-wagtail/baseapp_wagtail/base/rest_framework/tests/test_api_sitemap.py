@@ -40,7 +40,4 @@ class PagesSitemapAPIViewSetTests(StandardPageContextMixin):
         return new_page
 
     def _has_page(self, pages, page_id):
-        for page in pages:
-            if page["id"] == page_id:
-                return True
-        return False
+        return any(page["id"] == page_id for page in pages)

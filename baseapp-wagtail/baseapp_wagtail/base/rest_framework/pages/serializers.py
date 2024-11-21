@@ -44,7 +44,7 @@ class PageUrlPath(Field):
             url_parts = page.get_url_parts()
             _, _, page_path = url_parts
             return page_path
-        except Exception:
+        except (AttributeError, ValueError):
             return None
 
 

@@ -18,15 +18,15 @@ class CustomImageChooserBlockTests(BlocksHelper, TestPageContextMixin):
         r = self.get_page(self.page)
         blocks = self.get_response_body_blocks(r)
 
-        self.assertEquals(len(blocks), 1)
-        self.assertEquals(blocks[0]["value"]["id"], self.image.id)
-        self.assertEquals(blocks[0]["value"]["image_sizes"].keys(), DEFAULT_IMAGE_SIZES.keys())
+        self.assertEqual(len(blocks), 1)
+        self.assertEqual(blocks[0]["value"]["id"], self.image.id)
+        self.assertEqual(blocks[0]["value"]["image_sizes"].keys(), DEFAULT_IMAGE_SIZES.keys())
 
     def test_image_selection_with_image_sizes(self):
         block = CustomImageChooserBlock(image_sizes={"test": "fill-100x100"})
         data = block.get_api_representation(self.image, context=None)
 
-        self.assertEquals(data["id"], self.image.id)
-        self.assertEquals(
+        self.assertEqual(data["id"], self.image.id)
+        self.assertEqual(
             list(data["image_sizes"].keys()), list(DEFAULT_IMAGE_SIZES.keys()) + ["test"]
         )

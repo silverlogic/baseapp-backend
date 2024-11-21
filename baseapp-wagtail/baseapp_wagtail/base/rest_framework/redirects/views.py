@@ -40,11 +40,11 @@ class CustomRedirectsAPIViewSet(RedirectsAPIViewSet):
             )
 
             if not redirect:
-                cleaned_html_ath = clear_pathname(html_path)
-                if cleaned_html_ath != html_path:
+                cleaned_html_path = clear_pathname(html_path)
+                if cleaned_html_path != html_path:
                     redirect = self.get_redirect(
                         request,
-                        cleaned_html_ath,
+                        cleaned_html_path,
                     )
 
             if redirect is None:

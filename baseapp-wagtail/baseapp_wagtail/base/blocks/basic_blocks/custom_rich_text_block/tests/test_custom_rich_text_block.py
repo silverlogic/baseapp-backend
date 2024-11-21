@@ -14,5 +14,5 @@ class CustomRichTextBlockTests(BlocksHelper, TestPageContextMixin):
         r = self.get_page(self.page)
         blocks = self.get_response_body_blocks(r)
 
-        self.assertEquals(len(blocks), 1)
+        self.assertEqual(len(blocks), 1)
         self.assertIn(f'href="{self.page.url}"', blocks[0]["value"])
