@@ -9,6 +9,7 @@ INSTALLED_APPS += [
     "baseapp_notifications",
     "baseapp_reactions",
     "baseapp_comments",
+    "baseapp_content_feed",
     "baseapp_reports",
     "baseapp_auth",
     "baseapp_follows",
