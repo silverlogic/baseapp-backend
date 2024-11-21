@@ -26,13 +26,12 @@ class CustomClaimSerializerMixin:
 class BaseJwtLoginSerializer(
     CustomClaimSerializerMixin, LoginPasswordExpirationMixin, TokenObtainPairSerializer
 ):
-    @classmethod
-    def get_token(cls, user):
+    def get_token(self, user):
         token = super().get_token(user)
 
         # Add custom claims
-        if cls._claim_serializer_class:
-            data = cls.get_claim_serializer_class()(user).data
+        if self._claim_serializer_class:
+            data = self.get_claim_serializer_class()(user, context=self.context).data
             for key, value in data.items():
                 token[key] = value
 
