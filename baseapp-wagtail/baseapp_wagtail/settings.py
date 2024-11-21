@@ -1,3 +1,5 @@
+from urllib.parse import urljoin
+
 from baseapp_core.settings.env import env
 
 WAGTAIL_INSTALLED_APPS = [
@@ -47,8 +49,13 @@ WAGTAIL_CONTENT_LANGUAGES = LANGUAGES = [
 WAGTAILADMIN_BASE_URL = env("URL", default="http://localhost:8000")
 
 # Wagtail Preview
-FRONT_HEADLESS_URL = env("FRONT_HEADLESS_URL", default="http://localhost:3000/pages")
-FRONT_PAGE_PREVIEW_URL = env("FRONT_PAGE_PREVIEW_URL", default="http://localhost:3000/page-preview")
+if "FRONT_URL" not in globals():
+    FRONT_URL = env("FRONT_URL", "", required=False)
+
+FRONT_HEADLESS_URL = urljoin(FRONT_URL, env("WAGTAIL_FRONT_URL_PATH", default="/pages"))
+FRONT_PAGE_PREVIEW_URL = urljoin(
+    FRONT_URL, env("WAGTAIL_FRONT_PAGE_PREVIEW_URL_PATH", default="/page-preview")
+)
 WAGTAIL_HEADLESS_PREVIEW = {
     "CLIENT_URLS": {"default": f"{FRONT_PAGE_PREVIEW_URL}"},
     "ENFORCE_TRAILING_SLASH": False,
@@ -67,11 +74,11 @@ And these are the settings that you must add to the .env file:
     -- URL of the Wagtail admin. This shouldn't have the path, unless there is a specific rule in
     the Nginx, for example.
     -- This is a recycled env var from the baseapp-core.
-- FRONT_HEADLESS_URL | env: FRONT_HEADLESS_URL
-    -- URL of the front-end application that will consume the API. The path of the URL must point
-    to where the pages will be rendered.
+- FRONT_HEADLESS_URL | env: FRONT_URL + WAGTAIL_FRONT_URL_PATH
+    -- URL PATH of the front-end application that will consume the API. The path of the URL must
+    point to where the pages will be rendered.
     -- This is a new env var designed only for Wagtail.
-- FRONT_PAGE_PREVIEW_URL | env: FRONT_PAGE_PREVIEW_URL
-    -- URL of the front-end application that will render the page previews.
+- FRONT_PAGE_PREVIEW_URL | env: FRONT_URL + WAGTAIL_FRONT_PAGE_PREVIEW_URL_PATH
+    -- URL PATH of the front-end application that will render the page previews.
     -- This is a new env var designed only for Wagtail.
 """
