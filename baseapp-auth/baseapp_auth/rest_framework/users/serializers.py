@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from baseapp_auth.utils.referral_utils import get_user_referral_model, use_referrals
 from baseapp_core.rest_framework.serializers import ModelSerializer
+from baseapp_core.rest_framework.fields import ThumbnailImageField
 from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
 from constance import config
 from django.contrib.auth import get_user_model
@@ -22,6 +23,7 @@ from baseapp_auth.password_validators import apply_password_validators
 
 class ProfileSerializer(ModelSerializer):
     url_path = serializers.SlugField(required=False)
+    image = ThumbnailImageField(required=False, sizes={"small": (100,100)})
 
     class Meta:
         model = Profile
