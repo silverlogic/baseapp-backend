@@ -46,4 +46,4 @@ class BannerBlock(StructBlock):
 
     class Meta:
         template = "base/blocks/empty.html"
-        icon = "placeholder"
+        icon = "image"
