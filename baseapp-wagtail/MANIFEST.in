@@ -1,0 +1,3 @@
+include README.md
+recursive-include baseapp_wagtail/templates *
+recursive-include baseapp_wagtail/static *

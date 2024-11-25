@@ -1,0 +1,3 @@
+# baseapp dependencies
+-e ./baseapp-core
+-e ./baseapp-wagtail
