@@ -3,6 +3,7 @@ import swapper
 from datetime import timedelta
 
 from baseapp_auth.utils.referral_utils import get_user_referral_model, use_referrals
+from baseapp_core.graphql import get_obj_relay_id
 from baseapp_core.rest_framework.serializers import ModelSerializer
 from baseapp_core.rest_framework.fields import ThumbnailImageField
 from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
@@ -21,17 +22,32 @@ Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 from baseapp_auth.password_validators import apply_password_validators
 
-class ProfileSerializer(ModelSerializer):
-    url_path = serializers.SlugField(required=False)
-    image = ThumbnailImageField(required=False, sizes={"small": (100,100)})
+class JWTProfileSerializer(serializers.ModelSerializer):
+    """
+    Serializes minimal profile data that will be attached to the JWT token as claim
+    """
+    url_path = serializers.SerializerMethodField() # serializers.SlugField(required=False)
+    id = serializers.SerializerMethodField() 
+    image = ThumbnailImageField(required=False, sizes={"url": (100,100)})
 
     class Meta:
         model = Profile
         fields = ("id", "name", "image", "url_path")
 
+    def get_url_path(self, profile):
+        return { 'path': profile.url_path.path}
+
+    def get_id(self, profile):
+        return get_obj_relay_id(profile)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['image'].pop('full_size')
+        return data
+
 
 class UserBaseSerializer(ModelSerializer):
-    profile = ProfileSerializer(read_only=True)
+    profile = JWTProfileSerializer(read_only=True)
     email_verification_required = serializers.SerializerMethodField()
     referral_code = serializers.SerializerMethodField()
     referred_by_code = serializers.CharField(required=False, allow_blank=True, write_only=True)
