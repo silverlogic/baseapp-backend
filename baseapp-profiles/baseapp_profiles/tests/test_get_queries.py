@@ -5,7 +5,6 @@ from django.contrib.contenttypes.models import ContentType
 
 from .factories import ProfileFactory
 
-
 pytestmark = pytest.mark.django_db
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
