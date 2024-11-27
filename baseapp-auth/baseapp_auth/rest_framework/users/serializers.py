@@ -22,27 +22,26 @@ Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 from baseapp_auth.password_validators import apply_password_validators
 
+
 class JWTProfileSerializer(serializers.ModelSerializer):
     """
     Serializes minimal profile data that will be attached to the JWT token as claim
     """
-    url_path = serializers.SerializerMethodField() # serializers.SlugField(required=False)
+    url_path = serializers.SlugField(required=False)
     id = serializers.SerializerMethodField() 
-    image = ThumbnailImageField(required=False, sizes={"url": (100,100)})
+    image = ThumbnailImageField(required=False, sizes={"small": (100,100)})
 
     class Meta:
         model = Profile
         fields = ("id", "name", "image", "url_path")
 
-    def get_url_path(self, profile):
-        return { 'path': profile.url_path.path}
-
     def get_id(self, profile):
         return get_obj_relay_id(profile)
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        data['image'].pop('full_size')
+    def to_representation(self, profile):
+        data = super().to_representation(profile)
+        if (data['image'] != None):
+            data['image'] = data['image']['small']
         return data
 
 
