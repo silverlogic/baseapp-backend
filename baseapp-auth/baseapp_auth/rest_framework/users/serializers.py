@@ -40,7 +40,7 @@ class JWTProfileSerializer(serializers.ModelSerializer):
 
     def to_representation(self, profile):
         data = super().to_representation(profile)
-        if (data['image'] != None):
+        if data['image'] is not None:
             data['image'] = data['image']['small']
         return data
 
