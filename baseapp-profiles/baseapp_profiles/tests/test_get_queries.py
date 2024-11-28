@@ -1,5 +1,7 @@
 import pytest
 import swapper
+from baseapp_pages.tests.factories import URLPathFactory
+from django.contrib.contenttypes.models import ContentType
 
 from .factories import ProfileFactory
 
@@ -16,6 +18,18 @@ GET_PROFILE_BY_PATH = """
                 metaTitle
                 metaOgImage(width: 100, height: 100) {
                     url
+                }
+            }
+        }
+    }
+"""
+
+SEARCH_PROFILES_BY_QUERY_PARAM = """
+    query AllProfiles($q: String!) {
+        allProfiles(q: $q) {
+            edges {
+                node {
+                    id
                 }
             }
         }
@@ -128,3 +142,29 @@ def test_another_user_cant_view_members(graphql_user_client):
     content = response.json()
 
     assert content["data"]["profile"]["members"]
+
+
+def test_search_profiles(graphql_user_client):
+    profile1 = ProfileFactory(name="David")
+    profile2 = ProfileFactory(name="Daniel")
+    profile3 = ProfileFactory(name="Mark")
+    profile4 = ProfileFactory(name="John")
+    profile5 = ProfileFactory(name="Donald")
+    urlPath1 = URLPathFactory(path="danger.john", is_active=True, language=None)
+    profile_content_type = ContentType.objects.get_for_model(Profile)
+    urlPath1.target_content_type = profile_content_type
+    urlPath1.target_object_id = profile4.id
+    urlPath1.save()
+    urlPath1.refresh_from_db()
+    profile4.refresh_from_db()
+
+    response = graphql_user_client(SEARCH_PROFILES_BY_QUERY_PARAM, variables={"q": "da"})
+    content = response.json()
+    profiles = [
+        id for id in [edge["node"]["id"] for edge in content["data"]["allProfiles"]["edges"]]
+    ]
+    assert profile1.relay_id in profiles
+    assert profile2.relay_id in profiles
+    assert profile3.relay_id not in profiles
+    assert profile4.relay_id in profiles
+    assert profile5.relay_id not in profiles

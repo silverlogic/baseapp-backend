@@ -1,4 +1,3 @@
-import django_filters
 import graphene
 import swapper
 from baseapp_auth.graphql import PermissionsInterface
@@ -12,6 +11,8 @@ from django.apps import apps
 from django.db.models import Case, IntegerField, Q, Value, When
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
+
+from .filters import ProfileFilter
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
@@ -39,12 +40,6 @@ class ProfileUserRoleObjectType(DjangoObjectType, BaseProfileUserRoleObjectType)
 
 class ProfileInterface(relay.Node):
     profile = graphene.Field(get_object_type_for_model(Profile))
-
-
-class ProfileFilter(django_filters.FilterSet):
-    class Meta:
-        model = Profile
-        fields = ["name"]
 
 
 class ProfileMetadata(AbstractMetadataObjectType):
