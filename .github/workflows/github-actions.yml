@@ -88,3 +88,4 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-wagtail
+      custom_tests_path: "baseapp-wagtail"
