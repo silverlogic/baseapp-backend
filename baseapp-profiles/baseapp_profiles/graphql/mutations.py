@@ -112,7 +112,42 @@ class ProfileCreate(SerializerMutation):
             errors=None,
             profile=ProfileObjectType._meta.connection.Edge(node=obj),
         )
+    
+RoleTypeEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoles)
+class RoleUpdate(RelayMutation):
+    profile_user_role = graphene.Field(get_object_type_for_model(ProfileUserRole))
 
+    class Input:
+        profile_id = graphene.ID(required=True)
+        user_id = graphene.ID(required=True)
+        role_type = graphene.Field(RoleTypeEnum)
+    
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        user_id = input.get("user_id")
+        profile_id = input.get("profile_id")
+        role_type = input.get("role_type")
+        user_pk = get_pk_from_relay_id(user_id)
+        profile_pk = get_pk_from_relay_id(profile_id)
+        
+
+        try:
+            obj = ProfileUserRole.objects.get(user_id=user_pk, profile_id=profile_pk)
+        except ProfileUserRole.DoesNotExist:
+            raise ValueError(_("Role not found"))
+        
+        if not info.context.user.has_perm("baseapp_profiles.change_profileuserrole", obj.profile):
+            raise GraphQLError(
+                str(_("You don't have permission to perform this action")),
+                extensions={"code": "permission_required"},
+            )
+
+        obj.role = role_type
+        obj.save()
+
+        return RoleUpdate(profile_user_role=obj)
+    
 
 class ProfileUpdate(SerializerMutation):
     profile = graphene.Field(get_object_type_for_model(Profile))
@@ -197,3 +232,4 @@ class ProfilesMutations(object):
     # profile_create = ProfileCreate.Field()
     profile_update = ProfileUpdate.Field()
     profile_delete = ProfileDelete.Field()
+    role_update = RoleUpdate.Field()

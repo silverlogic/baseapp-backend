@@ -1,10 +1,12 @@
 import pytest
 import swapper
+from baseapp_core.tests.factories import UserFactory
 from baseapp_pages.tests.factories import URLPathFactory
 from django.contrib.auth.models import Permission
 from django.test.client import MULTIPART_CONTENT
 
-from .factories import ProfileFactory
+from ..models import ProfileUserRole
+from .factories import ProfileFactory, ProfileUserRoleFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -32,6 +34,49 @@ PROFILE_UPDATE_GRAPHQL = """
     }
 """
 
+# PROFILE_ROLE_UPDATE_GRAPHQL = """
+#     mutation ProfileRoleUpdateMutation($input: RoleUpdateInput!) {
+#         roleUpdate(input: $input) {
+#             profile {
+#                 id
+#                 members {
+#                 totalCount
+#                 edges {
+#                     node {
+#                     id
+#                     role
+#                     status
+#                     }
+#                 }
+#                 pageInfo {
+#                     endCursor
+#                     hasNextPage
+#                 }
+#                 }
+#             }
+#             errors {
+#                 field
+#                 messages
+#             }
+#         }
+#     }
+# """
+
+PROFILE_ROLE_UPDATE_GRAPHQL = """ 
+mutation ProfileRoleUpdateMutation($input: RoleUpdateInput!) {
+    roleUpdate(input: $input) {
+        profileUserRole {
+            id
+            role
+            status
+        }
+        errors {
+            field
+            messages
+        }
+    }
+}
+""" 
 
 def test_anon_cant_update_profile(graphql_client):
     profile = ProfileFactory()
@@ -199,3 +244,73 @@ def test_user_with_permission_can_update_profile(django_user_client, graphql_use
     assert content["data"]["profileUpdate"]["profile"]["biography"] == new_biography
     profile.refresh_from_db()
     assert profile.biography == new_biography
+
+def test_user_profile_owner_can_update_role(django_user_client, graphql_user_client):
+ 
+    perm = Permission.objects.get(
+        content_type__app_label="baseapp_profiles", codename="change_profileuserrole"
+    )
+    
+    user = django_user_client.user
+    user_2 = UserFactory()
+    
+    user.user_permissions.add(perm)
+    profile = ProfileFactory(owner=user)
+    ProfileUserRoleFactory(profile=profile, user=user_2, role=ProfileUserRole.ProfileRoles.MANAGER)
+
+    response = graphql_user_client(
+        PROFILE_ROLE_UPDATE_GRAPHQL,
+        variables={"input": {"userId": user_2.relay_id, "profileId": profile.relay_id, "roleType": "ADMIN"}},
+    )
+    content = response.json()
+    
+    assert content["data"]["roleUpdate"]["profileUserRole"]["role"] == "ADMIN"
+    profile.refresh_from_db()
+
+def test_user_with_permission_can_update_role(django_user_client, graphql_user_client):
+ 
+    perm = Permission.objects.get(
+        content_type__app_label="baseapp_profiles", codename="change_profileuserrole"
+    )
+    
+    user = django_user_client.user
+    user.user_permissions.add(perm)
+    user_2 = UserFactory()
+    user_3 = UserFactory()
+    
+    profile = ProfileFactory(owner=user_2)
+    ProfileUserRoleFactory(profile=profile, user=user, role=ProfileUserRole.ProfileRoles.ADMIN)
+    ProfileUserRoleFactory(profile=profile, user=user_3, role=ProfileUserRole.ProfileRoles.MANAGER)
+
+    response = graphql_user_client(
+        PROFILE_ROLE_UPDATE_GRAPHQL,
+        variables={"input": {"userId": user_3.relay_id, "profileId": profile.relay_id, "roleType": "ADMIN"}},
+    )
+    content = response.json()
+   
+    assert content["data"]["roleUpdate"]["profileUserRole"]["role"] == "ADMIN"
+    profile.refresh_from_db()
+    
+def test_user_without_permission_cant_update_role(django_user_client, graphql_user_client):
+ 
+    perm = Permission.objects.get(
+        content_type__app_label="baseapp_profiles", codename="change_profileuserrole"
+    )
+    
+    user = django_user_client.user
+    user.user_permissions.add(perm)
+    user_2 = UserFactory()
+    user_3 = UserFactory()
+    
+    profile = ProfileFactory(owner=user_2)
+    ProfileUserRoleFactory(profile=profile, user=user, role=ProfileUserRole.ProfileRoles.MANAGER)
+    ProfileUserRoleFactory(profile=profile, user=user_3, role=ProfileUserRole.ProfileRoles.MANAGER)
+
+    response = graphql_user_client(
+        PROFILE_ROLE_UPDATE_GRAPHQL,
+        variables={"input": {"userId": user_3.relay_id, "profileId": profile.relay_id, "roleType": "ADMIN"}},
+    )
+    content = response.json()
+    print(content)
+    assert content["errors"][0]["message"] == "You don't have permission to perform this action"
+    profile.refresh_from_db()

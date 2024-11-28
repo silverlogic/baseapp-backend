@@ -1,8 +1,8 @@
 import swapper
 from django.contrib.auth.backends import BaseBackend
+from .models import ProfileUserRole
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
-
 
 class ProfilesPermissionsBackend(BaseBackend):
     def has_perm(self, user_obj, perm, obj=None):
@@ -18,6 +18,7 @@ class ProfilesPermissionsBackend(BaseBackend):
                         obj.owner_id == user_obj.id
                         or obj.members.filter(user_id=user_obj.id).exists()
                     )
+           
 
         if perm in ["baseapp_profiles.change_profile", "baseapp_profiles.delete_profile"]:
             if user_obj.is_authenticated and isinstance(obj, Profile):
@@ -27,16 +28,19 @@ class ProfilesPermissionsBackend(BaseBackend):
 
                 # Anyone with permission can change and delete any profile
                 return user_obj.has_perm(perm)
+           
 
         if perm == "baseapp_profiles.use_profile" and obj:
             if isinstance(obj, Profile):
                 return (
                     obj.owner_id == user_obj.id or obj.members.filter(user_id=user_obj.id).exists()
                 )
+           
 
         if perm == "baseapp_profiles.delete_profile" and obj:
             if isinstance(obj, Profile):
                 return obj.owner_id == user_obj.id
+           
 
         if perm == "baseapp_profiles.view_profile_members" and obj:
             if isinstance(obj, Profile):
@@ -45,3 +49,11 @@ class ProfilesPermissionsBackend(BaseBackend):
                     or user_obj.is_superuser
                     or obj.members.filter(user_id=user_obj.id).exists()
                 )
+           
+            
+        if perm == "baseapp_profiles.change_profileuserrole" and obj:            
+            if isinstance(obj, Profile):
+                return (
+                    obj.owner_id == user_obj.id or obj.members.filter(user_id=user_obj.id, role=ProfileUserRole.ProfileRoles.ADMIN).exists()
+                )
+            
