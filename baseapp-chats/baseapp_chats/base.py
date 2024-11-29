@@ -188,6 +188,7 @@ class AbstractChatRoomParticipant(TimeStampedModel, RelayModel):
 class AbstractUnreadMessageCount(RelayModel):
     room = models.ForeignKey(
         swapper.get_model_name("baseapp_chats", "ChatRoom"),
+        related_name="unread_messages",
         on_delete=models.CASCADE,
     )
     profile = models.ForeignKey(
