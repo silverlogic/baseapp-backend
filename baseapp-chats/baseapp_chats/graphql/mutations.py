@@ -203,6 +203,7 @@ class ChatRoomSendMessage(RelayMutation):
         )
 
         send_new_chat_message_notification(room, message, info)
+        ChatRoomReadMessages.read_messages(room, profile)
 
         return ChatRoomSendMessage(
             message=MessageObjectType._meta.connection.Edge(
@@ -250,6 +251,10 @@ class ChatRoomReadMessages(RelayMutation):
                 ]
             )
 
+        return cls.read_messages(room, profile, message_ids)
+
+    @classmethod
+    def read_messages(cls, room, profile, message_ids=None):
         messages_status_qs = MessageStatus.objects.filter(
             profile_id=profile.pk,
             is_read=False,

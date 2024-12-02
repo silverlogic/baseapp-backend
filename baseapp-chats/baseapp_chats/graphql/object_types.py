@@ -76,7 +76,10 @@ class BaseMessageObjectType:
             if not profile:
                 return None
         else:
-            profile_pk = info.context.user.current_profile.pk
+            if hasattr(info.context.user, "current_profile"):
+                profile_pk = info.context.user.current_profile.pk
+            else:
+                profile_pk = info.context.user.profile.pk
 
         message_status = self.statuses.filter(profile_id=profile_pk).first()
 
@@ -115,7 +118,10 @@ class BaseChatRoomObjectType:
             if not profile:
                 return None
         else:
-            profile_pk = info.context.user.current_profile.pk
+            if hasattr(info.context.user, "current_profile"):
+                profile_pk = info.context.user.current_profile.pk
+            else:
+                profile_pk = info.context.user.profile.pk
 
         unread_messages = UnreadMessageCount.objects.filter(
             room=self,
