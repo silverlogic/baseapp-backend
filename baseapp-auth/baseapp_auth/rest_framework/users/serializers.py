@@ -1,11 +1,10 @@
-import swapper
-
 from datetime import timedelta
 
+import swapper
 from baseapp_auth.utils.referral_utils import get_user_referral_model, use_referrals
 from baseapp_core.graphql import get_obj_relay_id
-from baseapp_core.rest_framework.serializers import ModelSerializer
 from baseapp_core.rest_framework.fields import ThumbnailImageField
+from baseapp_core.rest_framework.serializers import ModelSerializer
 from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
 from constance import config
 from django.contrib.auth import get_user_model
@@ -27,9 +26,10 @@ class JWTProfileSerializer(serializers.ModelSerializer):
     """
     Serializes minimal profile data that will be attached to the JWT token as claim
     """
+
     url_path = serializers.SlugField(required=False, allow_null=True)
     id = serializers.SerializerMethodField()
-    image = ThumbnailImageField(required=False, sizes={"small": (100,100)})
+    image = ThumbnailImageField(required=False, sizes={"small": (100, 100)})
 
     class Meta:
         model = Profile
@@ -40,8 +40,8 @@ class JWTProfileSerializer(serializers.ModelSerializer):
 
     def to_representation(self, profile):
         data = super().to_representation(profile)
-        if data['image'] is not None:
-            data['image'] = data['image']['small']
+        if data["image"] is not None:
+            data["image"] = data["image"]["small"]
         return data
 
 

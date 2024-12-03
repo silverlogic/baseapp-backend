@@ -55,12 +55,7 @@ class TestUsersRetrieve(ApiMixin):
         actual = set(r.data.keys())
         assert expected == actual
 
-        profile_expected = {
-            "id",
-            "name",
-            "image",
-            "url_path"
-        }
+        profile_expected = {"id", "name", "image", "url_path"}
         profile_actual = set(r.data["profile"].keys())
         assert profile_expected == profile_actual
 
@@ -72,12 +67,7 @@ class TestUsersRetrieve(ApiMixin):
         actual = set(r.data.keys())
         assert expected == actual
 
-        profile_expected = {
-            "id",
-            "name",
-            "image",
-            "url_path"
-        }
+        profile_expected = {"id", "name", "image", "url_path"}
         profile_actual = set(r.data["profile"].keys())
         assert profile_expected == profile_actual
 
