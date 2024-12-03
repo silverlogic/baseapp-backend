@@ -42,27 +42,44 @@ class TestUsersRetrieve(ApiMixin):
         h.responseOk(r)
         expected = {
             "id",
+            "profile",
             "email",
             "is_email_verified",
             "email_verification_required",
             "new_email",
             "is_new_email_confirmed",
             "referral_code",
-            "avatar",
-            "name",
             "phone_number",
             "preferred_language",
         }
         actual = set(r.data.keys())
         assert expected == actual
 
+        profile_expected = {
+            "id",
+            "name",
+            "image",
+            "url_path"
+        }
+        profile_actual = set(r.data["profile"].keys())
+        assert profile_expected == profile_actual
+
     def test_object_keys_for_other_user(self, user_client):
         user = UserFactory()
         r = user_client.get(self.reverse(kwargs={"pk": user.pk}))
         h.responseOk(r)
-        expected = {"id", "avatar", "name", "phone_number"}
+        expected = {"id", "profile", "phone_number"}
         actual = set(r.data.keys())
         assert expected == actual
+
+        profile_expected = {
+            "id",
+            "name",
+            "image",
+            "url_path"
+        }
+        profile_actual = set(r.data["profile"].keys())
+        assert profile_expected == profile_actual
 
 
 class TestUsersUpdate(ApiMixin):
@@ -138,7 +155,7 @@ class TestUsersUpdate(ApiMixin):
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.pk}), data)
         h.responseOk(r)
         user_client.user.profile.refresh_from_db()
-        assert user_client.user.profile.image is not None
+        assert bool(user_client.user.profile.image) is True
 
     def test_can_clear_avatar(self, user_client, image_djangofile):
         user_client.user.profile.image = image_djangofile
@@ -167,7 +184,7 @@ class TestUsersList(ApiMixin):
         r = user_client.get(self.reverse(query_params={"q": "John Smith"}))
         h.responseOk(r)
         assert len(r.data["results"]) == 1
-        assert r.data["results"][0]["name"] == "John"
+        assert r.data["results"][0]["profile"]["name"] == "John Smith"
 
 
 class TestUsersMe(ApiMixin):
