@@ -28,7 +28,7 @@ class JWTProfileSerializer(serializers.ModelSerializer):
     Serializes minimal profile data that will be attached to the JWT token as claim
     """
     url_path = serializers.SlugField(required=False, allow_null=True)
-    id = serializers.SerializerMethodField() 
+    id = serializers.SerializerMethodField()
     image = ThumbnailImageField(required=False, sizes={"small": (100,100)})
 
     class Meta:
@@ -51,7 +51,7 @@ class UserBaseSerializer(ModelSerializer):
     email_verification_required = serializers.SerializerMethodField()
     referral_code = serializers.SerializerMethodField()
     referred_by_code = serializers.CharField(required=False, allow_blank=True, write_only=True)
-    
+
     class Meta:
         model = User
         fields = (
