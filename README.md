@@ -68,8 +68,23 @@ Each module of baseapp-backend has a demo project in `testproject/` directory, w
 # Bring up docker containers
 docker compose up -d --wait
 
+# Enter db container
+docker compose exec db bash
+
+# Create 'backend' database
+psql -U postgres -c 'create database backend;'
+
+# Exit db container
+exit
+
 # Enter backend docker container
 docker compose exec backend bash
+```
+
+If you're switching between projects and you want to wipe the DB you can do
+```
+psql -U postgres -c 'drop database backend;'
+psql -U postgres -c 'create database backend;'
 ```
 
 Run testproject inside the backend docker container:
@@ -80,7 +95,7 @@ pip3 install -r baseapp-APPNAME/testproject/requirements.txt
 
 # Change folder to your app's testproject:
 cd baseapp-APPNAME/testproject
-python manage.py runserver
+python manage.py runserver 0.0.0.0:8000
 ```
 
 ### How to develop with a specific project
@@ -98,6 +113,39 @@ pip install -e baseapp-backend/baseapp-APPNAME
 ```
 
 The `-e` flag will make it like any change you make in the cloned files will effect into the project, even with django's auto reload.
+
+### Getting auto complete to work
+
+Currently there's an issue with Pylance where it can't properly detect package installed in the editable mode with pip (eg. pip install -e ./baseapp-core)
+
+To get around this, I've read online that adding `--config-settings editable_mode=strict` to each line of an editable install will work,
+but I did not find that to be the case on my machine, instead I would recommend explicitly adding the package directories to the path for pylance
+
+To do this, assuming you've opened the folder at the root of the repo, just add to your `.vscode/settings.json` file this
+```
+"python.analysis.extraPaths": [
+    "./baseapp-auth",
+    "./baseapp-blocks",
+    "./baseapp-chats",
+    "./baseapp-cloudflare-stream-field",
+    "./baseapp-comments",
+    "./baseapp-content-feed",
+    "./baseapp-core",
+    "./baseapp-drf-view-action-permissions",
+    "./baseapp-e2e",
+    "./baseapp-follows",
+    "./baseapp-message-templates",
+    "./baseapp-notifications",
+    "./baseapp-pages",
+    "./baseapp-payments",
+    "./baseapp-profiles",
+    "./baseapp-ratings",
+    "./baseapp-reactions",
+    "./baseapp-reports",
+    "./baseapp-social-auth",
+    "./baseapp-url-shortening",
+]
+```
 
 ### Testing
 
