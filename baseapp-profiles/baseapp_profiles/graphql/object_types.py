@@ -8,11 +8,11 @@ from baseapp_core.graphql import (
 )
 from baseapp_pages.meta import AbstractMetadataObjectType
 from django.apps import apps
-from django.db.models import Case, IntegerField, Q, Value, When
+from django.db.models import Q
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
 
-from .filters import ProfileFilter
+from .filters import MemberFilter, ProfileFilter
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
@@ -34,7 +34,7 @@ class BaseProfileUserRoleObjectType:
         model = ProfileUserRole
         interfaces = [MemberInterface]
         fields = ["id", "pk", "user", "role", "created", "modified", "status"]
-        filter_fields = ["role"]
+        filterset_class = MemberFilter
 
 
 class ProfileUserRoleObjectType(DjangoObjectType, BaseProfileUserRoleObjectType):
@@ -102,7 +102,7 @@ class BaseProfileObjectType(*inheritances, object):
     image = ThumbnailField(required=False)
     banner_image = ThumbnailField(required=False)
     members = DjangoFilterConnectionField(
-        get_object_type_for_model(ProfileUserRole), order_by_status=graphene.String()
+        get_object_type_for_model(ProfileUserRole),
     )
 
     class Meta:
@@ -135,23 +135,11 @@ class BaseProfileObjectType(*inheritances, object):
         return ProfileMetadata(instance, info)
 
     @classmethod
-    def resolve_members(cls, instance, info, order_by_status=None, **kwargs):
+    def resolve_members(cls, instance, info, **kwargs):
         if not info.context.user.has_perm("baseapp_profiles.view_profile_members", instance):
             return instance.members.none()
 
-        members_queryset = instance.members.all()
-
-        if order_by_status == "custom":
-            status_order = Case(
-                When(status=ProfileUserRole.ProfileRoleStatus.PENDING.value, then=Value(1)),
-                When(status=ProfileUserRole.ProfileRoleStatus.INACTIVE.value, then=Value(2)),
-                When(status=ProfileUserRole.ProfileRoleStatus.ACTIVE.value, then=Value(3)),
-                default=Value(4),
-                output_field=IntegerField(),
-            )
-            members_queryset = members_queryset.order_by(status_order)
-
-        return members_queryset
+        return instance.members.all()
 
 
 class ProfileObjectType(DjangoObjectType, BaseProfileObjectType):
