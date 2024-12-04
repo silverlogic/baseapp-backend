@@ -5,6 +5,7 @@ from baseapp_profiles.graphql.mutations import ProfileCreateSerializer
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
+from graphene_django.types import ErrorType
 from graphql.error import GraphQLError
 from rest_framework import serializers
 
@@ -54,7 +55,12 @@ class OrganizationCreate(SerializerMutation):
     def perform_mutate(cls, serializer, info):
         OrganizationObjectType = Organization.get_graphql_object_type()
 
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            errors = ErrorType.from_errors(serializer.errors)
+            return cls(
+                errors=errors,
+            )
+
         name = serializer.validated_data.pop("name")
         url_path = serializer.validated_data.pop("url_path", None)
 
@@ -73,17 +79,20 @@ class OrganizationCreate(SerializerMutation):
             profile_serializer = ProfileCreateSerializer(
                 data=profile_data, context={"request": info.context}
             )
-            profile_serializer.is_valid(raise_exception=True)
-            profile = profile_serializer.save()
-            obj.profile = profile
-            obj.save()
-            return cls(
-                errors=None,
-                organization=OrganizationObjectType._meta.connection.Edge(node=obj),
-                profile=ProfileObjectType._meta.connection.Edge(node=profile),
-            )
+            if profile_serializer.is_valid():
+                profile = profile_serializer.save()
+                obj.profile = profile
+                obj.save()
+                return cls(
+                    organization=OrganizationObjectType._meta.connection.Edge(node=obj),
+                    profile=ProfileObjectType._meta.connection.Edge(node=profile),
+                )
+            else:
+                errors = ErrorType.from_errors(profile_serializer.errors)
+                return cls(
+                    errors=errors,
+                )
         return cls(
-            errors=None,
             organization=OrganizationObjectType._meta.connection.Edge(node=obj),
         )
 
