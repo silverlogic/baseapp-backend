@@ -22,17 +22,13 @@ ProfileRoleTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoles)
 ProfileRoleStatusTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoleStatus)
 
 
-class MemberInterface(relay.Node):
-    member = graphene.Field(get_object_type_for_model(ProfileUserRole))
-
-
 class BaseProfileUserRoleObjectType:
     role = graphene.Field(ProfileRoleTypesEnum)
     status = graphene.Field(ProfileRoleStatusTypesEnum)
 
     class Meta:
         model = ProfileUserRole
-        interfaces = [MemberInterface]
+        interfaces = [relay.Node]
         fields = ["id", "pk", "user", "role", "created", "modified", "status"]
         filterset_class = MemberFilter
 
