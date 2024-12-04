@@ -146,7 +146,6 @@ def test_another_user_cant_view_members(graphql_user_client):
 
 
 def test_members_ordered_by_status(django_user_client, graphql_user_client):
-    # Cria um perfil com membros com diferentes status
     user = django_user_client.user
     profile = ProfileFactory(owner=user)
     ProfileUserRoleFactory(
