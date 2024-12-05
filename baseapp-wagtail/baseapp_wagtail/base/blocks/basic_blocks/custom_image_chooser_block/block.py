@@ -1,7 +1,6 @@
+from baseapp_wagtail.medias.serializers import CustomImageSerializer, ImageSizesField
 from wagtail.api.v2.serializers import get_serializer_class
 from wagtail.images.blocks import ImageChooserBlock
-
-from baseapp_wagtail.medias.serializers import CustomImageSerializer, ImageSizesField
 
 
 class CustomImageChooserBlock(ImageChooserBlock):

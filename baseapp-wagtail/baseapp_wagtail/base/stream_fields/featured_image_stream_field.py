@@ -1,7 +1,6 @@
+from baseapp_wagtail.base.blocks import CustomImageBlock
 from wagtail.blocks import StreamBlock
 from wagtail.fields import StreamField
-
-from baseapp_wagtail.base.blocks import CustomImageBlock
 
 
 class FeaturedImageStreamField(StreamField):

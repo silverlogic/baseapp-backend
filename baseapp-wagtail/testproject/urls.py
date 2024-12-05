@@ -16,12 +16,11 @@ Including another URLconf
 
 from urllib.parse import urlparse
 
+import baseapp_wagtail.urls as baseapp_wagtail_urls
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
-
-import baseapp_wagtail.urls as baseapp_wagtail_urls
 
 urlpatterns = [path("admin/", admin.site.urls), path("", include(baseapp_wagtail_urls))]
 

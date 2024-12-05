@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from baseapp_core.tests.settings import *  # noqa
-
 from baseapp_wagtail.settings import *  # noqa
 from baseapp_wagtail.settings import (
     WAGTAIL_INSTALLED_APPS,

@@ -7,6 +7,7 @@ from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.http import HttpResponseRedirect, QueryDict
 from django.urls import reverse
 
+
 def mfa_required(function=None):
     def decorator(view_func):
         @wraps(view_func)
