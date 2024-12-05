@@ -1,4 +1,5 @@
 import logging
+import traceback
 
 from rest_framework.authentication import TokenAuthentication as RestTokenAuthentication
 from rest_framework_simplejwt.authentication import (
@@ -12,13 +13,21 @@ class LogExceptionMiddleware(object):
         try:
             raise error
         except Exception as error:
+            # sends to sentry
             logging.exception(error)
+
+            # prints to stdout
+            traceback.print_exc()
             raise error
 
     def resolve(self, next, root, info, **args):
         response = next(root, info, **args)
-        if hasattr(response, "catch"):
+
+        if isinstance(response, Exception):
+            self.on_error(response)
+        elif hasattr(response, "catch"):
             return response.catch(self.on_error)
+
         return response
 
 

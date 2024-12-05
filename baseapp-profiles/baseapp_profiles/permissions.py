@@ -37,3 +37,11 @@ class ProfilesPermissionsBackend(BaseBackend):
         if perm == "baseapp_profiles.delete_profile" and obj:
             if isinstance(obj, Profile):
                 return obj.owner_id == user_obj.id
+
+        if perm == "baseapp_profiles.view_profile_members" and obj:
+            if isinstance(obj, Profile):
+                return (
+                    obj.owner_id == user_obj.id
+                    or user_obj.is_superuser
+                    or obj.members.filter(user_id=user_obj.id).exists()
+                )

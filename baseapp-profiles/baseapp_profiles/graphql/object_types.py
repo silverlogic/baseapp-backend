@@ -1,4 +1,3 @@
-import django_filters
 import graphene
 import swapper
 from baseapp_auth.graphql import PermissionsInterface
@@ -11,18 +10,36 @@ from baseapp_pages.meta import AbstractMetadataObjectType
 from django.apps import apps
 from django.db.models import Q
 from graphene import relay
+from graphene_django.filter import DjangoFilterConnectionField
+
+from .filters import MemberFilter, ProfileFilter
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
+ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
+
+
+ProfileRoleTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoles)
+ProfileRoleStatusTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoleStatus)
+
+
+class BaseProfileUserRoleObjectType:
+    role = graphene.Field(ProfileRoleTypesEnum)
+    status = graphene.Field(ProfileRoleStatusTypesEnum)
+
+    class Meta:
+        model = ProfileUserRole
+        interfaces = [relay.Node]
+        fields = ["id", "pk", "user", "role", "created", "modified", "status"]
+        filterset_class = MemberFilter
+
+
+class ProfileUserRoleObjectType(DjangoObjectType, BaseProfileUserRoleObjectType):
+    class Meta(BaseProfileUserRoleObjectType.Meta):
+        model = ProfileUserRole
 
 
 class ProfileInterface(relay.Node):
     profile = graphene.Field(get_object_type_for_model(Profile))
-
-
-class ProfileFilter(django_filters.FilterSet):
-    class Meta:
-        model = Profile
-        fields = ["name"]
 
 
 class ProfileMetadata(AbstractMetadataObjectType):
@@ -44,6 +61,8 @@ class ProfileMetadata(AbstractMetadataObjectType):
 
 
 interfaces = [relay.Node, PermissionsInterface]
+inheritances = tuple()
+
 if apps.is_installed("baseapp_pages"):
     from baseapp_pages.graphql import PageInterface
 
@@ -68,10 +87,19 @@ if apps.is_installed("baseapp_chats"):
     interfaces.append(ChatRoomsInterface)
 
 
-class BaseProfileObjectType:
+if apps.is_installed("baseapp.activity_log"):
+    from baseapp.activity_log.graphql.interfaces import ProfileActivityLog
+
+    inheritances += (ProfileActivityLog,)
+
+
+class BaseProfileObjectType(*inheritances, object):
     target = graphene.Field(lambda: ProfileInterface)
     image = ThumbnailField(required=False)
     banner_image = ThumbnailField(required=False)
+    members = DjangoFilterConnectionField(
+        get_object_type_for_model(ProfileUserRole),
+    )
 
     class Meta:
         interfaces = interfaces
@@ -101,6 +129,13 @@ class BaseProfileObjectType:
     @classmethod
     def resolve_metadata(cls, instance, info):
         return ProfileMetadata(instance, info)
+
+    @classmethod
+    def resolve_members(cls, instance, info, **kwargs):
+        if not info.context.user.has_perm("baseapp_profiles.view_profile_members", instance):
+            return instance.members.none()
+
+        return instance.members.all()
 
 
 class ProfileObjectType(DjangoObjectType, BaseProfileObjectType):

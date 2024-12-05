@@ -3,6 +3,7 @@ import swapper
 from baseapp_auth.graphql import PermissionsInterface
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_reactions.graphql.object_types import ReactionsInterface
+from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from graphene import relay
@@ -12,6 +13,7 @@ from ..models import CommentStatus, default_comments_count
 from .filters import CommentFilter
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
+app_label = Comment._meta.app_label
 
 CommentStatusEnum = graphene.Enum.from_enum(CommentStatus)
 
@@ -58,12 +60,25 @@ class CommentsInterface(relay.Node):
         )
 
 
+comment_interfaces = (
+    relay.Node,
+    CommentsInterface,
+    ReactionsInterface,
+    PermissionsInterface,
+)
+
+if apps.is_installed("baseapp.activity_log"):
+    from baseapp.activity_log.graphql.interfaces import NodeActivityLogInterface
+
+    comment_interfaces += (NodeActivityLogInterface,)
+
+
 class CommentObjectType(DjangoObjectType):
     target = graphene.Field(CommentsInterface)
     status = graphene.Field(CommentStatusEnum)
 
     class Meta:
-        interfaces = (relay.Node, CommentsInterface, ReactionsInterface, PermissionsInterface)
+        interfaces = comment_interfaces
         model = Comment
         fields = (
             "pk",
@@ -84,7 +99,7 @@ class CommentObjectType(DjangoObjectType):
     @classmethod
     def get_node(self, info, id):
         node = super().get_node(info, id)
-        if not info.context.user.has_perm("baseapp_comments.view_comment", node):
+        if not info.context.user.has_perm(f"{app_label}.view_comment", node):
             return None
         return node
 

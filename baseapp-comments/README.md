@@ -183,3 +183,18 @@ AUTHENTICATION_BACKENDS = [
 ## How to develop
 
 General development instructions can be found in [main README](..#how-to-develop).
+
+
+## Breaking Changes
+### [0.3.0] - 2024-10-23
+- Removed pghistory tracking from the `Comment` model:
+
+```python
+@pghistory.track(
+    pghistory.InsertEvent(),
+    pghistory.UpdateEvent(),
+    pghistory.DeleteEvent(),
+    exclude=["comments_count", "reactions_count"],
+)
+
+```

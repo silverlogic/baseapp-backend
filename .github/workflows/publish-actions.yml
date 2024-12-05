@@ -100,3 +100,13 @@ jobs:
     with:
       project: baseapp-chats
     secrets: inherit
+  baseapp-wagtail:
+    uses: ./.github/workflows/publish-workflow.yml
+    with:
+      project: baseapp-wagtail
+    secrets: inherit
+  baseapp:
+    uses: ./.github/workflows/publish-workflow.yml
+    with:
+      project: baseapp
+    secrets: inherit

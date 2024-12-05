@@ -100,3 +100,8 @@ jobs:
     with:
       project: baseapp-chats
     secrets: inherit
+  baseapp-wagtail:
+    uses: ./.github/workflows/sonar-workflow.yml
+    with:
+      project: baseapp-wagtail
+    secrets: inherit

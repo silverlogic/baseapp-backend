@@ -14,7 +14,7 @@ User = get_user_model()
 from baseapp_auth.tokens import ChangeExpiredPasswordTokenGenerator
 
 
-# TODO: Change Expired Password Flow needs to be refactored to work with AllAuth
+# TODO: MFA Follow Up | Expired Password Refactor
 # Login is handled by AllAuth
 class ChangeExpiredPasswordSerializer(serializers.Serializer):
     user: Optional[AbstractUser] = None

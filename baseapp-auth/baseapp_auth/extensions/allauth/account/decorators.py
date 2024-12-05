@@ -7,7 +7,6 @@ from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.http import HttpResponseRedirect, QueryDict
 from django.urls import reverse
 
-
 def mfa_required(function=None):
     def decorator(view_func):
         @wraps(view_func)
@@ -21,6 +20,8 @@ def mfa_required(function=None):
             if is_mfa_enabled(request.user):
                 return view_func(request, *args, **kwargs)
             else:
+                # TODO: MFA Follow Up | Admin Authentication via frontend
+                # Redirect to FE here
                 next_url = get_next_redirect_url(request) or request.get_full_path()
                 target_url = reverse("mfa_required")
                 url_parts = list(urlparse(target_url))
