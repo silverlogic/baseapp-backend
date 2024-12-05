@@ -2,10 +2,9 @@ import graphene
 from baseapp_auth.graphql.queries import UsersQueries
 from baseapp_core.graphql import DeleteNode
 from baseapp_profiles.graphql import ProfilesQueries
-from graphene import relay
-
 from baseapp_reactions.graphql.mutations import ReactionsMutations
 from baseapp_reactions.graphql.queries import ReactionsQueries
+from graphene import relay
 
 
 class Query(graphene.ObjectType, ReactionsQueries, UsersQueries, ProfilesQueries):

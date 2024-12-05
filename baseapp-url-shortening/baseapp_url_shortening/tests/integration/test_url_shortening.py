@@ -1,5 +1,4 @@
 import pytest
-
 from baseapp_url_shortening.tests import factories as f
 
 pytestmark = pytest.mark.django_db

@@ -1,11 +1,10 @@
 import factory
-from wagtail.documents import get_document_model
-from wagtail.images import get_image_model
-
 from baseapp_wagtail.tests.utils.media_helper import (
     get_test_document_file,
     get_test_image_file,
 )
+from wagtail.documents import get_document_model
+from wagtail.images import get_image_model
 
 
 class ImageFactory(factory.django.DjangoModelFactory):

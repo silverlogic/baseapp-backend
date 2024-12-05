@@ -1,9 +1,8 @@
+import baseapp_wagtail.medias.tests.factories as f
 from django.core.files.base import ContentFile
 from django.test import TestCase
 from wagtail.images.formats import get_image_format
 from wagtail.rich_text import expand_db_html
-
-import baseapp_wagtail.medias.tests.factories as f
 
 
 class RichTextDocumentLinkHandlerTests(TestCase):

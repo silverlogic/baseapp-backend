@@ -1,6 +1,5 @@
-import pytest
-
 import baseapp_message_templates.tests.factories as f
+import pytest
 from baseapp_message_templates.custom_templates import get_full_copy_template
 from baseapp_message_templates.email_utils import (
     send_sendgrid_email,
