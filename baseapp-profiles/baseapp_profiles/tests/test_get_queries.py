@@ -3,7 +3,8 @@ import swapper
 from baseapp_pages.tests.factories import URLPathFactory
 from django.contrib.contenttypes.models import ContentType
 
-from .factories import ProfileFactory
+from ..models import ProfileUserRole
+from .factories import ProfileFactory, ProfileUserRoleFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -142,6 +143,98 @@ def test_another_user_cant_view_members(graphql_user_client):
     content = response.json()
 
     assert content["data"]["profile"]["members"]
+
+
+def test_members_ordered_by_status(django_user_client, graphql_user_client):
+    user = django_user_client.user
+    profile = ProfileFactory(owner=user)
+    ProfileUserRoleFactory(
+        profile=profile,
+        status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
+    )
+    ProfileUserRoleFactory(
+        profile=profile,
+        status=ProfileUserRole.ProfileRoleStatus.PENDING,
+    )
+    ProfileUserRoleFactory(
+        profile=profile,
+        status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
+    )
+    ProfileUserRoleFactory(
+        profile=profile,
+        status=ProfileUserRole.ProfileRoleStatus.INACTIVE,
+    )
+
+    response = graphql_user_client(
+        query="""
+            query Profile($id: ID!, $orderBy: String) {
+                profile(id: $id) {
+                    members(orderBy: $orderBy) {
+                        edges {
+                            node {
+                                id
+                                status
+                            }
+                        }
+                    }
+                }
+            }
+        """,
+        variables={"id": profile.relay_id, "orderBy": "status"},
+    )
+
+    content = response.json()
+
+    members = content["data"]["profile"]["members"]["edges"]
+    statuses = [member["node"]["status"] for member in members]
+
+    assert statuses == ["PENDING", "INACTIVE", "ACTIVE", "ACTIVE"]
+
+
+def test_members_not_ordered_by_status(django_user_client, graphql_user_client):
+    user = django_user_client.user
+    profile = ProfileFactory(owner=user)
+    ProfileUserRoleFactory(
+        profile=profile,
+        status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
+    )
+    ProfileUserRoleFactory(
+        profile=profile,
+        status=ProfileUserRole.ProfileRoleStatus.PENDING,
+    )
+    ProfileUserRoleFactory(
+        profile=profile,
+        status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
+    )
+    ProfileUserRoleFactory(
+        profile=profile,
+        status=ProfileUserRole.ProfileRoleStatus.INACTIVE,
+    )
+
+    response = graphql_user_client(
+        query="""
+            query Profile($id: ID!) {
+                profile(id: $id) {
+                    members {
+                        edges {
+                            node {
+                                id
+                                status
+                            }
+                        }
+                    }
+                }
+            }
+        """,
+        variables={"id": profile.relay_id},
+    )
+
+    content = response.json()
+
+    members = content["data"]["profile"]["members"]["edges"]
+    statuses = [member["node"]["status"] for member in members]
+
+    assert statuses == ["ACTIVE", "PENDING", "ACTIVE", "INACTIVE"]
 
 
 def test_search_profiles(graphql_user_client):
