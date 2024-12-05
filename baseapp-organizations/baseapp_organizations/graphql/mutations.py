@@ -11,6 +11,7 @@ from rest_framework import serializers
 
 Organization = swapper.load_model("baseapp_organizations", "Organization")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
+app_label = Organization._meta.app_label
 
 
 class BaseOrganizationSerializer(serializers.ModelSerializer):
@@ -43,7 +44,7 @@ class OrganizationCreate(SerializerMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        if not info.context.user.has_perm("baseapp_organizations.add_organization"):
+        if not info.context.user.has_perm(f"{app_label}.add_organization"):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
