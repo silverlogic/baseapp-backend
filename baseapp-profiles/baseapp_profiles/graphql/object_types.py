@@ -42,6 +42,17 @@ class ProfileInterface(relay.Node):
     profile = graphene.Field(get_object_type_for_model(Profile))
 
 
+class ProfilesInterface(relay.Node):
+    profiles = DjangoFilterConnectionField(lambda: ProfileObjectType)
+
+    def resolve_profiles(self, info, **kwargs):
+        if info.context.user.is_authenticated and info.context.user == self:
+            return Profile.objects.filter(
+                Q(owner_id=info.context.user.id) | Q(members__user_id=info.context.user.id)
+            ).order_by("name")
+        return Profile.objects.none()
+
+
 class ProfileMetadata(AbstractMetadataObjectType):
     @property
     def meta_title(self):

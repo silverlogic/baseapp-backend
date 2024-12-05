@@ -37,10 +37,14 @@ class BaseProfileSerializer(serializers.ModelSerializer):
 
 class ProfileCreateSerializer(BaseProfileSerializer):
     name = serializers.CharField(required=True)
-    target = serializers.CharField(required=True)
+    target = serializers.CharField(required=False)
 
     class Meta(BaseProfileSerializer.Meta):
-        fields = BaseProfileSerializer.Meta.fields + ("target",)
+        fields = BaseProfileSerializer.Meta.fields + (
+            "target",
+            "target_content_type",
+            "target_object_id",
+        )
 
     def create(self, validated_data):
         url_path = validated_data.pop("url_path", None)
@@ -194,6 +198,6 @@ class ProfileDelete(RelayMutation):
 
 
 class ProfilesMutations(object):
-    # profile_create = ProfileCreate.Field()
+    profile_create = ProfileCreate.Field()
     profile_update = ProfileUpdate.Field()
     profile_delete = ProfileDelete.Field()
