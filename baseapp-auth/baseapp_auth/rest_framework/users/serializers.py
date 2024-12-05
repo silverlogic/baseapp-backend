@@ -27,8 +27,8 @@ class JWTProfileSerializer(serializers.ModelSerializer):
     Serializes minimal profile data that will be attached to the JWT token as claim
     """
 
-    url_path = serializers.SlugField(required=False, allow_null=True)
     id = serializers.SerializerMethodField()
+    url_path = serializers.SerializerMethodField()
     image = ThumbnailImageField(required=False, sizes={"small": (100, 100)})
 
     class Meta:
@@ -37,6 +37,12 @@ class JWTProfileSerializer(serializers.ModelSerializer):
 
     def get_id(self, profile):
         return get_obj_relay_id(profile)
+
+    def get_url_path(self, profile):
+        if hasattr(profile, 'url_path'):
+            return profile.url_path.path
+        else:
+            return None
 
     def to_representation(self, profile):
         data = super().to_representation(profile)
