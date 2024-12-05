@@ -39,8 +39,8 @@ class JWTProfileSerializer(serializers.ModelSerializer):
         return get_obj_relay_id(profile)
 
     def get_url_path(self, profile):
-        path_obj = getattr(profile, 'url_path', None)
-        return getattr(path_obj, 'path', None)
+        path_obj = getattr(profile, "url_path", None)
+        return getattr(path_obj, "path", None)
 
     def to_representation(self, profile):
         data = super().to_representation(profile)
