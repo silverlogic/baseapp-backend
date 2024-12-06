@@ -1,7 +1,11 @@
+from datetime import timedelta
+
 import swapper
 from baseapp_core.graphql import RelayModel
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.db.models import DateTimeField, ExpressionWrapper, F
+from django.db.models.functions import ExtractMinute
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 from pghistory.models import Context
@@ -33,10 +37,25 @@ class ActivityLogQuerySet(models.QuerySet):
             ip_address=models.F("metadata__ip_address"),
         )
 
+    def grouped_by_interval(self, interval_minutes=15) -> "ActivityLogQuerySet":
+        """
+        Group activity logs by a specified interval in minutes.
+        """
+        return self.annotate(
+            interval_start=ExpressionWrapper(
+                F("created_at")
+                - (ExtractMinute(F("created_at")) % interval_minutes) * timedelta(minutes=1),
+                output_field=DateTimeField(),
+            )
+        ).order_by("-interval_start", "-created_at")
+
 
 class ActivityLogQuerySetManager(models.Manager):
     def get_queryset(self):
         return ActivityLogQuerySet(self.model, using=self._db).annotated_metadata()
+
+    def grouped_by_interval(self, interval_minutes=15):
+        return self.get_queryset().grouped_by_interval(interval_minutes)
 
 
 class ActivityLogContextManagers(models.Model):

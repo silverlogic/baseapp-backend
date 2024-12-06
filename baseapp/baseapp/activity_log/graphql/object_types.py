@@ -111,3 +111,8 @@ class BaseActivityLogObjectType:
 class ActivityLogObjectType(BaseActivityLogObjectType, DjangoObjectType):
     class Meta(BaseActivityLogObjectType.Meta):
         pass
+
+
+class ActivityLogGroupType(graphene.ObjectType):
+    interval_start = graphene.DateTime()
+    logs = graphene.List(ActivityLogObjectType)
