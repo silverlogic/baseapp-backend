@@ -49,7 +49,7 @@ if apps.is_installed("baseapp_profiles"):
                 return Profile.objects.none()
             return Profile.objects.filter(
                 Q(owner_id=info.context.user.id) | Q(members__user_id=info.context.user.id)
-            )
+            ).distinct()
 
     interfaces += (UserProfiles, ProfileInterface)
 
