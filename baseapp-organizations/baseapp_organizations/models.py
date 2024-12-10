@@ -22,6 +22,12 @@ class AbstractOrganization(*inheritances):
         verbose_name = _("organization")
         verbose_name_plural = _("organizations")
 
+    @classmethod
+    def get_graphql_object_type(cls):
+        from .graphql.object_types import OrganizationObjectType
+
+        return OrganizationObjectType
+
 
 class Organization(AbstractOrganization):
     class Meta(AbstractOrganization.Meta):

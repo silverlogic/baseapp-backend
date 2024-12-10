@@ -3,6 +3,7 @@
 import django.db.models.deletion
 import django.utils.timezone
 import model_utils.fields
+import swapper
 from django.conf import settings
 from django.db import migrations, models
 
@@ -12,7 +13,8 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        migrations.swappable_dependency(settings.BASEAPP_PROFILES_PROFILE_MODEL),
+        swapper.dependency("baseapp_profiles", "Profile"),
+        swapper.dependency("baseapp_organizations", "Organization"),
     ]
 
     operations = [
@@ -53,7 +55,7 @@ class Migration(migrations.Migration):
                 "verbose_name": "organization",
                 "verbose_name_plural": "organizations",
                 "abstract": False,
-                "swappable": "BASEAPP_ORGANIZATIONS_ORGANIZATION_MODEL",
+                "swappable": swapper.swappable_setting("baseapp_organizations", "Organization"),
             },
         ),
     ]

@@ -1,14 +1,9 @@
-import graphene
 import swapper
 from baseapp_auth.graphql.permissions import PermissionsInterface
-from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
+from baseapp_core.graphql import DjangoObjectType
 from graphene import relay
 
 Organization = swapper.load_model("baseapp_organizations", "Organization")
-
-
-class OrganizationInterface(relay.Node):
-    organization = graphene.Field(get_object_type_for_model(Organization))
 
 
 class AbstractOrganizationObjectType(object):
