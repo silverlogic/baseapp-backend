@@ -111,3 +111,9 @@ class BaseActivityLogObjectType:
 class ActivityLogObjectType(BaseActivityLogObjectType, DjangoObjectType):
     class Meta(BaseActivityLogObjectType.Meta):
         pass
+
+
+class ActivityLogGroupType(graphene.ObjectType):
+    user_id = graphene.Int()
+    logs = graphene.List(ActivityLogObjectType)
+    last_activity_timestamp = graphene.DateTime()

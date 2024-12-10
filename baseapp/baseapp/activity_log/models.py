@@ -1,7 +1,11 @@
+from datetime import timedelta
+
 import swapper
 from baseapp_core.graphql import RelayModel
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.db.models import DateTimeField, ExpressionWrapper, F, Count
+from django.db.models.functions import ExtractMinute
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 from pghistory.models import Context
