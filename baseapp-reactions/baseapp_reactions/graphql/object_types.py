@@ -1,7 +1,11 @@
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
-from baseapp_core.graphql import DjangoObjectType, get_pk_from_relay_id
+from baseapp_core.graphql import (
+    DjangoObjectType,
+    get_object_type_for_model,
+    get_pk_from_relay_id,
+)
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from graphene import relay
@@ -26,10 +30,10 @@ ReactionsCount = create_object_type_from_enum("ReactionsCount", Reaction.Reactio
 
 class ReactionsInterface(relay.Node):
     reactions_count = graphene.Field(ReactionsCount)
-    reactions = DjangoFilterConnectionField(lambda: ReactionObjectType)
+    reactions = DjangoFilterConnectionField(get_object_type_for_model(Reaction))
     is_reactions_enabled = graphene.Boolean(required=True)
     my_reaction = graphene.Field(
-        lambda: ReactionObjectType,
+        get_object_type_for_model(Reaction),
         required=False,
         profile_id=graphene.ID(required=False),
     )
@@ -66,7 +70,7 @@ class ReactionsInterface(relay.Node):
             ).first()
 
 
-class ReactionObjectType(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
+class BaseReactionObjectType:
     target = graphene.Field(relay.Node)
     reaction_type = graphene.Field(ReactionTypesEnum)
 
@@ -91,3 +95,10 @@ class ReactionObjectType(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectTy
         if not info.context.user.has_perm("baseapp_comments.view_comment", node):
             return None
         return node
+
+
+class ReactionObjectType(
+    BaseReactionObjectType, gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
+):
+    class Meta(BaseReactionObjectType.Meta):
+        pass

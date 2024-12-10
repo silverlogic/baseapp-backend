@@ -12,9 +12,9 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from ..models import URLPath
-from .object_types import PageObjectType
 
 Page = swapper.load_model("baseapp_pages", "Page")
+PageObjectType = Page.get_graphql_object_type()
 
 
 class PageSerializer(serializers.ModelSerializer):

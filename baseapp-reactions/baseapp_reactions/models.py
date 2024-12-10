@@ -116,6 +116,12 @@ class Reaction(AbstractBaseReaction):
         unique_together = [["user", "target_content_type", "target_object_id"]]
         swappable = swapper.swappable_setting("baseapp_reactions", "Reaction")
 
+    @classmethod
+    def get_graphql_object_type(cls):
+        from .graphql.object_types import ReactionObjectType
+
+        return ReactionObjectType
+
 
 SwappedReaction = swapper.load_model(
     "baseapp_reactions", "Reaction", required=False, require_ready=False

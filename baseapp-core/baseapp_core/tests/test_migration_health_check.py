@@ -5,8 +5,10 @@ from django.db import DEFAULT_DB_ALIAS, connections
 from django.db.migrations.autodetector import Migration, MigrationAutodetector
 from django.db.migrations.executor import MigrationExecutor
 from django.db.migrations.operations.fields import AlterField
+from django.db.migrations.operations.models import AddIndex, AlterUniqueTogether
 from django.db.migrations.state import ProjectState
 from django.db.models import Field
+from django.db.models.indexes import Index
 from django.test import TestCase
 
 
@@ -14,8 +16,16 @@ class MigrationJSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Field):  # django field
             return "__cant_serialize__"
-        if isinstance(obj, Migration) or isinstance(obj, AlterField):
+        if (
+            isinstance(obj, Migration)
+            or isinstance(obj, AlterField)
+            or isinstance(obj, AlterUniqueTogether)
+            or isinstance(obj, AddIndex)
+            or isinstance(obj, Index)
+        ):
             return obj.__dict__
+        if isinstance(obj, set):
+            return list(obj)
         try:
             return super().default(obj)
         except ValueError:
