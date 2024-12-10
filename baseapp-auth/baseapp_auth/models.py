@@ -1,3 +1,4 @@
+import swapper
 from baseapp_core.models import CaseInsensitiveEmailField
 from django.apps import apps
 from django.conf import settings
@@ -25,7 +26,20 @@ def use_profile_model():
     if apps.is_installed("baseapp_profiles"):
         from baseapp_profiles.models import ProfilableModel
 
-        return ProfilableModel
+        class UserProfilableModel(ProfilableModel):
+            profile = models.OneToOneField(
+                swapper.get_model_name("baseapp_profiles", "Profile"),
+                related_name="%(class)s",
+                on_delete=models.SET_NULL,
+                verbose_name=_("profile"),
+                null=True,
+                blank=True,
+            )
+
+            class Meta:
+                abstract = True
+
+        return UserProfilableModel
     return object
 
 

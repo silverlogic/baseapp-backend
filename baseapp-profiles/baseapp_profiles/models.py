@@ -175,7 +175,7 @@ class ProfilableModel(models.Model):
     profile = models.OneToOneField(
         swapper.get_model_name("baseapp_profiles", "Profile"),
         related_name="%(class)s",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         verbose_name=_("profile"),
         null=True,
         blank=True,
