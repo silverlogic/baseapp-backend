@@ -102,6 +102,12 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_pr
         # TODO: deprecate
         return self.profile.image if self.profile_id else None
 
+    @classmethod
+    def get_graphql_object_type(cls):
+        from .graphql.object_types import UserObjectType
+
+        return UserObjectType
+
     def save(self, *args, **kwargs):
         if hasattr(self, "tracker"):
             with self.tracker:

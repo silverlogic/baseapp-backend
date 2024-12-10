@@ -12,7 +12,7 @@ from django.db.models import Q
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
 
-from .filters import ProfileFilter
+from .filters import MemberFilter, ProfileFilter
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
@@ -30,7 +30,7 @@ class BaseProfileUserRoleObjectType:
         model = ProfileUserRole
         interfaces = [relay.Node]
         fields = ["id", "pk", "user", "role", "created", "modified", "status"]
-        filter_fields = ["role"]
+        filterset_class = MemberFilter
 
 
 class ProfileUserRoleObjectType(DjangoObjectType, BaseProfileUserRoleObjectType):
@@ -61,6 +61,8 @@ class ProfileMetadata(AbstractMetadataObjectType):
 
 
 interfaces = [relay.Node, PermissionsInterface]
+inheritances = tuple()
+
 if apps.is_installed("baseapp_pages"):
     from baseapp_pages.graphql import PageInterface
 
@@ -85,11 +87,19 @@ if apps.is_installed("baseapp_chats"):
     interfaces.append(ChatRoomsInterface)
 
 
-class BaseProfileObjectType:
+if apps.is_installed("baseapp.activity_log"):
+    from baseapp.activity_log.graphql.interfaces import ProfileActivityLog
+
+    inheritances += (ProfileActivityLog,)
+
+
+class BaseProfileObjectType(*inheritances, object):
     target = graphene.Field(lambda: ProfileInterface)
     image = ThumbnailField(required=False)
     banner_image = ThumbnailField(required=False)
-    members = DjangoFilterConnectionField(get_object_type_for_model(ProfileUserRole))
+    members = DjangoFilterConnectionField(
+        get_object_type_for_model(ProfileUserRole),
+    )
 
     class Meta:
         interfaces = interfaces
@@ -124,6 +134,7 @@ class BaseProfileObjectType:
     def resolve_members(cls, instance, info, **kwargs):
         if not info.context.user.has_perm("baseapp_profiles.view_profile_members", instance):
             return instance.members.none()
+
         return instance.members.all()
 
 

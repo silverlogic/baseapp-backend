@@ -1,0 +1,7 @@
+[run]
+omit =
+    ./testproject/*
+    **/tests/*
+
+[report]
+fail_under = 80

@@ -16,6 +16,7 @@ from .permissions import PermissionsInterface
 User = get_user_model()
 
 interfaces = (relay.Node, PermissionsInterface)
+inheritances = tuple()
 
 if apps.is_installed("baseapp_notifications"):
     from baseapp_notifications.graphql.object_types import NotificationsInterface
@@ -48,12 +49,18 @@ if apps.is_installed("baseapp_profiles"):
                 return Profile.objects.none()
             return Profile.objects.filter(
                 Q(owner_id=info.context.user.id) | Q(members__user_id=info.context.user.id)
-            )
+            ).distinct()
 
     interfaces += (UserProfiles, ProfileInterface)
 
 
-class AbstractUserObjectType(object):
+if apps.is_installed("baseapp.activity_log"):
+    from baseapp.activity_log.graphql.interfaces import UserActivityLog
+
+    inheritances += (UserActivityLog,)
+
+
+class AbstractUserObjectType(*inheritances, object):
     is_authenticated = graphene.Boolean()
     full_name = graphene.String()
     short_name = graphene.String()
