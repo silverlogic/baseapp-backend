@@ -39,10 +39,12 @@ class ChatRoomCreate(RelayMutation):
     class Input:
         profile_id = graphene.ID(required=True)
         participants = graphene.List(graphene.ID, required=True)
+        is_group = graphene.Boolean(required=False, default_value=False)
+        title = graphene.String(required=False)
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, profile_id, participants, **input):
+    def mutate_and_get_payload(cls, root, info, profile_id, participants, is_group, **input):
         profile = get_obj_from_relay_id(info, profile_id)
 
         if not info.context.user.has_perm("baseapp_profiles.use_profile", profile):
@@ -85,6 +87,26 @@ class ChatRoomCreate(RelayMutation):
                 ]
             )
 
+        if len(participants) > 2 and not is_group:
+            return ChatRoomCreate(
+                errors=[
+                    ErrorType(
+                        field="is_group",
+                        messages=[_("Is group must be true if there are more than 2 participants")],
+                    )
+                ]
+            )
+        title = input.get("title", None)
+        if is_group and not title:
+            return ChatRoomCreate(
+                errors=[
+                    ErrorType(
+                        field="title",
+                        messages=[_("Title is required for group chats")],
+                    )
+                ]
+            )
+
         if not info.context.user.has_perm(
             "baseapp_chats.add_chatroom", {"profile": profile, "participants": participants}
         ):
@@ -103,22 +125,29 @@ class ChatRoomCreate(RelayMutation):
         for participant in participants:
             query_set = query_set.filter(
                 participants__profile_id=participant.id,
+                is_group=False,
             )
         existent_room = query_set.first()
 
-        if existent_room:
+        if existent_room and not is_group:
             return ChatRoomCreate(
                 profile=profile,
                 room=ChatRoomObjectType._meta.connection.Edge(
                     node=existent_room,
                 ),
             )
-
+        image = info.context.FILES.get("image", None)
         room = ChatRoom.objects.create(
-            created_by=info.context.user, last_message_time=timezone.now()
+            created_by=info.context.user,
+            last_message_time=timezone.now(),
+            is_group=is_group,
+            title=title,
+            image=image,
         )
         for participant in participants:
-            ChatRoomParticipant.objects.create(profile=participant, room=room)
+            ChatRoomParticipant.objects.create(
+                profile=participant, room=room, accepted_at=timezone.now()
+            )
 
         return ChatRoomCreate(
             profile=profile,
