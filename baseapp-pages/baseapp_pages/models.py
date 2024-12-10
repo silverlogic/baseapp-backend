@@ -146,11 +146,11 @@ def conditional_decorator(dec, condition):
     return decorator
 
 
-@pghistory.track(
-    pghistory.InsertEvent(),
-    pghistory.UpdateEvent(),
-    pghistory.DeleteEvent(),
-)
+# @pghistory.track(
+#     pghistory.InsertEvent(),
+#     pghistory.UpdateEvent(),
+#     pghistory.DeleteEvent(),
+# )
 class Page(AbstractPage):
     class Meta:
         swappable = swapper.swappable_setting("baseapp_pages", "Page")

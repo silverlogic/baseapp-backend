@@ -49,6 +49,7 @@ class AbstractBaseReport(TimeStampedModel):
 
     class Meta:
         abstract = True
+        unique_together = [["user", "target_content_type", "target_object_id"]]
         indexes = [
             models.Index(fields=["target_content_type", "target_object_id"]),
         ]
@@ -73,7 +74,6 @@ class AbstractBaseReport(TimeStampedModel):
 
 class Report(AbstractBaseReport):
     class Meta:
-        unique_together = [["user", "target_content_type", "target_object_id"]]
         swappable = swapper.swappable_setting("baseapp_reports", "Report")
 
 
