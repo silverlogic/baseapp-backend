@@ -82,6 +82,12 @@ class Rate(AbstractBaseRate):
         unique_together = [["user", "target_content_type", "target_object_id"]]
         swappable = swapper.swappable_setting("baseapp_ratings", "Rate")
 
+    @classmethod
+    def get_graphql_object_type(cls):
+        from .graphql.object_types import RatingObjectType
+
+        return RatingObjectType
+
 
 SwappedRating = swapper.load_model("baseapp_ratings", "Rate", required=False, require_ready=False)
 
