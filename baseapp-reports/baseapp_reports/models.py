@@ -4,6 +4,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelatio
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from baseapp_core.graphql import RelayModel
 from model_utils.models import TimeStampedModel
 
 
@@ -18,7 +19,7 @@ def default_reports_count():
     return d
 
 
-class AbstractBaseReport(TimeStampedModel):
+class AbstractBaseReport(RelayModel, TimeStampedModel):
     class ReportTypes(models.IntegerChoices):
         SPAM = 1, _("Spam")
         INAPPROPRIATE = 2, _("Inappropriate")
@@ -75,6 +76,11 @@ class AbstractBaseReport(TimeStampedModel):
 class Report(AbstractBaseReport):
     class Meta:
         swappable = swapper.swappable_setting("baseapp_reports", "Report")
+
+    @classmethod
+    def get_graphql_object_type(cls):
+        from .graphql.object_types import ReportObjectType
+        return ReportObjectType
 
 
 def update_reports_count(target):
