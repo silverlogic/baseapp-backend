@@ -12,10 +12,11 @@ from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from graphql_relay.connection.arrayconnection import offset_to_cursor
 
-from .object_types import RatingObjectType, RatingsInterface
+from .object_types import RatingsInterface
 
 RateModel = swapper.load_model("baseapp_ratings", "Rate")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
+RatingObjectType = RateModel.get_graphql_object_type()
 
 
 class RateCreate(RelayMutation):

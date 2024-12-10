@@ -1,7 +1,11 @@
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
-from baseapp_core.graphql import DjangoObjectType, get_pk_from_relay_id
+from baseapp_core.graphql import (
+    DjangoObjectType,
+    get_object_type_for_model,
+    get_pk_from_relay_id,
+)
 from django.contrib.contenttypes.models import ContentType
 from graphene import relay
 from graphene_django import DjangoConnectionField
@@ -14,10 +18,10 @@ class RatingsInterface(relay.Node):
     ratings_count = graphene.Int()
     ratings_sum = graphene.Int()
     ratings_average = graphene.Float()
-    ratings = DjangoConnectionField(lambda: RatingObjectType)
+    ratings = DjangoConnectionField(get_object_type_for_model(RateModel))
     is_ratings_enabled = graphene.Boolean(required=True)
     my_rating = graphene.Field(
-        lambda: RatingObjectType,
+        get_object_type_for_model(RateModel),
         required=False,
         profile_id=graphene.ID(required=False),
     )
@@ -52,7 +56,7 @@ class RatingsInterface(relay.Node):
             ).first()
 
 
-class RatingObjectType(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
+class BaseRatingObjectType:
     target = graphene.Field(relay.Node)
 
     class Meta:
@@ -72,5 +76,11 @@ class RatingObjectType(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
     def get_node(self, info, id):
         if not info.context.user.has_perm("baseapp_ratings.view_rate"):
             return None
-        node = super().get_node(info, id)
-        return node
+        return super().get_node(info, id)
+
+
+class RatingObjectType(
+    BaseRatingObjectType, gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
+):
+    class Meta(BaseRatingObjectType.Meta):
+        pass

@@ -146,11 +146,12 @@ def conditional_decorator(dec, condition):
     return decorator
 
 
-@pghistory.track(
-    pghistory.InsertEvent(),
-    pghistory.UpdateEvent(),
-    pghistory.DeleteEvent(),
-)
 class Page(AbstractPage):
     class Meta:
         swappable = swapper.swappable_setting("baseapp_pages", "Page")
+
+    @classmethod
+    def get_graphql_object_type(cls):
+        from .graphql.object_types import PageObjectType
+
+        return PageObjectType
