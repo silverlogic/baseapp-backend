@@ -6,7 +6,7 @@ from allauth.mfa.utils import is_mfa_enabled
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.http import HttpResponseRedirect, QueryDict
 from django.urls import reverse
-
+from django.conf import settings
 
 def mfa_required(function=None):
     def decorator(view_func):
@@ -18,7 +18,7 @@ def mfa_required(function=None):
             ):
                 return view_func(request, *args, **kwargs)
 
-            if is_mfa_enabled(request.user):
+            if is_mfa_enabled(request.user) or settings.BASEAPP_ADMIN_MFA_REQUIRED is False:
                 return view_func(request, *args, **kwargs)
             else:
                 # TODO: MFA Follow Up | Admin Authentication via frontend
