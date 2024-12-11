@@ -1,13 +1,12 @@
+from baseapp_wagtail.settings import (
+    WAGTAIL_INSTALLED_APPS,
+    WAGTAIL_INSTALLED_INTERNAL_APPS,
+)
 from django.apps import apps
 from django.contrib.auth.models import Permission
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
-
-from baseapp_wagtail.settings import (
-    WAGTAIL_INSTALLED_APPS,
-    WAGTAIL_INSTALLED_INTERNAL_APPS,
-)
 
 
 class Command(BaseCommand):

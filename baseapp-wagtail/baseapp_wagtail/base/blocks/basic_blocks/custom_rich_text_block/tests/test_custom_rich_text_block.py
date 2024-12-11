@@ -1,7 +1,6 @@
-from wagtail.rich_text import RichText
-
 from baseapp_wagtail.tests.mixins import TestPageContextMixin
 from baseapp_wagtail.tests.utils.blocks_helpers import BlocksHelper
+from wagtail.rich_text import RichText
 
 
 class CustomRichTextBlockTests(BlocksHelper, TestPageContextMixin):

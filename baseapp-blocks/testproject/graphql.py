@@ -1,5 +1,4 @@
 import graphene
-
 from baseapp_blocks.graphql.mutations import BlocksMutations
 from testproject.testapp.graphql.queries import UsersQueries
 

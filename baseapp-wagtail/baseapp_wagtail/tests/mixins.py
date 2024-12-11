@@ -1,13 +1,12 @@
 import urllib.parse
 
+import baseapp_wagtail.medias.tests.factories as medias_factories
 from baseapp_core.tests.factories import UserFactory
+from baseapp_wagtail.tests.models import PageForTests, StandardPage
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from wagtail.models import Page, Site
 from wagtail.test.utils import WagtailPageTestCase, WagtailTestUtils
-
-import baseapp_wagtail.medias.tests.factories as medias_factories
-from baseapp_wagtail.tests.models import PageForTests, StandardPage
 
 
 @override_settings(ALLOWED_HOSTS=["testserver", "localhost"])

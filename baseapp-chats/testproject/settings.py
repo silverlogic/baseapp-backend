@@ -5,7 +5,6 @@ from django.utils.translation import gettext_lazy as _
 INSTALLED_APPS += [
     "channels",
     "avatar",
-    "trench",
     "rest_framework_simplejwt",
     "testproject.testapp",
     "push_notifications",

@@ -1,10 +1,9 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from baseapp_core.channels import JWTAuthMiddleware
 from channels.middleware import BaseMiddleware
 from rest_framework_simplejwt.exceptions import InvalidToken
-
-from baseapp_core.channels import JWTAuthMiddleware
 
 pytestmark = pytest.mark.django_db
 
