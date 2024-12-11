@@ -1,0 +1,8 @@
+{% extends 'emails/base.html.j2' %}
+
+{% block content %}
+<p class="t-h5">{% trans %}Hello,{% endtrans %}</p>
+<p class="t-body2 gap-top-3">{% trans %}Your email address has been changed to {{ new_email }}. Please click below to confirm your new email address:{% endtrans %}</p>
+<a href="{{ url }}" class="button t-button gap-top-3 margin-center">{% trans %}Confirm Email Change{% endtrans %}</a>
+<p class="t-caption gap-top-3 text-center">{% trans %}If you did not initiate this change, please contact our support team as soon as possible.{% endtrans %}</p>
+{% endblock %}

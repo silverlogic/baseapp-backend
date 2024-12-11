@@ -1,0 +1,13 @@
+{% extends 'emails/base.txt.j2' %}
+
+{% block content %}
+{% trans %}Hello,{% endtrans %}
+
+{% trans %}Great to have you on board! Let's make sure your email is all set. Please confirm your email address by clicking the button below:{% endtrans %}
+
+{{ confirm_url }}
+
+{% trans %}Didn't sign up?{% endtrans %}
+
+{% trans %}No worries, you can safely ignore this email.{% endtrans %}
+{% endblock content %}

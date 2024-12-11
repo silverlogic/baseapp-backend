@@ -1,0 +1,7 @@
+{% extends 'emails/base.html.j2' %}
+
+{% block content %}
+<p class="t-h5">{% trans %}Hello Superusers,{% endtrans %}</p>
+<p class="t-body2 gap-top-3">{% trans %}Please be notified that {{ assignee }} is a superuser now assigned by {{ assigner }}.{% endtrans %}</p>
+<p class="t-caption gap-top-3 text-center">{% trans %}If this was unexpected, please contact our support team.{% endtrans %}</p>
+{% endblock %}

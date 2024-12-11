@@ -1,0 +1,11 @@
+{% extends 'emails/base.txt.j2' %}
+
+{% block content %}
+{% trans %}Hello,{% endtrans %}
+
+{% trans %}Your email address has been changed to {{ new_email }}. Please click below to confirm your new email address:{% endtrans %}
+
+{{ url }}
+
+{% trans %}If you did not initiate this change, please contact our support team as soon as possible.{% endtrans %}
+{% endblock content %}

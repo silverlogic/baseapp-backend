@@ -1,0 +1,11 @@
+{% extends 'emails/base.html.j2' %}
+
+{% block content %}
+<p class="t-h5">{% trans %}Hello,{% endtrans %}</p>
+<p class="t-body2 gap-top-3">{% trans %}Great to have you on board! Let's make sure your email is all set. Please confirm your email address by clicking the button below:{% endtrans %}</p>
+<a href="{{ confirm_url }}" class="button t-button gap-top-3 margin-center">{% trans %}Confirm Email Address{% endtrans %}</a>
+<p class="t-caption gap-top-3 text-center">
+    {% trans %}Didn't sign up?<br />{% endtrans %}
+    {% trans %}No worries, you can safely ignore this email.{% endtrans %}
+</p>
+{% endblock %}
