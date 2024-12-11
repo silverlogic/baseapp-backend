@@ -39,6 +39,7 @@ def send_message(
     ChatRoomOnNewMessage.new_message(room_id=room_id or room.relay_id, message=message)
 
     room.last_message_time = message.created
+    room.last_message = message
     room.save()
 
     return message

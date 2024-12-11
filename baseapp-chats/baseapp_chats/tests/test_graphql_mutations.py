@@ -5,6 +5,7 @@ from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.tests.factories import ProfileFactory
 
 from .factories import ChatRoomFactory, ChatRoomParticipantFactory, MessageFactory
+from .test_graphql_queries import PROFILE_ROOMS_GRAPHQL
 
 pytestmark = pytest.mark.django_db
 
@@ -64,6 +65,20 @@ READ_MESSAGE_GRAPHQL = """
             room {
                 id
                 unreadMessagesCount
+            }
+            errors {
+                field
+                messages
+            }
+        }
+    }
+"""
+
+ARCHIVE_CHAT_ROOM_GRAPHQL = """
+    mutation ChatRoomArchiveMutation($input: ChatRoomArchiveInput!) {
+        chatRoomArchive(input: $input) {
+            room {
+                id
             }
             errors {
                 field
@@ -426,3 +441,59 @@ def test_blocked_user_cant_create_room_with_user(django_user_client, graphql_use
         content["data"]["chatRoomCreate"]["errors"][0]["messages"][0]
         == "You can't create a chatroom with those participants"
     )
+
+
+@pytest.mark.celery_app
+def test_user_can_archive_chatroom(django_user_client, graphql_user_client, celery_config):
+    user = django_user_client.user
+    room = ChatRoomFactory(created_by=user)
+    friend = ProfileFactory()
+
+    ChatRoomParticipantFactory(profile=user.profile, room=room)
+    ChatRoomParticipantFactory(profile=friend, room=room)
+
+    # Archive chatroom and query to verify
+    response = graphql_user_client(
+        ARCHIVE_CHAT_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "roomId": room.relay_id,
+                "profileId": user.profile.relay_id,
+                "archive": True,
+            }
+        },
+    )
+
+    content = response.json()
+
+    assert content["data"]["chatRoomArchive"]["room"]["id"] == room.relay_id
+
+    response = graphql_user_client(
+        PROFILE_ROOMS_GRAPHQL,
+        variables={"profileId": user.profile.relay_id, "archived": True},
+    )
+
+    content = response.json()
+
+    assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 1
+
+    # Unarchive chatroom and query to verify
+    response = graphql_user_client(
+        ARCHIVE_CHAT_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "roomId": room.relay_id,
+                "profileId": user.profile.relay_id,
+                "archive": False,
+            }
+        },
+    )
+
+    response = graphql_user_client(
+        PROFILE_ROOMS_GRAPHQL,
+        variables={"profileId": user.profile.relay_id, "archived": True},
+    )
+
+    content = response.json()
+
+    assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 0
