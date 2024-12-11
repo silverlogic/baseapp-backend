@@ -7,9 +7,10 @@ from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from graphql_relay.connection.arrayconnection import offset_to_cursor
 
-from .object_types import ReactionObjectType, ReactionsInterface, ReactionTypesEnum
+from .object_types import ReactionsInterface, ReactionTypesEnum
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
+ReactionObjectType = Reaction.get_graphql_object_type()
 
 
 class ReactionToggle(RelayMutation):

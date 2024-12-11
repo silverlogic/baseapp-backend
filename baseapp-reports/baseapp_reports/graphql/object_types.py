@@ -1,7 +1,7 @@
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
-from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
 from django.contrib.contenttypes.models import ContentType
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
@@ -24,8 +24,8 @@ ReportsCount = create_object_type_from_enum("ReportsCount", Report.ReportTypes)
 
 class ReportsInterface(relay.Node):
     reports_count = graphene.Field(ReportsCount)
-    reports = DjangoFilterConnectionField(lambda: ReportObjectType)
-    my_reports = graphene.Field(lambda: ReportObjectType, required=False)
+    reports = DjangoFilterConnectionField(get_object_type_for_model(Report))
+    my_reports = graphene.Field(get_object_type_for_model(Report), required=False)
 
     def resolve_reactions(self, info, **kwargs):
         target_content_type = ContentType.objects.get_for_model(self)
@@ -44,7 +44,7 @@ class ReportsInterface(relay.Node):
             ).first()
 
 
-class ReportObjectType(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
+class BaseReportObjectType:
     target = graphene.Field(relay.Node)
     report_type = graphene.Field(ReportTypesEnum)
 
@@ -70,3 +70,10 @@ class ReportObjectType(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
         if not info.context.user.has_perm("baseapp_reports.view_report", node):
             return None
         return node
+
+
+class ReportObjectType(
+    BaseReportObjectType, gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
+):
+    class Meta(BaseReportObjectType.Meta):
+        pass
