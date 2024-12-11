@@ -24,26 +24,16 @@ AUTH_USER_MODEL = "testapp.User"
 LANGUAGE_CODE = "en"
 LANGUAGES = [("en", _("English")), ("es", _("Spanish")), ("pt", _("Portuguese"))]
 
-# MIDDLEWARE = [
-#     "django.contrib.sessions.middleware.SessionMiddleware",
-#     "django.contrib.auth.middleware.AuthenticationMiddleware",
-#     "baseapp_auth.permissions.UsersPermissionsBackend",
-#     "baseapp_profiles.middleware.CurrentProfileMiddleware",
-#     "django.contrib.messages.middleware.MessageMiddleware",
-# ]
-
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
-    # "baseapp_auth.permissions.UsersPermissionsBackend",
-    # "baseapp_profiles.permissions.ProfilesPermissionsBackend",
     "baseapp_organizations.permissions.OrganizationsPermissionsBackend",
 ]
 
 
-# # Graphene
-# GRAPHENE["MIDDLEWARE"] = (
-#     "baseapp_profiles.graphql.middleware.CurrentProfileMiddleware",
-# ) + GRAPHENE["MIDDLEWARE"]
+# Graphene
+GRAPHENE["MIDDLEWARE"] = (
+    "baseapp_profiles.graphql.middleware.CurrentProfileMiddleware",
+) + GRAPHENE["MIDDLEWARE"]
 
 BASEAPP_ORGANIZATIONS_ORGANIZATION_MODEL = "baseapp_organizations.Organization"
 BASEAPP_PROFILES_PROFILE_MODEL = "baseapp_profiles.Profile"
