@@ -89,6 +89,10 @@ jobs:
     with:
       project: baseapp-wagtail
       custom_tests_path: "baseapp-wagtail"
+  baseapp-organizations:
+    uses: ./.github/workflows/project-workflow.yml
+    with:
+      project: baseapp-organizations
   baseapp:
     uses: ./.github/workflows/project-workflow.yml
     with:
