@@ -115,5 +115,8 @@ class ActivityLogObjectType(BaseActivityLogObjectType, DjangoObjectType):
 
 class ActivityLogGroupType(graphene.ObjectType):
     user_id = graphene.Int()
-    logs = graphene.List(ActivityLogObjectType)
+    logs = DjangoFilterConnectionField(ActivityLogObjectType)
     last_activity_timestamp = graphene.DateTime()
+
+    def resolve_logs(self, info, **kwargs):
+        return self.logs
