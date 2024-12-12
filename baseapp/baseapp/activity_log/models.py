@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import swapper
 from baseapp_core.graphql import RelayModel
 from django.contrib.auth import get_user_model
