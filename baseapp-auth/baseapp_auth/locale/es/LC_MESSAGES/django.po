@@ -382,3 +382,9 @@ msgstr "Bienvenido"
 #~ msgstr ""
 #~ "Para confirmar su dirección de correo electrónico, haga clic en el botón a "
 #~ "continuación:"
+
+msgid "Welcome to BaseApp!"
+msgstr "Bienvenido a BaseApp!"
+
+msgid "Great to have you on board! Your email has been confirmed. You can start using BaseApp now."
+msgstr "¡Genial tenerte a bordo! Tu correo electrónico ha sido confirmado. Ahora puedes empezar a usar BaseApp."

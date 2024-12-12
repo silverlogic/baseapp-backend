@@ -1,6 +1,7 @@
 from django.apps import AppConfig
 
 from .settings import JWT_CLAIM_SERIALIZER_CLASS, SIMPLE_JWT
+from allauth.account.signals import email_confirmed
 
 
 class AuthConfig(AppConfig):
@@ -11,6 +12,7 @@ class AuthConfig(AppConfig):
 
     def ready(self):
         from django.conf import settings  # noqa
+        from .extensions.allauth.account.signals import on_email_confirmed
 
         # Set default settings
         settings.SIMPLE_JWT = {
@@ -20,3 +22,6 @@ class AuthConfig(AppConfig):
         settings.JWT_CLAIM_SERIALIZER_CLASS = getattr(
             settings, "JWT_CLAIM_SERIALIZER_CLASS", JWT_CLAIM_SERIALIZER_CLASS
         )
+
+        # Set up signal to send welcome email to new users
+        email_confirmed.connect(on_email_confirmed)
