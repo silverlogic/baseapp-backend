@@ -1,6 +1,7 @@
 import uuid
 
 import swapper
+from model_utils import FieldTracker
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import random_name_in
 from django.apps import apps
@@ -86,6 +87,8 @@ class AbstractProfile(*inheritances):
         db_constraint=False,
     )
 
+    tracker = FieldTracker(fields=["image", "banner_image", "biography"])
+
     objects = ProfileManager()
 
     class Meta:
@@ -156,6 +159,8 @@ class ProfilableModel(models.Model):
 
 
 class Profile(AbstractProfile):
+    tracker = FieldTracker(fields=["image", "banner_image", "biography"])
+
     class Meta(AbstractProfile.Meta):
         swappable = swapper.swappable_setting("baseapp_profiles", "Profile")
 
