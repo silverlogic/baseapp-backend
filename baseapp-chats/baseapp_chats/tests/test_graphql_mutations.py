@@ -3,6 +3,7 @@ import swapper
 from baseapp_blocks.tests.factories import BlockFactory
 from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.tests.factories import ProfileFactory
+from django.test.client import MULTIPART_CONTENT
 
 from .factories import ChatRoomFactory, ChatRoomParticipantFactory, MessageFactory
 from .test_graphql_queries import PROFILE_ROOMS_GRAPHQL
@@ -42,12 +43,17 @@ CREATE_ROOM_GRAPHQL = """
             room {
                 node {
                     id
+                    title
+                    isGroup
                     participants {
                         edges {
                             node {
                                 id
                             }
                         }
+                    }
+                    image(width: 100, height: 100) {
+                        url
                     }
                 }
             }
@@ -565,3 +571,86 @@ def test_user_can_archive_chatroom(django_user_client, graphql_user_client, cele
     content = response.json()
 
     assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 0
+
+
+def test_user_can_create_group(django_user_client, graphql_user_client, image_djangofile):
+    participant = ProfileFactory()
+    participant_2 = ProfileFactory()
+    response = graphql_user_client(
+        CREATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "isGroup": True,
+                "title": "group",
+                "participants": [
+                    participant.relay_id,
+                    participant_2.relay_id,
+                ],
+            }
+        },
+        content_type=MULTIPART_CONTENT,
+        extra={"image": image_djangofile},
+    )
+
+    content = response.json()
+
+    assert content["data"]["chatRoomCreate"]["room"]["node"]["id"]
+    assert content["data"]["chatRoomCreate"]["room"]["node"]["title"] == "group"
+    assert content["data"]["chatRoomCreate"]["room"]["node"]["isGroup"]
+    assert len(content["data"]["chatRoomCreate"]["room"]["node"]["participants"]["edges"]) == 3
+    assert content["data"]["chatRoomCreate"]["room"]["node"]["image"]["url"].startswith("http://")
+
+
+def test_user_cant_create_room_with_more_than_2_participants_when_is_group_is_false(
+    django_user_client, graphql_user_client
+):
+    friend = ProfileFactory()
+    friend_2 = ProfileFactory()
+
+    response = graphql_user_client(
+        CREATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "title": "group",
+                "participants": [
+                    friend.relay_id,
+                    friend_2.relay_id,
+                ],
+            }
+        },
+    )
+
+    content = response.json()
+
+    assert (
+        content["data"]["chatRoomCreate"]["errors"][0]["messages"][0]
+        == "Is group must be true if there are more than 2 participants"
+    )
+
+
+def test_user_cant_create_group_without_title(django_user_client, graphql_user_client):
+    friend = ProfileFactory()
+    friend_2 = ProfileFactory()
+
+    response = graphql_user_client(
+        CREATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "isGroup": True,
+                "participants": [
+                    friend.relay_id,
+                    friend_2.relay_id,
+                ],
+            }
+        },
+    )
+
+    content = response.json()
+
+    assert (
+        content["data"]["chatRoomCreate"]["errors"][0]["messages"][0]
+        == "Title is required for group chats"
+    )
