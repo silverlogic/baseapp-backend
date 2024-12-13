@@ -9,7 +9,6 @@ from .tokens import (
     ChangeEmailConfirmTokenGenerator,
     ChangeEmailVerifyTokenGenerator,
     ChangeExpiredPasswordTokenGenerator,
-    ConfirmEmailTokenGenerator,
 )
 
 User = get_user_model()

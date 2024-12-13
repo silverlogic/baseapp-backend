@@ -3,10 +3,11 @@ from urllib.parse import urlparse, urlunparse
 
 from allauth.account.utils import get_next_redirect_url
 from allauth.mfa.utils import is_mfa_enabled
+from django.conf import settings
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.http import HttpResponseRedirect, QueryDict
 from django.urls import reverse
-from django.conf import settings
+
 
 def mfa_required(function=None):
     def decorator(view_func):
