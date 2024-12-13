@@ -12,6 +12,8 @@ from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from rest_framework import serializers
 
+from .object_types import ProfileRoleTypesEnum
+
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
@@ -114,16 +116,13 @@ class ProfileCreate(SerializerMutation):
         )
 
 
-RoleTypeEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoles)
-
-
 class RoleUpdate(RelayMutation):
     profile_user_role = graphene.Field(get_object_type_for_model(ProfileUserRole))
 
     class Input:
         profile_id = graphene.ID(required=True)
         user_id = graphene.ID(required=True)
-        role_type = graphene.Field(RoleTypeEnum)
+        role_type = graphene.Field(ProfileRoleTypesEnum)
 
     @classmethod
     @login_required

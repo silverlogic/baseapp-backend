@@ -34,34 +34,6 @@ PROFILE_UPDATE_GRAPHQL = """
     }
 """
 
-# PROFILE_ROLE_UPDATE_GRAPHQL = """
-#     mutation ProfileRoleUpdateMutation($input: RoleUpdateInput!) {
-#         roleUpdate(input: $input) {
-#             profile {
-#                 id
-#                 members {
-#                 totalCount
-#                 edges {
-#                     node {
-#                     id
-#                     role
-#                     status
-#                     }
-#                 }
-#                 pageInfo {
-#                     endCursor
-#                     hasNextPage
-#                 }
-#                 }
-#             }
-#             errors {
-#                 field
-#                 messages
-#             }
-#         }
-#     }
-# """
-
 PROFILE_ROLE_UPDATE_GRAPHQL = """
 mutation ProfileRoleUpdateMutation($input: RoleUpdateInput!) {
     roleUpdate(input: $input) {

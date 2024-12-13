@@ -131,7 +131,7 @@ class BaseProfileObjectType(*inheritances, object):
         return ProfileMetadata(instance, info)
 
     @classmethod
-    def resolve_members(cls, instance, info, order_by_status=None, **kwargs):
+    def resolve_members(cls, instance, info, **kwargs):
         if not info.context.user.has_perm("baseapp_profiles.view_profile_members", instance):
             return instance.members.none()
 
