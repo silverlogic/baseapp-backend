@@ -602,34 +602,6 @@ def test_user_can_create_group(django_user_client, graphql_user_client, image_dj
     assert content["data"]["chatRoomCreate"]["room"]["node"]["image"]["url"].startswith("http://")
 
 
-def test_user_cant_create_room_with_more_than_2_participants_when_is_group_is_false(
-    django_user_client, graphql_user_client
-):
-    friend = ProfileFactory()
-    friend_2 = ProfileFactory()
-
-    response = graphql_user_client(
-        CREATE_ROOM_GRAPHQL,
-        variables={
-            "input": {
-                "profileId": django_user_client.user.profile.relay_id,
-                "title": "group",
-                "participants": [
-                    friend.relay_id,
-                    friend_2.relay_id,
-                ],
-            }
-        },
-    )
-
-    content = response.json()
-
-    assert (
-        content["data"]["chatRoomCreate"]["errors"][0]["messages"][0]
-        == "Is group must be true if there are more than 2 participants"
-    )
-
-
 def test_user_cant_create_group_without_title(django_user_client, graphql_user_client):
     friend = ProfileFactory()
     friend_2 = ProfileFactory()

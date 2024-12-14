@@ -87,15 +87,7 @@ class ChatRoomCreate(RelayMutation):
                 ]
             )
 
-        if len(participants) > 2 and not is_group:
-            return ChatRoomCreate(
-                errors=[
-                    ErrorType(
-                        field="is_group",
-                        messages=[_("Is group must be true if there are more than 2 participants")],
-                    )
-                ]
-            )
+        is_group = is_group or len(participants) > 2
         title = input.get("title", None)
         if is_group and not title:
             return ChatRoomCreate(
@@ -144,10 +136,13 @@ class ChatRoomCreate(RelayMutation):
             title=title,
             image=image,
         )
-        for participant in participants:
-            ChatRoomParticipant.objects.create(
-                profile=participant, room=room, accepted_at=timezone.now()
-            )
+
+        ChatRoomParticipant.objects.bulk_create(
+            [
+                ChatRoomParticipant(profile=participant, room=room, accepted_at=timezone.now())
+                for participant in participants
+            ]
+        )
 
         return ChatRoomCreate(
             profile=profile,
