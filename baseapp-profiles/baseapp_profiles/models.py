@@ -1,5 +1,6 @@
 import uuid
 
+import pghistory
 import swapper
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import random_name_in
@@ -155,6 +156,11 @@ class ProfilableModel(models.Model):
         abstract = True
 
 
+@pghistory.track(
+    pghistory.InsertEvent(),
+    pghistory.UpdateEvent(),
+    pghistory.DeleteEvent(),
+)
 class Profile(AbstractProfile):
     class Meta(AbstractProfile.Meta):
         swappable = swapper.swappable_setting("baseapp_profiles", "Profile")
