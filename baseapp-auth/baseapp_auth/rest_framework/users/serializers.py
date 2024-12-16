@@ -68,6 +68,8 @@ class UserBaseSerializer(ModelSerializer):
             "referred_by_code",
             "phone_number",
             "preferred_language",
+            "first_name",
+            "last_name",
         )
         private_fields = (
             "email",

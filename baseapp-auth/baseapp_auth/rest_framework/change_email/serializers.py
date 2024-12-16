@@ -5,6 +5,7 @@ from baseapp_auth.tokens import (
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
+from allauth.account.models import EmailAddress
 
 User = get_user_model()
 
@@ -52,4 +53,8 @@ class ChangeEmailVerifySerializer(serializers.Serializer):
         instance.is_new_email_confirmed = False
         instance.is_email_verified = True
         instance.save()
+        EmailAddress.objects.filter(user=instance, primary=True).update(primary=False)
+        EmailAddress.objects.create(
+            user=instance, email=instance.new_email, verified=True, primary=True
+        )
         return instance
