@@ -1,6 +1,5 @@
 import factory
 import swapper
-
 from baseapp_pages.models import URLPath
 
 Page = swapper.load_model("baseapp_pages", "Page")

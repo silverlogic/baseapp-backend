@@ -8,7 +8,6 @@ APPS_DIR = BASE_DIR
 INSTALLED_APPS += [
     "channels",
     "avatar",
-    "trench",
     "rest_framework_simplejwt",
     "baseapp_auth",
     "testproject.testapp",
