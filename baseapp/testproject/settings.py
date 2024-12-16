@@ -47,6 +47,8 @@ AUTHENTICATION_BACKENDS = [
     "baseapp.activity_log.permissions.ActivityLogPermissionsBackend",
 ]
 
+ADMIN_TIME_ZONE = "UTC"
+
 BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False
 
 # NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"
