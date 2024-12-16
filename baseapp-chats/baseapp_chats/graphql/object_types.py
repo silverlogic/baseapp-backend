@@ -119,6 +119,19 @@ class BaseChatRoomObjectType:
             return None
 
     def resolve_all_messages(self, info, **kwargs):
+        if self.is_group:
+            profile = (
+                info.context.user.current_profile
+                if hasattr(info.context.user, "current_profile")
+                else (
+                    info.context.user.profile.pk if hasattr(info.context.user, "profile") else None
+                )
+            )
+            participant = self.participants.filter(profile=profile).first()
+            if participant:
+                return self.messages.filter(created__gte=participant.accepted_at).order_by(
+                    "-created"
+                )
         return self.messages.all().order_by("-created")
 
     def resolve_is_archived(self, info, profile_id=None, **kwargs):
