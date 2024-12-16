@@ -19,7 +19,7 @@ class AuthTokenSessionTokenStrategy(SessionTokenStrategy):
         if (user := request.user) and request.user.is_authenticated:
             token, _ = Token.objects.get_or_create(user=user)
             return dict(access_token=token.key)
-        return super(AuthTokenSessionTokenStrategy, self).create_access_token(request=request)
+        return super(AuthTokenSessionTokenStrategy, self).create_access_token_payload(request=request)
 
 
 class JWTSessionTokenStrategy(SessionTokenStrategy):
@@ -40,7 +40,7 @@ class JWTSessionTokenStrategy(SessionTokenStrategy):
                 for key, value in data.items():
                     token[key] = value
                 return dict(access_token=dict(refresh=str(token), access=str(token.access_token)))
-            except ImportError:
+            except ImportError as error:
                 msg = "Could not import serializer '%s'" % self.__class__._claim_serializer_class
-                raise ImportError(msg)
+                raise ImportError(msg) from error
         return super(JWTSessionTokenStrategy, self).create_access_token(request=request)

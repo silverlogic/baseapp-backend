@@ -7,7 +7,6 @@ from baseapp_core.rest_framework.fields import ThumbnailImageField
 from baseapp_core.rest_framework.serializers import ModelSerializer
 from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
 
-# from constance import config
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType

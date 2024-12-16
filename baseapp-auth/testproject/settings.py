@@ -97,12 +97,12 @@ MFA_RECOVERY_CODE_COUNT = 10
 MFA_TOTP_DIGITS = 6
 MFA_TOTP_ISSUER = "BaseApp"
 MFA_SUPPORTED_TYPES = [
-    # TODO: Implement webauthn in another story
+    # TODO: MFA Follow Up | Sign Up & Login with Passkey
     # "webauthn",
     "totp",
     "recovery_codes",
 ]
-# TODO: Implement webauthn in another story
+# TODO: MFA Follow Up | Sign Up & Login with Passkey
 MFA_PASSKEY_LOGIN_ENABLED = False
-# TODO: Implement webauthn in another story
+# TODO: MFA Follow Up | Sign Up & Login with Passkey
 MFA_PASSKEY_SIGNUP_ENABLED = False
