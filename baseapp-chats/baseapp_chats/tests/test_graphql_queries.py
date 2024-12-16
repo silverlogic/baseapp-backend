@@ -2,9 +2,11 @@ from datetime import timedelta
 
 import pytest
 from baseapp_blocks.tests.factories import BlockFactory
+from baseapp_core.graphql.testing.fixtures import graphql_query
 from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.tests.factories import ProfileFactory
 from django.utils import timezone
+from freezegun import freeze_time
 
 from .factories import ChatRoomFactory, ChatRoomParticipantFactory, MessageFactory
 
@@ -334,3 +336,51 @@ def test_user_cant_open_room_if_blocked(graphql_user_client, django_user_client)
     response = graphql_user_client(ROOM_GRAPHQL, variables={"roomId": room.relay_id})
     content = response.json()
     assert content["data"]["chatRoom"] is None
+
+
+def test_new_participant_cant_list_previous_messages_when_joining_group_room(
+    graphql_user_client, django_user_client, django_client
+):
+    with freeze_time("2024-12-01 10:00:00") as frozen_time:
+        existing_profile_1 = ProfileFactory()
+        existing_profile_2 = ProfileFactory()
+        room = ChatRoomFactory(created_by=existing_profile_1.owner, participants_count=2)
+
+        ChatRoomParticipantFactory(
+            profile=existing_profile_1, room=room, accepted_at=timezone.now()
+        )
+        ChatRoomParticipantFactory(
+            profile=existing_profile_2, room=room, accepted_at=timezone.now()
+        )
+
+        MessageFactory(room=room, profile=existing_profile_1)
+        MessageFactory(room=room, profile=existing_profile_2)
+
+        frozen_time.move_to(timezone.now() + timedelta(hours=1, minutes=5))
+
+        ChatRoomParticipantFactory(
+            profile=django_user_client.user.profile, room=room, accepted_at=timezone.now()
+        )
+        room.participants_count = 3
+        room.is_group = True
+        room.save()
+        room.refresh_from_db()
+
+        MessageFactory(room=room, profile=existing_profile_1)
+        MessageFactory(room=room, profile=existing_profile_2)
+
+        response = graphql_user_client(ROOM_GRAPHQL, variables={"roomId": room.relay_id})
+
+        content = response.json()
+
+        assert len(content["data"]["chatRoom"]["allMessages"]["edges"]) == 2
+
+        django_client.force_login(existing_profile_1.owner)
+
+        response = graphql_query(
+            ROOM_GRAPHQL, variables={"roomId": room.relay_id}, client=django_client
+        )
+
+        content = response.json()
+
+        assert len(content["data"]["chatRoom"]["allMessages"]["edges"]) == 4
