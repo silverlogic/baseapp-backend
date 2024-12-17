@@ -15,6 +15,7 @@ INSTALLED_APPS += [
     "baseapp.activity_log",
     "testproject.testapp",
     "testproject.comments",
+    "testproject.profiles",
 ]
 
 MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")
@@ -53,3 +54,6 @@ BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False
 
 # Comments
 BASEAPP_COMMENTS_COMMENT_MODEL = "comments.Comment"
+
+# Profiles
+BASEAPP_PROFILES_PROFILE_MODEL = "profiles.Profile"
