@@ -1,7 +1,10 @@
+from unittest.mock import patch
+
 import pytest
 import swapper
 from baseapp_comments.tests.factories import CommentFactory
 from baseapp_profiles.tests.factories import ProfileFactory
+from django.test import override_settings
 
 from baseapp_reactions.tests.factories import ReactionFactory
 
@@ -39,17 +42,22 @@ def test_anon_cant_react(graphql_client):
 def test_user_can_add_reaction(graphql_user_client):
     comment = CommentFactory()
 
-    # create reaction with type LIKE
-    graphql_user_client(
-        REACTION_TOGGLE_GRAPHQL,
-        variables={
-            "input": {
-                "targetObjectId": comment.relay_id,
-                "reactionType": ReactionTypes.LIKE.name,
-            }
-        },
-    )
-    assert Reaction.objects.count() == 1
+    with override_settings(BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS=True):
+        with patch(
+            "baseapp_reactions.notifications.send_reaction_created_notification.delay"
+        ) as mock:
+            # create reaction with type LIKE
+            graphql_user_client(
+                REACTION_TOGGLE_GRAPHQL,
+                variables={
+                    "input": {
+                        "targetObjectId": comment.relay_id,
+                        "reactionType": ReactionTypes.LIKE.name,
+                    }
+                },
+            )
+            assert mock.called
+            assert Reaction.objects.count() == 1
 
 
 def test_user_can_change_reaction(django_user_client, graphql_user_client):
@@ -57,7 +65,6 @@ def test_user_can_change_reaction(django_user_client, graphql_user_client):
     reaction = ReactionFactory(
         target=comment, user=django_user_client.user, reaction_type=ReactionTypes.LIKE
     )
-
     # change reaction with type LIKE to DISLIKE
     graphql_user_client(
         REACTION_TOGGLE_GRAPHQL,
@@ -68,7 +75,6 @@ def test_user_can_change_reaction(django_user_client, graphql_user_client):
             }
         },
     )
-
     comment.refresh_from_db()
     reaction.refresh_from_db()
     assert reaction.reaction_type == ReactionTypes.DISLIKE
@@ -79,6 +85,7 @@ def test_user_can_change_reaction(django_user_client, graphql_user_client):
 
 def test_user_can_remove_reaction(django_user_client, graphql_user_client):
     comment = CommentFactory()
+
     ReactionFactory(
         target=comment, user=django_user_client.user, reaction_type=ReactionTypes.DISLIKE
     )
@@ -103,16 +110,21 @@ def test_user_can_react_with_profile(django_user_client, graphql_user_client):
     profile = ProfileFactory(owner=django_user_client.user)
     target = CommentFactory()
 
-    graphql_user_client(
-        REACTION_TOGGLE_GRAPHQL,
-        variables={
-            "input": {
-                "targetObjectId": target.relay_id,
-                "reactionType": ReactionTypes.DISLIKE.name,
-                "profileObjectId": profile.relay_id,
-            }
-        },
-    )
+    with override_settings(BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS=True):
+        with patch(
+            "baseapp_reactions.notifications.send_reaction_created_notification.delay"
+        ) as mock:
+            graphql_user_client(
+                REACTION_TOGGLE_GRAPHQL,
+                variables={
+                    "input": {
+                        "targetObjectId": target.relay_id,
+                        "reactionType": ReactionTypes.DISLIKE.name,
+                        "profileObjectId": profile.relay_id,
+                    }
+                },
+            )
+            assert mock.called
     assert Reaction.objects.count() == 1
 
 
