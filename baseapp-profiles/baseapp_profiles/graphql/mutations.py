@@ -8,11 +8,13 @@ from baseapp_core.graphql import (
     login_required,
 )
 from baseapp_pages.models import URLPath
+from django.apps import apps
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from rest_framework import serializers
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
+app_label = Profile._meta.app_label
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
 
@@ -162,6 +164,13 @@ class ProfileUpdate(SerializerMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
+        activity_name = f"{app_label}.update_profile"
+
+        if apps.is_installed("baseapp.activity_log"):
+            from baseapp.activity_log.context import set_public_activity
+
+            set_public_activity(verb=activity_name)
+
         return super().mutate_and_get_payload(root, info, **input)
 
 
