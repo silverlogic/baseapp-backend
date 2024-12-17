@@ -23,7 +23,7 @@ class BaseChatRoomParticipantObjectType:
     class Meta:
         interfaces = (relay.Node,)
         model = ChatRoomParticipant
-        fields = ("id", "profile")
+        fields = ("id", "has_archived_room", "profile")
         filter_fields = ("profile__target_content_type",)
 
 
@@ -76,10 +76,17 @@ class BaseMessageObjectType:
             if not profile:
                 return None
         else:
-            if hasattr(info.context.user, "current_profile"):
-                profile_pk = info.context.user.current_profile.pk
-            else:
-                profile_pk = info.context.user.profile.pk
+            profile_pk = (
+                info.context.user.current_profile
+                if hasattr(info.context.user, "current_profile")
+                and hasattr(info.context.user.current_profile, "pk")
+                else (
+                    info.context.user.profile.pk
+                    if hasattr(info.context.user, "profile")
+                    and hasattr(info.context.user.profile, "pk")
+                    else None
+                )
+            )
 
         message_status = self.statuses.filter(profile_id=profile_pk).first()
 
@@ -96,9 +103,7 @@ class BaseChatRoomObjectType:
     participants = DjangoConnectionField(get_object_type_for_model(ChatRoomParticipant))
     unread_messages_count = graphene.Int(profile_id=graphene.ID(required=False))
     image = ThumbnailField(required=False)
-
-    def resolve_all_messages(self, info, **kwargs):
-        return self.messages.all().order_by("-created")
+    is_archived = graphene.Boolean(profile_id=graphene.ID(required=False))
 
     @classmethod
     def get_node(cls, info, id):
@@ -111,6 +116,29 @@ class BaseChatRoomObjectType:
         except cls._meta.model.DoesNotExist:
             return None
 
+    def resolve_all_messages(self, info, **kwargs):
+        return self.messages.all().order_by("-created")
+
+    def resolve_is_archived(self, info, profile_id=None, **kwargs):
+        if profile_id:
+            profile_pk = get_pk_from_relay_id(profile_id)
+            profile = Profile.objects.get_if_member(pk=profile_pk, user=info.context.user)
+            if not profile:
+                return None
+        else:
+            profile_pk = (
+                info.context.user.current_profile.pk
+                if hasattr(info.context.user, "current_profile")
+                and hasattr(info.context.user.current_profile, "pk")
+                else (
+                    info.context.user.profile.pk
+                    if hasattr(info.context.user, "profile")
+                    and hasattr(info.context.user.profile, "pk")
+                    else None
+                )
+            )
+        return self.participants.filter(profile_id=profile_pk, has_archived_room=True).exists()
+
     def resolve_unread_messages_count(self, info, profile_id=None, **kwargs):
         if profile_id:
             profile_pk = get_pk_from_relay_id(profile_id)
@@ -118,10 +146,17 @@ class BaseChatRoomObjectType:
             if not profile:
                 return None
         else:
-            if hasattr(info.context.user, "current_profile"):
-                profile_pk = info.context.user.current_profile.pk
-            else:
-                profile_pk = info.context.user.profile.pk
+            profile_pk = (
+                info.context.user.current_profile
+                if hasattr(info.context.user, "current_profile")
+                and hasattr(info.context.user.current_profile, "pk")
+                else (
+                    info.context.user.profile.pk
+                    if hasattr(info.context.user, "profile")
+                    and hasattr(info.context.user.profile, "pk")
+                    else None
+                )
+            )
 
         unread_messages = UnreadMessageCount.objects.filter(
             room=self,

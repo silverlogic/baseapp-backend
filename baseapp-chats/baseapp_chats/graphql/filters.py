@@ -4,12 +4,14 @@ from baseapp_core.graphql import get_pk_from_relay_id
 from django.db.models import Q
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
+ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
 
 
 class ChatRoomFilter(django_filters.FilterSet):
     q = django_filters.CharFilter(method="filter_q")
     profile_id = django_filters.CharFilter(method="filter_profile_id")
     unread_messages = django_filters.BooleanFilter(method="filter_unread_messages")
+    archived = django_filters.BooleanFilter(method="filter_archived")
 
     order_by = django_filters.OrderingFilter(fields=(("created", "created"),))
 
@@ -30,7 +32,7 @@ class ChatRoomFilter(django_filters.FilterSet):
         if value:
             profile_id = self.data.get("profile_id", None)
             try:
-                user_profile = self.request.user.profile
+                user_profile = self.request.user.current_profile
             except AttributeError:
                 return queryset.none()
 
@@ -48,3 +50,13 @@ class ChatRoomFilter(django_filters.FilterSet):
             )
 
         return queryset
+
+    def filter_archived(self, queryset, name, value):
+        try:
+            user_profile = self.request.user.current_profile
+        except AttributeError:
+            return queryset.none()
+
+        return queryset.filter(
+            participants__profile_id=user_profile.pk, participants__has_archived_room=value
+        ).distinct()
