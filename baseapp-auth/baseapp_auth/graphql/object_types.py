@@ -1,13 +1,7 @@
 import graphene
-import swapper
-from baseapp_core.graphql import (
-    DjangoObjectType,
-    ThumbnailField,
-    get_object_type_for_model,
-)
+from baseapp_core.graphql import DjangoObjectType, ThumbnailField
 from django.apps import apps
 from django.contrib.auth import get_user_model
-from django.db.models import Q
 from graphene import relay
 
 from .filters import UsersFilter
@@ -37,21 +31,12 @@ if apps.is_installed("baseapp_ratings"):
 
 
 if apps.is_installed("baseapp_profiles"):
-    from baseapp_profiles.graphql.object_types import ProfileInterface
+    from baseapp_profiles.graphql.object_types import (
+        ProfileInterface,
+        ProfilesInterface,
+    )
 
-    Profile = swapper.load_model("baseapp_profiles", "Profile")
-
-    class UserProfiles(relay.Node):
-        profiles = graphene.List(get_object_type_for_model(Profile))
-
-        def resolve_profiles(self, info):
-            if not info.context.user.is_authenticated or self.id != info.context.user.id:
-                return Profile.objects.none()
-            return Profile.objects.filter(
-                Q(owner_id=info.context.user.id) | Q(members__user_id=info.context.user.id)
-            )
-
-    interfaces += (UserProfiles, ProfileInterface)
+    interfaces += (ProfilesInterface, ProfileInterface)
 
 
 if apps.is_installed("baseapp.activity_log"):

@@ -6,9 +6,10 @@ from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from graphql_relay.connection.arrayconnection import offset_to_cursor
 
-from .object_types import ReportObjectType, ReportsInterface, ReportTypesEnum
+from .object_types import ReportsInterface, ReportTypesEnum
 
 Report = swapper.load_model("baseapp_reports", "Report")
+ReportObjectType = Report.get_graphql_object_type()
 
 
 class ReportCreate(RelayMutation):

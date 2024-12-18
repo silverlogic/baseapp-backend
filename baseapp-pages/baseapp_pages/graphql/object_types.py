@@ -73,7 +73,7 @@ class PageFilter(django_filters.FilterSet):
         fields = ["status"]
 
 
-class PageObjectType(DjangoObjectType):
+class BasePageObjectType:
     metadata = graphene.Field(lambda: MetadataObjectType)
     status = graphene.Field(PageStatusEnum)
     title = graphene.String()
@@ -123,6 +123,11 @@ class PageObjectType(DjangoObjectType):
         return MetadataObjectType(
             meta_title=instance.title,
         )
+
+
+class PageObjectType(BasePageObjectType, DjangoObjectType):
+    class Meta(BasePageObjectType.Meta):
+        pass
 
 
 class MetadataObjectType(DjangoObjectType):

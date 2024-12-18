@@ -7,6 +7,7 @@ from baseapp_core.graphql import (
     login_required,
 )
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -27,6 +28,7 @@ Profile = swapper.load_model("baseapp_profiles", "Profile")
 ChatRoomObjectType = ChatRoom.get_graphql_object_type()
 ProfileObjectType = Profile.get_graphql_object_type()
 MessageObjectType = Message.get_graphql_object_type()
+ChatRoomParticipantObjectType = ChatRoomParticipant.get_graphql_object_type()
 
 
 class ChatRoomCreate(RelayMutation):
@@ -203,6 +205,7 @@ class ChatRoomSendMessage(RelayMutation):
         )
 
         send_new_chat_message_notification(room, message, info)
+        ChatRoomReadMessages.read_messages(room, profile)
 
         return ChatRoomSendMessage(
             message=MessageObjectType._meta.connection.Edge(
@@ -250,6 +253,10 @@ class ChatRoomReadMessages(RelayMutation):
                 ]
             )
 
+        return cls.read_messages(room, profile, message_ids)
+
+    @classmethod
+    def read_messages(cls, room, profile, message_ids=None):
         messages_status_qs = MessageStatus.objects.filter(
             profile_id=profile.pk,
             is_read=False,
@@ -278,7 +285,57 @@ class ChatRoomReadMessages(RelayMutation):
         return ChatRoomReadMessages(room=room, profile=profile, messages=messages)
 
 
+class ChatRoomArchive(RelayMutation):
+    room = graphene.Field(ChatRoomObjectType)
+
+    class Input:
+        room_id = graphene.ID(required=True)
+        profile_id = graphene.ID(required=True)
+        archive = graphene.Boolean(required=True)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, room_id, profile_id, archive, **input):
+        room = get_obj_from_relay_id(info, room_id)
+        profile = get_obj_from_relay_id(info, profile_id)
+
+        if not info.context.user.has_perm("baseapp_profiles.use_profile", profile):
+            return ChatRoomArchive(
+                errors=[
+                    ErrorType(
+                        field="profile_id",
+                        messages=[
+                            _("You don't have permission to archive this chatroom as this profile")
+                        ],
+                    )
+                ]
+            )
+
+        participant = ChatRoomParticipant.objects.filter(
+            profile_id=profile.pk,
+            room=room,
+        ).first()
+
+        if not participant:
+            return ChatRoomArchive(
+                errors=[
+                    ErrorType(
+                        field="participant",
+                        messages=[_("Participant is not part of the room.")],
+                    )
+                ]
+            )
+
+        with transaction.atomic():
+            participant = ChatRoomParticipant.objects.select_for_update().get(pk=participant.pk)
+            participant.has_archived_room = archive
+            participant.save()
+            room.refresh_from_db()
+        return ChatRoomArchive(room=room)
+
+
 class ChatsMutations(object):
     chat_room_create = ChatRoomCreate.Field()
     chat_room_send_message = ChatRoomSendMessage.Field()
     chat_room_read_messages = ChatRoomReadMessages.Field()
+    chat_room_archive = ChatRoomArchive.Field()

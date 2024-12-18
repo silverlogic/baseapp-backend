@@ -77,7 +77,8 @@ def test_user_can_see_public_activity(django_user_client, graphql_user_client):
     assert activity_response["user"]["id"] == django_user_client.user.relay_id
     assert activity_response["verb"] == verb
     assert activity_response["visibility"] == VisibilityTypes.PUBLIC.name
-    assert activity_response["events"]["edges"][0]["node"]["obj"]["id"] == comment.relay_id
+    obj_ids = [edge["node"]["obj"]["id"] for edge in activity_response["events"]["edges"]]
+    assert comment.relay_id in obj_ids
 
 
 def test_superuser_can_see_private_activity(django_user_client, graphql_user_client):

@@ -8,6 +8,7 @@ from baseapp_core.graphql import (
     login_required,
 )
 from baseapp_pages.models import URLPath
+from django.apps import apps
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from rest_framework import serializers
@@ -15,6 +16,7 @@ from rest_framework import serializers
 from .object_types import ProfileRoleTypesEnum
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
+app_label = Profile._meta.app_label
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
 
@@ -39,10 +41,14 @@ class BaseProfileSerializer(serializers.ModelSerializer):
 
 class ProfileCreateSerializer(BaseProfileSerializer):
     name = serializers.CharField(required=True)
-    target = serializers.CharField(required=True)
+    target = serializers.CharField(required=False)
 
     class Meta(BaseProfileSerializer.Meta):
-        fields = BaseProfileSerializer.Meta.fields + ("target",)
+        fields = BaseProfileSerializer.Meta.fields + (
+            "target",
+            "target_content_type",
+            "target_object_id",
+        )
 
     def create(self, validated_data):
         url_path = validated_data.pop("url_path", None)
@@ -194,6 +200,13 @@ class ProfileUpdate(SerializerMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
+        activity_name = f"{app_label}.update_profile"
+
+        if apps.is_installed("baseapp.activity_log"):
+            from baseapp.activity_log.context import set_public_activity
+
+            set_public_activity(verb=activity_name)
+
         return super().mutate_and_get_payload(root, info, **input)
 
 
@@ -230,7 +243,7 @@ class ProfileDelete(RelayMutation):
 
 
 class ProfilesMutations(object):
-    # profile_create = ProfileCreate.Field()
+    profile_create = ProfileCreate.Field()
     profile_update = ProfileUpdate.Field()
     profile_delete = ProfileDelete.Field()
     role_update = RoleUpdate.Field()
