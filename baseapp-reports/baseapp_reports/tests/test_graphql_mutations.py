@@ -1,6 +1,6 @@
 import pytest
 import swapper
-from baseapp_core.tests.factories import UserFactory
+from baseapp_profiles.tests.factories import ProfileFactory
 
 Report = swapper.load_model("baseapp_reports", "Report")
 
@@ -21,11 +21,11 @@ mutation ReportCreate($input: ReportCreateInput!) {
 
 
 def test_anon_cant_report(graphql_client):
-    user2 = UserFactory()
+    other_profile = ProfileFactory()
 
     variables = {
         "input": {
-            "targetObjectId": user2.relay_id,
+            "targetObjectId": other_profile.relay_id,
             "reportType": "SPAM",
         }
     }
@@ -38,11 +38,11 @@ def test_anon_cant_report(graphql_client):
 
 
 def test_user_can_report(django_user_client, graphql_user_client):
-    user2 = UserFactory()
+    other_profile = ProfileFactory()
 
     variables = {
         "input": {
-            "targetObjectId": user2.relay_id,
+            "targetObjectId": other_profile.relay_id,
             "reportType": "SPAM",
         }
     }
@@ -52,5 +52,5 @@ def test_user_can_report(django_user_client, graphql_user_client):
     assert content["data"]["reportCreate"]["report"]["node"]["reportType"] == "SPAM"
     assert Report.objects.count() == 1
 
-    user2.refresh_from_db()
-    assert user2.reports_count["total"] == 1
+    other_profile.refresh_from_db()
+    assert other_profile.reports_count["total"] == 1
