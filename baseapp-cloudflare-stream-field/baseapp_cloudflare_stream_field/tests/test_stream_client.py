@@ -1,5 +1,4 @@
 import pytest
-
 from baseapp_cloudflare_stream_field.stream import StreamClient
 
 pytestmark = pytest.mark.django_db

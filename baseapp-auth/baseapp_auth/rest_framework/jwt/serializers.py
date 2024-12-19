@@ -18,9 +18,9 @@ class CustomClaimSerializerMixin:
     def get_claim_serializer_class(cls):
         try:
             return import_string(cls._claim_serializer_class)
-        except ImportError:
+        except ImportError as error:
             msg = "Could not import serializer '%s'" % cls._claim_serializer_class
-            raise ImportError(msg)
+            raise ImportError(msg) from error
 
 
 class BaseJwtLoginSerializer(

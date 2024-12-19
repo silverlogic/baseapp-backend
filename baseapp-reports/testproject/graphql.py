@@ -1,5 +1,4 @@
 import graphene
-
 from baseapp_reports.graphql.mutations import ReportsMutations
 from testproject.testapp.graphql.queries import UsersQueries
 
