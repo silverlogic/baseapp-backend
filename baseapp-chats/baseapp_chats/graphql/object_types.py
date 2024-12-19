@@ -101,7 +101,9 @@ class MessageObjectType(BaseMessageObjectType, DjangoObjectType):
 class BaseChatRoomObjectType:
     all_messages = DjangoFilterConnectionField(get_object_type_for_model(Message))
     participants = DjangoConnectionField(get_object_type_for_model(ChatRoomParticipant))
-    unread_messages_count = graphene.Int(profile_id=graphene.ID(required=False))
+    unread_messages = graphene.Field(
+        get_object_type_for_model(UnreadMessageCount), profile_id=graphene.ID(required=False)
+    )
     image = ThumbnailField(required=False)
     is_archived = graphene.Boolean(profile_id=graphene.ID(required=False))
 
@@ -139,7 +141,7 @@ class BaseChatRoomObjectType:
             )
         return self.participants.filter(profile_id=profile_pk, has_archived_room=True).exists()
 
-    def resolve_unread_messages_count(self, info, profile_id=None, **kwargs):
+    def resolve_unread_messages(self, info, profile_id=None, **kwargs):
         if profile_id:
             profile_pk = get_pk_from_relay_id(profile_id)
             profile = Profile.objects.get_if_member(pk=profile_pk, user=info.context.user)
@@ -163,7 +165,7 @@ class BaseChatRoomObjectType:
             profile_id=profile_pk,
         ).first()
 
-        return unread_messages.count if unread_messages else 0
+        return unread_messages
 
     class Meta:
         interfaces = (relay.Node,)
@@ -174,4 +176,16 @@ class BaseChatRoomObjectType:
 
 class ChatRoomObjectType(BaseChatRoomObjectType, DjangoObjectType):
     class Meta(BaseChatRoomObjectType.Meta):
+        pass
+
+
+class BaseUnreadMessageObjectType:
+    class Meta:
+        interfaces = (relay.Node,)
+        model = UnreadMessageCount
+        fields = ("count", "marked_unread")
+
+
+class UnreadMessageObjectType(BaseUnreadMessageObjectType, DjangoObjectType):
+    class Meta(BaseUnreadMessageObjectType.Meta):
         pass
