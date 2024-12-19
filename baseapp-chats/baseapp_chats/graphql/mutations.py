@@ -259,7 +259,7 @@ class ChatRoomReadMessages(RelayMutation):
 
     @classmethod
     def remove_marked_unread(cls, room, profile):
-        unread_message_count = UnreadMessageCount.objects.filter(
+        UnreadMessageCount.objects.filter(
             profile=profile, room=room, marked_unread=True
         ).update(marked_unread=False)
 
