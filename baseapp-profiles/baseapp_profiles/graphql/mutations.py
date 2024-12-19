@@ -142,7 +142,7 @@ class RoleUpdate(RelayMutation):
         try:
             obj = ProfileUserRole.objects.get(user_id=user_pk, profile_id=profile_pk)
         except ProfileUserRole.DoesNotExist:
-            raise ValueError(_("Role not found"))
+            raise GraphQLError(_("Role not found"))
 
         if not info.context.user.has_perm("baseapp_profiles.change_profileuserrole", obj.profile):
             raise GraphQLError(
@@ -246,4 +246,4 @@ class ProfilesMutations(object):
     profile_create = ProfileCreate.Field()
     profile_update = ProfileUpdate.Field()
     profile_delete = ProfileDelete.Field()
-    role_update = RoleUpdate.Field()
+    profile_role_update = RoleUpdate.Field()

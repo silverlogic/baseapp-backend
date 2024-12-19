@@ -293,6 +293,5 @@ def test_user_without_permission_cant_update_role(django_user_client, graphql_us
         },
     )
     content = response.json()
-    print(content)
     assert content["errors"][0]["message"] == "You don't have permission to perform this action"
     profile.refresh_from_db()
