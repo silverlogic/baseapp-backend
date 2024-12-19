@@ -1,6 +1,7 @@
 import swapper
 from django.contrib.auth.backends import BaseBackend
 
+ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
@@ -44,4 +45,13 @@ class ProfilesPermissionsBackend(BaseBackend):
                     obj.owner_id == user_obj.id
                     or user_obj.is_superuser
                     or obj.members.filter(user_id=user_obj.id).exists()
+                )
+
+        if perm == "baseapp_profiles.change_profileuserrole" and obj:
+            if isinstance(obj, Profile):
+                return (
+                    obj.owner_id == user_obj.id
+                    or obj.members.filter(
+                        user_id=user_obj.id, role=ProfileUserRole.ProfileRoles.ADMIN
+                    ).exists()
                 )

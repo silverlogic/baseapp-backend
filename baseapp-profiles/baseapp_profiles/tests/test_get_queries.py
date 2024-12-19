@@ -3,12 +3,12 @@ import swapper
 from baseapp_pages.tests.factories import URLPathFactory
 from django.contrib.contenttypes.models import ContentType
 
-from ..models import ProfileUserRole
 from .factories import ProfileFactory, ProfileUserRoleFactory
 
 pytestmark = pytest.mark.django_db
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
+ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
 GET_PROFILE_BY_PATH = """
     query Profile($id: ID!) {
