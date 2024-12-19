@@ -259,9 +259,9 @@ class ChatRoomReadMessages(RelayMutation):
 
     @classmethod
     def remove_marked_unread(cls, room, profile):
-        UnreadMessageCount.objects.filter(
-            profile=profile, room=room, marked_unread=True
-        ).update(marked_unread=False)
+        UnreadMessageCount.objects.filter(profile=profile, room=room, marked_unread=True).update(
+            marked_unread=False
+        )
 
     @classmethod
     def read_messages(cls, room, profile, message_ids=None):
