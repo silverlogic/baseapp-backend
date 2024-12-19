@@ -36,7 +36,7 @@ PROFILE_UPDATE_GRAPHQL = """
 
 PROFILE_ROLE_UPDATE_GRAPHQL = """
 mutation ProfileRoleUpdateMutation($input: RoleUpdateInput!) {
-    roleUpdate(input: $input) {
+    profileRoleUpdate(input: $input) {
         profileUserRole {
             id
             role
