@@ -36,7 +36,7 @@ PROFILE_UPDATE_GRAPHQL = """
 
 PROFILE_ROLE_UPDATE_GRAPHQL = """
 mutation ProfileRoleUpdateMutation($input: RoleUpdateInput!) {
-    profileRoleUpdate(input: $input) {
+    progiloleUpdate(input: $input) {
         profileUserRole {
             id
             role
@@ -240,7 +240,7 @@ def test_user_profile_owner_can_update_role(django_user_client, graphql_user_cli
     )
     content = response.json()
 
-    assert content["data"]["roleUpdate"]["profileUserRole"]["role"] == "ADMIN"
+    assert content["data"]["profileRoleUpdate"]["profileUserRole"]["role"] == "ADMIN"
     profile.refresh_from_db()
 
 
@@ -267,7 +267,7 @@ def test_user_with_permission_can_update_role(django_user_client, graphql_user_c
     )
     content = response.json()
 
-    assert content["data"]["roleUpdate"]["profileUserRole"]["role"] == "ADMIN"
+    assert content["data"]["profileRoleUpdate"]["profileUserRole"]["role"] == "ADMIN"
     profile.refresh_from_db()
 
 
