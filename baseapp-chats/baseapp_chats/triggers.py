@@ -18,8 +18,8 @@ def increment_unread_count_trigger(UnreadMessageCount, Message):
         operation=pgtrigger.Insert,
         condition=pgtrigger.Q(new__is_read=False),
         func=f"""
-            INSERT INTO {UnreadMessageCount._meta.db_table} (room_id, profile_id, count)
-            VALUES ((SELECT room_id FROM {Message._meta.db_table} WHERE id = NEW.message_id), NEW.profile_id, 1)
+            INSERT INTO {UnreadMessageCount._meta.db_table} (room_id, profile_id, marked_unread, count)
+            VALUES ((SELECT room_id FROM {Message._meta.db_table} WHERE id = NEW.message_id), NEW.profile_id, False, 1)
             ON CONFLICT (room_id, profile_id)
             DO UPDATE SET count = {UnreadMessageCount._meta.db_table}.count + 1;
             RETURN NULL;

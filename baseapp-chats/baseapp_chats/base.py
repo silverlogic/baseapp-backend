@@ -195,6 +195,7 @@ class AbstractUnreadMessageCount(RelayModel):
     profile = models.ForeignKey(
         swapper.get_model_name("baseapp_profiles", "Profile"), on_delete=models.CASCADE
     )
+    marked_unread = models.BooleanField(default=False)
     count = models.IntegerField(default=0)
 
     class Meta:
