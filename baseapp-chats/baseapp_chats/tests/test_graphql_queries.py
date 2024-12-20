@@ -52,7 +52,10 @@ PROFILE_ROOMS_GRAPHQL = """
                     edges {
                         node {
                             id
-                            unreadMessagesCount(profileId: $profileId)
+                            unreadMessages(profileId: $profileId) {
+                                count
+                                markedUnread
+                            }
                         }
                     }
                 }
@@ -103,7 +106,9 @@ def test_unread_messages_count(graphql_user_client, django_user_client):
     content = response.json()
 
     assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 1
-    assert content["data"]["profile"]["chatRooms"]["edges"][0]["node"]["unreadMessagesCount"] == 1
+    assert (
+        content["data"]["profile"]["chatRooms"]["edges"][0]["node"]["unreadMessages"]["count"] == 1
+    )
 
 
 def test_filter_rooms_with_unread_messages(graphql_user_client, django_user_client):

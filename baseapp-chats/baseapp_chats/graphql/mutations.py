@@ -20,6 +20,7 @@ ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
 Message = swapper.load_model("baseapp_chats", "Message")
 MessageStatus = swapper.load_model("baseapp_chats", "MessageStatus")
+UnreadMessageCount = swapper.load_model("baseapp_chats", "UnreadMessageCount")
 Block = swapper.load_model("baseapp_blocks", "Block")
 User = get_user_model()
 Profile = swapper.load_model("baseapp_profiles", "Profile")
@@ -253,7 +254,14 @@ class ChatRoomReadMessages(RelayMutation):
                 ]
             )
 
+        cls.remove_marked_unread(room, profile)
         return cls.read_messages(room, profile, message_ids)
+
+    @classmethod
+    def remove_marked_unread(cls, room, profile):
+        UnreadMessageCount.objects.filter(profile=profile, room=room, marked_unread=True).update(
+            marked_unread=False
+        )
 
     @classmethod
     def read_messages(cls, room, profile, message_ids=None):
@@ -283,6 +291,52 @@ class ChatRoomReadMessages(RelayMutation):
         )
 
         return ChatRoomReadMessages(room=room, profile=profile, messages=messages)
+
+
+class ChatRoomUnread(RelayMutation):
+    room = graphene.Field(ChatRoomObjectType)
+    profile = graphene.Field(ProfileObjectType)
+
+    class Input:
+        room_id = graphene.ID(required=True)
+        profile_id = graphene.ID(required=True)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, room_id, profile_id, **input):
+        room = get_obj_from_relay_id(info, room_id)
+        profile = get_obj_from_relay_id(info, profile_id)
+
+        if not info.context.user.has_perm("baseapp_profiles.use_profile", profile):
+            return ChatRoomUnread(
+                errors=[
+                    ErrorType(
+                        field="profile_id",
+                        messages=[_("You don't have permission to act as this profile")],
+                    )
+                ]
+            )
+
+        if not ChatRoomParticipant.objects.filter(
+            profile_id=profile.pk,
+            room=room,
+        ).exists():
+            return ChatRoomUnread(
+                errors=[
+                    ErrorType(
+                        field="participant",
+                        messages=[_("Participant is not part of the room.")],
+                    )
+                ]
+            )
+
+        UnreadMessageCount.objects.update_or_create(
+            profile=profile,
+            room=room,
+            defaults={"marked_unread": True},
+        )
+
+        return ChatRoomUnread(room=room, profile=profile)
 
 
 class ChatRoomArchive(RelayMutation):
@@ -338,4 +392,5 @@ class ChatsMutations(object):
     chat_room_create = ChatRoomCreate.Field()
     chat_room_send_message = ChatRoomSendMessage.Field()
     chat_room_read_messages = ChatRoomReadMessages.Field()
+    chat_room_unread = ChatRoomUnread.Field()
     chat_room_archive = ChatRoomArchive.Field()

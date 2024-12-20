@@ -43,8 +43,8 @@ class ChatRoomFilter(django_filters.FilterSet):
             return (
                 queryset.prefetch_related("unread_messages")
                 .filter(
-                    unread_messages__profile_id=unread_messages_profile_pk,
-                    unread_messages__count__gt=0,
+                    Q(unread_messages__profile_id=unread_messages_profile_pk),
+                    Q(unread_messages__count__gt=0) | Q(unread_messages__marked_unread=True),
                 )
                 .distinct()
             )

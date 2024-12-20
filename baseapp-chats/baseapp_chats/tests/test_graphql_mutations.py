@@ -64,7 +64,28 @@ READ_MESSAGE_GRAPHQL = """
         chatRoomReadMessages(input: $input) {
             room {
                 id
-                unreadMessagesCount
+                unreadMessages {
+                    count
+                    markedUnread
+                }
+            }
+            errors {
+                field
+                messages
+            }
+        }
+    }
+"""
+
+UNREAD_CHAT_GRAPHQL = """
+    mutation UnreadMutation($input: ChatRoomUnreadInput!) {
+        chatRoomUnread(input: $input) {
+            room {
+                id
+                unreadMessages {
+                    count
+                    markedUnread
+                }
             }
             errors {
                 field
@@ -142,7 +163,7 @@ def test_user_can_read_all_messages(graphql_user_client, django_user_client):
         == 2
     )
     # makes sure the cached field is decreased when a participant read a message
-    assert content["data"]["chatRoomReadMessages"]["room"]["unreadMessagesCount"] == 0
+    assert content["data"]["chatRoomReadMessages"]["room"]["unreadMessages"]["count"] == 0
     assert UnreadMessageCount.objects.filter(profile=my_profile, room=room).first().count == 0
 
 
@@ -201,8 +222,55 @@ def test_user_can_read_one_message(graphql_user_client, django_user_client):
         == 2
     )
     # makes sure the cached field is decreased when a participant read a message
-    assert content["data"]["chatRoomReadMessages"]["room"]["unreadMessagesCount"] == 1
+    assert content["data"]["chatRoomReadMessages"]["room"]["unreadMessages"]["count"] == 1
     assert UnreadMessageCount.objects.filter(profile=my_profile, room=room).first().count == 1
+
+
+def test_user_can_unread_chat(graphql_user_client, django_user_client):
+    room = ChatRoomFactory(created_by=django_user_client.user)
+
+    my_profile = django_user_client.user.profile
+
+    ChatRoomParticipantFactory(room=room, profile=my_profile)
+    MessageFactory.create_batch(2, room=room, profile=my_profile, user=my_profile.owner)
+
+    # Unread chat and check it is marked unread
+    response = graphql_user_client(
+        UNREAD_CHAT_GRAPHQL,
+        variables={
+            "input": {
+                "roomId": room.relay_id,
+                "profileId": my_profile.relay_id,
+            },
+        },
+    )
+    content = response.json()
+    assert content["data"]["chatRoomUnread"]["room"]["id"] == room.relay_id
+    assert content["data"]["chatRoomUnread"]["room"]["unreadMessages"]["markedUnread"] is True
+    assert (
+        UnreadMessageCount.objects.filter(profile=my_profile, room=room).first().marked_unread
+        is True
+    )
+
+    # Read chat and check the unread mark is removed
+    response = graphql_user_client(
+        READ_MESSAGE_GRAPHQL,
+        variables={
+            "input": {
+                "roomId": room.relay_id,
+                "profileId": my_profile.relay_id,
+            },
+        },
+    )
+    content = response.json()
+    assert content["data"]["chatRoomReadMessages"]["room"]["id"] == room.relay_id
+    assert (
+        content["data"]["chatRoomReadMessages"]["room"]["unreadMessages"]["markedUnread"] is False
+    )
+    assert (
+        UnreadMessageCount.objects.filter(profile=my_profile, room=room).first().marked_unread
+        is False
+    )
 
 
 @pytest.mark.celery_app
