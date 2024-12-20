@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 import pytest
-
 from baseapp_cloudflare_stream_field.tasks import delete_original_trimmed_video
 
 pytestmark = pytest.mark.django_db

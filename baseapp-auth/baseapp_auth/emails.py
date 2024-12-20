@@ -9,35 +9,13 @@ from .tokens import (
     ChangeEmailConfirmTokenGenerator,
     ChangeEmailVerifyTokenGenerator,
     ChangeExpiredPasswordTokenGenerator,
-    ConfirmEmailTokenGenerator,
 )
 
 User = get_user_model()
 
 
 def send_welcome_email(user):
-    token = ConfirmEmailTokenGenerator().make_token(user)
-    web_url = settings.FRONT_CONFIRM_EMAIL_URL.format(id=user.pk, token=token)
-    try:
-        deep_link = get_deep_link(
-            web_url,
-            for_ios=settings.IOS_CONFIRM_EMAIL_DEEP_LINK,
-            for_android=settings.ANDROID_CONFIRM_EMAIL_DEEP_LINK,
-            **{
-                "channel": "email",
-                "feature": "confirm email",
-                "data": {
-                    "type": "confirm-email",
-                    "user": user.pk,
-                    "token": token,
-                },
-            },
-        )
-    except DeepLinkFetchError:
-        confirm_url = web_url
-    else:
-        confirm_url = deep_link["url"]
-    context = {"user": user, "confirm_url": confirm_url}
+    context = {"user": user}
     subject = render_to_string("users/emails/welcome-subject.txt.j2", context=context).strip()
     message = render_to_string("users/emails/welcome-body.txt.j2", context=context)
     html_message = render_to_string("users/emails/welcome-body.html.j2", context=context)

@@ -1,6 +1,5 @@
 import graphene
 from baseapp_auth.graphql.queries import UsersQueries
-
 from baseapp_notifications.graphql.mutations import NotificationsMutations
 from baseapp_notifications.graphql.subscriptions import NotificationsSubscription
 

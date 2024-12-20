@@ -6,9 +6,9 @@ from baseapp_profiles.graphql.queries import ProfilesQueries
 from graphene import relay
 from graphene.relay.node import NodeField as RelayNodeField
 from graphene_django.debug import DjangoDebug
+from testproject.testapp.graphql.queries import UsersQueries
 
 from baseapp.activity_log.graphql.queries import ActivityLogQueries
-from testproject.testapp.graphql.queries import UsersQueries
 
 
 class Query(
