@@ -20,6 +20,12 @@ INSTALLED_APPS += [
     "baseapp_notifications",
 ]
 
+MIDDLEWARE = [
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "baseapp_profiles.middleware.CurrentProfileMiddleware",
+]
+
 GRAPHENE["MIDDLEWARE"] = (
     "baseapp_profiles.graphql.middleware.CurrentProfileMiddleware",
 ) + GRAPHENE["MIDDLEWARE"]

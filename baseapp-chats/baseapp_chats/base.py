@@ -173,6 +173,7 @@ class AbstractChatRoomParticipant(TimeStampedModel, RelayModel):
         choices=ChatRoomParticipantRoles.choices, default=ChatRoomParticipantRoles.MEMBER
     )
     accepted_at = models.DateTimeField(null=True, blank=True)
+    has_archived_room = models.BooleanField(default=False)
 
     class Meta:
         abstract = True

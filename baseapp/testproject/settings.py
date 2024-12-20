@@ -15,6 +15,7 @@ INSTALLED_APPS += [
     "baseapp.activity_log",
     "testproject.testapp",
     "testproject.comments",
+    "testproject.profiles",
 ]
 
 MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")
@@ -47,9 +48,14 @@ AUTHENTICATION_BACKENDS = [
     "baseapp.activity_log.permissions.ActivityLogPermissionsBackend",
 ]
 
+ADMIN_TIME_ZONE = "UTC"
+
 BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False
 
 # NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"
 
 # Comments
 BASEAPP_COMMENTS_COMMENT_MODEL = "comments.Comment"
+
+# Profiles
+BASEAPP_PROFILES_PROFILE_MODEL = "profiles.Profile"

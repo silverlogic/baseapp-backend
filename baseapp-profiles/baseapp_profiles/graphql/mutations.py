@@ -8,11 +8,15 @@ from baseapp_core.graphql import (
     login_required,
 )
 from baseapp_pages.models import URLPath
+from django.apps import apps
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from rest_framework import serializers
 
+from .object_types import ProfileRoleTypesEnum
+
 Profile = swapper.load_model("baseapp_profiles", "Profile")
+app_label = Profile._meta.app_label
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
 
@@ -37,10 +41,14 @@ class BaseProfileSerializer(serializers.ModelSerializer):
 
 class ProfileCreateSerializer(BaseProfileSerializer):
     name = serializers.CharField(required=True)
-    target = serializers.CharField(required=True)
+    target = serializers.CharField(required=False)
 
     class Meta(BaseProfileSerializer.Meta):
-        fields = BaseProfileSerializer.Meta.fields + ("target",)
+        fields = BaseProfileSerializer.Meta.fields + (
+            "target",
+            "target_content_type",
+            "target_object_id",
+        )
 
     def create(self, validated_data):
         url_path = validated_data.pop("url_path", None)
@@ -114,6 +122,40 @@ class ProfileCreate(SerializerMutation):
         )
 
 
+class RoleUpdate(RelayMutation):
+    profile_user_role = graphene.Field(get_object_type_for_model(ProfileUserRole))
+
+    class Input:
+        profile_id = graphene.ID(required=True)
+        user_id = graphene.ID(required=True)
+        role_type = graphene.Field(ProfileRoleTypesEnum)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        user_id = input.get("user_id")
+        profile_id = input.get("profile_id")
+        role_type = input.get("role_type")
+        user_pk = get_pk_from_relay_id(user_id)
+        profile_pk = get_pk_from_relay_id(profile_id)
+
+        try:
+            obj = ProfileUserRole.objects.get(user_id=user_pk, profile_id=profile_pk)
+        except ProfileUserRole.DoesNotExist:
+            raise GraphQLError(_("Role not found"))
+
+        if not info.context.user.has_perm("baseapp_profiles.change_profileuserrole", obj.profile):
+            raise GraphQLError(
+                str(_("You don't have permission to perform this action")),
+                extensions={"code": "permission_required"},
+            )
+
+        obj.role = role_type
+        obj.save()
+
+        return RoleUpdate(profile_user_role=obj)
+
+
 class ProfileUpdate(SerializerMutation):
     profile = graphene.Field(get_object_type_for_model(Profile))
 
@@ -158,6 +200,13 @@ class ProfileUpdate(SerializerMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
+        activity_name = f"{app_label}.update_profile"
+
+        if apps.is_installed("baseapp.activity_log"):
+            from baseapp.activity_log.context import set_public_activity
+
+            set_public_activity(verb=activity_name)
+
         return super().mutate_and_get_payload(root, info, **input)
 
 
@@ -194,6 +243,7 @@ class ProfileDelete(RelayMutation):
 
 
 class ProfilesMutations(object):
-    # profile_create = ProfileCreate.Field()
+    profile_create = ProfileCreate.Field()
     profile_update = ProfileUpdate.Field()
     profile_delete = ProfileDelete.Field()
+    profile_role_update = RoleUpdate.Field()

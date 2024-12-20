@@ -122,6 +122,7 @@ baseapp-APPNAME/
 ```
 
 #### Minimum requires
+
 - All app tests in `baseapp-APPNAME/baseapp_APPNAME/tests` directory
 - A manage.py file in `baseapp-APPNAME` directory
   - You can copy that from baseapp-core
@@ -137,7 +138,9 @@ baseapp-APPNAME/
       ```
     - This file must only contain packages needed for testing. The `requirements.txt` in `baseapp-core/testproject` is being used as a based `requirements.txt` for testing. If necessary, it is possible to add more specific packages that are not already in `baseapp-core/testproject/requirements.txt`.
 - In the `baseapp-APPNAME/tests dir`:
+
   - A pytest.ini that assigns the right settings:
+
   ```
   # In baseapp-APPNAME/baseapp_APPNAME/tests/pytest.ini
 
@@ -157,6 +160,3 @@ To publish a new version to pypi you need to:
   - choose to create a new tag (named as `baseapp-<PACKAGE>@v<version>` e.g. baseapp-core@v1.2.3), use the same version as in `setup.cfg`
   - use the same name for release title
   - optionally add changelog text
-
-
-  

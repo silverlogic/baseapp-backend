@@ -43,12 +43,12 @@ ROOM_GRAPHQL = """
 """
 
 PROFILE_ROOMS_GRAPHQL = """
-    query ProfileRooms($profileId: ID!) {
+    query ProfileRooms($profileId: ID!, $archived: Boolean, $unreadMessages: Boolean) {
         profile(id: $profileId) {
             id
             name
             ... on ChatRoomsInterface {
-                chatRooms {
+                chatRooms (archived: $archived, unreadMessages: $unreadMessages) {
                     edges {
                         node {
                             id
@@ -85,7 +85,7 @@ def test_user_can_list_rooms(graphql_user_client, django_user_client):
     assert len(content["data"]["me"]["profile"]["chatRooms"]["edges"]) == 2
 
 
-def test_unread_messages(graphql_user_client, django_user_client):
+def test_unread_messages_count(graphql_user_client, django_user_client):
     my_profile = django_user_client.user.profile
     friend_profile = ProfileFactory()
     room = ChatRoomFactory(created_by=django_user_client.user)
@@ -104,6 +104,66 @@ def test_unread_messages(graphql_user_client, django_user_client):
 
     assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 1
     assert content["data"]["profile"]["chatRooms"]["edges"][0]["node"]["unreadMessagesCount"] == 1
+
+
+def test_filter_rooms_with_unread_messages(graphql_user_client, django_user_client):
+    my_profile = django_user_client.user.profile
+    friend_in_room_with_unread = ProfileFactory()
+    friend_in_room_with_read = ProfileFactory()
+    room_with_unread = ChatRoomFactory(created_by=django_user_client.user)
+    room_with_read = ChatRoomFactory(created_by=django_user_client.user)
+
+    ChatRoomParticipantFactory(room=room_with_unread, profile=my_profile)
+    ChatRoomParticipantFactory(room=room_with_unread, profile=friend_in_room_with_unread)
+
+    MessageFactory(room=room_with_unread, profile=friend_in_room_with_unread)
+
+    ChatRoomParticipantFactory(room=room_with_read, profile=my_profile)
+    ChatRoomParticipantFactory(room=room_with_read, profile=friend_in_room_with_read)
+
+    read_message = MessageFactory(room=room_with_read, profile=friend_in_room_with_read)
+
+    read_message.statuses.filter(profile=my_profile).update(is_read=True)
+
+    response = graphql_user_client(
+        PROFILE_ROOMS_GRAPHQL,
+        variables={"profileId": my_profile.relay_id, "unreadMessages": True},
+    )
+
+    content = response.json()
+
+    assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 1
+    assert (
+        content["data"]["profile"]["chatRooms"]["edges"][0]["node"]["id"]
+        == room_with_unread.relay_id
+    )
+
+
+def test_archived_chats(graphql_user_client, django_user_client):
+    my_profile = django_user_client.user.profile
+    friend_profile = ProfileFactory()
+    room = ChatRoomFactory(created_by=django_user_client.user)
+
+    ChatRoomParticipantFactory(room=room, profile=my_profile, has_archived_room=True)
+    ChatRoomParticipantFactory(room=room, profile=friend_profile)
+
+    response = graphql_user_client(
+        PROFILE_ROOMS_GRAPHQL,
+        variables={"profileId": my_profile.relay_id, "archived": True},
+    )
+
+    content = response.json()
+
+    assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 1
+
+    response = graphql_user_client(
+        PROFILE_ROOMS_GRAPHQL,
+        variables={"profileId": friend_profile.relay_id, "archived": True},
+    )
+
+    content = response.json()
+
+    assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 0
 
 
 def test_cant_list_rooms_if_not_participating(graphql_user_client):
