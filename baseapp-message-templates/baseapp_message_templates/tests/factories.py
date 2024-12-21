@@ -1,6 +1,10 @@
 import factory
 
-from baseapp_message_templates.models import EmailTemplate, SmsTemplate
+from baseapp_message_templates.models import (
+    EmailTemplate,
+    SmsTemplate,
+    TemplateTranslation,
+)
 
 
 class EmailTemplateFactory(factory.django.DjangoModelFactory):
@@ -11,3 +15,8 @@ class EmailTemplateFactory(factory.django.DjangoModelFactory):
 class SmsTemplateFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = SmsTemplate
+
+
+class TemplateTranslationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = TemplateTranslation
