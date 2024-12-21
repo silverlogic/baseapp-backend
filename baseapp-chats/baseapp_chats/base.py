@@ -29,6 +29,7 @@ class AbstractBaseChatRoom(TimeStampedModel, RelayModel):
     last_message_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     participants_count = models.IntegerField(default=0)
     messages_count = models.IntegerField(default=0)
+    is_group = models.BooleanField(default=False)
 
     class Meta:
         abstract = True

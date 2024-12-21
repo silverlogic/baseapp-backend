@@ -170,7 +170,15 @@ class BaseChatRoomObjectType:
     class Meta:
         interfaces = (relay.Node,)
         model = ChatRoom
-        fields = ("id", "last_message_time", "last_message", "participants", "title", "image")
+        fields = (
+            "id",
+            "last_message_time",
+            "last_message",
+            "participants",
+            "title",
+            "image",
+            "is_group",
+        )
         filterset_class = ChatRoomFilter
 
 
