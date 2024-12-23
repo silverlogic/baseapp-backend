@@ -8,6 +8,7 @@ from graphql_relay import offset_to_cursor
 from .interfaces import FollowsInterface
 
 Follow = swapper.load_model("baseapp_follows", "Follow")
+FollowObjectType = Follow.get_graphql_object_type()
 
 
 class FollowToggle(RelayMutation):
@@ -25,8 +26,6 @@ class FollowToggle(RelayMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        FollowObjectType = Follow.get_graphql_object_type()
-
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
         actor = get_obj_from_relay_id(info, input.get("actor_object_id"))
 
