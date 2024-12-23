@@ -1,7 +1,7 @@
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
-from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
 from graphene import relay
 from graphene.types.generic import GenericScalar
 from graphene_django import DjangoConnectionField
@@ -18,9 +18,9 @@ NotificationChannelTypesEnum = graphene.Enum.from_enum(NotificationSetting.Notif
 class NotificationsInterface(relay.Node):
     notifications_unread_count = graphene.Int()
     notifications = DjangoFilterConnectionField(
-        lambda: NotificationNode, filterset_class=NotificationFilter
+        get_object_type_for_model(Notification), filterset_class=NotificationFilter
     )
-    notification_settings = DjangoConnectionField(lambda: NotificationSettingNode)
+    notification_settings = DjangoConnectionField(get_object_type_for_model(NotificationSetting))
     is_notification_setting_active = graphene.Boolean(
         verb=graphene.String(required=True),
         channel=NotificationChannelTypesEnum(required=True),
@@ -49,7 +49,7 @@ class NotificationsInterface(relay.Node):
         return False
 
 
-class NotificationNode(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
+class BaseNotificationNode:
     actor = graphene.Field(relay.Node)
     target = graphene.Field(relay.Node)
     action_object = graphene.Field(relay.Node)
@@ -79,7 +79,14 @@ class NotificationNode(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
         return super().get_queryset(queryset.filter(recipient=info.context.user), info)
 
 
-class NotificationSettingNode(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
+class NotificationNode(
+    BaseNotificationNode, gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
+):
+    class Meta(BaseNotificationNode.Meta):
+        pass
+
+
+class BaseNotificationSettingNode:
     channel = graphene.Field(NotificationChannelTypesEnum)
 
     class Meta:
@@ -104,3 +111,10 @@ class NotificationSettingNode(gql_optimizer.OptimizedDjangoObjectType, DjangoObj
             return queryset.get(id=id, user=info.context.user)
         except cls._meta.model.DoesNotExist:
             return None
+
+
+class NotificationSettingNode(
+    BaseNotificationSettingNode, gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
+):
+    class Meta(BaseNotificationSettingNode.Meta):
+        pass
