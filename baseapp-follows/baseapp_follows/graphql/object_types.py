@@ -21,6 +21,8 @@ class BaseFollowObjectType:
         filterset_class = FollowsFilter
 
 
-class FollowObjectType(BaseFollowObjectType, gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
+class FollowObjectType(
+    BaseFollowObjectType, gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
+):
     class Meta(BaseFollowObjectType.Meta):
         pass

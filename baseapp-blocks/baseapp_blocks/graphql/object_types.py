@@ -1,7 +1,11 @@
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
-from baseapp_core.graphql import DjangoObjectType, get_pk_from_relay_id, get_object_type_for_model
+from baseapp_core.graphql import (
+    DjangoObjectType,
+    get_object_type_for_model,
+    get_pk_from_relay_id,
+)
 from graphene import relay
 from graphene_django import DjangoConnectionField
 
@@ -65,6 +69,8 @@ class BaseBlockObjectType:
             return node
 
 
-class BlockObjectType(BaseBlockObjectType, gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
+class BlockObjectType(
+    BaseBlockObjectType, gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
+):
     class Meta(BaseBlockObjectType.Meta):
         pass

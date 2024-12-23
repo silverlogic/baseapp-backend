@@ -1,6 +1,6 @@
-import swapper
 import channels_graphql_ws
 import graphene
+import swapper
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 

@@ -4,10 +4,7 @@ from baseapp_core.graphql import RelayMutation, login_required
 from baseapp_core.graphql.utils import get_pk_from_relay_id
 from django.utils.translation import gettext_lazy as _
 
-from .object_types import (
-    NotificationChannelTypesEnum,
-    NotificationsInterface,
-)
+from .object_types import NotificationChannelTypesEnum, NotificationsInterface
 
 Notification = swapper.load_model("notifications", "Notification")
 NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationSetting")

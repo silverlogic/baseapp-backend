@@ -79,7 +79,9 @@ class BaseNotificationNode:
         return super().get_queryset(queryset.filter(recipient=info.context.user), info)
 
 
-class NotificationNode(BaseNotificationNode, gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
+class NotificationNode(
+    BaseNotificationNode, gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
+):
     class Meta(BaseNotificationNode.Meta):
         pass
 
@@ -111,6 +113,8 @@ class BaseNotificationSettingNode:
             return None
 
 
-class NotificationSettingNode(BaseNotificationSettingNode, gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
+class NotificationSettingNode(
+    BaseNotificationSettingNode, gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
+):
     class Meta(BaseNotificationSettingNode.Meta):
         pass
