@@ -13,9 +13,16 @@ class FollowsFilter(django_filters.FilterSet):
         fields = ["target_is_following_back"]
 
 
-class FollowObjectType(gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType):
+class BaseFollowObjectType:
     class Meta:
         model = Follow
         fields = "__all__"
         interfaces = (relay.Node,)
         filterset_class = FollowsFilter
+
+
+class FollowObjectType(
+    BaseFollowObjectType, gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
+):
+    class Meta(BaseFollowObjectType.Meta):
+        pass

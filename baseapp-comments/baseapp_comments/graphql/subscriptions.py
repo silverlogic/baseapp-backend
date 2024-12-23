@@ -1,9 +1,11 @@
 import channels_graphql_ws
 import graphene
+import swapper
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 
-from .object_types import CommentObjectType
+Comment = swapper.load_model("baseapp_comments", "Comment")
+CommentObjectType = Comment.get_graphql_object_type()
 
 
 class OnCommentChange(channels_graphql_ws.Subscription):

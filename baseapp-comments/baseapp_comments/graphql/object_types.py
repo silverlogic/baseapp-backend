@@ -1,7 +1,7 @@
 import graphene
 import swapper
 from baseapp_auth.graphql import PermissionsInterface
-from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
 from baseapp_reactions.graphql.object_types import ReactionsInterface
 from django.apps import apps
 from django.conf import settings
@@ -30,7 +30,7 @@ CommentsCount = create_object_type_from_dict("CommentsCount", default_comments_c
 
 class CommentsInterface(relay.Node):
     comments_count = graphene.Field(CommentsCount, required=True)
-    comments = DjangoFilterConnectionField(lambda: CommentObjectType)
+    comments = DjangoFilterConnectionField(get_object_type_for_model(Comment))
     is_comments_enabled = graphene.Boolean(required=True)
 
     def resolve_comments(self, info, **kwargs):
@@ -73,7 +73,7 @@ if apps.is_installed("baseapp.activity_log"):
     comment_interfaces += (NodeActivityLogInterface,)
 
 
-class CommentObjectType(DjangoObjectType):
+class BaseCommentObjectType:
     target = graphene.Field(CommentsInterface)
     status = graphene.Field(CommentStatusEnum)
 
@@ -122,3 +122,8 @@ class CommentObjectType(DjangoObjectType):
         )
 
         return super().get_queryset(qs, info)
+
+
+class CommentObjectType(BaseCommentObjectType, DjangoObjectType):
+    class Meta(BaseCommentObjectType.Meta):
+        pass
