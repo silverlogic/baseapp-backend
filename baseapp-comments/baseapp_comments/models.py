@@ -141,6 +141,12 @@ class AbstractComment(
     def __str__(self):
         return "Comment #%s by %s" % (self.id, self.user_id)
 
+    @classmethod
+    def get_graphql_object_type(cls):
+        from .graphql.object_types import CommentObjectType
+
+        return CommentObjectType
+
 
 class Comment(AbstractComment):
     class Meta(AbstractComment.Meta):

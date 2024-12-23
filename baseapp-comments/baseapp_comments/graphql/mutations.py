@@ -14,10 +14,11 @@ from graphene_django.forms.mutation import _set_errors_flag_to_context
 from graphene_django.types import ErrorType
 from graphql.error import GraphQLError
 
-from .object_types import CommentObjectType, CommentsInterface
+from .object_types import CommentsInterface
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
 app_label = Comment._meta.app_label
+CommentObjectType = Comment.get_graphql_object_type()
 
 
 class CommentForm(forms.ModelForm):
