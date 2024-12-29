@@ -144,6 +144,9 @@ class ChatRoomCreate(RelayMutation):
             ]
         )
 
+        room.participants_count = len(participants)
+        room.save()
+
         return ChatRoomCreate(
             profile=profile,
             room=ChatRoomObjectType._meta.connection.Edge(
