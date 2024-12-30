@@ -5,9 +5,10 @@ from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from graphql_relay import offset_to_cursor
 
-from .object_types import BlockObjectType, BlocksInterface
+from .object_types import BlocksInterface
 
 Block = swapper.load_model("baseapp_blocks", "Block")
+BlockObjectType = Block.get_graphql_object_type()
 
 
 class BlockToggle(RelayMutation):
