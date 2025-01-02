@@ -5,6 +5,7 @@ from io import BytesIO
 import httpretty
 import pytest
 from asgiref.sync import sync_to_async
+from django.core.files.base import ContentFile
 from django.core.files.images import ImageFile
 from django.test import AsyncClient as DjangoAsyncClient
 from django.test import Client as DjClient
@@ -93,6 +94,11 @@ def image_base64():
 def image_djangofile(image_base64):
     i = BytesIO(base64.b64decode(image_base64))
     return ImageFile(i, name="image.png")
+
+
+@pytest.fixture
+def corrupted_image():
+    return ContentFile("corrupted", name="image.png")
 
 
 @pytest.fixture

@@ -3,38 +3,73 @@ from django.contrib.auth.backends import BaseBackend
 from django.db import models
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
+ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
 Block = swapper.load_model("baseapp_blocks", "Block")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
 class ChatsPermissionsBackend(BaseBackend):
-    def has_perm(self, user_obj, perm, obj=None):
-        if perm == "baseapp_chats.add_chatroom" and user_obj.is_authenticated:
-            if isinstance(obj, dict):
-                participants = obj["participants"]
-                current_profile = obj["profile"]
+    def can_add_chatroom(self, user_obj, obj):
+        if isinstance(obj, dict):
+            participants = obj["participants"]
+            current_profile = obj["profile"]
 
-                if len(participants) < 2:
-                    return False
+            if len(participants) < 2:
+                return False
 
-                if current_profile:
-                    my_profile_ids = [current_profile.id]
-                else:
-                    my_profile_ids = Profile.objects.filter_user_profiles(user_obj).values_list(
-                        "id", flat=True
-                    )
-
-                participant_profile_ids = [participant.pk for participant in participants]
-
-                blocks_qs = Block.objects.filter(
-                    models.Q(actor_id__in=my_profile_ids, target_id__in=participant_profile_ids)
-                    | models.Q(actor_id__in=participant_profile_ids, target_id__in=my_profile_ids)
+            if current_profile:
+                my_profile_ids = [current_profile.id]
+            else:
+                my_profile_ids = Profile.objects.filter_user_profiles(user_obj).values_list(
+                    "id", flat=True
                 )
 
-                if blocks_qs.exists():
-                    return False
+            participant_profile_ids = [participant.pk for participant in participants]
 
-                return True
+            blocks_qs = Block.objects.filter(
+                models.Q(actor_id__in=my_profile_ids, target_id__in=participant_profile_ids)
+                | models.Q(actor_id__in=participant_profile_ids, target_id__in=my_profile_ids)
+            )
+
+            if blocks_qs.exists():
+                return False
+
+            return True
+
+    def can_modify_chatroom(self, user_obj, obj):
+        if isinstance(obj, dict):
+            room = obj["room"]
+            add_participants = obj["add_participants"]
+            current_profile = obj["profile"]
+
+            if not getattr(room, "is_group", False):
+                return False
+
+            chat_room_participant = ChatRoomParticipant.objects.filter(
+                room=room, profile_id=current_profile.pk
+            ).first()
+            if (
+                not chat_room_participant
+                or not chat_room_participant.role
+                == ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN
+            ):
+                return False
+
+            participant_profile_ids = [participant.pk for participant in add_participants]
+
+            blocks_qs = Block.objects.filter(
+                models.Q(actor_id=current_profile.id, target_id__in=participant_profile_ids)
+                | models.Q(actor_id__in=participant_profile_ids, target_id=current_profile.id)
+            )
+
+            if blocks_qs.exists():
+                return False
+
+            return True
+
+    def has_perm(self, user_obj, perm, obj=None):
+        if perm == "baseapp_chats.add_chatroom" and user_obj.is_authenticated:
+            return self.can_add_chatroom(user_obj, obj)
         if perm == "baseapp_chats.add_chatroom_with_profile":
             return user_obj.has_perm("baseapp_profiles.use_profile", obj)
         if perm == "baseapp_chats.delete_chat":
@@ -42,6 +77,8 @@ class ChatsPermissionsBackend(BaseBackend):
                 return obj.user_id == user_obj.id or user_obj.has_perm(
                     "baseapp_profiles.use_profile", obj.actor
                 )
+        if perm == "baseapp_chats.modify_chatroom":
+            return self.can_modify_chatroom(user_obj, obj)
         if perm == "baseapp_chats.view_chatroom":
             my_profile_ids = Profile.objects.filter_user_profiles(user_obj).values_list(
                 "id", flat=True
