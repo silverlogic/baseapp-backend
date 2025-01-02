@@ -76,7 +76,6 @@ def test_user_can_see_public_activity(django_user_client, graphql_user_client):
     assert activity_response["user"]["id"] == django_user_client.user.relay_id
     assert activity_response["verb"] == verb
     assert activity_response["visibility"] == VisibilityTypes.PUBLIC.name
-    print("***", comment.relay_id)
     obj_ids = [edge["node"]["obj"]["id"] for edge in activity_response["events"]["edges"]]
     assert comment.relay_id in obj_ids
 
@@ -269,7 +268,6 @@ def test_user_can_filter_by_user_name(django_user_client, graphql_user_client):
     )
 
     content = response.json()
-    print(content["data"])
     assert len(content["data"]["activityLogs"]["edges"]) == 1
 
 def test_filter_by_user_name_is_case_insensitive(django_user_client, graphql_user_client):
@@ -311,7 +309,6 @@ def test_filter_by_user_name_is_case_insensitive(django_user_client, graphql_use
     )
 
     content = response.json()
-    print(content["data"])
     assert len(content["data"]["activityLogs"]["edges"]) == 2
 
 def test_filter_by_partial_match(django_user_client, graphql_user_client):
@@ -353,5 +350,43 @@ def test_filter_by_partial_match(django_user_client, graphql_user_client):
     )
 
     content = response.json()
-    print(content["data"])
     assert len(content["data"]["activityLogs"]["edges"]) == 1
+
+
+def test_filter_created_from_must_be_greater_than_created_to(django_user_client, graphql_user_client):
+    django_user_client.user.is_superuser = True
+    verb = f"{Comment._meta.app_label}.add_comment"
+
+    with pghistory.context(
+        user=django_user_client.user.pk, visibility=VisibilityTypes.PUBLIC, verb=verb
+    ):
+        CommentFactory()
+
+    # created another activity
+
+    with pghistory.context(user=django_user_client.user.pk, visibility=VisibilityTypes.PUBLIC, verb=verb):
+
+        CommentFactory()
+
+    assert ActivityLog.objects.count() == 2
+
+    response = graphql_user_client(
+        """
+        query NodeActivityLog {
+ activityLogs(createdFrom: "2024-12-23",createdTo: "2022-12-23") {
+    edges {
+      node {
+        id
+         user {
+          firstName
+        }
+      }
+    }
+  }
+        }
+        """,
+    )
+
+    content = response.json()
+    assert "errors" in content
+    assert "`created_from` must be earlier than or equal to `created_to`" in content["errors"][0]["message"]
