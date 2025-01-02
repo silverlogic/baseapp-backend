@@ -6,51 +6,100 @@ from baseapp_message_templates.email_utils import (
     send_sendgrid_email,
     send_template_email,
 )
+from baseapp_message_templates.models import EmailTemplate
 from baseapp_message_templates.sendgrid import get_personalization
 from baseapp_message_templates.sms_utils import get_sms_message
 
-pytestmark = pytest.mark.django_db
 
-
+@pytest.mark.django_db
 class TestEmailTemplates:
     @pytest.fixture
-    def data(self):
-        template_data = {
-            "name": "Test Template",
-            "subject": "This is a test",
-            "html_content": "<p>Hello</p>",
-            "plain_text_content": "Hello",
-            "sendgrid_template_id": "1234",
+    def email_template(self):
+        return f.EmailTemplateFactory(name="Test Template", sendgrid_template_id="1234")
+
+    @pytest.fixture
+    def english_translation(self, email_template):
+        return f.TemplateTranslationFactory(
+            target=email_template,
+            language="en",
+            subject="This is a test",
+            html_content="<p>Hello</p>",
+        )
+
+    @pytest.fixture
+    def spanish_translation(self, email_template):
+        return f.TemplateTranslationFactory(
+            target=email_template,
+            language="es",
+            subject="Esto es un teste",
+            html_content="<p>Hola</p>",
+        )
+
+    @pytest.fixture
+    def data(self, email_template, english_translation, spanish_translation):
+        return {
+            "name": email_template.name,
+            "sendgrid_template_id": email_template.sendgrid_template_id,
+            "english_subject": english_translation.subject,
+            "english_html_content": english_translation.html_content,
+            "english_plain_text_content": "Hello",
+            "spanish_subject": spanish_translation.subject,
+            "spanish_html_content": spanish_translation.html_content,
+            "spanish_plain_text_content": "Hola",
         }
-        self.template = f.EmailTemplateFactory(**template_data)
-        return template_data
 
     def test_auto_generate_plain_text(self, data):
-        _html_content, text_content, subject = get_full_copy_template(self.template)
+        template = EmailTemplate.objects.get(name=data["name"])
+        _html_content, text_content, subject = get_full_copy_template(template)
 
-        assert text_content == "Hello"
-        assert subject == "This is a test"
+        assert text_content == data["english_plain_text_content"]
+        assert subject == data["english_subject"]
+
+        _html_content, text_content, subject = get_full_copy_template(template, language="es")
+        assert text_content == data["spanish_plain_text_content"]
+        assert subject == data["spanish_subject"]
 
     def test_send_mail(self, outbox, data):
+        # If no language is specified, 'send' should use the English translation as default
         send_template_email("Test Template", ["test@test.com"])
 
         assert len(outbox) == 1
 
         assert outbox[0].to == ["test@test.com"]
-        assert outbox[0].subject == data["subject"]
-        assert outbox[0].body == "Hello"
-        assert data["html_content"] in outbox[0].alternatives[0][0]
+        assert outbox[0].subject == data["english_subject"]
+        assert outbox[0].body == data["english_plain_text_content"]
+        assert data["english_html_content"] in outbox[0].alternatives[0][0]
 
-    def test_send_mail_with_context(self, outbox, data):
-        self.template.html_content = "<p>{{content}}</p>"
-        self.template.plain_text_content = "{{content}}"
-        context = {"content": "Test Content"}
-        self.template.send(["test@test.com"], context)
+    def test_send_mail_translated(self, outbox, data):
+        send_template_email("Test Template", ["test@test.com"], language="es")
 
         assert len(outbox) == 1
 
         assert outbox[0].to == ["test@test.com"]
-        assert outbox[0].subject == data["subject"]
+        assert outbox[0].subject == data["spanish_subject"]
+        assert outbox[0].body == data["spanish_plain_text_content"]
+        assert data["spanish_html_content"] in outbox[0].alternatives[0][0]
+
+    def test_email_template_with_no_translations(self):
+        EmailTemplate.objects.create(name="Template With No Translations")
+        with pytest.raises(Exception) as exc_info:
+            send_template_email("Template With No Translations", ["test@test.com"])
+        assert str(exc_info.value) == "At least one translation is required to send e-mail"
+
+    def test_send_mail_with_context(self, outbox, data):
+        template = EmailTemplate.objects.get(name=data["name"])
+        translation = template.translations.filter(language="en").first()
+        translation.html_content = "<p>{{content}}</p>"
+        translation.plain_text_content = "{{content}}"
+        context = {"content": "Test Content"}
+        translation.save()
+        translation.refresh_from_db()
+        template.send(["test@test.com"], context)
+
+        assert len(outbox) == 1
+
+        assert outbox[0].to == ["test@test.com"]
+        assert outbox[0].subject == data["english_subject"]
         assert outbox[0].body == context["content"]
         assert outbox[0].alternatives[0][0] == f"<p>{context['content']}</p>"
 
@@ -80,6 +129,7 @@ class TestEmailTemplates:
         assert len(outbox[0].personalizations) == 2
 
 
+@pytest.mark.django_db
 class TestSmsTemplates:
     @pytest.fixture
     def data(self):
