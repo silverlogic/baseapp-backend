@@ -269,7 +269,6 @@ def test_user_can_filter_by_user_name(django_user_client, graphql_user_client):
     )
 
     content = response.json()
-    print(content["data"])
     assert len(content["data"]["activityLogs"]["edges"]) == 1
 
 def test_filter_by_user_name_is_case_insensitive(django_user_client, graphql_user_client):
@@ -311,7 +310,6 @@ def test_filter_by_user_name_is_case_insensitive(django_user_client, graphql_use
     )
 
     content = response.json()
-    print(content["data"])
     assert len(content["data"]["activityLogs"]["edges"]) == 2
 
 def test_filter_by_partial_match(django_user_client, graphql_user_client):
@@ -353,5 +351,4 @@ def test_filter_by_partial_match(django_user_client, graphql_user_client):
     )
 
     content = response.json()
-    print(content["data"])
     assert len(content["data"]["activityLogs"]["edges"]) == 1
