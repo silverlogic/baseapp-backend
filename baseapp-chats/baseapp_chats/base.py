@@ -153,7 +153,7 @@ class AbstractBaseMessage(TimeStampedModel, RelayModel):
 class AbstractChatRoomParticipant(TimeStampedModel, RelayModel):
     class ChatRoomParticipantRoles(models.IntegerChoices):
         MEMBER = 1, _("member")
-        ADMIM = 2, _("admin")
+        ADMIN = 2, _("admin")
 
         @property
         def description(self):
@@ -178,7 +178,7 @@ class AbstractChatRoomParticipant(TimeStampedModel, RelayModel):
 
     class Meta:
         abstract = True
-        ordering = ["created"]
+        ordering = ["-role", "profile__name"]
 
     @classmethod
     def get_graphql_object_type(cls):

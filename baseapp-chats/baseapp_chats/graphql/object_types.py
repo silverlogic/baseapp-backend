@@ -15,15 +15,20 @@ from .filters import ChatRoomFilter
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
+ChatRoomParticipantRoleTypesEnum = graphene.Enum.from_enum(
+    ChatRoomParticipant.ChatRoomParticipantRoles
+)
 UnreadMessageCount = swapper.load_model("baseapp_chats", "UnreadMessageCount")
 Message = swapper.load_model("baseapp_chats", "Message")
 
 
 class BaseChatRoomParticipantObjectType:
+    role = graphene.Field(ChatRoomParticipantRoleTypesEnum)
+
     class Meta:
         interfaces = (relay.Node,)
         model = ChatRoomParticipant
-        fields = ("id", "has_archived_room", "profile")
+        fields = ("id", "has_archived_room", "profile", "role")
         filter_fields = ("profile__target_content_type",)
 
 
