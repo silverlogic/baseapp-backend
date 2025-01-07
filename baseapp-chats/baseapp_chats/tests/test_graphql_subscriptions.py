@@ -181,7 +181,7 @@ async def test_user_recieves_message_count_update(django_user_client, graphql_ws
 
     resp = await client.receive(assert_id=sub_id, assert_type="next")
 
-    assert resp["data"]["chatRoomOnMessagesCountUpdate"]["profile"]["unreadMessagesCount"] == 1
-
     # Disconnect and wait the application to finish gracefully.
     await client.finalize()
+
+    assert resp["data"]["chatRoomOnMessagesCountUpdate"]["profile"]["unreadMessagesCount"] == 1

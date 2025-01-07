@@ -137,14 +137,14 @@ class ChatRoomCreate(RelayMutation):
             image=image,
         )
 
-        ChatRoomParticipant.objects.bulk_create(
+        created_participants = ChatRoomParticipant.objects.bulk_create(
             [
                 ChatRoomParticipant(profile=participant, room=room, accepted_at=timezone.now())
                 for participant in participants
             ]
         )
 
-        room.participants_count = len(participants)
+        room.participants_count = len(created_participants)
         room.save()
 
         return ChatRoomCreate(
