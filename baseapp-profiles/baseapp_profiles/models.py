@@ -154,6 +154,17 @@ class ProfilableModel(models.Model):
     class Meta:
         abstract = True
 
+    def delete(self, *args, **kwargs):
+        if not hasattr(self, 'profile') or self.profile.owner != self:
+            super().delete(*args, **kwargs)
+            return
+
+        profile = self.profile
+        self.profile = None
+        self.save(update_fields=["profile"])
+        super().delete(*args, **kwargs)
+        profile.delete()
+
 
 class Profile(AbstractProfile):
     class Meta(AbstractProfile.Meta):
