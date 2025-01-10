@@ -1,7 +1,5 @@
 from typing import Any, Dict
-from baseapp_auth.exceptions import UserPasswordExpiredException
 from allauth.headless.adapter import DefaultHeadlessAdapter
-from baseapp_auth.rest_framework.users.serializers import UserSerializer
 from baseapp_auth.rest_framework.login.serializers import (
     LoginChangeExpiredPasswordRedirectSerializer,
 )
@@ -21,6 +19,4 @@ class HeadlessAdapter(DefaultHeadlessAdapter):
             )
             serializer.is_valid(raise_exception=True)
             return serializer.data
-        data = super(HeadlessAdapter, self).serialize_user(user)
-        serializer = UserSerializer(user, context={"request": self.request})
-        return serializer.data | data
+        return super(HeadlessAdapter, self).serialize_user(user)
