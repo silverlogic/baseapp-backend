@@ -20,8 +20,24 @@ class ChatRoomFilter(django_filters.FilterSet):
         fields = ["q", "order_by"]
 
     def filter_q(self, queryset, name, value):
+        if not value:
+            return queryset
+
+        try:
+            user_profile_id = self.request.user.current_profile.pk
+        except AttributeError:
+            user_profile_id = None
+
         return queryset.filter(
-            Q(title__icontains=value) | Q(participants__profile__name__icontains=value)
+            (Q(is_group=True) & Q(title__icontains=value))
+            | (
+                Q(is_group=False)
+                & Q(participants__profile__name__icontains=value)
+                & (
+                    Q(participants__profile_id__lt=user_profile_id)
+                    | Q(participants__profile_id__gt=user_profile_id)
+                )
+            )
         ).distinct()
 
     def filter_profile_id(self, queryset, name, value):
