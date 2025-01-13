@@ -12,12 +12,14 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from graphene_django.types import ErrorType
+from rest_framework import serializers
 
 from baseapp_chats.graphql.subscriptions import ChatRoomOnMessagesCountUpdate
 from baseapp_chats.utils import send_message, send_new_chat_message_notification
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
+ChatRoomParticipantRoles = ChatRoomParticipant.ChatRoomParticipantRoles
 Message = swapper.load_model("baseapp_chats", "Message")
 MessageStatus = swapper.load_model("baseapp_chats", "MessageStatus")
 UnreadMessageCount = swapper.load_model("baseapp_chats", "UnreadMessageCount")
@@ -30,6 +32,10 @@ ChatRoomObjectType = ChatRoom.get_graphql_object_type()
 ProfileObjectType = Profile.get_graphql_object_type()
 MessageObjectType = Message.get_graphql_object_type()
 ChatRoomParticipantObjectType = ChatRoomParticipant.get_graphql_object_type()
+
+
+class ImageSerializer(serializers.Serializer):
+    image = serializers.ImageField(required=False, allow_null=True)
 
 
 class ChatRoomCreate(RelayMutation):
@@ -129,17 +135,32 @@ class ChatRoomCreate(RelayMutation):
                 ),
             )
         image = info.context.FILES.get("image", None)
+        serializer = ImageSerializer(data={"image": image})
+        if not serializer.is_valid():
+            return ChatRoomCreate(
+                errors=[ErrorType(field="image", messages=serializer.errors["image"])]
+            )
+
         room = ChatRoom.objects.create(
             created_by=info.context.user,
             last_message_time=timezone.now(),
             is_group=is_group,
             title=title,
-            image=image,
+            image=serializer.validated_data["image"],
         )
 
         created_participants = ChatRoomParticipant.objects.bulk_create(
             [
-                ChatRoomParticipant(profile=participant, room=room, accepted_at=timezone.now())
+                ChatRoomParticipant(
+                    profile=participant,
+                    room=room,
+                    role=(
+                        ChatRoomParticipantRoles.ADMIN
+                        if participant == profile
+                        else ChatRoomParticipantRoles.MEMBER
+                    ),
+                    accepted_at=timezone.now(),
+                )
                 for participant in participants
             ]
         )
@@ -149,6 +170,136 @@ class ChatRoomCreate(RelayMutation):
 
         return ChatRoomCreate(
             profile=profile,
+            room=ChatRoomObjectType._meta.connection.Edge(
+                node=room,
+            ),
+        )
+
+
+class ChatRoomUpdate(RelayMutation):
+    room = graphene.Field(ChatRoomObjectType._meta.connection.Edge)
+
+    class Input:
+        room_id = graphene.ID(required=True)
+        profile_id = graphene.ID(required=True)
+        title = graphene.String(required=False)
+        delete_image = graphene.Boolean(default_value=False)
+        add_participants = graphene.List(graphene.ID, default_value=[])
+        remove_participants = graphene.List(graphene.ID, default_value=[])
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(
+        cls,
+        root,
+        info,
+        room_id,
+        profile_id,
+        delete_image,
+        add_participants,
+        remove_participants,
+        **input,
+    ):
+        room = get_obj_from_relay_id(info, room_id)
+        profile = get_obj_from_relay_id(info, profile_id)
+
+        if not room or not getattr(room, "is_group", False):
+            return ChatRoomUpdate(
+                errors=[
+                    ErrorType(
+                        field="room_id",
+                        messages=[_("This room cannot be updated")],
+                    )
+                ]
+            )
+
+        if not info.context.user.has_perm("baseapp_profiles.use_profile", profile):
+            return ChatRoomUpdate(
+                errors=[
+                    ErrorType(
+                        field="profile_id",
+                        messages=[_("You don't have permission to act as this profile")],
+                    )
+                ]
+            )
+
+        add_participants = [
+            get_obj_from_relay_id(info, participant) for participant in add_participants
+        ]
+        add_participants = [
+            participant for participant in add_participants if participant is not None
+        ]
+        add_participants_ids = [participant.pk for participant in add_participants]
+
+        remove_participants = [
+            get_obj_from_relay_id(info, participant) for participant in remove_participants
+        ]
+        remove_participants = [
+            participant for participant in remove_participants if participant is not None
+        ]
+        remove_participants_ids = [participant.pk for participant in remove_participants]
+
+        # Check if added participants are blocked
+        if Block.objects.filter(
+            Q(actor_id=profile.id, target_id__in=add_participants_ids)
+            | Q(actor_id__in=add_participants_ids, target_id=profile.id)
+        ).exists():
+            return ChatRoomUpdate(
+                errors=[
+                    ErrorType(
+                        field="add_participants",
+                        messages=[_("You can't add those participants to a chatroom")],
+                    )
+                ]
+            )
+
+        if not info.context.user.has_perm(
+            "baseapp_chats.modify_chatroom",
+            {"profile": profile, "room": room, "add_participants": add_participants},
+        ):
+            return ChatRoomUpdate(
+                errors=[
+                    ErrorType(
+                        field="room_id",
+                        messages=[_("You don't have permission to update this room")],
+                    )
+                ]
+            )
+
+        title = input.get("title", None)
+        if title is not None:
+            room.title = title
+
+        image = info.context.FILES.get("image", None)
+        serializer = ImageSerializer(data={"image": image})
+        if not serializer.is_valid():
+            return ChatRoomUpdate(
+                errors=[ErrorType(field="image", messages=serializer.errors["image"])]
+            )
+
+        if image is not None:
+            room.image = serializer.validated_data["image"]
+        elif delete_image:
+            room.image = None
+
+        room.save()
+
+        for participant in remove_participants_ids:
+            # TODO: Delete participant
+            # ChatRoomParticipant.objects.filter(
+            #    profile_id=participant.pk, room=room
+            # ).delete()
+            pass
+
+        for participant in add_participants:
+            # TODO: Add participant
+            # ChatRoomParticipant.objects.create(
+            #    profile=participant, room=room, accepted_at=timezone.now()
+            # )
+            # Subscriptions?
+            pass
+
+        return ChatRoomUpdate(
             room=ChatRoomObjectType._meta.connection.Edge(
                 node=room,
             ),
@@ -417,6 +568,7 @@ class ChatRoomArchive(RelayMutation):
 
 class ChatsMutations(object):
     chat_room_create = ChatRoomCreate.Field()
+    chat_room_update = ChatRoomUpdate.Field()
     chat_room_send_message = ChatRoomSendMessage.Field()
     chat_room_read_messages = ChatRoomReadMessages.Field()
     chat_room_unread = ChatRoomUnread.Field()
