@@ -37,6 +37,26 @@ SEARCH_PROFILES_BY_QUERY_PARAM = """
     }
 """
 
+SEARCH_MEMBERS_BY_QUERY_PARAM = """
+    query AllMembers($q: String!) {
+        me {
+            profile {
+                members(q: $q) {
+                    edges {
+                        node {
+                            role
+                            user {
+                                fullName
+                                id
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+"""
+
 
 def test_profile_metadata(graphql_user_client, image_djangofile):
     profile = ProfileFactory(image=image_djangofile)
@@ -261,3 +281,55 @@ def test_search_profiles(graphql_user_client):
     assert profile3.relay_id not in profiles
     assert profile4.relay_id in profiles
     assert profile5.relay_id not in profiles
+
+
+def test_search_members_filters_by_name(django_user_client, graphql_user_client):
+    user = django_user_client.user
+    profile = ProfileFactory(owner=user)
+    p1 = ProfileUserRoleFactory(
+        profile=profile,
+        status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
+    )
+    p2 = ProfileUserRoleFactory(
+        profile=profile,
+        status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
+    )
+
+    response = graphql_user_client(
+        SEARCH_MEMBERS_BY_QUERY_PARAM, variables={"q": p1.user.first_name}
+    )
+    content = response.json()
+    members = [
+        id
+        for id in [
+            edge["node"]["id"] for edge in content["data"]["me"]["profile"]["members"]["edges"]
+        ]
+    ]
+    assert p1.user.relay_id in members
+    assert p2.user.relay_id not in members
+
+
+def test_search_members_filters_by_last_name(django_user_client, graphql_user_client):
+    user = django_user_client.user
+    profile = ProfileFactory(owner=user)
+    p1 = ProfileUserRoleFactory(
+        profile=profile,
+        status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
+    )
+    p2 = ProfileUserRoleFactory(
+        profile=profile,
+        status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
+    )
+
+    response = graphql_user_client(
+        SEARCH_MEMBERS_BY_QUERY_PARAM, variables={"q": p1.user.last_name}
+    )
+    content = response.json()
+    members = [
+        id
+        for id in [
+            edge["node"]["id"] for edge in content["data"]["me"]["profile"]["members"]["edges"]
+        ]
+    ]
+    assert p1.user.relay_id in members
+    assert p2.user.relay_id not in members
