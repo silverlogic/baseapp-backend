@@ -1,7 +1,6 @@
 import graphene
-from baseapp_profiles.graphql.queries import ProfilesQueries
-
 from baseapp_follows.graphql.mutations import FollowsMutations
+from baseapp_profiles.graphql.queries import ProfilesQueries
 from testproject.testapp.graphql.queries import UsersQueries
 
 

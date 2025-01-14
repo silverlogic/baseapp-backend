@@ -8,12 +8,11 @@ from avatar.models import Avatar
 from baseapp_core.rest_framework.routers import DefaultRouter
 from baseapp_core.tests import helpers as h
 from baseapp_core.tests.fixtures import *  # noqa
+from baseapp_social_auth.referrals import get_referral_code
+from baseapp_social_auth.views import SocialAuthViewSet
 from django.contrib.auth import get_user_model
 from django.urls import include, path, reverse
 from rest_framework.test import APITestCase, URLPatternsTestCase
-
-from baseapp_social_auth.referrals import get_referral_code
-from baseapp_social_auth.views import SocialAuthViewSet
 
 pytestmark = pytest.mark.django_db
 

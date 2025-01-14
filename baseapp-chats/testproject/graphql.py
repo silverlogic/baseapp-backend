@@ -1,9 +1,8 @@
 import graphene
-from baseapp_profiles.graphql.queries import ProfilesQueries
-
 from baseapp_chats.graphql.mutations import ChatsMutations
 from baseapp_chats.graphql.queries import ChatsQueries
 from baseapp_chats.graphql.subscriptions import ChatsSubscriptions
+from baseapp_profiles.graphql.queries import ProfilesQueries
 from testproject.testapp.graphql.queries import UsersQueries
 
 

@@ -1,8 +1,7 @@
+import baseapp_wagtail.base.rest_framework.tests.factories as f
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
-
-import baseapp_wagtail.base.rest_framework.tests.factories as f
 
 
 class RedirectsAPIViewSetTests(TestCase):

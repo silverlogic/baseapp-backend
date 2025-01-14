@@ -1,5 +1,4 @@
 import factory
-
 from baseapp_message_templates.models import EmailTemplate, SmsTemplate
 
 

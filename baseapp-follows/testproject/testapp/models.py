@@ -1,9 +1,8 @@
 from baseapp_auth.models import AbstractUser
+from baseapp_follows.models import FollowableModel
 from baseapp_profiles.models import ProfilableModel
 from django.utils import timezone
 from model_utils import FieldTracker
-
-from baseapp_follows.models import FollowableModel
 
 
 class User(AbstractUser, ProfilableModel, FollowableModel):

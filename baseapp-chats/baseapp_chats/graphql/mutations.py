@@ -1,5 +1,7 @@
 import graphene
 import swapper
+from baseapp_chats.graphql.subscriptions import ChatRoomOnMessagesCountUpdate
+from baseapp_chats.utils import send_message, send_new_chat_message_notification
 from baseapp_core.graphql import (
     RelayMutation,
     get_obj_from_relay_id,
@@ -12,9 +14,6 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from graphene_django.types import ErrorType
-
-from baseapp_chats.graphql.subscriptions import ChatRoomOnMessagesCountUpdate
-from baseapp_chats.utils import send_message, send_new_chat_message_notification
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")

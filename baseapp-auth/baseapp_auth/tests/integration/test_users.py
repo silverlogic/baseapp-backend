@@ -44,8 +44,6 @@ class TestUsersRetrieve(ApiMixin):
             "id",
             "profile",
             "email",
-            "is_email_verified",
-            "email_verification_required",
             "new_email",
             "is_new_email_confirmed",
             "referral_code",

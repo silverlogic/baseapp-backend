@@ -1,9 +1,8 @@
 import urllib.parse
 
+from baseapp_url_shortening.models import ShortUrl
 from django.conf import settings
 from django.contrib import admin
-
-from baseapp_url_shortening.models import ShortUrl
 
 
 @admin.register(ShortUrl)

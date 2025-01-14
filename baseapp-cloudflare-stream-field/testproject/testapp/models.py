@@ -1,6 +1,5 @@
-from django.db import models
-
 from baseapp_cloudflare_stream_field import CloudflareStreamField
+from django.db import models
 
 
 class Post(models.Model):
