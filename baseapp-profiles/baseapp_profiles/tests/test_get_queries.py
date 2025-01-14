@@ -37,6 +37,26 @@ SEARCH_PROFILES_BY_QUERY_PARAM = """
     }
 """
 
+SEARCH_MEMBERS_BY_QUERY_PARAM = """
+    query AllMembers($q: String!) {
+        me {
+            profile {
+                members(q: $q) {
+                    edges {
+                        node {
+                            role
+                            user {
+                                fullName
+                                id
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+"""
+
 
 def test_profile_metadata(graphql_user_client, image_djangofile):
     profile = ProfileFactory(image=image_djangofile)
