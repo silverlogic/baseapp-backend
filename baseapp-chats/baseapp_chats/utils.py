@@ -36,11 +36,11 @@ def send_message(
 
     from baseapp_chats.graphql.subscriptions import ChatRoomOnNewMessage
 
-    ChatRoomOnNewMessage.new_message(room_id=room_id or room.relay_id, message=message)
-
     room.last_message_time = message.created
     room.last_message = message
     room.save()
+
+    ChatRoomOnNewMessage.new_message(room_id=room_id or room.relay_id, message=message)
 
     return message
 

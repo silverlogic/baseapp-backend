@@ -6,41 +6,51 @@ from channels.db import database_sync_to_async
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
+ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
 Message = swapper.load_model("baseapp_chats", "Message")
 MessageObjectType = Message.get_graphql_object_type()
 ProfileObjectType = Profile.get_graphql_object_type()
+ChatRoomObjectType = ChatRoom.get_graphql_object_type()
+ChatRoomParticipantObjectType = ChatRoomParticipant.get_graphql_object_type()
 
 
 class ChatRoomOnRoomUpdate(channels_graphql_ws.Subscription):
-    room = graphene.Field(lambda: ChatRoom.get_graphql_object_type()._meta.connection.Edge)
+    room = graphene.Field(ChatRoomObjectType._meta.connection.Edge)
+    removed_participants = graphene.List(ChatRoomParticipantObjectType)
 
     class Arguments:
         profile_id = graphene.ID(required=True)
 
     @staticmethod
-    def subscribe(root, info, **kwargs):
-        return ["chat"]
+    async def subscribe(root, info, profile_id):
+        user = info.context.channels_scope["user"]
+        profile = await database_sync_to_async(get_obj_from_relay_id)(info, profile_id)
+        if not user.is_authenticated or not database_sync_to_async(user.has_perm)(
+            "baseapp_profiles.use_profile", profile
+        ):
+            return []
+        return [str(profile.pk)]
 
     @staticmethod
-    def publish(payload, info, **kwargs):
-        message = payload["message"]
-        user = info.context.channels_scope["user"]
-        room = message.room
-
-        if not user.is_authenticated or not user.has_perm("baseapp_chats.view_chatroom", room):
-            return None
-
-        # TO DO: only send the message to the participants, check for profile_id
-
-        Edge = ChatRoom.get_graphql_object_type()._meta.connection.Edge
-        return ChatRoomOnRoomUpdate(room=Edge(node=room))
+    def publish(payload, info, profile_id):
+        return ChatRoomOnRoomUpdate(
+            room=ChatRoomObjectType._meta.connection.Edge(node=payload["room"]),
+            removed_participants=payload["removed_participants"],
+        )
 
     @classmethod
-    def new_message(cls, message, **kwargs):
-        cls.broadcast(
-            group="chat",
-            payload={"message": message},
-        )
+    def new_message(cls, message):
+        cls.room_updated(message.room)
+
+    @classmethod
+    def room_updated(cls, room, removed_participants=[]):
+        participant_ids = list(room.participants.values_list("profile_id", flat=True))
+        removed_ids = [participant.profile.id for participant in removed_participants]
+        for id in participant_ids + removed_ids:
+            cls.broadcast(
+                group=str(id),
+                payload={"room": room, "removed_participants": removed_participants},
+            )
 
 
 class ChatRoomOnMessagesCountUpdate(channels_graphql_ws.Subscription):
