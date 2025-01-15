@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 import pytest
+import swapper
 from baseapp_blocks.tests.factories import BlockFactory
 from baseapp_core.graphql.testing.fixtures import graphql_query
 from baseapp_core.tests.factories import UserFactory
@@ -11,6 +12,8 @@ from freezegun import freeze_time
 from .factories import ChatRoomFactory, ChatRoomParticipantFactory, MessageFactory
 
 pytestmark = pytest.mark.django_db
+
+UnreadMessageCount = swapper.load_model("baseapp_chats", "UnreadMessageCount")
 
 
 USER_ROOMS_GRAPHQL = """
@@ -45,12 +48,12 @@ ROOM_GRAPHQL = """
 """
 
 PROFILE_ROOMS_GRAPHQL = """
-    query ProfileRooms($profileId: ID!, $archived: Boolean, $unreadMessages: Boolean) {
+    query ProfileRooms($profileId: ID!, $archived: Boolean, $unreadMessages: Boolean, $q: String) {
         profile(id: $profileId) {
             id
             name
             ... on ChatRoomsInterface {
-                chatRooms (archived: $archived, unreadMessages: $unreadMessages) {
+                chatRooms (archived: $archived, unreadMessages: $unreadMessages, q: $q) {
                     edges {
                         node {
                             id
@@ -146,31 +149,202 @@ def test_filter_rooms_with_unread_messages(graphql_user_client, django_user_clie
     )
 
 
-def test_archived_chats(graphql_user_client, django_user_client):
-    my_profile = django_user_client.user.profile
-    friend_profile = ProfileFactory()
-    room = ChatRoomFactory(created_by=django_user_client.user)
+def test_archived_chats(django_client):
+    me = UserFactory()
+    my_profile = me.profile
+    friend = UserFactory()
+    friend_profile = friend.profile
+    room = ChatRoomFactory(created_by=me)
 
     ChatRoomParticipantFactory(room=room, profile=my_profile, has_archived_room=True)
     ChatRoomParticipantFactory(room=room, profile=friend_profile)
 
-    response = graphql_user_client(
+    django_client.force_login(me)
+    response = graphql_query(
         PROFILE_ROOMS_GRAPHQL,
         variables={"profileId": my_profile.relay_id, "archived": True},
+        client=django_client,
     )
 
     content = response.json()
 
     assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 1
 
-    response = graphql_user_client(
+    django_client.force_login(friend)
+    response = graphql_query(
         PROFILE_ROOMS_GRAPHQL,
         variables={"profileId": friend_profile.relay_id, "archived": True},
+        client=django_client,
     )
 
     content = response.json()
 
     assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 0
+
+
+def test_can_filter_by_room_title(django_client):
+    user_1 = UserFactory(first_name="Luke", last_name="Skywalker")
+    profile_1 = user_1.profile
+
+    user_2 = UserFactory(first_name="Darth", last_name="Vader")
+    profile_2 = user_2.profile
+
+    profile_3 = ProfileFactory(name="Tester123")
+    profile_4 = ProfileFactory(name="Luke Littler")
+
+    room_1 = ChatRoomFactory(created_by=profile_1.owner, is_group=False)
+    room_2 = ChatRoomFactory(created_by=profile_1.owner, is_group=False)
+    room_3 = ChatRoomFactory(created_by=profile_1.owner, title="Lucky Luke", is_group=True)
+    room_4 = ChatRoomFactory(created_by=profile_2.owner, title="Star Wars", is_group=True)
+
+    ChatRoomParticipantFactory(room=room_1, profile=profile_1)
+    ChatRoomParticipantFactory(room=room_1, profile=profile_2, has_archived_room=True)
+
+    ChatRoomParticipantFactory(room=room_2, profile=profile_1, has_archived_room=True)
+    ChatRoomParticipantFactory(room=room_2, profile=profile_4)
+
+    ChatRoomParticipantFactory(room=room_3, profile=profile_1)
+    ChatRoomParticipantFactory(room=room_3, profile=profile_2)
+    ChatRoomParticipantFactory(room=room_3, profile=profile_3, has_archived_room=True)
+
+    ChatRoomParticipantFactory(room=room_4, profile=profile_1, has_archived_room=True)
+    ChatRoomParticipantFactory(room=room_4, profile=profile_2)
+
+    django_client.force_login(user_1)
+    response = graphql_query(
+        PROFILE_ROOMS_GRAPHQL,
+        variables={"profileId": profile_1.relay_id, "q": "lUKE"},
+        client=django_client,
+    )
+    content = response.json()
+
+    rooms = content["data"]["profile"]["chatRooms"]["edges"]
+    assert len(rooms) == 2
+    room_ids = [room["node"]["id"] for room in rooms]
+    assert room_1.relay_id not in room_ids  # room name 'Darth Vader'
+    assert room_2.relay_id in room_ids  # room name 'Luke Littler'
+    assert room_3.relay_id in room_ids  # room name 'Lucky Luke'
+    assert room_4.relay_id not in room_ids  # room name 'Star Wars'
+
+    django_client.force_login(user_2)
+    response = graphql_query(
+        PROFILE_ROOMS_GRAPHQL,
+        variables={"profileId": profile_2.relay_id, "q": "u"},
+        client=django_client,
+    )
+    content = response.json()
+
+    rooms = content["data"]["profile"]["chatRooms"]["edges"]
+    assert len(rooms) == 2
+    room_ids = [room["node"]["id"] for room in rooms]
+    assert room_1.relay_id in room_ids  # room name 'Luke Skywalker'
+    assert room_2.relay_id not in room_ids  # not a member
+    assert room_3.relay_id in room_ids  # room name 'Lucky Luke'
+    assert room_4.relay_id not in room_ids  # room name 'Star Wars'
+
+
+def test_can_filter_unread_rooms_by_title(django_client):
+    user_1 = UserFactory(first_name="Luke", last_name="Skywalker (Artist)")
+    profile_1 = user_1.profile
+    profile_2 = ProfileFactory(name="Darth Vader")
+    profile_3 = ProfileFactory(name="Han Solo")
+    profile_4 = ProfileFactory(name="R2D2")
+
+    room_1 = ChatRoomFactory(created_by=profile_2.owner, is_group=False)
+    room_2 = ChatRoomFactory(created_by=profile_3.owner, is_group=False)
+    room_3 = ChatRoomFactory(created_by=profile_4.owner, title="art exhibition", is_group=True)
+    room_4 = ChatRoomFactory(created_by=profile_1.owner, title="Some group", is_group=True)
+    room_5 = ChatRoomFactory(created_by=profile_1.owner, title="Star Wars, Part I", is_group=True)
+
+    ChatRoomParticipantFactory(room=room_1, profile=profile_1, has_archived_room=True)
+    ChatRoomParticipantFactory(room=room_1, profile=profile_2)
+
+    ChatRoomParticipantFactory(room=room_2, profile=profile_1)
+    ChatRoomParticipantFactory(room=room_2, profile=profile_4, has_archived_room=True)
+
+    ChatRoomParticipantFactory(room=room_3, profile=profile_1)
+    ChatRoomParticipantFactory(room=room_3, profile=profile_2, has_archived_room=True)
+    ChatRoomParticipantFactory(room=room_3, profile=profile_3)
+
+    ChatRoomParticipantFactory(room=room_4, profile=profile_1, has_archived_room=True)
+    ChatRoomParticipantFactory(room=room_4, profile=profile_2)
+
+    ChatRoomParticipantFactory(room=room_5, profile=profile_1)
+    ChatRoomParticipantFactory(room=room_5, profile=profile_4)
+
+    UnreadMessageCount(room=room_1, profile=profile_1, marked_unread=True).save()
+    MessageFactory(room=room_2, profile=profile_4)
+    MessageFactory(room=room_3, profile=profile_3)
+    MessageFactory(room=room_4, profile=profile_2)
+    MessageFactory(room=room_5, profile=profile_1)
+
+    django_client.force_login(user_1)
+    response = graphql_query(
+        PROFILE_ROOMS_GRAPHQL,
+        variables={"profileId": profile_1.relay_id, "unreadMessages": True, "q": "art"},
+        client=django_client,
+    )
+    content = response.json()
+
+    rooms = content["data"]["profile"]["chatRooms"]["edges"]
+    assert len(rooms) == 2
+    room_ids = [room["node"]["id"] for room in rooms]
+    assert room_1.relay_id in room_ids  # room name 'Darth Vader'
+    assert room_2.relay_id not in room_ids  # room name 'R2D2'
+    assert room_3.relay_id in room_ids  # room name 'art exhibition'
+    assert room_4.relay_id not in room_ids  # room name 'Some group'
+    assert room_5.relay_id not in room_ids  # room name 'Star Wars, Part I', but no unread messages
+
+
+def test_can_filter_archived_rooms_by_title(django_client):
+    user_1 = UserFactory(first_name="Tester", last_name="11")
+    profile_1 = user_1.profile
+    profile_2 = ProfileFactory(name="Shrek")
+    profile_3 = ProfileFactory(name="111111")
+    profile_4 = ProfileFactory(name="112358")
+
+    room_1 = ChatRoomFactory(created_by=profile_4.owner, title="11th street", is_group=True)
+    room_2 = ChatRoomFactory(created_by=profile_4.owner, is_group=False)
+    room_3 = ChatRoomFactory(created_by=profile_4.owner, title="10000 BC", is_group=True)
+    room_4 = ChatRoomFactory(created_by=profile_4.owner, is_group=False)
+    room_5 = ChatRoomFactory(created_by=profile_4.owner, title="Oceans 11", is_group=True)
+
+    ChatRoomParticipantFactory(room=room_1, profile=profile_1)
+    ChatRoomParticipantFactory(room=room_1, profile=profile_2, has_archived_room=True)
+    ChatRoomParticipantFactory(room=room_1, profile=profile_4, has_archived_room=True)
+
+    ChatRoomParticipantFactory(room=room_2, profile=profile_1, has_archived_room=True)
+    ChatRoomParticipantFactory(room=room_2, profile=profile_2, has_archived_room=True)
+
+    ChatRoomParticipantFactory(room=room_3, profile=profile_1, has_archived_room=True)
+    ChatRoomParticipantFactory(room=room_3, profile=profile_2, has_archived_room=True)
+    ChatRoomParticipantFactory(room=room_3, profile=profile_3, has_archived_room=True)
+
+    ChatRoomParticipantFactory(room=room_4, profile=profile_1, has_archived_room=True)
+    ChatRoomParticipantFactory(room=room_4, profile=profile_3)
+
+    ChatRoomParticipantFactory(room=room_5, profile=profile_1, has_archived_room=True)
+    ChatRoomParticipantFactory(room=room_5, profile=profile_3)
+
+    MessageFactory(room=room_2, profile=profile_4)
+    MessageFactory(room=room_5, profile=profile_3)
+
+    django_client.force_login(user_1)
+    response = graphql_query(
+        PROFILE_ROOMS_GRAPHQL,
+        variables={"profileId": profile_1.relay_id, "archived": True, "q": "11"},
+        client=django_client,
+    )
+    content = response.json()
+
+    rooms = content["data"]["profile"]["chatRooms"]["edges"]
+    assert len(rooms) == 2
+    room_ids = [room["node"]["id"] for room in rooms]
+    assert room_1.relay_id not in room_ids  # room name '11th street' but not archived
+    assert room_2.relay_id not in room_ids  # room name 'Shrek'
+    assert room_3.relay_id not in room_ids  # room name '10000 BC'
+    assert room_4.relay_id in room_ids  # room name '112358'
+    assert room_5.relay_id in room_ids  # room name 'Oceans 11'
 
 
 def test_cant_list_rooms_if_not_participating(graphql_user_client):
