@@ -37,26 +37,6 @@ SEARCH_PROFILES_BY_QUERY_PARAM = """
     }
 """
 
-SEARCH_MEMBERS_BY_QUERY_PARAM = """
-    query AllMembers($q: String!) {
-        me {
-            profile {
-                members(q: $q) {
-                    edges {
-                        node {
-                            role
-                            user {
-                                fullName
-                                id
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-"""
-
 
 def test_profile_metadata(graphql_user_client, image_djangofile):
     profile = ProfileFactory(image=image_djangofile)
@@ -290,23 +270,33 @@ def test_search_members_filters_by_name(django_user_client, graphql_user_client)
         profile=profile,
         status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
     )
-    p2 = ProfileUserRoleFactory(
+    ProfileUserRoleFactory(
         profile=profile,
-        status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
+        status=ProfileUserRole.ProfileRoleStatus.PENDING,
     )
 
     response = graphql_user_client(
-        SEARCH_MEMBERS_BY_QUERY_PARAM, variables={"q": p1.user.first_name}
+        query="""
+            query Profile($id: ID!, $q: String) {
+                profile(id: $id) {
+                    members(q: $q) {
+                        edges {
+                            node {
+                                id
+                                status
+                            }
+                        }
+                    }
+                }
+            }
+        """,
+        variables={"id": profile.relay_id, "q": p1.user.first_name},
     )
+
     content = response.json()
-    members = [
-        id
-        for id in [
-            edge["node"]["id"] for edge in content["data"]["me"]["profile"]["members"]["edges"]
-        ]
-    ]
-    assert p1.user.relay_id in members
-    assert p2.user.relay_id not in members
+    members = content["data"]["profile"]["members"]["edges"]
+    assert len(members) == 1
+    assert members[0]["node"]["status"] == "ACTIVE"
 
 
 def test_search_members_filters_by_last_name(django_user_client, graphql_user_client):
@@ -316,20 +306,63 @@ def test_search_members_filters_by_last_name(django_user_client, graphql_user_cl
         profile=profile,
         status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
     )
-    p2 = ProfileUserRoleFactory(
+    ProfileUserRoleFactory(
         profile=profile,
-        status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
+        status=ProfileUserRole.ProfileRoleStatus.PENDING,
     )
 
     response = graphql_user_client(
-        SEARCH_MEMBERS_BY_QUERY_PARAM, variables={"q": p1.user.last_name}
+        query="""
+            query Profile($id: ID!, $q: String) {
+                profile(id: $id) {
+                    members(q: $q) {
+                        edges {
+                            node {
+                                id
+                                status
+                            }
+                        }
+                    }
+                }
+            }
+        """,
+        variables={"id": profile.relay_id, "q": p1.user.last_name},
+    )
+
+    content = response.json()
+    members = content["data"]["profile"]["members"]["edges"]
+    assert len(members) == 1
+    assert members[0]["node"]["status"] == "ACTIVE"
+
+
+def test_search_members_returns_all_members_if_empty_query(django_user_client, graphql_user_client):
+    user = django_user_client.user
+    profile = ProfileFactory(owner=user)
+    ProfileUserRoleFactory(
+        profile=profile,
+        status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
+    )
+    ProfileUserRoleFactory(
+        profile=profile,
+        status=ProfileUserRole.ProfileRoleStatus.PENDING,
+    )
+    response = graphql_user_client(
+        query="""
+            query Profile($id: ID!, $q: String) {
+                profile(id: $id) {
+                    members(q: $q) {
+                        edges {
+                            node {
+                                id
+                                status
+                            }
+                        }
+                    }
+                }
+            }
+        """,
+        variables={"id": profile.relay_id, "q": ""},
     )
     content = response.json()
-    members = [
-        id
-        for id in [
-            edge["node"]["id"] for edge in content["data"]["me"]["profile"]["members"]["edges"]
-        ]
-    ]
-    assert p1.user.relay_id in members
-    assert p2.user.relay_id not in members
+    members = content["data"]["profile"]["members"]["edges"]
+    assert len(members) == 2
