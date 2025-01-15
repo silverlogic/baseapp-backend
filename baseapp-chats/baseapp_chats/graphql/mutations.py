@@ -15,7 +15,11 @@ from graphene_django.types import ErrorType
 from rest_framework import serializers
 
 from baseapp_chats.graphql.subscriptions import ChatRoomOnMessagesCountUpdate
-from baseapp_chats.utils import send_message, send_new_chat_message_notification
+from baseapp_chats.utils import (
+    sanitize_html,
+    send_message,
+    send_new_chat_message_notification,
+)
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
@@ -353,7 +357,9 @@ class ChatRoomSendMessage(RelayMutation):
                 ]
             )
 
-        if len(content) < 1:
+        clean_content = sanitize_html(content)
+
+        if len(clean_content) < 1:
             return ChatRoomSendMessage(
                 errors=[
                     ErrorType(
@@ -363,7 +369,7 @@ class ChatRoomSendMessage(RelayMutation):
                 ]
             )
 
-        if len(content) > 1000:
+        if len(clean_content) > 1000:
             return ChatRoomSendMessage(
                 errors=[
                     ErrorType(
@@ -376,7 +382,7 @@ class ChatRoomSendMessage(RelayMutation):
         message = send_message(
             profile=profile,
             user=info.context.user,
-            content=content,
+            content=clean_content,
             room=room,
             verb=Message.Verbs.SENT_MESSAGE,
             room_id=room_id,

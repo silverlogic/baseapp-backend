@@ -1,3 +1,6 @@
+from copy import deepcopy
+
+import nh3
 import swapper
 from baseapp_notifications import send_notification
 from django.conf import settings
@@ -64,3 +67,13 @@ def send_new_chat_message_notification(room, message, info):
                 push_title=_("New message"),
                 push_description=_("You got a new message"),
             )
+
+
+def sanitize_html(html):
+    attributes = deepcopy(nh3.ALLOWED_ATTRIBUTES)
+
+    # add specific attributes
+    attributes["a"].add("target")
+
+    sanitized_html = nh3.clean(html, attributes=attributes)
+    return sanitized_html

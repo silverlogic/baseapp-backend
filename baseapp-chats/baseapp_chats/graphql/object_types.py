@@ -45,6 +45,7 @@ class BaseMessageObjectType:
     verb = graphene.Field(VerbsEnum)
     content = graphene.String(required=False)
     is_read = graphene.Boolean(profile_id=graphene.ID(required=False))
+    content_plain_text = graphene.String(required=False)
 
     class Meta:
         interfaces = (relay.Node,)
@@ -61,6 +62,7 @@ class BaseMessageObjectType:
             "extra_data",
             "in_reply_to",
             "is_read",
+            "content_plain_text",
         )
         filter_fields = ("verb",)
 
@@ -96,6 +98,9 @@ class BaseMessageObjectType:
         message_status = self.statuses.filter(profile_id=profile_pk).first()
 
         return message_status and message_status.is_read
+
+    def resolve_content_plain_text(self, info, **kwargs):
+        return self.content_plain_text
 
 
 class MessageObjectType(BaseMessageObjectType, DjangoObjectType):

@@ -1,6 +1,8 @@
 import swapper
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import random_name_in
+from bs4 import BeautifulSoup
+from ckeditor.fields import RichTextField
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -53,7 +55,7 @@ class AbstractBaseMessage(TimeStampedModel, RelayModel):
     def description(self):
         return self.label
 
-    content = models.TextField(null=True, blank=True)
+    content = RichTextField(blank=True, null=True)
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True
@@ -148,6 +150,11 @@ class AbstractBaseMessage(TimeStampedModel, RelayModel):
                     ChatRoomOnMessagesCountUpdate.send_updated_chat_count(
                         profile=participant.profile, profile_id=participant.profile.relay_id
                     )
+
+    @property
+    def content_plain_text(self):
+        soup = BeautifulSoup(self.content.replace("<br/>", "\n"), features="lxml")
+        return soup.get_text().strip()
 
 
 class AbstractChatRoomParticipant(TimeStampedModel, RelayModel):
