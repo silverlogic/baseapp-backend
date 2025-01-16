@@ -51,7 +51,15 @@ class MemberOrderingFilter(django_filters.OrderingFilter):
 
 class MemberFilter(django_filters.FilterSet):
     order_by = MemberOrderingFilter()
+    q = django_filters.CharFilter(method="filter_q")
+
+    def filter_q(self, queryset, name, value):
+        return queryset.filter(
+            Q(user__first_name__icontains=value)
+            | Q(user__last_name__icontains=value)
+            | Q(user__email__icontains=value)
+        )
 
     class Meta:
         model = ProfileUserRole
-        fields = ["role", "order_by"]
+        fields = ["role", "order_by", "q"]
