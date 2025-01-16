@@ -243,18 +243,25 @@ class ChatRoomUpdate(RelayMutation):
                 ]
             )
 
-        add_participants = [
-            get_obj_from_relay_id(info, participant) for participant in add_participants
+        add_participants_pks = [
+            get_pk_from_relay_id(participant) for participant in add_participants
         ]
-        add_participants = [
-            participant for participant in add_participants if participant is not None
+
+        remove_participants_pks = [
+            get_pk_from_relay_id(participant) for participant in remove_participants
         ]
-        add_participants_ids = [participant.pk for participant in add_participants]
+        participants_to_remove = ChatRoomParticipant.objects.filter(
+            profile_id__in=remove_participants_pks, room=room
+        )
+        removed_participants = list(participants_to_remove)
+
+        title = input.get("title", None)
+        image = info.context.FILES.get("image", None)
 
         # Check if added participants are blocked
         if Block.objects.filter(
-            Q(actor_id=profile.id, target_id__in=add_participants_ids)
-            | Q(actor_id__in=add_participants_ids, target_id=profile.id)
+            Q(actor_id=profile.id, target_id__in=add_participants_pks)
+            | Q(actor_id__in=add_participants_pks, target_id=profile.id)
         ).exists():
             return ChatRoomUpdate(
                 errors=[
@@ -267,7 +274,14 @@ class ChatRoomUpdate(RelayMutation):
 
         if not info.context.user.has_perm(
             "baseapp_chats.modify_chatroom",
-            {"profile": profile, "room": room, "add_participants": add_participants},
+            {
+                "profile": profile,
+                "room": room,
+                "add_participants": add_participants_pks,
+                "remove_participants": remove_participants_pks,
+                "modify_image": image or delete_image,
+                "modify_title": title,
+            },
         ):
             return ChatRoomUpdate(
                 errors=[
@@ -278,30 +292,26 @@ class ChatRoomUpdate(RelayMutation):
                 ]
             )
 
-        title = input.get("title", None)
+        # CHange title
         if title is not None:
             room.title = title
 
-        image = info.context.FILES.get("image", None)
+        # Change image
         serializer = ImageSerializer(data={"image": image})
         if not serializer.is_valid():
             return ChatRoomUpdate(
                 errors=[ErrorType(field="image", messages=serializer.errors["image"])]
             )
 
-        remove_participants_ids = [
-            get_pk_from_relay_id(participant) for participant in remove_participants
-        ]
-        participants_to_remove = ChatRoomParticipant.objects.filter(
-            profile_id__in=remove_participants_ids, room=room
-        )
-        removed_participants = list(participants_to_remove)
-        participants_to_remove.delete()
-
         if image is not None:
             room.image = serializer.validated_data["image"]
         elif delete_image:
             room.image = None
+
+        # Remove participants
+        participants_to_remove.delete()
+
+        # TODO: Remeber to include added participants into count when implementing that feature
         room.participants_count = room.participants_count - len(removed_participants)
         room.save()
 

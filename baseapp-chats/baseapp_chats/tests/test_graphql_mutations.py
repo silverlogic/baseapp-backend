@@ -749,7 +749,7 @@ def test_user_can_archive_chatroom(django_user_client, graphql_user_client, cele
     assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 1
 
     # Unarchive chatroom and query to verify
-    response = graphql_user_client(
+    graphql_user_client(
         ARCHIVE_CHAT_ROOM_GRAPHQL,
         variables={
             "input": {
@@ -889,7 +889,6 @@ def test_create_room_creates_system_message(django_user_client, graphql_user_cli
     )
 
     content = response.json()
-    print(content)
     assert len(content["data"]["chatRoom"]["allMessages"]["edges"]) == 1
     assert (
         content["data"]["chatRoom"]["allMessages"]["edges"][0]["node"]["messageType"]
@@ -901,7 +900,7 @@ def test_create_room_creates_system_message(django_user_client, graphql_user_cli
     )
 
 
-def test_user_can_update_group_title(django_user_client, graphql_user_client):
+def test_member_user_cannot_update_group(django_user_client, graphql_user_client, django_client):
     friend = ProfileFactory()
     friend_2 = ProfileFactory()
 
@@ -920,7 +919,47 @@ def test_user_can_update_group_title(django_user_client, graphql_user_client):
         },
     )
     content = response.json()
-    roomId = content["data"]["chatRoomCreate"]["room"]["node"]["id"]
+    room_id = content["data"]["chatRoomCreate"]["room"]["node"]["id"]
+    django_client.force_login(friend.owner)
+
+    response = graphql_query(
+        UPDATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": friend.relay_id,
+                "roomId": room_id,
+                "title": "new group",
+            }
+        },
+        client=django_client,
+    )
+    content = response.json()
+    assert (
+        content["data"]["chatRoomUpdate"]["errors"][0]["messages"][0]
+        == "You don't have permission to update this room"
+    )
+
+
+def test_admin_user_can_update_group_title(django_user_client, graphql_user_client):
+    friend = ProfileFactory()
+    friend_2 = ProfileFactory()
+
+    response = graphql_user_client(
+        CREATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "isGroup": True,
+                "title": "group",
+                "participants": [
+                    friend.relay_id,
+                    friend_2.relay_id,
+                ],
+            }
+        },
+    )
+    content = response.json()
+    room_id = content["data"]["chatRoomCreate"]["room"]["node"]["id"]
     assert content["data"]["chatRoomCreate"]["room"]["node"]["title"] == "group"
 
     response = graphql_user_client(
@@ -928,7 +967,7 @@ def test_user_can_update_group_title(django_user_client, graphql_user_client):
         variables={
             "input": {
                 "profileId": django_user_client.user.profile.relay_id,
-                "roomId": roomId,
+                "roomId": room_id,
                 "title": "new group",
             }
         },
@@ -938,6 +977,7 @@ def test_user_can_update_group_title(django_user_client, graphql_user_client):
 
 
 def test_user_cannot_update_room_title(django_user_client, graphql_user_client):
+    # user can't update the title of a room that is not a group
     friend = ProfileFactory()
 
     response = graphql_user_client(
@@ -955,14 +995,14 @@ def test_user_cannot_update_room_title(django_user_client, graphql_user_client):
     )
 
     content = response.json()
-    roomId = content["data"]["chatRoomCreate"]["room"]["node"]["id"]
+    room_id = content["data"]["chatRoomCreate"]["room"]["node"]["id"]
 
     response = graphql_user_client(
         UPDATE_ROOM_GRAPHQL,
         variables={
             "input": {
                 "profileId": django_user_client.user.profile.relay_id,
-                "roomId": roomId,
+                "roomId": room_id,
                 "title": "test",
             }
         },
@@ -974,7 +1014,9 @@ def test_user_cannot_update_room_title(django_user_client, graphql_user_client):
     )
 
 
-def test_user_can_update_group_image(django_user_client, graphql_user_client, image_djangofile):
+def test_admin_user_can_update_group_image(
+    django_user_client, graphql_user_client, image_djangofile
+):
     friend = ProfileFactory()
     friend_2 = ProfileFactory()
 
@@ -994,7 +1036,7 @@ def test_user_can_update_group_image(django_user_client, graphql_user_client, im
     )
 
     content = response.json()
-    roomId = content["data"]["chatRoomCreate"]["room"]["node"]["id"]
+    room_id = content["data"]["chatRoomCreate"]["room"]["node"]["id"]
     assert content["data"]["chatRoomCreate"]["room"]["node"]["image"] is None
 
     response = graphql_user_client(
@@ -1002,7 +1044,7 @@ def test_user_can_update_group_image(django_user_client, graphql_user_client, im
         variables={
             "input": {
                 "profileId": django_user_client.user.profile.relay_id,
-                "roomId": roomId,
+                "roomId": room_id,
             }
         },
         content_type=MULTIPART_CONTENT,
@@ -1012,7 +1054,10 @@ def test_user_can_update_group_image(django_user_client, graphql_user_client, im
     assert content["data"]["chatRoomUpdate"]["room"]["node"]["image"]["url"].startswith("http://")
 
 
-def test_user_can_delete_group_image(django_user_client, graphql_user_client, image_djangofile):
+def test_admin_user_can_delete_group_image(
+    django_user_client, graphql_user_client, image_djangofile
+):
+    # user can delete the image of a group if he is the creator/admin
     friend = ProfileFactory()
     friend_2 = ProfileFactory()
 
@@ -1034,7 +1079,7 @@ def test_user_can_delete_group_image(django_user_client, graphql_user_client, im
     )
 
     content = response.json()
-    roomId = content["data"]["chatRoomCreate"]["room"]["node"]["id"]
+    room_id = content["data"]["chatRoomCreate"]["room"]["node"]["id"]
     assert content["data"]["chatRoomCreate"]["room"]["node"]["image"] is not None
 
     response = graphql_user_client(
@@ -1042,7 +1087,7 @@ def test_user_can_delete_group_image(django_user_client, graphql_user_client, im
         variables={
             "input": {
                 "profileId": django_user_client.user.profile.relay_id,
-                "roomId": roomId,
+                "roomId": room_id,
                 "deleteImage": True,
             }
         },
@@ -1071,14 +1116,14 @@ def test_update_room_handles_corrupted_images(
     )
 
     content = response.json()
-    roomId = content["data"]["chatRoomCreate"]["room"]["node"]["id"]
+    room_id = content["data"]["chatRoomCreate"]["room"]["node"]["id"]
 
     response = graphql_user_client(
         UPDATE_ROOM_GRAPHQL,
         variables={
             "input": {
                 "profileId": django_user_client.user.profile.relay_id,
-                "roomId": roomId,
+                "roomId": room_id,
             }
         },
         content_type=MULTIPART_CONTENT,
@@ -1089,7 +1134,7 @@ def test_update_room_handles_corrupted_images(
     assert "corrupted" in content["data"]["chatRoomUpdate"]["errors"][0]["messages"][0]
 
 
-def test_user_can_remove_participants(django_user_client, graphql_user_client):
+def test_admin_user_can_remove_participants(django_user_client, graphql_user_client):
     friend_1 = ProfileFactory()
     friend_2 = ProfileFactory()
     friend_3 = ProfileFactory()
@@ -1112,7 +1157,7 @@ def test_user_can_remove_participants(django_user_client, graphql_user_client):
         },
     )
     content = response.json()
-    roomId = content["data"]["chatRoomCreate"]["room"]["node"]["id"]
+    room_id = content["data"]["chatRoomCreate"]["room"]["node"]["id"]
     assert content["data"]["chatRoomCreate"]["room"]["node"]["participantsCount"] == 5
 
     response = graphql_user_client(
@@ -1120,7 +1165,7 @@ def test_user_can_remove_participants(django_user_client, graphql_user_client):
         variables={
             "input": {
                 "profileId": django_user_client.user.profile.relay_id,
-                "roomId": roomId,
+                "roomId": room_id,
                 "removeParticipants": [friend_3.relay_id, friend_4.relay_id],
             }
         },
@@ -1144,3 +1189,95 @@ def test_user_can_remove_participants(django_user_client, graphql_user_client):
     assert friend_2.relay_id not in ids
     assert friend_3.relay_id in ids
     assert friend_4.relay_id in ids
+
+
+def test_member_user_can_leave_room(django_user_client, graphql_user_client, django_client):
+    friend_1 = ProfileFactory()
+    friend_2 = ProfileFactory()
+    friend_3 = ProfileFactory()
+
+    response = graphql_user_client(
+        CREATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "isGroup": True,
+                "title": "group",
+                "participants": [
+                    friend_1.relay_id,
+                    friend_2.relay_id,
+                    friend_3.relay_id,
+                ],
+            }
+        },
+    )
+    content = response.json()
+    room_id = content["data"]["chatRoomCreate"]["room"]["node"]["id"]
+
+    django_client.force_login(friend_3.owner)
+
+    response = graphql_query(
+        UPDATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": friend_3.relay_id,
+                "roomId": room_id,
+                "removeParticipants": [friend_3.relay_id],
+            }
+        },
+        client=django_client,
+    )
+    content = response.json()
+    assert content["data"]["chatRoomUpdate"]["room"]["node"]["title"] == "group"
+    participants_ids = [
+        participant["node"]["profile"]["id"]
+        for participant in content["data"]["chatRoomUpdate"]["room"]["node"]["participants"][
+            "edges"
+        ]
+    ]
+    assert len(participants_ids) == 3
+    assert friend_3.relay_id not in participants_ids
+
+
+def test_member_user_cannot_remove_other_members(
+    django_user_client, graphql_user_client, django_client
+):
+    friend_1 = ProfileFactory()
+    friend_2 = ProfileFactory()
+    friend_3 = ProfileFactory()
+
+    response = graphql_user_client(
+        CREATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "isGroup": True,
+                "title": "group",
+                "participants": [
+                    friend_1.relay_id,
+                    friend_2.relay_id,
+                    friend_3.relay_id,
+                ],
+            }
+        },
+    )
+    content = response.json()
+    room_id = content["data"]["chatRoomCreate"]["room"]["node"]["id"]
+    django_client.force_login(friend_3.owner)
+
+    response = graphql_query(
+        UPDATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": friend_3.relay_id,
+                "roomId": room_id,
+                "removeParticipants": [friend_2.relay_id, friend_3.relay_id],
+            }
+        },
+        client=django_client,
+    )
+    content = response.json()
+    assert (
+        content["data"]["chatRoomUpdate"]["errors"][0]["messages"][0]
+        == "You don't have permission to update this room"
+    )
