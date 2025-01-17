@@ -1,9 +1,11 @@
 import sys
-from hashlib import md5
+from hashlib import md5, sha256
 
+import requests
 from django.conf import settings
 from django.core.cache import DEFAULT_CACHE_ALIAS
 from user_agents import parse
+from ipware import get_client_ip
 
 
 # `get_cache` function has been deprecated since Django 1.7 in favor of `caches`.
@@ -72,3 +74,63 @@ def get_and_set_user_agent(request):
 
     request.user_agent = get_user_agent(request)
     return request.user_agent
+
+
+def get_geo_info(ip):
+    try:
+        res = requests.get(f"http://ip-api.com/json/{ip}")
+        return res.json()
+    except Exception as e:
+        return {"message": str(e), "status": "error"}
+
+
+def get_cloudflare_info():
+    response = requests.get("https://cloudflare.com/cdn-cgi/trace")
+    data_str = response.content.decode("utf-8")
+    data_dict = {}
+    for line in data_str.splitlines():
+        key, value = line.split("=", 1)
+        data_dict[key] = value
+    return data_dict
+
+
+def get_ip_address(request):
+    ip, _ = get_client_ip(request)
+    if not ip:
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(",")[0]
+        else:
+            ip = request.META.get("REMOTE_ADDR")
+    return ip
+
+
+def get_user_ip_geolocation(request):
+    ip = get_ip_address(request)
+    get_geo_method = getattr(settings, "BASEAPP_DEVICES_GET_GEO_METHOD", get_geo_info)
+
+    if cache:
+        key = get_cache_key(ip)
+        ip_geolocation = cache.get(key)
+        if ip_geolocation is None:
+            ip_geolocation = get_geo_method(ip)
+            if ip_geolocation["status"] == "fail":
+                data = get_cloudflare_info()
+                ip = data.get("ip", ip)
+                ip_geolocation = get_geo_method(ip)
+                key = get_cache_key(ip)
+            cache.set(key, ip_geolocation)
+    else:
+        ip_geolocation = get_geo_method(ip)
+        if ip_geolocation["status"] == "fail":
+            data = get_cloudflare_info()
+            ip_geolocation = get_geo_method(data.get("ip", ip))
+    return ip_geolocation
+
+
+def get_device_id(user_agent, ip_geolocation):
+    input_string = f"{user_agent.device.family}-{user_agent.os.family}-{user_agent.browser.family}-{ip_geolocation.get('countryCode', 'unknown')}-{ip_geolocation.get('region', 'unknown')}-{ip_geolocation.get('city', 'unknown')}-{ip_geolocation.get('query', 'unknown')}"
+    encoded_string = input_string.encode()
+    hash_object = sha256(encoded_string)
+
+    return hash_object.hexdigest()

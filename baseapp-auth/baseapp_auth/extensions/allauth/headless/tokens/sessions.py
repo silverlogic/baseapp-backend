@@ -2,6 +2,7 @@ from typing import Any, Callable, Dict, Optional
 
 from allauth.headless.tokens.sessions import SessionTokenStrategy
 from django.conf import settings
+from django.utils import timezone
 from django.http import HttpRequest
 from django.utils.module_loading import import_string
 from rest_framework.authtoken.models import Token
@@ -39,6 +40,31 @@ class JWTSessionTokenStrategy(SessionTokenStrategy):
                 data = claim_serializer_class(user).data
                 for key, value in data.items():
                     token[key] = value
+
+                if "baseapp_devices" in settings.INSTALLED_APPS:
+                    from baseapp_devices.utils import get_device_id
+                    from baseapp_devices.models import UserDevice
+
+                    device_id = get_device_id(request.user_agent, request.ip_geolocation)
+                    token["device_id"] = device_id
+                    user_agent = request.user_agent
+                    UserDevice.objects.update_or_create(
+                        user=user,
+                        device_id=device_id,
+                        defaults={
+                            "device_info": {
+                                "device_family": user_agent.device.family,
+                                "os_family": user_agent.os.family,
+                                "os_version": user_agent.os.version,
+                                "browser_family": user_agent.browser.family,
+                                "browser_version": user_agent.browser.version,
+                            },
+                            "location": dict(request.ip_geolocation),
+                            "ip_address": request.ip_geolocation.get("query"),
+                            # "device_token": token.access_token,
+                            "last_login": timezone.now(),
+                        },
+                    )
                 return dict(access_token=dict(refresh=str(token), access=str(token.access_token)))
             except ImportError as error:
                 msg = "Could not import serializer '%s'" % self.__class__._claim_serializer_class

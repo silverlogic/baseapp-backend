@@ -1,6 +1,6 @@
+from django.conf import settings
 from django.utils.functional import SimpleLazyObject
-
-from .utils import get_user_agent
+from .utils import get_user_agent, get_user_ip_geolocation
 
 
 class UserAgentMiddleware(object):
@@ -15,3 +15,4 @@ class UserAgentMiddleware(object):
 
     def process_request(self, request):
         request.user_agent = SimpleLazyObject(lambda: get_user_agent(request))
+        request.ip_geolocation = SimpleLazyObject(lambda: get_user_ip_geolocation(request))
