@@ -55,9 +55,7 @@ class MemberFilter(django_filters.FilterSet):
 
     def filter_q(self, queryset, name, value):
         return queryset.filter(
-            Q(user__first_name__icontains=value)
-            | Q(user__last_name__icontains=value)
-            | Q(user__email__icontains=value)
+            Q(user__profile__name__icontains=value) | Q(user__email__icontains=value)
         )
 
     class Meta:
