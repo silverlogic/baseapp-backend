@@ -193,6 +193,7 @@ class BaseChatRoomObjectType:
             "last_message_time",
             "last_message",
             "participants",
+            "participants_count",
             "title",
             "image",
             "is_group",

@@ -14,7 +14,10 @@ from django.utils.translation import gettext_lazy as _
 from graphene_django.types import ErrorType
 from rest_framework import serializers
 
-from baseapp_chats.graphql.subscriptions import ChatRoomOnMessagesCountUpdate
+from baseapp_chats.graphql.subscriptions import (
+    ChatRoomOnMessagesCountUpdate,
+    ChatRoomOnRoomUpdate,
+)
 from baseapp_chats.utils import send_message, send_new_chat_message_notification
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
@@ -168,6 +171,8 @@ class ChatRoomCreate(RelayMutation):
         room.participants_count = len(created_participants)
         room.save()
 
+        if is_group:
+            ChatRoomOnRoomUpdate.room_updated(room)
         return ChatRoomCreate(
             profile=profile,
             room=ChatRoomObjectType._meta.connection.Edge(
@@ -178,6 +183,7 @@ class ChatRoomCreate(RelayMutation):
 
 class ChatRoomUpdate(RelayMutation):
     room = graphene.Field(ChatRoomObjectType._meta.connection.Edge)
+    removed_participants = graphene.List(ChatRoomParticipantObjectType)
 
     class Input:
         room_id = graphene.ID(required=True)
@@ -231,14 +237,6 @@ class ChatRoomUpdate(RelayMutation):
         ]
         add_participants_ids = [participant.pk for participant in add_participants]
 
-        remove_participants = [
-            get_obj_from_relay_id(info, participant) for participant in remove_participants
-        ]
-        remove_participants = [
-            participant for participant in remove_participants if participant is not None
-        ]
-        remove_participants_ids = [participant.pk for participant in remove_participants]
-
         # Check if added participants are blocked
         if Block.objects.filter(
             Q(actor_id=profile.id, target_id__in=add_participants_ids)
@@ -277,32 +275,31 @@ class ChatRoomUpdate(RelayMutation):
                 errors=[ErrorType(field="image", messages=serializer.errors["image"])]
             )
 
+        remove_participants_ids = [
+            get_pk_from_relay_id(participant) for participant in remove_participants
+        ]
+        participants_to_remove = ChatRoomParticipant.objects.filter(
+            profile_id__in=remove_participants_ids, room=room
+        )
+        removed_participants = list(participants_to_remove)
+        participants_to_remove.delete()
+
         if image is not None:
             room.image = serializer.validated_data["image"]
         elif delete_image:
             room.image = None
-
+        room.participants_count = room.participants_count - len(removed_participants)
         room.save()
 
-        for participant in remove_participants_ids:
-            # TODO: Delete participant
-            # ChatRoomParticipant.objects.filter(
-            #    profile_id=participant.pk, room=room
-            # ).delete()
-            pass
+        # TODO: Add participants
 
-        for participant in add_participants:
-            # TODO: Add participant
-            # ChatRoomParticipant.objects.create(
-            #    profile=participant, room=room, accepted_at=timezone.now()
-            # )
-            # Subscriptions?
-            pass
+        ChatRoomOnRoomUpdate.room_updated(room, removed_participants)
 
         return ChatRoomUpdate(
             room=ChatRoomObjectType._meta.connection.Edge(
                 node=room,
             ),
+            removed_participants=removed_participants,
         )
 
 

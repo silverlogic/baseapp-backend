@@ -45,6 +45,7 @@ CREATE_ROOM_GRAPHQL = """
                     id
                     title
                     isGroup
+                    participantsCount
                     participants {
                         edges {
                             node {
@@ -73,16 +74,26 @@ UPDATE_ROOM_GRAPHQL = """
                     id
                     title
                     isGroup
+                    participantsCount
                     participants {
                         edges {
                             node {
                                 id
+                                profile {
+                                    id
+                                }
                             }
                         }
                     }
                     image(width: 100, height: 100) {
                         url
                     }
+                }
+            }
+            removedParticipants {
+                id
+                profile {
+                    id
                 }
             }
             errors {
@@ -865,3 +876,60 @@ def test_update_room_handles_corrupted_images(
 
     content = response.json()
     assert "corrupted" in content["data"]["chatRoomUpdate"]["errors"][0]["messages"][0]
+
+
+def test_user_can_remove_participants(django_user_client, graphql_user_client):
+    friend_1 = ProfileFactory()
+    friend_2 = ProfileFactory()
+    friend_3 = ProfileFactory()
+    friend_4 = ProfileFactory()
+
+    response = graphql_user_client(
+        CREATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "isGroup": True,
+                "title": "group",
+                "participants": [
+                    friend_1.relay_id,
+                    friend_2.relay_id,
+                    friend_3.relay_id,
+                    friend_4.relay_id,
+                ],
+            }
+        },
+    )
+    content = response.json()
+    roomId = content["data"]["chatRoomCreate"]["room"]["node"]["id"]
+    assert content["data"]["chatRoomCreate"]["room"]["node"]["participantsCount"] == 5
+
+    response = graphql_user_client(
+        UPDATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "roomId": roomId,
+                "removeParticipants": [friend_3.relay_id, friend_4.relay_id],
+            }
+        },
+    )
+    content = response.json()
+    assert content["data"]["chatRoomUpdate"]["room"]["node"]["title"] == "group"
+    assert content["data"]["chatRoomUpdate"]["room"]["node"]["participantsCount"] == 3
+
+    participants = content["data"]["chatRoomUpdate"]["room"]["node"]["participants"]["edges"]
+    assert len(participants) == 3
+    ids = [participant["node"]["profile"]["id"] for participant in participants]
+    assert friend_1.relay_id in ids
+    assert friend_2.relay_id in ids
+    assert friend_3.relay_id not in ids
+    assert friend_4.relay_id not in ids
+
+    removed_participants = content["data"]["chatRoomUpdate"]["removedParticipants"]
+    assert len(removed_participants) == 2
+    ids = [participant["profile"]["id"] for participant in removed_participants]
+    assert friend_1.relay_id not in ids
+    assert friend_2.relay_id not in ids
+    assert friend_3.relay_id in ids
+    assert friend_4.relay_id in ids
