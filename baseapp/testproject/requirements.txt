@@ -10,6 +10,5 @@
 -e ./baseapp-reports
 -e ./baseapp-comments
 -e ./baseapp-notifications
--e ./baseapp-reactions
 -e ./baseapp-chats
 -e ./baseapp
