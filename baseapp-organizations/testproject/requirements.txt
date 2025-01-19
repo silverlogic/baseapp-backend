@@ -4,7 +4,7 @@
 -e ./baseapp-auth
 -e ./baseapp-notifications
 -e ./baseapp-comments
--e ./baseapp-reactions
+-e ./baseapp
 -e ./baseapp-profiles
 -e ./baseapp-blocks
 -e ./baseapp-reports
