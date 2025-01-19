@@ -124,7 +124,7 @@ class Reaction(AbstractBaseReaction):
 
 
 SwappedReaction = swapper.load_model(
-    "baseapp_reactions", "Reaction", required=False, require_ready=False
+    "baseapp.reactions", "Reaction", required=False, require_ready=False
 )
 
 

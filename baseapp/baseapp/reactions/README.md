@@ -14,22 +14,22 @@ If you want to develop, [install using this other guide](#how-to-develop).
 
 ## How to use
 
-Add `baseapp_reactions` to your project's `INSTALLED_APPS`
+Add `baseapp.reactions` to your project's `INSTALLED_APPS`
 
 ```python
 INSTALLED_APPS = [
     # ...
-    "baseapp_reactions",
+    "baseapp.reactions",
     # ...
 ]
 ```
 
-Add `baseapp_reactions.permissions.ReactionsPermissionsBackend` to the `AUTHENTICATION_BACKENDS` list in your django settings file.
+Add `baseapp.reactions.permissions.ReactionsPermissionsBackend` to the `AUTHENTICATION_BACKENDS` list in your django settings file.
 
 ```python
 AUTHENTICATION_BACKENDS = [
     # ...
-    "baseapp_reactions.permissions.ReactionsPermissionsBackend",
+    "baseapp.reactions.permissions.ReactionsPermissionsBackend",
     # ...
 ]
 ```
@@ -37,7 +37,7 @@ AUTHENTICATION_BACKENDS = [
 Now make sure all models you'd like to get reactions also inherits `ReactableModel`, like:
 
 ```python
-from baseapp_reactions.models import ReactableModel
+from baseapp.reactions.models import ReactableModel
 
 class Comment(models.Model, ReactableModel):
     body = models.Textfield()
@@ -46,7 +46,7 @@ class Comment(models.Model, ReactableModel):
 Also make sure your GraphQL object types extends `ReactionsInterface` interface:
 
 ```python
-from baseapp_reactions.graphql.object_types import ReactionsInterface
+from baseapp.reactions.graphql.object_types import ReactionsInterface
 
 class CommentNode(DjangoObjectType):
     class Meta:
@@ -56,8 +56,8 @@ class CommentNode(DjangoObjectType):
 Expose `ReactionsMutations` and `ReactionsQueries` in your GraphQL/graphene endpoint, like:
 
 ```python
-from baseapp_reactions.graphql.mutations import ReactionsMutations
-from baseapp_reactions.graphql.queries import ReactionsQueries
+from baseapp.reactions.graphql.mutations import ReactionsMutations
+from baseapp.reactions.graphql.queries import ReactionsQueries
 
 class Query(graphene.ObjectType, ReactionsQueries):
     pass
@@ -113,7 +113,7 @@ Your `models.py` will look something like this:
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from baseapp_reactions.models import AbstractBaseReaction
+from baseapp.reactions.models import AbstractBaseReaction
 
 class Reaction(AbstractBaseReaction):
     custom_field = models.CharField(null=True)
