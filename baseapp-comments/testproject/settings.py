@@ -7,7 +7,7 @@ INSTALLED_APPS += [
     "baseapp_profiles",
     "baseapp_blocks",
     "baseapp_notifications",
-    "baseapp_reactions",
+    "baseapp.reactions",
     "baseapp_comments",
     "baseapp_reports",
     "baseapp_auth",

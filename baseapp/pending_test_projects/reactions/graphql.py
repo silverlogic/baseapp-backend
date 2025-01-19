@@ -4,8 +4,8 @@ from baseapp_core.graphql import DeleteNode
 from baseapp_profiles.graphql import ProfilesQueries
 from graphene import relay
 
-from baseapp_reactions.graphql.mutations import ReactionsMutations
-from baseapp_reactions.graphql.queries import ReactionsQueries
+from baseapp.reactions.graphql.mutations import ReactionsMutations
+from baseapp.reactions.graphql.queries import ReactionsQueries
 
 
 class Query(graphene.ObjectType, ReactionsQueries, UsersQueries, ProfilesQueries):

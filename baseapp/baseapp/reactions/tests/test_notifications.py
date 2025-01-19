@@ -20,7 +20,7 @@ def test_user_receives_notification_when_reaction_is_created(graphql_client):
 
     with override_settings(BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS=True):
         with patch(
-            "baseapp_reactions.notifications.send_reaction_created_notification.delay"
+            "baseapp.reactions.notifications.send_reaction_created_notification.delay"
         ) as mock:
             reaction = ReactionFactory(target=target)
             assert mock.called

@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 INSTALLED_APPS += [
     "graphene_django",
     "baseapp_notifications",
-    "baseapp_reactions",
+    "baseapp.reactions",
     "baseapp_comments",
     "baseapp_reports",
     "baseapp_auth",
@@ -35,7 +35,7 @@ AUTHENTICATION_BACKENDS = [
     "baseapp_auth.permissions.UsersPermissionsBackend",
     "baseapp_profiles.permissions.ProfilesPermissionsBackend",
     "baseapp_comments.permissions.CommentsPermissionsBackend",
-    "baseapp_reactions.permissions.ReactionsPermissionsBackend",
+    "baseapp.reactions.permissions.ReactionsPermissionsBackend",
 ]
 
 BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False

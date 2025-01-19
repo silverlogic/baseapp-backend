@@ -2,7 +2,7 @@ import swapper
 from django.conf import settings
 from django.db.models.signals import post_save
 
-from baseapp_reactions.notifications import send_reaction_created_notification
+from baseapp.reactions.notifications import send_reaction_created_notification
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
 
