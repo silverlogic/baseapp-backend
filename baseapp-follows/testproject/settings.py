@@ -16,7 +16,7 @@ INSTALLED_APPS += [
     "baseapp_follows",
     "baseapp_profiles",
     "baseapp_pages",
-    "baseapp_reactions",
+    "baseapp.reactions",
     "baseapp_reports",
     "baseapp_comments",
     "baseapp_blocks",

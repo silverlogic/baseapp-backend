@@ -6,7 +6,7 @@ from baseapp_comments.tests.factories import CommentFactory
 from baseapp_profiles.tests.factories import ProfileFactory
 from django.test import override_settings
 
-from baseapp_reactions.tests.factories import ReactionFactory
+from baseapp.reactions.tests.factories import ReactionFactory
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
 ReactionTypes = Reaction.ReactionTypes
@@ -44,7 +44,7 @@ def test_user_can_add_reaction(graphql_user_client):
 
     with override_settings(BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS=True):
         with patch(
-            "baseapp_reactions.notifications.send_reaction_created_notification.delay"
+            "baseapp.reactions.notifications.send_reaction_created_notification.delay"
         ) as mock:
             # create reaction with type LIKE
             graphql_user_client(
@@ -112,7 +112,7 @@ def test_user_can_react_with_profile(django_user_client, graphql_user_client):
 
     with override_settings(BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS=True):
         with patch(
-            "baseapp_reactions.notifications.send_reaction_created_notification.delay"
+            "baseapp.reactions.notifications.send_reaction_created_notification.delay"
         ) as mock:
             graphql_user_client(
                 REACTION_TOGGLE_GRAPHQL,

@@ -3,7 +3,7 @@
 
 -e ./baseapp-core[graphql]
 -e ./baseapp-auth
--e ./baseapp-reactions
+-e ./baseapp
 -e ./baseapp-notifications
 -e ./baseapp-comments
 -e ./baseapp-reports

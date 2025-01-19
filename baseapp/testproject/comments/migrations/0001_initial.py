@@ -2,7 +2,6 @@
 
 import baseapp_comments.models
 import baseapp_comments.validators
-import baseapp_reactions.models
 import baseapp_reports.models
 import django.db.models.deletion
 import django.utils.timezone
@@ -11,6 +10,8 @@ import pgtrigger.compiler
 import pgtrigger.migrations
 from django.conf import settings
 from django.db import migrations, models
+
+import baseapp.reactions.models
 
 
 class Migration(migrations.Migration):
@@ -53,7 +54,7 @@ class Migration(migrations.Migration):
                 (
                     "reactions_count",
                     models.JSONField(
-                        default=baseapp_reactions.models.default_reactions_count, editable=False
+                        default=baseapp.reactions.models.default_reactions_count, editable=False
                     ),
                 ),
                 ("is_reactions_enabled", models.BooleanField(default=True)),
