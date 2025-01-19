@@ -35,7 +35,7 @@ AUTHENTICATION_BACKENDS = [
     "baseapp_auth.permissions.UsersPermissionsBackend",
     "baseapp_profiles.permissions.ProfilesPermissionsBackend",
     "baseapp_comments.permissions.CommentsPermissionsBackend",
-    "baseapp_reactions.permissions.ReactionsPermissionsBackend",
+    "baseapp.reactions.permissions.ReactionsPermissionsBackend",
 ]
 
 BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False
