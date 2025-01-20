@@ -3,7 +3,7 @@ from baseapp_core.graphql.models import RelayModel
 from django.utils import timezone
 from model_utils import FieldTracker
 
-from baseapp_reports.models import ReportableModel
+from baseapp.reports.models import ReportableModel
 
 
 class User(AbstractUser, ReportableModel, RelayModel):

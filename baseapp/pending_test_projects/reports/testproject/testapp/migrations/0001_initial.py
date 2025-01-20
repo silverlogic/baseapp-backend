@@ -6,7 +6,7 @@ import phonenumber_field.modelfields
 from django.contrib.postgres.operations import CITextExtension
 from django.db import migrations, models
 
-import baseapp_reports.models
+import baseapp.reports.models
 
 
 class Migration(migrations.Migration):
@@ -97,7 +97,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "reports_count",
-                    models.JSONField(default=baseapp_reports.models.default_reports_count),
+                    models.JSONField(default=baseapp.reports.models.default_reports_count),
                 ),
                 (
                     "groups",

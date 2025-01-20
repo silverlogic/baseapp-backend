@@ -1,6 +1,6 @@
 from baseapp_auth.graphql.object_types import UserObjectType as BaseUserObjectType
 
-from baseapp_reports.graphql.object_types import ReportsInterface
+from baseapp.reports.graphql.object_types import ReportsInterface
 
 
 class UserNode(BaseUserObjectType):

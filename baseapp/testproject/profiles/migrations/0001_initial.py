@@ -2,7 +2,7 @@
 
 import baseapp_comments.models
 import baseapp_core.models
-import baseapp_reports.models
+import baseapp.reports.models
 import django.db.models.deletion
 import django.utils.timezone
 import model_utils.fields
@@ -50,7 +50,7 @@ class Migration(migrations.Migration):
                 ("following_count", models.PositiveIntegerField(default=0, editable=False)),
                 (
                     "reports_count",
-                    models.JSONField(default=baseapp_reports.models.default_reports_count),
+                    models.JSONField(default=baseapp.reports.models.default_reports_count),
                 ),
                 (
                     "comments_count",
@@ -147,7 +147,7 @@ class Migration(migrations.Migration):
                 ("following_count", models.PositiveIntegerField(default=0, editable=False)),
                 (
                     "reports_count",
-                    models.JSONField(default=baseapp_reports.models.default_reports_count),
+                    models.JSONField(default=baseapp.reports.models.default_reports_count),
                 ),
                 (
                     "comments_count",

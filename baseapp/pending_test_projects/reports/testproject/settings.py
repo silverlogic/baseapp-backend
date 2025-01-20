@@ -25,7 +25,7 @@ LANGUAGES = [("en", _("English")), ("es", _("Spanish")), ("pt", _("Portuguese"))
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "baseapp_auth.permissions.UsersPermissionsBackend",
-    "baseapp_reports.permissions.ReportsPermissionsBackend",
+    "baseapp.reports.permissions.ReportsPermissionsBackend",
 ]
 
 BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False

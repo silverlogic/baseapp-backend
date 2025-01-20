@@ -2,7 +2,7 @@ import pgtrigger
 import swapper
 from baseapp.reactions.models import ReactableModel
 from baseapp_core.graphql import RelayModel
-from baseapp_reports.models import ReportableModel
+from baseapp.reports.models import ReportableModel
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
