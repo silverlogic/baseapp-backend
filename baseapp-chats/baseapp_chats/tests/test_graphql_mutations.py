@@ -104,6 +104,23 @@ UPDATE_ROOM_GRAPHQL = """
     }
 """
 
+EDIT_MESSAGE_GRAPHQL = """
+    mutation EditMessageMutation($input: ChatRoomEditMessageInput!) {
+        chatRoomEditMessage(input: $input) {
+            message {
+                node {
+                    id
+                    content
+                }
+            }
+            errors {
+                field
+                messages
+            }
+        }
+    }
+"""
+
 READ_MESSAGE_GRAPHQL = """
     mutation ReadMessageMutation($input: ChatRoomReadMessagesInput!) {
         chatRoomReadMessages(input: $input) {
@@ -402,6 +419,137 @@ def test_cant_send_message_non_participating_room(django_user_client, graphql_us
     )
     room.refresh_from_db()
     assert room.messages.count() == 0
+
+
+def test_user_can_edit_message(django_user_client, graphql_user_client):
+    user = django_user_client.user
+    room = ChatRoomFactory(created_by=user)
+    friend = ProfileFactory()
+
+    ChatRoomParticipantFactory(profile=user.profile, room=room)
+    ChatRoomParticipantFactory(profile=friend, room=room)
+
+    message = MessageFactory(room=room, profile=user.profile, user=user)
+
+    response = graphql_user_client(
+        EDIT_MESSAGE_GRAPHQL,
+        variables={
+            "input": {
+                "id": message.relay_id,
+                "content": "edited",
+            }
+        },
+    )
+
+    content = response.json()
+
+    assert content["data"]["chatRoomEditMessage"]["message"]["node"]["content"] == "edited"
+
+
+def test_user_cant_edit_to_empty_message(django_user_client, graphql_user_client):
+    user = django_user_client.user
+    room = ChatRoomFactory(created_by=user)
+    friend = ProfileFactory()
+
+    ChatRoomParticipantFactory(profile=user.profile, room=room)
+    ChatRoomParticipantFactory(profile=friend, room=room)
+
+    message = MessageFactory(room=room, profile=user.profile, user=user)
+
+    response = graphql_user_client(
+        EDIT_MESSAGE_GRAPHQL,
+        variables={
+            "input": {
+                "id": message.relay_id,
+                "content": "",
+            }
+        },
+    )
+
+    content = response.json()
+
+    assert (
+        content["data"]["chatRoomEditMessage"]["errors"][0]["messages"][0]
+        == "You cannot edit an empty message"
+    )
+
+
+def test_user_cant_edit_to_more_than_1000_caracters(django_user_client, graphql_user_client):
+    user = django_user_client.user
+    room = ChatRoomFactory(created_by=user)
+    friend = ProfileFactory()
+
+    ChatRoomParticipantFactory(profile=user.profile, room=room)
+    ChatRoomParticipantFactory(profile=friend, room=room)
+
+    message = MessageFactory(room=room, profile=user.profile, user=user)
+
+    response = graphql_user_client(
+        EDIT_MESSAGE_GRAPHQL,
+        variables={
+            "input": {
+                "id": message.relay_id,
+                "content": "a" * 1001,
+            }
+        },
+    )
+
+    content = response.json()
+
+    assert (
+        content["data"]["chatRoomEditMessage"]["errors"][0]["messages"][0]
+        == "Message must be no longer than 1000 characters"
+    )
+
+
+def test_user_cant_edit_a_message_that_does_not_exist(django_user_client, graphql_user_client):
+    user = django_user_client.user
+    response = graphql_user_client(
+        EDIT_MESSAGE_GRAPHQL,
+        variables={
+            "input": {
+                "id": user.relay_id,
+                "content": "edited",
+            }
+        },
+    )
+
+    content = response.json()
+    print("content", content)
+    assert (
+        content["data"]["chatRoomEditMessage"]["errors"][0]["messages"][0]
+        == "Message does not exist"
+    )
+
+
+def test_current_profile_connot_edit_message_sent_by_another_profile(
+    django_user_client, graphql_user_client
+):
+    user = django_user_client.user
+    room = ChatRoomFactory(created_by=user)
+    friend = ProfileFactory()
+
+    ChatRoomParticipantFactory(profile=user.profile, room=room)
+    ChatRoomParticipantFactory(profile=friend, room=room)
+
+    message = MessageFactory(room=room, profile=friend, user=friend.owner)
+
+    response = graphql_user_client(
+        EDIT_MESSAGE_GRAPHQL,
+        variables={
+            "input": {
+                "id": message.relay_id,
+                "content": "edited",
+            }
+        },
+    )
+
+    content = response.json()
+
+    assert (
+        content["data"]["chatRoomEditMessage"]["errors"][0]["messages"][0]
+        == "You don't have permission to update this message"
+    )
 
 
 def test_user_can_create_room(django_user_client, graphql_user_client):

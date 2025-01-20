@@ -16,6 +16,7 @@ from rest_framework import serializers
 
 from baseapp_chats.graphql.subscriptions import (
     ChatRoomOnMessagesCountUpdate,
+    ChatRoomOnNewMessage,
     ChatRoomOnRoomUpdate,
 )
 from baseapp_chats.utils import send_message, send_new_chat_message_notification
@@ -390,6 +391,83 @@ class ChatRoomSendMessage(RelayMutation):
         )
 
 
+class ChatRoomEditMessage(RelayMutation):
+    message = graphene.Field(MessageObjectType._meta.connection.Edge)
+
+    class Input:
+        id = graphene.ID(required=True)
+        content = graphene.String(required=True)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        pk = get_pk_from_relay_id(input.get("id"))
+        try:
+            message = Message.objects.get(pk=pk)
+        except Message.DoesNotExist:
+            return ChatRoomEditMessage(
+                errors=[
+                    ErrorType(
+                        field="id",
+                        messages=[_("Message does not exist")],
+                    )
+                ]
+            )
+
+        profile = (
+            info.context.user.current_profile
+            if hasattr(info.context.user, "current_profile")
+            else (info.context.user.profile if hasattr(info.context.user, "profile") else None)
+        )
+        if not info.context.user.has_perm(
+            "baseapp_chats.change_message",
+            {
+                "profile": profile,
+                "message": message,
+            },
+        ):
+            return ChatRoomEditMessage(
+                errors=[
+                    ErrorType(
+                        field="id",
+                        messages=[_("You don't have permission to update this message")],
+                    )
+                ]
+            )
+
+        content = input.get("content")
+        if len(content) < 1:
+            return ChatRoomEditMessage(
+                errors=[
+                    ErrorType(
+                        field="content",
+                        messages=[_("You cannot edit an empty message")],
+                    )
+                ]
+            )
+
+        if len(content) > 1000:
+            return ChatRoomEditMessage(
+                errors=[
+                    ErrorType(
+                        field="content",
+                        messages=[_("Message must be no longer than 1000 characters")],
+                    )
+                ]
+            )
+
+        message.content = content
+        message.save(update_fields=["content"])
+
+        ChatRoomOnNewMessage.new_message(room_id=message.room.relay_id, message=message)
+
+        return ChatRoomEditMessage(
+            message=MessageObjectType._meta.connection.Edge(
+                node=message,
+            )
+        )
+
+
 class ChatRoomReadMessages(RelayMutation):
     room = graphene.Field(ChatRoomObjectType)
     profile = graphene.Field(ProfileObjectType)
@@ -567,6 +645,7 @@ class ChatsMutations(object):
     chat_room_create = ChatRoomCreate.Field()
     chat_room_update = ChatRoomUpdate.Field()
     chat_room_send_message = ChatRoomSendMessage.Field()
+    chat_room_edit_message = ChatRoomEditMessage.Field()
     chat_room_read_messages = ChatRoomReadMessages.Field()
     chat_room_unread = ChatRoomUnread.Field()
     chat_room_archive = ChatRoomArchive.Field()
