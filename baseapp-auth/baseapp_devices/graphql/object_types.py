@@ -14,8 +14,6 @@ class UserDeviceType(DjangoObjectType):
     is_mobile = graphene.Boolean()
     is_tablet = graphene.Boolean()
     is_pc = graphene.Boolean()
-    is_touchscreen = graphene.Boolean()
-    is_bot = graphene.Boolean()
 
     class Meta:
         model = UserDevice
@@ -72,13 +70,3 @@ class UserDeviceType(DjangoObjectType):
         if not self.device_info:
             return None
         return self.device_info.get("is_pc")
-
-    def resolve_is_touchscreen(self, info):
-        if not self.device_info:
-            return None
-        return self.device_info.get("is_touchscreen")
-
-    def resolve_is_bot(self, info):
-        if not self.device_info:
-            return None
-        return self.device_info.get("is_bot")

@@ -61,12 +61,9 @@ class JWTSessionTokenStrategy(SessionTokenStrategy):
                                 "is_mobile": user_agent.is_mobile,
                                 "is_tablet": user_agent.is_tablet,
                                 "is_pc": user_agent.is_pc,
-                                "is_touchscreen": user_agent.is_touchscreen,
-                                "is_bot": user_agent.is_bot,
                             },
                             "location": dict(request.ip_geolocation),
                             "ip_address": request.ip_geolocation.get("query"),
-                            # "device_token": token.access_token,
                             "last_login": timezone.now(),
                         },
                     )
