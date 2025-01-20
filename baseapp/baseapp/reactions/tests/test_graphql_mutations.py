@@ -40,6 +40,24 @@ def test_anon_cant_react(graphql_client):
 
 
 def test_user_can_add_reaction(graphql_user_client):
+    """
+    Test that a logged-in user can successfully add a 'LIKE' reaction to a comment.
+    
+    This test verifies the following scenarios:
+    - A user can create a reaction on a comment
+    - The reaction is created with the 'LIKE' type
+    - A notification is sent when reactions are enabled
+    - Exactly one reaction is recorded in the database
+    
+    Args:
+        graphql_user_client (fixture): Authenticated GraphQL client for making requests
+    
+    Side Effects:
+        - Creates a comment using CommentFactory
+        - Temporarily enables reaction notifications
+        - Calls GraphQL mutation to add a reaction
+        - Sends a notification about the created reaction
+    """
     comment = CommentFactory()
 
     with override_settings(BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS=True):
@@ -107,6 +125,25 @@ def test_user_can_remove_reaction(django_user_client, graphql_user_client):
 
 
 def test_user_can_react_with_profile(django_user_client, graphql_user_client):
+    """
+    Test that a user can react to a comment using a specific profile.
+    
+    This test verifies that a user can successfully add a reaction to a comment using their own profile, 
+    ensuring that:
+    - A reaction is created with the specified profile
+    - A notification is sent when reactions are enabled
+    - Only one reaction is recorded in the database
+    
+    Parameters:
+        django_user_client (Client): Authenticated Django test client
+        graphql_user_client (Client): GraphQL client for executing mutations
+    
+    Side Effects:
+        - Creates a new profile for the user
+        - Creates a new comment
+        - Sends a reaction created notification
+        - Adds a reaction to the database
+    """
     profile = ProfileFactory(owner=django_user_client.user)
     target = CommentFactory()
 
