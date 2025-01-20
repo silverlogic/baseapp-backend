@@ -16,6 +16,7 @@ INSTALLED_APPS += [
     "allauth.mfa",
     "rest_framework_simplejwt",
     "baseapp_auth",
+    "baseapp_referrals",
     "baseapp_profiles",
     "baseapp_reactions",
     "baseapp_comments",

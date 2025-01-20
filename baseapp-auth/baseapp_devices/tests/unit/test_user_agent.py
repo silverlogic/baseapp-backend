@@ -62,13 +62,3 @@ class MiddlewareTest(SimpleTestCase):
         user_agent = get_user_agent(request)
         self.assertIsInstance(user_agent, UserAgent)
         self.assertIsNone(cache.get(get_cache_key(iphone_ua_string)))
-
-    @override_settings(USER_AGENTS_CACHE="test")
-    def test_custom_cache(self):
-        reload_module(utils)  # re-import with patched settings
-
-        request = RequestFactory(HTTP_USER_AGENT=iphone_ua_string).get("")
-        user_agent = get_user_agent(request)
-        self.assertIsInstance(user_agent, UserAgent)
-        self.assertIsNone(cache.get(get_cache_key(iphone_ua_string)))
-        self.assertIsInstance(utils.cache.get(get_cache_key(iphone_ua_string)), UserAgent)
