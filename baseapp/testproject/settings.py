@@ -51,6 +51,7 @@ AUTHENTICATION_BACKENDS = [
     "baseapp_comments.permissions.CommentsPermissionsBackend",
     "baseapp.activity_log.permissions.ActivityLogPermissionsBackend",
     "baseapp.reactions.permissions.ReactionsPermissionsBackend",
+    "baseapp.reports.permissions.ReportsPermissionsBackend",
 ]
 
 ADMIN_TIME_ZONE = "UTC"
