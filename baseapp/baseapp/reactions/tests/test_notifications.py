@@ -15,6 +15,23 @@ Notification = swapper.load_model("notifications", "Notification")
 
 
 def test_user_receives_notification_when_reaction_is_created(graphql_client):
+    """
+    Test that a user receives a notification when a reaction is created on their comment.
+
+    This test verifies the notification mechanism for comment reactions by:
+    1. Creating a user and a comment associated with that user
+    2. Enabling reaction notifications
+    3. Mocking the notification sending task
+    4. Creating a reaction on the comment
+    5. Asserting that the notification task was called with correct arguments
+
+    Args:
+        graphql_client: A GraphQL client fixture for testing
+
+    Checks:
+        - Notification task is called when a reaction is created
+        - Notification task receives the correct reaction and user identifiers
+    """
     user = UserFactory()
     target = CommentFactory(user=user)
 
