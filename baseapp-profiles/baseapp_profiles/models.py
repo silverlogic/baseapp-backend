@@ -26,7 +26,7 @@ if apps.is_installed("baseapp_follows"):
 
     inheritances.append(FollowableModel)
 
-if apps.is_installed("baseapp_reports"):
+if apps.is_installed("baseapp.reports"):
     from baseapp.reports.models import ReportableModel
 
     inheritances.append(ReportableModel)

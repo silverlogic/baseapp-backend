@@ -6,7 +6,7 @@ INSTALLED_APPS += [
     "graphene_django",
     "baseapp_profiles",
     "baseapp.reactions",
-    "baseapp_reports",
+    "baseapp.reports",
     "baseapp_pages",
     "baseapp_comments",
     "baseapp_auth",

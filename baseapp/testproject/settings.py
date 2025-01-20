@@ -8,7 +8,7 @@ INSTALLED_APPS += [
     "push_notifications",
     "baseapp_profiles",
     "baseapp.reactions",
-    "baseapp_reports",
+    "baseapp.reports",
     "baseapp_pages",
     "baseapp_comments",
     "baseapp_auth",

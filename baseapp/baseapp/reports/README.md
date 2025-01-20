@@ -17,12 +17,12 @@ If you want to develop, [install using this other guide](#how-to-develop).
 
 ## How to use
 
-Add `baseapp_reports` to your project's `INSTALLED_APPS`
+Add `baseapp.reports` to your project's `INSTALLED_APPS`
 
 Now make sure all models you'd like to get reports also inherits `ReactableModel`, like:
 
 ```python
-from baseapp_reports.models import ReactableModel
+from baseapp.reports.models import ReactableModel
 
 class Comment(models.Model, ReactableModel):
     body = models.Textfield()
@@ -31,7 +31,7 @@ class Comment(models.Model, ReactableModel):
 Also make sure your GraphQL object types extends `ReportsInterface` interface:
 
 ```python
-from baseapp_reports.graphql.object_types import ReportsInterface
+from baseapp.reports.graphql.object_types import ReportsInterface
 
 class UserNode(DjangoObjectType):
     class Meta:
@@ -41,8 +41,8 @@ class UserNode(DjangoObjectType):
 Expose `ReportsMutations` and `ReportsQuery` in your GraphQL/graphene endpoint, like:
 
 ```python
-from baseapp_reports.graphql.mutations import ReportsMutations
-from baseapp_reports.graphql.queries import ReportsQuery
+from baseapp.reports.graphql.mutations import ReportsMutations
+from baseapp.reports.graphql.queries import ReportsQuery
 
 class Query(graphene.ObjectType, ReportsQuery):
     pass
@@ -81,7 +81,7 @@ Your `models.py` will look something like this:
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from baseapp_reports.models import AbstractBaseReport
+from baseapp.reports.models import AbstractBaseReport
 
 class Report(AbstractBaseReport):
     custom_field = models.CharField(null=True)
@@ -109,7 +109,7 @@ There is a `AbstractReportFactory` which helps you write other factories:
 
 ```
 import factory
-from baseapp_reports.tests.factories import AbstractReportFactory
+from baseapp.reports.tests.factories import AbstractReportFactory
 
 class CommentFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -120,7 +120,7 @@ class CommentReportFactory(AbstractReportFactory):
     target = factory.SubFactory(CommentFactory)
 
     class Meta:
-        model = "baseapp_reports.Report"
+        model = "baseapp.reports.Report"
         # OR if you have a custom model, point to it:
         model = "reports.Report"
 ```

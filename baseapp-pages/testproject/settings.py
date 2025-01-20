@@ -8,7 +8,7 @@ INSTALLED_APPS += [
     "django_quill",
     "baseapp.reactions",
     "baseapp_comments",
-    "baseapp_reports",
+    "baseapp.reports",
     "baseapp_profiles",
     "baseapp_blocks",
     "baseapp_auth",

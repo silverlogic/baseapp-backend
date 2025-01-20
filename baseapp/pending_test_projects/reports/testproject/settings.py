@@ -4,7 +4,7 @@ from django.utils.translation import gettext_lazy as _
 # Application definition
 INSTALLED_APPS += [
     "graphene_django",
-    "baseapp_reports",
+    "baseapp.reports",
     "baseapp_auth",
     "baseapp_profiles",
     "baseapp.reactions",
