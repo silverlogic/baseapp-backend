@@ -6,9 +6,8 @@ from baseapp_auth.rest_framework.routers.account import (
 )
 from baseapp_core.graphql import GraphQLView
 from django.contrib import admin
-from django.urls import include, re_path
-
 from django.shortcuts import render
+from django.urls import include, re_path
 
 
 def user_agent_test_view(request):

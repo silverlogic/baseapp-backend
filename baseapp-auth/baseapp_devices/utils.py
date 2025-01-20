@@ -4,9 +4,8 @@ from hashlib import md5, sha256
 import requests
 from django.conf import settings
 from django.core.cache import DEFAULT_CACHE_ALIAS
-from user_agents import parse
 from ipware import get_client_ip
-
+from user_agents import parse
 
 # `get_cache` function has been deprecated since Django 1.7 in favor of `caches`.
 try:
@@ -23,7 +22,7 @@ except ImportError:
 if sys.version_info[0] == 3:
     text_type = str
 else:
-    text_type = unicode
+    text_type = unicode  # noqa
 
 
 USER_AGENTS_CACHE = getattr(settings, "USER_AGENTS_CACHE", DEFAULT_CACHE_ALIAS)

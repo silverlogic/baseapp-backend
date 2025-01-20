@@ -1,4 +1,5 @@
 from typing import Any, Dict
+
 from allauth.headless.adapter import DefaultHeadlessAdapter
 from baseapp_auth.rest_framework.login.serializers import (
     LoginChangeExpiredPasswordRedirectSerializer,

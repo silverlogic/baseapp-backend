@@ -4,7 +4,6 @@ import factory
 UserFactory = h.get_user_factory()
 
 
-
 class UserDeviceFactory(factory.django.DjangoModelFactory):
     user = factory.SubFactory(UserFactory)
 

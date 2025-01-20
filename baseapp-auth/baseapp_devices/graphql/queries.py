@@ -1,4 +1,3 @@
-import graphene
 from baseapp_devices.graphql.object_types import UserDeviceType
 from baseapp_devices.models import UserDevice
 from graphene_django import DjangoConnectionField

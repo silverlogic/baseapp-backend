@@ -1,5 +1,5 @@
-from django.conf import settings
 from django.utils.functional import SimpleLazyObject
+
 from .utils import get_user_agent, get_user_ip_geolocation
 
 

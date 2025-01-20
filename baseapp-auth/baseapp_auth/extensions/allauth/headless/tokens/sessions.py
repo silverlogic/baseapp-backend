@@ -2,8 +2,8 @@ from typing import Any, Callable, Dict, Optional
 
 from allauth.headless.tokens.sessions import SessionTokenStrategy
 from django.conf import settings
-from django.utils import timezone
 from django.http import HttpRequest
+from django.utils import timezone
 from django.utils.module_loading import import_string
 from rest_framework.authtoken.models import Token
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -20,7 +20,9 @@ class AuthTokenSessionTokenStrategy(SessionTokenStrategy):
         if (user := request.user) and request.user.is_authenticated:
             token, _ = Token.objects.get_or_create(user=user)
             return dict(access_token=token.key)
-        return super(AuthTokenSessionTokenStrategy, self).create_access_token_payload(request=request)
+        return super(AuthTokenSessionTokenStrategy, self).create_access_token_payload(
+            request=request
+        )
 
 
 class JWTSessionTokenStrategy(SessionTokenStrategy):
@@ -42,8 +44,8 @@ class JWTSessionTokenStrategy(SessionTokenStrategy):
                     token[key] = value
 
                 if "baseapp_devices" in settings.INSTALLED_APPS:
-                    from baseapp_devices.utils import get_device_id
                     from baseapp_devices.models import UserDevice
+                    from baseapp_devices.utils import get_device_id
 
                     device_id = get_device_id(request.user_agent, request.ip_geolocation)
                     token["device_id"] = device_id

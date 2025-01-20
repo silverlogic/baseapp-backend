@@ -1,7 +1,7 @@
-from graphene_django import DjangoObjectType
 import graphene
 from baseapp_devices.models import UserDevice
 from graphene import relay
+from graphene_django import DjangoObjectType
 
 
 class UserDeviceType(DjangoObjectType):
