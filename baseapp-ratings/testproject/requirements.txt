@@ -6,7 +6,7 @@
 -e ./baseapp-reactions
 -e ./baseapp-notifications
 -e ./baseapp-comments
--e ./baseapp-reports
+-e ./baseapp
 -e ./baseapp-profiles
 -e ./baseapp-pages
 -e ./baseapp-blocks

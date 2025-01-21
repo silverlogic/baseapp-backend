@@ -8,6 +8,6 @@
 -e ./baseapp-follows
 -e ./baseapp-comments
 -e ./baseapp-reactions
--e ./baseapp-reports
+-e ./baseapp
 -e ./baseapp-pages
 -e ./baseapp-notifications
