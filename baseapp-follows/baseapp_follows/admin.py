@@ -1,5 +1,6 @@
-import swapper
 from django.contrib import admin
+
+import swapper
 
 Follow = swapper.load_model("baseapp_follows", "Follow")
 

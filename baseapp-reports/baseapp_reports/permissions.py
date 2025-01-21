@@ -1,5 +1,6 @@
-import swapper
 from django.contrib.auth.backends import BaseBackend
+
+import swapper
 
 Report = swapper.load_model("baseapp_reports", "Report")
 

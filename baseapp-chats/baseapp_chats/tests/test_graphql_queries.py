@@ -1,10 +1,11 @@
 from datetime import timedelta
 
+from django.utils import timezone
+
 import pytest
 from baseapp_blocks.tests.factories import BlockFactory
 from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.tests.factories import ProfileFactory
-from django.utils import timezone
 
 from .factories import ChatRoomFactory, ChatRoomParticipantFactory, MessageFactory
 

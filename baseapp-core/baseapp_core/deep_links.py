@@ -1,5 +1,6 @@
-import requests
 from django.conf import settings
+
+import requests
 from requests.exceptions import RequestException
 
 from .exceptions import DeepLinkFetchError

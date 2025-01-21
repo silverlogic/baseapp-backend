@@ -1,12 +1,13 @@
 import django.db.models.deletion
 import django.utils.timezone
+from django.conf import settings
+from django.db import migrations, models
+
 import django_quill.fields
 import model_utils.fields
 import pgtrigger.compiler
 import pgtrigger.migrations
 import swapper
-from django.conf import settings
-from django.db import migrations, models
 
 
 class Migration(migrations.Migration):

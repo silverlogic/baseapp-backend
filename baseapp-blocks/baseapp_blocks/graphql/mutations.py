@@ -1,7 +1,8 @@
+from django.utils.translation import gettext_lazy as _
+
 import graphene
 import swapper
 from baseapp_core.graphql import RelayMutation, get_obj_from_relay_id, login_required
-from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from graphql_relay import offset_to_cursor
 

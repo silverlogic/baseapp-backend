@@ -1,12 +1,10 @@
-from baseapp_auth.rest_framework.jwt.tokens import CustomClaimRefreshToken
-from baseapp_auth.rest_framework.login.serializers import LoginPasswordExpirationMixin
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils.module_loading import import_string
-from rest_framework_simplejwt.serializers import (
-    TokenObtainPairSerializer,
-    TokenRefreshSerializer,
-)
+
+from baseapp_auth.rest_framework.jwt.tokens import CustomClaimRefreshToken
+from baseapp_auth.rest_framework.login.serializers import LoginPasswordExpirationMixin
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 
 User = get_user_model()
 

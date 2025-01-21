@@ -1,4 +1,3 @@
-from baseapp_core.models import CaseInsensitiveEmailField
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
@@ -6,6 +5,8 @@ from django.db import models
 from django.db.models import TextChoices
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+
+from baseapp_core.models import CaseInsensitiveEmailField
 from model_utils.models import TimeStampedModel
 from phonenumber_field.modelfields import PhoneNumberField
 

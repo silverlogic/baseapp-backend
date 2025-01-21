@@ -2,17 +2,14 @@ from urllib.parse import urlparse
 
 from django.conf import settings
 from django.utils.translation import gettext as _
+
 from wagtail.admin.panels import FieldPanel
 from wagtail.api import APIField
 from wagtail.models import Page, PageBase
 from wagtail.search import index
 from wagtail_headless_preview.models import HeadlessPreviewMixin
 
-from .stream_fields import (
-    FeaturedImageStreamField,
-    PageBodyStreamField,
-    StandardPageStreamBlock,
-)
+from .stream_fields import FeaturedImageStreamField, PageBodyStreamField, StandardPageStreamBlock
 
 
 class HeadlessPageBase(PageBase):

@@ -1,5 +1,6 @@
-import pgtrigger
 from django.db import models
+
+import pgtrigger
 from pgtrigger import utils
 
 

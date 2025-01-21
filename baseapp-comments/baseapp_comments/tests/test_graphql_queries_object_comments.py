@@ -1,7 +1,8 @@
+from django.test import override_settings
+
 import pytest
 from baseapp_core.tests.factories import UserFactory
 from baseapp_reactions.tests.factories import ReactionFactory
-from django.test import override_settings
 
 from .factories import CommentFactory
 

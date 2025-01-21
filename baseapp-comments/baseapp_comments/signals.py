@@ -1,12 +1,13 @@
+from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
+from django.db.models.signals import post_delete, post_save
+
 import swapper
 from baseapp_comments.graphql.subscriptions import OnCommentChange
 from baseapp_comments.notifications import (
     send_comment_created_notification,
     send_reply_created_notification,
 )
-from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
-from django.db.models.signals import post_delete, post_save
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
 

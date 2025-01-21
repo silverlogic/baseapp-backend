@@ -1,7 +1,8 @@
+from django.db.models import Q
+
 import django_filters
 import swapper
 from baseapp_core.graphql import get_pk_from_relay_id
-from django.db.models import Q
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")

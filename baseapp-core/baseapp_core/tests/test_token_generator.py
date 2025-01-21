@@ -1,7 +1,8 @@
-import pytest
-from baseapp_core.tokens import TokenGenerator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+
+import pytest
+from baseapp_core.tokens import TokenGenerator
 
 
 class TestTokenGenerator(TokenGenerator):

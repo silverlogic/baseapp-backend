@@ -1,8 +1,9 @@
+from django.contrib.auth.models import Permission
+
 import pytest
 import swapper
 from baseapp_blocks.tests.factories import BlockFactory
 from baseapp_profiles.tests.factories import ProfileFactory
-from django.contrib.auth.models import Permission
 
 from .factories import CommentFactory
 

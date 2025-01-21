@@ -1,6 +1,5 @@
 import sys
-from os.path import abspath
-from os.path import dirname as d
+from os.path import abspath, dirname as d
 
 # add the test root dir to python path
 root_dir = d(d(abspath(__file__)))

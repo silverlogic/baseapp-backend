@@ -1,8 +1,9 @@
 import re
 from io import BytesIO
 
-import requests
 from django.core.files.images import ImageFile
+
+import requests
 
 
 class EmailAlreadyExistsError(Exception):

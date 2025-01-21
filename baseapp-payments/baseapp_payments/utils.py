@@ -1,5 +1,6 @@
-import stripe
 from django.conf import settings
+
+import stripe
 from djstripe.models import Customer, PaymentIntent, PaymentMethod
 
 if settings.STRIPE_LIVE_MODE:

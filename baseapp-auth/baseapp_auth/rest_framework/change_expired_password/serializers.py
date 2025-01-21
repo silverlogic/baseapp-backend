@@ -1,17 +1,16 @@
 from typing import Optional
 
-from baseapp_auth.exceptions import UserPasswordExpiredException
-from baseapp_auth.password_validators import apply_password_validators
-
 # from baseapp_auth.rest_framework.login.serializers import LoginSerializer
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
+
+from baseapp_auth.exceptions import UserPasswordExpiredException
+from baseapp_auth.password_validators import apply_password_validators
+from baseapp_auth.tokens import ChangeExpiredPasswordTokenGenerator
 from rest_framework import serializers
 
 User = get_user_model()
-
-from baseapp_auth.tokens import ChangeExpiredPasswordTokenGenerator
 
 
 # TODO: MFA Follow Up | Expired Password Refactor

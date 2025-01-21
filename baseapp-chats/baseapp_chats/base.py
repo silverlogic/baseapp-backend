@@ -1,6 +1,3 @@
-import swapper
-from baseapp_core.graphql.models import RelayModel
-from baseapp_core.models import random_name_in
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -8,6 +5,10 @@ from django.db import models
 from django.utils import timezone
 from django.utils.timesince import timesince as djtimesince
 from django.utils.translation import gettext_lazy as _
+
+import swapper
+from baseapp_core.graphql.models import RelayModel
+from baseapp_core.models import random_name_in
 from model_utils.models import TimeStampedModel
 
 
@@ -138,9 +139,7 @@ class AbstractBaseMessage(TimeStampedModel, RelayModel):
         super().save(*args, **kwargs)
 
         if created:
-            from baseapp_chats.graphql.subscriptions import (
-                ChatRoomOnMessagesCountUpdate,
-            )
+            from baseapp_chats.graphql.subscriptions import ChatRoomOnMessagesCountUpdate
 
             for participant in self.room.participants.all():
                 if participant.profile_id != self.profile_id:

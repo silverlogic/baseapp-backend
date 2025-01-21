@@ -1,6 +1,7 @@
-import swapper
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import BaseBackend
+
+import swapper
 
 Block = swapper.load_model("baseapp_blocks", "Block")
 Profile = swapper.load_model("baseapp_profiles", "Profile")

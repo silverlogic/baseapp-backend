@@ -1,17 +1,13 @@
-from celery import shared_task
 from django.utils.encoding import force_str
+
+from celery import shared_task
 
 
 @shared_task
 def send_push_notification(
     user_id, extra=None, push_title=None, push_description=None, level=None, **kwargs
 ):
-    from push_notifications.models import (
-        APNSDevice,
-        GCMDevice,
-        WebPushDevice,
-        WNSDevice,
-    )
+    from push_notifications.models import APNSDevice, GCMDevice, WebPushDevice, WNSDevice
 
     if not push_description:
         raise Exception("push_description is required")

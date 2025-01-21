@@ -1,8 +1,9 @@
 from unittest.mock import patch
 
+from django.conf import settings
+
 import pytest
 from baseapp_cloudflare_stream_field.tasks import refresh_from_cloudflare
-from django.conf import settings
 from testproject.testapp.models import Post
 
 

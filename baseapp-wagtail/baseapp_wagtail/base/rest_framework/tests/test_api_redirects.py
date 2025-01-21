@@ -1,6 +1,7 @@
-import baseapp_wagtail.base.rest_framework.tests.factories as f
 from django.test import TestCase
 from django.urls import reverse
+
+import baseapp_wagtail.base.rest_framework.tests.factories as f
 from rest_framework import status
 
 

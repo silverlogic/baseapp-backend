@@ -1,6 +1,7 @@
+from django.urls import reverse
+
 from baseapp_wagtail.tests.mixins import StandardPageContextMixin
 from baseapp_wagtail.tests.models import StandardPage
-from django.urls import reverse
 from rest_framework import status
 
 

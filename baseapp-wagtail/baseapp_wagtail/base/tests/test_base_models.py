@@ -1,8 +1,9 @@
+from django.test import override_settings
+from django.urls import reverse
+
 import baseapp_wagtail.medias.tests.factories as media_factory
 from baseapp_wagtail.tests.mixins import StandardPageContextMixin
 from baseapp_wagtail.tests.models import StandardPage
-from django.test import override_settings
-from django.urls import reverse
 from rest_framework import status
 from wagtail.test.utils.form_data import nested_form_data, streamfield
 

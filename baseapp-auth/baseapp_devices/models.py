@@ -1,6 +1,7 @@
-import swapper
 from django.conf import settings
 from django.db import models
+
+import swapper
 
 
 class BaseUserDevice(models.Model):
@@ -12,7 +13,7 @@ class BaseUserDevice(models.Model):
         related_name="devices",
         on_delete=models.CASCADE,
     )
-    ip_address = models.CharField(max_length=255)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
     location = models.JSONField(null=True, blank=True)
     device_info = models.JSONField(null=True, blank=True)
     device_token = models.CharField(max_length=255)

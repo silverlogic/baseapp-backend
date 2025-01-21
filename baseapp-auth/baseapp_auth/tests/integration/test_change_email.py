@@ -1,14 +1,12 @@
 import time
 
+from django.test import override_settings
+from django.utils.timezone import timedelta
+
 import baseapp_auth.tests.helpers as h
 import pytest
 from baseapp_auth.tests.mixins import ApiMixin
-from baseapp_auth.tokens import (
-    ChangeEmailConfirmTokenGenerator,
-    ChangeEmailVerifyTokenGenerator,
-)
-from django.test import override_settings
-from django.utils.timezone import timedelta
+from baseapp_auth.tokens import ChangeEmailConfirmTokenGenerator, ChangeEmailVerifyTokenGenerator
 
 pytestmark = pytest.mark.django_db
 

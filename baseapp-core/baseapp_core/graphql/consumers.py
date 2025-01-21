@@ -4,9 +4,10 @@ import functools
 import logging
 import sys
 
+from django.contrib.auth.models import AnonymousUser
+
 import channels_graphql_ws
 from channels.db import database_sync_to_async
-from django.contrib.auth.models import AnonymousUser
 from graphene_django.settings import graphene_settings
 from rest_framework.authtoken.models import Token
 

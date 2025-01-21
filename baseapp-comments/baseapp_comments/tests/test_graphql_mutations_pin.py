@@ -1,7 +1,8 @@
-import pytest
-import swapper
 from django.contrib.auth.models import Permission
 from django.test import override_settings
+
+import pytest
+import swapper
 
 from .factories import CommentFactory
 

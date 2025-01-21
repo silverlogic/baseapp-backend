@@ -1,6 +1,7 @@
-import swapper
 from django.conf import settings
 from django.contrib.auth.backends import BaseBackend
+
+import swapper
 
 RateModel = swapper.load_model("baseapp_ratings", "Rate")
 

@@ -1,6 +1,7 @@
-import swapper
 from django.apps import apps
 from django.contrib import admin
+
+import swapper
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")

@@ -1,4 +1,5 @@
 import graphene
+from baseapp.activity_log.graphql.queries import ActivityLogQueries
 from baseapp_comments.graphql.mutations import CommentsMutations
 from baseapp_comments.graphql.queries import CommentsQueries
 from baseapp_profiles.graphql.mutations import ProfilesMutations
@@ -7,8 +8,6 @@ from graphene import relay
 from graphene.relay.node import NodeField as RelayNodeField
 from graphene_django.debug import DjangoDebug
 from testproject.testapp.graphql.queries import UsersQueries
-
-from baseapp.activity_log.graphql.queries import ActivityLogQueries
 
 
 class Query(

@@ -1,9 +1,9 @@
 import logging
 
-import pghistory
 from django.http.response import HttpResponseBadRequest
-from graphene_django.views import GraphQLView as GrapheneGraphQLView
-from graphene_django.views import HttpError
+
+import pghistory
+from graphene_django.views import GraphQLView as GrapheneGraphQLView, HttpError
 from graphql import get_operation_ast, parse
 from graphql.execution import ExecutionResult
 

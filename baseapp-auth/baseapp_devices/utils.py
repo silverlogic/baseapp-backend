@@ -1,22 +1,12 @@
 import sys
 from hashlib import md5, sha256
 
-import requests
 from django.conf import settings
-from django.core.cache import DEFAULT_CACHE_ALIAS
+from django.core.cache import DEFAULT_CACHE_ALIAS, caches
+
+import requests
 from ipware import get_client_ip
 from user_agents import parse
-
-# `get_cache` function has been deprecated since Django 1.7 in favor of `caches`.
-try:
-    from django.core.cache import caches
-
-    def get_cache(backend, **kwargs):
-        return caches[backend]
-
-except ImportError:
-    from django.core.cache import get_cache
-
 
 # Small snippet from the `six` library to help with Python 3 compatibility
 if sys.version_info[0] == 3:
@@ -26,6 +16,11 @@ else:
 
 
 USER_AGENTS_CACHE = getattr(settings, "USER_AGENTS_CACHE", DEFAULT_CACHE_ALIAS)
+
+
+def get_cache(backend, **kwargs):
+    return caches[backend]
+
 
 if USER_AGENTS_CACHE:
     cache = get_cache(USER_AGENTS_CACHE)

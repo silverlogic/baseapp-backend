@@ -1,7 +1,8 @@
+from django.contrib.contenttypes.models import ContentType
+
 import factory
 import swapper
 from baseapp_core.tests.factories import UserFactory
-from django.contrib.contenttypes.models import ContentType
 
 Report = swapper.load_model("baseapp_reports", "Report")
 

@@ -1,5 +1,6 @@
-from baseapp_e2e.utils import load_script
 from django.contrib.auth import get_user_model
+
+from baseapp_e2e.utils import load_script
 from rest_framework import serializers
 
 User = get_user_model()

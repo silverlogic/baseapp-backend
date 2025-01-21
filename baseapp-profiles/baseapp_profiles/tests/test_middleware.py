@@ -1,8 +1,9 @@
+from django.http import HttpResponse
+from django.test import RequestFactory, TestCase
+
 from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.middleware import CurrentProfileMiddleware
 from baseapp_profiles.tests.factories import ProfileFactory, ProfileUserRoleFactory
-from django.http import HttpResponse
-from django.test import RequestFactory, TestCase
 
 
 class CurrentProfileMiddlewareTest(TestCase):

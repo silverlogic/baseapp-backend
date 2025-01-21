@@ -1,6 +1,7 @@
 from typing import List
 
 from django.utils.html import escape
+
 from wagtail import hooks
 from wagtail.documents.rich_text import DocumentLinkHandler
 

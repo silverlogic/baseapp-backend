@@ -1,5 +1,6 @@
-import swapper
 from django.contrib import admin
+
+import swapper
 
 Block = swapper.load_model("baseapp_blocks", "Block")
 

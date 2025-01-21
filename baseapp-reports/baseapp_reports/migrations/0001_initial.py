@@ -2,10 +2,11 @@
 
 import django.db.models.deletion
 import django.utils.timezone
-import model_utils.fields
-import swapper
 from django.conf import settings
 from django.db import migrations, models
+
+import model_utils.fields
+import swapper
 
 
 class Migration(migrations.Migration):

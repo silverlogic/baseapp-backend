@@ -2,9 +2,7 @@ import logging
 import traceback
 
 from rest_framework.authentication import TokenAuthentication as RestTokenAuthentication
-from rest_framework_simplejwt.authentication import (
-    JWTAuthentication as RestJWTAuthentication,
-)
+from rest_framework_simplejwt.authentication import JWTAuthentication as RestJWTAuthentication
 
 
 class LogExceptionMiddleware(object):

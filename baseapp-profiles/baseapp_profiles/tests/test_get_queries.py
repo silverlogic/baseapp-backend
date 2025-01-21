@@ -1,7 +1,8 @@
+from django.contrib.contenttypes.models import ContentType
+
 import pytest
 import swapper
 from baseapp_pages.tests.factories import URLPathFactory
-from django.contrib.contenttypes.models import ContentType
 
 from .factories import ProfileFactory, ProfileUserRoleFactory
 

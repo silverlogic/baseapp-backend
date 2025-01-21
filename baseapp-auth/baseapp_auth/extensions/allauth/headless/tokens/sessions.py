@@ -1,10 +1,11 @@
 from typing import Any, Callable, Dict, Optional
 
-from allauth.headless.tokens.sessions import SessionTokenStrategy
 from django.conf import settings
 from django.http import HttpRequest
 from django.utils import timezone
 from django.utils.module_loading import import_string
+
+from allauth.headless.tokens.sessions import SessionTokenStrategy
 from rest_framework.authtoken.models import Token
 from rest_framework_simplejwt.tokens import RefreshToken
 

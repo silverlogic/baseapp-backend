@@ -1,7 +1,8 @@
-import swapper
-from baseapp_pages.models import Metadata, URLPath
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline, GenericTabularInline
+
+import swapper
+from baseapp_pages.models import Metadata, URLPath
 from translated_fields import TranslatedFieldAdmin
 
 Page = swapper.load_model("baseapp_pages", "Page")

@@ -1,6 +1,7 @@
+from django.dispatch import receiver
+
 from allauth.account.signals import email_confirmed
 from baseapp_auth.emails import send_welcome_email
-from django.dispatch import receiver
 
 
 @receiver(email_confirmed)

@@ -1,9 +1,10 @@
 import json
 
-from baseapp_cloudflare_stream_field.stream import StreamClient
 from django.conf import settings
 from django.forms import CheckboxInput, ClearableFileInput, forms
 from django.templatetags.static import static
+
+from baseapp_cloudflare_stream_field.stream import StreamClient
 
 
 class CloudflareStreamAdminWidget(ClearableFileInput):

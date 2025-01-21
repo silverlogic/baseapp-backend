@@ -1,6 +1,7 @@
 import django.db.models.deletion
-import swapper
 from django.db import migrations, models
+
+import swapper
 
 
 class Migration(migrations.Migration):

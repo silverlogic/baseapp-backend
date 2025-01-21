@@ -1,5 +1,6 @@
-import swapper
 from django.contrib.contenttypes.models import ContentType
+
+import swapper
 
 
 def update_user_profile(instance, **kwargs):

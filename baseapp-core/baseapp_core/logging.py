@@ -3,6 +3,7 @@ from logging import LogRecord
 
 from django.conf import settings
 from django.utils import timezone
+
 from json_log_formatter import JSONFormatter
 
 from .middleware import threading_local

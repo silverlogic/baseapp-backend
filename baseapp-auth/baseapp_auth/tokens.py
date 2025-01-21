@@ -1,9 +1,10 @@
 from math import floor
 
-from baseapp_core.tokens import TokenGenerator
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.timezone import timedelta
+
+from baseapp_core.tokens import TokenGenerator
 
 
 class ChangeEmailConfirmTokenGenerator(TokenGenerator):

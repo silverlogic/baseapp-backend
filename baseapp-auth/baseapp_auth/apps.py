@@ -1,5 +1,6 @@
-from allauth.account.signals import email_confirmed
 from django.apps import AppConfig
+
+from allauth.account.signals import email_confirmed
 
 from .settings import JWT_CLAIM_SERIALIZER_CLASS, SIMPLE_JWT
 

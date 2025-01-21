@@ -1,8 +1,9 @@
+from django.contrib.auth import get_user_model
+from django.utils.translation import gettext as _
+
 import swapper
 from baseapp_notifications import send_notification
 from celery import shared_task
-from django.contrib.auth import get_user_model
-from django.utils.translation import gettext as _
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
 User = get_user_model()

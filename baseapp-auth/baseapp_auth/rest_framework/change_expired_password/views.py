@@ -1,10 +1,11 @@
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
+
 from rest_framework import mixins, response, status, viewsets
 
-User = get_user_model()
-
 from .serializers import ChangeExpiredPasswordSerializer
+
+User = get_user_model()
 
 
 class ChangeExpiredPasswordViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):

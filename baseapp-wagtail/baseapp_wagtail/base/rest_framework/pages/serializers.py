@@ -1,6 +1,5 @@
 from rest_framework.fields import Field
-from wagtail.api.v2.serializers import PageSerializer as WagtailPageSerializer
-from wagtail.api.v2.serializers import get_serializer_class
+from wagtail.api.v2.serializers import PageSerializer as WagtailPageSerializer, get_serializer_class
 
 
 class PageFeaturedImage(Field):

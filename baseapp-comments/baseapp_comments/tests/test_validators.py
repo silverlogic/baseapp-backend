@@ -1,8 +1,9 @@
 from unittest import mock
 
+from django.core.exceptions import ValidationError
+
 import pytest
 from constance import config
-from django.core.exceptions import ValidationError
 
 from ..validators import blocked_words_validator
 

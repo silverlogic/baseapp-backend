@@ -1,7 +1,8 @@
-import graphene
-from baseapp_core.graphql import DjangoObjectType, ThumbnailField
 from django.apps import apps
 from django.contrib.auth import get_user_model
+
+import graphene
+from baseapp_core.graphql import DjangoObjectType, ThumbnailField
 from graphene import relay
 
 from .filters import UsersFilter
@@ -31,10 +32,7 @@ if apps.is_installed("baseapp_ratings"):
 
 
 if apps.is_installed("baseapp_profiles"):
-    from baseapp_profiles.graphql.object_types import (
-        ProfileInterface,
-        ProfilesInterface,
-    )
+    from baseapp_profiles.graphql.object_types import ProfileInterface, ProfilesInterface
 
     interfaces += (ProfilesInterface, ProfileInterface)
 

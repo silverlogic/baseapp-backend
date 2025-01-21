@@ -1,6 +1,7 @@
-import swapper
 from django.contrib.auth.backends import BaseBackend
 from django.db import models
+
+import swapper
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 Block = swapper.load_model("baseapp_blocks", "Block")

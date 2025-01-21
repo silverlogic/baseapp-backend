@@ -1,10 +1,11 @@
 import re
 from copy import deepcopy
 
-import nh3
-from bs4 import BeautifulSoup
 from django.template import Context, Template
 from django.template.loader import render_to_string
+
+import nh3
+from bs4 import BeautifulSoup
 
 
 def _get_text_from_html(html):

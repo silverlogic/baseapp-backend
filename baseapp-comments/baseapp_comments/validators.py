@@ -1,5 +1,6 @@
-from constance import config
 from django.core.exceptions import ValidationError
+
+from constance import config
 
 
 def blocked_words_validator(value):

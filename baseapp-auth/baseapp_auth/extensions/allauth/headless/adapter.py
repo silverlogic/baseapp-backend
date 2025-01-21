@@ -1,12 +1,13 @@
 from typing import Any, Dict
 
+from django.conf import settings
+from django.utils import timezone
+
 from allauth.headless.adapter import DefaultHeadlessAdapter
 from baseapp_auth.rest_framework.login.serializers import (
     LoginChangeExpiredPasswordRedirectSerializer,
 )
 from baseapp_auth.tokens import ChangeExpiredPasswordTokenGenerator
-from django.conf import settings
-from django.utils import timezone
 
 
 class HeadlessAdapter(DefaultHeadlessAdapter):

@@ -1,7 +1,8 @@
+from django.db.models import Sum
+
 import graphene
 import swapper
 from baseapp_core.graphql import get_object_type_for_model
-from django.db.models import Sum
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
 

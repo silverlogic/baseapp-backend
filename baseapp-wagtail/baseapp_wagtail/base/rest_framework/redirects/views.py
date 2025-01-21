@@ -1,6 +1,7 @@
-from baseapp_wagtail.locale.utils import clear_pathname
 from django.http import Http404
 from django.utils.encoding import uri_to_iri
+
+from baseapp_wagtail.locale.utils import clear_pathname
 from rest_framework.response import Response
 from wagtail.contrib.redirects import models
 from wagtail.contrib.redirects.api import RedirectsAPIViewSet

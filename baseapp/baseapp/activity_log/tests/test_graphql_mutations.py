@@ -1,9 +1,8 @@
 import pytest
 import swapper
+from baseapp.activity_log.models import ActivityLog, VisibilityTypes
 from baseapp_comments.tests.factories import CommentFactory
 from baseapp_profiles.tests.factories import ProfileFactory
-
-from baseapp.activity_log.models import ActivityLog, VisibilityTypes
 
 pytestmark = pytest.mark.django_db
 

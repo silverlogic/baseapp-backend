@@ -1,6 +1,7 @@
+from django.db import models
+
 import swapper
 from baseapp_blocks.base import AbstractBaseBlock
-from django.db import models
 
 
 class Block(AbstractBaseBlock):

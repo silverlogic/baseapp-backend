@@ -1,13 +1,11 @@
-import pytest
-from baseapp_core.tests import helpers as h
-from baseapp_core.tests.fixtures import Client
-from baseapp_drf_view_action_permissions.action import (
-    DjangoActionPermissions,
-    IpAddressPermission,
-)
 from django.contrib.auth.models import Permission
 from django.test import override_settings
 from django.urls import include, path, reverse
+
+import pytest
+from baseapp_core.tests import helpers as h
+from baseapp_core.tests.fixtures import Client
+from baseapp_drf_view_action_permissions.action import DjangoActionPermissions, IpAddressPermission
 from rest_framework import decorators, response, status, viewsets
 from rest_framework.routers import DefaultRouter
 from rest_framework.test import APITestCase, URLPatternsTestCase

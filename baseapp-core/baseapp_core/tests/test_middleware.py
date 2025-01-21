@@ -1,9 +1,10 @@
 from unittest.mock import patch
 
-from baseapp_core.middleware import HistoryMiddleware
-from baseapp_core.tests.factories import UserFactory
 from django.http import HttpResponse
 from django.test import RequestFactory, override_settings
+
+from baseapp_core.middleware import HistoryMiddleware
+from baseapp_core.tests.factories import UserFactory
 
 
 class HistoryMiddlewareTest:

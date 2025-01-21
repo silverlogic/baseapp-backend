@@ -1,11 +1,13 @@
 import json
 
-import pytest
-import tests.factories as f
-import tests.helpers as h
 from django.contrib.auth import get_user_model
 from django.core.serializers import serialize
 from django.test import override_settings
+
+import pytest
+
+import tests.factories as f
+import tests.helpers as h
 from tests.mixins import ApiMixin
 
 User = get_user_model()

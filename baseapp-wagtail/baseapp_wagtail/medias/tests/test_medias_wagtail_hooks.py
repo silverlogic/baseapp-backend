@@ -1,6 +1,7 @@
-import baseapp_wagtail.medias.tests.factories as f
 from django.core.files.base import ContentFile
 from django.test import TestCase
+
+import baseapp_wagtail.medias.tests.factories as f
 from wagtail.images.formats import get_image_format
 from wagtail.rich_text import expand_db_html
 

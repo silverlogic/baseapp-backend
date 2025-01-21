@@ -1,16 +1,17 @@
 from datetime import timedelta
 
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
+
 import baseapp_auth.tests.helpers as h
 import pytest
 from baseapp_auth.tests.factories import PasswordValidationFactory
 from baseapp_auth.tests.mixins import ApiMixin
 from baseapp_auth.utils.referral_utils import get_user_referral_model
 from baseapp_referrals.utils import get_referral_code
-from django.conf import settings
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission
-from django.contrib.contenttypes.models import ContentType
-from django.utils import timezone
 
 User = get_user_model()
 UserFactory = h.get_user_factory()

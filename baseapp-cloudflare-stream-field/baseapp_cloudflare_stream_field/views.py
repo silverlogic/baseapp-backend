@@ -1,11 +1,12 @@
 import base64
 import logging
 
-import requests
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseRedirect
 from django.views.decorators.csrf import csrf_exempt
+
+import requests
 
 
 def direct_creator_upload(request):

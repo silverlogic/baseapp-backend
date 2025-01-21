@@ -1,9 +1,9 @@
 import pytest
+import swapper
 
 from .factories import NotificationFactory, NotificationSettingFactory
 
 pytestmark = pytest.mark.django_db
-import swapper
 
 NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationSetting")
 

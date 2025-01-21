@@ -1,6 +1,7 @@
+from django.db.models import Case, IntegerField, Q, Value, When
+
 import django_filters
 import swapper
-from django.db.models import Case, IntegerField, Q, Value, When
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")

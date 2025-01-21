@@ -1,7 +1,9 @@
 # TODO Get the router from the settings or something like that
-from apps.api.v1.router import router as v1_router
-from baseapp_core.constants import DEFAULT_ACTIONS
 from django.core.management.base import BaseCommand
+
+from baseapp_core.constants import DEFAULT_ACTIONS
+
+from apps.api.v1.router import router as v1_router
 
 
 class Command(BaseCommand):

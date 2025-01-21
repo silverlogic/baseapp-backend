@@ -1,5 +1,6 @@
-import swapper
 from django.contrib.auth.backends import BaseBackend
+
+import swapper
 
 Organization = swapper.load_model("baseapp_organizations", "Organization")
 app_label = Organization._meta.app_label

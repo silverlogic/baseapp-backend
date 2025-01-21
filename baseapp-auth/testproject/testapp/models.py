@@ -1,7 +1,8 @@
-from baseapp_auth.models import AbstractUser
-from baseapp_profiles.signals import update_user_profile
 from django.db.models.signals import post_save
 from django.utils import timezone
+
+from baseapp_auth.models import AbstractUser
+from baseapp_profiles.signals import update_user_profile
 from model_utils import FieldTracker
 
 

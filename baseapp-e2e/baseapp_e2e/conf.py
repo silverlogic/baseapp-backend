@@ -2,6 +2,7 @@ from typing import Any, Dict
 
 from django.conf import settings
 from django.test.signals import setting_changed
+
 from rest_framework.settings import APISettings as _APISettings
 
 SETTING_KEY = "E2E"

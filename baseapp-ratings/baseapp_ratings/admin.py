@@ -1,5 +1,6 @@
-import swapper
 from django.contrib import admin
+
+import swapper
 
 RateModel = swapper.load_model("baseapp_ratings", "Rate")
 

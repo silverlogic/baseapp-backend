@@ -1,11 +1,12 @@
 import json
 from unittest.mock import patch
 
+from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
+
 import httpretty
 import pytest
 from baseapp_cloudflare_stream_field.stream import StreamClient
-from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
 from testproject.testapp.models import Post
 
 

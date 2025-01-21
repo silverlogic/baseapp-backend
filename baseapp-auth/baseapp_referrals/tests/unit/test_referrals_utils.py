@@ -1,6 +1,7 @@
+from django.contrib.auth import get_user_model
+
 import pytest
 from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
-from django.contrib.auth import get_user_model
 
 pytestmark = pytest.mark.django_db
 

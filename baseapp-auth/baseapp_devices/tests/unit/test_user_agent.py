@@ -1,13 +1,14 @@
 # coding=utf-8
 from importlib import reload as reload_module
 
-from baseapp_devices import utils
-from baseapp_devices.utils import get_and_set_user_agent, get_cache_key, get_user_agent
 from django.core.cache import cache
 from django.test import SimpleTestCase
 from django.test.client import Client, RequestFactory
 from django.test.utils import override_settings
 from django.urls import reverse
+
+from baseapp_devices import utils
+from baseapp_devices.utils import get_and_set_user_agent, get_cache_key, get_user_agent
 from user_agents.parsers import UserAgent
 
 iphone_ua_string = "Mozilla/5.0 (iPhone; CPU iPhone OS 5_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9B179 Safari/7534.48.3"

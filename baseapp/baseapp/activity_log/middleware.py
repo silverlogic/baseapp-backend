@@ -1,6 +1,7 @@
-import pghistory
 from django.core.handlers.asgi import ASGIRequest as DjangoASGIRequest
 from django.core.handlers.wsgi import WSGIRequest as DjangoWSGIRequest
+
+import pghistory
 from ipware import get_client_ip
 from pghistory import config
 

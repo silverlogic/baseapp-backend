@@ -1,6 +1,7 @@
-import pytest
 from django.conf import settings
 from django.utils.module_loading import import_string
+
+import pytest
 
 
 @pytest.mark.parametrize("schedule", settings.CELERY_BEAT_SCHEDULE.values())
