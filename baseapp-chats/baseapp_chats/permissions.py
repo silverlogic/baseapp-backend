@@ -3,6 +3,7 @@ from django.contrib.auth.backends import BaseBackend
 from django.db import models
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
+Message = swapper.load_model("baseapp_chats", "Message")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
 Block = swapper.load_model("baseapp_blocks", "Block")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
@@ -124,3 +125,11 @@ class ChatsPermissionsBackend(BaseBackend):
                 return False
 
             return room.participants.filter(profile_id__in=my_profile_ids).exists()
+
+        if perm == "baseapp_chats.change_message" and user_obj.is_authenticated:
+            profile = obj.get("profile", None)
+            message = obj.get("message", None)
+            if profile and message and isinstance(message, Message):
+                return profile.id == message.profile.id
+
+            return False
