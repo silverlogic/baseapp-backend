@@ -49,11 +49,29 @@ class AbstractBaseMessage(TimeStampedModel, RelayModel):
     class Verbs(models.IntegerChoices):
         SENT_MESSAGE = 100, _("sent a message")
 
+    class MessageType(models.IntegerChoices):
+        USER_MESSAGE = 1, _("User message")
+        SYSTEM_GENERATED = 2, _("System message")
+
     @property
     def description(self):
         return self.label
 
     content = models.TextField(null=True, blank=True)
+    content_linked_profile_actor = models.ForeignKey(
+        swapper.get_model_name("baseapp_profiles", "Profile"),
+        related_name="linked_as_content_actor_set",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+    content_linked_profile_target = models.ForeignKey(
+        swapper.get_model_name("baseapp_profiles", "Profile"),
+        related_name="linked_as_content_target_set",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True
@@ -65,6 +83,9 @@ class AbstractBaseMessage(TimeStampedModel, RelayModel):
         blank=True,
     )
 
+    message_type = models.IntegerField(
+        choices=MessageType.choices, default=MessageType.USER_MESSAGE
+    )
     verb = models.IntegerField(choices=Verbs.choices, default=Verbs.SENT_MESSAGE, db_index=True)
 
     room = models.ForeignKey(
@@ -103,7 +124,9 @@ class AbstractBaseMessage(TimeStampedModel, RelayModel):
 
     def __str__(self):
         ctx = {
-            "actor": self.profile,
+            "actor": (
+                self.profile if self.message_type == self.MessageType.USER_MESSAGE else "The system"
+            ),
             "verb": self.__class__.Verbs(self.verb).label,
             "action_object": self.action_object,
             "target": self.room,

@@ -46,6 +46,16 @@ def test_message_status_are_created():
     assert MessageStatus.objects.filter(message=message).count() == participants_count
 
 
+def test_does_not_create_message_status_for_system_messages():
+    room = ChatRoomFactory()
+    participants_count = 2
+    ChatRoomParticipantFactory.create_batch(participants_count, room=room)
+
+    message = MessageFactory(room=room, message_type=Message.MessageType.SYSTEM_GENERATED)
+
+    assert MessageStatus.objects.filter(message=message).count() == 0
+
+
 def test_unread_message_count_is_incremented():
     room = ChatRoomFactory()
     participants_count = 2
@@ -55,6 +65,17 @@ def test_unread_message_count_is_incremented():
 
     for participant in participants:
         assert UnreadMessageCount.objects.get(profile=participant.profile).count == 1
+
+
+def test_unread_message_count_is_not_incremented_for_system_messages():
+    room = ChatRoomFactory()
+    participants_count = 2
+    participants = ChatRoomParticipantFactory.create_batch(participants_count, room=room)
+
+    MessageFactory(room=room, message_type=Message.MessageType.SYSTEM_GENERATED)
+
+    for participant in participants:
+        assert UnreadMessageCount.objects.filter(profile=participant.profile).count() == 0
 
 
 def test_unread_message_count_is_decremented():

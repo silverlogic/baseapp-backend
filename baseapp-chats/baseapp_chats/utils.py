@@ -4,10 +4,14 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 
+CONTENT_LINKED_PROFILE_ACTOR = "{content_linked_profile_actor}"
+CONTENT_LINKED_PROFILE_TARGET = "{content_linked_profile_target}"
+
 Message = swapper.load_model("baseapp_chats", "Message")
 MessageStatus = swapper.load_model("baseapp_chats", "MessageStatus")
 UnreadMessageCount = swapper.load_model("baseapp_chats", "UnreadMessageCount")
 Verbs = Message.Verbs
+MessageType = Message.MessageType
 
 User = get_user_model()
 
@@ -17,7 +21,10 @@ def send_message(
     profile,
     user,
     content,
+    content_linked_profile_actor=None,
+    content_linked_profile_target=None,
     room_id=None,
+    message_type=MessageType.USER_MESSAGE,
     verb=Verbs.SENT_MESSAGE,
     action_object=None,
     extra_data=None,
@@ -27,7 +34,10 @@ def send_message(
         user=user,
         profile=profile,
         content=content,
+        content_linked_profile_actor=content_linked_profile_actor,
+        content_linked_profile_target=content_linked_profile_target,
         room=room,
+        message_type=message_type,
         verb=verb,
         in_reply_to=in_reply_to,
         action_object=action_object,
