@@ -28,6 +28,7 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "baseapp_profiles.middleware.CurrentProfileMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
 ]
 
 AUTHENTICATION_BACKENDS = [

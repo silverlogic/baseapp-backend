@@ -145,7 +145,7 @@ class ProfilableModel(models.Model):
     profile = models.OneToOneField(
         swapper.get_model_name("baseapp_profiles", "Profile"),
         related_name="%(class)s",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         verbose_name=_("profile"),
         null=True,
         blank=True,
@@ -153,6 +153,17 @@ class ProfilableModel(models.Model):
 
     class Meta:
         abstract = True
+
+    def delete(self, *args, **kwargs):
+        if not hasattr(self, "profile") or not self.profile or self.profile.owner != self:
+            super().delete(*args, **kwargs)
+            return
+
+        profile = self.profile
+        self.profile = None
+        self.save(update_fields=["profile"])
+        super().delete(*args, **kwargs)
+        profile.delete()
 
 
 class Profile(AbstractProfile):
