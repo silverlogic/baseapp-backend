@@ -155,7 +155,7 @@ class ProfilableModel(models.Model):
         abstract = True
 
     def delete(self, *args, **kwargs):
-        if not hasattr(self, 'profile') or self.profile.owner != self:
+        if not hasattr(self, "profile") or not self.profile or self.profile.owner != self:
             super().delete(*args, **kwargs)
             return
 
