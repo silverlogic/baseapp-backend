@@ -16,7 +16,7 @@ class BaseUserDevice(models.Model):
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     location = models.JSONField(null=True, blank=True)
     device_info = models.JSONField(null=True, blank=True)
-    device_token = models.CharField(max_length=255)
+    device_token = models.TextField(null=True, blank=True)
     device_id = models.CharField(max_length=255)
     last_login = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -5,4 +5,4 @@ from .models import UserDevice
 
 @admin.register(UserDevice)
 class UserDeviceAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "ip_address", "device_token")
+    list_display = ("id", "user", "ip_address", "device_id")
