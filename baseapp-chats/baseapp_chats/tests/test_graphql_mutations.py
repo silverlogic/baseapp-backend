@@ -1,12 +1,13 @@
 import pytest
 import swapper
 from baseapp_blocks.tests.factories import BlockFactory
+from baseapp_core.graphql.testing.fixtures import graphql_query
 from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.tests.factories import ProfileFactory
 from django.test.client import MULTIPART_CONTENT
 
 from .factories import ChatRoomFactory, ChatRoomParticipantFactory, MessageFactory
-from .test_graphql_queries import PROFILE_ROOMS_GRAPHQL
+from .test_graphql_queries import PROFILE_ROOMS_GRAPHQL, ROOM_GRAPHQL
 
 pytestmark = pytest.mark.django_db
 
@@ -55,6 +56,15 @@ CREATE_ROOM_GRAPHQL = """
                     }
                     image(width: 100, height: 100) {
                         url
+                    }
+                    allMessages {
+                        edges {
+                            node {
+                                id
+                                content
+                                messageType
+                            }
+                        }
                     }
                 }
             }
@@ -836,6 +846,59 @@ def test_create_room_handles_corrupted_images(
 
     content = response.json()
     assert "corrupted" in content["data"]["chatRoomCreate"]["errors"][0]["messages"][0]
+
+
+def test_create_room_creates_system_message(django_user_client, graphql_user_client, django_client):
+    friend = UserFactory()
+
+    response = graphql_user_client(
+        CREATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "participants": [
+                    friend.profile.relay_id,
+                ],
+                "isGroup": True,
+                "title": "A test group",
+            }
+        },
+    )
+
+    content = response.json()
+    assert len(content["data"]["chatRoomCreate"]["room"]["node"]["allMessages"]["edges"]) == 1
+    assert (
+        content["data"]["chatRoomCreate"]["room"]["node"]["allMessages"]["edges"][0]["node"][
+            "messageType"
+        ]
+        == "SYSTEM_GENERATED"
+    )
+    assert (
+        content["data"]["chatRoomCreate"]["room"]["node"]["allMessages"]["edges"][0]["node"][
+            "content"
+        ]
+        == 'You created group "A test group"'
+    )
+    room_id = content["data"]["chatRoomCreate"]["room"]["node"]["id"]
+
+    django_client.force_login(friend)
+    response = graphql_query(
+        ROOM_GRAPHQL,
+        variables={"profileId": friend.profile.relay_id, "roomId": room_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    print(content)
+    assert len(content["data"]["chatRoom"]["allMessages"]["edges"]) == 1
+    assert (
+        content["data"]["chatRoom"]["allMessages"]["edges"][0]["node"]["messageType"]
+        == "SYSTEM_GENERATED"
+    )
+    assert (
+        content["data"]["chatRoom"]["allMessages"]["edges"][0]["node"]["content"]
+        == django_user_client.user.profile.name + ' created group "A test group"'
+    )
 
 
 def test_user_can_update_group_title(django_user_client, graphql_user_client):

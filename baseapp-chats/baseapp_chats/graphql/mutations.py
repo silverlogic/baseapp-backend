@@ -19,7 +19,11 @@ from baseapp_chats.graphql.subscriptions import (
     ChatRoomOnNewMessage,
     ChatRoomOnRoomUpdate,
 )
-from baseapp_chats.utils import send_message, send_new_chat_message_notification
+from baseapp_chats.utils import (
+    CONTENT_LINKED_PROFILE_ACTOR,
+    send_message,
+    send_new_chat_message_notification,
+)
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
@@ -173,7 +177,16 @@ class ChatRoomCreate(RelayMutation):
         room.save()
 
         if is_group:
+            send_message(
+                message_type=Message.MessageType.SYSTEM_GENERATED,
+                room=room,
+                profile=None,
+                user=None,
+                content=CONTENT_LINKED_PROFILE_ACTOR + ' created group "' + title + '"',
+                content_linked_profile_actor=profile,
+            )
             ChatRoomOnRoomUpdate.room_updated(room)
+
         return ChatRoomCreate(
             profile=profile,
             room=ChatRoomObjectType._meta.connection.Edge(

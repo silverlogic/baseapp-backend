@@ -38,12 +38,14 @@ class ChatRoomParticipantObjectType(BaseChatRoomParticipantObjectType, DjangoObj
 
 
 VerbsEnum = graphene.Enum.from_enum(Message.Verbs)
+MessageTypeEnum = graphene.Enum.from_enum(Message.MessageType)
 
 
 class BaseMessageObjectType:
     action_object = graphene.Field(relay.Node)
     verb = graphene.Field(VerbsEnum)
-    content = graphene.String(required=False)
+    message_type = graphene.Field(MessageTypeEnum)
+    content = graphene.String(required=False, profile_id=graphene.ID(required=False))
     is_read = graphene.Boolean(profile_id=graphene.ID(required=False))
 
     class Meta:
@@ -53,6 +55,7 @@ class BaseMessageObjectType:
             "id",
             "verb",
             "content",
+            "message_type",
             "user",
             "profile",
             "created",
@@ -74,27 +77,58 @@ class BaseMessageObjectType:
         except cls._meta.model.DoesNotExist:
             return None
 
-    def resolve_is_read(self, info, profile_id=None, **kwargs):
+    @staticmethod
+    def get_profile_pk(info, profile_id=None):
         if profile_id:
             profile_pk = get_pk_from_relay_id(profile_id)
-            profile = Profile.objects.get_if_member(pk=profile_pk, user=info.context.user)
-            if not profile:
+            if not Profile.objects.get_if_member(pk=profile_pk, user=info.context.user):
                 return None
+            else:
+                return profile_pk
+        elif hasattr(info.context.user, "current_profile") and hasattr(
+            info.context.user.current_profile, "pk"
+        ):
+            return info.context.user.current_profile.pk
+        elif hasattr(info.context.user, "profile") and hasattr(info.context.user.profile, "pk"):
+            return info.context.user.profile.pk
         else:
-            profile_pk = (
-                info.context.user.current_profile
-                if hasattr(info.context.user, "current_profile")
-                and hasattr(info.context.user.current_profile, "pk")
-                else (
-                    info.context.user.profile.pk
-                    if hasattr(info.context.user, "profile")
-                    and hasattr(info.context.user.profile, "pk")
-                    else None
-                )
-            )
+            return None
 
-        message_status = self.statuses.filter(profile_id=profile_pk).first()
+    @staticmethod
+    def get_replaced_profile_name(profile, profile_pk, replacement_text):
+        if not profile:
+            return None
+        elif profile.id == profile_pk:
+            return replacement_text
+        else:
+            return profile.name
 
+    @staticmethod
+    def resolve_content(root, info, profile_id=None, **kwargs):
+        profile_pk = BaseMessageObjectType.get_profile_pk(info, profile_id)
+        if not profile_pk:
+            return None
+        if root.message_type == Message.MessageType.USER_MESSAGE:
+            return root.content
+
+        linked_capital_name = BaseMessageObjectType.get_replaced_profile_name(
+            root.content_linked_profile_actor, profile_pk, "You"
+        )
+        linked_small_name = BaseMessageObjectType.get_replaced_profile_name(
+            root.content_linked_profile_target, profile_pk, "you"
+        )
+        return root.content.format(
+            content_linked_profile_actor=linked_capital_name,
+            content_linked_profile_target=linked_small_name,
+        )
+
+    @staticmethod
+    def resolve_is_read(root, info, profile_id=None, **kwargs):
+        profile_pk = BaseMessageObjectType.get_profile_pk(info, profile_id)
+        if not profile_pk:
+            return None
+
+        message_status = root.statuses.filter(profile_id=profile_pk).first()
         return message_status and message_status.is_read
 
 

@@ -39,7 +39,7 @@ class Message(AbstractBaseMessage):
             if swapper.is_swapped("baseapp_chats", "Message")
             else [
                 set_last_message_on_insert_trigger(ChatRoom),
-                create_message_status_trigger(ChatRoomParticipant),
+                create_message_status_trigger(ChatRoomParticipant, AbstractBaseMessage.MessageType),
                 update_last_message_on_delete_trigger(ChatRoom),
             ]
         )

@@ -46,12 +46,13 @@ def decrement_unread_count_trigger(UnreadMessageCount, Message):
 
 
 # Create MessageStatus row in the database for each CharRoomParticipant
-def create_message_status_trigger(ChatRoomParticipant):
+def create_message_status_trigger(ChatRoomParticipant, MessageType):
     return pgtrigger.Trigger(
         name="create_message_status",
         level=pgtrigger.Row,
         when=pgtrigger.After,
         operation=pgtrigger.Insert,
+        condition=pgtrigger.Q(new__message_type=MessageType.USER_MESSAGE),
         func=Func(
             f"""
             INSERT INTO {{model.statuses.field.model._meta.db_table}} (message_id, profile_id, is_read)
@@ -80,7 +81,7 @@ def set_last_message_on_insert_trigger(ChatRoom):
     )
 
 
-# Update ChatRoom last_message and last_message_time fields to previous message when the last essage is deleted
+# Update ChatRoom last_message and last_message_time fields to previous message when the last message is deleted
 def update_last_message_on_delete_trigger(ChatRoom):
     return pgtrigger.Trigger(
         name="update_last_message",

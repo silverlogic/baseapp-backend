@@ -40,6 +40,7 @@ ROOM_GRAPHQL = """
                     node {
                         id
                         content
+                        messageType
                     }
                 }
             }
