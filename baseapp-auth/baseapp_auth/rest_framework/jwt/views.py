@@ -26,7 +26,7 @@ class JWTAuthViewSet(TokenObtainPairView, TokenRefreshView, GenericViewSet):
 
     @action(detail=False, methods=["POST"], serializer_class=LogoutDeviceSerializer)
     def logoutdevice(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        serializer = LogoutDeviceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(

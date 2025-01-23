@@ -15,6 +15,7 @@ INSTALLED_APPS += [
     "allauth.usersessions",
     "allauth.mfa",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "baseapp_auth",
     "baseapp_referrals",
     "baseapp_profiles",

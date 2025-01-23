@@ -53,5 +53,5 @@ class JWTAuthentication(RestJWTAuthentication):
                 user = auth[0]
                 if user and user.is_authenticated:
                     info.context.user = user
-            self.authenticated = True
+                    self.authenticated = True
         return next(root, info, **kwargs)
