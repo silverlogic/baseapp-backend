@@ -13,5 +13,5 @@ class ActivityLogQueries:
         max_limit=100,
     )
 
-    def resolve_activity_log(self, info, visibility=None, **kwargs):
+    def resolve_activity_logs(self, info, visibility=None, **kwargs):
         return ActivityLog.objects.all()

@@ -229,3 +229,129 @@ def test_user_can_see_profile_activity(django_user_client, graphql_user_client):
     content = response.json()
 
     assert len(content["data"]["node"]["activityLogs"]["edges"]) == 1
+
+
+def test_user_can_filter_by_user_name(django_user_client, graphql_user_client):
+    django_user_client.user.is_superuser = True
+    django_user_client.user.first_name = "userA"
+    django_user_client.user.save()
+    another_user = UserFactory(first_name="USERB")
+
+    verb = f"{Comment._meta.app_label}.add_comment"
+
+    with pghistory.context(
+        user=django_user_client.user.pk, visibility=VisibilityTypes.PUBLIC, verb=verb
+    ):
+        CommentFactory()
+
+    # created another  activity
+
+    with pghistory.context(user=another_user.pk, visibility=VisibilityTypes.PUBLIC, verb=verb):
+
+        CommentFactory()
+
+    assert ActivityLog.objects.count() == 2
+
+    response = graphql_user_client(
+        """
+        query NodeActivityLog {
+ activityLogs(userName: "userA") {
+    edges {
+      node {
+        id
+         user {
+          firstName
+        }
+      }
+    }
+  }
+        }
+        """,
+    )
+
+    content = response.json()
+    assert len(content["data"]["activityLogs"]["edges"]) == 1
+
+
+def test_filter_by_user_name_is_case_insensitive(django_user_client, graphql_user_client):
+    django_user_client.user.is_superuser = True
+    django_user_client.user.first_name = "userA"
+    django_user_client.user.save()
+    another_user = UserFactory(first_name="USERB")
+
+    verb = f"{Comment._meta.app_label}.add_comment"
+
+    with pghistory.context(
+        user=django_user_client.user.pk, visibility=VisibilityTypes.PUBLIC, verb=verb
+    ):
+        CommentFactory()
+
+    # created another activity
+
+    with pghistory.context(user=another_user.pk, visibility=VisibilityTypes.PUBLIC, verb=verb):
+
+        CommentFactory()
+
+    assert ActivityLog.objects.count() == 2
+
+    response = graphql_user_client(
+        """
+        query NodeActivityLog {
+ activityLogs(userName: "user") {
+    edges {
+      node {
+        id
+         user {
+          firstName
+        }
+      }
+    }
+  }
+        }
+        """,
+    )
+
+    content = response.json()
+    assert len(content["data"]["activityLogs"]["edges"]) == 2
+
+
+def test_filter_by_partial_match(django_user_client, graphql_user_client):
+    django_user_client.user.is_superuser = True
+    django_user_client.user.first_name = "john"
+    django_user_client.user.save()
+    another_user = UserFactory(first_name="jean")
+
+    verb = f"{Comment._meta.app_label}.add_comment"
+
+    with pghistory.context(
+        user=django_user_client.user.pk, visibility=VisibilityTypes.PUBLIC, verb=verb
+    ):
+        CommentFactory()
+
+    # created another  activity
+
+    with pghistory.context(user=another_user.pk, visibility=VisibilityTypes.PUBLIC, verb=verb):
+
+        CommentFactory()
+
+    assert ActivityLog.objects.count() == 2
+
+    response = graphql_user_client(
+        """
+        query NodeActivityLog {
+ activityLogs(userName: "jo") {
+    edges {
+      node {
+        id
+         user {
+          firstName
+        }
+      }
+    }
+  }
+        }
+        """,
+    )
+
+    content = response.json()
+    assert len(content["data"]["activityLogs"]["edges"]) == 1
