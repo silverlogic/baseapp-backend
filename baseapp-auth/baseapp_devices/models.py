@@ -25,6 +25,7 @@ class BaseUserDevice(models.Model):
 class UserDevice(BaseUserDevice):
     class Meta:
         swappable = swapper.swappable_setting("baseapp_devices", "UserDevice")
+        ordering = ["-last_login"]
 
     def __str__(self):
         return f"{self.user.email} - {self.ip_address}"

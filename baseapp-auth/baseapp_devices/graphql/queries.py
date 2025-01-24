@@ -7,4 +7,4 @@ class UserDeviceQueries:
     all_user_devices = DjangoConnectionField(UserDeviceType)
 
     def resolve_all_user_devices(root, info, **kwargs):
-        return UserDevice.objects.filter(user=info.context.user)
+        return UserDevice.objects.filter(user=info.context.user).order_by("-last_login")
