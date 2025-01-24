@@ -234,8 +234,14 @@ def test_user_can_see_profile_activity(django_user_client, graphql_user_client):
 def test_user_can_filter_by_user_name(django_user_client, graphql_user_client):
     django_user_client.user.is_superuser = True
     django_user_client.user.first_name = "userA"
+    django_user_client.user.last_name = "Doe"
+
     django_user_client.user.save()
-    another_user = UserFactory(first_name="USERB")
+
+    django_user_client.user.profile.name = django_user_client.user.get_full_name()
+
+    django_user_client.user.profile.save()
+    another_user = UserFactory(first_name="USERB", last_name="Collins")
 
     verb = f"{Comment._meta.app_label}.add_comment"
 
@@ -276,8 +282,13 @@ def test_user_can_filter_by_user_name(django_user_client, graphql_user_client):
 def test_filter_by_user_name_is_case_insensitive(django_user_client, graphql_user_client):
     django_user_client.user.is_superuser = True
     django_user_client.user.first_name = "userA"
+    django_user_client.user.last_name = "Doe"
+
     django_user_client.user.save()
-    another_user = UserFactory(first_name="USERB")
+
+    django_user_client.user.profile.name = django_user_client.user.get_full_name()
+
+    another_user = UserFactory(first_name="USERB", last_name="Collins")
 
     verb = f"{Comment._meta.app_label}.add_comment"
 
@@ -318,8 +329,15 @@ def test_filter_by_user_name_is_case_insensitive(django_user_client, graphql_use
 def test_filter_by_partial_match(django_user_client, graphql_user_client):
     django_user_client.user.is_superuser = True
     django_user_client.user.first_name = "john"
+    django_user_client.user.last_name = "Doe"
+
     django_user_client.user.save()
-    another_user = UserFactory(first_name="jean")
+
+    django_user_client.user.profile.name = django_user_client.user.get_full_name()
+
+    django_user_client.user.profile.save()
+
+    another_user = UserFactory(first_name="jean", last_name="Collins")
 
     verb = f"{Comment._meta.app_label}.add_comment"
 
@@ -345,6 +363,10 @@ def test_filter_by_partial_match(django_user_client, graphql_user_client):
         id
          user {
           firstName
+          lastName
+       profile {
+            name
+          }
         }
       }
     }
