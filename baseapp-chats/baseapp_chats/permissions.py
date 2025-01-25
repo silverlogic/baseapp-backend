@@ -40,7 +40,7 @@ class ChatsPermissionsBackend(BaseBackend):
     def can_modify_chatroom(self, user_obj, obj):
         if isinstance(obj, dict):
             room = obj["room"]
-            remove_participants = obj["remove_participants"]
+            is_leaving_chatroom = obj["is_leaving_chatroom"]
             add_participants = obj["add_participants"]
             current_profile = obj["profile"]
             modify_image = obj["modify_image"]
@@ -56,11 +56,12 @@ class ChatsPermissionsBackend(BaseBackend):
             if not chat_room_participant:
                 return False
 
-            is_removing_self = len(remove_participants) == 1 and str(remove_participants[0]) == str(
-                current_profile.pk
-            )
-
-            if is_removing_self and not modify_image and not modify_title and not add_participants:
+            if (
+                is_leaving_chatroom
+                and not modify_image
+                and not modify_title
+                and not add_participants
+            ):
                 return True
 
             if chat_room_participant.role != ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN:

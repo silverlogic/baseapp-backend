@@ -6,6 +6,7 @@ from baseapp_core.graphql import (
     get_object_type_for_model,
     get_pk_from_relay_id,
 )
+from django.db.models import Case, When
 from graphene import relay
 from graphene_django import DjangoConnectionField
 from graphene_django.filter import DjangoFilterConnectionField
@@ -172,6 +173,22 @@ class BaseChatRoomObjectType:
                     "-created"
                 )
         return self.messages.all().order_by("-created")
+
+    def resolve_participants(self, info, **kwargs):
+        if self.is_group:
+            profile = (
+                info.context.user.current_profile
+                if hasattr(info.context.user, "current_profile")
+                else (info.context.user.profile if hasattr(info.context.user, "profile") else None)
+            )
+            participant = self.participants.filter(profile=profile).first()
+            if participant:
+                return self.participants.all().order_by(
+                    Case(When(id=participant.id, then=0), default=1),
+                    "-role",
+                    "profile__name",
+                )
+        return self.participants.all()
 
     def resolve_is_archived(self, info, profile_id=None, **kwargs):
         if profile_id:
