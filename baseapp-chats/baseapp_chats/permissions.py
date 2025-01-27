@@ -40,8 +40,11 @@ class ChatsPermissionsBackend(BaseBackend):
     def can_modify_chatroom(self, user_obj, obj):
         if isinstance(obj, dict):
             room = obj["room"]
+            is_leaving_chatroom = obj["is_leaving_chatroom"]
             add_participants = obj["add_participants"]
             current_profile = obj["profile"]
+            modify_image = obj["modify_image"]
+            modify_title = obj["modify_title"]
 
             if not getattr(room, "is_group", False):
                 return False
@@ -49,21 +52,19 @@ class ChatsPermissionsBackend(BaseBackend):
             chat_room_participant = ChatRoomParticipant.objects.filter(
                 room=room, profile_id=current_profile.pk
             ).first()
-            if (
-                not chat_room_participant
-                or not chat_room_participant.role
-                == ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN
-            ):
+
+            if not chat_room_participant:
                 return False
 
-            participant_profile_ids = [participant.pk for participant in add_participants]
+            if (
+                is_leaving_chatroom
+                and not modify_image
+                and not modify_title
+                and not add_participants
+            ):
+                return True
 
-            blocks_qs = Block.objects.filter(
-                models.Q(actor_id=current_profile.id, target_id__in=participant_profile_ids)
-                | models.Q(actor_id__in=participant_profile_ids, target_id=current_profile.id)
-            )
-
-            if blocks_qs.exists():
+            if chat_room_participant.role != ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN:
                 return False
 
             return True

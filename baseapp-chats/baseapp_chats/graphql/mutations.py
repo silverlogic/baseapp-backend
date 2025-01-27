@@ -222,6 +222,31 @@ class ChatRoomUpdate(RelayMutation):
     ):
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
+        is_sole_admin = (
+            ChatRoomParticipant.objects.filter(
+                profile=profile, room=room, role=ChatRoomParticipantRoles.ADMIN
+            ).exists()
+            and ChatRoomParticipant.objects.filter(
+                room=room, role=ChatRoomParticipantRoles.ADMIN
+            ).count()
+            == 1
+        )
+        is_leaving_chatroom = profile_id in remove_participants and len(remove_participants) == 1
+
+        add_participants_pks = [
+            get_pk_from_relay_id(participant) for participant in add_participants
+        ]
+
+        remove_participants_pks = [
+            get_pk_from_relay_id(participant) for participant in remove_participants
+        ]
+        participants_to_remove = ChatRoomParticipant.objects.filter(
+            profile_id__in=remove_participants_pks, room=room
+        )
+        removed_participants = list(participants_to_remove)
+
+        title = input.get("title", None)
+        image = info.context.FILES.get("image", None)
 
         if not room or not getattr(room, "is_group", False):
             return ChatRoomUpdate(
@@ -243,18 +268,10 @@ class ChatRoomUpdate(RelayMutation):
                 ]
             )
 
-        add_participants = [
-            get_obj_from_relay_id(info, participant) for participant in add_participants
-        ]
-        add_participants = [
-            participant for participant in add_participants if participant is not None
-        ]
-        add_participants_ids = [participant.pk for participant in add_participants]
-
         # Check if added participants are blocked
         if Block.objects.filter(
-            Q(actor_id=profile.id, target_id__in=add_participants_ids)
-            | Q(actor_id__in=add_participants_ids, target_id=profile.id)
+            Q(actor_id=profile.id, target_id__in=add_participants_pks)
+            | Q(actor_id__in=add_participants_pks, target_id=profile.id)
         ).exists():
             return ChatRoomUpdate(
                 errors=[
@@ -267,7 +284,14 @@ class ChatRoomUpdate(RelayMutation):
 
         if not info.context.user.has_perm(
             "baseapp_chats.modify_chatroom",
-            {"profile": profile, "room": room, "add_participants": add_participants},
+            {
+                "profile": profile,
+                "room": room,
+                "add_participants": add_participants_pks,
+                "is_leaving_chatroom": is_leaving_chatroom,
+                "modify_image": image or delete_image,
+                "modify_title": title,
+            },
         ):
             return ChatRoomUpdate(
                 errors=[
@@ -278,34 +302,34 @@ class ChatRoomUpdate(RelayMutation):
                 ]
             )
 
-        title = input.get("title", None)
-        if title is not None:
-            room.title = title
-
-        image = info.context.FILES.get("image", None)
+        # Change image
         serializer = ImageSerializer(data={"image": image})
         if not serializer.is_valid():
             return ChatRoomUpdate(
                 errors=[ErrorType(field="image", messages=serializer.errors["image"])]
             )
 
-        remove_participants_ids = [
-            get_pk_from_relay_id(participant) for participant in remove_participants
-        ]
-        participants_to_remove = ChatRoomParticipant.objects.filter(
-            profile_id__in=remove_participants_ids, room=room
-        )
-        removed_participants = list(participants_to_remove)
         participants_to_remove.delete()
 
+        # Setting new admin if needed
+        if is_leaving_chatroom and is_sole_admin:
+            oldest_remaining_participant = (
+                ChatRoomParticipant.objects.filter(room=room).order_by("accepted_at").first()
+            )
+            if oldest_remaining_participant:
+                oldest_remaining_participant.role = ChatRoomParticipantRoles.ADMIN
+                oldest_remaining_participant.save(update_fields=["role"])
+
+        # Update room
+        # TODO: Remeber to include added participants into count when implementing that feature
+        room.participants_count = room.participants_count - len(removed_participants)
+        if title is not None:
+            room.title = title
         if image is not None:
             room.image = serializer.validated_data["image"]
         elif delete_image:
             room.image = None
-        room.participants_count = room.participants_count - len(removed_participants)
         room.save()
-
-        # TODO: Add participants
 
         ChatRoomOnRoomUpdate.room_updated(room, removed_participants)
 
