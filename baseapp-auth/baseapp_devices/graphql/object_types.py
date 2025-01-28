@@ -24,6 +24,7 @@ class UserDeviceType(DjangoObjectType):
             "ip_address",
             "last_login",
             "created_at",
+            "device_id",
         )
 
     def resolve_address(self, info):
