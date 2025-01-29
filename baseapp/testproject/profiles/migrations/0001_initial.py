@@ -2,7 +2,6 @@
 
 import baseapp_comments.models
 import baseapp_core.models
-import baseapp_reports.models
 import django.db.models.deletion
 import django.utils.timezone
 import model_utils.fields
@@ -10,6 +9,8 @@ import pgtrigger.compiler
 import pgtrigger.migrations
 from django.conf import settings
 from django.db import migrations, models
+
+import baseapp_reports.models
 
 
 class Migration(migrations.Migration):
