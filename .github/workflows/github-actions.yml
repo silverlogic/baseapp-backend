@@ -60,10 +60,6 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-comments
-  baseapp-reports:
-    uses: ./.github/workflows/project-workflow.yml
-    with:
-      project: baseapp-reports
   baseapp-profiles:
     uses: ./.github/workflows/project-workflow.yml
     with:

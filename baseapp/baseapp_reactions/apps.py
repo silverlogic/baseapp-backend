@@ -1,7 +1,7 @@
 from django.apps import AppConfig
 
 
-class ReactionsConfig(AppConfig):
+class PackageConfig(AppConfig):
     default = True
     name = "baseapp_reactions"
     label = "baseapp_reactions"

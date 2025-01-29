@@ -10,6 +10,7 @@ from graphene_django.debug import DjangoDebug
 from baseapp.activity_log.graphql.queries import ActivityLogQueries
 from baseapp_reactions.graphql.mutations import ReactionsMutations
 from baseapp_reactions.graphql.queries import ReactionsQueries
+from baseapp_reports.graphql.mutations import ReportsMutations
 from testproject.testapp.graphql.queries import UsersQueries
 
 
@@ -25,7 +26,9 @@ class Query(
     debug = graphene.Field(DjangoDebug, name="_debug")
 
 
-class Mutation(graphene.ObjectType, ProfilesMutations, CommentsMutations, ReactionsMutations):
+class Mutation(
+    graphene.ObjectType, ProfilesMutations, CommentsMutations, ReactionsMutations, ReportsMutations
+):
     pass
 
 
