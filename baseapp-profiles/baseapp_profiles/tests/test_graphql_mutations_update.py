@@ -325,7 +325,7 @@ def test_user_profile_owner_can_remove_profile_member(django_user_client, graphq
     )
     content = response.json()
 
-    assert int(content["data"]["profileRemoveMember"]["deletedId"]) == profile_user_role.id
+    assert content["data"]["profileRemoveMember"]["deletedId"] == profile_user_role.relay_id
     assert not ProfileUserRole.objects.filter(id=profile_user_role.id).exists()
 
 
@@ -351,7 +351,7 @@ def test_user_with_permission_can_remove_profile_member(django_user_client, grap
     )
     content = response.json()
 
-    assert int(content["data"]["profileRemoveMember"]["deletedId"]) == profile_user_role.id
+    assert content["data"]["profileRemoveMember"]["deletedId"] == profile_user_role.relay_id
     assert not ProfileUserRole.objects.filter(id=profile_user_role.id).exists()
 
 
