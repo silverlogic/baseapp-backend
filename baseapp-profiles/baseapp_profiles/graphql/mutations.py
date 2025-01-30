@@ -181,7 +181,7 @@ class ProfileRemoveMember(RelayMutation):
                 extensions={"code": "permission_required"},
             )
 
-        id_to_return = obj.id
+        id_to_return = obj.relay_id
         obj.delete()
 
         return ProfileRemoveMember(deleted_id=id_to_return)
