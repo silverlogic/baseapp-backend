@@ -35,6 +35,11 @@ jobs:
     with:
       project: baseapp-payments
     secrets: inherit
+  baseapp-reactions:
+    uses: ./.github/workflows/publish-workflow.yml
+    with:
+      project: baseapp-reactions
+    secrets: inherit
   baseapp-social-auth:
     uses: ./.github/workflows/publish-workflow.yml
     with:
@@ -69,6 +74,11 @@ jobs:
     uses: ./.github/workflows/publish-workflow.yml
     with:
       project: baseapp-comments
+    secrets: inherit
+  baseapp-reports:
+    uses: ./.github/workflows/publish-workflow.yml
+    with:
+      project: baseapp-reports
     secrets: inherit
   baseapp-blocks:
     uses: ./.github/workflows/publish-workflow.yml
