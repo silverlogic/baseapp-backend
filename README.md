@@ -36,13 +36,17 @@ Reusable app to handle in-app, email and push notifications.
 
 Utilities for payments
 
-## [baseapp-reactions](baseapp/baseapp-reactions)
+## [baseapp-reactions](baseapp/baseapp_reactions)
 
 Reusable app to enable User's reactions on any model, features like like/dislike or any other reactions type, customizable for project's needs.
 
-## [baseapp-reports](baseapp/baseapp-reports)
+## [baseapp-reports](baseapp/baseapp_reports)
 
 App to allow users to report other user generated content.
+
+## [baseapp-ratings](baseapp/baseapp_ratings)
+
+Rate from 0 to N on any model. With support for average ratings.
 
 ## [baseapp-social-auth](baseapp-social-auth)
 

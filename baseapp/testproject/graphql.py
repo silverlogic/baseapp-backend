@@ -8,6 +8,8 @@ from graphene.relay.node import NodeField as RelayNodeField
 from graphene_django.debug import DjangoDebug
 
 from baseapp.activity_log.graphql.queries import ActivityLogQueries
+from baseapp_ratings.graphql.mutations import RatingsMutations
+from baseapp_ratings.graphql.queries import RatingsQueries
 from baseapp_reactions.graphql.mutations import ReactionsMutations
 from baseapp_reactions.graphql.queries import ReactionsQueries
 from baseapp_reports.graphql.mutations import ReportsMutations
@@ -21,13 +23,19 @@ class Query(
     CommentsQueries,
     ActivityLogQueries,
     ReactionsQueries,
+    RatingsQueries,
 ):
     node = RelayNodeField(relay.Node)
     debug = graphene.Field(DjangoDebug, name="_debug")
 
 
 class Mutation(
-    graphene.ObjectType, ProfilesMutations, CommentsMutations, ReactionsMutations, ReportsMutations
+    graphene.ObjectType,
+    ProfilesMutations,
+    CommentsMutations,
+    ReactionsMutations,
+    ReportsMutations,
+    RatingsMutations,
 ):
     pass
 

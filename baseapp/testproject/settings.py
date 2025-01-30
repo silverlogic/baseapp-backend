@@ -16,6 +16,7 @@ INSTALLED_APPS += [
     "baseapp_blocks",
     "baseapp.activity_log",
     "baseapp_notifications",
+    "baseapp_ratings",
     "testproject.testapp",
     "testproject.comments",
     "testproject.profiles",
@@ -52,6 +53,7 @@ AUTHENTICATION_BACKENDS = [
     "baseapp.activity_log.permissions.ActivityLogPermissionsBackend",
     "baseapp_reactions.permissions.ReactionsPermissionsBackend",
     "baseapp_reports.permissions.ReportsPermissionsBackend",
+    "baseapp_ratings.permissions.RatingsPermissionsBackend",
 ]
 
 ADMIN_TIME_ZONE = "UTC"
