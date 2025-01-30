@@ -35,11 +35,6 @@ jobs:
     with:
       project: baseapp-payments
     secrets: inherit
-  baseapp-reactions:
-    uses: ./.github/workflows/sonar-workflow.yml
-    with:
-      project: baseapp-reactions
-    secrets: inherit
   baseapp-social-auth:
     uses: ./.github/workflows/sonar-workflow.yml
     with:
