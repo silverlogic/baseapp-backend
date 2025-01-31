@@ -55,11 +55,6 @@ jobs:
     with:
       project: baseapp-url-shortening
     secrets: inherit
-  baseapp-follows:
-    uses: ./.github/workflows/sonar-workflow.yml
-    with:
-      project: baseapp-follows
-    secrets: inherit
   baseapp-pages:
     uses: ./.github/workflows/sonar-workflow.yml
     with:
