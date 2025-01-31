@@ -9,6 +9,5 @@
 -e ./baseapp-pages
 -e ./baseapp
 -e ./baseapp-profiles
--e ./baseapp-blocks
 
 django-notifications-hq==1.8.2

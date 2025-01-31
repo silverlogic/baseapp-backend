@@ -60,10 +60,6 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-profiles
-  baseapp-blocks:
-    uses: ./.github/workflows/project-workflow.yml
-    with:
-      project: baseapp-blocks
   baseapp-chats:
     uses: ./.github/workflows/project-workflow.yml
     with:

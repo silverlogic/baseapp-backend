@@ -8,6 +8,7 @@ from graphene.relay.node import NodeField as RelayNodeField
 from graphene_django.debug import DjangoDebug
 
 from baseapp.activity_log.graphql.queries import ActivityLogQueries
+from baseapp_blocks.graphql.mutations import BlocksMutations
 from baseapp_follows.graphql.mutations import FollowsMutations
 from baseapp_ratings.graphql.mutations import RatingsMutations
 from baseapp_ratings.graphql.queries import RatingsQueries
@@ -38,6 +39,7 @@ class Mutation(
     ReportsMutations,
     RatingsMutations,
     FollowsMutations,
+    BlocksMutations,
 ):
     pass
 
