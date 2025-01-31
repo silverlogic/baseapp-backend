@@ -65,11 +65,6 @@ jobs:
     with:
       project: baseapp-comments
     secrets: inherit
-  baseapp-blocks:
-    uses: ./.github/workflows/sonar-workflow.yml
-    with:
-      project: baseapp-blocks
-    secrets: inherit
   baseapp-profiles:
     uses: ./.github/workflows/sonar-workflow.yml
     with:
