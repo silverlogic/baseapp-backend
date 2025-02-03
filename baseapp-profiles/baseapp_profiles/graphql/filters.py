@@ -12,6 +12,7 @@ class ProfileFilter(django_filters.FilterSet):
     order_by = django_filters.OrderingFilter(
         fields=(
             ("created", "created"),
+            ("name", "name"),
             ("followers_count__total", "followers_count_total"),
             ("following_count__total", "following_count_total"),
         )
