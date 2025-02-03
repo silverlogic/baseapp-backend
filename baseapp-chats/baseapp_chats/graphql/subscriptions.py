@@ -17,6 +17,7 @@ ChatRoomParticipantObjectType = ChatRoomParticipant.get_graphql_object_type()
 class ChatRoomOnRoomUpdate(channels_graphql_ws.Subscription):
     room = graphene.Field(ChatRoomObjectType._meta.connection.Edge)
     removed_participants = graphene.List(ChatRoomParticipantObjectType)
+    added_participants = graphene.List(ChatRoomParticipantObjectType)
 
     class Arguments:
         profile_id = graphene.ID(required=True)
@@ -36,6 +37,7 @@ class ChatRoomOnRoomUpdate(channels_graphql_ws.Subscription):
         return ChatRoomOnRoomUpdate(
             room=ChatRoomObjectType._meta.connection.Edge(node=payload["room"]),
             removed_participants=payload["removed_participants"],
+            added_participants=payload["added_participants"],
         )
 
     @classmethod
@@ -43,13 +45,17 @@ class ChatRoomOnRoomUpdate(channels_graphql_ws.Subscription):
         cls.room_updated(message.room)
 
     @classmethod
-    def room_updated(cls, room, removed_participants=[]):
+    def room_updated(cls, room, removed_participants=[], added_participants=[]):
         participant_ids = list(room.participants.values_list("profile_id", flat=True))
         removed_ids = [participant.profile.id for participant in removed_participants]
         for id in participant_ids + removed_ids:
             cls.broadcast(
                 group=str(id),
-                payload={"room": room, "removed_participants": removed_participants},
+                payload={
+                    "room": room,
+                    "removed_participants": removed_participants,
+                    "added_participants": added_participants,
+                },
             )
 
 
