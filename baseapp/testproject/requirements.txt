@@ -5,7 +5,6 @@
 -e ./baseapp-auth
 -e ./baseapp-chats
 -e ./baseapp-profiles
--e ./baseapp-pages
 -e ./baseapp-blocks
 -e ./baseapp-comments
 -e ./baseapp-notifications

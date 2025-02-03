@@ -6,6 +6,7 @@ INSTALLED_APPS += [
     "graphene_django",
     "notifications",
     "push_notifications",
+    "django_quill",
     "baseapp_profiles",
     "baseapp_reactions",
     "baseapp_reports",
@@ -56,6 +57,7 @@ AUTHENTICATION_BACKENDS = [
     "baseapp_ratings.permissions.RatingsPermissionsBackend",
     "baseapp_follows.permissions.FollowsPermissionsBackend",
     "baseapp_blocks.permissions.BlocksPermissionsBackend",
+    "baseapp_pages.permissions.PagesPermissionsBackend",
 ]
 
 ADMIN_TIME_ZONE = "UTC"

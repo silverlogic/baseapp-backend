@@ -44,6 +44,10 @@ Reusable app to enable User's reactions on any model, features like like/dislike
 
 App to allow users to report other user generated content.
 
+## [baseapp-blocks](baseapp/baseapp_blocks)
+
+Let a Profile block another Profile.
+
 ## [baseapp-ratings](baseapp/baseapp_ratings)
 
 Rate from 0 to N on any model. With support for average ratings.
@@ -60,7 +64,7 @@ Functionality for url shortening
 
 Reusable app to enable any model follow/unfollow any model.
 
-## [baseapp-pages](baseapp-pages)
+## [baseapp-pages](baseapp/baseapp_pages)
 
 Reusable app to handle pages, URL's paths and metadata. It provides useful models and GraphQL Interfaces.
 
