@@ -55,11 +55,6 @@ jobs:
     with:
       project: baseapp-url-shortening
     secrets: inherit
-  baseapp-pages:
-    uses: ./.github/workflows/sonar-workflow.yml
-    with:
-      project: baseapp-pages
-    secrets: inherit
   baseapp-comments:
     uses: ./.github/workflows/sonar-workflow.yml
     with:

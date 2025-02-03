@@ -8,4 +8,3 @@
 -e ./baseapp-notifications
 -e ./baseapp-comments
 -e ./baseapp
--e ./baseapp-pages

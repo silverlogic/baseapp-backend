@@ -7,5 +7,4 @@
 -e ./baseapp-comments
 -e ./baseapp-reactions
 -e ./baseapp
--e ./baseapp-pages
 -e ./baseapp-notifications

@@ -48,10 +48,6 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-url-shortening
-  baseapp-pages:
-    uses: ./.github/workflows/project-workflow.yml
-    with:
-      project: baseapp-pages
   baseapp-comments:
     uses: ./.github/workflows/project-workflow.yml
     with:
