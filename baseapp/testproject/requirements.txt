@@ -23,7 +23,7 @@ isort==5.13.2
 channels==4.0.0
 channels_redis==4.0.0
 
--e ./baseapp[graphql,pages]
+-e ./baseapp[graphql,pages,wagtail]
 -e ./baseapp-auth
 -e ./baseapp-chats
 -e ./baseapp-profiles
