@@ -8,6 +8,7 @@ INSTALLED_APPS += [
     "notifications",
     "push_notifications",
     "django_quill",
+    "djstripe",
     "baseapp_profiles",
     "baseapp_reactions",
     "baseapp_reports",
@@ -19,6 +20,8 @@ INSTALLED_APPS += [
     "baseapp.activity_log",
     "baseapp_notifications",
     "baseapp_ratings",
+    "baseapp_payments",
+    "baseapp_message_templates",
     "testproject.testapp",
     "testproject.comments",
     "testproject.profiles",
@@ -63,8 +66,12 @@ AUTHENTICATION_BACKENDS = [
 
 ADMIN_TIME_ZONE = "UTC"
 
-BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False
-BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS = False
+# Stripe
+STRIPE_LIVE_SECRET_KEY = env("STRIPE_LIVE_SECRET_KEY", "sk_live_N/A")
+STRIPE_TEST_SECRET_KEY = env("STRIPE_TEST_SECRET_KEY", "N/A")
+STRIPE_LIVE_MODE = env("STRIPE_LIVE_MODE", "N/A")  # Change to True in production
+DJSTRIPE_WEBHOOK_SECRET = env("DJSTRIPE_WEBHOOK_SECRET", "N/A")
+DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
 
 # Comments
 BASEAPP_COMMENTS_COMMENT_MODEL = "comments.Comment"
@@ -74,3 +81,5 @@ BASEAPP_PROFILES_PROFILE_MODEL = "profiles.Profile"
 
 # Notifications
 NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"
+BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False
+BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS = False

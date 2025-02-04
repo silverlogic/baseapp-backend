@@ -1,5 +1,6 @@
 from django.apps import AppConfig
 
 
-class BaseappPaymentsConfig(AppConfig):
+class PackageConfig(AppConfig):
     name = "baseapp_payments"
+    label = "baseapp_payments"
