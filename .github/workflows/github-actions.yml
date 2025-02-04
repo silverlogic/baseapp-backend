@@ -32,11 +32,6 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-chats
-  baseapp-wagtail:
-    uses: ./.github/workflows/project-workflow.yml
-    with:
-      project: baseapp-wagtail
-      custom_tests_path: "baseapp-wagtail"
   baseapp-backend:
     uses: ./.github/workflows/project-workflow.yml
     with:
