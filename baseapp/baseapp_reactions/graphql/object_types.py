@@ -1,15 +1,16 @@
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
+from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
+from graphene import relay
+from graphene_django.filter import DjangoFilterConnectionField
+
 from baseapp_core.graphql import (
     DjangoObjectType,
     get_object_type_for_model,
     get_pk_from_relay_id,
 )
-from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
-from graphene import relay
-from graphene_django.filter import DjangoFilterConnectionField
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
 Profile = swapper.load_model("baseapp_profiles", "Profile")

@@ -1,4 +1,5 @@
 import pytest
+
 from baseapp_core.tests.factories import UserFactory
 
 from .factories import RateFactory

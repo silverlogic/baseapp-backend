@@ -1,16 +1,17 @@
 import graphene
 import swapper
+from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
+from django.utils.translation import gettext_lazy as _
+from graphql.error import GraphQLError
+from graphql_relay.connection.arrayconnection import offset_to_cursor
+
 from baseapp_core.graphql import (
     RelayMutation,
     get_obj_from_relay_id,
     get_pk_from_relay_id,
     login_required,
 )
-from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
-from django.utils.translation import gettext_lazy as _
-from graphql.error import GraphQLError
-from graphql_relay.connection.arrayconnection import offset_to_cursor
 
 from .object_types import RatingsInterface
 

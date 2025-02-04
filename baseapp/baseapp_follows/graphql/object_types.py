@@ -1,8 +1,9 @@
 import django_filters
 import graphene_django_optimizer as gql_optimizer
 import swapper
-from baseapp_core.graphql import DjangoObjectType
 from graphene import relay
+
+from baseapp_core.graphql import DjangoObjectType
 
 Follow = swapper.load_model("baseapp_follows", "Follow")
 

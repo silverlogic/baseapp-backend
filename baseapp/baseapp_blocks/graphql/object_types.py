@@ -1,13 +1,14 @@
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
+from graphene import relay
+from graphene_django import DjangoConnectionField
+
 from baseapp_core.graphql import (
     DjangoObjectType,
     get_object_type_for_model,
     get_pk_from_relay_id,
 )
-from graphene import relay
-from graphene_django import DjangoConnectionField
 
 Block = swapper.load_model("baseapp_blocks", "Block")
 Profile = swapper.load_model("baseapp_profiles", "Profile")

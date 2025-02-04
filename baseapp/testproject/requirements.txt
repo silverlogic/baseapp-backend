@@ -1,7 +1,29 @@
 # baseapp dependencies
--r ../../baseapp-core/testproject/requirements.txt
+djangorestframework-simplejwt[crypto]>=5.2.2
+drf-nested-routers==0.93.5
 
--e ./baseapp-core[graphql]
+# test
+freezegun==1.2.1
+pytest==7.4.2
+pytest-cov==4.1.0
+pytest-django==4.5.2
+pytest-asyncio==0.21.1
+
+httpretty==1.1.4
+urllib3==2.2.3
+# test factories
+factory-boy==3.2.1
+
+# lint
+black==24.1.0
+flake8==7.0.0
+isort==5.13.2
+
+# channels
+channels==4.0.0
+channels_redis==4.0.0
+
+-e ./baseapp[graphql,pages]
 -e ./baseapp-auth
 -e ./baseapp-chats
 -e ./baseapp-profiles
@@ -9,4 +31,3 @@
 -e ./baseapp-comments
 -e ./baseapp-notifications
 -e ./baseapp-chats
--e ./baseapp

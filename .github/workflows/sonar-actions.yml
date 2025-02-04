@@ -15,11 +15,6 @@ jobs:
     with:
       project: baseapp-cloudflare-stream-field
     secrets: inherit
-  baseapp-core:
-    uses: ./.github/workflows/sonar-workflow.yml
-    with:
-      project: baseapp-core
-    secrets: inherit
   baseapp-drf-view-action-permissions:
     uses: ./.github/workflows/sonar-workflow.yml
     with:

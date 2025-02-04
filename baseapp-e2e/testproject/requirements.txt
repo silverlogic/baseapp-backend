@@ -1,4 +1,4 @@
 # baseapp dependencies
--e ./baseapp-core
+-e ./baseapp
 -e ./baseapp-auth
 -e ./baseapp-e2e

@@ -3,12 +3,12 @@ import graphene
 import swapper
 from baseapp_auth.graphql import PermissionsInterface
 from baseapp_comments.graphql.object_types import CommentsInterface
-from baseapp_core.graphql import DjangoObjectType, LanguagesEnum, ThumbnailField
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.utils.translation import get_language
 from graphene import relay
 
+from baseapp_core.graphql import DjangoObjectType, LanguagesEnum, ThumbnailField
 from baseapp_pages.models import AbstractPage, Metadata, URLPath
 
 from ..meta import AbstractMetadataObjectType
