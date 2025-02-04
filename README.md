@@ -68,6 +68,10 @@ Reusable app to enable any model follow/unfollow any model.
 
 Reusable app to handle pages, URL's paths and metadata. It provides useful models and GraphQL Interfaces.
 
+## [baseapp-wagtail](baseapp/baseapp_wagtail)
+
+Wagtail CMS integration with BaseApp
+
 ## [baseapp-comments](baseapp/baseapp_comments)
 
 Comment threads on any model. With support for reactions, notifications and GraphQL subscriptions.

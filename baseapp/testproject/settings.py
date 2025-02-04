@@ -1,6 +1,12 @@
 from django.utils.translation import gettext_lazy as _
 
 from baseapp_core.tests.settings import *  # noqa
+from baseapp_wagtail.settings import *  # noqa
+from baseapp_wagtail.settings import (
+    WAGTAIL_INSTALLED_APPS,
+    WAGTAIL_INSTALLED_INTERNAL_APPS,
+    WAGTAIL_MIDDLEWARE,
+)
 
 # Application definition
 INSTALLED_APPS += [
@@ -27,12 +33,17 @@ INSTALLED_APPS += [
     "testproject.testapp",
     "testproject.comments",
     "testproject.profiles",
+    "testproject.base",
+    *WAGTAIL_INSTALLED_INTERNAL_APPS,
+    *WAGTAIL_INSTALLED_APPS,
+    "baseapp_wagtail.tests",
 ]
 
 MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")
 MIDDLEWARE += [
     "baseapp_profiles.middleware.CurrentProfileMiddleware",
     "baseapp_core.middleware.HistoryMiddleware",
+    *WAGTAIL_MIDDLEWARE,
 ]
 
 GRAPHENE["MIDDLEWARE"] = (
@@ -89,6 +100,12 @@ ADMIN_TIME_ZONE = "UTC"
 
 # URL Shortening
 URL_SHORTENING_PREFIX = "c"
+
+# Wagtail
+WAGTAIL_SITE_NAME = "Test Project"
+
+# Constance
+CONSTANCE_BACKEND = "constance.backends.memory.MemoryBackend"
 
 # Stripe
 STRIPE_LIVE_SECRET_KEY = env("STRIPE_LIVE_SECRET_KEY", "sk_live_N/A")
