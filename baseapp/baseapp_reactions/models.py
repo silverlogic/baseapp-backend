@@ -1,5 +1,4 @@
 import swapper
-from baseapp_core.graphql import RelayModel
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -7,6 +6,8 @@ from django.db import models
 from django.db.models import Count
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
+
+from baseapp_core.graphql import RelayModel
 
 
 def default_reactions_count():

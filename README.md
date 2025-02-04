@@ -2,7 +2,7 @@
 
 This repository contains baseapp django packages to be reused accross projects based on TSL's BaseApp
 
-## [baseapp-core](baseapp-core)
+## [baseapp-core](baseapp/baseapp_core)
 
 The core contains the basics for BaseApp like Django Rest Framework's basic setup, custom ModelSerializer and fields, also base email template, testing helpers and other utilities. It also contains the base GraphQL setup, check [baseapp-core/graphql](baseapp-core/graphql) for more info.
 
@@ -148,7 +148,7 @@ baseapp-APPNAME/
       # install "install_requires" from setup.cfg
       -e ./baseapp-APPNAME
       ```
-    - This file must only contain packages needed for testing. The `requirements.txt` in `baseapp-core/testproject` is being used as a based `requirements.txt` for testing. If necessary, it is possible to add more specific packages that are not already in `baseapp-core/testproject/requirements.txt`.
+    - This file must only contain packages needed for testing. The `requirements.txt` in `baseapp-core/testproject` is being used as a based `requirements.txt` for testing. If necessary, it is possible to add more specific packages that are not already in `baseapp/testproject/requirements.txt`.
 - In the `baseapp-APPNAME/tests dir`:
 
   - A pytest.ini that assigns the right settings:

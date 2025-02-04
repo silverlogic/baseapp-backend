@@ -1,8 +1,9 @@
 import graphene
 import swapper
-from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
+
+from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
 
 Follow = swapper.load_model("baseapp_follows", "Follow")
 Profile = swapper.load_model("baseapp_profiles", "Profile")

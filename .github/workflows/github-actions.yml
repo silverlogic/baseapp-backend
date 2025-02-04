@@ -16,10 +16,6 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-cloudflare-stream-field
-  baseapp-core:
-    uses: ./.github/workflows/project-workflow.yml
-    with:
-      project: baseapp-core
   baseapp-drf-view-action-permissions:
     uses: ./.github/workflows/project-workflow.yml
     with:

@@ -1,2 +1,2 @@
--e ./baseapp-core
+-e ./baseapp
 -e ./baseapp-drf-view-action-permissions

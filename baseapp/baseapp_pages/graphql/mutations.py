@@ -1,15 +1,16 @@
 import graphene
 import swapper
-from baseapp_core.graphql import (
-    SerializerMutation,
-    get_pk_from_relay_id,
-    login_required,
-)
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.utils.translation import get_language
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
+
+from baseapp_core.graphql import (
+    SerializerMutation,
+    get_pk_from_relay_id,
+    login_required,
+)
 
 from ..models import URLPath
 

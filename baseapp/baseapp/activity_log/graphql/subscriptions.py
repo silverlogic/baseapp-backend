@@ -1,7 +1,8 @@
 import channels_graphql_ws
 import graphene
-from baseapp_core.graphql import get_obj_from_relay_id
 from channels.db import database_sync_to_async
+
+from baseapp_core.graphql import get_obj_from_relay_id
 
 from .object_types import ActivityLogObjectType
 

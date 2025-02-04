@@ -1,12 +1,13 @@
 import graphene
 import swapper
-from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from graphene import relay
 from graphene.types.generic import GenericScalar
 from graphene_django.filter import DjangoFilterConnectionField
 from pghistory.models import MiddlewareEvents
+
+from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
 
 from ..models import ActivityLog, VisibilityTypes
 from .filters import ActivityLogFilter, MiddlewareEventFilter

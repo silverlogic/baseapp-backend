@@ -1,7 +1,8 @@
 import pytest
 import swapper
-from baseapp_core.tests.factories import UserFactory
 from django.test import override_settings
+
+from baseapp_core.tests.factories import UserFactory
 
 RateModel = swapper.load_model("baseapp_ratings", "Rate")
 
