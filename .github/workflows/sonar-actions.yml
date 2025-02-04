@@ -25,11 +25,6 @@ jobs:
     with:
       project: baseapp-message-templates
     secrets: inherit
-  baseapp-payments:
-    uses: ./.github/workflows/sonar-workflow.yml
-    with:
-      project: baseapp-payments
-    secrets: inherit
   baseapp-social-auth:
     uses: ./.github/workflows/sonar-workflow.yml
     with:
