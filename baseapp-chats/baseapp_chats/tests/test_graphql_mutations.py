@@ -181,6 +181,23 @@ ARCHIVE_CHAT_ROOM_GRAPHQL = """
     }
 """
 
+DELETE_MESSAGE_GRAPHQL = """
+    mutation DeleteMessageMutation($input: ChatRoomDeleteMessageInput!) {
+        chatRoomDeleteMessage(input: $input) {
+            deletedMessage {
+                node {
+                    id
+                    deleted
+                }
+            }
+            errors {
+                field
+                messages
+            }
+        }
+    }
+"""
+
 
 def test_user_can_read_all_messages(graphql_user_client, django_user_client):
     room = ChatRoomFactory(created_by=django_user_client.user)
@@ -1279,5 +1296,64 @@ def test_member_user_cannot_remove_other_members(
     content = response.json()
     assert (
         content["data"]["chatRoomUpdate"]["errors"][0]["messages"][0]
+        == "You don't have permission to update this room"
+    )
+
+
+def test_user_can_delete_own_message(graphql_user_client, django_user_client):
+    room = ChatRoomFactory(created_by=django_user_client.user)
+
+    my_profile = django_user_client.user.profile
+
+    ChatRoomParticipantFactory(room=room, profile=my_profile)
+    my_messages = MessageFactory.create_batch(
+        2, room=room, profile=my_profile, user=my_profile.owner
+    )
+
+    # Unread chat and check it is marked unread
+    response = graphql_user_client(
+        DELETE_MESSAGE_GRAPHQL,
+        variables={
+            "input": {
+                "id": my_messages[0].relay_id,
+            },
+        },
+    )
+
+    my_messages[0].refresh_from_db()
+    my_messages[1].refresh_from_db()
+    content = response.json()
+    assert (
+        content["data"]["chatRoomDeleteMessage"]["deletedMessage"]["node"]["id"]
+        == my_messages[0].relay_id
+    )
+    assert content["data"]["chatRoomDeleteMessage"]["deletedMessage"]["node"]["deleted"] is True
+    assert my_messages[0].deleted is True
+    assert my_messages[1].deleted is False
+
+
+def test_user_cant_delete_other_users_message(graphql_user_client, django_user_client):
+    room = ChatRoomFactory(created_by=django_user_client.user)
+
+    my_profile = django_user_client.user.profile
+
+    ChatRoomParticipantFactory(room=room, profile=my_profile)
+    other_participant = ChatRoomParticipantFactory(room=room)
+    other_users_messages = MessageFactory.create_batch(
+        2, room=room, profile=other_participant.profile, user=other_participant.profile.owner
+    )
+
+    # Unread chat and check it is marked unread
+    response = graphql_user_client(
+        DELETE_MESSAGE_GRAPHQL,
+        variables={
+            "input": {
+                "id": other_users_messages[0].relay_id,
+            },
+        },
+    )
+    content = response.json()
+    assert (
+        content["data"]["chatRoomDelete"]["errors"][0]["messages"][0]
         == "You don't have permission to update this room"
     )

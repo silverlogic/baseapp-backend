@@ -15,8 +15,8 @@ from graphene_django.types import ErrorType
 from rest_framework import serializers
 
 from baseapp_chats.graphql.subscriptions import (
+    ChatRoomOnMessage,
     ChatRoomOnMessagesCountUpdate,
-    ChatRoomOnNewMessage,
     ChatRoomOnRoomUpdate,
 )
 from baseapp_chats.utils import (
@@ -496,10 +496,76 @@ class ChatRoomEditMessage(RelayMutation):
         message.content = content
         message.save(update_fields=["content"])
 
-        ChatRoomOnNewMessage.new_message(room_id=message.room.relay_id, message=message)
+        ChatRoomOnMessage.edit_message(room_id=message.room.relay_id, message=message)
 
         return ChatRoomEditMessage(
             message=MessageObjectType._meta.connection.Edge(
+                node=message,
+            )
+        )
+
+
+class ChatRoomDeleteMessage(RelayMutation):
+    deleted_message = graphene.Field(MessageObjectType._meta.connection.Edge)
+
+    class Input:
+        id = graphene.ID(required=True)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        pk = get_pk_from_relay_id(input.get("id"))
+        try:
+            message = Message.objects.get(pk=pk)
+        except Message.DoesNotExist:
+            return ChatRoomDeleteMessage(
+                errors=[
+                    ErrorType(
+                        field="id",
+                        messages=[_("Message does not exist")],
+                    )
+                ]
+            )
+
+        if message.deleted:
+            return ChatRoomDeleteMessage(
+                errors=[
+                    ErrorType(
+                        field="deleted",
+                        messages=[_("This message has already been deleted")],
+                    )
+                ]
+            )
+
+        profile = (
+            info.context.user.current_profile
+            if hasattr(info.context.user, "current_profile")
+            else (info.context.user.profile if hasattr(info.context.user, "profile") else None)
+        )
+
+        if not info.context.user.has_perm(
+            "baseapp_chats.delete_message",
+            {
+                "profile": profile,
+                "message": message,
+            },
+        ):
+            return ChatRoomDeleteMessage(
+                errors=[
+                    ErrorType(
+                        field="id",
+                        messages=[_("You don't have permission to update this message")],
+                    )
+                ]
+            )
+
+        message.deleted = True
+        message.save(update_fields=["deleted"])
+
+        ChatRoomOnMessage.edit_message(room_id=message.room.relay_id, message=message)
+
+        return ChatRoomDeleteMessage(
+            deleted_message=MessageObjectType._meta.connection.Edge(
                 node=message,
             )
         )
@@ -683,6 +749,7 @@ class ChatsMutations(object):
     chat_room_update = ChatRoomUpdate.Field()
     chat_room_send_message = ChatRoomSendMessage.Field()
     chat_room_edit_message = ChatRoomEditMessage.Field()
+    chat_room_delete_message = ChatRoomDeleteMessage.Field()
     chat_room_read_messages = ChatRoomReadMessages.Field()
     chat_room_unread = ChatRoomUnread.Field()
     chat_room_archive = ChatRoomArchive.Field()
