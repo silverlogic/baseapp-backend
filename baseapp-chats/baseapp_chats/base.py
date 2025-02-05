@@ -115,6 +115,7 @@ class AbstractBaseMessage(TimeStampedModel, RelayModel):
     )
     action_object_object_id = models.IntegerField(blank=True, null=True, db_index=True)
     action_object = GenericForeignKey("action_object_content_type", "action_object_object_id")
+    deleted = models.BooleanField(default=False)
 
     extra_data = models.JSONField(blank=True, null=True)
 

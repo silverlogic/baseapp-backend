@@ -127,7 +127,9 @@ class ChatsPermissionsBackend(BaseBackend):
 
             return room.participants.filter(profile_id__in=my_profile_ids).exists()
 
-        if perm == "baseapp_chats.change_message" and user_obj.is_authenticated:
+        if (
+            perm == "baseapp_chats.change_message" or perm == "baseapp_chats.delete_message"
+        ) and user_obj.is_authenticated:
             profile = obj.get("profile", None)
             message = obj.get("message", None)
             if profile and message and isinstance(message, Message):

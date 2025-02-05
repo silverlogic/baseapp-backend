@@ -85,7 +85,7 @@ class ChatRoomOnMessagesCountUpdate(channels_graphql_ws.Subscription):
         )
 
 
-class ChatRoomOnNewMessage(channels_graphql_ws.Subscription):
+class ChatRoomOnMessage(channels_graphql_ws.Subscription):
     message = graphene.Field(lambda: MessageObjectType._meta.connection.Edge)
 
     class Arguments:
@@ -110,7 +110,7 @@ class ChatRoomOnNewMessage(channels_graphql_ws.Subscription):
         if not user.is_authenticated:
             return None
 
-        return ChatRoomOnNewMessage(message=MessageObjectType._meta.connection.Edge(node=message))
+        return ChatRoomOnMessage(message=MessageObjectType._meta.connection.Edge(node=message))
 
     @classmethod
     def new_message(cls, message, room_id):
@@ -120,8 +120,15 @@ class ChatRoomOnNewMessage(channels_graphql_ws.Subscription):
         )
         ChatRoomOnRoomUpdate.new_message(message=message)
 
+    @classmethod
+    def edit_message(cls, message, room_id):
+        cls.broadcast(
+            group=room_id,
+            payload={"message": message},
+        )
+
 
 class ChatsSubscriptions:
-    chat_room_on_new_message = ChatRoomOnNewMessage.Field()
+    chat_room_on_message = ChatRoomOnMessage.Field()
     chat_room_on_room_update = ChatRoomOnRoomUpdate.Field()
     chat_room_on_messages_count_update = ChatRoomOnMessagesCountUpdate.Field()
