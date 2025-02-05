@@ -1,8 +1,9 @@
 import graphene
 import swapper
+from django.utils.translation import gettext_lazy as _
+
 from baseapp_core.graphql import RelayMutation, login_required
 from baseapp_core.graphql.utils import get_pk_from_relay_id
-from django.utils.translation import gettext_lazy as _
 
 from .object_types import NotificationChannelTypesEnum, NotificationsInterface
 

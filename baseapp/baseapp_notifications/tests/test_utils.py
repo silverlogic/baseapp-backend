@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 import swapper
+
 from baseapp_core.tests.factories import UserFactory
 
 from ..utils import send_notification

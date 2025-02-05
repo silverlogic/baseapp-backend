@@ -1,0 +1,51 @@
+include README.md
+
+include baseapp/README.md
+recursive-include baseapp/templates *
+recursive-include baseapp/static *
+recursive-include baseapp/locale *
+
+include baseapp_blocks/README.md
+recursive-include baseapp_blocks/templates *
+recursive-include baseapp_blocks/static *
+recursive-include baseapp_blocks/locale *
+
+include baseapp_core/README.md
+recursive-include baseapp_core/templates *
+recursive-include baseapp_core/static *
+recursive-include baseapp_core/locale *
+
+include baseapp_follows/README.md
+recursive-include baseapp_follows/templates *
+recursive-include baseapp_follows/static *
+recursive-include baseapp_follows/locale *
+
+include baseapp_notifications/README.md
+recursive-include baseapp_notifications/templates *
+recursive-include baseapp_notifications/static *
+recursive-include baseapp_notifications/locale *
+
+include baseapp_pages/README.md
+recursive-include baseapp_pages/templates *
+recursive-include baseapp_pages/static *
+recursive-include baseapp_pages/locale *
+
+include baseapp_payments/README.md
+recursive-include baseapp_payments/templates *
+recursive-include baseapp_payments/static *
+recursive-include baseapp_payments/locale *
+
+include baseapp_ratings/README.md
+recursive-include baseapp_ratings/templates *
+recursive-include baseapp_ratings/static *
+recursive-include baseapp_ratings/locale *
+
+include baseapp_reactions/README.md
+recursive-include baseapp_reactions/templates *
+recursive-include baseapp_reactions/static *
+recursive-include baseapp_reactions/locale *
+
+include baseapp_reports/README.md
+recursive-include baseapp_reports/templates *
+recursive-include baseapp_reports/static *
+recursive-include baseapp_reports/locale *

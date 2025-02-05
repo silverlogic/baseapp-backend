@@ -11,6 +11,8 @@ from baseapp.activity_log.graphql.queries import ActivityLogQueries
 from baseapp_blocks.graphql.mutations import BlocksMutations
 from baseapp_core.graphql import DeleteNode
 from baseapp_follows.graphql.mutations import FollowsMutations
+from baseapp_notifications.graphql.mutations import NotificationsMutations
+from baseapp_notifications.graphql.subscriptions import NotificationsSubscription
 from baseapp_pages.graphql.mutations import PagesMutations
 from baseapp_pages.graphql.queries import PagesQueries
 from baseapp_ratings.graphql.mutations import RatingsMutations
@@ -45,8 +47,13 @@ class Mutation(
     FollowsMutations,
     BlocksMutations,
     PagesMutations,
+    NotificationsMutations,
 ):
     delete_node = DeleteNode.Field()
 
 
-schema = graphene.Schema(query=Query, mutation=Mutation)
+class Subscription(graphene.ObjectType, NotificationsSubscription):
+    pass
+
+
+schema = graphene.Schema(query=Query, mutation=Mutation, subscription=Subscription)

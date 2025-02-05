@@ -1,8 +1,9 @@
 import swapper
-from baseapp_notifications import send_notification
 from celery import shared_task
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext as _
+
+from baseapp_notifications import send_notification
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
 User = get_user_model()

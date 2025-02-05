@@ -1,5 +1,6 @@
 import factory
 import swapper
+
 from baseapp_core.tests.factories import UserFactory
 
 Notification = swapper.load_model("notifications", "Notification")

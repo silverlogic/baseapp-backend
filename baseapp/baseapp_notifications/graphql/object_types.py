@@ -1,11 +1,12 @@
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
-from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
 from graphene import relay
 from graphene.types.generic import GenericScalar
 from graphene_django import DjangoConnectionField
 from graphene_django.filter import DjangoFilterConnectionField
+
+from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
 
 from ..utils import can_user_receive_notification
 from .filters import NotificationFilter
