@@ -23,12 +23,11 @@ isort==5.13.2
 channels==4.0.0
 channels_redis==4.0.0
 
--e ./baseapp[graphql,pages,payments]
+-e ./baseapp[graphql,pages,payments,notifications]
 -e ./baseapp-auth
 -e ./baseapp-chats
 -e ./baseapp-profiles
 -e ./baseapp-blocks
 -e ./baseapp-comments
--e ./baseapp-notifications
 -e ./baseapp-chats
 -e ./baseapp-message-templates

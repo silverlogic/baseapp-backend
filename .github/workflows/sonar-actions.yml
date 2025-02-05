@@ -35,11 +35,6 @@ jobs:
     with:
       project: baseapp-e2e
     secrets: inherit
-  baseapp-notifications:
-    uses: ./.github/workflows/sonar-workflow.yml
-    with:
-      project: baseapp-notifications
-    secrets: inherit
   baseapp-url-shortening:
     uses: ./.github/workflows/sonar-workflow.yml
     with:

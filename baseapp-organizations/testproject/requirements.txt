@@ -1,9 +1,7 @@
 -r ../../baseapp/testproject/requirements.txt
 
--e ./baseapp[graphql,pages]
+-e ./baseapp[graphql,pages,notifications]
 -e ./baseapp-auth
--e ./baseapp-notifications
 -e ./baseapp-comments
--e ./baseapp-reactions
 -e ./baseapp-profiles
 -e ./baseapp-organizations

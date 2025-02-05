@@ -1,9 +1,10 @@
-from baseapp_core.graphql.models import RelayModel
 from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 from notifications.base.models import AbstractNotification as BaseAbstractNotification
+
+from baseapp_core.graphql.models import RelayModel
 
 
 class AbstractNotification(BaseAbstractNotification, RelayModel):

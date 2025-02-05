@@ -28,7 +28,7 @@ Utilities for performing E2E (End-To-End) tests with front-end client. (Database
 
 ## [baseapp-message-templates](baseapp-message-templates)
 
-## [baseapp-notifications](baseapp-notifications)
+## [baseapp-notifications](baseapp/baseapp_notifications)
 
 Reusable app to handle in-app, email and push notifications.
 

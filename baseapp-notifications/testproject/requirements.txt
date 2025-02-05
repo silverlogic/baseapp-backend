@@ -3,6 +3,6 @@
 
 -e ./baseapp[graphql]
 -e ./baseapp-auth
--e ./baseapp-notifications
+-e ./baseapp
 
 django-notifications-hq==1.8.2

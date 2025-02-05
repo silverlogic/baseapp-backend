@@ -1,4 +1,0 @@
-include README.md
-recursive-include baseapp_core/templates *
-recursive-include baseapp_core/static *
-recursive-include baseapp_core/locale *
