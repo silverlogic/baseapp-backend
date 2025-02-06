@@ -9,10 +9,12 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.db.models.signals import post_save
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_profiles.managers import ProfileManager
+from baseapp_profiles.signals import update_user_name
 
 inheritances = [TimeStampedModel]
 if apps.is_installed("baseapp_blocks"):
@@ -158,6 +160,9 @@ class ProfilableModel(models.Model):
 class Profile(AbstractProfile):
     class Meta(AbstractProfile.Meta):
         swappable = swapper.swappable_setting("baseapp_profiles", "Profile")
+
+
+post_save.connect(update_user_name, sender=Profile)
 
 
 class AbstractProfileUserRole(RelayModel, models.Model):
