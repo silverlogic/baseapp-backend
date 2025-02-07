@@ -27,7 +27,4 @@ channels_redis==4.0.0
 -e ./baseapp-auth
 -e ./baseapp-chats
 -e ./baseapp-profiles
--e ./baseapp-blocks
--e ./baseapp-comments
--e ./baseapp-chats
 -e ./baseapp-message-templates

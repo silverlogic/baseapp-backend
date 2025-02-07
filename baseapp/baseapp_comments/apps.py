@@ -1,9 +1,10 @@
 from django.apps import AppConfig
 
 
-class CommentsConfig(AppConfig):
+class PackageConfig(AppConfig):
     default = True
     name = "baseapp_comments"
+    label = "baseapp_comments"
     verbose_name = "BaseApp Comments"
     default_auto_field = "django.db.models.BigAutoField"
 

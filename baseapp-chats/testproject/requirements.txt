@@ -5,4 +5,3 @@
 -e ./baseapp-auth
 -e ./baseapp-chats
 -e ./baseapp-profiles
--e ./baseapp-comments

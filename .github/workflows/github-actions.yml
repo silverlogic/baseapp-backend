@@ -36,10 +36,6 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-url-shortening
-  baseapp-comments:
-    uses: ./.github/workflows/project-workflow.yml
-    with:
-      project: baseapp-comments
   baseapp-profiles:
     uses: ./.github/workflows/project-workflow.yml
     with:

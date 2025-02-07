@@ -1,11 +1,5 @@
 import graphene
 import swapper
-from baseapp_core.graphql import (
-    RelayMutation,
-    get_obj_from_relay_id,
-    get_pk_from_relay_id,
-    login_required,
-)
 from django import forms
 from django.apps import apps
 from django.conf import settings
@@ -13,6 +7,13 @@ from django.utils.translation import gettext_lazy as _
 from graphene_django.forms.mutation import _set_errors_flag_to_context
 from graphene_django.types import ErrorType
 from graphql.error import GraphQLError
+
+from baseapp_core.graphql import (
+    RelayMutation,
+    get_obj_from_relay_id,
+    get_pk_from_relay_id,
+    login_required,
+)
 
 from .object_types import CommentsInterface
 
