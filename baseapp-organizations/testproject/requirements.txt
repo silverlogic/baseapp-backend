@@ -2,6 +2,5 @@
 
 -e ./baseapp[graphql,pages,notifications]
 -e ./baseapp-auth
--e ./baseapp-comments
 -e ./baseapp-profiles
 -e ./baseapp-organizations

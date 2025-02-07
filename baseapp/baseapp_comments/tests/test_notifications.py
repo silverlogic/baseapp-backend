@@ -2,8 +2,9 @@ from unittest.mock import patch
 
 import pytest
 import swapper
-from baseapp_core.tests.factories import UserFactory
 from django.test import override_settings
+
+from baseapp_core.tests.factories import UserFactory
 
 from .factories import CommentFactory
 

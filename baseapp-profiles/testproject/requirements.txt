@@ -3,5 +3,4 @@
 
 -e ./baseapp[graphql,notifications]
 -e ./baseapp-auth
--e ./baseapp-comments
 -e ./baseapp-profiles

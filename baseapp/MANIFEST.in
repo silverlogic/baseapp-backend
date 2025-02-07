@@ -49,3 +49,8 @@ include baseapp_reports/README.md
 recursive-include baseapp_reports/templates *
 recursive-include baseapp_reports/static *
 recursive-include baseapp_reports/locale *
+
+include baseapp_comments/README.md
+recursive-include baseapp_comments/templates *
+recursive-include baseapp_comments/static *
+recursive-include baseapp_comments/locale *

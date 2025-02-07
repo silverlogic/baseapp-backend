@@ -1,6 +1,7 @@
 import swapper
-from baseapp_core.graphql import Node
 from graphene_django.filter import DjangoFilterConnectionField
+
+from baseapp_core.graphql import Node
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
 app_label = Comment._meta.app_label

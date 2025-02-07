@@ -1,6 +1,4 @@
 import graphene
-from baseapp_comments.graphql.mutations import CommentsMutations
-from baseapp_comments.graphql.queries import CommentsQueries
 from baseapp_profiles.graphql.mutations import ProfilesMutations
 from baseapp_profiles.graphql.queries import ProfilesQueries
 from graphene import relay
@@ -9,6 +7,9 @@ from graphene_django.debug import DjangoDebug
 
 from baseapp.activity_log.graphql.queries import ActivityLogQueries
 from baseapp_blocks.graphql.mutations import BlocksMutations
+from baseapp_comments.graphql.mutations import CommentsMutations
+from baseapp_comments.graphql.queries import CommentsQueries
+from baseapp_comments.graphql.subscriptions import CommentsSubscriptions
 from baseapp_core.graphql import DeleteNode
 from baseapp_follows.graphql.mutations import FollowsMutations
 from baseapp_notifications.graphql.mutations import NotificationsMutations
@@ -52,7 +53,7 @@ class Mutation(
     delete_node = DeleteNode.Field()
 
 
-class Subscription(graphene.ObjectType, NotificationsSubscription):
+class Subscription(graphene.ObjectType, NotificationsSubscription, CommentsSubscriptions):
     pass
 
 

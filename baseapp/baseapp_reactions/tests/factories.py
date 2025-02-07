@@ -1,8 +1,8 @@
 import factory
 import swapper
-from baseapp_comments.tests.factories import get_content_type, get_obj_pk
 from django.contrib.contenttypes.models import ContentType
 
+from baseapp_comments.tests.factories import get_content_type, get_obj_pk
 from baseapp_core.tests.factories import UserFactory
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
