@@ -287,6 +287,7 @@ def test_filter_by_user_name_is_case_insensitive(django_user_client, graphql_use
     django_user_client.user.save()
 
     django_user_client.user.profile.name = django_user_client.user.get_full_name()
+    django_user_client.user.profile.save()
 
     another_user = UserFactory(first_name="USERB", last_name="Collins")
 
