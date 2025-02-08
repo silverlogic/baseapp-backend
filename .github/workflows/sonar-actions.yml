@@ -10,11 +10,6 @@ jobs:
     with:
       project: baseapp-auth
     secrets: inherit
-  baseapp-cloudflare-stream-field:
-    uses: ./.github/workflows/sonar-workflow.yml
-    with:
-      project: baseapp-cloudflare-stream-field
-    secrets: inherit
   baseapp-drf-view-action-permissions:
     uses: ./.github/workflows/sonar-workflow.yml
     with:

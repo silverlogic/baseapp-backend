@@ -14,7 +14,7 @@ Contains the following apps:
 
 **baseapp_referrals**: Models and utilities for user referrals
 
-## [baseapp-cloudflare-stream-field](baseapp-cloudflare-stream-field)
+## [baseapp-cloudflare-stream-field](baseapp/baseapp_cloudflare_stream_field)
 
 Integration with Cloudflare Stream for file streaming
 
@@ -60,7 +60,7 @@ Login/signup using social networks (Facebook, Google and others)
 
 Functionality for url shortening
 
-## [baseapp-follows](baseapp-follows)
+## [baseapp-follows](baseapp/baseapp_follows)
 
 Reusable app to enable any model follow/unfollow any model.
 
