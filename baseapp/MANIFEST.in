@@ -54,3 +54,8 @@ include baseapp_comments/README.md
 recursive-include baseapp_comments/templates *
 recursive-include baseapp_comments/static *
 recursive-include baseapp_comments/locale *
+
+include baseapp_cloudflare_stream_field/README.md
+recursive-include baseapp_cloudflare_stream_field/templates *
+recursive-include baseapp_cloudflare_stream_field/static *
+recursive-include baseapp_cloudflare_stream_field/locale *

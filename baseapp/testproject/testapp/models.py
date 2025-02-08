@@ -1,10 +1,12 @@
 from baseapp_auth.models import AbstractUser
 from baseapp_profiles.models import ProfilableModel
 from baseapp_profiles.signals import update_user_profile
+from django.db import models
 from django.db.models.signals import post_save
 from django.utils import timezone
 from model_utils import FieldTracker
 
+from baseapp_cloudflare_stream_field import CloudflareStreamField
 from baseapp_core.graphql.models import RelayModel
 from baseapp_ratings.models import RatableModel
 
@@ -21,3 +23,8 @@ class User(AbstractUser, RelayModel, RatableModel, ProfilableModel):
 
 
 post_save.connect(update_user_profile, sender=User)
+
+
+class Post(models.Model):
+    title = models.CharField(max_length=100)
+    video = CloudflareStreamField(null=True, blank=True, downloadable=False)
