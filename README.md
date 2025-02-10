@@ -56,7 +56,7 @@ Rate from 0 to N on any model. With support for average ratings.
 
 Login/signup using social networks (Facebook, Google and others)
 
-## [baseapp-url-shortening](baseapp-url-shortening)
+## [baseapp-url-shortening](baseapp/baseapp_url_shortening)
 
 Functionality for url shortening
 
