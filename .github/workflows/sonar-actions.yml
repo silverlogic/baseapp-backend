@@ -10,11 +10,6 @@ jobs:
     with:
       project: baseapp-auth
     secrets: inherit
-  baseapp-drf-view-action-permissions:
-    uses: ./.github/workflows/sonar-workflow.yml
-    with:
-      project: baseapp-drf-view-action-permissions
-    secrets: inherit
   baseapp-social-auth:
     uses: ./.github/workflows/sonar-workflow.yml
     with:

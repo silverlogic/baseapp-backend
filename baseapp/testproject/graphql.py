@@ -26,7 +26,7 @@ from baseapp_ratings.graphql.queries import RatingsQueries
 from baseapp_reactions.graphql.mutations import ReactionsMutations
 from baseapp_reactions.graphql.queries import ReactionsQueries
 from baseapp_reports.graphql.mutations import ReportsMutations
-from testproject.testapp.graphql.queries import UsersQueries
+from testproject.users.graphql.queries import UsersQueries
 
 
 class Query(
