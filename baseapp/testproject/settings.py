@@ -31,10 +31,12 @@ INSTALLED_APPS += [
     "baseapp_organizations",
     "baseapp_chats",
     "baseapp_e2e",
+    "testproject.users",
     "testproject.testapp",
     "testproject.comments",
     "testproject.profiles",
     "testproject.base",
+    "testproject.e2e",
     *WAGTAIL_INSTALLED_INTERNAL_APPS,
     *WAGTAIL_INSTALLED_APPS,
     "baseapp_wagtail.tests",
@@ -54,7 +56,7 @@ GRAPHENE["MIDDLEWARE"] = (
 ROOT_URLCONF = "testproject.urls"
 
 # Auth
-AUTH_USER_MODEL = "testapp.User"
+AUTH_USER_MODEL = "users.User"
 
 LANGUAGE_CODE = "en"
 LANGUAGES = [("en", _("English")), ("es", _("Spanish")), ("pt", _("Portuguese"))]

@@ -12,10 +12,6 @@ jobs:
     with:
       project: baseapp-auth
       app_name: baseapp_referrals
-  baseapp-drf-view-action-permissions:
-    uses: ./.github/workflows/project-workflow.yml
-    with:
-      project: baseapp-drf-view-action-permissions
   baseapp-social-auth:
     uses: ./.github/workflows/project-workflow.yml
     with:
@@ -29,3 +25,4 @@ jobs:
     with:
       project: baseapp
       custom_tests_path: "baseapp"
+      second_pytest: "pytest baseapp/baseapp_drf_view_action_permissions --ds=baseapp_drf_view_action_permissions.tests.settings"
