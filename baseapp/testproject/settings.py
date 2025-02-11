@@ -23,6 +23,7 @@ INSTALLED_APPS += [
     "baseapp_payments",
     "baseapp_message_templates",
     "baseapp_url_shortening",
+    "baseapp_e2e",
     "testproject.testapp",
     "testproject.comments",
     "testproject.profiles",
@@ -105,3 +106,9 @@ BASEAPP_PROFILES_PROFILE_MODEL = "profiles.Profile"
 NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"
 BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False
 BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS = False
+
+# End-to-end tests
+E2E = {
+    "ENABLED": True,
+    "SCRIPTS_PACKAGE": "e2e.scripts",
+}
