@@ -28,3 +28,7 @@ post_save.connect(update_user_profile, sender=User)
 class Post(models.Model):
     title = models.CharField(max_length=100)
     video = CloudflareStreamField(null=True, blank=True, downloadable=False)
+
+
+class Mode(models.Model):
+    name = models.CharField(max_length=100, blank=True)
