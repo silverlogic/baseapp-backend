@@ -30,6 +30,7 @@ INSTALLED_APPS += [
     "baseapp_url_shortening",
     "baseapp_organizations",
     "baseapp_chats",
+    "baseapp_e2e",
     "testproject.testapp",
     "testproject.comments",
     "testproject.profiles",
@@ -126,4 +127,10 @@ BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS = False
 # Graphene query optimizer
 GRAPHQL_QUERY_OPTIMIZER = {
     "ALLOW_CONNECTION_AS_DEFAULT_NESTED_TO_MANY_FIELD": True,
+}
+
+# End-to-end tests
+E2E = {
+    "ENABLED": True,
+    "SCRIPTS_PACKAGE": "testproject.e2e.scripts",
 }

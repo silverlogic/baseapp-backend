@@ -29,7 +29,7 @@ class Migration(migrations.Migration):
                 follow.save(update_fields=["new_actor", "new_target", "user_id"])
 
     def reverse_func(apps, _):
-        Follow = apps.get_apps_model("baseapp_follows", "Follow")
+        Follow = get_apps_model(apps, "baseapp_follows", "Follow")
 
         if not swapper.is_swapped("baseapp_follows", "Follow"):
             for follow in Follow.objects.filter(

@@ -4,7 +4,6 @@ import django.db.models.deletion
 import django.utils.timezone
 import model_utils.fields
 import swapper
-from django.conf import settings
 from django.db import migrations, models
 
 
@@ -46,7 +45,7 @@ class Migration(migrations.Migration):
                         null=True,
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="%(class)s",
-                        to=settings.BASEAPP_PROFILES_PROFILE_MODEL,
+                        to=swapper.get_model_name("baseapp_profiles", "Profile"),
                         verbose_name="profile",
                     ),
                 ),

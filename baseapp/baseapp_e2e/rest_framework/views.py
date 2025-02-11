@@ -1,12 +1,14 @@
 import json
 
-from baseapp_core.rest_framework.decorators import action
-from baseapp_e2e.rest_framework.permissions import E2eEnabled
-from django.core import management
-from django.core.management.commands import flush
+from django.core.management.color import no_style
+from django.core.management.sql import sql_flush
 from django.core.serializers import deserialize, serialize
+from django.db import DEFAULT_DB_ALIAS, connections
 from rest_framework import response, viewsets
 from rest_framework.parsers import JSONParser
+
+from baseapp_core.rest_framework.decorators import action
+from baseapp_e2e.rest_framework.permissions import E2eEnabled
 
 from .serializers import (
     LoadDataSerializer,
@@ -31,7 +33,14 @@ class E2EViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=["POST"])
     def flush_data(self, request):
-        management.call_command(flush.Command(), verbosity=0, interactive=False)
+        connection = connections[DEFAULT_DB_ALIAS]
+        style = no_style()
+        sql_statements = sql_flush(style, connection)
+
+        # Changing the constraints to IMMEDIATE to avoid issues with circular foreign keys like users<->profiles
+        sql_statements = ["SET CONSTRAINTS ALL IMMEDIATE;"] + sql_statements
+
+        connection.ops.execute_sql_flush(sql_statements)
         return response.Response({"detail": "success"})
 
     @action(detail=False, methods=["POST"])
