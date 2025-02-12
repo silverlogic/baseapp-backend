@@ -28,10 +28,6 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-e2e
-  baseapp-url-shortening:
-    uses: ./.github/workflows/project-workflow.yml
-    with:
-      project: baseapp-url-shortening
   baseapp-profiles:
     uses: ./.github/workflows/project-workflow.yml
     with:

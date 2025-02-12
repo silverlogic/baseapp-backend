@@ -59,3 +59,8 @@ include baseapp_cloudflare_stream_field/README.md
 recursive-include baseapp_cloudflare_stream_field/templates *
 recursive-include baseapp_cloudflare_stream_field/static *
 recursive-include baseapp_cloudflare_stream_field/locale *
+
+include baseapp_url_shortening/README.md
+recursive-include baseapp_url_shortening/templates *
+recursive-include baseapp_url_shortening/static *
+recursive-include baseapp_url_shortening/locale *

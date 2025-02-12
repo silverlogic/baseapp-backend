@@ -30,11 +30,6 @@ jobs:
     with:
       project: baseapp-e2e
     secrets: inherit
-  baseapp-url-shortening:
-    uses: ./.github/workflows/sonar-workflow.yml
-    with:
-      project: baseapp-url-shortening
-    secrets: inherit
   baseapp-profiles:
     uses: ./.github/workflows/sonar-workflow.yml
     with:

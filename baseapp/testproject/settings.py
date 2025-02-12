@@ -22,6 +22,7 @@ INSTALLED_APPS += [
     "baseapp_ratings",
     "baseapp_payments",
     "baseapp_message_templates",
+    "baseapp_url_shortening",
     "testproject.testapp",
     "testproject.comments",
     "testproject.profiles",
@@ -83,6 +84,9 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 ADMIN_TIME_ZONE = "UTC"
+
+# URL Shortening
+URL_SHORTENING_PREFIX = "c"
 
 # Stripe
 STRIPE_LIVE_SECRET_KEY = env("STRIPE_LIVE_SECRET_KEY", "sk_live_N/A")
