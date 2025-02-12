@@ -22,6 +22,7 @@ INSTALLED_APPS += [
     "baseapp_ratings",
     "baseapp_payments",
     "baseapp_message_templates",
+    "baseapp.content_feed",
     "testproject.testapp",
     "testproject.comments",
     "testproject.profiles",
