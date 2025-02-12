@@ -1,11 +1,12 @@
 import json
 
+import django
+from django.test import Client
+
 import channels
 import channels_graphql_ws
 import channels_graphql_ws.testing
-import django
 import pytest
-from django.test import Client
 from graphene_django.settings import graphene_settings
 from rest_framework.authtoken.models import Token
 

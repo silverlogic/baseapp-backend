@@ -1,6 +1,7 @@
+from django.db.models import Q
+
 import django_filters
 import swapper
-from django.db.models import Q
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
 

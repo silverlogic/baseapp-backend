@@ -1,7 +1,8 @@
+from django.contrib.auth import get_user_model
+
 import pytest
 import swapper
 from baseapp_core.tests.factories import UserFactory
-from django.contrib.auth import get_user_model
 
 from .factories import CommentFactory
 

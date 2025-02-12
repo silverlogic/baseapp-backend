@@ -1,7 +1,8 @@
-import channels_graphql_ws
-import graphene
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
+
+import channels_graphql_ws
+import graphene
 
 from .object_types import CommentObjectType
 

@@ -1,11 +1,12 @@
 import logging
 
-import swapper
 from django.core.mail import send_mail
 from django.db.models import Q
 from django.template.exceptions import TemplateDoesNotExist
 from django.template.loader import render_to_string
 from django.utils.text import slugify
+
+import swapper
 from notifications.signals import notify
 
 from .tasks import send_push_notification

@@ -1,4 +1,5 @@
 from django import forms
+
 from baseapp_auth.utils.referral_utils import get_user_referral_model, use_referrals
 from baseapp_referrals.utils import get_user_from_referral_code
 

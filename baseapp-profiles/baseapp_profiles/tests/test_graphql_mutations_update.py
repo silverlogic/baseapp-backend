@@ -1,9 +1,10 @@
+from django.contrib.auth.models import Permission
+from django.test.client import MULTIPART_CONTENT
+
 import pytest
 import swapper
 from baseapp_core.tests.factories import UserFactory
 from baseapp_pages.tests.factories import URLPathFactory
-from django.contrib.auth.models import Permission
-from django.test.client import MULTIPART_CONTENT
 
 from .factories import ProfileFactory, ProfileUserRoleFactory
 

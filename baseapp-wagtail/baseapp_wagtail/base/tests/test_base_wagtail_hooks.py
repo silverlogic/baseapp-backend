@@ -1,4 +1,5 @@
 from django.test import TestCase
+
 from wagtail.rich_text import expand_db_html
 from wagtail.rich_text.feature_registry import FeatureRegistry
 

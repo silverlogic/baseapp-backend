@@ -1,8 +1,9 @@
+from django.db.models import Q
+from django.utils.translation import get_language
+
 import graphene
 import swapper
 from baseapp_core.graphql import Node
-from django.db.models import Q
-from django.utils.translation import get_language
 from graphene_django.filter import DjangoFilterConnectionField
 
 from ..models import URLPath

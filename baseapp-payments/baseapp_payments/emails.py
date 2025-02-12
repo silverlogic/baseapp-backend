@@ -1,6 +1,7 @@
+from django.conf import settings
+
 from baseapp_message_templates.email_utils import send_template_email
 from constance import config
-from django.conf import settings
 
 
 def send_subscription_trial_start_email(email: str):

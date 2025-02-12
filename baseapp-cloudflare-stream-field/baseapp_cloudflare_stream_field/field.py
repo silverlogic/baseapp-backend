@@ -1,14 +1,12 @@
 import json
 
-from baseapp_cloudflare_stream_field.stream import StreamClient
-from baseapp_cloudflare_stream_field.tasks import (
-    generate_download_url,
-    refresh_from_cloudflare,
-)
-from baseapp_cloudflare_stream_field.widgets import CloudflareStreamAdminWidget
 from django import forms
 from django.db.models import JSONField, signals
 from django.db.models.query_utils import DeferredAttribute
+
+from baseapp_cloudflare_stream_field.stream import StreamClient
+from baseapp_cloudflare_stream_field.tasks import generate_download_url, refresh_from_cloudflare
+from baseapp_cloudflare_stream_field.widgets import CloudflareStreamAdminWidget
 
 stream_client = StreamClient()
 

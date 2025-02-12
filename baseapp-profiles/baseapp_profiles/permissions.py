@@ -1,5 +1,6 @@
-import swapper
 from django.contrib.auth.backends import BaseBackend
+
+import swapper
 
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 Profile = swapper.load_model("baseapp_profiles", "Profile")

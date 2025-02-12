@@ -1,4 +1,5 @@
 from django.contrib.contenttypes.models import ContentType
+
 from rest_framework.response import Response
 from wagtail.api.v2.views import PagesAPIViewSet
 from wagtail_headless_preview.models import PagePreview

@@ -1,25 +1,24 @@
 from datetime import timedelta
 
-import swapper
-from baseapp_auth.utils.referral_utils import get_user_referral_model, use_referrals
-from baseapp_core.graphql import get_obj_relay_id
-from baseapp_core.rest_framework.fields import ThumbnailImageField
-from baseapp_core.rest_framework.serializers import ModelSerializer
-from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
-from allauth.account.adapter import DefaultAccountAdapter
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+
+import swapper
+from baseapp_auth.password_validators import apply_password_validators
+from baseapp_auth.utils.referral_utils import get_user_referral_model, use_referrals
+from baseapp_core.graphql import get_obj_relay_id
+from baseapp_core.rest_framework.fields import ThumbnailImageField
+from baseapp_core.rest_framework.serializers import ModelSerializer
+from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
 from rest_framework import serializers
 
 from .fields import AvatarField
 
 User = get_user_model()
 Profile = swapper.load_model("baseapp_profiles", "Profile")
-
-from baseapp_auth.password_validators import apply_password_validators
 
 
 class JWTProfileSerializer(serializers.ModelSerializer):

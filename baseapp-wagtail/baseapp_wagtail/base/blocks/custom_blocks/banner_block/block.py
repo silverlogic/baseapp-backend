@@ -1,10 +1,9 @@
+from django.utils.safestring import mark_safe
+
 from baseapp_wagtail.base.blocks.basic_blocks.custom_image_chooser_block import (
     CustomImageChooserBlock,
 )
-from baseapp_wagtail.base.blocks.basic_blocks.custom_rich_text_block import (
-    CustomRichTextBlock,
-)
-from django.utils.safestring import mark_safe
+from baseapp_wagtail.base.blocks.basic_blocks.custom_rich_text_block import CustomRichTextBlock
 from wagtail.blocks import CharBlock, ChoiceBlock, StaticBlock, StructBlock
 
 RICH_TEXT_FEATURES = ["bold", "italic", "link", "ul", "hr"]

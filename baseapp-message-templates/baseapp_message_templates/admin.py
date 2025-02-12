@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from nested_admin.nested import NestedTabularInline
 
 from .models import Attachment, EmailTemplate, SmsTemplate

@@ -1,6 +1,7 @@
+from django.contrib.contenttypes.models import ContentType
+
 import factory
 import swapper
-from django.contrib.contenttypes.models import ContentType
 
 
 class FollowFactory(factory.django.DjangoModelFactory):

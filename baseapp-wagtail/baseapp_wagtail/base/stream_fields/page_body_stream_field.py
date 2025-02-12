@@ -1,5 +1,6 @@
 from django import forms
 from django.utils.functional import cached_property
+
 from wagtail.blocks import StreamBlock
 from wagtail.blocks.stream_block import StreamBlockAdapter
 from wagtail.fields import StreamField

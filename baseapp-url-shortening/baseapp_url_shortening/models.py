@@ -1,6 +1,7 @@
-import short_url
 from django.db import models
 from django.urls import reverse
+
+import short_url
 from model_utils.models import TimeStampedModel
 
 

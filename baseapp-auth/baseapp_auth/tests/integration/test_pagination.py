@@ -1,8 +1,9 @@
+from django.contrib.auth import get_user_model
+from django.test import RequestFactory
+
 import baseapp_auth.tests.helpers as h
 import pytest
 from baseapp_auth.rest_framework.users.serializers import UserSerializer
-from django.contrib.auth import get_user_model
-from django.test import RequestFactory
 from rest_framework import viewsets
 from rest_framework.settings import api_settings
 

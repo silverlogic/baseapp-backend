@@ -1,15 +1,15 @@
-import pghistory
-import swapper
-from baseapp_comments.models import CommentableModel
-from baseapp_core.graphql.models import RelayModel
-from baseapp_core.models import random_name_in
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import Q
-from django.utils.translation import get_language
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import get_language, gettext_lazy as _
+
+import pghistory
+import swapper
+from baseapp_comments.models import CommentableModel
+from baseapp_core.graphql.models import RelayModel
+from baseapp_core.models import random_name_in
 from django_quill.fields import QuillField
 from model_utils.models import TimeStampedModel
 from translated_fields import TranslatedField

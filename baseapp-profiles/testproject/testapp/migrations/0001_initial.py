@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-import baseapp_core.models
 import django.utils.timezone
 from django.contrib.postgres.operations import CITextExtension
 from django.db import migrations, models
+
+import baseapp_core.models
 
 
 class Migration(migrations.Migration):

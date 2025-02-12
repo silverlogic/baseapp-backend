@@ -1,3 +1,9 @@
+from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.db.models import Count, Q
+from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
+
 import graphene
 import swapper
 from baseapp_chats.graphql.subscriptions import ChatRoomOnMessagesCountUpdate
@@ -8,11 +14,6 @@ from baseapp_core.graphql import (
     get_pk_from_relay_id,
     login_required,
 )
-from django.contrib.auth import get_user_model
-from django.db import transaction
-from django.db.models import Count, Q
-from django.utils import timezone
-from django.utils.translation import gettext_lazy as _
 from graphene_django.types import ErrorType
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")

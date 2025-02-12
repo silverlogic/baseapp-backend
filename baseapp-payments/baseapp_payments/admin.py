@@ -1,5 +1,6 @@
-import swapper
 from django.contrib import admin
+
+import swapper
 
 Plan = swapper.load_model("baseapp_payments", "Plan")
 

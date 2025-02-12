@@ -1,13 +1,10 @@
+from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
+
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
-from baseapp_core.graphql import (
-    DjangoObjectType,
-    get_object_type_for_model,
-    get_pk_from_relay_id,
-)
-from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
+from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model, get_pk_from_relay_id
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
 

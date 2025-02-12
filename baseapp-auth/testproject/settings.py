@@ -15,13 +15,16 @@ INSTALLED_APPS += [
     "allauth.usersessions",
     "allauth.mfa",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "baseapp_auth",
+    "baseapp_referrals",
     "baseapp_profiles",
     "baseapp_reactions",
     "baseapp_comments",
     "baseapp_follows",
     "baseapp_blocks",
     "baseapp_reports",
+    "baseapp_devices",
     "testproject.testapp",
     "graphene_django",
 ]
@@ -29,6 +32,7 @@ INSTALLED_APPS += [
 MIDDLEWARE = [
     *MIDDLEWARE,
     "allauth.account.middleware.AccountMiddleware",
+    "baseapp_devices.middleware.UserAgentMiddleware",
 ]
 
 ROOT_URLCONF = "testproject.urls"

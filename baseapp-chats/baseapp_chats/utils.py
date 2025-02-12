@@ -1,8 +1,9 @@
-import swapper
-from baseapp_notifications import send_notification
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
+
+import swapper
+from baseapp_notifications import send_notification
 
 Message = swapper.load_model("baseapp_chats", "Message")
 MessageStatus = swapper.load_model("baseapp_chats", "MessageStatus")

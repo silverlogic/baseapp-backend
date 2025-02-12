@@ -1,6 +1,7 @@
-from apps.reactions.models import ReportableModel, update_reports_count
 from django.apps import apps
 from django.core.management.base import BaseCommand
+
+from apps.reactions.models import ReportableModel, update_reports_count
 
 
 class Command(BaseCommand):

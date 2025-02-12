@@ -1,6 +1,7 @@
-import swapper
 from django.contrib import admin
 from django.template.defaultfilters import truncatewords
+
+import swapper
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
 

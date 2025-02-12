@@ -1,9 +1,10 @@
 import textwrap
 
-import pytest
-from channels.db import database_sync_to_async
 from django.contrib.contenttypes.models import ContentType
 from django.test import override_settings
+
+import pytest
+from channels.db import database_sync_to_async
 
 from .factories import CommentFactory
 

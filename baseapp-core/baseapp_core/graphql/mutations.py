@@ -1,4 +1,5 @@
 from django.utils.translation import gettext_lazy as _
+
 from graphene import ID, Field, relay
 from graphene_django.debug import DjangoDebug
 

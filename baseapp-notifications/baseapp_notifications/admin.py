@@ -1,5 +1,6 @@
-import swapper
 from django.contrib import admin
+
+import swapper
 from notifications.admin import NotificationAdmin  # noqa
 
 NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationSetting")

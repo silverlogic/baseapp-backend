@@ -1,8 +1,9 @@
 import importlib
 import json
 
-from baseapp_core.tests.helpers import *  # noqa: F403, F401
 from django.conf import settings
+
+from baseapp_core.tests.helpers import *  # noqa: F403, F401
 
 
 def get_json(data):

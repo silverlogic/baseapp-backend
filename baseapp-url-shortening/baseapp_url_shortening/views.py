@@ -1,6 +1,7 @@
-from baseapp_url_shortening.models import ShortUrl
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.csrf import csrf_exempt
+
+from baseapp_url_shortening.models import ShortUrl
 
 
 @csrf_exempt

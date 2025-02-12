@@ -1,6 +1,7 @@
+from django.utils.deprecation import MiddlewareMixin as BaseMiddleware
+
 import swapper
 from baseapp_core.graphql import get_pk_from_relay_id
-from django.utils.deprecation import MiddlewareMixin as BaseMiddleware
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 

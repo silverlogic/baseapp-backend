@@ -1,6 +1,7 @@
-from baseapp_cloudflare_stream_field.widgets import CloudflareStreamAdminWidget
 from django.core.exceptions import ValidationError
 from django.forms import fields
+
+from baseapp_cloudflare_stream_field.widgets import CloudflareStreamAdminWidget
 
 
 class FormCloudflareStreamFileField(fields.FileField):

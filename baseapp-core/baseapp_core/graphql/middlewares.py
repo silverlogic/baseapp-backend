@@ -2,9 +2,7 @@ import logging
 import traceback
 
 from rest_framework.authentication import TokenAuthentication as RestTokenAuthentication
-from rest_framework_simplejwt.authentication import (
-    JWTAuthentication as RestJWTAuthentication,
-)
+from rest_framework_simplejwt.authentication import JWTAuthentication as RestJWTAuthentication
 
 
 class LogExceptionMiddleware(object):
@@ -55,5 +53,5 @@ class JWTAuthentication(RestJWTAuthentication):
                 user = auth[0]
                 if user and user.is_authenticated:
                     info.context.user = user
-            self.authenticated = True
+                    self.authenticated = True
         return next(root, info, **kwargs)

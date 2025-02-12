@@ -1,12 +1,10 @@
 import re
 
-from baseapp_auth.models import PasswordValidation
-from django.contrib.auth.password_validation import (
-    get_password_validators,
-    validate_password,
-)
+from django.contrib.auth.password_validation import get_password_validators, validate_password
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
+
+from baseapp_auth.models import PasswordValidation
 
 
 class MustContainCapitalLetterValidator:

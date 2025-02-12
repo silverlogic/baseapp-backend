@@ -2,12 +2,13 @@ import threading
 import uuid
 import zoneinfo
 
-import pghistory
 from django.conf import settings
 from django.core.handlers.asgi import ASGIRequest as DjangoASGIRequest
 from django.core.handlers.wsgi import WSGIRequest as DjangoWSGIRequest
 from django.utils import timezone
 from django.utils.deprecation import MiddlewareMixin
+
+import pghistory
 from ipware import get_client_ip
 from pghistory import config
 

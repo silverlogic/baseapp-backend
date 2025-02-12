@@ -1,12 +1,13 @@
 from functools import wraps
 from typing import Callable, ParamSpec, TypeVar
 
+from django.conf import settings
+
 from baseapp_auth.exceptions import UserPasswordExpiredException
 from baseapp_auth.rest_framework.login.serializers import (
     LoginChangeExpiredPasswordRedirectSerializer,
 )
 from baseapp_auth.tokens import ChangeExpiredPasswordTokenGenerator
-from django.conf import settings
 from rest_framework import response, status, viewsets
 
 P = ParamSpec("P")

@@ -1,5 +1,6 @@
-from baseapp_core.graphql import GraphQLView
 from django.urls import path
+
+from baseapp_core.graphql import GraphQLView
 
 __all__ = [
     "urlpatterns",

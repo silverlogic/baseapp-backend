@@ -1,13 +1,14 @@
-import pgtrigger
-import swapper
-from baseapp_core.graphql import RelayModel
-from baseapp_reactions.models import ReactableModel
-from baseapp_reports.models import ReportableModel
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+
+import pgtrigger
+import swapper
+from baseapp_core.graphql import RelayModel
+from baseapp_reactions.models import ReactableModel
+from baseapp_reports.models import ReportableModel
 from model_utils.models import TimeStampedModel
 
 from .validators import blocked_words_validator

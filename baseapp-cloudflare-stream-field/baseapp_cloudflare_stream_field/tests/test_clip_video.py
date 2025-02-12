@@ -1,8 +1,9 @@
 from unittest.mock import patch
 
+from django.conf import settings
+
 import pytest
 from baseapp_cloudflare_stream_field.tasks import clip_video
-from django.conf import settings
 
 pytestmark = pytest.mark.django_db
 

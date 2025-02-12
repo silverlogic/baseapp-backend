@@ -1,5 +1,6 @@
 from django.http import Http404
 from django.urls import path
+
 from rest_framework.response import Response
 from wagtail.api.v2.views import PagesAPIViewSet
 from wagtail.models import Locale

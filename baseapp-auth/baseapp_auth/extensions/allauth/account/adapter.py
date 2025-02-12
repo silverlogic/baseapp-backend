@@ -1,9 +1,10 @@
 import string
 
-from allauth.account.adapter import DefaultAccountAdapter
-from allauth.mfa.adapter import DefaultMFAAdapter
 from django.utils.crypto import get_random_string
 from django.utils.translation import gettext_lazy as _
+
+from allauth.account.adapter import DefaultAccountAdapter
+from allauth.mfa.adapter import DefaultMFAAdapter
 
 
 class AccountAdapter(DefaultAccountAdapter):

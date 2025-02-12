@@ -1,6 +1,7 @@
+from django.contrib.auth.models import Permission
+
 import pytest
 import swapper
-from django.contrib.auth.models import Permission
 
 from .factories import PageFactory
 from .utils import make_text_into_quill

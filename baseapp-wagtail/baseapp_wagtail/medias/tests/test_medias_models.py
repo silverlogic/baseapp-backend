@@ -1,6 +1,7 @@
+from django.test import TestCase, override_settings
+
 import baseapp_wagtail.medias.tests.factories as f
 from baseapp_wagtail.medias.models import CustomImage
-from django.test import TestCase, override_settings
 
 
 class TestCustomImageModel(TestCase):

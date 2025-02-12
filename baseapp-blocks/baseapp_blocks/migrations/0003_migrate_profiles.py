@@ -1,6 +1,7 @@
+from django.db import migrations
+
 import swapper
 from baseapp_core.swappable import get_apps_model
-from django.db import migrations
 
 
 class Migration(migrations.Migration):

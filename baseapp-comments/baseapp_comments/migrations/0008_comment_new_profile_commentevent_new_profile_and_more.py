@@ -1,8 +1,9 @@
 import django.db.models.deletion
+from django.db import migrations, models
+
 import pgtrigger.compiler
 import pgtrigger.migrations
 import swapper
-from django.db import migrations, models
 
 
 class Migration(migrations.Migration):

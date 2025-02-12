@@ -1,5 +1,6 @@
-from baseapp_core.graphql import Node
 from django.contrib.auth import get_user_model
+
+from baseapp_core.graphql import Node
 from graphene import Field
 from graphene_django.filter import DjangoFilterConnectionField
 

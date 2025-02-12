@@ -1,3 +1,6 @@
+from django.apps import apps
+from django.utils.translation import gettext_lazy as _
+
 import graphene
 import swapper
 from baseapp_core.graphql import (
@@ -8,8 +11,6 @@ from baseapp_core.graphql import (
     login_required,
 )
 from baseapp_pages.models import URLPath
-from django.apps import apps
-from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from rest_framework import serializers
 

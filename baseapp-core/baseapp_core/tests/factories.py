@@ -1,5 +1,6 @@
-import factory
 from django.conf import settings
+
+import factory
 
 
 class UserFactory(factory.django.DjangoModelFactory):

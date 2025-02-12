@@ -1,5 +1,6 @@
-import swapper
 from django.contrib import admin
+
+import swapper
 
 Organization = swapper.load_model("baseapp_organizations", "Organization")
 
