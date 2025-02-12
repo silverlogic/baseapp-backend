@@ -48,6 +48,7 @@ class ProfilesPermissionsBackend(BaseBackend):
                 )
 
         if perm == "baseapp_profiles.change_profileuserrole" and obj:
+            # Owner and admins can update roles and exclude members
             if isinstance(obj, Profile):
                 return (
                     obj.owner_id == user_obj.id
