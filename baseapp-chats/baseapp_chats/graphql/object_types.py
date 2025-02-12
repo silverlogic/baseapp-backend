@@ -65,6 +65,7 @@ class BaseMessageObjectType:
             "extra_data",
             "in_reply_to",
             "is_read",
+            "deleted",
         )
         filter_fields = ("verb",)
 
@@ -109,6 +110,10 @@ class BaseMessageObjectType:
         profile_pk = BaseMessageObjectType.get_profile_pk(info, profile_id)
         if not profile_pk:
             return None
+        if root.deleted:
+            if profile_pk == root.profile.pk:
+                return "You deleted this message"
+            return "This message was deleted"
         if root.message_type == Message.MessageType.USER_MESSAGE:
             return root.content
 

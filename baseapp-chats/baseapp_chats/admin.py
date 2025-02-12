@@ -34,7 +34,7 @@ class MessageAdmin(admin.ModelAdmin):
 
 @admin.register(ChatRoom)
 class ChatRoomAdmin(admin.ModelAdmin):
-    list_display = ("room",)
+    list_display = ("room", "title", "is_group")
     search_fields = ["room"]
     inlines = [ChatRoomParticipantInline]
 
