@@ -61,7 +61,10 @@ class LogoutDeviceSerializer(serializers.Serializer):
         device = UserDevice.objects.filter(device_id=device_id).first()
         if not device:
             raise serializers.ValidationError({"device_id": "Device not found"})
-        token = RefreshToken(device.device_token)
-        token.blacklist()
+        try:
+            token = RefreshToken(device.device_token)
+            token.blacklist()
+        except Exception:
+            pass
         device.delete()
         return {"message": "Device logged out successfully"}
