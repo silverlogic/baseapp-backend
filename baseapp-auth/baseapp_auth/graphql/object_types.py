@@ -48,7 +48,6 @@ if apps.is_installed("baseapp.activity_log"):
 class AbstractUserObjectType(*inheritances, object):
     is_authenticated = graphene.Boolean()
     full_name = graphene.String()
-    short_name = graphene.String()
 
     first_name = graphene.String(deprecation_reason="Deprecated in favor of fullName and shortName")
     last_name = graphene.String(deprecation_reason="Deprecated in favor of fullName and shortName")
@@ -72,7 +71,6 @@ class AbstractUserObjectType(*inheritances, object):
             "first_name",
             "last_name",
             "full_name",
-            "short_name",
             "email",
             "phone_number",
             "is_superuser",
@@ -106,9 +104,6 @@ class AbstractUserObjectType(*inheritances, object):
 
     def resolve_full_name(self, *args, **kwargs):
         return self.profile.name
-
-    def resolve_short_name(self, *args, **kwargs):
-        return self.get_short_name()
 
     def resolve_email(self, info):
         return view_user_private_field(self, info, "email")

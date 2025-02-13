@@ -19,11 +19,6 @@ def test_user_str():
     assert str(user) == "john@gmail.com"
 
 
-def test_user_get_short_name():
-    user = User(email="john@gmail.com")
-    assert user.get_short_name() == "john@gmail.com"
-
-
 def test_user_get_full_name():
     user = User(first_name="John", last_name="Doe", email="john@gmail.com")
     assert user.get_full_name() == "John Doe"

@@ -89,9 +89,6 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_pr
     def __str__(self):
         return self.get_full_name()
 
-    def get_short_name(self):
-        return self.email
-
     def get_full_name(self):
         names = [self.first_name, self.last_name]
         full_name = " ".join([name for name in names if name]).strip()
