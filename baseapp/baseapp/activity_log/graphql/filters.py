@@ -5,8 +5,8 @@ from ..models import ActivityLog
 
 
 class ActivityLogFilter(django_filters.FilterSet):
-    created_from = django_filters.DateFilter(field_name="created_at", lookup_expr="gte")
-    created_to = django_filters.DateFilter(field_name="created_at", lookup_expr="lte")
+    created_from = django_filters.DateFilter(field_name="created_at", lookup_expr="date__gte")
+    created_to = django_filters.DateFilter(field_name="created_at", lookup_expr="date__lte")
     user_pk = django_filters.NumberFilter(field_name="user_id")
     profile_pk = django_filters.NumberFilter(field_name="profile_id")
     user_name = django_filters.CharFilter(method="filter_user_name")
@@ -22,7 +22,6 @@ class ActivityLogFilter(django_filters.FilterSet):
 
         if created_from and created_to and created_from > created_to:
             raise ValidationError("`created_from` must be earlier than or equal to `created_to`.")
-
         return super().filter_queryset(queryset)
 
     class Meta:
