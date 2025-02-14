@@ -1,4 +1,5 @@
 import logging
+from contextlib import contextmanager
 
 import pghistory
 from django.http.response import HttpResponseBadRequest
@@ -9,8 +10,24 @@ from graphql.execution import ExecutionResult
 
 try:
     import sentry_sdk
+    from sentry_sdk.consts import OP
 except ModuleNotFoundError:
     sentry_sdk = None
+
+
+@contextmanager
+def sentry_graphql_span(operation_name, operation_type):
+    if sentry_sdk:
+        op = OP.GRAPHQL_QUERY
+        if operation_type == "mutation":
+            op = OP.GRAPHQL_MUTATION
+        elif operation_type == "subscription":
+            op = OP.GRAPHQL_SUBSCRIPTION
+
+        with sentry_sdk.start_transaction(op=op, name=operation_name):
+            yield
+    else:
+        yield
 
 
 class GraphQLView(GrapheneGraphQLView):
@@ -32,20 +49,14 @@ class GraphQLView(GrapheneGraphQLView):
         operation_name = (
             operation_ast.name.value
             if operation_ast and operation_ast.name and not operation_name
-            else None
+            else operation_name
         )
         operation_type = operation_ast.operation.value
 
-        if sentry_sdk:
-            if sentry_sdk.Hub.current.scope.transaction:
-                if operation_name:
-                    sentry_sdk.Hub.current.scope.transaction.name = operation_name
-                if operation_type:
-                    sentry_sdk.Hub.current.scope.transaction.op = operation_type
-
-        with pghistory.context(
-            graphql_operation_name=operation_name, graphql_operation_type=operation_type
-        ):
-            return super().execute_graphql_request(
-                request, data, query, variables, operation_name, show_graphiql
-            )
+        with sentry_graphql_span(operation_name, operation_type):
+            with pghistory.context(
+                graphql_operation_name=operation_name, graphql_operation_type=operation_type
+            ):
+                return super().execute_graphql_request(
+                    request, data, query, variables, operation_name, show_graphiql
+                )
