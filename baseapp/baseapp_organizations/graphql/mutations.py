@@ -1,6 +1,5 @@
 import graphene
 import swapper
-from baseapp_core.graphql import SerializerMutation, login_required
 from baseapp_profiles.graphql.mutations import ProfileCreateSerializer
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
@@ -8,6 +7,8 @@ from django.utils.translation import gettext_lazy as _
 from graphene_django.types import ErrorType
 from graphql.error import GraphQLError
 from rest_framework import serializers
+
+from baseapp_core.graphql import SerializerMutation, login_required
 
 Organization = swapper.load_model("baseapp_organizations", "Organization")
 Profile = swapper.load_model("baseapp_profiles", "Profile")

@@ -14,6 +14,8 @@ from baseapp_core.graphql import DeleteNode
 from baseapp_follows.graphql.mutations import FollowsMutations
 from baseapp_notifications.graphql.mutations import NotificationsMutations
 from baseapp_notifications.graphql.subscriptions import NotificationsSubscription
+from baseapp_organizations.graphql.mutations import OrganizationsMutations
+from baseapp_organizations.graphql.queries import OrganizationsQueries
 from baseapp_pages.graphql.mutations import PagesMutations
 from baseapp_pages.graphql.queries import PagesQueries
 from baseapp_ratings.graphql.mutations import RatingsMutations
@@ -33,6 +35,7 @@ class Query(
     ReactionsQueries,
     RatingsQueries,
     PagesQueries,
+    OrganizationsQueries,
 ):
     node = RelayNodeField(relay.Node)
     debug = graphene.Field(DjangoDebug, name="_debug")
@@ -49,6 +52,7 @@ class Mutation(
     BlocksMutations,
     PagesMutations,
     NotificationsMutations,
+    OrganizationsMutations,
 ):
     delete_node = DeleteNode.Field()
 

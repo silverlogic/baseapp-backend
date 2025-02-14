@@ -64,3 +64,8 @@ include baseapp_url_shortening/README.md
 recursive-include baseapp_url_shortening/templates *
 recursive-include baseapp_url_shortening/static *
 recursive-include baseapp_url_shortening/locale *
+
+include baseapp_organizations/README.md
+recursive-include baseapp_organizations/templates *
+recursive-include baseapp_organizations/static *
+recursive-include baseapp_organizations/locale *
