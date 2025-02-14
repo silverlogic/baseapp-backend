@@ -23,6 +23,7 @@ INSTALLED_APPS += [
     "baseapp_payments",
     "baseapp_message_templates",
     "baseapp_url_shortening",
+    "baseapp_organizations",
     "testproject.testapp",
     "testproject.comments",
     "testproject.profiles",
@@ -81,6 +82,7 @@ AUTHENTICATION_BACKENDS = [
     "baseapp_follows.permissions.FollowsPermissionsBackend",
     "baseapp_blocks.permissions.BlocksPermissionsBackend",
     "baseapp_pages.permissions.PagesPermissionsBackend",
+    "baseapp_organizations.permissions.OrganizationsPermissionsBackend",
 ]
 
 ADMIN_TIME_ZONE = "UTC"

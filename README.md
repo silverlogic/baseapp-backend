@@ -72,6 +72,10 @@ Reusable app to handle pages, URL's paths and metadata. It provides useful model
 
 Comment threads on any model. With support for reactions, notifications and GraphQL subscriptions.
 
+## [baseapp-organizations](baseapp/baseapp_organizations)
+
+Reusable app to handle organizations. Users can have and manage multiple Organizations.
+
 ## How to develop
 
 Each module of baseapp-backend has a demo project in `testproject/` directory, which can be run as a standalone Django app to test. Then in baseapp-backend directory:

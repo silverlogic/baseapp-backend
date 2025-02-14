@@ -1,8 +1,9 @@
 import swapper
-from baseapp_core.graphql.models import RelayModel
 from django.apps import apps
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
+
+from baseapp_core.graphql.models import RelayModel
 
 inheritances = [TimeStampedModel]
 
