@@ -136,7 +136,7 @@ class AbstractUserObjectType(*inheritances, object):
 
     @classmethod
     def get_queryset(cls, queryset, info):
-        queryset = queryset.select_related("profile")
+        queryset = queryset
         if info.context.user.is_anonymous:
             return queryset.filter(is_active=True)
         return queryset
