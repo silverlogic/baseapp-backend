@@ -69,7 +69,7 @@ Those will expose the following queries, mutations and subscriptions:
 
 - `chatRoomOnRoomUpdate(profileId: ID!)`: Subscribe to chat rooms updates under your current profile
 - `chatRoomOnMessagesCountUpdate(profileId: ID!)`: Subscribe to unread/read messages count updates under your current profile
-- `chatRoomOnNewMessage(roomId: ID!)`: Subscribe to new messages in a specific room
+- `chatRoomOnMessage(roomId: ID!)`: Subscribe to new messages in a specific room
 
 ## How to develop
 

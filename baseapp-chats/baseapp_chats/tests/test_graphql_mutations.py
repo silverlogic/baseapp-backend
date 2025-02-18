@@ -1360,8 +1360,8 @@ def test_user_cant_delete_other_users_message(graphql_user_client, django_user_c
     )
     content = response.json()
     assert (
-        content["data"]["chatRoomDelete"]["errors"][0]["messages"][0]
-        == "You don't have permission to update this room"
+        content["data"]["chatRoomDeleteMessage"]["errors"][0]["messages"][0]
+        == "You don't have permission to update this message"
     )
 
 
