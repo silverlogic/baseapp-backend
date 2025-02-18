@@ -13,6 +13,8 @@ from baseapp_reactions.graphql.object_types import ReactionsInterface
 from ..models import CommentStatus, default_comments_count
 from .filters import CommentFilter
 
+from query_optimizer import optimize
+
 Comment = swapper.load_model("baseapp_comments", "Comment")
 app_label = Comment._meta.app_label
 
@@ -41,6 +43,8 @@ class CommentsInterface(relay.Node):
         # this is used in the tests because we treat those comment as the target for other comments
         # so we can test the package without having to create a new model
 
+        import pdb; pdb.set_trace()
+
         if not getattr(self, "is_comments_enabled", True):
             return Comment.objects.none()
 
@@ -51,14 +55,14 @@ class CommentsInterface(relay.Node):
             return Comment.objects.none()
 
         if isinstance(self, Comment) and (self.target_object_id or self.in_reply_to_id):
-            return self.comments.filter(status=CommentStatus.PUBLISHED)
+            return optimize(self.comments.filter(status=CommentStatus.PUBLISHED), info)
 
         target_content_type = ContentType.objects.get_for_model(self)
-        return Comment.objects_visible.filter(
+        return optimize(Comment.objects_visible.filter(
             target_content_type=target_content_type,
             target_object_id=self.pk,
             in_reply_to__isnull=True,
-        )
+        ), info)
 
 
 comment_interfaces = (
@@ -107,6 +111,7 @@ class BaseCommentObjectType:
     @classmethod
     def get_queryset(cls, queryset, info):
         user = info.context.user
+        import pdb; pdb.set_trace()
         if user.is_anonymous:
             return super().get_queryset(queryset, info)
 
