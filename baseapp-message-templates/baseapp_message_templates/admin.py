@@ -1,7 +1,8 @@
 from django.contrib import admin
+from django.contrib.contenttypes.admin import GenericTabularInline
 from nested_admin.nested import NestedTabularInline
 
-from .models import Attachment, EmailTemplate, SmsTemplate
+from .models import Attachment, EmailTemplate, SmsTemplate, TemplateTranslation
 
 
 class AttachmentsInline(NestedTabularInline):
@@ -11,9 +12,16 @@ class AttachmentsInline(NestedTabularInline):
     extra = 1
 
 
+class TemplateTranslationAdminInline(GenericTabularInline):
+    model = TemplateTranslation
+    extra = 0
+    ct_field = "target_content_type"
+    ct_fk_field = "target_object_id"
+
+
 class EmailTemplateAdmin(admin.ModelAdmin):
     list_display = ("id", "name")
-    inlines = [AttachmentsInline]
+    inlines = [AttachmentsInline, TemplateTranslationAdminInline]
     readonly_fields = ("raw_html",)
     fieldsets = (
         (
@@ -23,17 +31,6 @@ class EmailTemplateAdmin(admin.ModelAdmin):
         (
             "SendGrid",
             {"fields": ("sendgrid_template_id",)},
-        ),
-        (
-            "Core",
-            {
-                "fields": (
-                    "subject",
-                    "html_content",
-                    "raw_html",
-                    "plain_text_content",
-                )
-            },
         ),
     )
 
