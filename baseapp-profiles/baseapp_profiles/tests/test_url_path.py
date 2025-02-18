@@ -1,26 +1,35 @@
+import string
+
 import pytest
 import swapper
+from baseapp_core.tests.factories import UserFactory
 from baseapp_pages.tests.factories import URLPathFactory
-
-from .factories import ProfileFactory
-
-pytest.skip("auto generated url_path disabled", allow_module_level=True)
 
 pytestmark = pytest.mark.django_db
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
-def test_profile_generate_url_path():
-    profile = ProfileFactory()
-    assert profile.url_path.path == f"profile/{profile.pk}"
+def test_profile_generate_url_path_with_valid_name():
+    user = UserFactory(first_name="Jonathan", last_name="Doe")
+    profile = Profile.objects.get(owner=user)
+    username = profile.owner.get_full_name().translate(str.maketrans("", "", string.whitespace))
+    assert profile.url_path.path == f"/{username}"
 
 
-def test_profile_generate_url_path_random():
-    last_profile = ProfileFactory()
-    next_profile_id = (
-        int(last_profile.pk) + 2
-    )  # TODO: there is an issue with the factories thats causing duplicated profiles to be created because of profile.owner subfactory
-    URLPathFactory(path=f"profile/{next_profile_id}", is_active=True, language=None)
-    profile = ProfileFactory()
-    assert len(profile.url_path.path) == 44
+def test_profile_generate_url_path_with_short_name():
+    user = UserFactory(first_name="Joe", last_name="Doe")
+    profile = Profile.objects.get(owner=user)
+    username = profile.owner.get_full_name().translate(str.maketrans("", "", string.whitespace))
+    assert username in profile.url_path.path
+    assert len(profile.url_path.path) >= 8
+
+
+def test_profile_generate_url_path_with_existing_path():
+    first_name = "Jason"
+    last_name = "Sudekis"
+    URLPathFactory(path=f"/{first_name}{last_name}", is_active=True, language=None)
+    user = UserFactory(first_name=first_name, last_name=last_name)
+    profile = Profile.objects.get(owner=user)
+    username = profile.owner.get_full_name().translate(str.maketrans("", "", string.whitespace))
+    assert profile.url_path.path == f"/{username}1"
