@@ -47,10 +47,14 @@ class ProfilesPermissionsBackend(BaseBackend):
                     or obj.members.filter(user_id=user_obj.id).exists()
                 )
 
-        if perm in [
-            "baseapp_profiles.change_profileuserrole",
-            "baseapp_profiles.delete_profileuserrole",
-        ] and obj:
+        if (
+            perm
+            in [
+                "baseapp_profiles.change_profileuserrole",
+                "baseapp_profiles.delete_profileuserrole",
+            ]
+            and obj
+        ):
             if isinstance(obj, Profile):
                 return (
                     obj.owner_id == user_obj.id
