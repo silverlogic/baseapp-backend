@@ -307,7 +307,7 @@ def test_user_without_permission_cant_update_role(django_user_client, graphql_us
 
 def test_user_profile_owner_can_remove_profile_member(django_user_client, graphql_user_client):
     perm = Permission.objects.get(
-        content_type__app_label="baseapp_profiles", codename="change_profileuserrole"
+        content_type__app_label="baseapp_profiles", codename="delete_profile"
     )
 
     user = django_user_client.user
