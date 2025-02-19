@@ -35,7 +35,7 @@ async def test_user_recieves_news_message_subscription_event(
             "query": textwrap.dedent(
                 """
                 subscription op_name($roomId: ID!) {
-                  chatRoomOnNewMessage(roomId: $roomId) {
+                  chatRoomOnMessage(roomId: $roomId) {
                     message {
                       node {
                         id
@@ -63,7 +63,7 @@ async def test_user_recieves_news_message_subscription_event(
 
     # Check that subscription message were sent.
     resp = await client.receive(assert_id=sub_id, assert_type="next")
-    assert resp["data"]["chatRoomOnNewMessage"]["message"]["node"]["content"] == message.content
+    assert resp["data"]["chatRoomOnMessage"]["message"]["node"]["content"] == message.content
 
     # Disconnect and wait the application to finish gracefully.
     await client.finalize()
@@ -93,7 +93,7 @@ async def test_build_absolute_uri_on_graphql_subscription(
             "query": textwrap.dedent(
                 """
                 subscription op_name($roomId: ID!) {
-                  chatRoomOnNewMessage(roomId: $roomId) {
+                  chatRoomOnMessage(roomId: $roomId) {
                     message {
                       node {
                         profile {
@@ -125,7 +125,7 @@ async def test_build_absolute_uri_on_graphql_subscription(
 
     # Check that subscription message were sent.
     resp = await client.receive(assert_id=sub_id, assert_type="next")
-    assert resp["data"]["chatRoomOnNewMessage"]["message"]["node"]["profile"]["image"][
+    assert resp["data"]["chatRoomOnMessage"]["message"]["node"]["profile"]["image"][
         "url"
     ].startswith("http")
 
