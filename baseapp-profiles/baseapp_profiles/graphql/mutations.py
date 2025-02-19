@@ -175,7 +175,7 @@ class ProfileRemoveMember(RelayMutation):
         if not obj:
             raise GraphQLError(_("User role not found"))
 
-        if not info.context.user.has_perm("baseapp_profiles.delete_profile", obj.profile):
+        if not info.context.user.has_perm("baseapp_profiles.delete_profileuserrole", obj.profile):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
