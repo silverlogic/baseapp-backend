@@ -111,8 +111,8 @@ def test_owner_can_update_profile_url_path(django_user_client, graphql_user_clie
 
 
 def test_owner_can_update_profile_url_path_already_in_use(django_user_client, graphql_user_client):
-    url_path = "new-path"
-    URLPathFactory(path=url_path)
+    url_path = "existingpath"
+    URLPathFactory(path=f"/{url_path}")
     profile = ProfileFactory(owner=django_user_client.user)
 
     response = graphql_user_client(
@@ -120,9 +120,10 @@ def test_owner_can_update_profile_url_path_already_in_use(django_user_client, gr
         variables={"input": {"id": profile.relay_id, "urlPath": url_path}},
     )
     content = response.json()
+    print(content)
     assert (
         content["data"]["profileUpdate"]["errors"][0]["messages"][0]
-        == "URL path already in use, please choose another one"
+        == "Username already in use, suggested username: /existingpath1"
     )
 
 
