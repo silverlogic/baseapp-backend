@@ -156,6 +156,37 @@ class RoleUpdate(RelayMutation):
         return RoleUpdate(profile_user_role=obj)
 
 
+class ProfileRemoveMember(RelayMutation):
+    deleted_id = graphene.ID()
+
+    class Input:
+        profile_id = graphene.ID(required=True)
+        user_id = graphene.ID(required=True)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        profile_id = input.get("profile_id")
+        user_id = input.get("user_id")
+        profile_pk = get_pk_from_relay_id(profile_id)
+        user_pk = get_pk_from_relay_id(user_id)
+        obj = ProfileUserRole.objects.get(user_id=user_pk, profile_id=profile_pk)
+
+        if not obj:
+            raise GraphQLError(_("User role not found"))
+
+        if not info.context.user.has_perm("baseapp_profiles.delete_profileuserrole", obj.profile):
+            raise GraphQLError(
+                str(_("You don't have permission to perform this action")),
+                extensions={"code": "permission_required"},
+            )
+
+        id_to_return = obj.relay_id
+        obj.delete()
+
+        return ProfileRemoveMember(deleted_id=id_to_return)
+
+
 class ProfileUpdate(SerializerMutation):
     profile = graphene.Field(get_object_type_for_model(Profile))
 
@@ -247,3 +278,4 @@ class ProfilesMutations(object):
     profile_update = ProfileUpdate.Field()
     profile_delete = ProfileDelete.Field()
     profile_role_update = RoleUpdate.Field()
+    profile_remove_member = ProfileRemoveMember.Field()
