@@ -1,6 +1,7 @@
 import django_filters
-from django.db.models import Q
 from django.core.exceptions import ValidationError
+from django.db.models import Q
+
 from ..models import ActivityLog
 
 

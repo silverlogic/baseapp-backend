@@ -408,4 +408,7 @@ def test_invalid_date_range_created_from_after_created_to(django_user_client, gr
     content = response.json()
     assert "errors" in content
     error_messages = [error["message"] for error in content["errors"]]
-    assert any("`created_from` must be earlier than or equal to `created_to`." in message for message in error_messages)
+    assert any(
+        "`created_from` must be earlier than or equal to `created_to`." in message
+        for message in error_messages
+    )
