@@ -1,6 +1,6 @@
-import pghistory
 import datetime
 
+import pghistory
 import pytest
 import swapper
 from baseapp_profiles.tests.factories import ProfileFactory
@@ -382,11 +382,10 @@ def test_filter_by_partial_match(django_user_client, graphql_user_client):
     assert len(content["data"]["activityLogs"]["edges"]) == 1
 
 
-
 def test_invalid_date_range_created_from_after_created_to(django_user_client, graphql_user_client):
     now = datetime.date.today()
-    created_from = now + datetime.timedelta(days=1)  
-    created_to = now - datetime.timedelta(days=1)    
+    created_from = now + datetime.timedelta(days=1)
+    created_to = now - datetime.timedelta(days=1)
 
     response = graphql_user_client(
         """
@@ -410,5 +409,3 @@ def test_invalid_date_range_created_from_after_created_to(django_user_client, gr
     assert "errors" in content
     error_messages = [error["message"] for error in content["errors"]]
     assert any("`created_from` must be earlier than or equal to `created_to`." in message for message in error_messages)
-
-
