@@ -1,38 +1,37 @@
 import swapper
 from django.db import models
-from django.utils.text import slugify
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 
-from . import webhook  # noqa
 
+class BaseCustomer(models.Model):
+    entity_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    entity_id = models.PositiveIntegerField()
+    entity = GenericForeignKey("entity_type", "entity_id")
+    remote_customer_id = models.CharField(max_length=255)
 
-class BasePlan(models.Model):
-    price = models.ForeignKey("djstripe.Price", on_delete=models.CASCADE)
-    name = models.CharField(max_length=50)
-    slug = models.SlugField(max_length=50, unique=True)
-    is_active = models.BooleanField(default=True)
+    def __str__(self):
+        return f"{self.entity} - {self.remote_customer_id}"
 
     class Meta:
         abstract = True
 
-    def __str__(self):
-        return f"Plan({self.pk}): {self.name}"
 
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.name)
-        super().save(*args, **kwargs)
+class BaseSubscription(models.Model):
+    remote_customer_id = models.CharField(max_length=255)
+    remote_subscription_id = models.CharField(max_length=255)
 
-    @property
-    def price_amount(self):
-        if self.price_id:
-            return self.price.unit_amount_decimal
-
-    @property
-    def interval(self):
-        if self.price_id:
-            return self.price.recurring.get("interval")
-
-
-class Plan(BasePlan):
     class Meta:
-        swappable = swapper.swappable_setting("baseapp_payments", "Plan")
+        abstract = True
+
+
+class Customer(BaseCustomer):
+    class Meta:
+        swappable = swapper.swappable_setting("baseapp_payments", "Customer")
+        unique_together = ("entity_type", "entity_id")
+
+
+class Subscription(BaseSubscription):
+    class Meta:
+        swappable = swapper.swappable_setting("baseapp_payments", "Subscription")
+        unique_together = ("remote_customer_id", "remote_subscription_id")

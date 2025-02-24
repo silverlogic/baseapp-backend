@@ -1,6 +1,6 @@
 from baseapp_core.rest_framework.routers import DefaultRouter
-from baseapp_payments.views import StripePaymentsViewSet
+from .views import StripePaymentsViewset
 
 payments_router = DefaultRouter(trailing_slash=False)
 
-payments_router.register(r"payments", StripePaymentsViewSet, basename="payments")
+payments_router.register(r"stripe", StripePaymentsViewset, basename="payments")

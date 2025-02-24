@@ -7,9 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
     initial = True
 
-    dependencies = [
-        ("djstripe", "0008_2_5"),
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
