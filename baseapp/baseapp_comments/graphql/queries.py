@@ -16,6 +16,5 @@ class CommentsQueries:
 
     def resolve_all_comments(self, info, **kwargs):
         if info.context.user.has_perm(f"{app_label}.view_all_comments"):
-            import pdb; pdb.set_trace()
             return optimize(CommentObjectType._meta.model.objects.all(), info)
         return CommentObjectType._meta.model.objects.none()

@@ -4,7 +4,6 @@ from graphene import Field
 from graphene_django.filter import DjangoFilterConnectionField
 
 from query_optimizer import optimize
-from query_optimizer.selections import get_field_selections
 
 from .object_types import UserObjectType
 

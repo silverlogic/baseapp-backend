@@ -7,13 +7,13 @@ from django.contrib.contenttypes.models import ContentType
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
 
+from query_optimizer import optimize
+
 from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
 from baseapp_reactions.graphql.object_types import ReactionsInterface
 
 from ..models import CommentStatus, default_comments_count
 from .filters import CommentFilter
-
-from query_optimizer import optimize
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
 app_label = Comment._meta.app_label
@@ -42,8 +42,6 @@ class CommentsInterface(relay.Node):
         # if not then assume its another object type, like a post
         # this is used in the tests because we treat those comment as the target for other comments
         # so we can test the package without having to create a new model
-
-        import pdb; pdb.set_trace()
 
         if not getattr(self, "is_comments_enabled", True):
             return Comment.objects.none()
@@ -111,7 +109,6 @@ class BaseCommentObjectType:
     @classmethod
     def get_queryset(cls, queryset, info):
         user = info.context.user
-        import pdb; pdb.set_trace()
         if user.is_anonymous:
             return super().get_queryset(queryset, info)
 
