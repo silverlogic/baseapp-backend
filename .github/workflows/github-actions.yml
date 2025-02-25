@@ -16,10 +16,6 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-drf-view-action-permissions
-  baseapp-message-templates:
-    uses: ./.github/workflows/project-workflow.yml
-    with:
-      project: baseapp-message-templates
   baseapp-social-auth:
     uses: ./.github/workflows/project-workflow.yml
     with:

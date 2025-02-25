@@ -26,5 +26,4 @@ channels_redis==4.0.0
 -e ./baseapp-auth
 -e ./baseapp-chats
 -e ./baseapp-profiles
--e ./baseapp-message-templates
--e ./baseapp[graphql,pages,payments,notifications,url_shortening]
+-e ./baseapp[graphql,pages,payments,notifications,url_shortening,message_templates]

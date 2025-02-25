@@ -110,7 +110,7 @@ jobs:
     with:
       project: baseapp-organizations
     secrets: inherit
-  baseapp:
+  baseapp-backend:
     uses: ./.github/workflows/publish-workflow.yml
     with:
       project: baseapp
