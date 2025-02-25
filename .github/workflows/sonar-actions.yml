@@ -15,11 +15,6 @@ jobs:
     with:
       project: baseapp-drf-view-action-permissions
     secrets: inherit
-  baseapp-message-templates:
-    uses: ./.github/workflows/sonar-workflow.yml
-    with:
-      project: baseapp-message-templates
-    secrets: inherit
   baseapp-social-auth:
     uses: ./.github/workflows/sonar-workflow.yml
     with:
