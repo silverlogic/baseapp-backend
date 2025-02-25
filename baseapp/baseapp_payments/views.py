@@ -1,20 +1,17 @@
 import logging
 
-import swapper
-
+from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.response import Response
-from .serializers import (
-    StripeSubscriptionSerializer,
-    StripeCustomerSerializer,
-)
-from django.db import transaction
-from .utils import StripeService, StripeWebhookHandler
-from .models import Subscription
-from django.core.exceptions import ObjectDoesNotExist
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import NotFound
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+from .models import Subscription
+from .serializers import StripeCustomerSerializer, StripeSubscriptionSerializer
+from .utils import StripeService, StripeWebhookHandler
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +76,6 @@ class StripePaymentsViewset(
 
     @action(detail=False, methods=["post"], permission_classes=[])
     def webhook(self, request):
-        endpoint_secret = "whsec_4796e64cf916843594eafb014315f076d2cce2c00c4b409a13ae8d0db1ab83f1"
+        endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
         response = StripeWebhookHandler().webhook_handler(request, endpoint_secret)
         return response

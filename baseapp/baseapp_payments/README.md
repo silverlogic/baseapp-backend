@@ -1,218 +1,111 @@
 # BaseApp Payments - Django
 
-This app provides the integration of Stripe with The SilverLogic's [BaseApp](https://bitbucket.org/silverlogic/baseapp-django-v2): [django-restframework](https://www.django-rest-framework.org/) and [dj-stripe](https://dj-stripe.readthedocs.io/en/master/)
+This app integrates Stripe with your Django project using Django REST Framework.
 
-## Install the package
+It provides API endpoints to manage Stripe customers and subscriptions, while also handling webhooks for real-time synchronization between Stripe and your system.
 
-Add to `requirements/base.txt`:
+## Install the Package
+
+Add the package to your `requirements/base.txt`:
 
 ```bash
 baseapp-payments==0.16.1
 ```
 
-## Setup Stripe's credentials
+## Setup Stripe Credentials
 
-Add to your `settings/base.py`:
+Add your Stripe credentials to your settings/base.py:
 
-```py
-# Stripe
-STRIPE_LIVE_SECRET_KEY = env("STRIPE_LIVE_SECRET_KEY")
-STRIPE_TEST_SECRET_KEY = env("STRIPE_TEST_SECRET_KEY")
-STRIPE_LIVE_MODE = env("STRIPE_LIVE_MODE")  # Change to True in production
-DJSTRIPE_WEBHOOK_SECRET = env("DJSTRIPE_WEBHOOK_SECRET")
-DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
+```python
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
+STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET")
 ```
 
-## Add the payments_router to your urlpatterns
+## Customer Integration
 
-```py
+A Customer represents any entity (such as a User, Organization, or any model with an email attribute) that will be billed through Stripe. You can configure the customer entity model by setting the corresponding value in your settings:
+
+```python
+# This can be updated in the Constance config
+STRIPE_CUSTOMER_ENTITY_MODEL = "profiles.Profile"
+```
+
+When a customer is created via the API, the `StripeCustomerSerializer` will use the authenticated user (or a provided `user_id`) to retrieve the appropriate entity from your customer model. This entity is then linked to the Stripe customer record via the `remote_customer_id`.
+
+## Subscription Management
+
+The Subscription model stores Stripe subscription details including:
+
+`remote_customer_id`
+`remote_subscription_id`
+
+## Creating a Subscription
+
+To create a subscription, use the `payments/stripe/customer/` (assuming your route is registered at `payments/`) endpoint. A validation will check that no active subscription exists for the same product and price id, to redduce duplicate subscriptions, and then creates a new subscription through the Stripe API. It returns the new `remote_subscription_id` upon success.
+
+## Configure URL Patterns
+
+Include the payments router in your URL configuration. For example, in your main `urls.py`:
+
+```python
+from django.urls import include, path
 from baseapp_payments.router import payments_router
 
-v1_urlpatterns = [
-    ...
-    re_path(r"payments", include(payments_router.urls)),
-    ...
+urlpatterns = [
+# ... your other URL patterns
+path('payments/', include(payments_router.urls)),
 ]
 ```
 
-## Subscriber
+## API Endpoints
 
-A subscriber can be an User, an Organization, a Project, any model that have an `email` property. You can specify the model of your subscriber with the setting:
+The following endpoints are provided via the payments router:
 
-```py
-DJSTRIPE_SUBSCRIBER_MODEL='apps.organizations.Organization`
+`POST payments/stripe/`: Create a new Stripe subscription.
+`GET payments/stripe/{remote_subscription_id}`: Retrieve subscription details from Stripe.
+`DELETE payments/stripe/`: Delete a subscription.
+`GET/POST payments/stripe/customer/`: Retrieve or create a customer.
+`GET payments/stripe/products/`: List available Stripe products.
+`POST payments/stripe/webhook/`: Endpoint for handling Stripe webhook events.
+
+## Stripe Webhooks
+
+The app includes a `StripeWebhookHandler` to process various Stripe events:
+
+`customer.created`: Automatically creates a new customer in your system.
+`customer.deleted`: Deletes the corresponding customer record.
+`customer.subscription.created`: Creates a new subscription record.
+`customer.subscription.deleted`: Deletes a subscription record.
+These handlers ensure that any changes in Stripe are reflected in your local database, keeping your system in sync.
+
+## Stripe Service
+
+The StripeService class encapsulates all interactions with the Stripe API. It provides methods to:
+
+Create, retrieve, and delete customers
+Create, retrieve, and delete subscriptions
+List subscriptions and products
+This service is used internally by serializers, viewsets, and the webhook handler to standardize communication with Stripe.
+
+## Admin Integration
+
+Both the Customer and Subscription models are registered with the Django admin interface for easy management of Stripe-related data:
+
+```python
+from django.contrib import admin
+import swapper
+Customer = swapper.load_model("baseapp_payments", "Customer")
+Subscription = swapper.load_model("baseapp_payments", "Subscription")
+
+@admin.register(Customer)
+class CustomerAdmin(admin.ModelAdmin):
+list_display = ("entity", "remote_customer_id")
+search_fields = ("entity", "remote_customer_id")
+readonly_fields = ("remote_customer_id",)
+
+@admin.register(Subscription)
+class SubscriptionAdmin(admin.ModelAdmin):
+list_display = ("id", "remote_customer_id", "remote_subscription_id")
+search_fields = ("remote_customer_id", "remote_subscription_id")
+readonly_fields = ("remote_subscription_id", "remote_customer_id")
 ```
-
-Make sure to also implement `get_subscriber_from_request` in your `apps.users.User` to grab the subscriber for the current authenticated user:
-
-```py
-class User(PermissionsMixin, AbstractBaseUser):
-    ...
-
-    def get_subscriber_from_request(self, request):
-        org_pk = request.GET.get('organization')
-        return Organization.objects.get(pk=org_pk, admins=request.user)
-```
-
-Implement the following methods in the subscriber's model:
-
-```py
-class Organization(models.Model):
-    def get_subscription_plan(self):
-        return self.subscription_plan
-
-    def subscription_start_request(self, plan, customer, subscription, request):
-        self.subscription_plan = plan
-        self.show_payment_method_action_banner = False
-        self.save()
-
-    def subscription_cancel_request(self, customer, subscription, request):
-        # in this use case the self.subscription_plan will be set to null when we receive the event from stripe instead
-        pass
-
-    def subscription_update_request(self, plan, is_upgrade, request):
-        # is_upgrade = current plan's price < new plan's price
-
-        # if we want to upgrade right way but wait to the end of the period to change plans when it is a downgrade:
-        if is_upgrade:
-            self.subscription_plan = plan
-            self.save()
-
-    def subscription_plan_changed_webhook(self, plan, price, event):
-        # stripe's event: invoice.paid
-        # this method is called if the plan is different from the one returned by self.get_subscription_plan()
-        self.subscription_plan = plan
-        self.save()
-
-    def subscription_deleted_webhook(self, event):
-        # stripe's event: customer.subscription.deleted
-        self.subscription_plan = None
-        self.show_payment_method_action_banner = True
-        self.save()
-
-    def invoice_payment_failed_webhook(self, event):
-        # stripe's event: invoice.payment_failed
-        self.show_payment_method_action_banner = True
-        self.save()
-```
-
-## Plan model
-
-You can extend the plan model by inheriting `baseapp_payments.models.BasePlan`:
-
-```py
-from django.db import models
-from baseapp_payments.models import BasePlan
-
-class SubscriptionPlan(BasePlan):
-    video_calls_per_month = models.PositiveIntegerField(default=5)
-```
-
-Add to your `settings/base.py` the path to your custom plan model:
-
-```
-BASEAPP_PAYMENTS_PLAN_MODEL = "apps.plans.SubscriptionPlan"
-```
-
-To **extend the serializer** you can create a normal serializer:
-
-```py
-
-from baseapp_payments.serializers import PlanSerializer
-from .models import SubscriptionPlan
-
-class SubscriptionPlanSerializer(PlanSerializer):
-    class Meta:
-        model = SubscriptionPlan
-        fields = super().Meta.fields + (
-            "searches_per_month",
-            "can_create_favorites",
-        )
-
-```
-
-Then add to your `settings/base.py` the path to your custom serializer:
-
-```py
-BASEAPP_PAYMENTS_PLAN_SERIALIZER = "apps.plans.serializers.SubscriptionPlanSerializer"
-```
-
-## One time payment / buy a product
-
-
-Implement method stripe_payment_intent_params in your product model:
-
-```py
-    def stripe_payment_intent_params(self, request, validated_data):
-        price = self.price
-
-        if self.class_type.slug == "donation":
-            price = validated_data["amount"]
-
-        amount = int(price * 100)
-
-        return {
-
-            "amount": amount,
-            "application_fee_amount": int(self.instructor.stripe_percentage_fee / 100.00 * amount),
-            "transfer_data": {"destination": self.instructor.stripe_account_id,},
-
-        }
-```
-
-And then call create_payment_intent in the Viewset you're using for 'checkout/purchase' your product:
-    [FLOW Example](https://bitbucket.org/silverlogic/flow-backend-django/src/64dbb17acfd05333fb6177c6b2e42c2332d89571/apps/api/v1/classes/views.py?at=master#views.py-178)
-```py
-    from baseapp_payments.utils import create_payment_intent, stripe
-
-
-    @action(
-        detail=True,
-        methods=["POST"],
-        permission_classes=[permissions.IsAuthenticated],
-        serializer_class=PurchaseClassSerializer,
-    )
-    def purchase(self, request, *args, **kwargs):
-        class_obj = self.get_object()
-        user = request.user
-        serializer = self.get_serializer(data=request.data)
-        serializer.class_obj = class_obj
-        serializer.is_valid(raise_exception=True)
-
-        if class_obj.class_type.slug != "free":
-            payment_intent = create_payment_intent(class_obj, request, serializer.validated_data)
-            ClassStudent.objects.create(student=user, clss=class_obj, payment_intent=payment_intent)
-        else:
-            ClassStudent.objects.create(student=user, clss=class_obj)
-
-        serializer.send_email()
-        return response.Response({}, status=status.HTTP_200_OK)
-   
-# Stripe's webhook events
-
-You can [listen to any stripe events using the webhooks](https://dj-stripe.readthedocs.io/en/master/usage/webhooks/) 
-
-```py
-from djstripe import webhooks
-
-@webhooks.handler("customer.subscription.trial_will_end")
-def my_handler(event, **kwargs):
-    event.customer.subscriber.show_trial_ended_action_banner = True
-    event.customer.subscriber.save()
-```
-
-# Two-way sync with Stripe
-
-When the webhook is fully setup all data changed in stripe will be updated in the system receiving the webhooks events. If you have data on Stripe already you can [manually sync](https://dj-stripe.readthedocs.io/en/master/usage/manually_syncing_with_stripe/). For example with the following command you can sync all data:
-
-```bash
-./manage.py djstripe_sync_models
-```
-
-
-# To do
-
- - [ ] Create a special error message to be handled by the frontend package
-   Ex: if by trying to perform an action I'm not able due to payment failure or plan is out of credits for that action then show call to action to upgrade
- - [ ] Move tests from FinJoy to this repository
- - [ ] One time payments (to buy a product)

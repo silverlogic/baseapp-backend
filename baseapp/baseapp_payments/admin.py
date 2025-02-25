@@ -1,6 +1,5 @@
 import swapper
 from django.contrib import admin
-from .models import Customer, Subscription
 
 Customer = swapper.load_model("baseapp_payments", "Customer")
 Subscription = swapper.load_model("baseapp_payments", "Subscription")

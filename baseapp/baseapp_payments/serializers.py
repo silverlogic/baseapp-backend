@@ -1,12 +1,13 @@
-import swapper
-from constance import config
-from rest_framework import serializers
-from .utils import StripeService
-from .models import Customer
-from django.apps import apps
-from django.db import IntegrityError
 import logging
+
+from constance import config
+from django.apps import apps
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
+from rest_framework import serializers
+
+from .models import Customer
+from .utils import StripeService
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ class StripeSubscriptionSerializer(serializers.Serializer):
             return data
         except Exception as e:
             logger.exception(e)
-            raise serializers.ValidationError(f"Failed to create subscription")
+            raise serializers.ValidationError("Failed to create subscription")
 
 
 class StripeCustomerSerializer(serializers.Serializer):
@@ -86,7 +87,7 @@ class StripeCustomerSerializer(serializers.Serializer):
             raise serializers.ValidationError("Customer already exists for this entity.")
         except Exception as e:
             logger.exception(e)
-            raise serializers.ValidationError(f"Failed to create customer")
+            raise serializers.ValidationError("Failed to create customer")
         return customer
 
     def to_representation(self, instance):

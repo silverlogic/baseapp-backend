@@ -1,14 +1,16 @@
-import stripe
 import logging
-from django.core.exceptions import ValidationError
+
+import stripe
 import swapper
-from django.http import JsonResponse
-from .models import Subscription
-from django.apps import apps
-from django.contrib.auth import get_user_model
 from constance import config
+from django.apps import apps
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.utils import IntegrityError
-from django.core.exceptions import ObjectDoesNotExist
+from django.http import JsonResponse
+
+from .models import Subscription
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +109,7 @@ class StripeWebhookHandler:
 class StripeService:
     def __init__(
         self,
-        api_key="sk_test_51G9zpFHnrO4mMqyDmEKNKnqbMSTtsGxoORobb8aI9coDHCM1qVvWgDITNISbeRzjlAEEzsMOdIUGAKMCQbMCq63V00fZr2iK7U",
+        api_key=settings.STRIPE_SECRET_KEY,
     ):
         stripe.api_key = api_key
 
@@ -118,7 +120,7 @@ class StripeService:
             return stripe.Customer.create(email=email)
         except Exception as e:
             logger.exception(e)
-            raise ValidationError(f"Error creating customer in Stripe")
+            raise ValidationError("Error creating customer in Stripe")
 
     def retrieve_customer(self, customer_id):
         try:
@@ -129,7 +131,7 @@ class StripeService:
                 return None
         except Exception as e:
             logger.exception(e)
-            raise ValidationError(f"Error retrieving customer in Stripe")
+            raise ValidationError("Error retrieving customer in Stripe")
 
     def delete_customer(self, customer_id):
         try:
@@ -140,7 +142,7 @@ class StripeService:
                 return None
         except Exception as e:
             logger.exception(e)
-            raise ValidationError(f"Error deleting customer in Stripe")
+            raise ValidationError("Error deleting customer in Stripe")
 
     def create_subscription(self, customer_id, price_id):
         try:
@@ -151,7 +153,7 @@ class StripeService:
             return subscription
         except Exception as e:
             logger.exception(e)
-            raise ValidationError(f"Error creating subscription in Stripe")
+            raise ValidationError("Error creating subscription in Stripe")
 
     def retrieve_subscription(self, subscription_id):
         try:
@@ -161,7 +163,7 @@ class StripeService:
             if "No such subscription" in str(e):
                 return None
             logger.exception(e)
-            raise ValidationError(f"Error retrieving subscription in Stripe")
+            raise ValidationError("Error retrieving subscription in Stripe")
 
     def list_subscriptions(self, customer_id, **kwargs):
         try:
@@ -171,7 +173,7 @@ class StripeService:
             if "No such customer" in str(e):
                 return None
             logger.exception(e)
-            raise ValidationError(f"Error retrieving subscriptions for customer in Stripe")
+            raise ValidationError("Error retrieving subscriptions for customer in Stripe")
 
     def delete_subscription(self, subscription_id):
         try:
@@ -181,7 +183,7 @@ class StripeService:
             if "No such subscription" in str(e):
                 return None
             logger.exception(e)
-            raise ValidationError(f"Error deleting subscription in Stripe")
+            raise ValidationError("Error deleting subscription in Stripe")
 
     def list_products(self, **kwargs):
         try:
@@ -189,4 +191,4 @@ class StripeService:
             return products
         except Exception as e:
             logger.exception(e)
-            raise ValidationError(f"Error retrieving products in Stripe")
+            raise ValidationError("Error retrieving products in Stripe")
