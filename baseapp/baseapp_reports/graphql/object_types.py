@@ -1,26 +1,54 @@
+from django.contrib.contenttypes.models import ContentType
+
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
-from django.contrib.contenttypes.models import ContentType
+from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
 
-from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
-
 Report = swapper.load_model("baseapp_reports", "Report")
+ReportType = swapper.load_model("baseapp_reports", "ReportType")
 
-ReportTypesEnum = graphene.Enum.from_enum(Report.ReportTypes)
 
-
-def create_object_type_from_enum(name, enum):
+def create_object_type_from_enum(name):
     fields = {}
-    for reaction_type in enum:
+    for reaction_type in ReportType.objects.all():
         fields[reaction_type.name] = graphene.Int()
     fields["total"] = graphene.Int()
     return type(name, (graphene.ObjectType,), fields)
 
 
-ReportsCount = create_object_type_from_enum("ReportsCount", Report.ReportTypes)
+ReportsCount = create_object_type_from_enum("ReportsCount")
+
+
+class ReportsTypeInterface(relay.Node):
+    pass
+
+
+class BaseReportTypeObjectType(
+    gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
+):
+    class Meta:
+        interfaces = (relay.Node,)
+        model = ReportType
+        fields = (
+            "id",
+            "name",
+            "label",
+            "content_types",
+            "sub_types",
+        )
+        filter_fields = {
+            "id": ["exact"],
+        }
+
+
+class ReportTypeObjectType(
+    BaseReportTypeObjectType, gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
+):
+    class Meta(BaseReportTypeObjectType.Meta):
+        pass
 
 
 class ReportsInterface(relay.Node):
@@ -47,7 +75,6 @@ class ReportsInterface(relay.Node):
 
 class BaseReportObjectType:
     target = graphene.Field(relay.Node)
-    report_type = graphene.Field(ReportTypesEnum)
 
     class Meta:
         interfaces = (relay.Node,)
