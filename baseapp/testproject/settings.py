@@ -8,7 +8,6 @@ INSTALLED_APPS += [
     "notifications",
     "push_notifications",
     "django_quill",
-    "djstripe",
     "baseapp_profiles",
     "baseapp_reactions",
     "baseapp_reports",
@@ -91,11 +90,8 @@ ADMIN_TIME_ZONE = "UTC"
 URL_SHORTENING_PREFIX = "c"
 
 # Stripe
-STRIPE_LIVE_SECRET_KEY = env("STRIPE_LIVE_SECRET_KEY", "sk_live_N/A")
-STRIPE_TEST_SECRET_KEY = env("STRIPE_TEST_SECRET_KEY", "N/A")
-STRIPE_LIVE_MODE = env("STRIPE_LIVE_MODE", "N/A")  # Change to True in production
-DJSTRIPE_WEBHOOK_SECRET = env("DJSTRIPE_WEBHOOK_SECRET", "N/A")
-DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
+STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET")
 
 # Comments
 BASEAPP_COMMENTS_COMMENT_MODEL = "comments.Comment"
