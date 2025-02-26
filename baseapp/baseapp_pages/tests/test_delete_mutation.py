@@ -7,11 +7,12 @@ from .factories import PageFactory
 pytestmark = pytest.mark.django_db
 
 Page = swapper.load_model("baseapp_pages", "Page")
+page_app_label = Page._meta.app_label
 
 
 DELETE_MUTATION_QUERY = """
     mutation PageDelete($input: DeleteNodeInput!) {
-        deleteNode(input: $input) {
+        pageDelete(input: $input) {
             deletedID
         }
     }
@@ -51,7 +52,7 @@ def test_superuser_can_delete_page(django_user_client, graphql_user_client):
 
     content = response.json()
 
-    assert content["data"]["deleteNode"]["deletedID"] == page.relay_id
+    assert content["data"]["pageDelete"]["deletedID"] == page.relay_id
     assert not Page.objects.exists()
 
 
@@ -69,12 +70,12 @@ def test_owner_can_delete_page(django_user_client, graphql_user_client):
 
     content = response.json()
 
-    assert content["data"]["deleteNode"]["deletedID"] == page.relay_id
+    assert content["data"]["pageDelete"]["deletedID"] == page.relay_id
     assert not Page.objects.exists()
 
 
 def test_user_with_permission_can_delete_page(django_user_client, graphql_user_client):
-    perm = Permission.objects.get(content_type__app_label="baseapp_pages", codename="delete_page")
+    perm = Permission.objects.get(content_type__app_label=page_app_label, codename="delete_page")
     django_user_client.user.user_permissions.add(perm)
 
     page = PageFactory()
@@ -90,5 +91,5 @@ def test_user_with_permission_can_delete_page(django_user_client, graphql_user_c
 
     content = response.json()
 
-    assert content["data"]["deleteNode"]["deletedID"] == page.relay_id
+    assert content["data"]["pageDelete"]["deletedID"] == page.relay_id
     assert not Page.objects.exists()

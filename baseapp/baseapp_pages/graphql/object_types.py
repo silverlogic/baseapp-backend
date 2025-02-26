@@ -14,6 +14,7 @@ from baseapp_pages.models import AbstractPage, Metadata, URLPath
 from ..meta import AbstractMetadataObjectType
 
 Page = swapper.load_model("baseapp_pages", "Page")
+page_app_label = Page._meta.app_label
 PageStatusEnum = graphene.Enum.from_enum(Page.PageStatus)
 
 
@@ -62,7 +63,7 @@ class URLPathNode(DjangoObjectType):
 
     def resolve_target(self, info, **kwargs):
         if isinstance(self.target, AbstractPage):
-            if not info.context.user.has_perm("baseapp_pages.view_page", self.target):
+            if not info.context.user.has_perm(f"{page_app_label}.view_page", self.target):
                 return None
         return self.target
 
@@ -88,7 +89,7 @@ class BasePageObjectType:
     @classmethod
     def get_node(cls, info, id):
         node = super().get_node(info, id)
-        if not info.context.user.has_perm("baseapp_pages.view_page", node):
+        if not info.context.user.has_perm(f"{page_app_label}.view_page", node):
             return None
         return node
 
