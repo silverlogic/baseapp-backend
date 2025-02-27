@@ -3,12 +3,12 @@ from rest_framework import status
 
 import baseapp_wagtail.medias.tests.factories as media_factory
 from baseapp_wagtail.tests.mixins import StandardPageContextMixin
-from baseapp_wagtail.tests.models import StandardPage
+from baseapp_wagtail.tests.models import PageForTests
 
 
 class PagesAPITests(StandardPageContextMixin):
     def test_page_url_path(self):
-        new_page = StandardPage(
+        new_page = PageForTests(
             title="My Page Child",
             slug="mypage-child",
         )
@@ -16,7 +16,7 @@ class PagesAPITests(StandardPageContextMixin):
         new_page.save_revision().publish()
         response = self.client.get(
             reverse("baseappwagtailapi_base:pages:detail", args=[new_page.id]),
-            {"type": "tests.StandardPage", "fields": "*"},
+            {"type": "tests.PageForTests", "fields": "*"},
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -31,7 +31,7 @@ class PagesAPITests(StandardPageContextMixin):
         self.assertEqual(response.json()["id"], self.page.id)
 
     def test_path_endpoint_with_similar_paths(self):
-        new_page = StandardPage(
+        new_page = PageForTests(
             title="My Page",
             slug="mypage",
         )
@@ -50,7 +50,7 @@ class PagesAPITests(StandardPageContextMixin):
 class DefaultPageModelAPISerializerTests(StandardPageContextMixin):
     def setUp(self):
         super().setUp()
-        self.new_page = StandardPage(
+        self.new_page = PageForTests(
             title="My Standard Page",
             slug="my-standard-page",
             live=False,
@@ -65,7 +65,7 @@ class DefaultPageModelAPISerializerTests(StandardPageContextMixin):
 
         response = self.client.get(
             reverse("baseappwagtailapi_base:pages:detail", args=[self.page.id]),
-            {"type": "tests.StandardPage", "fields": "*"},
+            {"type": "tests.PageForTests", "fields": "*"},
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -75,7 +75,7 @@ class DefaultPageModelAPISerializerTests(StandardPageContextMixin):
         self.new_page.save_revision().publish()
         response = self.client.get(
             reverse("baseappwagtailapi_base:pages:detail", args=[self.new_page.id]),
-            {"type": "tests.StandardPage", "fields": "*"},
+            {"type": "tests.PageForTests", "fields": "*"},
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -92,7 +92,7 @@ class DefaultPageModelAPISerializerTests(StandardPageContextMixin):
         self.new_page.save_revision().publish()
         response = self.client.get(
             reverse("baseappwagtailapi_base:pages:detail", args=[self.new_page.id]),
-            {"type": "tests.StandardPage", "fields": "*"},
+            {"type": "tests.PageForTests", "fields": "*"},
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)

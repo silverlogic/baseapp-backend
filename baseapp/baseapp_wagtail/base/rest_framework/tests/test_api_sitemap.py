@@ -2,7 +2,7 @@ from django.urls import reverse
 from rest_framework import status
 
 from baseapp_wagtail.tests.mixins import StandardPageContextMixin
-from baseapp_wagtail.tests.models import StandardPage
+from baseapp_wagtail.tests.models import PageForTests
 
 
 class PagesSitemapAPIViewSetTests(StandardPageContextMixin):
@@ -35,7 +35,7 @@ class PagesSitemapAPIViewSetTests(StandardPageContextMixin):
         self.assertFalse(self._has_page(response.json(), new_page.id))
 
     def _add_page(self, live=False):
-        new_page = StandardPage(title="My Page Child", slug="mypage-child", live=live)
+        new_page = PageForTests(title="My Page Child", slug="mypage-child", live=live)
         self.page.add_child(instance=new_page)
         return new_page
 

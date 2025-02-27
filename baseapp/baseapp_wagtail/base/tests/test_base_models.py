@@ -5,7 +5,7 @@ from wagtail.test.utils.form_data import nested_form_data, streamfield
 
 import baseapp_wagtail.medias.tests.factories as media_factory
 from baseapp_wagtail.tests.mixins import StandardPageContextMixin
-from baseapp_wagtail.tests.models import StandardPage
+from baseapp_wagtail.tests.models import PageForTests
 
 
 class BasicPageTestsMixin(StandardPageContextMixin):
@@ -27,8 +27,8 @@ class BasicPageTestsMixin(StandardPageContextMixin):
 
 
 class StandardPageTests(BasicPageTestsMixin):
-    model = StandardPage
-    page_type = "tests.StandardPage"
+    model = PageForTests
+    page_type = "tests.PageForTests"
 
     @classmethod
     def setUpTestData(cls):
