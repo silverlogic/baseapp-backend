@@ -17,6 +17,7 @@ INSTALLED_APPS += [
     "baseapp_follows",
     "baseapp_blocks",
     "baseapp_reports",
+    "baseapp_pages",
     "testproject.testapp",
     "graphene_django",
 ]
