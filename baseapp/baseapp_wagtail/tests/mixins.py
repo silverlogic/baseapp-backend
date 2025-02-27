@@ -7,7 +7,7 @@ from wagtail.test.utils import WagtailPageTestCase, WagtailTestUtils
 
 import baseapp_wagtail.medias.tests.factories as medias_factories
 from baseapp_core.tests.factories import UserFactory
-from baseapp_wagtail.tests.models import PageForTests, StandardPage
+from baseapp_wagtail.tests.models import PageForTests
 
 
 @override_settings(ALLOWED_HOSTS=["testserver", "localhost"])
@@ -28,14 +28,14 @@ class StandardPageContextMixin(WagtailBasicMixin):
                 "site_name": "localhost",
             },
         )
-        cls.page = StandardPage(
+        cls.page = PageForTests(
             title="My Page",
             slug="mypage",
         )
         cls.site.root_page.add_child(instance=cls.page)
 
     def _reload_the_page(self):
-        self.page = StandardPage.objects.get(id=self.page.id)
+        self.page = PageForTests.objects.get(id=self.page.id)
 
     def _get_edit_page(self, page):
         response = self.client.get(reverse("wagtailadmin_pages:edit", args=[page.id]))

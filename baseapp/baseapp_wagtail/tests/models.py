@@ -7,7 +7,7 @@ from baseapp_wagtail.base.blocks import (
     CustomImageChooserBlock,
     CustomRichTextBlock,
 )
-from baseapp_wagtail.base.models import BaseStandardPage, DefaultPageModel
+from baseapp_wagtail.base.models import DefaultPageModel
 
 
 class PageForTests(DefaultPageModel):
@@ -26,8 +26,3 @@ class PageForTests(DefaultPageModel):
         blank=True,
         use_json_field=True,
     )
-
-
-class StandardPage(BaseStandardPage):
-    class Meta(DefaultPageModel.Meta):
-        default_related_name = "tests_standard_pages"
