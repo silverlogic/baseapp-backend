@@ -7,6 +7,8 @@ from graphene import relay
 from .filters import UsersFilter
 from .permissions import PermissionsInterface
 
+from query_optimizer import optimize
+
 User = get_user_model()
 
 interfaces = (relay.Node, PermissionsInterface)
@@ -129,12 +131,14 @@ class AbstractUserObjectType(*inheritances, object):
     def resolve_is_new_email_confirmed(self, info):
         return view_user_private_field(self, info, "is_new_email_confirmed")
 
+    MAX_COMPLEXITY = 3
+
     @classmethod
     def get_queryset(cls, queryset, info):
-        queryset = queryset.select_related("profile")
+        queryset.select_related("profile")
         if info.context.user.is_anonymous:
-            return queryset.filter(is_active=True)
-        return queryset
+            return optimize(queryset.filter(is_active=True), info, max_complexity=cls.MAX_COMPLEXITY)
+        return optimize(queryset, info, max_complexity=cls.MAX_COMPLEXITY)
 
     @classmethod
     def get_node(self, info, id):

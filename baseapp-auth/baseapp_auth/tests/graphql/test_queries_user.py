@@ -15,6 +15,40 @@ QUERY = """
     }
 """
 
+MALICIOUS_QUERY = """
+    query MaliciousLoop {
+        users {
+            edges {
+                node {
+                    comments {
+                        edges {
+                            node {
+                                user {
+                                    comments {
+                                        edges {
+                                            node {
+                                                user {
+                                                    comments {
+                                                        edges {
+                                                            node {
+                                                                id
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+"""
+
 
 def test_anon_can_query_user_by_pk(graphql_client):
     user = UserFactory()
@@ -78,3 +112,11 @@ def test_user_with_perm_can_view_others_private_field(django_user_client, graphq
     content = response.json()
 
     assert content["data"]["user"]["email"] == user.email
+
+
+def test_overcomplex_queries_are_not_executed(graphql_client_with_queries):
+    response, queries = graphql_client_with_queries(MALICIOUS_QUERY)
+    content = response.json()
+
+    assert content["errors"][0]["message"] == "Query complexity exceeds the maximum allowed of 3"
+    assert queries.count == 0
