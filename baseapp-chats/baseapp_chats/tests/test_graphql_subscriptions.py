@@ -46,7 +46,10 @@ async def test_user_recieves_news_message_subscription_event(
                 }
                 """
             ),
-            "variables": {"roomId": room.relay_id, "profileId": django_user_client.user.profile.relay_id},
+            "variables": {
+                "roomId": room.relay_id,
+                "profileId": django_user_client.user.profile.relay_id,
+            },
             "operationName": "op_name",
         },
     )
@@ -107,7 +110,10 @@ async def test_build_absolute_uri_on_graphql_subscription(
                 }
                 """
             ),
-            "variables": {"roomId": room.relay_id, "profileId": django_user_client.user.profile.relay_id},
+            "variables": {
+                "roomId": room.relay_id,
+                "profileId": django_user_client.user.profile.relay_id,
+            },
             "operationName": "op_name",
         },
     )
