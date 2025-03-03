@@ -1,5 +1,4 @@
 import graphene
-import time
 import swapper
 from baseapp_core.graphql import (
     RelayMutation,
@@ -399,22 +398,6 @@ class ChatRoomSendMessage(RelayMutation):
     def mutate_and_get_payload(
         cls, root, info, room_id, content, profile_id, in_reply_to_id=None, **input
     ):
-        # Uncomment the next line if you want the sent message to appear after 5 seconds
-        # time.sleep(5)
-
-        # Uncomment the next line if you want to trigger an internal error
-        # raise Exception("Some internal error while sending a message")
-
-        # Uncomment the next lines if you want to trigger a field error
-        # return ChatRoomSendMessage(
-        #    errors=[
-        #        ErrorType(
-        #            field="content",
-        #            messages=[_("You need to write something")],
-        #        )
-        #    ]
-        # )
-
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 
