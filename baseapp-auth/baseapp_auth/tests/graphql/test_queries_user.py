@@ -140,7 +140,7 @@ def test_overcomplex_queries_are_not_executed(graphql_client_with_queries):
     assert queries.count == 0
 
 
-def test_anon_can_query_users_list_with_only_queried_fields(graphql_client_with_queries):
+def test_anon_can_query_users_list_with_optimized_query(graphql_client_with_queries):
     users = UserFactory.create_batch(10)
     response, queries = graphql_client_with_queries(QUERY_USERS_LIST)
     content = response.json()
@@ -151,7 +151,7 @@ def test_anon_can_query_users_list_with_only_queried_fields(graphql_client_with_
         assert content["data"]["users"]["edges"][i]["node"]["firstName"] == user.first_name
         assert content["data"]["users"]["edges"][i]["node"]["lastName"] == user.last_name
 
-    # With optimize queries are expected to be 3 and retrieving just the queried fields:
+    # With optimizer queries are expected to be 3 and retrieving just the queried fields:
     #SELECT "users_user"."id", "users_user"."profile_id", "users_user"."first_name", "users_user"."last_name", ("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AS "password_expiry_date", (("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AT TIME ZONE UTC)::date <= 2025-02-28 AS "is_password_expired", "profiles_profile"."id", "profiles_profile"."name" FROM "users_user" LEFT OUTER JOIN "profiles_profile" ON ("users_user"."profile_id" = "profiles_profile"."id") WHERE "users_user"."is_active"
     #SELECT COUNT(*) AS "__count" FROM "users_user" WHERE "users_user"."is_active"
     #SELECT "users_user"."id", "users_user"."profile_id", "users_user"."first_name", "users_user"."last_name", ("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AS "password_expiry_date", (("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AT TIME ZONE UTC)::date <= 2025-02-28 AS "is_password_expired", "profiles_profile"."id", "profiles_profile"."name" FROM "users_user" LEFT OUTER JOIN "profiles_profile" ON ("users_user"."profile_id" = "profiles_profile"."id") WHERE "users_user"."is_active" LIMIT 10
