@@ -47,7 +47,6 @@ class CommentsInterface(relay.Node):
         CAN_ANONYMOUS_VIEW_COMMENTS = getattr(
             settings, "BASEAPP_COMMENTS_CAN_ANONYMOUS_VIEW_COMMENTS", True
         )
-        import pdb; pdb.set_trace()
         if not CAN_ANONYMOUS_VIEW_COMMENTS and not info.context.user.is_authenticated:
             return Comment.objects.none()
 
@@ -101,7 +100,6 @@ class BaseCommentObjectType:
     @classmethod
     def get_node(self, info, id):
         node = super().get_node(info, id)
-        import pdb; pdb.set_trace()
         if not info.context.user.has_perm(f"{app_label}.view_comment", node):
             return None
         return node
