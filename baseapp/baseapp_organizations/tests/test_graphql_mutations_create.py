@@ -53,4 +53,4 @@ def test_user_can_create_organization(graphql_user_client):
     )
     organization = Organization.objects.get()
     assert organization.profile.name == "my organization"
-    assert organization.profile.url_path.path == "my-organization"
+    assert organization.profile.url_path.path == "/myorganization"
