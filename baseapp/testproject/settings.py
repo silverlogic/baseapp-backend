@@ -30,6 +30,7 @@ INSTALLED_APPS += [
     "baseapp_message_templates",
     "baseapp_url_shortening",
     "baseapp_organizations",
+    "baseapp_content_feed",
     "testproject.testapp",
     "testproject.comments",
     "testproject.profiles",
