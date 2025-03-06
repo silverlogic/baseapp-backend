@@ -110,7 +110,7 @@ class QueryData:
     def __getitem__(self, item: int) -> str:
         # In order to access QueryData like a list (ex: query_data[0])
         return self.queries[item]
-    
+
 
 def db_query_logger(
     execute,
@@ -165,6 +165,7 @@ def get_stack_info() -> str:
 
     return "".join(traceback.StackSummary.from_list(stack).format())
 
+
 # Credit to MrThearMan https://github.com/MrThearMan/graphene-django-query-optimizer/blob/fa240c4816f5d36f709933b6b00bc51d4dff6af5/example_project/app/utils.py#L134
 @contextmanager
 def capture_database_queries():
@@ -174,3 +175,4 @@ def capture_database_queries():
 
     with db.connection.execute_wrapper(query_logger):
         yield query_data
+    
