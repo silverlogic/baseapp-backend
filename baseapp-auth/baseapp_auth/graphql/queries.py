@@ -3,7 +3,6 @@ from django.contrib.auth import get_user_model
 from graphene import Field
 from graphene_django.filter import DjangoFilterConnectionField
 
-
 from .object_types import UserObjectType
 
 User = get_user_model()

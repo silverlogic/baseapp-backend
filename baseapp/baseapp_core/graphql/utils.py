@@ -175,4 +175,3 @@ def capture_database_queries():
 
     with db.connection.execute_wrapper(query_logger):
         yield query_data
-    

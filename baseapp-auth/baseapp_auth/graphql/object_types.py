@@ -3,11 +3,10 @@ from baseapp_core.graphql import DjangoObjectType, ThumbnailField
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from graphene import relay
+from query_optimizer import optimize
 
 from .filters import UsersFilter
 from .permissions import PermissionsInterface
-
-from query_optimizer import optimize
 
 User = get_user_model()
 
