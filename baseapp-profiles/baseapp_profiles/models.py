@@ -14,7 +14,6 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_profiles.managers import ProfileManager
-from baseapp_profiles.signals import update_user_name
 
 inheritances = [TimeStampedModel]
 if apps.is_installed("baseapp_blocks"):
@@ -55,7 +54,6 @@ class AbstractProfile(*inheritances):
         def description(self):
             return self.label
 
-    name = models.CharField(_("name"), max_length=255, blank=True, null=True)
     image = models.ImageField(
         _("image"), upload_to=random_name_in("profile_images"), blank=True, null=True
     )
@@ -135,6 +133,14 @@ class AbstractProfile(*inheritances):
 
         return ProfileObjectType
 
+    @property
+    def name(self):
+        if hasattr(self, "user") and self.user:
+            return f"{self.user.first_name} {self.user.last_name}"
+        if hasattr(self, "organization") and self.organization:
+            return self.organization.name
+        return str(self.pk)
+
     # def save(self, *args, **kwargs):
     #     created = self._state.adding
     #     super().save(*args, **kwargs)
@@ -160,9 +166,6 @@ class ProfilableModel(models.Model):
 class Profile(AbstractProfile):
     class Meta(AbstractProfile.Meta):
         swappable = swapper.swappable_setting("baseapp_profiles", "Profile")
-
-
-post_save.connect(update_user_name, sender=Profile)
 
 
 class AbstractProfileUserRole(RelayModel, models.Model):
