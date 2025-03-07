@@ -1,3 +1,5 @@
+import string
+
 import graphene
 import swapper
 from baseapp_core.graphql import (
@@ -32,10 +34,17 @@ class BaseProfileSerializer(serializers.ModelSerializer):
         fields = ("owner", "name", "image", "banner_image", "biography", "url_path")
 
     def validate_url_path(self, value):
-        if URLPath.objects.filter(path=value).exists():
+        if len(value) < 8:
+            raise serializers.ValidationError(_("Username must be at least 8 characters long."))
+        if value in string.punctuation:
+            raise serializers.ValidationError(_("Username can only contain letters and numbers."))
+        value_with_slash = value if value.startswith("/") else f"/{value}"
+        if URLPath.objects.filter(path=value_with_slash).exists():
+            suggested_value = self.instance.generate_url_path(increase_path_string=value)
             raise serializers.ValidationError(
-                _("URL path already in use, please choose another one")
+                _(f"Username already in use, suggested username: {suggested_value}"),
             )
+
         return value
 
 
@@ -81,7 +90,8 @@ class ProfileUpdateSerializer(BaseProfileSerializer):
             instance.owner.save(update_fields=["phone_number"])
         if url_path:
             instance.url_paths.all().delete()
-            URLPath.objects.create(path=url_path, target=instance, is_active=True)
+            path_with_slash = url_path if url_path.startswith("/") else f"/{url_path}"
+            URLPath.objects.create(path=path_with_slash, target=instance, is_active=True)
         if self.should_delete_field(original_data, "image"):
             instance.image.delete()
         elif "image" in original_data:

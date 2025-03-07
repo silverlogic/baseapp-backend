@@ -1,4 +1,5 @@
-import uuid
+import random
+import string
 
 import swapper
 from baseapp_core.graphql.models import RelayModel
@@ -109,18 +110,47 @@ class AbstractProfile(*inheritances):
             models.Q(profiles_owner=self) | models.Q(profile_members__profile=self)
         ).distinct()
 
-    def generate_url_path(self, random=False):
-        if random:
-            return f"profile/{uuid.uuid4()}"
-        return f"profile/{self.pk}"
+    def generate_url_path(self, increase_path_string=None):
+        if apps.is_installed("baseapp_pages"):
+            from baseapp_pages.models import URLPath
+
+            # In case a path already exists, we'll increase the last digit by 1
+            if increase_path_string:
+                path_string = (
+                    increase_path_string
+                    if increase_path_string.startswith("/")
+                    else f"/{increase_path_string}"
+                )
+                last_char = path_string[-1]
+                if last_char.isdigit():
+                    path_string = path_string[:-1] + str(int(last_char) + 1)
+                else:
+                    path_string = path_string + "1"
+                if URLPath.objects.filter(path=path_string).exists():
+                    return self.generate_url_path(increase_path_string=path_string)
+                return path_string
+
+            name = self.name or ""
+            # Remove whitespaces
+            name = name.translate(str.maketrans("", "", string.whitespace))
+
+            # If name is an email (which would only occur if the user's first and last names are empty during user registration),
+            # we'll remove the email domain and check if it's less than 8 characters. If it is, we'll add random digits to make it 8 characters.
+            # OBS: We're not checking for any other special chars since we've blocked it in the RegisterSerializer in baseapp-auth. If
+            # that changes, we should add a check here.
+            name = name.split("@")[0]
+            if len(name) < 8:
+                path_string = "/" + name + "".join(random.choices(string.digits, k=8 - len(name)))
+            else:
+                path_string = f"/{name}"
+            if URLPath.objects.filter(path=path_string).exists():
+                return self.generate_url_path(increase_path_string=path_string)
+            return path_string
 
     def create_url_path(self):
-        from baseapp_pages.models import URLPath
-
-        url_path = self.generate_url_path()
-        if URLPath.objects.filter(path=url_path).exists():
-            url_path = self.generate_url_path(random=True)
-        self.url_paths.create(path=url_path, language=None, is_active=True)
+        if apps.is_installed("baseapp_pages"):
+            url_path = self.generate_url_path()
+            self.url_paths.create(path=url_path, language=None, is_active=True)
 
     def check_if_member(self, user):
         return (
@@ -135,12 +165,12 @@ class AbstractProfile(*inheritances):
 
         return ProfileObjectType
 
-    # def save(self, *args, **kwargs):
-    #     created = self._state.adding
-    #     super().save(*args, **kwargs)
+    def save(self, *args, **kwargs):
+        created = self._state.adding
+        super().save(*args, **kwargs)
 
-    #     if created:
-    #         self.create_url_path()
+        if created:
+            self.create_url_path()
 
 
 class ProfilableModel(models.Model):
