@@ -1,9 +1,10 @@
 import graphene
 import swapper
-from baseapp_core.graphql import get_object_type_for_model
 from django.db.models import Sum
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
+
+from baseapp_core.graphql import get_object_type_for_model
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 UnreadMessageCount = swapper.load_model("baseapp_chats", "UnreadMessageCount")

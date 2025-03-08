@@ -1,6 +1,4 @@
 import swapper
-from baseapp_core.graphql.models import RelayModel
-from baseapp_core.models import random_name_in
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -9,6 +7,9 @@ from django.utils import timezone
 from django.utils.timesince import timesince as djtimesince
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
+
+from baseapp_core.graphql.models import RelayModel
+from baseapp_core.models import random_name_in
 
 
 class AbstractBaseChatRoom(TimeStampedModel, RelayModel):

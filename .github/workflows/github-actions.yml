@@ -28,10 +28,6 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp-profiles
-  baseapp-chats:
-    uses: ./.github/workflows/project-workflow.yml
-    with:
-      project: baseapp-chats
   baseapp-backend:
     uses: ./.github/workflows/project-workflow.yml
     with:

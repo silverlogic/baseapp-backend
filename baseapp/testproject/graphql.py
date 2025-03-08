@@ -7,6 +7,9 @@ from graphene_django.debug import DjangoDebug
 
 from baseapp.activity_log.graphql.queries import ActivityLogQueries
 from baseapp_blocks.graphql.mutations import BlocksMutations
+from baseapp_chats.graphql.mutations import ChatsMutations
+from baseapp_chats.graphql.queries import ChatsQueries
+from baseapp_chats.graphql.subscriptions import ChatsSubscriptions
 from baseapp_comments.graphql.mutations import CommentsMutations
 from baseapp_comments.graphql.queries import CommentsQueries
 from baseapp_comments.graphql.subscriptions import CommentsSubscriptions
@@ -36,6 +39,7 @@ class Query(
     RatingsQueries,
     PagesQueries,
     OrganizationsQueries,
+    ChatsQueries,
 ):
     node = RelayNodeField(relay.Node)
     debug = graphene.Field(DjangoDebug, name="_debug")
@@ -53,11 +57,14 @@ class Mutation(
     PagesMutations,
     NotificationsMutations,
     OrganizationsMutations,
+    ChatsMutations,
 ):
     delete_node = DeleteNode.Field()
 
 
-class Subscription(graphene.ObjectType, NotificationsSubscription, CommentsSubscriptions):
+class Subscription(
+    graphene.ObjectType, NotificationsSubscription, CommentsSubscriptions, ChatsSubscriptions
+):
     pass
 
 
