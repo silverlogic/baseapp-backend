@@ -6,7 +6,6 @@ from constance import config
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.utils import IntegrityError
 from django.http import JsonResponse
 
@@ -50,7 +49,7 @@ class StripeWebhookHandler:
     def customer_deleted(event):
         customer_data = event["data"]["object"]
         try:
-            Customer.objects.get(remote_customer_id=customer_data["id"]).delete()
+            Customer.objects.filter(remote_customer_id=customer_data["id"]).delete()
             return JsonResponse({"status": "success"}, status=200)
         except Exception:
             return JsonResponse({"status": "success"}, status=200)
@@ -74,9 +73,7 @@ class StripeWebhookHandler:
     def subscription_deleted(event):
         subscription_data = event["data"]["object"]
         try:
-            Subscription.objects.get(remote_subscription_id=subscription_data["id"]).delete()
-            return JsonResponse({"status": "success"}, status=200)
-        except ObjectDoesNotExist:
+            Subscription.objects.filter(remote_subscription_id=subscription_data["id"]).delete()
             return JsonResponse({"status": "success"}, status=200)
         except Exception as e:
             logger.exception(e)
@@ -120,7 +117,7 @@ class StripeService:
             return stripe.Customer.create(email=email)
         except Exception as e:
             logger.exception(e)
-            raise ValidationError("Error creating customer in Stripe")
+            raise Exception("Error creating customer in Stripe")
 
     def retrieve_customer(self, customer_id):
         try:
@@ -131,7 +128,7 @@ class StripeService:
                 return None
         except Exception as e:
             logger.exception(e)
-            raise ValidationError("Error retrieving customer in Stripe")
+            raise Exception("Error retrieving customer in Stripe")
 
     def delete_customer(self, customer_id):
         try:
@@ -142,7 +139,7 @@ class StripeService:
                 return None
         except Exception as e:
             logger.exception(e)
-            raise ValidationError("Error deleting customer in Stripe")
+            raise Exception("Error deleting customer in Stripe")
 
     def create_subscription(self, customer_id, price_id):
         try:
@@ -153,7 +150,7 @@ class StripeService:
             return subscription
         except Exception as e:
             logger.exception(e)
-            raise ValidationError("Error creating subscription in Stripe")
+            raise Exception("Error creating subscription in Stripe")
 
     def retrieve_subscription(self, subscription_id):
         try:
@@ -163,7 +160,7 @@ class StripeService:
             if "No such subscription" in str(e):
                 return None
             logger.exception(e)
-            raise ValidationError("Error retrieving subscription in Stripe")
+            raise Exception("Error retrieving subscription in Stripe")
 
     def list_subscriptions(self, customer_id, **kwargs):
         try:
@@ -173,7 +170,7 @@ class StripeService:
             if "No such customer" in str(e):
                 return None
             logger.exception(e)
-            raise ValidationError("Error retrieving subscriptions for customer in Stripe")
+            raise Exception("Error retrieving subscriptions for customer in Stripe")
 
     def delete_subscription(self, subscription_id):
         try:
@@ -183,7 +180,7 @@ class StripeService:
             if "No such subscription" in str(e):
                 return None
             logger.exception(e)
-            raise ValidationError("Error deleting subscription in Stripe")
+            raise Exception("Error deleting subscription in Stripe")
 
     def list_products(self, **kwargs):
         try:
@@ -191,4 +188,4 @@ class StripeService:
             return products
         except Exception as e:
             logger.exception(e)
-            raise ValidationError("Error retrieving products in Stripe")
+            raise Exception("Error retrieving products in Stripe")

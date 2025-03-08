@@ -95,3 +95,8 @@ class StripeCustomerSerializer(serializers.Serializer):
         representation["entity_type"] = instance.entity._meta.model_name
         representation["entity_id"] = instance.entity.id
         return representation
+
+
+class StripeWebhookSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    object = serializers.CharField()
