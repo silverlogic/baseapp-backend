@@ -6,7 +6,7 @@ from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Subscription, Customer
+from .models import Customer, Subscription
 from .serializers import (
     StripeCustomerSerializer,
     StripeSubscriptionSerializer,
