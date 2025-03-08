@@ -30,8 +30,3 @@ jobs:
     with:
       project: baseapp-profiles
     secrets: inherit
-  baseapp-chats:
-    uses: ./.github/workflows/sonar-workflow.yml
-    with:
-      project: baseapp-chats
-    secrets: inherit

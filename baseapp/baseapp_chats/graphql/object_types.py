@@ -1,15 +1,16 @@
 import graphene
 import swapper
+from django.db.models import Case, When
+from graphene import relay
+from graphene_django import DjangoConnectionField
+from graphene_django.filter import DjangoFilterConnectionField
+
 from baseapp_core.graphql import (
     DjangoObjectType,
     ThumbnailField,
     get_object_type_for_model,
     get_pk_from_relay_id,
 )
-from django.db.models import Case, When
-from graphene import relay
-from graphene_django import DjangoConnectionField
-from graphene_django.filter import DjangoFilterConnectionField
 
 from .filters import ChatRoomFilter
 
