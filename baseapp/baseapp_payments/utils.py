@@ -51,8 +51,9 @@ class StripeWebhookHandler:
         try:
             Customer.objects.filter(remote_customer_id=customer_data["id"]).delete()
             return JsonResponse({"status": "success"}, status=200)
-        except Exception:
-            return JsonResponse({"status": "success"}, status=200)
+        except Exception as e:
+            logger.exception(e)
+            return JsonResponse({"error": "Error"}, status=500)
 
     @staticmethod
     def subscription_created(event):
