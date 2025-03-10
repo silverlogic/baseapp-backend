@@ -72,3 +72,8 @@ JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.User
 
 # Baseapp Auth
 BASEAPP_AUTH_USER_FACTORY = "testproject.testapp.tests.factories.UserFactory"
+
+# Graphene query optimizer
+GRAPHQL_QUERY_OPTIMIZER = {
+    "ALLOW_CONNECTION_AS_DEFAULT_NESTED_TO_MANY_FIELD": True,
+}
