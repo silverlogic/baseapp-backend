@@ -8,11 +8,14 @@ import swapper
 from baseapp_core.graphql import RelayModel
 from model_utils.models import TimeStampedModel
 
-
 def default_reports_count():
-    ReportTypeModel = swapper.load_model("baseapp_reports", "ReportType")
+    return {"total": 0}
 
-    d = {"total": 0}
+
+def default_reports_count_full():
+    d = default_reports_count()
+
+    ReportTypeModel = swapper.load_model("baseapp_reports", "ReportType")
 
     for report_type in ReportTypeModel.objects.all():
         d[report_type.name] = 0
@@ -119,7 +122,7 @@ class Report(AbstractBaseReport):
 def update_reports_count(target):
     if not target:
         return
-    counts = default_reports_count()
+    counts = default_reports_count_full()
     ReportModel = swapper.load_model("baseapp_reports", "Report")
     ReportTypeModel = swapper.load_model("baseapp_reports", "ReportType")
     target_content_type = ContentType.objects.get_for_model(target)

@@ -7,36 +7,46 @@ def create_default_report_types_and_transfer_values(apps, schema_editor):
     ReportType = get_apps_model(apps, "baseapp_reports", "ReportType")
     Report = get_apps_model(apps, "baseapp_reports", "Report")
     ContentType = apps.get_model("contenttypes", "ContentType")
-    comment_content_type = ContentType.objects.get(app_label="comments", model="comment")
-    page_content_type = ContentType.objects.get(app_label="pages", model="page")
 
-    ReportType.objects.bulk_create(
-        [
-            ReportType(name="spam", label="Spam", content_type=[comment_content_type]),
-            ReportType(name="inappropriate", label="Inappropriate", content_type=[comment_content_type]),
-            ReportType(name="fake", label="Fake", content_type=[comment_content_type]),
-            ReportType(name="other", label="Other", content_type=[comment_content_type, page_content_type]),
-            ReportType(name="scam", label="Scam or fraud", content_type=[comment_content_type]),
-            ReportType(name="adult_content", label="Adult Content", content_type=[page_content_type]),
-            ReportType(name="violence", label="Violence, hate or exploitation", content_type=[page_content_type]),
-            ReportType(name="bulling", label="Bulling or unwanted contact", content_type=[page_content_type]),
-        ]
-    )
-    adult_content = ReportType.objects.filter(name="adult_content").first()
-    if not adult_content:
-        raise ValueError("adult_content ReportType was not created!")
-    ReportType.objects.bulk_create(
-        [
-            ReportType(name="pornography", label="Pornography", parent_type=adult_content, content_type=[page_content_type]),
-            ReportType(name="childAbuse", label="Child abuse", parent_type=adult_content, content_type=[page_content_type]),
-            ReportType(name="prostituition", label="Prostituition", parent_type=adult_content, content_type=[page_content_type]),
-        ]
-    )
+    Comment = get_apps_model(apps, "baseapp_comments", "Comment")
+    Page = get_apps_model(apps, "baseapp_pages", "Page")
+    comment_content_type = ContentType.objects.get_for_model(Comment)
+    page_content_type = ContentType.objects.get_for_model(Page)
+
+    base_report_types = [
+        {"name": "spam", "label": "Spam", "content_types": [comment_content_type]},
+        {"name": "inappropriate", "label": "Inappropriate", "content_types": [comment_content_type]},
+        {"name": "fake", "label": "Fake", "content_types": [comment_content_type]},
+        {"name": "other", "label": "Other", "content_types": [comment_content_type, page_content_type]},
+        {"name": "scam", "label": "Scam or fraud", "content_types": [comment_content_type]},
+        {"name": "adult_content", "label": "Adult Content", "content_types": [page_content_type]},
+        {"name": "violence", "label": "Violence, hate or exploitation", "content_types": [page_content_type]},
+        {"name": "bulling", "label": "Bulling or unwanted contact", "content_types": [page_content_type]},
+    ]
+
+    adult_content_type = ''
+    for type in base_report_types:
+        rt = ReportType(name=type["name"], label=type["label"])
+        rt.save()
+        rt.content_type.set(type["content_types"])
+        if type["name"] == "adult_content":
+            adult_content_type = rt
+
+    adult_content_subtypes_types = [
+        {"name": "pornography", "label": "Pornography", "content_types": [page_content_type]},
+        {"name": "childAbuse", "label": "Child abuse", "content_types": [page_content_type]},
+        {"name": "prostituition", "label": "Prostituition", "content_types": [page_content_type]},
+    ]
+
+    for subtype in adult_content_subtypes_types:
+        rt = ReportType(name=subtype["name"], label=subtype["label"], parent_type=adult_content_type)
+        rt.save()
+        rt.content_type.set(subtype["content_types"])
 
     for report in Report.objects.all():
         report_type = ReportType.objects.filter(name=report.report_type).first()
         report.report_type_fk = report_type
-        report.save()
+        report.save(update_fields=["report_type_fk"])
 
 def reverse_create_default_report_types(apps, schema_editor):
     ReportType = get_apps_model(apps, "baseapp_reports", "ReportType")
@@ -46,7 +56,7 @@ def reverse_create_default_report_types(apps, schema_editor):
 
     for report in Report.objects.all():
         report.report_type_fk = None
-        report.save()
+        report.save(update_fields=["report_type_fk"])
 
 
 class Migration(migrations.Migration):

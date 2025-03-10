@@ -60,7 +60,7 @@ class Migration(migrations.Migration):
             ],
             options={
                 "abstract": False,
-                "swappable": "BASEAPP_REPORTS_REPORTTYPE_MODEL",
+                "swappable": swapper.swappable_setting("baseapp_reports", "ReportType"),
             },
         ),
         migrations.AddField(

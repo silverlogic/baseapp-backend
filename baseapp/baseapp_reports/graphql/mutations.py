@@ -7,7 +7,7 @@ from baseapp_core.graphql import RelayMutation, get_obj_from_relay_id, login_req
 from graphql.error import GraphQLError
 from graphql_relay.connection.arrayconnection import offset_to_cursor
 
-from .object_types import ReportsInterface, ReportTypesEnum
+from .object_types import ReportsInterface
 
 Report = swapper.load_model("baseapp_reports", "Report")
 ReportObjectType = Report.get_graphql_object_type()
@@ -19,7 +19,7 @@ class ReportCreate(RelayMutation):
 
     class Input:
         target_object_id = graphene.ID(required=True)
-        report_type = graphene.Field(ReportTypesEnum, required=False)
+        report_type_id = graphene.ID(required=False)
         report_subject = graphene.String(required=False)
 
     @classmethod
