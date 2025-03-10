@@ -1,7 +1,4 @@
-import swapper
-from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ObjectDoesNotExist
-
+from .models import update_or_create_profile
 
 def update_user_profile(instance, created, **kwargs):
     """
@@ -9,15 +6,4 @@ def update_user_profile(instance, created, **kwargs):
     to automatically create a user profile when an instance of User is saved for the first time
     """
 
-    if created and not instance.profile_id:
-        Profile = swapper.load_model("baseapp_profiles", "Profile")
-        target_content_type = ContentType.objects.get_for_model(instance)
-
-        profile = Profile.objects.create(
-            owner=instance,
-            target_content_type=target_content_type,
-            target_object_id=instance.pk,
-        )
-
-        instance.profile = profile
-        instance.save(update_fields=["profile"])
+    update_or_create_profile(instance, instance, f"{instance.first_name} {instance.last_name}")
