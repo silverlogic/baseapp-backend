@@ -54,6 +54,7 @@ class AbstractProfile(*inheritances):
         def description(self):
             return self.label
 
+    name = models.CharField(max_length=255, blank=True, null=True, editable=False)
     image = models.ImageField(
         _("image"), upload_to=random_name_in("profile_images"), blank=True, null=True
     )
@@ -132,14 +133,6 @@ class AbstractProfile(*inheritances):
         from .graphql.object_types import ProfileObjectType
 
         return ProfileObjectType
-
-    @property
-    def name(self):
-        if hasattr(self, "user") and self.user:
-            return f"{self.user.first_name} {self.user.last_name}"
-        if hasattr(self, "organization") and self.organization:
-            return self.organization.name
-        return str(self.pk)
 
     # def save(self, *args, **kwargs):
     #     created = self._state.adding
@@ -220,3 +213,18 @@ class AbstractProfileUserRole(RelayModel, models.Model):
 class ProfileUserRole(AbstractProfileUserRole):
     class Meta(AbstractProfileUserRole.Meta):
         swappable = swapper.swappable_setting("baseapp_profiles", "ProfileUserRole")
+
+
+def update_or_create_profile(instance, owner, profile_name):
+    Profile = swapper.load_model("baseapp_profiles", "Profile")
+    target_content_type = ContentType.objects.get_for_model(instance)
+
+    profile, created = Profile.objects.update_or_create(
+        owner=owner,
+        target_content_type=target_content_type,
+        target_object_id=instance.pk,
+        defaults={"name": profile_name},
+    )
+    if created:
+        instance.profile = profile
+        instance.save(update_fields=["profile"])

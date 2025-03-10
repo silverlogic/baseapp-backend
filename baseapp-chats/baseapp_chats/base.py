@@ -202,9 +202,7 @@ class AbstractChatRoomParticipant(TimeStampedModel, RelayModel):
 
     class Meta:
         abstract = True
-        ordering = [
-            "-role",
-        ]
+        ordering = ["-role", "profile__name"]
 
     @classmethod
     def get_graphql_object_type(cls):
