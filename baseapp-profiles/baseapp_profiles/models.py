@@ -55,7 +55,7 @@ class AbstractProfile(*inheritances):
         def description(self):
             return self.label
 
-    name = models.CharField(max_length=255, blank=True, null=True, editable=False)
+    name = models.CharField(_("name"), max_length=255, blank=True, null=True, editable=False)
     image = models.ImageField(
         _("image"), upload_to=random_name_in("profile_images"), blank=True, null=True
     )
