@@ -1,5 +1,6 @@
 import swapper
 from django.apps import apps
+from django.db import models
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
@@ -16,7 +17,12 @@ inheritances.append(RelayModel)
 
 
 class AbstractOrganization(*inheritances):
-    pass
+    name = models.CharField(
+        _("name"),
+        max_length=255,
+        blank=True,
+        null=True,
+    )
 
     class Meta:
         abstract = True

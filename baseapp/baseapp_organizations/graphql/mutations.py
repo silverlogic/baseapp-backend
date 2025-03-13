@@ -63,7 +63,7 @@ class OrganizationCreate(SerializerMutation):
                 errors=errors,
             )
 
-        name = serializer.validated_data.pop("name")
+        name = serializer.validated_data.get("name")
         url_path = serializer.validated_data.pop("url_path", None)
 
         obj = serializer.save()
