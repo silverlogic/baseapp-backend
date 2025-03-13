@@ -6,6 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.utils.translation import get_language
 from graphene import relay
+from query_optimizer import optimize
 
 from baseapp_comments.graphql.object_types import CommentsInterface
 from baseapp_core.graphql import DjangoObjectType, LanguagesEnum, ThumbnailField
@@ -67,6 +68,11 @@ class URLPathNode(DjangoObjectType):
                 return None
         return self.target
 
+    @classmethod
+    def get_queryset(cls, queryset, info):
+        MAX_COMPLEXITY = 3
+        return optimize(queryset, info, max_complexity=MAX_COMPLEXITY)
+
 
 class PageFilter(django_filters.FilterSet):
     class Meta:
@@ -93,15 +99,25 @@ class BasePageObjectType:
             return None
         return node
 
+    MAX_COMPLEXITY = 3
+
     @classmethod
     def get_queryset(cls, queryset, info):
         if info.context.user.is_active and info.context.user.is_superuser:
-            return queryset
+            return optimize(queryset, info, max_complexity=cls.MAX_COMPLEXITY)
 
         if not info.context.user.is_authenticated:
-            return queryset.filter(status=Page.PageStatus.PUBLISHED)
+            return optimize(
+                queryset.filter(status=Page.PageStatus.PUBLISHED),
+                info,
+                max_complexity=cls.MAX_COMPLEXITY,
+            )
         else:
-            return queryset.filter(Q(status=Page.PageStatus.PUBLISHED) | Q(user=info.context.user))
+            return optimize(
+                queryset.filter(Q(status=Page.PageStatus.PUBLISHED) | Q(user=info.context.user)),
+                info,
+                max_complexity=cls.MAX_COMPLEXITY,
+            )
 
     @classmethod
     def resolve_body(cls, instance, info, **kwargs):
