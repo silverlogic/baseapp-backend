@@ -8,19 +8,19 @@ class Node(GrapheneRelayNode):
         _type = None
 
         try:
+            _id = int(global_id)
+        except ValueError:
             _type, _id = cls.resolve_global_id(info, global_id)
-        except Exception as e:
-            if only_type:
-                graphene_type = only_type
-                _id = global_id
-            else:
-                raise e
 
-        if not graphene_type and _type:
+        if _type:
             graphene_type = info.schema.get_type(_type)
             if graphene_type is None:
                 raise Exception(f'Relay Node "{_type}" not found in schema')
             graphene_type = graphene_type.graphene_type
+        elif only_type:
+            graphene_type = only_type
+        else:
+            raise Exception("Couldn't resolve the type of the node.")
 
         if only_type:
             assert graphene_type == only_type, f"Must receive a {only_type._meta.name} id."
