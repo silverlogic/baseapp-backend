@@ -3,7 +3,7 @@ import graphene
 import swapper
 from channels.db import database_sync_to_async
 
-from baseapp_core.graphql import get_obj_from_relay_id
+from baseapp_core.graphql import get_obj_from_relay_id, get_pk_from_relay_id
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
@@ -97,24 +97,31 @@ class ChatRoomOnMessage(channels_graphql_ws.Subscription):
 
     class Arguments:
         room_id = graphene.ID(required=True)
+        profile_id = graphene.ID(required=True)
 
     @staticmethod
-    def subscribe(root, info, room_id):
-        room = database_sync_to_async(get_obj_from_relay_id)(info, room_id)
-
+    async def subscribe(root, info, room_id, profile_id):
+        room = await database_sync_to_async(get_obj_from_relay_id)(info, room_id)
         user = info.context.channels_scope["user"]
+        profile = await database_sync_to_async(get_obj_from_relay_id)(info, profile_id)
+
         if not user.is_authenticated or not database_sync_to_async(user.has_perm)(
-            "baseapp_chats.view_chatroom", room
+            "baseapp_profiles.use_profile", profile
         ):
+            return []
+
+        if not database_sync_to_async(room.participants.filter(profile=profile).exists)():
             return []
         return [room_id]
 
     @staticmethod
-    def publish(payload, info, room_id):
+    def publish(payload, info, room_id, profile_id):
         message = payload["message"]
         user = info.context.channels_scope["user"]
 
         if not user.is_authenticated:
+            return None
+        if str(message.profile_id) == get_pk_from_relay_id(profile_id):
             return None
 
         return ChatRoomOnMessage(message=MessageObjectType._meta.connection.Edge(node=message))
