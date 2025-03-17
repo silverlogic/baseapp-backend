@@ -112,6 +112,9 @@ class ChatRoomOnMessage(channels_graphql_ws.Subscription):
 
         if not database_sync_to_async(room.participants.filter(profile=profile).exists)():
             return []
+
+        if not database_sync_to_async(user.has_perm)("baseapp_chats.view_chatroom", room):
+            return []
         return [room_id]
 
     @staticmethod
