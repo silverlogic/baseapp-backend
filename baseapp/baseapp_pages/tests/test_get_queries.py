@@ -24,6 +24,15 @@ GET_PAGE_BY_PATH = """
                     pk
                     title
                     body
+                    user {
+                        id
+                        fullName
+                        firstName
+                        profile {
+                            id
+                            name
+                        }
+                    }
                 }
             }
         }
