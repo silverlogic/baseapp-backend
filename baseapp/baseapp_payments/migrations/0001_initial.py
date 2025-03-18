@@ -8,6 +8,9 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = []
+    # dependencies = [
+    #     ("djstripe", "0008_2_5"),
+    # ]
 
     operations = [
         migrations.CreateModel(
