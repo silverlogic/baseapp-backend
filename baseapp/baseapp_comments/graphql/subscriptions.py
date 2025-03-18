@@ -3,6 +3,7 @@ import graphene
 import swapper
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
+from django.core.exceptions import ObjectDoesNotExist
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
 CommentObjectType = Comment.get_graphql_object_type()
@@ -76,10 +77,13 @@ class OnCommentChange(channels_graphql_ws.Subscription):
         if comment.in_reply_to_id:
             groups.append(comment.in_reply_to.relay_id)
         elif comment.target_object_id:
-            target = comment.target_content_type.get_object_for_this_type(
-                pk=comment.target_object_id
-            )
-            groups.append(target.relay_id)
+            try:
+                target = comment.target_content_type.get_object_for_this_type(
+                    pk=comment.target_object_id
+                )
+                groups.append(target.relay_id)
+            except ObjectDoesNotExist:
+                pass
 
         for group_name in groups:
             cls.broadcast(
@@ -94,7 +98,7 @@ class OnCommentChange(channels_graphql_ws.Subscription):
         # comment._sent_updated_comment_subscription_event = True
 
         groups = ["all"]
-        if comment.target_object_id:
+        if comment.target_object_id and comment.target and comment.target.relay_id:
             groups.append(comment.target.relay_id)
 
         if comment.in_reply_to_id:
