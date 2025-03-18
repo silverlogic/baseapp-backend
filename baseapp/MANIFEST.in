@@ -69,3 +69,8 @@ include baseapp_organizations/README.md
 recursive-include baseapp_organizations/templates *
 recursive-include baseapp_organizations/static *
 recursive-include baseapp_organizations/locale *
+
+include baseapp_chats/README.md
+recursive-include baseapp_chats/templates *
+recursive-include baseapp_chats/static *
+recursive-include baseapp_chats/locale *

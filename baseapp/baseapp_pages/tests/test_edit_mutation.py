@@ -8,6 +8,7 @@ from .utils import make_text_into_quill
 pytestmark = pytest.mark.django_db
 
 Page = swapper.load_model("baseapp_pages", "Page")
+page_app_label = Page._meta.app_label
 
 
 EDIT_MUTATION_QUERY = """
@@ -98,7 +99,7 @@ def test_owner_can_edit_page(django_user_client, graphql_user_client):
 
 
 def test_user_with_permission_can_edit_page(django_user_client, graphql_user_client):
-    perm = Permission.objects.get(content_type__app_label="baseapp_pages", codename="change_page")
+    perm = Permission.objects.get(content_type__app_label=page_app_label, codename="change_page")
     django_user_client.user.user_permissions.add(perm)
 
     page = PageFactory(

@@ -1,3 +1,5 @@
+import datetime
+
 import pghistory
 import pytest
 import swapper
@@ -331,6 +333,7 @@ def test_filter_by_partial_match(django_user_client, graphql_user_client):
     django_user_client.user.is_superuser = True
     django_user_client.user.first_name = "john"
     django_user_client.user.last_name = "Doe"
+    django_user_client.user.email = "test01@tsl.io"
 
     django_user_client.user.save()
 
@@ -338,7 +341,7 @@ def test_filter_by_partial_match(django_user_client, graphql_user_client):
 
     django_user_client.user.profile.save()
 
-    another_user = UserFactory(first_name="jean", last_name="Collins")
+    another_user = UserFactory(first_name="jean", last_name="Collins", email="test02@tsl.io")
 
     verb = f"{Comment._meta.app_label}.add_comment"
 
@@ -378,3 +381,35 @@ def test_filter_by_partial_match(django_user_client, graphql_user_client):
 
     content = response.json()
     assert len(content["data"]["activityLogs"]["edges"]) == 1
+
+
+def test_invalid_date_range_created_from_after_created_to(django_user_client, graphql_user_client):
+    now = datetime.date.today()
+    created_from = now + datetime.timedelta(days=1)
+    created_to = now - datetime.timedelta(days=1)
+
+    response = graphql_user_client(
+        """
+        query ActivityLogs($createdFrom: Date, $createdTo: Date) {
+            activityLogs(createdFrom: $createdFrom, createdTo: $createdTo) {
+                edges {
+                    node {
+                        id
+                    }
+                }
+            }
+        }
+        """,
+        variables={
+            "createdFrom": created_from.isoformat(),
+            "createdTo": created_to.isoformat(),
+        },
+    )
+
+    content = response.json()
+    assert "errors" in content
+    error_messages = [error["message"] for error in content["errors"]]
+    assert any(
+        "`created_from` must be earlier than or equal to `created_to`." in message
+        for message in error_messages
+    )

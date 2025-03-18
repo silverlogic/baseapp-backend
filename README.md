@@ -26,7 +26,7 @@ This app uses django provided permission and group model and provides the abilit
 
 Utilities for performing E2E (End-To-End) tests with front-end client. (Database initialization and seeding)
 
-## [baseapp-message-templates](baseapp-message-templates)
+## [baseapp-message-templates](baseapp/baseapp_message_templates)
 
 ## [baseapp-notifications](baseapp/baseapp_notifications)
 
@@ -68,6 +68,10 @@ Reusable app to enable any model follow/unfollow any model.
 
 Reusable app to handle pages, URL's paths and metadata. It provides useful models and GraphQL Interfaces.
 
+## [baseapp-wagtail](baseapp/baseapp_wagtail)
+
+Wagtail CMS integration with BaseApp
+
 ## [baseapp-comments](baseapp/baseapp_comments)
 
 Comment threads on any model. With support for reactions, notifications and GraphQL subscriptions.
@@ -75,6 +79,10 @@ Comment threads on any model. With support for reactions, notifications and Grap
 ## [baseapp-organizations](baseapp/baseapp_organizations)
 
 Reusable app to handle organizations. Users can have and manage multiple Organizations.
+
+## [baseapp-chats](baseapp/baseapp_chats)
+
+Real-time chat between users, and groups of users.
 
 ## How to develop
 

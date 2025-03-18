@@ -7,6 +7,7 @@ from .utils import make_text_into_quill
 pytestmark = pytest.mark.django_db
 
 Page = swapper.load_model("baseapp_pages", "Page")
+page_app_label = Page._meta.app_label
 
 GET_PAGE_BY_PATH = """
     query Page($path: String!) {
@@ -23,6 +24,15 @@ GET_PAGE_BY_PATH = """
                     pk
                     title
                     body
+                    user {
+                        id
+                        fullName
+                        firstName
+                        profile {
+                            id
+                            name
+                        }
+                    }
                 }
             }
         }
@@ -262,15 +272,15 @@ def test_owner_can_change_page(django_user_client, graphql_user_client):
     )
 
     response = graphql_user_client(
-        query="""
-            query Page($id: ID!) {
-                page(id: $id) {
+        query=f"""
+            query Page($id: ID!) {{
+                page(id: $id) {{
                     canChange: hasPerm(perm: "change")
                     canDelete: hasPerm(perm: "delete")
-                    canChangeFull: hasPerm(perm: "baseapp_pages.change_page")
-                    canDeleteFull: hasPerm(perm: "baseapp_pages.delete_page")
-                }
-            }
+                    canChangeFull: hasPerm(perm: "{page_app_label}.change_page")
+                    canDeleteFull: hasPerm(perm: "{page_app_label}.delete_page")
+                }}
+            }}
         """,
         variables={"id": page.relay_id},
     )
