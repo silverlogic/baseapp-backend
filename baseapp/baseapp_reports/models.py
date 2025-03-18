@@ -41,7 +41,7 @@ class AbstractBaseReportType(RelayModel, TimeStampedModel):
 
 class ReportType(AbstractBaseReportType):
     parent_type = models.ForeignKey(
-        "self",
+        swapper.get_model_name("baseapp_reports", "ReportType"),
         blank=True,
         null=True,
         on_delete=models.SET_NULL,

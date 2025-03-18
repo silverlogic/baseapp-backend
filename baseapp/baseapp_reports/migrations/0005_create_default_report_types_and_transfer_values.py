@@ -28,7 +28,7 @@ def create_default_report_types_and_transfer_values(apps, schema_editor):
     for type in base_report_types:
         rt = ReportType(name=type["name"], label=type["label"])
         rt.save()
-        rt.content_type.set(type["content_types"])
+        rt.content_types.set(type["content_types"])
         if type["name"] == "adult_content":
             adult_content_type = rt
 
@@ -41,7 +41,7 @@ def create_default_report_types_and_transfer_values(apps, schema_editor):
     for subtype in adult_content_subtypes_types:
         rt = ReportType(name=subtype["name"], label=subtype["label"], parent_type=adult_content_type)
         rt.save()
-        rt.content_type.set(subtype["content_types"])
+        rt.content_types.set(subtype["content_types"])
 
     for report in Report.objects.all():
         report_type = ReportType.objects.filter(name=report.report_type).first()

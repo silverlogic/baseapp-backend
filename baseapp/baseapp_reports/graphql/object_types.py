@@ -6,6 +6,7 @@ import swapper
 from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
+from .filters import ReportTypeFilter
 
 Report = swapper.load_model("baseapp_reports", "Report")
 ReportType = swapper.load_model("baseapp_reports", "ReportType")
@@ -22,8 +23,8 @@ def create_object_type_from_enum(name):
 # ReportsCount = create_object_type_from_enum("ReportsCount")
 
 
-class ReportsTypeInterface(relay.Node):
-    pass
+# class ReportTypeInterface(relay.Node):
+#     pass
 
 
 class BaseReportTypeObjectType:
@@ -34,12 +35,11 @@ class BaseReportTypeObjectType:
             "id",
             "name",
             "label",
-            "content_types",
             "sub_types",
+            "parent_type",
+            "content_types",
         )
-        filter_fields = {
-            "id": ["exact"],
-        }
+        filterset_class = ReportTypeFilter
 
 
 class ReportTypeObjectType(

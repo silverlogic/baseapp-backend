@@ -1,15 +1,15 @@
 import swapper
 from django.contrib import admin
 
-# ReportType = swapper.load_model("baseapp_reports", "ReportType")
+ReportType = swapper.load_model("baseapp_reports", "ReportType")
 Report = swapper.load_model("baseapp_reports", "Report")
 
 
-# @admin.register(ReportType)
-# class ReportTypeAdmin(admin.ModelAdmin):
-#     list_display = ("id", "name", "label")
-#     search_fields = ("name", "label")
-#     date_hierarchy = "created"
+@admin.register(ReportType)
+class ReportTypeAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "label", "parent_type")
+    search_fields = ("name", "label")
+    date_hierarchy = "created"
 
 
 @admin.register(Report)

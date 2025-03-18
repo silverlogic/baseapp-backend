@@ -10,6 +10,7 @@ from graphql_relay.connection.arrayconnection import offset_to_cursor
 from .object_types import ReportsInterface
 
 Report = swapper.load_model("baseapp_reports", "Report")
+# ReportType = swapper.load_model("baseapp_reports", "ReportType")
 ReportObjectType = Report.get_graphql_object_type()
 
 
@@ -26,7 +27,7 @@ class ReportCreate(RelayMutation):
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
-        report_type = input.get("report_type")
+        # report_type_id = input.get("report_type_id")
         report_subject = input.get("report_subject")
 
         if not info.context.user.has_perm("baseapp_reports.add_report", target):
@@ -36,12 +37,13 @@ class ReportCreate(RelayMutation):
             )
 
         content_type = ContentType.objects.get_for_model(target)
+        # report_type = ReportType.objects.get_for_model(report_type_id)
 
         report = Report.objects.create(
             user=info.context.user,
             target_object_id=target.pk,
             target_content_type=content_type,
-            report_type=report_type,
+            # report_type=report_type,
             report_subject=report_subject,
         )
 
