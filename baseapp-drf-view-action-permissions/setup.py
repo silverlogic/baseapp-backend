@@ -4,7 +4,6 @@ with open("README.md", "r") as f:
     long_description = f.read()
 
 setup(
-    name="baseapp-drf-view-action-permissions",
     packages=find_packages(),
     long_description=long_description,
     long_description_content_type="text/markdown",
