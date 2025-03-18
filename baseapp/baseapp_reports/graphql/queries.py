@@ -22,5 +22,11 @@ class ReportTypesQueries:
         return ReportType.objects.filter(content_types=content_type)
 
 
+class ReportTypesQueries:
+    report_types = DjangoFilterConnectionField(
+        get_object_type_for_model(ReportType)
+    )
+
+
 class ReportsQueries:
     report = Node.Field(get_object_type_for_model(Report))

@@ -35,11 +35,12 @@ class BaseReportTypeObjectType:
             "id",
             "name",
             "label",
-            "sub_types",
-            "parent_type",
             "content_types",
+            "sub_types",
         )
-        filterset_class = ReportTypeFilter
+        filter_fields = {
+            "id": ["exact"],
+        }
 
 
 class ReportTypeObjectType(

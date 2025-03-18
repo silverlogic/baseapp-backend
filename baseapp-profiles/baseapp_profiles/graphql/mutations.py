@@ -1,3 +1,5 @@
+import string
+
 import graphene
 import swapper
 from baseapp_core.graphql import (
@@ -32,10 +34,17 @@ class BaseProfileSerializer(serializers.ModelSerializer):
         fields = ("owner", "name", "image", "banner_image", "biography", "url_path")
 
     def validate_url_path(self, value):
-        if URLPath.objects.filter(path=value).exists():
+        if len(value) < 8:
+            raise serializers.ValidationError(_("Username must be at least 8 characters long."))
+        if value in string.punctuation:
+            raise serializers.ValidationError(_("Username can only contain letters and numbers."))
+        value_with_slash = value if value.startswith("/") else f"/{value}"
+        if URLPath.objects.filter(path=value_with_slash).exists():
+            suggested_value = self.instance.generate_url_path(increase_path_string=value)
             raise serializers.ValidationError(
-                _("URL path already in use, please choose another one")
+                _(f"Username already in use, suggested username: {suggested_value}"),
             )
+
         return value
 
 
@@ -81,7 +90,8 @@ class ProfileUpdateSerializer(BaseProfileSerializer):
             instance.owner.save(update_fields=["phone_number"])
         if url_path:
             instance.url_paths.all().delete()
-            URLPath.objects.create(path=url_path, target=instance, is_active=True)
+            path_with_slash = url_path if url_path.startswith("/") else f"/{url_path}"
+            URLPath.objects.create(path=path_with_slash, target=instance, is_active=True)
         if self.should_delete_field(original_data, "image"):
             instance.image.delete()
         elif "image" in original_data:
@@ -154,6 +164,37 @@ class RoleUpdate(RelayMutation):
         obj.save()
 
         return RoleUpdate(profile_user_role=obj)
+
+
+class ProfileRemoveMember(RelayMutation):
+    deleted_id = graphene.ID()
+
+    class Input:
+        profile_id = graphene.ID(required=True)
+        user_id = graphene.ID(required=True)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        profile_id = input.get("profile_id")
+        user_id = input.get("user_id")
+        profile_pk = get_pk_from_relay_id(profile_id)
+        user_pk = get_pk_from_relay_id(user_id)
+        obj = ProfileUserRole.objects.get(user_id=user_pk, profile_id=profile_pk)
+
+        if not obj:
+            raise GraphQLError(_("User role not found"))
+
+        if not info.context.user.has_perm("baseapp_profiles.delete_profileuserrole", obj.profile):
+            raise GraphQLError(
+                str(_("You don't have permission to perform this action")),
+                extensions={"code": "permission_required"},
+            )
+
+        id_to_return = obj.relay_id
+        obj.delete()
+
+        return ProfileRemoveMember(deleted_id=id_to_return)
 
 
 class ProfileUpdate(SerializerMutation):
@@ -247,3 +288,4 @@ class ProfilesMutations(object):
     profile_update = ProfileUpdate.Field()
     profile_delete = ProfileDelete.Field()
     profile_role_update = RoleUpdate.Field()
+    profile_remove_member = ProfileRemoveMember.Field()

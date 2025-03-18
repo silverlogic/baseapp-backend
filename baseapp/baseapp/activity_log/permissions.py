@@ -17,6 +17,7 @@ class ActivityLogPermissionsBackend(BaseBackend):
         PERM_LIST_PROFILE,
         PERM_LIST_NODE,
         PERM_VIEW,
+        PERM_VIEW_NODE_DIFF,
     }
 
     def has_perm(self, user_obj, perm, obj=None):

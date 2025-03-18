@@ -7,6 +7,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from baseapp_core.graphql import (
+    DeleteNode,
     SerializerMutation,
     get_pk_from_relay_id,
     login_required,
@@ -16,6 +17,7 @@ from ..models import URLPath
 
 Page = swapper.load_model("baseapp_pages", "Page")
 PageObjectType = Page.get_graphql_object_type()
+page_app_label = Page._meta.app_label
 
 
 class PageSerializer(serializers.ModelSerializer):
@@ -64,7 +66,7 @@ class PageCreate(SerializerMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        if not info.context.user.has_perm("baseapp_pages.add_page"):
+        if not info.context.user.has_perm(f"{page_app_label}.add_page"):
             raise PermissionError(_("You don't have permission to create a page"))
 
         return super().mutate_and_get_payload(root, info, **input)
@@ -91,7 +93,7 @@ class PageEdit(SerializerMutation):
     def get_serializer_kwargs(cls, root, info, **input):
         pk = get_pk_from_relay_id(input.get("id"))
         instance = Page.objects.get(pk=pk)
-        if not info.context.user.has_perm("baseapp_pages.change_page", instance):
+        if not info.context.user.has_perm(f"{page_app_label}.change_page", instance):
             raise PermissionError(_("You don't have permission to edit this page"))
         return {
             "instance": instance,
@@ -117,3 +119,4 @@ class PageEdit(SerializerMutation):
 class PagesMutations(object):
     page_create = PageCreate.Field()
     page_edit = PageEdit.Field()
+    page_delete = DeleteNode.Field()
