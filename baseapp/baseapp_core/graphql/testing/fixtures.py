@@ -9,6 +9,8 @@ from django.test import Client
 from graphene_django.settings import graphene_settings
 from rest_framework.authtoken.models import Token
 
+from baseapp_core.graphql.utils import capture_database_queries
+
 from ..consumers import GraphqlWsAuthenticatedConsumer
 
 DEFAULT_GRAPHQL_URL = "/graphql"
@@ -24,6 +26,7 @@ def graphql_query(
     graphql_url=None,
     content_type="application/json",
     extra={},
+    queries=None,
 ):
     """
     Args:
@@ -78,6 +81,8 @@ def graphql_query(
         resp = client.post(graphql_url, encoded_body, content_type=content_type, **headers)
     else:
         resp = client.post(graphql_url, encoded_body, content_type=content_type)
+    if queries:
+        return resp, queries
     return resp
 
 
@@ -85,6 +90,15 @@ def graphql_query(
 def graphql_client(django_client):
     def func(*args, **kwargs):
         return graphql_query(*args, **kwargs, client=django_client)
+
+    return func
+
+
+@pytest.fixture
+def graphql_client_with_queries(django_client):
+    def func(*args, **kwargs):
+        with capture_database_queries() as queries:
+            return graphql_query(*args, **kwargs, client=django_client, queries=queries)
 
     return func
 

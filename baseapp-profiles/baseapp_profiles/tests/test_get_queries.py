@@ -1,5 +1,6 @@
 import pytest
 import swapper
+from baseapp_core.tests.factories import UserFactory
 from baseapp_pages.tests.factories import URLPathFactory
 from django.contrib.contenttypes.models import ContentType
 
@@ -300,12 +301,16 @@ def test_search_members_filters_by_name(django_user_client, graphql_user_client)
 
 
 def test_search_members_filters_by_last_name(django_user_client, graphql_user_client):
+    django_user_client.user.last_name = "Owner"
+    django_user_client.user.save()
     user = django_user_client.user
     profile = ProfileFactory(owner=user)
     p1 = ProfileUserRoleFactory(
         profile=profile,
         status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
+        user=UserFactory(last_name="Member"),
     )
+    p1.user.refresh_from_db()
     ProfileUserRoleFactory(
         profile=profile,
         status=ProfileUserRole.ProfileRoleStatus.PENDING,
@@ -331,6 +336,7 @@ def test_search_members_filters_by_last_name(django_user_client, graphql_user_cl
 
     content = response.json()
     members = content["data"]["profile"]["members"]["edges"]
+
     assert len(members) == 1
     assert members[0]["node"]["status"] == "ACTIVE"
 
