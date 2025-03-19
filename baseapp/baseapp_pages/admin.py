@@ -20,7 +20,6 @@ class URLPathAdmin(admin.ModelAdmin):
     search_fields = ("path",)
     list_display = ("id", "path", "language", "is_active", "view_target", "created")
     list_filter = ("target_content_type", "language", "is_active")
-    list_display = ["upper_case_name"]
 
     @admin.display(description="target")
     def view_target(self, obj):
