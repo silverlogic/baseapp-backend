@@ -28,12 +28,12 @@ class Migration(migrations.Migration):
                 ("name", models.CharField(max_length=50)),
                 ("slug", models.SlugField(unique=True)),
                 ("is_active", models.BooleanField(default=True)),
-                (
-                    "price",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE, to="djstripe.Price"
-                    ),
-                ),
+                # (
+                #     "price",
+                #     models.ForeignKey(
+                #         on_delete=django.db.models.deletion.CASCADE, to="djstripe.Price"
+                #     ),
+                # ),
             ],
             options={
                 "swappable": "APPS.PAYMENTS_PLAN_MODEL",
