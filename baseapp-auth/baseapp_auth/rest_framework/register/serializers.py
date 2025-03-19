@@ -10,6 +10,8 @@ User = get_user_model()
 
 class RegisterSerializer(serializers.Serializer):
     name = serializers.CharField(required=False, allow_blank=True)
+    first_name = serializers.CharField(required=False, allow_blank=True)
+    last_name = serializers.CharField(required=False, allow_blank=True)
     email = serializers.EmailField()
     password = serializers.CharField()
     referral_code = serializers.CharField(required=False, allow_blank=True)
@@ -34,7 +36,11 @@ class RegisterSerializer(serializers.Serializer):
 
     def save(self):
         validated_data = self.validated_data
-        validated_data["first_name"] = validated_data.pop("name", "")
+        names = validated_data.pop("name", "").split(" ")
+        if not validated_data.get("first_name") and not validated_data.get("last_name") and names:
+            validated_data["first_name"] = names[0]
+            if len(names) > 1:
+                validated_data["last_name"] = " ".join(names[1:])
         user = User.objects.create_user(**validated_data)
         if use_referrals() and hasattr(self, "referrer"):
             get_user_referral_model().objects.create(referrer=self.referrer, referee=user)
