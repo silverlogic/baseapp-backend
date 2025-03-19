@@ -80,6 +80,10 @@ Comment threads on any model. With support for reactions, notifications and Grap
 
 Reusable app to handle organizations. Users can have and manage multiple Organizations.
 
+## [baseapp-chats](baseapp/baseapp_chats)
+
+Real-time chat between users, and groups of users.
+
 ## How to develop
 
 Each module of baseapp-backend has a demo project in `testproject/` directory, which can be run as a standalone Django app to test. Then in baseapp-backend directory:

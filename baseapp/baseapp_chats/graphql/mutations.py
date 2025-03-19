@@ -1,11 +1,5 @@
 import graphene
 import swapper
-from baseapp_core.graphql import (
-    RelayMutation,
-    get_obj_from_relay_id,
-    get_pk_from_relay_id,
-    login_required,
-)
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Count, Q
@@ -23,6 +17,12 @@ from baseapp_chats.utils import (
     CONTENT_LINKED_PROFILE_ACTOR,
     send_message,
     send_new_chat_message_notification,
+)
+from baseapp_core.graphql import (
+    RelayMutation,
+    get_obj_from_relay_id,
+    get_pk_from_relay_id,
+    login_required,
 )
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")

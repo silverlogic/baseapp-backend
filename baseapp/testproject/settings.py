@@ -30,6 +30,7 @@ INSTALLED_APPS += [
     "baseapp_message_templates",
     "baseapp_url_shortening",
     "baseapp_organizations",
+    "baseapp_chats",
     "testproject.testapp",
     "testproject.comments",
     "testproject.profiles",
@@ -94,6 +95,7 @@ AUTHENTICATION_BACKENDS = [
     "baseapp_blocks.permissions.BlocksPermissionsBackend",
     "baseapp_pages.permissions.PagesPermissionsBackend",
     "baseapp_organizations.permissions.OrganizationsPermissionsBackend",
+    "baseapp_chats.permissions.ChatsPermissionsBackend",
 ]
 
 ADMIN_TIME_ZONE = "UTC"
@@ -124,3 +126,8 @@ BASEAPP_PROFILES_PROFILE_MODEL = "profiles.Profile"
 NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"
 BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False
 BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS = False
+
+# Graphene query optimizer
+GRAPHQL_QUERY_OPTIMIZER = {
+    "ALLOW_CONNECTION_AS_DEFAULT_NESTED_TO_MANY_FIELD": True,
+}

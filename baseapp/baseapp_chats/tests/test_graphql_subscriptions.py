@@ -2,8 +2,9 @@ import textwrap
 
 import pytest
 import swapper
-from baseapp_core.tests.factories import UserFactory
 from channels.db import database_sync_to_async
+
+from baseapp_core.tests.factories import UserFactory
 
 from ..utils import send_message
 from .factories import ChatRoomFactory, ChatRoomParticipantFactory

@@ -1,8 +1,9 @@
 import swapper
-from baseapp_notifications import send_notification
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
+
+from baseapp_notifications import send_notification
 
 CONTENT_LINKED_PROFILE_ACTOR = "{content_linked_profile_actor}"
 CONTENT_LINKED_PROFILE_TARGET = "{content_linked_profile_target}"

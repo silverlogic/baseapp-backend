@@ -1,8 +1,9 @@
 import channels_graphql_ws
 import graphene
 import swapper
-from baseapp_core.graphql import get_obj_from_relay_id
 from channels.db import database_sync_to_async
+
+from baseapp_core.graphql import get_obj_from_relay_id
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
