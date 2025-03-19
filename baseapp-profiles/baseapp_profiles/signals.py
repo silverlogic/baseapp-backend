@@ -1,5 +1,6 @@
 from .models import update_or_create_profile
 
+
 def update_user_profile(instance, created, **kwargs):
     """
     Call django.db.models.signals.post_save.connect(update_user_profile, sender=User)
