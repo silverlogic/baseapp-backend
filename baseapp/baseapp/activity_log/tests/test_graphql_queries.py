@@ -333,6 +333,7 @@ def test_filter_by_partial_match(django_user_client, graphql_user_client):
     django_user_client.user.is_superuser = True
     django_user_client.user.first_name = "john"
     django_user_client.user.last_name = "Doe"
+    django_user_client.user.email = "test01@tsl.io"
 
     django_user_client.user.save()
 
@@ -340,7 +341,7 @@ def test_filter_by_partial_match(django_user_client, graphql_user_client):
 
     django_user_client.user.profile.save()
 
-    another_user = UserFactory(first_name="jean", last_name="Collins")
+    another_user = UserFactory(first_name="jean", last_name="Collins", email="test02@tsl.io")
 
     verb = f"{Comment._meta.app_label}.add_comment"
 
