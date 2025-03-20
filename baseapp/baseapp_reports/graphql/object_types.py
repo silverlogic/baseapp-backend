@@ -23,10 +23,6 @@ def create_object_type_from_enum(name):
 ReportsCount = create_object_type_from_enum("ReportsCount")
 
 
-class ReportsTypeInterface(relay.Node):
-    pass
-
-
 class BaseReportTypeObjectType:
     class Meta:
         interfaces = (relay.Node,)
