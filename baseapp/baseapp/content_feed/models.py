@@ -26,6 +26,12 @@ class AbstractContentPost(RelayModel, TimeStampedModel):
 
     class Meta:
         abstract = True
+    
+    @classmethod
+    def get_graphql_object_type(cls):
+        from .graphql.object_types import ContentPostObjectType
+
+        return ContentPostObjectType
 
 
 class ContentPost(AbstractContentPost):
@@ -48,6 +54,12 @@ class AbstractContentPostImage(RelayModel):
 
     class Meta:
         abstract = True
+
+    @classmethod
+    def get_graphql_object_type(cls):
+        from .graphql.object_types import ContentPostImageObjectType
+
+        return ContentPostImageObjectType
 
 class ContentPostImage(AbstractContentPostImage):
 
