@@ -20,11 +20,11 @@ def create_object_type_from_enum(name):
     return type(name, (graphene.ObjectType,), fields)
 
 
-# ReportsCount = create_object_type_from_enum("ReportsCount")
+ReportsCount = create_object_type_from_enum("ReportsCount")
 
 
-# class ReportTypeInterface(relay.Node):
-#     pass
+class ReportsTypeInterface(relay.Node):
+    pass
 
 
 class BaseReportTypeObjectType:
@@ -38,6 +38,7 @@ class BaseReportTypeObjectType:
             "content_types",
             "sub_types",
         )
+        filterset_class = ReportTypeFilter
         filter_fields = {
             "id": ["exact"],
         }
@@ -51,7 +52,7 @@ class ReportTypeObjectType(
 
 
 class ReportsInterface(relay.Node):
-    # reports_count = graphene.Field(ReportsCount)
+    reports_count = graphene.Field(ReportsCount)
     reports = DjangoFilterConnectionField(get_object_type_for_model(Report))
     my_reports = graphene.Field(get_object_type_for_model(Report), required=False)
 
