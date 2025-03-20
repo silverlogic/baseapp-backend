@@ -248,7 +248,7 @@ class StripeService:
 
     def delete_subscription(self, subscription_id):
         try:
-            response = stripe.Subscription.delete(subscription_id)
+            response = stripe.Subscription.cancel(subscription_id)
             return response
         except Exception as e:
             if "No such subscription" in str(e):

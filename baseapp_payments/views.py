@@ -41,15 +41,13 @@ class StripeSubscriptionViewset(
         return Response(serializer.errors, status=400)
 
     def retrieve(self, request, remote_subscription_id=None):
-        subscription = StripeService().retrieve_subscription(
-            remote_subscription_id, user=request.user
-        )
+        subscription = StripeService().retrieve_subscription(remote_subscription_id)
         if not subscription:
             raise NotFound("Subscription not found")
         return Response(subscription, status=200)
 
     def delete(self, request):
-        remote_subscription_id = request.data.get("remote_subscription_id")
+        remote_subscription_id = request.query_params.get("remote_subscription_id")
         customer = Customer.objects.filter(entity_id=self.request.user.id).first()
         if not customer:
             raise NotFound("Customer does not exist.")

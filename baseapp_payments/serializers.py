@@ -186,6 +186,10 @@ class StripeProductSerializer(serializers.Serializer):
     default_price = StripePriceSerializer(allow_null=True)
     metadata = serializers.DictField(required=False)
     images = serializers.ListField(child=serializers.URLField(), required=False)
+    marketing_features = serializers.ListField(
+        read_only=True,
+        child=serializers.DictField(),
+    )
 
 
 class StripeCardSerializer(serializers.Serializer):
