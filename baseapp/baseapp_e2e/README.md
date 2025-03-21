@@ -74,7 +74,7 @@ There is a [test project](testproject/) with a complete demo set up.
 Install in your environment:
 
 ```bash
-pip install baseapp-e2e
+pip install baseapp-backend
 ```
 
 ### Settings
