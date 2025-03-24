@@ -8,8 +8,16 @@ from baseapp_wagtail.settings import (
     WAGTAIL_MIDDLEWARE,
 )
 
+MEDIA_ROOT = "/media/"
+MEDIA_URL = "/media/"
+STATIC_ROOT = "/static/"
+STATIC_URL = "/static/"
+
+
 # Application definition
 INSTALLED_APPS += [
+    # TODO: (wagtail) move grapple to baseapp_wagtail
+    "grapple",
     "graphene_django",
     "notifications",
     "push_notifications",

@@ -1,4 +1,6 @@
 from django.utils.safestring import mark_safe
+from grapple.helpers import register_streamfield_block
+from grapple.models import GraphQLString, GraphQLRichText, GraphQLImage
 from wagtail.blocks import CharBlock, ChoiceBlock, StaticBlock, StructBlock
 
 from baseapp_wagtail.base.blocks.basic_blocks.custom_image_chooser_block import (
@@ -11,6 +13,7 @@ from baseapp_wagtail.base.blocks.basic_blocks.custom_rich_text_block import (
 RICH_TEXT_FEATURES = ["bold", "italic", "link", "ul", "hr"]
 
 
+@register_streamfield_block
 class BannerBlock(StructBlock):
     title = CharBlock(required=True, use_json_field=True, max_length=50)
     description = CustomRichTextBlock(
@@ -38,11 +41,12 @@ class BannerBlock(StructBlock):
         help_text="This indicates the position of the image in the desktop view.",
     )
 
-    def get_api_representation(self, value, context=None):
-        serialized_data = super().get_api_representation(value, context)
-        serialized_data.pop("hr")
-
-        return serialized_data
+    graphql_fields = [
+        GraphQLString("title"),
+        GraphQLRichText("description"),
+        GraphQLImage("featured_image"),
+        GraphQLString("image_position"),
+    ]
 
     class Meta:
         template = "base/blocks/empty.html"

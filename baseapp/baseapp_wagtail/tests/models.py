@@ -1,5 +1,6 @@
 from wagtail.blocks import StreamBlock
 from wagtail.fields import StreamField
+from grapple.models import GraphQLStreamfield
 
 from baseapp_wagtail.base.blocks import (
     BannerBlock,
@@ -26,3 +27,8 @@ class PageForTests(DefaultPageModel):
         blank=True,
         use_json_field=True,
     )
+
+    # TODO: (wagtail) remove this.
+    graphql_fields = [
+        GraphQLStreamfield("body"),
+    ]
