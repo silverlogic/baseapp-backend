@@ -1,14 +1,19 @@
+import graphene
 from django.utils.safestring import mark_safe
 from grapple.helpers import register_streamfield_block
-from grapple.models import GraphQLString, GraphQLRichText, GraphQLImage
-from wagtail.blocks import CharBlock, ChoiceBlock, StaticBlock, StructBlock
+from grapple.models import GraphQLImage, GraphQLRichText, GraphQLString
+from wagtail.blocks import (
+    CharBlock,
+    ChoiceBlock,
+    RichTextBlock,
+    StaticBlock,
+    StructBlock,
+)
 
 from baseapp_wagtail.base.blocks.basic_blocks.custom_image_chooser_block import (
     CustomImageChooserBlock,
 )
-from baseapp_wagtail.base.blocks.basic_blocks.custom_rich_text_block import (
-    CustomRichTextBlock,
-)
+from baseapp_wagtail.base.graphql.fields import GraphQLDynamicField
 
 RICH_TEXT_FEATURES = ["bold", "italic", "link", "ul", "hr"]
 
@@ -16,7 +21,7 @@ RICH_TEXT_FEATURES = ["bold", "italic", "link", "ul", "hr"]
 @register_streamfield_block
 class BannerBlock(StructBlock):
     title = CharBlock(required=True, use_json_field=True, max_length=50)
-    description = CustomRichTextBlock(
+    description = RichTextBlock(
         icon="pilcrow",
         required=False,
         features=RICH_TEXT_FEATURES,
@@ -42,10 +47,14 @@ class BannerBlock(StructBlock):
     )
 
     graphql_fields = [
-        GraphQLString("title"),
+        GraphQLString("title", required=True),
         GraphQLRichText("description"),
         GraphQLImage("featured_image"),
-        GraphQLString("image_position"),
+        GraphQLDynamicField(
+            "image_position",
+            graphene.Enum("ImagePosition", [("left", "Left"), ("right", "Right")]),
+            required=True,
+        ),
     ]
 
     class Meta:

@@ -56,10 +56,6 @@ class DefaultPageModel(HeadlessPageMixin, Page, metaclass=HeadlessPageBase):
         APIField("body"),
     ]
 
-    graphql_fields = [
-        GraphQLStreamfield("body")
-    ]
-
     search_fields = Page.search_fields + [
         index.SearchField("body"),
         index.AutocompleteField("body"),
@@ -73,6 +69,11 @@ class BaseStandardPage(DefaultPageModel):
     body = PageBodyStreamField.create(
         StandardPageStreamBlock(required=False),
     )
+
+    graphql_fields = [
+        GraphQLStreamfield("body")
+        # TODO: (wagtail) Add the featured image to the graphql fields
+    ]
 
     class Meta:
         verbose_name = _("Standard page")

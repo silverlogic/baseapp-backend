@@ -1,17 +1,15 @@
-from graphene.types import Scalar
-from graphene_django.converter import convert_django_field
-from wagtail.fields import StreamField
-from wagtail.blocks import StreamValue
+from grapple.models import GraphQLField
 
 
-class GenericStreamFieldType(Scalar):
-    @staticmethod
-    def serialize(stream_value):
-        return stream_value.stream_block.get_api_representation(stream_value) if isinstance(stream_value, StreamValue) else []
+def GraphQLDynamicField(field_name: str, field_type: type, **kwargs):
+    """
+    Args:
+        field_name: str
+        field_type: type - Must be a graphene scalar type.
+        **kwargs: dict - Additional arguments for the GraphQLField.
+    """
 
+    def Mixin():
+        return GraphQLField(field_name, field_type, **kwargs)
 
-# @convert_django_field.register(StreamField)
-# def convert_stream_field(field, registry=None):
-#     return GenericStreamFieldType(
-#         description=field.help_text, required=not field.null
-#     )
+    return Mixin

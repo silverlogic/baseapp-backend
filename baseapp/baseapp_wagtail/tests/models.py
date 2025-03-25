@@ -1,12 +1,11 @@
-from wagtail.blocks import StreamBlock
-from wagtail.fields import StreamField
 from grapple.models import GraphQLStreamfield
+from wagtail.blocks import RichTextBlock, StreamBlock
+from wagtail.fields import StreamField
 
 from baseapp_wagtail.base.blocks import (
     BannerBlock,
     CustomImageBlock,
     CustomImageChooserBlock,
-    CustomRichTextBlock,
 )
 from baseapp_wagtail.base.models import DefaultPageModel
 
@@ -19,7 +18,7 @@ class PageForTests(DefaultPageModel):
                 ("custom_image_chooser_block", CustomImageChooserBlock()),
                 ("custom_image_block", CustomImageBlock()),
                 # Base
-                ("custom_rich_text_block", CustomRichTextBlock()),
+                ("custom_rich_text_block", RichTextBlock()),
                 ("banner_block", BannerBlock()),
             ]
         ),

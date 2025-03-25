@@ -1,8 +1,8 @@
 from django.utils.html import escape
-from wagtail import hooks
-from wagtail.rich_text import LinkHandler
 from grapple.registry import registry
+from wagtail import hooks
 from wagtail.models import Page as WagtailPage
+from wagtail.rich_text import LinkHandler
 
 from .graphql.object_types import Page
 

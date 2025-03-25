@@ -4,8 +4,8 @@ from baseapp_profiles.graphql.queries import ProfilesQueries
 from graphene import relay
 from graphene.relay.node import NodeField as RelayNodeField
 from graphene_django.debug import DjangoDebug
-from grapple.schema import schema as grapple_schema
 from grapple.registry import registry
+from grapple.schema import schema as grapple_schema
 
 from baseapp.activity_log.graphql.queries import ActivityLogQueries
 from baseapp_blocks.graphql.mutations import BlocksMutations
@@ -21,6 +21,7 @@ from baseapp_notifications.graphql.mutations import NotificationsMutations
 from baseapp_notifications.graphql.subscriptions import NotificationsSubscription
 from baseapp_organizations.graphql.mutations import OrganizationsMutations
 from baseapp_organizations.graphql.queries import OrganizationsQueries
+
 # from baseapp_pages.graphql.mutations import PagesMutations
 # from baseapp_pages.graphql.queries import PagesQueries
 from baseapp_ratings.graphql.mutations import RatingsMutations
@@ -30,16 +31,18 @@ from baseapp_reactions.graphql.queries import ReactionsQueries
 from baseapp_reports.graphql.mutations import ReportsMutations
 from testproject.testapp.graphql.queries import UsersQueries
 
-
 try:
     WagtailMutation = grapple_schema.Mutation
 except AttributeError:
+
     class WagtailMutation:
         pass
+
 
 try:
     WagtailSubscription = grapple_schema.Subscription
 except AttributeError:
+
     class WagtailSubscription:
         pass
 
@@ -90,8 +93,5 @@ class Subscription(
 
 
 schema = graphene.Schema(
-    query=Query,
-    mutation=Mutation,
-    subscription=Subscription,
-    types=list(registry.models.values())
+    query=Query, mutation=Mutation, subscription=Subscription, types=list(registry.models.values())
 )
