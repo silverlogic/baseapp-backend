@@ -10,18 +10,20 @@ def create_default_report_types_and_transfer_values(apps, schema_editor):
 
     Comment = get_apps_model(apps, "baseapp_comments", "Comment")
     Page = get_apps_model(apps, "baseapp_pages", "Page")
+    Profile = get_apps_model(apps, "baseapp_profiles", "Profile")
     comment_content_type = ContentType.objects.get_for_model(Comment)
     page_content_type = ContentType.objects.get_for_model(Page)
+    profile_content_type = ContentType.objects.get_for_model(Profile)
 
     base_report_types = [
         {"name": "spam", "label": "Spam", "content_types": [comment_content_type]},
         {"name": "inappropriate", "label": "Inappropriate", "content_types": [comment_content_type]},
         {"name": "fake", "label": "Fake", "content_types": [comment_content_type]},
-        {"name": "other", "label": "Other", "content_types": [comment_content_type, page_content_type]},
+        {"name": "other", "label": "Other", "content_types": [comment_content_type, page_content_type, profile_content_type]},
         {"name": "scam", "label": "Scam or fraud", "content_types": [comment_content_type]},
-        {"name": "adult_content", "label": "Adult Content", "content_types": [page_content_type]},
-        {"name": "violence", "label": "Violence, hate or exploitation", "content_types": [page_content_type]},
-        {"name": "bulling", "label": "Bulling or unwanted contact", "content_types": [page_content_type]},
+        {"name": "adult_content", "label": "Adult Content", "content_types": [page_content_type, profile_content_type]},
+        {"name": "violence", "label": "Violence, hate or exploitation", "content_types": [page_content_type, profile_content_type]},
+        {"name": "bulling", "label": "Bulling or unwanted contact", "content_types": [page_content_type, profile_content_type]},
     ]
 
     adult_content_type = ''
@@ -33,9 +35,9 @@ def create_default_report_types_and_transfer_values(apps, schema_editor):
             adult_content_type = rt
 
     adult_content_subtypes_types = [
-        {"name": "pornography", "label": "Pornography", "content_types": [page_content_type]},
-        {"name": "childAbuse", "label": "Child abuse", "content_types": [page_content_type]},
-        {"name": "prostituition", "label": "Prostituition", "content_types": [page_content_type]},
+        {"name": "pornography", "label": "Pornography", "content_types": [page_content_type, profile_content_type]},
+        {"name": "childAbuse", "label": "Child abuse", "content_types": [page_content_type, profile_content_type]},
+        {"name": "prostituition", "label": "Prostituition", "content_types": [page_content_type, profile_content_type]},
     ]
 
     for subtype in adult_content_subtypes_types:

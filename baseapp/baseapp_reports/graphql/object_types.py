@@ -14,8 +14,8 @@ ReportType = swapper.load_model("baseapp_reports", "ReportType")
 
 def create_object_type_from_enum(name):
     fields = {}
-    # for reaction_type in ReportType.objects.all():
-    #     fields[reaction_type.name] = graphene.Int()
+    for reaction_type in ReportType.objects.all():
+        fields[reaction_type.name] = graphene.Int()
     fields["total"] = graphene.Int()
     return type(name, (graphene.ObjectType,), fields)
 
@@ -36,9 +36,6 @@ class BaseReportTypeObjectType:
             "parent_type",
         )
         filterset_class = ReportTypeFilter
-        filter_fields = {
-            "id": ["exact"],
-        }
 
 
 class ReportTypeObjectType(
@@ -46,21 +43,6 @@ class ReportTypeObjectType(
 ):
     class Meta(BaseReportTypeObjectType.Meta):
         pass
-
-
-# class ReportTypesInterface(relay.Node):
-#     report_types = DjangoFilterConnectionField(ReportTypeObjectType)
-#     all_report_types = DjangoFilterConnectionField(ReportTypeObjectType)
-
-#     def resolve_all_report_types(self, info, **kwargs):
-#         print("========================XABLAU=========================")
-#         target_object_id = kwargs.get("target_object_id")
-#         if not target_object_id:
-#             return ReportType.objects.all()
-#         obj = get_obj_from_relay_id(info, target_object_id)
-#         print(obj)
-#         content_type = ContentType.objects.get_for_model(obj)
-#         return ReportType.objects.filter(content_types__pk=content_type.pk)
 
 
 class ReportsInterface(relay.Node):
