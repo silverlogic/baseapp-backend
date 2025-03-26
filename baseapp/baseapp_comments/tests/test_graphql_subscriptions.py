@@ -1,11 +1,14 @@
 import textwrap
 
 import pytest
+import swapper
 from channels.db import database_sync_to_async
 from django.contrib.contenttypes.models import ContentType
 from django.test import override_settings
 
 from .factories import CommentFactory
+
+Comment = swapper.load_model("baseapp_comments", "Comment")
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -193,3 +196,10 @@ async def test_anon_cant_recieve_created_comment_subscription_event(graphql_webs
 
     # Disconnect and wait the application to finish gracefully.
     await client.finalize()
+
+
+def test_comment_subscription_when_target_is_not_found():
+    comment = CommentFactory()
+    comment.target_content_type = ContentType.objects.get_for_model(comment)
+    comment.target_object_id = 999999  # non existent object
+    comment.save()

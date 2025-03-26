@@ -1,340 +1,102 @@
-import importlib
+import logging
 
-import swapper
 from constance import config
-from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ObjectDoesNotExist
-from djstripe.models import (
-    Customer,
-    PaymentMethod,
-    Price,
-    Product,
-    Subscription,
-    SubscriptionItem,
-)
-from expander import ExpanderSerializerMixin
+from django.apps import apps
+from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from rest_framework import serializers
 
-from .emails import send_subscription_trial_start_email
-from .utils import update_subscription
+from .models import Customer
+from .utils import StripeService
 
-Plan = swapper.load_model("baseapp_payments", "Plan")
-
-
-class EndSubscriptionSerializer(serializers.Serializer):
-    feedback = serializers.CharField(required=True)
+logger = logging.getLogger(__name__)
 
 
-class CapturePaymentIntentSerializer(serializers.Serializer):
-    payment_method_id = serializers.CharField(required=True)
-
-
-class CapturePaymentEditSerializer(serializers.Serializer):
-    payment_method_id = serializers.CharField(required=True)
-
-
-class SubscribeCustomerSerializer(serializers.Serializer):
-    plan = serializers.CharField(required=True)
-    payment_method_id = serializers.CharField(required=False)
+class StripeSubscriptionSerializer(serializers.Serializer):
+    remote_customer_id = serializers.CharField()
+    price_id = serializers.CharField()
+    remote_subscription_id = serializers.ReadOnlyField()
 
     def validate(self, data):
-        validated_data = super().validate(data)
-
-        self.subscriber = self.context["request"].user.get_subscriber_from_request(
-            self.context["request"]
-        )
-
-        self.customer, created = Customer.get_or_create(self.subscriber)
-
-        if self.customer.has_any_active_subscription():
-            raise serializers.ValidationError({"Already Subscribed."})
-
-        customer_is_trialing = (
-            Subscription.objects.all().filter(customer=self.customer, status="trialing").exists()
-        )
-        if customer_is_trialing:
-            raise serializers.ValidationError({"Already Trialing."})
-
         try:
-            self.plan = Plan.objects.get(slug=validated_data["plan"])
-        except Plan.DoesNotExist:
-            raise serializers.ValidationError({"Plan not found."})
-
-        return validated_data
-
-    def save(self):
-        customer_has_used_trial = (
-            Subscription.objects.all().filter(customer=self.customer, status="canceled").exists()
-        )
-
-        if (
-            not customer_has_used_trial
-            and config.BASEAPP_PAYMENTS_TRIAL_DAYS
-            and "premium" in self.plan.slug
-        ):
-            subscription = self.customer.subscribe(
-                trial_period_days=config.BASEAPP_PAYMENTS_TRIAL_DAYS,
-                default_payment_method=self.validated_data.get("payment_method_id"),
-                items=[{"plan": self.plan.price}],
-            )
-            send_subscription_trial_start_email(self.customer.email)
-        else:
-            subscription = self.customer.subscribe(
-                default_payment_method=self.validated_data.get("payment_method_id"),
-                items=[{"plan": self.plan.price}],
+            price_id = data.get("price_id")
+            subscriptions = StripeService().list_subscriptions(
+                data["remote_customer_id"], status="active"
             )
 
-        self.subscriber.subscription_start_request(
-            plan=self.plan,
-            customer=self.customer,
-            subscription=subscription,
-            request=self.context["request"],
-        )
-
-        self.customer.save()
-
-
-class CancelSubscriptionSerializer(serializers.Serializer):
-    def validate(self, data):
-        validated_data = super().validate(data)
-
-        self.subscriber = self.context["request"].user.get_subscriber_from_request(
-            self.context["request"]
-        )
-
-        self.customer, created = Customer.get_or_create(self.subscriber)
-
-        self.subscription = (
-            Subscription.objects.all()
-            .filter(customer=self.customer, status__in=["active", "trialing"])
-            .first()
-        )
-
-        if not self.subscription:
-            raise serializers.ValidationError(
-                {"non_field_errors": ["Customer has no Subscription."]}
+            for subscription in subscriptions:
+                existing_price_id = subscription["items"]["data"][0]["price"]["id"]
+                if existing_price_id == price_id:
+                    raise serializers.ValidationError(
+                        "Active subscription matching this price_id already exists for this customer."
+                    )
+            remote_subscription_id = StripeService().create_subscription(
+                data["remote_customer_id"], price_id
             )
-
-        return validated_data
-
-    def save(self):
-        subscription = self.subscription.cancel(at_period_end=True)
-        self.subscriber.subscription_cancel_request(
-            customer=self.customer,
-            subscription=subscription,
-            request=self.context["request"],
-        )
+            data["remote_subscription_id"] = remote_subscription_id.id
+            return data
+        except Exception as e:
+            logger.exception(e)
+            raise serializers.ValidationError("Failed to create subscription")
 
 
-class PaymentMethodSerializer(serializers.ModelSerializer):
-    last4 = serializers.SerializerMethodField()
-    name = serializers.SerializerMethodField()
-    card_brand = serializers.SerializerMethodField()
-
-    class Meta:
-        model = PaymentMethod
-        fields = (
-            "id",
-            "created",
-            "card",
-            "last4",
-            "billing_details",
-            "name",
-            "card_brand",
-        )
-
-    def get_last4(self, obj):
-        return obj.card["last4"]
-
-    def get_name(self, obj):
-        return obj.billing_details["name"]
-
-    def get_card_brand(self, obj):
-        return obj.card["brand"]
-
-
-class CustomerSerializer(ExpanderSerializerMixin, serializers.ModelSerializer):
-    is_trial_ended = serializers.SerializerMethodField()
-    is_trialing = serializers.SerializerMethodField()
+class StripeCustomerSerializer(serializers.Serializer):
+    remote_customer_id = serializers.ReadOnlyField()
+    entity_type = serializers.ReadOnlyField()
+    entity_id = serializers.ReadOnlyField()
+    user_id = serializers.CharField(required=False)
 
     class Meta:
         model = Customer
         fields = (
             "id",
-            "default_payment_method",
-            "is_trial_ended",
-            "is_trialing",
-        )
-        expandable_fields = {
-            "default_payment_method": PaymentMethodSerializer,
-        }
-
-    def get_is_trial_ended(self, obj):
-        return Subscription.objects.all().filter(customer=obj, status="canceled").exists()
-
-    def get_is_trialing(self, obj):
-        return Subscription.objects.all().filter(customer=obj, status="trialing").exists()
-
-
-class UpdateSubscriptionSerializer(serializers.Serializer):
-    plan = serializers.CharField()
-
-    def validate(self, data):
-        validated_data = super().validate(data)
-
-        self.subscriber = self.context["request"].user.get_subscriber_from_request(
-            self.context["request"]
-        )
-
-        self.customer, created = Customer.get_or_create(self.subscriber)
-
-        self.subscription = Subscription.objects.active().filter(customer=self.customer).first()
-
-        if not self.subscription:
-            raise serializers.ValidationError(
-                {"non_field_errors": ["Customer has no Subscription."]}
-            )
-
-        try:
-            self.plan = Plan.objects.get(
-                slug=validated_data["plan"], is_active=True, price__isnull=False
-            )
-        except Plan.DoestNotExist:
-            raise serializers.ValidationError({"plan": ["Plan not found."]})
-
-        return validated_data
-
-
-class UpdatingSubscriptionSerializer(UpdateSubscriptionSerializer):
-    def save(self):
-        is_upgrade = (
-            self.plan.price.unit_amount_decimal
-            > self.subscription.items.all()[0].price.unit_amount_decimal
-        )
-
-        data, data_item = update_subscription(self.subscription, self.plan.price, is_upgrade)
-        subscription = Subscription.sync_from_stripe_data(data)
-        SubscriptionItem.sync_from_stripe_data(data_item)
-
-        self.subscriber.subscription_update_request(
-            customer=self.customer,
-            subscription=subscription,
-            plan=self.plan,
-            is_upgrade=is_upgrade,
-            request=self.context["request"],
-        )
-
-        PlanSerializer = get_serializer("PlanSerializer")
-
-        return {
-            "plan": PlanSerializer(self.plan, context=self.context).data,
-            "is_upgrade": is_upgrade,
-        }
-
-
-class EditPaymentMethodSerializer(serializers.Serializer):
-    payment_method_id = serializers.CharField(required=True)
-    city = serializers.CharField(required=True)
-    country = serializers.CharField(required=True)
-    line1 = serializers.CharField(required=True)
-    line2 = serializers.CharField(required=True, allow_blank=True)
-    postal_code = serializers.CharField(required=True)
-    state = serializers.CharField(required=True)
-    name = serializers.CharField(required=True)
-    exp_month = serializers.IntegerField(required=True)
-    exp_year = serializers.IntegerField(required=True)
-
-
-class PriceSerializer(ExpanderSerializerMixin, serializers.ModelSerializer):
-    class Meta:
-        model = Price
-        fields = (
-            "id",
-            "metadata",
-            "description",
-            "currency",
-            "nickname",
-            "recurring",
-            "type",
-            "unit_amount",
-            "unit_amount_decimal",
-            "billing_scheme",
-            "lookup_key",
-            "tiers",
-            "tiers_mode",
-            "transform_quantity",
-        )
-
-
-class ProductSerializer(ExpanderSerializerMixin, serializers.ModelSerializer):
-    prices = PriceSerializer(many=True)
-
-    class Meta:
-        model = Product
-        fields = (
-            "id",
-            "metadata",
-            "description",
-            "name",
-            "type",
-            "attributes",
-            "caption",
-            "images",
-            "package_dimensions",
-            "url",
-            "unit_label",
-            "prices",
-        )
-
-
-class PlanSerializer(ExpanderSerializerMixin, serializers.ModelSerializer):
-    price_amount = serializers.DecimalField(max_digits=19, decimal_places=12, source="price_amount")
-    interval = serializers.CharField(source="interval")
-
-    class Meta:
-        model = Plan
-        fields = (
-            "id",
-            "name",
-            "slug",
-            "price_amount",
-            "interval",
-            "is_active",
-        )
-
-
-def get_serializer(name):
-    if settings.BASEAPP_PAYMENTS_PLAN_SERIALIZER:
-        parts = settings.BASEAPP_PAYMENTS_PLAN_SERIALIZER.split(".")
-        module_path = ".".join(parts[0:-1])
-        class_name = parts[-1]
-        module = importlib.import_module(module_path)
-        return getattr(module, class_name)
-    return PlanSerializer
-
-
-class CreatePaymentIntentSerializer(serializers.Serializer):
-    payment_method = serializers.CharField(required=False)
-    amount = serializers.DecimalField(max_digits=19, decimal_places=2, required=True)
-    content_type = serializers.PrimaryKeyRelatedField(
-        required=True, queryset=ContentType.objects.all()
-    )
-    object_id = serializers.IntegerField(required=True)
-
-    class Meta:
-        fields = (
-            "payment_method",
-            "ammount",
-            "content_type",
+            "remote_customer_id",
+            "entity_type",
+            "entity_id",
         )
 
     def validate(self, data):
-        validated_data = super().validate(data)
+        if "user_id" in data:
+            try:
+                user = get_user_model().objects.get(id=data["user_id"])
+                data["user"] = user
+                return data
+            except get_user_model().DoesNotExist:
+                raise serializers.ValidationError("User does not exist.")
+        user = self.context.get("request").user
+        data["user"] = user
+        return data
+
+    def create(self, validated_data):
+        customer_entity_model = config.STRIPE_CUSTOMER_ENTITY_MODEL
+        user = validated_data.pop("user")
+
+        if customer_entity_model == "profiles.Profile":
+            entity_model = apps.get_model(customer_entity_model)
+            entity = entity_model.objects.get(owner=user.id)
+        else:
+            entity_model = apps.get_model(customer_entity_model)
+            entity = entity_model.objects.get(profile_id=user.id)
+
         try:
-            validated_data["product"] = validated_data["content_type"].get_object_for_this_type(
-                pk=validated_data["object_id"]
-            )
-        except ObjectDoesNotExist:
-            raise serializers.ValidationError({"object_id": ["Object does not exist."]})
-        return validated_data
+            customer = Customer.objects.create(entity=entity)
+            stripe_customer = StripeService().create_customer(user.email)
+            customer.remote_customer_id = stripe_customer.id
+            customer.save()
+        except IntegrityError:
+            raise serializers.ValidationError("Customer already exists for this entity.")
+        except Exception as e:
+            logger.exception(e)
+            raise serializers.ValidationError("Failed to create customer")
+        return customer
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation["entity_type"] = instance.entity._meta.model_name
+        representation["entity_id"] = instance.entity.id
+        return representation
+
+
+class StripeWebhookSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    object = serializers.CharField()

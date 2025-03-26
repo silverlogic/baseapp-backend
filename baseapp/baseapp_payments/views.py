@@ -1,223 +1,113 @@
 import logging
 
-import swapper
-from djstripe.models import Customer
-from rest_framework import permissions, status, viewsets
+from django.conf import settings
+from rest_framework import viewsets
+from rest_framework.exceptions import NotFound
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from baseapp_core.decorators import action
-
+from .models import Customer, Subscription
 from .serializers import (
-    CancelSubscriptionSerializer,
-    CapturePaymentEditSerializer,
-    CapturePaymentIntentSerializer,
-    CreatePaymentIntentSerializer,
-    CustomerSerializer,
-    EditPaymentMethodSerializer,
-    SubscribeCustomerSerializer,
-    UpdatingSubscriptionSerializer,
-    get_serializer,
+    StripeCustomerSerializer,
+    StripeSubscriptionSerializer,
+    StripeWebhookSerializer,
 )
-from .utils import (
-    create_payment_intent,
-    delete_payment_method,
-    edit_payment_method,
-    get_customer_payment_methods,
-    make_another_default_payment_method,
-)
+from .utils import StripeService, StripeWebhookHandler
 
-Plan = swapper.load_model("baseapp_payments", "Plan")
+logger = logging.getLogger(__name__)
 
 
-class StripePaymentsViewSet(
+class StripeSubscriptionViewset(
     viewsets.GenericViewSet,
+    viewsets.mixins.RetrieveModelMixin,
+    viewsets.mixins.DestroyModelMixin,
 ):
+    serializer_class = StripeSubscriptionSerializer
+    queryset = Subscription.objects.all()
+    permission_classes = [IsAuthenticated]
+    lookup_field = "remote_subscription_id"
+
     def get_queryset(self):
-        # TO DO: remove method
-        # this is just to trick the DRF web interface
-        return Customer.objects.none()
+        return Subscription.objects.all()
 
-    @action(detail=False, methods=["GET"])
-    def plans(self, request):
-        plans = Plan.objects.filter(is_active=True)
-        PlanSerializer = get_serializer("PlanSerializer")
-        serializer = PlanSerializer(plans, many=True, context={"request": request})
-        return Response(serializer.data)
+    def create(self, request):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
 
-    @action(detail=False, methods=["GET"], permission_classes=[permissions.IsAuthenticated])
-    def get_customer_method(self, request):
+    def retrieve(self, request, remote_subscription_id=None):
+        subscription = StripeService().retrieve_subscription(remote_subscription_id)
+        if not subscription:
+            raise NotFound("Subscription not found")
+        return Response(subscription, status=200)
+
+    def delete(self, request):
+        remote_subscription_id = request.data.get("remote_subscription_id")
+        customer = Customer.objects.filter(entity_id=self.request.user.id).first()
+        if not customer:
+            raise NotFound("Customer does not exist.")
         try:
-            customer, created = Customer.get_or_create(
-                request.user.get_subscriber_from_request(request)
+            subscription = Subscription.objects.filter(
+                remote_subscription_id=remote_subscription_id,
+                remote_customer_id=customer.remote_customer_id,
             )
-            return Response(
-                CustomerSerializer(customer, context={"request": request}).data,
-                status=status.HTTP_201_CREATED,
-            )
-
+            if not subscription.exists():
+                raise NotFound
+            StripeService().delete_subscription(remote_subscription_id)
+            subscription.delete()
+            return Response({"status": "success"}, status=200)
+        except NotFound:
+            return Response({"error": "Subscription not found"}, status=404)
         except Exception as e:
-            logging.exception(e)
-            error = {"error": "Error getting customer"}
-            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+            logger.exception(e)
+            return Response({"error": "Error deleting subscription"}, status=500)
 
-    @action(detail=False, methods=["POST"], permission_classes=[permissions.IsAuthenticated])
-    def create_payment_method(self, request):
-        serializer = CapturePaymentIntentSerializer(data=request.data, context={"request": request})
-        serializer.is_valid(raise_exception=True)
 
-        try:
-            customer, created = Customer.get_or_create(
-                request.user.get_subscriber_from_request(request)
-            )
-            payment_method_id = serializer.validated_data["payment_method_id"]
-            customer.add_payment_method(payment_method_id)
+class StripeWebhookViewset(viewsets.GenericViewSet):
+    serializer_class = StripeWebhookSerializer
+    permission_classes = []
 
-            return Response(
-                {"payment_method_id": payment_method_id},
-                status=status.HTTP_201_CREATED,
-            )
+    def create(self, request):
+        endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
+        response = StripeWebhookHandler().webhook_handler(request, endpoint_secret)
+        return response
 
-        except Exception as e:
-            logging.exception(e)
-            error = {"error": "Error creating payment method"}
-            return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=["POST"], permission_classes=[permissions.IsAuthenticated])
-    def start_subscription(self, request):
-        serializer = SubscribeCustomerSerializer(data=request.data, context={"request": request})
-        serializer.is_valid(raise_exception=True)
+class StripeProductViewset(viewsets.GenericViewSet):
+    permission_classes = [IsAuthenticated]
 
-        try:
-            serializer.save()
-            return Response({}, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            logging.exception(e)
-            error = {"error": "Error creating subscription"}
-            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+    def list(self, request):
+        products = StripeService().list_products()
+        return Response(products, status=200)
 
-    @action(
-        detail=False,
-        methods=["POST"],
-        permission_classes=[permissions.IsAuthenticated],
-        serializer_class=CancelSubscriptionSerializer,
-    )
-    def cancel_subscription(self, request):
-        serializer = self.get_serializer(data=request.data)
+
+class StripeCustomerViewset(viewsets.GenericViewSet):
+    serializer_class = StripeCustomerSerializer
+    queryset = Customer.objects.all()
+    permission_classes = [IsAuthenticated]
+    lookup_field = "remote_customer_id"
+
+    def get_queryset(self):
+        return Customer.objects.all()
+
+    def list(self, request):
+        remote_customer_id = request.query_params.get("remote_customer_id")
+        if not remote_customer_id:
+            raise NotFound("Customer ID not provided")
+        customer = StripeService().retrieve_customer(remote_customer_id)
+        if not customer:
+            raise NotFound("Customer not found")
+        return Response(customer, status=200)
+
+    def create(self, request):
+        serializer = StripeCustomerSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(
-            {"msg": "Subscription was successfully canceled."},
-            status=status.HTTP_200_OK,
-        )
+        return Response(serializer.data, status=201)
 
-    @action(
-        detail=False,
-        methods=["POST"],
-        permission_classes=[permissions.IsAuthenticated],
-        serializer_class=UpdatingSubscriptionSerializer,
-    )
-    def update_subscription(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        result = serializer.save()
-        if result["is_upgrade"]:
-            return Response(
-                {"msg": f"Subscription was successfully updated to {serializer.plan.name}."},
-                status=status.HTTP_200_OK,
-            )
-        return Response(
-            {
-                "msg": f"Subscription will be updated to {serializer.plan.name} in your next billing cycle."
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    @action(detail=False, methods=["GET"], permission_classes=[permissions.IsAuthenticated])
-    def get_customer_payment_methods(self, request):
-        customer, created = Customer.get_or_create(
-            request.user.get_subscriber_from_request(request)
-        )
-        return Response(
-            get_customer_payment_methods(customer.id),
-            status=status.HTTP_200_OK,
-        )
-
-    @action(detail=False, methods=["PUT"], permission_classes=[permissions.IsAuthenticated])
-    def edit_payment_method(self, request):
-        serializer = EditPaymentMethodSerializer(data=request.data, context={"request": request})
-        serializer.is_valid(raise_exception=True)
-        try:
-            payment_method_id = serializer.validated_data["payment_method_id"]
-            edit_payment_method(payment_method_id, serializer.validated_data)
-            return Response(
-                {"id": payment_method_id},
-                status=status.HTTP_201_CREATED,
-            )
-
-        except Exception as e:
-            logging.exception(e)
-            error = {"error": "Error editing payment method"}
-            return Response(error, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(
-        detail=False,
-        methods=["DELETE"],
-        permission_classes=[permissions.IsAuthenticated],
-    )
-    def delete_payment_method(self, request):
-        serializer = CapturePaymentEditSerializer(data=request.data, context={"request": request})
-        serializer.is_valid(raise_exception=True)
-        try:
-            customer, created = Customer.get_or_create(
-                request.user.get_subscriber_from_request(request)
-            )
-            payment_method_id = serializer.validated_data["payment_method_id"]
-            delete_payment_method(payment_method_id, customer.id)
-            return Response(
-                {"id": payment_method_id},
-                status=status.HTTP_200_OK,
-            )
-
-        except Exception as e:
-            logging.exception(e)
-            error = {"error": "Error deleting payment method"}
-            return Response(error, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=False, methods=["POST"], permission_classes=[permissions.IsAuthenticated])
-    def make_primary_payment_method(self, request):
-        serializer = CapturePaymentEditSerializer(data=request.data, context={"request": request})
-        serializer.is_valid(raise_exception=True)
-        try:
-            customer, created = Customer.get_or_create(
-                request.user.get_subscriber_from_request(request)
-            )
-            payment_method_id = serializer.validated_data["payment_method_id"]
-            make_another_default_payment_method(customer.id, payment_method_id)
-            return Response(
-                {"id": payment_method_id},
-                status=status.HTTP_200_OK,
-            )
-
-        except Exception as e:
-            logging.exception(e)
-            error = {"error": "Error making payment method primary"}
-            return Response(error, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=False, methods=["POST"], permission_classes=[permissions.IsAuthenticated])
-    def create_payment(self, request):
-        serializer = CreatePaymentIntentSerializer(data=request.data, context={"request": request})
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-        product = data["product"]
-
-        try:
-            response = create_payment_intent(product, request, data)
-            return Response(
-                {"id": response.id},
-                status=status.HTTP_200_OK,
-            )
-
-        except Exception as e:
-            logging.exception(e)
-            error = {"error": "Error creating payment intent"}
-            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+    def retrieve(self, request, remote_customer_id=None):
+        customer = StripeService().retrieve_customer(remote_customer_id)
+        if not customer:
+            raise NotFound("Customer not found")
+        return Response(customer, status=200)

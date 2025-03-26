@@ -10,12 +10,10 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.db.models.signals import post_save
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_profiles.managers import ProfileManager
-from baseapp_profiles.signals import update_user_name
 
 inheritances = [TimeStampedModel]
 if apps.is_installed("baseapp_blocks"):
@@ -56,7 +54,7 @@ class AbstractProfile(*inheritances):
         def description(self):
             return self.label
 
-    name = models.CharField(_("name"), max_length=255, blank=True, null=True)
+    name = models.CharField(_("name"), max_length=255, blank=True, null=True, editable=False)
     image = models.ImageField(
         _("image"), upload_to=random_name_in("profile_images"), blank=True, null=True
     )
@@ -192,9 +190,6 @@ class Profile(AbstractProfile):
         swappable = swapper.swappable_setting("baseapp_profiles", "Profile")
 
 
-post_save.connect(update_user_name, sender=Profile)
-
-
 class AbstractProfileUserRole(RelayModel, models.Model):
     class ProfileRoles(models.IntegerChoices):
         ADMIN = 1, _("admin")
@@ -247,3 +242,18 @@ class AbstractProfileUserRole(RelayModel, models.Model):
 class ProfileUserRole(AbstractProfileUserRole):
     class Meta(AbstractProfileUserRole.Meta):
         swappable = swapper.swappable_setting("baseapp_profiles", "ProfileUserRole")
+
+
+def update_or_create_profile(instance, owner, profile_name):
+    Profile = swapper.load_model("baseapp_profiles", "Profile")
+    target_content_type = ContentType.objects.get_for_model(instance)
+
+    profile, created = Profile.objects.update_or_create(
+        owner=owner,
+        target_content_type=target_content_type,
+        target_object_id=instance.pk,
+        defaults={"name": profile_name},
+    )
+    if created:
+        instance.profile = profile
+        instance.save(update_fields=["profile"])
