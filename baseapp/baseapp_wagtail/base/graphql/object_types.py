@@ -1,14 +1,10 @@
-from graphene_django import DjangoObjectType
-from grapple.types.interfaces import get_page_interface
-from wagtail.models import Page as WagtailPage
+import graphene
 
-# from baseapp_comments.graphql.object_types import CommentsInterface
+from baseapp_comments.graphql.object_types import CommentsInterface
 
 
-# TODO: (wagtail) Move the list of interfaces to inside of the model using graphql_interfaces.
-class Page(DjangoObjectType):
-    class Meta:
-        model = WagtailPage
-        # interfaces = (get_page_interface(), CommentsInterface,)
-        # TODO: (wagtail) test CommentsInterface (I think we need to use relay.Node as well).
-        interfaces = (get_page_interface(),)
+class WagtailCommentsInterface(CommentsInterface):
+    id = graphene.ID()
+
+    def resolve_id(self, info, **kwargs):
+        return str(self.id) if self.id is not None else -1

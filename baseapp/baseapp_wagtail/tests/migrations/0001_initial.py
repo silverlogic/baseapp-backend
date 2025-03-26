@@ -96,7 +96,7 @@ class Migration(migrations.Migration):
                                 {},
                             ),
                             4: (
-                                "baseapp_wagtail.base.blocks.basic_blocks.custom_rich_text_block.block.CustomRichTextBlock",
+                                "wagtail.blocks.CharBlock",
                                 (),
                                 {},
                             ),
@@ -106,7 +106,7 @@ class Migration(migrations.Migration):
                                 {"max_length": 50, "required": True, "use_json_field": True},
                             ),
                             6: (
-                                "baseapp_wagtail.base.blocks.basic_blocks.custom_rich_text_block.block.CustomRichTextBlock",
+                                "wagtail.blocks.CharBlock",
                                 (),
                                 {
                                     "features": ["bold", "italic", "link", "ul", "hr"],
@@ -208,7 +208,7 @@ class Migration(migrations.Migration):
                         blank=True,
                         block_lookup={
                             0: (
-                                "baseapp_wagtail.base.blocks.basic_blocks.custom_rich_text_block.block.CustomRichTextBlock",
+                                "wagtail.blocks.CharBlock",
                                 (),
                                 {"icon": "pilcrow"},
                             ),
@@ -218,7 +218,7 @@ class Migration(migrations.Migration):
                                 {"max_length": 50, "required": True, "use_json_field": True},
                             ),
                             2: (
-                                "baseapp_wagtail.base.blocks.basic_blocks.custom_rich_text_block.block.CustomRichTextBlock",
+                                "wagtail.blocks.CharBlock",
                                 (),
                                 {
                                     "features": ["bold", "italic", "link", "ul", "hr"],

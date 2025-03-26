@@ -22,6 +22,8 @@ WAGTAIL_INSTALLED_APPS = [
     # wagtail dependencies
     "modelcluster",
     "taggit",
+    # grapple
+    "grapple",
 ]
 
 WAGTAIL_INSTALLED_INTERNAL_APPS = [
@@ -69,7 +71,7 @@ GRAPPLE = {
     "APPS": [
         "baseapp_wagtail_base",
         "baseapp_wagtail_medias",
-        # TODO: (wagtail) move this to the testprojectc.
+        # TODO: (wagtail) move this to the testproject.
         "base",
         # TODO: (wagtail) remove.
         "tests",

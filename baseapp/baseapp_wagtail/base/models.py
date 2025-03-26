@@ -9,6 +9,9 @@ from wagtail.models import Page, PageBase
 from wagtail.search import index
 from wagtail_headless_preview.models import HeadlessPreviewMixin
 
+from baseapp_comments.models import CommentableModel
+from baseapp_core.graphql.models import RelayModel
+
 from .stream_fields import (
     FeaturedImageStreamField,
     PageBodyStreamField,
@@ -65,15 +68,17 @@ class DefaultPageModel(HeadlessPageMixin, Page, metaclass=HeadlessPageBase):
         abstract = True
 
 
-class BaseStandardPage(DefaultPageModel):
+class BaseStandardPage(DefaultPageModel, CommentableModel, RelayModel):
     body = PageBodyStreamField.create(
         StandardPageStreamBlock(required=False),
     )
 
     graphql_fields = [
-        GraphQLStreamfield("body")
+        GraphQLStreamfield("body"),
         # TODO: (wagtail) Add the featured image to the graphql fields
     ]
+
+    graphql_interfaces = ["baseapp_wagtail.base.graphql.object_types.WagtailCommentsInterface"]
 
     class Meta:
         verbose_name = _("Standard page")
