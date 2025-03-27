@@ -1,15 +1,26 @@
 import swapper
 from graphene_django.filter import DjangoFilterConnectionField
+from graphene import relay
 
-from baseapp_core.graphql import Node
+from baseapp_core.graphql import DjangoObjectType, Node
+
+from .object_types import CommentsInterface
+from ..models import CommentThread
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
 app_label = Comment._meta.app_label
 CommentObjectType = Comment.get_graphql_object_type()
 
 
+class CommentThreadObjectType(DjangoObjectType):
+    class Meta:
+        interfaces = (relay.Node, CommentsInterface)
+        model = CommentThread
+
+
 class CommentsQueries:
     comment = Node.Field(CommentObjectType)
+    comment_thread = Node.Field(CommentThreadObjectType)
     all_comments = DjangoFilterConnectionField(CommentObjectType)
 
     def resolve_all_comments(self, info, **kwargs):
