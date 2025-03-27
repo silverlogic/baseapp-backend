@@ -20,14 +20,14 @@ class ReportCreate(RelayMutation):
 
     class Input:
         target_object_id = graphene.ID(required=True)
-        report_type_id = graphene.ID(required=False)
+        report_type_id = graphene.ID(required=True)
         report_subject = graphene.String(required=False)
 
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
-        report_type_id = input.get("report_type_id")
+        report_type = get_obj_from_relay_id(info, input.get("report_type_id"))
         report_subject = input.get("report_subject")
 
         if not info.context.user.has_perm("baseapp_reports.add_report", target):
@@ -37,7 +37,6 @@ class ReportCreate(RelayMutation):
             )
 
         content_type = ContentType.objects.get_for_model(target)
-        report_type = ReportType.objects.get(pk=report_type_id)
 
         report = Report.objects.create(
             user=info.context.user,

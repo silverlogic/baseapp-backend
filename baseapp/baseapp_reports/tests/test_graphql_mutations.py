@@ -1,6 +1,7 @@
 import pytest
 import swapper
 from baseapp_profiles.tests.factories import ProfileFactory
+from .factories import ReportTypeFactory
 
 Report = swapper.load_model("baseapp_reports", "Report")
 
@@ -12,7 +13,7 @@ mutation ReportCreate($input: ReportCreateInput!) {
         report {
             node {
                 id
-                reportType
+                created
             }
         }
     }
@@ -22,11 +23,13 @@ mutation ReportCreate($input: ReportCreateInput!) {
 
 def test_anon_cant_report(graphql_client):
     other_profile = ProfileFactory()
+    report_type = ReportTypeFactory()
 
     variables = {
         "input": {
             "targetObjectId": other_profile.relay_id,
-            "reportType": "SPAM",
+            "reportTypeId": report_type.relay_id,
+            "reportSubject": "test",
         }
     }
 
@@ -39,17 +42,19 @@ def test_anon_cant_report(graphql_client):
 
 def test_user_can_report(django_user_client, graphql_user_client):
     other_profile = ProfileFactory()
+    report_type = ReportTypeFactory()
 
     variables = {
         "input": {
             "targetObjectId": other_profile.relay_id,
-            "reportType": "SPAM",
+            "reportTypeId": report_type.relay_id,
+            "reportSubject": "test",
         }
     }
 
     response = graphql_user_client(REPORT_CREATE_GRAPHQL, variables=variables)
     content = response.json()
-    assert content["data"]["reportCreate"]["report"]["node"]["reportType"] == "SPAM"
+    assert content["data"]["reportCreate"]["report"]["node"]["created"]
     assert Report.objects.count() == 1
 
     other_profile.refresh_from_db()

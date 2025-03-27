@@ -12,15 +12,8 @@ Report = swapper.load_model("baseapp_reports", "Report")
 ReportType = swapper.load_model("baseapp_reports", "ReportType")
 
 
-def create_object_type_from_enum(name):
-    fields = {}
-    for reaction_type in ReportType.objects.all():
-        fields[reaction_type.name] = graphene.Int()
-    fields["total"] = graphene.Int()
-    return type(name, (graphene.ObjectType,), fields)
-
-
-ReportsCount = create_object_type_from_enum("ReportsCount")
+class ReportsCount(graphene.ObjectType):
+    counts = graphene.JSONString()
 
 
 class BaseReportTypeObjectType:
@@ -50,7 +43,20 @@ class ReportsInterface(relay.Node):
     reports = DjangoFilterConnectionField(get_object_type_for_model(Report))
     my_reports = graphene.Field(get_object_type_for_model(Report), required=False)
 
-    def resolve_reactions(self, info, **kwargs):
+    def resolve_reports_count(self, info, **kwargs):
+        target_content_type = ContentType.objects.get_for_model(self)
+        counts = {}
+        reports = Report.objects.filter(
+            target_content_type=target_content_type,
+            target_object_id=self.pk,
+        )
+        for report_type in ReportType.objects.all():
+            field_name = report_type.name.lower()
+            counts[field_name] = reports.filter(report_type=report_type).count()
+        counts["total"] = reports.count()
+        return ReportsCount(counts=counts)
+
+    def resolve_reports(self, info, **kwargs):
         target_content_type = ContentType.objects.get_for_model(self)
         return Report.objects.filter(
             target_content_type=target_content_type,
