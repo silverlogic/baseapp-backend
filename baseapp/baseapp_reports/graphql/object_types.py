@@ -57,7 +57,7 @@ class ReportsInterface(relay.Node):
         counts["total"] = reports.count()
         return ReportsCount(counts=counts)
 
-    def resolve_reports(self, info, **kwargs):
+    def resolve_reactions(self, info, **kwargs):
         target_content_type = ContentType.objects.get_for_model(self)
         return Report.objects.filter(
             target_content_type=target_content_type,
