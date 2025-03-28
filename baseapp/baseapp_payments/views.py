@@ -2,13 +2,14 @@ import logging
 
 from django.conf import settings
 from rest_framework import viewsets
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Customer, Subscription
 from .serializers import (
     StripeCustomerSerializer,
+    StripeProductSerializer,
     StripeSubscriptionSerializer,
     StripeWebhookSerializer,
 )
@@ -76,10 +77,20 @@ class StripeWebhookViewset(viewsets.GenericViewSet):
 
 class StripeProductViewset(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
+    serializer_class = StripeProductSerializer
+    lookup_field = "remote_product_id"
 
     def list(self, request):
         products = StripeService().list_products()
         return Response(products, status=200)
+
+    def retrieve(self, request, remote_product_id=None):
+        product = StripeService().retrieve_product(remote_product_id)
+        if not product:
+            raise NotFound("Product not found")
+
+        serializer = self.serializer_class(product)
+        return Response(serializer.data, status=200)
 
 
 class StripeCustomerViewset(viewsets.GenericViewSet):
@@ -111,3 +122,21 @@ class StripeCustomerViewset(viewsets.GenericViewSet):
         if not customer:
             raise NotFound("Customer not found")
         return Response(customer, status=200)
+
+
+class StripePaymentMethodViewset(viewsets.GenericViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+
+        remote_customer_id = request.query_params.get("customer_id")
+        if not remote_customer_id:
+            raise ValidationError("Missing customer_id")
+
+        try:
+            methods = StripeService().get_customer_payment_methods(remote_customer_id)
+            return Response(methods, status=200)
+
+        except Exception as e:
+            logger.exception("Failed to retrieve payment methods")
+            return Response({"error": str(e)}, status=500)
