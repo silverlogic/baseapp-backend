@@ -6,7 +6,7 @@ from ..models import ReportType
 
 class ReportTypeFilter(django_filters.FilterSet):
     top_level_only = django_filters.BooleanFilter(method="filter_top_level_only")
-    target_object_id = django_filters.CharFilter(method='filter_target_object_id')
+    target_object_id = django_filters.CharFilter(method="filter_target_object_id")
 
     def filter_top_level_only(self, queryset, name, value):
         if value:

@@ -4,7 +4,6 @@ from django.contrib.contenttypes.models import ContentType
 
 from baseapp_core.tests.factories import UserFactory
 
-
 Report = swapper.load_model("baseapp_reports", "Report")
 ReportType = swapper.load_model("baseapp_reports", "ReportType")
 

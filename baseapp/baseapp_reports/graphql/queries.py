@@ -1,8 +1,8 @@
 import swapper
-
 from django.contrib.contenttypes.models import ContentType
-from baseapp_core.graphql import Node, get_object_type_for_model, get_obj_from_relay_id
 from graphene_django.filter import DjangoFilterConnectionField
+
+from baseapp_core.graphql import Node, get_obj_from_relay_id, get_object_type_for_model
 
 ReportType = swapper.load_model("baseapp_reports", "ReportType")
 Report = swapper.load_model("baseapp_reports", "Report")

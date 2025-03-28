@@ -1,6 +1,7 @@
 import pytest
 import swapper
 from baseapp_profiles.tests.factories import ProfileFactory
+
 from .factories import ReportTypeFactory
 
 Report = swapper.load_model("baseapp_reports", "Report")

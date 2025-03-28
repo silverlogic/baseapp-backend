@@ -1,11 +1,12 @@
-from django.contrib.contenttypes.models import ContentType
-
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
-from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
+from django.contrib.contenttypes.models import ContentType
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
+
+from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
+
 from .filters import ReportTypeFilter
 
 Report = swapper.load_model("baseapp_reports", "Report")

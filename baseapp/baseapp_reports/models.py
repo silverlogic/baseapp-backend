@@ -1,12 +1,12 @@
+import swapper
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.utils.translation import gettext_lazy as _
-
-import swapper
-from baseapp_core.graphql import RelayModel
 from model_utils.models import TimeStampedModel
+
+from baseapp_core.graphql import RelayModel
+
 
 def default_reports_count():
     return {"total": 0}
@@ -69,7 +69,7 @@ class AbstractBaseReport(RelayModel, TimeStampedModel):
         related_name="reports",
         on_delete=models.CASCADE,
         null=True,
-        blank=True
+        blank=True,
     )
     report_subject = models.TextField(blank=True, null=True)
 

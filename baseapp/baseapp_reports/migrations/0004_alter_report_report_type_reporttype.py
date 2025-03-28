@@ -3,8 +3,8 @@
 import django.db.models.deletion
 import django.utils.timezone
 import model_utils.fields
-from django.db import migrations, models
 import swapper
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
