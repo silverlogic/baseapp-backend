@@ -13,28 +13,75 @@ logger = logging.getLogger(__name__)
 
 
 class StripeSubscriptionSerializer(serializers.Serializer):
-    remote_customer_id = serializers.CharField()
-    price_id = serializers.CharField()
-    remote_subscription_id = serializers.ReadOnlyField()
+
+    remote_customer_id = serializers.CharField(help_text="Stripe customer ID")
+    price_id = serializers.CharField(help_text="Stripe price ID")
+    allow_incomplete = serializers.BooleanField(
+        default=False,
+    )
+    payment_method_id = serializers.CharField(
+        required=False,
+    )
+    billing_details = serializers.DictField(
+        required=False,
+    )
+
+    remote_subscription_id = serializers.CharField(read_only=True)
+    client_secret = serializers.CharField(read_only=True)
+    invoice_id = serializers.CharField(read_only=True)
 
     def validate(self, data):
-        try:
-            price_id = data.get("price_id")
-            subscriptions = StripeService().list_subscriptions(
-                data["remote_customer_id"], status="active"
-            )
+        customer_id = data["remote_customer_id"]
+        price_id = data["price_id"]
 
-            for subscription in subscriptions:
-                existing_price_id = subscription["items"]["data"][0]["price"]["id"]
-                if existing_price_id == price_id:
-                    raise serializers.ValidationError(
-                        "Active subscription matching this price_id already exists for this customer."
+        subscriptions = StripeService().list_subscriptions(customer_id, status="all")
+        for subscription in subscriptions:
+            if (
+                subscription["status"] in {"active", "incomplete"}
+                and subscription["items"]["data"][0]["price"]["id"] == price_id
+            ):
+                raise serializers.ValidationError(
+                    "A subscription with this price already exists for this customer."
+                )
+
+        return data
+
+    def create(self, validated_data):
+        customer_id = validated_data["remote_customer_id"]
+        price_id = validated_data["price_id"]
+        allow_incomplete = validated_data.get("allow_incomplete", False)
+        payment_method_id = validated_data.get("payment_method_id")
+        billing_details = validated_data.get("billing_details")
+
+        try:
+            if payment_method_id and billing_details:
+                try:
+                    StripeService().update_payment_method_billing_details(
+                        payment_method_id, billing_details
                     )
-            remote_subscription_id = StripeService().create_subscription(
-                data["remote_customer_id"], price_id
-            )
-            data["remote_subscription_id"] = remote_subscription_id.id
-            return data
+                except Exception as e:
+                    logger.error(f"Failed to update payment method: {str(e)}")
+                    # Continue with subscription creation even if billing update fails
+
+            kwargs = {"customer_id": customer_id, "price_id": price_id}
+            if payment_method_id:
+                kwargs["payment_method_id"] = payment_method_id
+
+            if allow_incomplete:
+                subscription = StripeService().create_subscription_intent(**kwargs)
+                result = {
+                    "remote_subscription_id": subscription["id"],
+                    "client_secret": subscription["latest_invoice"]["payment_intent"][
+                        "client_secret"
+                    ],
+                    "invoice_id": subscription["latest_invoice"]["id"],
+                }
+            else:
+                subscription = StripeService().create_subscription(**kwargs)
+                result = {"remote_subscription_id": subscription.id}
+
+            return result
+
         except Exception as e:
             logger.exception(e)
             raise serializers.ValidationError("Failed to create subscription")
@@ -100,3 +147,20 @@ class StripeCustomerSerializer(serializers.Serializer):
 class StripeWebhookSerializer(serializers.Serializer):
     id = serializers.CharField()
     object = serializers.CharField()
+
+
+class StripePriceSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    currency = serializers.CharField()
+    unit_amount = serializers.IntegerField()
+    recurring = serializers.DictField()
+
+
+class StripeProductSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    name = serializers.CharField()
+    description = serializers.CharField(allow_null=True, required=False)
+    active = serializers.BooleanField()
+    default_price = StripePriceSerializer(allow_null=True)
+    metadata = serializers.DictField(required=False)
+    images = serializers.ListField(child=serializers.URLField(), required=False)

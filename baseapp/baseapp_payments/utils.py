@@ -153,6 +153,24 @@ class StripeService:
             logger.exception(e)
             raise Exception("Error creating subscription in Stripe")
 
+    def create_subscription_intent(
+        self, customer_id, price_id, payment_method_id=None, product_id=None
+    ):
+        try:
+            subscription = stripe.Subscription.create(
+                customer=customer_id,
+                items=[{"price": price_id}],
+                default_payment_method=payment_method_id,
+                payment_behavior="default_incomplete",
+                payment_settings={"save_default_payment_method": "on_subscription"},
+                expand=["latest_invoice.payment_intent"],
+                metadata={"product_id": product_id} if product_id else None,
+            )
+            return subscription
+        except Exception as e:
+            logger.exception(e)
+            raise Exception("Error creating subscription intent in Stripe")
+
     def retrieve_subscription(self, subscription_id):
         try:
             subscription = stripe.Subscription.retrieve(subscription_id)
@@ -190,3 +208,42 @@ class StripeService:
         except Exception as e:
             logger.exception(e)
             raise Exception("Error retrieving products in Stripe")
+
+    def retrieve_product(self, product_id):
+        try:
+            product = stripe.Product.retrieve(product_id, expand=["default_price"])
+            return product
+        except stripe.error.InvalidRequestError as e:
+            logger.error(f"Failed to retrieve product: {str(e)}")
+            return None
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe API error: {str(e)}")
+            return None
+
+    def list_payment_methods(self, customer_id, type="card"):
+        try:
+            payment_methods = stripe.PaymentMethod.list(
+                customer=customer_id,
+                type=type,
+            )
+            return payment_methods.data
+        except Exception as e:
+            logger.exception(e)
+            raise Exception("Error retrieving payment methods in Stripe")
+
+    def get_customer_payment_methods(self, remote_customer_id):
+        try:
+            return self.list_payment_methods(remote_customer_id)
+        except Exception as e:
+            logger.exception(e)
+            raise Exception("Failed to retrieve payment methods")
+
+    def update_payment_method_billing_details(self, payment_method_id, billing_details):
+        try:
+            return stripe.PaymentMethod.modify(
+                payment_method_id,
+                billing_details=billing_details,
+            )
+        except Exception as e:
+            logger.exception(e)
+            raise Exception("Error updating payment method billing details in Stripe")
