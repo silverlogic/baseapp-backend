@@ -247,3 +247,33 @@ class StripeService:
         except Exception as e:
             logger.exception(e)
             raise Exception("Error updating payment method billing details in Stripe")
+
+    def create_setup_intent(self, customer_id):
+
+        try:
+            setup_intent = stripe.SetupIntent.create(
+                customer=customer_id,
+                payment_method_types=["card"],
+            )
+            return setup_intent
+        except Exception as e:
+            logger.exception(e)
+            raise Exception("Error creating SetupIntent in Stripe")
+
+    def retrieve_price(self, price_id):
+
+        try:
+            price = stripe.Price.retrieve(price_id, expand=["product"])
+            return price
+        except stripe.error.InvalidRequestError as e:
+            if "No such price" in str(e):
+                logger.error(f"Price not found: {price_id}")
+                return None
+            logger.error(f"Invalid request for price {price_id}: {str(e)}")
+            return None
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe API error retrieving price {price_id}: {str(e)}")
+            return None
+        except Exception as e:
+            logger.exception(f"Unexpected error retrieving price {price_id}: {str(e)}")
+            raise Exception(f"Error retrieving price from Stripe: {str(e)}")

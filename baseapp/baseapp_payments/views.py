@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from .models import Customer, Subscription
 from .serializers import (
     StripeCustomerSerializer,
+    StripePaymentMethodSerializer,
     StripeProductSerializer,
     StripeSubscriptionSerializer,
     StripeWebhookSerializer,
@@ -34,7 +35,8 @@ class StripeSubscriptionViewset(
     def create(self, request):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
-            return Response(serializer.data, status=201)
+            result = serializer.save()
+            return Response(result, status=201)
         return Response(serializer.errors, status=400)
 
     def retrieve(self, request, remote_subscription_id=None):
@@ -124,19 +126,32 @@ class StripeCustomerViewset(viewsets.GenericViewSet):
         return Response(customer, status=200)
 
 
-class StripePaymentMethodViewset(viewsets.GenericViewSet):
+class StripePaymentMethodViewset(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
+    serializer_class = StripePaymentMethodSerializer
 
     def list(self, request):
-
         remote_customer_id = request.query_params.get("customer_id")
         if not remote_customer_id:
             raise ValidationError("Missing customer_id")
 
         try:
-            methods = StripeService().get_customer_payment_methods(remote_customer_id)
-            return Response(methods, status=200)
-
+            payment_methods = StripeService().get_customer_payment_methods(remote_customer_id)
+            serializer = self.serializer_class(payment_methods, many=True)
+            return Response(serializer.data, status=200)
         except Exception as e:
             logger.exception("Failed to retrieve payment methods")
+            return Response({"error": str(e)}, status=500)
+
+    def create(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            result = serializer.create(serializer.validated_data)
+            return Response(result, status=201)
+        except ValidationError as e:
+            return Response({"error": str(e)}, status=400)
+        except Exception as e:
+            logger.exception("Failed to create payment method")
             return Response({"error": str(e)}, status=500)
