@@ -74,11 +74,10 @@ class ProfileMetadata(AbstractMetadataObjectType):
 interfaces = [relay.Node, PermissionsInterface]
 inheritances = tuple()
 
-# TODO: (wagtail) review file.
-# if apps.is_installed("baseapp_pages"):
-#     from baseapp_pages.graphql import PageInterface
+if apps.is_installed("baseapp_pages"):
+    from baseapp_pages.graphql import PageInterface
 
-#     interfaces.append(PageInterface)
+    interfaces.append(PageInterface)
 
 
 if apps.is_installed("baseapp_follows"):

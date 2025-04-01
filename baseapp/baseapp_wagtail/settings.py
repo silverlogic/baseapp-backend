@@ -76,6 +76,7 @@ GRAPPLE = {
         # TODO: (wagtail) remove.
         "tests",
     ],
+    "PAGE_INTERFACE": "baseapp_wagtail.base.graphql.object_types.WagtailPageInterface",
 }
 
 WAGTAILIMAGES_IMAGE_MODEL = "baseapp_wagtail_medias.CustomImage"

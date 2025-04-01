@@ -19,11 +19,10 @@ if apps.is_installed("baseapp_notifications"):
     interfaces += (NotificationsInterface,)
 
 
-# TODO: (wagtail) review this.
-# if apps.is_installed("baseapp_pages"):
-#     from baseapp_pages.graphql.object_types import MetadataObjectType, PageInterface
+if apps.is_installed("baseapp_pages"):
+    from baseapp_pages.graphql.object_types import MetadataObjectType, PageInterface
 
-#     interfaces += (PageInterface,)
+    interfaces += (PageInterface,)
 
 
 if apps.is_installed("baseapp_ratings"):

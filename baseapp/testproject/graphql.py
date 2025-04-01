@@ -21,9 +21,8 @@ from baseapp_notifications.graphql.mutations import NotificationsMutations
 from baseapp_notifications.graphql.subscriptions import NotificationsSubscription
 from baseapp_organizations.graphql.mutations import OrganizationsMutations
 from baseapp_organizations.graphql.queries import OrganizationsQueries
-
-# from baseapp_pages.graphql.mutations import PagesMutations
-# from baseapp_pages.graphql.queries import PagesQueries
+from baseapp_pages.graphql.mutations import PagesMutations
+from baseapp_pages.graphql.queries import PagesQueries
 from baseapp_ratings.graphql.mutations import RatingsMutations
 from baseapp_ratings.graphql.queries import RatingsQueries
 from baseapp_reactions.graphql.mutations import ReactionsMutations
@@ -54,7 +53,7 @@ class Query(
     ActivityLogQueries,
     ReactionsQueries,
     RatingsQueries,
-    # PagesQueries,
+    PagesQueries,
     OrganizationsQueries,
     ChatsQueries,
     grapple_schema.Query,
@@ -72,7 +71,7 @@ class Mutation(
     RatingsMutations,
     FollowsMutations,
     BlocksMutations,
-    # PagesMutations,
+    PagesMutations,
     NotificationsMutations,
     OrganizationsMutations,
     ChatsMutations,
