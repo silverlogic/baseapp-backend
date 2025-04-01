@@ -10,7 +10,6 @@ from graphene_django.settings import graphene_settings
 from rest_framework.authtoken.models import Token
 
 from baseapp_core.graphql.utils import capture_database_queries
-
 from ..consumers import GraphqlWsAuthenticatedConsumer
 
 DEFAULT_GRAPHQL_URL = "/graphql"

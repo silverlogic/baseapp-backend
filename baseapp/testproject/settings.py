@@ -31,6 +31,7 @@ INSTALLED_APPS += [
     "baseapp_organizations",
     "baseapp_chats",
     "baseapp_e2e",
+    "baseapp.content_feed",
     "testproject.testapp",
     "testproject.comments",
     "testproject.profiles",
