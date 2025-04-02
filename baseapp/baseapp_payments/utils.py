@@ -174,12 +174,23 @@ class StripeService:
     def retrieve_subscription(self, subscription_id):
         try:
             subscription = stripe.Subscription.retrieve(subscription_id)
-            return subscription
         except Exception as e:
             if "No such subscription" in str(e):
                 return None
             logger.exception(e)
             raise Exception("Error retrieving subscription in Stripe")
+
+        customer = subscription.get("customer", None)
+        try:
+            upcoming_invoice = stripe.Invoice.upcoming(customer=customer)
+            subscription["upcoming_invoice"] = {
+                "amount_due": upcoming_invoice.amount_due,
+                "next_payment_attempt": upcoming_invoice.next_payment_attempt,
+            }
+        except Exception as e:
+            logger.warning(f"Failed to retrieve upcoming invoice for customer {customer}: {str(e)}")
+
+        return subscription
 
     def list_subscriptions(self, customer_id, **kwargs):
         try:
@@ -232,11 +243,45 @@ class StripeService:
             raise Exception("Error retrieving payment methods in Stripe")
 
     def get_customer_payment_methods(self, remote_customer_id):
+        customer = self.retrieve_customer(remote_customer_id)
+        if not customer:
+            raise Exception("Customer not found in Stripe")
+        default_payment_method = customer.get("invoice_settings", {}).get("default_payment_method")
         try:
-            return self.list_payment_methods(remote_customer_id)
+            payment_methods = self.list_payment_methods(remote_customer_id)
+            if default_payment_method:
+                for pm in payment_methods:
+                    if pm.id == default_payment_method:
+                        pm["is_default"] = True
+                        break
+            else:
+                for pm in payment_methods:
+                    pm["is_default"] = False
+            return payment_methods
         except Exception as e:
             logger.exception(e)
             raise Exception("Failed to retrieve payment methods")
+
+    def get_upcoming_invoice(self, customer_id):
+        try:
+            invoice = stripe.Invoice.upcoming(customer=customer_id)
+            return invoice
+        except Exception as e:
+            logger.exception(e)
+            raise Exception("Error retrieving upcoming invoice in Stripe")
+
+    def get_payment_intent(self, payment_intent_id):
+        try:
+            payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+            return payment_intent
+        except stripe.error.InvalidRequestError as e:
+            if "No such PaymentIntent" in str(e):
+                return None
+            logger.error(f"Failed to retrieve PaymentIntent: {str(e)}")
+            raise Exception("Error retrieving PaymentIntent in Stripe")
+        except Exception as e:
+            logger.exception(e)
+            raise Exception("Error retrieving PaymentIntent in Stripe")
 
     def update_payment_method_billing_details(self, payment_method_id, billing_details):
         try:
