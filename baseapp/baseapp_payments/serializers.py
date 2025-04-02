@@ -220,6 +220,6 @@ class StripePaymentMethodSerializer(serializers.Serializer):
             setup_intent = StripeService().create_setup_intent(
                 customer_id=customer_id,
             )
-            return setup_intent
+            return {"id": setup_intent["id"], "client_secret": setup_intent["client_secret"]}
         except Exception as e:
             raise serializers.ValidationError(str(e))
