@@ -31,6 +31,7 @@ class StripeSubscriptionSerializer(serializers.Serializer):
     remote_subscription_id = serializers.CharField(read_only=True)
     client_secret = serializers.CharField(read_only=True)
     invoice_id = serializers.CharField(read_only=True)
+    latest_invoice = serializers.DictField(read_only=True)
 
     def validate(self, data):
         customer_id = data["remote_customer_id"]
@@ -107,6 +108,7 @@ class StripeCustomerSerializer(serializers.Serializer):
     entity_type = serializers.ReadOnlyField()
     entity_id = serializers.ReadOnlyField()
     user_id = serializers.CharField(required=False)
+    upcoming_invoice = serializers.DictField(read_only=True)
 
     class Meta:
         model = Customer
@@ -203,6 +205,7 @@ class StripePaymentMethodSerializer(serializers.Serializer):
     card = StripeCardSerializer(read_only=True)
     created = serializers.IntegerField(read_only=True)
     customer = serializers.CharField(read_only=True)
+    is_default = serializers.BooleanField(read_only=True, default=False)
 
     customer_id = serializers.CharField(write_only=True, required=False)
 
