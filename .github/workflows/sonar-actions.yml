@@ -5,8 +5,8 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  baseapp-auth:
+  baseapp:
     uses: ./.github/workflows/sonar-workflow.yml
     with:
-      project: baseapp-auth
+      project: baseapp
     secrets: inherit
