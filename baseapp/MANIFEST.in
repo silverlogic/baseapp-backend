@@ -85,3 +85,8 @@ include baseapp_drf_view_action_permissions/README.md
 recursive-include baseapp_drf_view_action_permissions/templates *
 recursive-include baseapp_drf_view_action_permissions/static *
 recursive-include baseapp_drf_view_action_permissions/locale *
+
+include baseapp_social_auth/README.md
+recursive-include baseapp_social_auth/templates *
+recursive-include baseapp_social_auth/static *
+recursive-include baseapp_social_auth/locale *

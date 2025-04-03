@@ -10,11 +10,6 @@ jobs:
     with:
       project: baseapp-auth
     secrets: inherit
-  baseapp-social-auth:
-    uses: ./.github/workflows/sonar-workflow.yml
-    with:
-      project: baseapp-social-auth
-    secrets: inherit
   baseapp-profiles:
     uses: ./.github/workflows/sonar-workflow.yml
     with:

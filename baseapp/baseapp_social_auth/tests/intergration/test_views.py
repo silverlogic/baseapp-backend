@@ -4,14 +4,13 @@ from unittest.mock import patch
 
 import httpretty
 import pytest
-from avatar.models import Avatar
-from baseapp_core.rest_framework.routers import DefaultRouter
-from baseapp_core.tests import helpers as h
-from baseapp_core.tests.fixtures import *  # noqa
 from django.contrib.auth import get_user_model
 from django.urls import include, path, reverse
 from rest_framework.test import APITestCase, URLPatternsTestCase
 
+from baseapp_core.rest_framework.routers import DefaultRouter
+from baseapp_core.tests import helpers as h
+from baseapp_core.tests.fixtures import *  # noqa
 from baseapp_social_auth.referrals import get_referral_code
 from baseapp_social_auth.views import SocialAuthViewSet
 
@@ -120,7 +119,8 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
         complete_data = self.complete_data()
         r = self.client.post(self.reverse(), complete_data)
         h.responseOk(r)
-        assert Avatar.objects.count()
+        user = get_user_model().objects.get()
+        assert user.profile.image
 
     def test_facebook_can_be_referred(self):
         referrer = get_user_model().objects.create(email="referrer@tsl.io")
@@ -298,7 +298,8 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
         for step2_data_with_profile_image in self.step2_data_with_profile_image():
             r = self.client.post(self.reverse(), step2_data_with_profile_image)
         h.responseOk(r)
-        assert Avatar.objects.count()
+        user = get_user_model().objects.get()
+        assert user.profile.image
 
     def test_twitter_user_avatar_is_not_created_when_user_has_default_profile_image(
         self,
@@ -306,7 +307,8 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
         for step2_data_with_default_profile_image in self.step2_data_with_default_profile_image():
             r = self.client.post(self.reverse(), step2_data_with_default_profile_image)
         h.responseOk(r)
-        assert not Avatar.objects.count()
+        user = get_user_model().objects.get()
+        assert not user.profile.image
 
 
 @pytest.mark.usefixtures("use_httpretty")
@@ -426,7 +428,8 @@ class TestLinkedInSocialAuth(SocialAuthViewSetMock):
         picture_data = self.picture_data()
         r = self.client.post(self.reverse(), picture_data)
         h.responseOk(r)
-        assert Avatar.objects.count()
+        user = get_user_model().objects.get()
+        assert user.profile.image
 
 
 @pytest.mark.usefixtures("use_httpretty")
