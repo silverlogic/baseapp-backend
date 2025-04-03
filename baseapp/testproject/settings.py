@@ -1,3 +1,4 @@
+from celery.schedules import crontab
 from django.utils.translation import gettext_lazy as _
 
 from baseapp_core.tests.settings import *  # noqa
@@ -10,12 +11,15 @@ from baseapp_wagtail.settings import (
 
 # Application definition
 INSTALLED_APPS += [
+    "channels",
     "graphene_django",
     "notifications",
     "push_notifications",
     "django_quill",
     "social_django",
     "rest_social_auth",
+    "trench",
+    "rest_framework_simplejwt",
     "baseapp_profiles",
     "baseapp_reactions",
     "baseapp_reports",
@@ -79,6 +83,13 @@ CELERY_TASK_ROUTES = {
     "baseapp_cloudflare_stream_field.tasks.generate_download_url": {
         "exchange": "default",
         "routing_key": "default",
+    },
+}
+CELERY_BEAT_SCHEDULE = {
+    "notify_is_password_expired": {
+        "task": "baseapp_auth.tasks.notify_users_is_password_expired",
+        "schedule": crontab(hour=7, minute=7),
+        "options": {"expires": 60 * 60 * 11},
     },
 }
 
@@ -186,3 +197,34 @@ if SOCIAL_AUTH_LINKEDIN_OAUTH2_KEY and SOCIAL_AUTH_LINKEDIN_OAUTH2_SECRET:
     AUTHENTICATION_BACKENDS.append("social_core.backends.linkedin.LinkedinOAuth2")
 if SOCIAL_AUTH_GOOGLE_OAUTH2_KEY and SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET:
     AUTHENTICATION_BACKENDS.append("social_core.backends.google.GoogleOAuth2")
+
+# JWT Authentication
+SIMPLE_JWT = {
+    # It will work instead of the default serializer(TokenObtainPairSerializer).
+    "TOKEN_OBTAIN_SERIALIZER": "testproject.users.rest_framework.jwt.serializers.MyTokenObtainPairSerializer",
+    # ...
+}
+JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
+
+# Sites
+FRONT_CONFIRM_EMAIL_URL = FRONT_URL + "/confirm-email/{id}/{token}"
+FRONT_FORGOT_PASSWORD_URL = FRONT_URL + "/forgot-password/{token}"
+FRONT_CHANGE_EMAIL_CONFIRM_URL = FRONT_URL + "/change-email/{id}/{token}"
+FRONT_CHANGE_EMAIL_VERIFY_URL = FRONT_URL + "/change-email-verify/{id}/{token}"
+FRONT_CHANGE_EXPIRED_PASSWORD_URL = FRONT_URL + "/change-expired-password/{token}"
+
+# IOS Deep Links
+IOS_CONFIRM_EMAIL_DEEP_LINK = False
+IOS_FORGOT_PASSWORD_DEEP_LINK = False
+IOS_CHANGE_EMAIL_DEEP_LINK = False
+
+# Android Deep Links
+ANDROID_CONFIRM_EMAIL_DEEP_LINK = False
+ANDROID_FORGOT_PASSWORD_DEEP_LINK = False
+ANDROID_CHANGE_EMAIL_DEEP_LINK = False
+
+# Phone Numbers
+PHONENUMBER_DB_FORMAT = "E164"
+
+# BRANCH.IO
+BRANCHIO_KEY = env("BRANCHIO_KEY", "N/A")
