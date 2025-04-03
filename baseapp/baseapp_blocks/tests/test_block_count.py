@@ -1,5 +1,6 @@
 import pytest
 import swapper
+
 from baseapp_profiles.tests.factories import ProfileFactory
 
 Block = swapper.load_model("baseapp_blocks", "Block")

@@ -3,11 +3,11 @@ import datetime
 import pghistory
 import pytest
 import swapper
-from baseapp_profiles.tests.factories import ProfileFactory
 
 from baseapp.activity_log.models import ActivityLog, VisibilityTypes
 from baseapp_comments.tests.factories import CommentFactory
 from baseapp_core.tests.factories import UserFactory
+from baseapp_profiles.tests.factories import ProfileFactory
 
 pytestmark = pytest.mark.django_db
 

@@ -2,10 +2,10 @@ from unittest.mock import patch
 
 import pytest
 import swapper
-from baseapp_profiles.tests.factories import ProfileFactory
 from django.test import override_settings
 
 from baseapp_comments.tests.factories import CommentFactory
+from baseapp_profiles.tests.factories import ProfileFactory
 from baseapp_reactions.tests.factories import ReactionFactory
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")

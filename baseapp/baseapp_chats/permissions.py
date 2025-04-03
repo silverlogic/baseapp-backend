@@ -7,6 +7,7 @@ Message = swapper.load_model("baseapp_chats", "Message")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
 Block = swapper.load_model("baseapp_blocks", "Block")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
+profile_app_label = Profile._meta.app_label
 
 
 class ChatsPermissionsBackend(BaseBackend):
@@ -73,11 +74,11 @@ class ChatsPermissionsBackend(BaseBackend):
         if perm == "baseapp_chats.add_chatroom" and user_obj.is_authenticated:
             return self.can_add_chatroom(user_obj, obj)
         if perm == "baseapp_chats.add_chatroom_with_profile":
-            return user_obj.has_perm("baseapp_profiles.use_profile", obj)
+            return user_obj.has_perm(f"{profile_app_label}.use_profile", obj)
         if perm == "baseapp_chats.delete_chat":
             if isinstance(obj, ChatRoom):
                 return obj.user_id == user_obj.id or user_obj.has_perm(
-                    "baseapp_profiles.use_profile", obj.actor
+                    f"{profile_app_label}.use_profile", obj.actor
                 )
         if perm == "baseapp_chats.modify_chatroom":
             return self.can_modify_chatroom(user_obj, obj)

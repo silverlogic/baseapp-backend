@@ -3,6 +3,8 @@ from django.conf import settings
 from django.contrib.auth.backends import BaseBackend
 
 RateModel = swapper.load_model("baseapp_ratings", "Rate")
+Profile = swapper.load_model("baseapp_profiles", "Profile")
+profile_app_label = Profile._meta.app_label
 
 
 class RatingsPermissionsBackend(BaseBackend):
@@ -11,7 +13,7 @@ class RatingsPermissionsBackend(BaseBackend):
             return user_obj.is_authenticated and getattr(obj, "is_ratings_enabled", False)
 
         if perm == "baseapp_ratings.add_rate_with_profile" and obj:
-            return user_obj.has_perm("baseapp_profiles.use_profile", obj)
+            return user_obj.has_perm(f"{profile_app_label}.use_profile", obj)
 
         if perm == "baseapp_ratings.view_rate":
             return True
