@@ -90,3 +90,13 @@ include baseapp_social_auth/README.md
 recursive-include baseapp_social_auth/templates *
 recursive-include baseapp_social_auth/static *
 recursive-include baseapp_social_auth/locale *
+
+include baseapp_wagtail/README.md
+recursive-include baseapp_wagtail/templates *
+recursive-include baseapp_wagtail/static *
+recursive-include baseapp_wagtail/locale *
+
+include baseapp_profiles/README.md
+recursive-include baseapp_profiles/templates *
+recursive-include baseapp_profiles/static *
+recursive-include baseapp_profiles/locale *

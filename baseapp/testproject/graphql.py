@@ -1,6 +1,4 @@
 import graphene
-from baseapp_profiles.graphql.mutations import ProfilesMutations
-from baseapp_profiles.graphql.queries import ProfilesQueries
 from graphene import relay
 from graphene.relay.node import NodeField as RelayNodeField
 from graphene_django.debug import DjangoDebug
@@ -21,6 +19,8 @@ from baseapp_organizations.graphql.mutations import OrganizationsMutations
 from baseapp_organizations.graphql.queries import OrganizationsQueries
 from baseapp_pages.graphql.mutations import PagesMutations
 from baseapp_pages.graphql.queries import PagesQueries
+from baseapp_profiles.graphql.mutations import ProfilesMutations
+from baseapp_profiles.graphql.queries import ProfilesQueries
 from baseapp_ratings.graphql.mutations import RatingsMutations
 from baseapp_ratings.graphql.queries import RatingsQueries
 from baseapp_reactions.graphql.mutations import ReactionsMutations

@@ -1,8 +1,8 @@
 import pytest
-from baseapp_profiles.tests.factories import ProfileFactory
 from django.test import override_settings
 
 from baseapp_core.tests.factories import UserFactory
+from baseapp_profiles.tests.factories import ProfileFactory
 from baseapp_reactions.tests.factories import ReactionFactory
 
 from .factories import CommentFactory

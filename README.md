@@ -84,6 +84,11 @@ Reusable app to handle organizations. Users can have and manage multiple Organiz
 
 Real-time chat between users, and groups of users.
 
+## [baseapp-profiles](baseapp/baseapp_profiles)
+
+This app provides user profile management functionalities, allowing users to create, update, and manage their profiles. Allowing the user to manage multiple profiles and act as a profile when commenting, posting, etc.
+
+
 ## How to develop
 
 Each module of baseapp-backend has a demo project in `testproject/` directory, which can be run as a standalone Django app to test. Then in baseapp-backend directory:

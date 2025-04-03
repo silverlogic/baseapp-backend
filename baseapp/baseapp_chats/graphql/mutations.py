@@ -34,6 +34,7 @@ UnreadMessageCount = swapper.load_model("baseapp_chats", "UnreadMessageCount")
 Block = swapper.load_model("baseapp_blocks", "Block")
 User = get_user_model()
 Profile = swapper.load_model("baseapp_profiles", "Profile")
+profile_app_label = Profile._meta.app_label
 
 
 ChatRoomObjectType = ChatRoom.get_graphql_object_type()
@@ -61,7 +62,7 @@ class ChatRoomCreate(RelayMutation):
     def mutate_and_get_payload(cls, root, info, profile_id, participants, is_group, **input):
         profile = get_obj_from_relay_id(info, profile_id)
 
-        if not info.context.user.has_perm("baseapp_profiles.use_profile", profile):
+        if not info.context.user.has_perm(f"{profile_app_label}.use_profile", profile):
             return ChatRoomCreate(
                 errors=[
                     ErrorType(
@@ -271,7 +272,7 @@ class ChatRoomUpdate(RelayMutation):
                 ]
             )
 
-        if not info.context.user.has_perm("baseapp_profiles.use_profile", profile):
+        if not info.context.user.has_perm(f"{profile_app_label}.use_profile", profile):
             return ChatRoomUpdate(
                 errors=[
                     ErrorType(
@@ -409,7 +410,7 @@ class ChatRoomSendMessage(RelayMutation):
                 room=room,
             ).first()
 
-        if not info.context.user.has_perm("baseapp_profiles.use_profile", profile):
+        if not info.context.user.has_perm(f"{profile_app_label}.use_profile", profile):
             return ChatRoomSendMessage(
                 errors=[
                     ErrorType(
@@ -630,7 +631,7 @@ class ChatRoomReadMessages(RelayMutation):
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 
-        if not info.context.user.has_perm("baseapp_profiles.use_profile", profile):
+        if not info.context.user.has_perm(f"{profile_app_label}.use_profile", profile):
             return ChatRoomReadMessages(
                 errors=[
                     ErrorType(
@@ -706,7 +707,7 @@ class ChatRoomUnread(RelayMutation):
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 
-        if not info.context.user.has_perm("baseapp_profiles.use_profile", profile):
+        if not info.context.user.has_perm(f"{profile_app_label}.use_profile", profile):
             return ChatRoomUnread(
                 errors=[
                     ErrorType(
@@ -752,7 +753,7 @@ class ChatRoomArchive(RelayMutation):
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 
-        if not info.context.user.has_perm("baseapp_profiles.use_profile", profile):
+        if not info.context.user.has_perm(f"{profile_app_label}.use_profile", profile):
             return ChatRoomArchive(
                 errors=[
                     ErrorType(

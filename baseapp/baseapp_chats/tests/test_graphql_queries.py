@@ -2,13 +2,13 @@ from datetime import timedelta
 
 import pytest
 import swapper
-from baseapp_profiles.tests.factories import ProfileFactory
 from django.utils import timezone
 from freezegun import freeze_time
 
 from baseapp_blocks.tests.factories import BlockFactory
 from baseapp_core.graphql.testing.fixtures import graphql_query
 from baseapp_core.tests.factories import UserFactory
+from baseapp_profiles.tests.factories import ProfileFactory
 
 from .factories import ChatRoomFactory, ChatRoomParticipantFactory, MessageFactory
 
