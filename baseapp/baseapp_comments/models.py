@@ -170,3 +170,8 @@ class CommentableModel(AbstractCommentableModel):
 
     class Meta:
         abstract = True
+
+
+# Can be used to test comments without attaching them to another model
+class CommentThread(CommentableModel, RelayModel):
+    pass

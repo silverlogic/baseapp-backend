@@ -2,6 +2,8 @@ import swapper
 from django.contrib import admin
 from django.template.defaultfilters import truncatewords
 
+from .models import CommentThread
+
 Comment = swapper.load_model("baseapp_comments", "Comment")
 
 
@@ -25,3 +27,8 @@ class CommentAdmin(admin.ModelAdmin):
         return truncatewords(obj.body, 10)
 
     truncated_body.short_description = "body"
+
+
+@admin.register(CommentThread)
+class CommentThreadAdmin(admin.ModelAdmin):
+    list_display = ("id", "is_comments_enabled", "relay_id")
