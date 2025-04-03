@@ -103,6 +103,11 @@ if apps.is_installed("baseapp.activity_log"):
 
     inheritances += (ProfileActivityLog,)
 
+if apps.is_installed("baseapp_reports"):
+    from baseapp_reports.graphql.object_types import ReportsInterface
+
+    interfaces.append(ReportsInterface)
+
 
 class BaseProfileObjectType(*inheritances, object):
     target = graphene.Field(lambda: ProfileInterface)

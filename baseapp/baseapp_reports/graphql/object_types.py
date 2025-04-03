@@ -7,26 +7,55 @@ from graphene_django.filter import DjangoFilterConnectionField
 
 from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
 
+from .filters import ReportTypeFilter
+
 Report = swapper.load_model("baseapp_reports", "Report")
-
-ReportTypesEnum = graphene.Enum.from_enum(Report.ReportTypes)
-
-
-def create_object_type_from_enum(name, enum):
-    fields = {}
-    for reaction_type in enum:
-        fields[reaction_type.name] = graphene.Int()
-    fields["total"] = graphene.Int()
-    return type(name, (graphene.ObjectType,), fields)
+ReportType = swapper.load_model("baseapp_reports", "ReportType")
 
 
-ReportsCount = create_object_type_from_enum("ReportsCount", Report.ReportTypes)
+class ReportsCount(graphene.ObjectType):
+    counts = graphene.JSONString()
+
+
+class BaseReportTypeObjectType:
+    class Meta:
+        interfaces = (relay.Node,)
+        model = ReportType
+        fields = (
+            "id",
+            "name",
+            "label",
+            "content_types",
+            "sub_types",
+            "parent_type",
+        )
+        filterset_class = ReportTypeFilter
+
+
+class ReportTypeObjectType(
+    BaseReportTypeObjectType, gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
+):
+    class Meta(BaseReportTypeObjectType.Meta):
+        pass
 
 
 class ReportsInterface(relay.Node):
     reports_count = graphene.Field(ReportsCount)
     reports = DjangoFilterConnectionField(get_object_type_for_model(Report))
     my_reports = graphene.Field(get_object_type_for_model(Report), required=False)
+
+    def resolve_reports_count(self, info, **kwargs):
+        target_content_type = ContentType.objects.get_for_model(self)
+        counts = {}
+        reports = Report.objects.filter(
+            target_content_type=target_content_type,
+            target_object_id=self.pk,
+        )
+        for report_type in ReportType.objects.all():
+            field_name = report_type.name.lower()
+            counts[field_name] = reports.filter(report_type=report_type).count()
+        counts["total"] = reports.count()
+        return ReportsCount(counts=counts)
 
     def resolve_reactions(self, info, **kwargs):
         target_content_type = ContentType.objects.get_for_model(self)
@@ -47,7 +76,6 @@ class ReportsInterface(relay.Node):
 
 class BaseReportObjectType:
     target = graphene.Field(relay.Node)
-    report_type = graphene.Field(ReportTypesEnum)
 
     class Meta:
         interfaces = (relay.Node,)

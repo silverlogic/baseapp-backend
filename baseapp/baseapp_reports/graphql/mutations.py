@@ -7,9 +7,10 @@ from graphql_relay.connection.arrayconnection import offset_to_cursor
 
 from baseapp_core.graphql import RelayMutation, get_obj_from_relay_id, login_required
 
-from .object_types import ReportsInterface, ReportTypesEnum
+from .object_types import ReportsInterface
 
 Report = swapper.load_model("baseapp_reports", "Report")
+ReportType = swapper.load_model("baseapp_reports", "ReportType")
 ReportObjectType = Report.get_graphql_object_type()
 
 
@@ -19,14 +20,14 @@ class ReportCreate(RelayMutation):
 
     class Input:
         target_object_id = graphene.ID(required=True)
-        report_type = graphene.Field(ReportTypesEnum, required=False)
+        report_type_id = graphene.ID(required=True)
         report_subject = graphene.String(required=False)
 
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
-        report_type = input.get("report_type")
+        report_type = get_obj_from_relay_id(info, input.get("report_type_id"))
         report_subject = input.get("report_subject")
 
         if not info.context.user.has_perm("baseapp_reports.add_report", target):
@@ -47,7 +48,7 @@ class ReportCreate(RelayMutation):
 
         target.refresh_from_db()
 
-        return ReportCreate(
+        return cls(
             report=ReportObjectType._meta.connection.Edge(node=report, cursor=offset_to_cursor(0)),
             target=target,
         )
