@@ -3,7 +3,6 @@ from io import BytesIO
 
 import requests
 import swapper
-from avatar.models import Avatar
 from django.core.files.images import ImageFile
 
 UserReferral = swapper.load_model("baseapp_referrals", "UserReferral")
@@ -68,7 +67,9 @@ def set_avatar(is_new, backend, user, response, *args, **kwargs):
     if image_url:
         response = requests.get(image_url, params=image_params)
         image = BytesIO(response.content)
-        Avatar.objects.create(user=user, primary=True, avatar=ImageFile(image, name="pic.jpg"))
+        user.refresh_from_db()
+        user.profile.image = ImageFile(image, name="pic.jpg")
+        user.profile.save(update_fields=["image"])
 
 
 def set_is_new(is_new, user, *args, **kwargs):

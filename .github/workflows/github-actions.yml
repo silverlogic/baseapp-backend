@@ -12,10 +12,6 @@ jobs:
     with:
       project: baseapp-auth
       app_name: baseapp_referrals
-  baseapp-social-auth:
-    uses: ./.github/workflows/project-workflow.yml
-    with:
-      project: baseapp-social-auth
   baseapp-profiles:
     uses: ./.github/workflows/project-workflow.yml
     with:
