@@ -100,3 +100,13 @@ include baseapp_profiles/README.md
 recursive-include baseapp_profiles/templates *
 recursive-include baseapp_profiles/static *
 recursive-include baseapp_profiles/locale *
+
+include baseapp_auth/README.md
+recursive-include baseapp_auth/templates *
+recursive-include baseapp_auth/static *
+recursive-include baseapp_auth/locale *
+
+include baseapp_referrals/README.md
+recursive-include baseapp_referrals/templates *
+recursive-include baseapp_referrals/static *
+recursive-include baseapp_referrals/locale *
