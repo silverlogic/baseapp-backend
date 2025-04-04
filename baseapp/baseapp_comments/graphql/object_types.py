@@ -1,12 +1,12 @@
 import graphene
 import swapper
-from baseapp_auth.graphql import PermissionsInterface
 from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
 
+from baseapp_auth.graphql import PermissionsInterface
 from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
 from baseapp_reactions.graphql.object_types import ReactionsInterface
 

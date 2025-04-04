@@ -6,13 +6,13 @@ This repository contains baseapp django packages to be reused accross projects b
 
 The core contains the basics for BaseApp like Django Rest Framework's basic setup, custom ModelSerializer and fields, also base email template, testing helpers and other utilities. It also contains the base GraphQL setup, check [baseapp_core/graphql](baseapp/baseapp_core/graphql) for more info.
 
-## [baseapp-auth](baseapp-auth)
+## [baseapp-auth](baseapp/baseapp_auth)
 
-Contains the following apps:
+Reusable user and authentication utilities. Authentication setup using AuthToken, JWT and Multi-factor authentication (MFA)
 
-**baseapp_auth**: Reusable user and authentication utilities. Authentication setup using AuthToken, JWT and Multi-factor authentication (MFA)
+## [baseapp-referrals](baseapp/baseapp_referrals)
 
-**baseapp_referrals**: Models and utilities for user referrals
+Models and utilities for user referrals
 
 ## [baseapp-cloudflare-stream-field](baseapp/baseapp_cloudflare_stream_field)
 

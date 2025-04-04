@@ -1,11 +1,11 @@
 import graphene
 import swapper
-from baseapp_auth.graphql import PermissionsInterface
 from django.apps import apps
 from django.db.models import Q
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
 
+from baseapp_auth.graphql import PermissionsInterface
 from baseapp_core.graphql import (
     DjangoObjectType,
     ThumbnailField,

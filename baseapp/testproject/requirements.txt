@@ -23,5 +23,4 @@ isort==5.13.2
 channels==4.0.0
 channels_redis==4.0.0
 
--e ./baseapp-auth
--e ./baseapp[graphql,pages,payments,notifications,urlshortening,messagetemplates,wagtail,socialauth]
+-e ./baseapp[auth,referrals,graphql,pages,payments,notifications,urlshortening,messagetemplates,wagtail,socialauth]
