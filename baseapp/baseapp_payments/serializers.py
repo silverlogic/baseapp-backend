@@ -60,7 +60,9 @@ class StripeSubscriptionSerializer(serializers.Serializer):
             raise
         except Exception as e:
             logger.exception(e)
-            raise serializers.ValidationError(f"Error checking existing subscriptions: {str(e)}")
+            raise serializers.ValidationError(
+                "An error occurred while checking existing subscriptions."
+            )
 
     def create(self, validated_data):
         customer_id = validated_data["remote_customer_id"]
@@ -222,4 +224,6 @@ class StripePaymentMethodSerializer(serializers.Serializer):
             )
             return {"id": setup_intent["id"], "client_secret": setup_intent["client_secret"]}
         except Exception as e:
-            raise serializers.ValidationError(str(e))
+            logger.error(f"Failed to create setup intent: {str(e)}")
+
+            serializers.ValidationError("An internal error has occurred. Please try again later.")

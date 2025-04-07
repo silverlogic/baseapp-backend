@@ -140,8 +140,8 @@ class StripePaymentMethodViewset(viewsets.ViewSet):
             serializer = self.serializer_class(payment_methods, many=True)
             return Response(serializer.data, status=200)
         except Exception as e:
-            logger.exception("Failed to retrieve payment methods")
-            return Response({"error": str(e)}, status=500)
+            logger.exception("Failed to retrieve payment methods: %s", e)
+            return Response({"error": "An internal error has occurred"}, status=500)
 
     def create(self, request):
         serializer = self.serializer_class(data=request.data)
@@ -151,7 +151,7 @@ class StripePaymentMethodViewset(viewsets.ViewSet):
             result = serializer.create(serializer.validated_data)
             return Response(result, status=201)
         except ValidationError as e:
-            return Response({"error": str(e)}, status=400)
+            return Response({"error": "Invalid input provided"}, status=400)
         except Exception as e:
-            logger.exception("Failed to create payment method")
-            return Response({"error": str(e)}, status=500)
+            logger.exception("Failed to create payment method: %s", e)
+            return Response({"error": "An internal error has occurred"}, status=500)
