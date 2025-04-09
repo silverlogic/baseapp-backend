@@ -37,7 +37,7 @@ class Migration(migrations.Migration):
                         default=django.utils.timezone.now, editable=False, verbose_name="modified"
                     ),
                 ),
-                ("name", models.CharField(max_length=255, unique=True)),
+                ("key", models.CharField(max_length=255, unique=True)),
                 ("label", models.CharField(max_length=255)),
                 (
                     "content_types",

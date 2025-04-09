@@ -23,7 +23,7 @@ class BaseReportTypeObjectType:
         model = ReportType
         fields = (
             "id",
-            "name",
+            "key",
             "label",
             "content_types",
             "sub_types",
@@ -52,7 +52,7 @@ class ReportsInterface(relay.Node):
             target_object_id=self.pk,
         )
         for report_type in ReportType.objects.all():
-            field_name = report_type.name.lower()
+            field_name = report_type.key
             counts[field_name] = reports.filter(report_type=report_type).count()
         counts["total"] = reports.count()
         return ReportsCount(counts=counts)

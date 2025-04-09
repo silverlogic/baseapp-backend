@@ -9,7 +9,7 @@ ReportType = swapper.load_model("baseapp_reports", "ReportType")
 
 
 class ReportTypeFactory(factory.django.DjangoModelFactory):
-    name = factory.Faker("word")
+    key = factory.Faker("word")
     label = factory.Faker("word")
 
     class Meta:

@@ -18,13 +18,13 @@ def default_reports_count_full():
     ReportTypeModel = swapper.load_model("baseapp_reports", "ReportType")
 
     for report_type in ReportTypeModel.objects.all():
-        d[report_type.name] = 0
+        d[report_type.key] = 0
 
     return d
 
 
 class AbstractBaseReportType(RelayModel, TimeStampedModel):
-    name = models.CharField(max_length=255, unique=True)
+    key = models.CharField(max_length=255, unique=True)
     label = models.CharField(max_length=255)
     content_types = models.ManyToManyField(
         ContentType,
