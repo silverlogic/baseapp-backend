@@ -5,28 +5,8 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  baseapp-auth:
+  baseapp:
     uses: ./.github/workflows/sonar-workflow.yml
     with:
-      project: baseapp-auth
-    secrets: inherit
-  baseapp-drf-view-action-permissions:
-    uses: ./.github/workflows/sonar-workflow.yml
-    with:
-      project: baseapp-drf-view-action-permissions
-    secrets: inherit
-  baseapp-social-auth:
-    uses: ./.github/workflows/sonar-workflow.yml
-    with:
-      project: baseapp-social-auth
-    secrets: inherit
-  baseapp-e2e:
-    uses: ./.github/workflows/sonar-workflow.yml
-    with:
-      project: baseapp-e2e
-    secrets: inherit
-  baseapp-profiles:
-    uses: ./.github/workflows/sonar-workflow.yml
-    with:
-      project: baseapp-profiles
+      project: baseapp
     secrets: inherit

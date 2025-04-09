@@ -1,4 +1,5 @@
 include README.md
+recursive-exclude testproject *
 
 include baseapp/README.md
 recursive-include baseapp/templates *
@@ -74,3 +75,38 @@ include baseapp_chats/README.md
 recursive-include baseapp_chats/templates *
 recursive-include baseapp_chats/static *
 recursive-include baseapp_chats/locale *
+
+include baseapp_e2e/README.md
+recursive-include baseapp_e2e/templates *
+recursive-include baseapp_e2e/static *
+recursive-include baseapp_e2e/locale *
+
+include baseapp_drf_view_action_permissions/README.md
+recursive-include baseapp_drf_view_action_permissions/templates *
+recursive-include baseapp_drf_view_action_permissions/static *
+recursive-include baseapp_drf_view_action_permissions/locale *
+
+include baseapp_social_auth/README.md
+recursive-include baseapp_social_auth/templates *
+recursive-include baseapp_social_auth/static *
+recursive-include baseapp_social_auth/locale *
+
+include baseapp_wagtail/README.md
+recursive-include baseapp_wagtail/templates *
+recursive-include baseapp_wagtail/static *
+recursive-include baseapp_wagtail/locale *
+
+include baseapp_profiles/README.md
+recursive-include baseapp_profiles/templates *
+recursive-include baseapp_profiles/static *
+recursive-include baseapp_profiles/locale *
+
+include baseapp_auth/README.md
+recursive-include baseapp_auth/templates *
+recursive-include baseapp_auth/static *
+recursive-include baseapp_auth/locale *
+
+include baseapp_referrals/README.md
+recursive-include baseapp_referrals/templates *
+recursive-include baseapp_referrals/static *
+recursive-include baseapp_referrals/locale *

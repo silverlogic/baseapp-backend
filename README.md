@@ -6,23 +6,23 @@ This repository contains baseapp django packages to be reused accross projects b
 
 The core contains the basics for BaseApp like Django Rest Framework's basic setup, custom ModelSerializer and fields, also base email template, testing helpers and other utilities. It also contains the base GraphQL setup, check [baseapp_core/graphql](baseapp/baseapp_core/graphql) for more info.
 
-## [baseapp-auth](baseapp-auth)
+## [baseapp-auth](baseapp/baseapp_auth)
 
-Contains the following apps:
+Reusable user and authentication utilities. Authentication setup using AuthToken, JWT and Multi-factor authentication (MFA)
 
-**baseapp_auth**: Reusable user and authentication utilities. Authentication setup using AuthToken, JWT and Multi-factor authentication (MFA)
+## [baseapp-referrals](baseapp/baseapp_referrals)
 
-**baseapp_referrals**: Models and utilities for user referrals
+Models and utilities for user referrals
 
 ## [baseapp-cloudflare-stream-field](baseapp/baseapp_cloudflare_stream_field)
 
 Integration with Cloudflare Stream for file streaming
 
-## [baseapp-drf-view-action-permissions](baseapp-drf-view-action-permissions)
+## [baseapp-drf-view-action-permissions](baseapp/baseapp_drf_view_action_permissions)
 
-This app uses django provided permission and group model and provides the ability to add roles to a django model, and make views from the [django-restframework](https://www.django-rest-framework.org/) check for them. A **Permission** represents the lowest single unit of access. A **Group** is a collection of Permissions. A **Role** can have many Permision Groups, many Permissions and many **Excluded Permissions**. The access of a Role is the aggregation of its single Permissions + the permissions on its **Permission** Groups - its Excluded Permissions.
+This app uses django provided permission and group model and provides the ability to add roles to a django model, and make views from the [django-restframework](https://www.django-rest-framework.org/) check for them. A **Permission** represents the lowest single unit of access. A **Group** is a collection of Permissions. A **Role** can have many Permission Groups, many Permissions and many **Excluded Permissions**. The access of a Role is the aggregation of its single Permissions + the permissions on its **Permission** Groups - its Excluded Permissions.
 
-## [baseapp-e2e](baseapp-e2e)
+## [baseapp-e2e](baseapp/baseapp_e2e)
 
 Utilities for performing E2E (End-To-End) tests with front-end client. (Database initialization and seeding)
 
@@ -52,7 +52,7 @@ Let a Profile block another Profile.
 
 Rate from 0 to N on any model. With support for average ratings.
 
-## [baseapp-social-auth](baseapp-social-auth)
+## [baseapp-social-auth](baseapp/baseapp_social_auth)
 
 Login/signup using social networks (Facebook, Google and others)
 
@@ -83,6 +83,11 @@ Reusable app to handle organizations. Users can have and manage multiple Organiz
 ## [baseapp-chats](baseapp/baseapp_chats)
 
 Real-time chat between users, and groups of users.
+
+## [baseapp-profiles](baseapp/baseapp_profiles)
+
+This app provides user profile management functionalities, allowing users to create, update, and manage their profiles. Allowing the user to manage multiple profiles and act as a profile when commenting, posting, etc.
+
 
 ## How to develop
 

@@ -2,6 +2,8 @@ import swapper
 from django.contrib.auth.backends import BaseBackend
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
+Profile = swapper.load_model("baseapp_profiles", "Profile")
+profile_app_label = Profile._meta.app_label
 
 
 class ReactionsPermissionsBackend(BaseBackend):
@@ -27,4 +29,4 @@ class ReactionsPermissionsBackend(BaseBackend):
                     return user_obj.has_perm(perm)
 
         if perm == "baseapp_reactions.add_reaction_with_profile" and obj:
-            return user_obj.has_perm("baseapp_profiles.use_profile", obj)
+            return user_obj.has_perm(f"{profile_app_label}.use_profile", obj)

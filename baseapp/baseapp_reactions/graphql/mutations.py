@@ -46,13 +46,14 @@ class ReactionToggle(RelayMutation):
 
         if input.get("profile_object_id"):
             profile = get_obj_from_relay_id(info, input.get("profile_object_id"))
-            if not info.context.user.has_perm(
-                "baseapp_reactions.add_reaction_with_profile", profile
-            ):
-                raise GraphQLError(
-                    str(_("You don't have permission to perform this action")),
-                    extensions={"code": "permission_required"},
-                )
+
+        profile = profile or info.context.user.current_profile
+
+        if not info.context.user.has_perm("baseapp_reactions.add_reaction_with_profile", profile):
+            raise GraphQLError(
+                str(_("You don't have permission to perform this action")),
+                extensions={"code": "permission_required"},
+            )
 
         reaction, created = Reaction.objects.get_or_create(
             profile=profile,

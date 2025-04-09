@@ -1,7 +1,8 @@
 import pytest
 import swapper
-from baseapp_profiles.tests.factories import ProfileFactory
 from django.contrib.auth import get_user_model
+
+from baseapp_profiles.tests.factories import ProfileFactory
 
 Follow = swapper.load_model("baseapp_follows", "Follow")
 

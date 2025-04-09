@@ -2,10 +2,12 @@ from unittest.mock import patch
 
 import pytest
 import swapper
-from baseapp_profiles.tests.factories import ProfileFactory
 from django.test import override_settings
 
 from baseapp_comments.tests.factories import CommentFactory
+from baseapp_core.graphql.testing.fixtures import graphql_query
+from baseapp_core.tests.factories import UserFactory
+from baseapp_profiles.tests.factories import ProfileFactory
 from baseapp_reactions.tests.factories import ReactionFactory
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
@@ -60,10 +62,56 @@ def test_user_can_add_reaction(graphql_user_client):
             assert Reaction.objects.count() == 1
 
 
+def test_more_than_one_user_can_add_reaction(graphql_user_client, django_client):
+    comment = CommentFactory()
+
+    # create reaction with type LIKE
+    # user 1 likes the comment
+    graphql_user_client(
+        REACTION_TOGGLE_GRAPHQL,
+        variables={
+            "input": {
+                "targetObjectId": comment.relay_id,
+                "reactionType": ReactionTypes.LIKE.name,
+            }
+        },
+    )
+
+    comment.refresh_from_db()
+    reactions = Reaction.objects.all()
+    assert reactions.count() == 1
+    assert comment.reactions_count["total"] == 1
+    assert comment.reactions_count["LIKE"] == 1
+    assert comment.reactions_count["DISLIKE"] == 0
+
+    # user 2 likes the comment
+    user_2 = UserFactory()
+    django_client.force_login(user_2)
+    graphql_query(
+        REACTION_TOGGLE_GRAPHQL,
+        variables={
+            "input": {
+                "targetObjectId": comment.relay_id,
+                "reactionType": ReactionTypes.LIKE.name,
+            }
+        },
+        client=django_client,
+    )
+    comment.refresh_from_db()
+    reactions = Reaction.objects.all()
+    assert reactions.count() == 2
+    assert comment.reactions_count["total"] == 2
+    assert comment.reactions_count["LIKE"] == 2
+    assert comment.reactions_count["DISLIKE"] == 0
+
+
 def test_user_can_change_reaction(django_user_client, graphql_user_client):
     comment = CommentFactory()
     reaction = ReactionFactory(
-        target=comment, user=django_user_client.user, reaction_type=ReactionTypes.LIKE
+        target=comment,
+        user=django_user_client.user,
+        profile=django_user_client.user.profile,
+        reaction_type=ReactionTypes.LIKE,
     )
     # change reaction with type LIKE to DISLIKE
     graphql_user_client(
@@ -87,7 +135,10 @@ def test_user_can_remove_reaction(django_user_client, graphql_user_client):
     comment = CommentFactory()
 
     ReactionFactory(
-        target=comment, user=django_user_client.user, reaction_type=ReactionTypes.DISLIKE
+        target=comment,
+        user=django_user_client.user,
+        profile=django_user_client.user.profile,
+        reaction_type=ReactionTypes.DISLIKE,
     )
     # remove reaction
     graphql_user_client(

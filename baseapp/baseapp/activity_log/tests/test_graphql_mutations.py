@@ -1,9 +1,9 @@
 import pytest
 import swapper
-from baseapp_profiles.tests.factories import ProfileFactory
 
 from baseapp.activity_log.models import ActivityLog, VisibilityTypes
 from baseapp_comments.tests.factories import CommentFactory
+from baseapp_profiles.tests.factories import ProfileFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -87,4 +87,4 @@ def test_update_profile_is_public(django_user_client, graphql_user_client, celer
     assert activity.visibility == VisibilityTypes.PUBLIC
     assert activity.user_id == django_user_client.user.pk
     assert activity.profile_id == django_user_client.user.profile.pk
-    assert activity.verb == f"{Profile._meta.app_label}.update_profile"
+    assert activity.verb == "baseapp_profiles.update_profile"

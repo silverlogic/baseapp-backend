@@ -62,6 +62,7 @@ class AbstractBaseReaction(TimeStampedModel, RelayModel):
         indexes = [
             models.Index(fields=["target_content_type", "target_object_id"]),
         ]
+        unique_together = [["profile", "target_content_type", "target_object_id"]]
 
     def __str__(self):
         return "Reaction (%s) #%s by %s" % (
@@ -113,8 +114,7 @@ class AbstractBaseReaction(TimeStampedModel, RelayModel):
 
 
 class Reaction(AbstractBaseReaction):
-    class Meta:
-        unique_together = [["user", "target_content_type", "target_object_id"]]
+    class Meta(AbstractBaseReaction.Meta):
         swappable = swapper.swappable_setting("baseapp_reactions", "Reaction")
 
     @classmethod

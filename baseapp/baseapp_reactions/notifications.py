@@ -1,3 +1,5 @@
+import logging
+
 import swapper
 from celery import shared_task
 from django.contrib.auth import get_user_model
@@ -11,8 +13,13 @@ User = get_user_model()
 
 @shared_task
 def send_reaction_created_notification(reaction_pk, recipient_id):
-    reaction = Reaction.objects.get(pk=reaction_pk)
-    recipient = User.objects.get(pk=recipient_id)
+    try:
+        reaction = Reaction.objects.get(pk=reaction_pk)
+        recipient = User.objects.get(pk=recipient_id)
+    except (Reaction.DoesNotExist, User.DoesNotExist):
+        logging.info("Reaction or recipient not found. Reaction: %s, Recipient: %s")
+        return
+
     send_notification(
         add_to_history=True,
         send_push=True,

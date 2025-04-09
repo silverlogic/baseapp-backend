@@ -1,3 +1,0 @@
-include README.md
-recursive-include baseapp_auth/templates *
-recursive-include baseapp_auth/locale *

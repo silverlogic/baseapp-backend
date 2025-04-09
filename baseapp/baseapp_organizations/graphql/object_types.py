@@ -1,7 +1,7 @@
 import swapper
-from baseapp_auth.graphql.permissions import PermissionsInterface
 from graphene import relay
 
+from baseapp_auth.graphql.permissions import PermissionsInterface
 from baseapp_core.graphql import DjangoObjectType
 
 Organization = swapper.load_model("baseapp_organizations", "Organization")
