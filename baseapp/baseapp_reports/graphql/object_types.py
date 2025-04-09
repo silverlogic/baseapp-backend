@@ -4,6 +4,7 @@ import swapper
 from django.contrib.contenttypes.models import ContentType
 from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
+from graphene.types.generic import GenericScalar
 
 from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
 
@@ -11,10 +12,6 @@ from .filters import ReportTypeFilter
 
 Report = swapper.load_model("baseapp_reports", "Report")
 ReportType = swapper.load_model("baseapp_reports", "ReportType")
-
-
-class ReportsCount(graphene.ObjectType):
-    counts = graphene.JSONString()
 
 
 class BaseReportTypeObjectType:
@@ -40,22 +37,9 @@ class ReportTypeObjectType(
 
 
 class ReportsInterface(relay.Node):
-    reports_count = graphene.Field(ReportsCount)
+    reports_count = GenericScalar()
     reports = DjangoFilterConnectionField(get_object_type_for_model(Report))
     my_reports = graphene.Field(get_object_type_for_model(Report), required=False)
-
-    def resolve_reports_count(self, info, **kwargs):
-        target_content_type = ContentType.objects.get_for_model(self)
-        counts = {}
-        reports = Report.objects.filter(
-            target_content_type=target_content_type,
-            target_object_id=self.pk,
-        )
-        for report_type in ReportType.objects.all():
-            field_name = report_type.key
-            counts[field_name] = reports.filter(report_type=report_type).count()
-        counts["total"] = reports.count()
-        return ReportsCount(counts=counts)
 
     def resolve_reactions(self, info, **kwargs):
         target_content_type = ContentType.objects.get_for_model(self)

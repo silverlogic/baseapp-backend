@@ -128,12 +128,12 @@ def update_reports_count(target):
     target_content_type = ContentType.objects.get_for_model(target)
     for report_type in ReportTypeModel.objects.all():
         # TO DO: improve performance by removing the FOR and making 1 query to return counts for all types at once
-        counts[report_type.name] = ReportModel.objects.filter(
+        counts[report_type.key] = ReportModel.objects.filter(
             target_content_type=target_content_type,
             target_object_id=target.pk,
             report_type=report_type,
         ).count()
-        counts["total"] += counts[report_type.name]
+        counts["total"] += counts[report_type.key]
 
     target.reports_count = counts
     target.save(update_fields=["reports_count"])
