@@ -6,5 +6,5 @@ jobs:
     uses: ./.github/workflows/project-workflow.yml
     with:
       project: baseapp
-      custom_tests_path: "baseapp"
-      second_pytest: "pytest baseapp/baseapp_drf_view_action_permissions --ds=baseapp_drf_view_action_permissions.tests.settings"
+      custom_tests_path: "."
+      second_pytest: "pytest baseapp_drf_view_action_permissions --ds=baseapp_drf_view_action_permissions.tests.settings"

@@ -8,5 +8,5 @@ jobs:
   baseapp-backend:
     uses: ./.github/workflows/publish-workflow.yml
     with:
-      project: baseapp
+      project: .
     secrets: inherit
