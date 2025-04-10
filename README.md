@@ -119,11 +119,11 @@ psql -U postgres -c 'create database backend;'
 Run testproject inside the backend docker container:
 
 ```bash
-# Install baseapp-APPNAME dependencies
-pip3 install -r baseapp-APPNAME/testproject/requirements.txt
+# Install baseapp-backend's testproject dependencies
+pip3 install -r baseapp/testproject/requirements.txt
 
 # Change folder to your app's testproject:
-cd baseapp-APPNAME/testproject
+cd baseapp
 python manage.py runserver 0.0.0.0:8000
 ```
 
@@ -138,7 +138,7 @@ git clone git@github.com:silverlogic/baseapp-backend.git
 And manually install the package:
 
 ```bash
-pip install -e baseapp-backend/baseapp-APPNAME
+pip install -e baseapp-backend/baseapp
 ```
 
 The `-e` flag will make it like any change you make in the cloned files will effect into the project, even with django's auto reload.
@@ -181,7 +181,7 @@ To do this, assuming you've opened the folder at the root of the repo, just add 
 Running unit tests:
 
 ```bash
-docker compose exec backend pytest baseapp-APPNAME/baseapp_APPNAME/tests
+docker compose exec backend pytest baseapp/baseapp_APPNAME/tests
 ```
 
 ### Implementation
@@ -189,51 +189,30 @@ docker compose exec backend pytest baseapp-APPNAME/baseapp_APPNAME/tests
 The packages follow this structure for testing:
 
 ```
-baseapp-APPNAME/
+baseapp/
     manage.py
     testproject/
         settings.py
     baseapp_APPNAME/
         tests/
-            pytest.ini
 ```
 
 #### Minimum requires
 
-- All app tests in `baseapp-APPNAME/baseapp_APPNAME/tests` directory
-- A manage.py file in `baseapp-APPNAME` directory
-  - You can copy that from baseapp-core
-- A testproject directory in baseapp-APPNAME directory
+- All app tests in `baseapp/baseapp_APPNAME/tests` directory
 - In the testproject dir:
-  - A settings.py file
-    - It can/should import `baseapp_core/tests/settings.py`
-  - A requirements.txt file that installs "install_requires" of the tested app.
-    - It must install app required packages:
-      ```
-      # install "install_requires" from setup.cfg
-      -e ./baseapp-APPNAME
-      ```
-    - This file must only contain packages needed for testing. The `requirements.txt` in `baseapp/testproject` is being used as a based `requirements.txt` for testing. If necessary, it is possible to add more specific packages that are not already in `baseapp/testproject/requirements.txt`.
-- In the `baseapp-APPNAME/tests dir`:
+  - Change the settings.py file to enable your app
+    - Add your app to the `INSTALLED_APPS` list
+  - If your app needs a new dependency, add it to the "extras_require" of the main `setup.cfg`.
+    - Change `baseapp/testproject/requirements.txt` to include your new dependency from your "extras_require" using `pip install -e .[your_extra]`
 
-  - A pytest.ini that assigns the right settings:
-
-  ```
-  # In baseapp-APPNAME/baseapp_APPNAME/tests/pytest.ini
-
-  [pytest]
-  DJANGO_SETTINGS_MODULE = testproject.settings
-  # -- recommended but optional:
-  python_files = tests.py test_*.py *_tests.py
-  ```
-
-## Publishing baseapp packages to pypi registry
+## Publishing baseapp-backend package to pypi registry
 
 To publish a new version to pypi you need to:
 
-- update `version` in `setup.cfg` of the respective baseapp package
+- update `version` in `setup.cfg` of the baseapp-backend package
 - make sure that builds pass
 - create a release on github
-  - choose to create a new tag (named as `baseapp-<PACKAGE>@v<version>` e.g. baseapp-core@v1.2.3), use the same version as in `setup.cfg`
+  - choose to create a new tag (named as `baseapp@v<version>` e.g. baseapp@v1.2.3), use the same version as in `setup.cfg`
   - use the same name for release title
   - optionally add changelog text

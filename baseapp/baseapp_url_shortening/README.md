@@ -7,7 +7,7 @@ Reusable app to enable url shortening.
 Install in your environment:
 
 ```bash
-pip install baseapp-url-shortening
+pip install baseapp-backend[urlshortening]
 ```
 
 And run provision or manually `pip install -r requirements/base.ext`

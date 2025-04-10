@@ -4,14 +4,9 @@ Reusable app to enable User's reports any model, customizable for project's need
 
 ## How to install:
 
-Add dependencies to your `requirements/base.txt` file:
-
+```bash
+pip install baseapp-backend
 ```
-baseapp-core @ git+https://github.com/silverlogic/baseapp-backend.git@v0.1#subdirectory=baseapp-core
-baseapp-reports @ git+https://github.com/silverlogic/baseapp-backend.git@v0.1#subdirectory=baseapp-reports
-```
-
-And run provision or manually `pip install -r requirements/base.ext`
 
 If you want to develop, [install using this other guide](#how-to-develop).
 

@@ -2,18 +2,11 @@
 
 This package provides a simple chat system for your project, where multiple profiles can chat with each other.
 
-## Requirements:
-```
-- **baseapp-core** >= 0.3.7
-- **baseapp-profile** >= 0.2.4
-```
+## How to install:
 
-Run `pip install baseapp-chats`
-And make sure to add the frozen version to your `requirements/base.txt` file
+And install the package with `pip install baseapp-backend`.
 
 If you want to develop, [install using this other guide](#how-to-develop).
-
-## How to use
 
 Add `baseapp_chats` to your project's `INSTALLED_APPS`
 
