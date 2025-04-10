@@ -14,28 +14,13 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - name: Check for changes in '${{ inputs.project }}' directory
-      id: check_changes
-      run: |
-        # Get a list of all files changed in this PR
-        git fetch origin +refs/pull/${{ github.event.pull_request.number }}/merge
-        CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD)
-        
-        echo "Changed files: $CHANGED_FILES"
-        
-        if echo "$CHANGED_FILES" | grep -q '^${{ inputs.project }}'; then
-          echo "run_tests=true" >> $GITHUB_ENV
-        else
-          echo "run_tests=false" >> $GITHUB_ENV
-        fi
     - name: SonarCloud Scan
-      if: env.run_tests == 'true'
       uses: SonarSource/sonarqube-scan-action@master
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       with:
-        projectBaseDir: ${{ inputs.project }}
+        projectBaseDir: ./
         args: >
           -Dsonar.organization=silverlogic
           -Dsonar.projectKey=silverlogic_baseapp-backend_${{ inputs.project }}
