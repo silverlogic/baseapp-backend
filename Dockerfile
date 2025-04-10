@@ -14,7 +14,7 @@ COPY . /usr/src/app
 
 WORKDIR /usr/src/app
 
-RUN pip install --no-cache-dir -r baseapp/testproject/requirements.txt
+RUN pip install --no-cache-dir -r testproject/requirements.txt
 
 EXPOSE 8000
 CMD ["sleep", "infinity"]
