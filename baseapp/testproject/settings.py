@@ -41,6 +41,7 @@ INSTALLED_APPS += [
     "baseapp_social_auth",
     "baseapp_social_auth.cache",
     "testproject.users",
+    "baseapp.content_feed",
     "testproject.testapp",
     "testproject.comments",
     "testproject.profiles",
