@@ -7,7 +7,7 @@ Reusable app to enable User's ratings on any model.
 Install in your environment:
 
 ```bash
-pip install baseapp-ratings
+pip install baseapp-backend
 ```
 
 If you want to develop, [install using this other guide](#how-to-develop).

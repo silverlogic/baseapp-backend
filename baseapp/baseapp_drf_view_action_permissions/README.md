@@ -7,7 +7,7 @@ This app uses django provided permission and group model and provides the abilit
 Install in your environment:
 
 ```bash
-pip install baseapp-drf-view-action-permissions
+pip install baseapp-backend
 ```
 
 ## Add the app to your project INSTALLED_APPS

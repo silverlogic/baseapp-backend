@@ -8,8 +8,6 @@ And install the package with `pip install baseapp-backend`.
 
 If you want to develop, [install using this other guide](#how-to-develop).
 
-## How to use
-
 Add `baseapp_profiles` to your project's `INSTALLED_APPS` and run `./manage.py migrate` as any other django model:
 
 ```python
