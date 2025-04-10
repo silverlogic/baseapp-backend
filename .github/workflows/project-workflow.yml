@@ -33,27 +33,27 @@ jobs:
         run: docker compose up -d --wait
 
       - name: install requirements
-        run: docker compose exec backend pip install -r ${{ inputs.project }}/testproject/requirements.txt
+        run: docker compose exec backend pip install -r ./testproject/requirements.txt
 
       - name: flake8
         id: flake8
-        run: docker compose exec backend flake8 ./${{ inputs.project }} --show-source --statistics --count
+        run: docker compose exec backend flake8 ./ --show-source --statistics --count
 
       - name: isort
         id: isort
         if: steps.flake8.outcome == 'success'
-        run: docker compose exec backend isort --check ./${{ inputs.project }}
+        run: docker compose exec backend isort --check ./
 
       - name: black
         id: black
         if: steps.isort.outcome == 'success'
-        run: docker compose exec backend black --check ./${{ inputs.project }}
+        run: docker compose exec backend black --check ./
 
       - name: Install tests requirements with Django ${{ matrix.django-version }}
         if: steps.black.outcome == 'success'
         id: requirements_installation
         run: |
-          docker compose exec backend pip install -r ${{ inputs.project }}/testproject/requirements.txt
+          docker compose exec backend pip install -r ./testproject/requirements.txt
           # Override Django version
           docker compose exec backend pip install "Django~=${{ matrix.django-version }}"
 
