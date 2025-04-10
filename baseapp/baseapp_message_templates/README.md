@@ -3,13 +3,9 @@
 
 This app provides the integration of custom e-mail and sms template configuration with The SilverLogic's [BaseApp](https://bitbucket.org/silverlogic/baseapp-django-v2).
 
-## Install the package
+## How to install:
 
-Add to `requirements/base.txt`:
-
-```bash
-git+https://bitbucket.org/silverlogic/baseapp-message-templates-django.git
-```
+Install the package with `pip install baseapp-backend[messagetemplates]`.
 
 ## Configure template settings
 

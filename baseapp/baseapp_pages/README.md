@@ -10,11 +10,7 @@ Currenly if you have a different set of languages in your projects it will creat
 
 ## How to install:
 
-This package requires to following packages to be installed:
-
-- [baseapp-comments](../baseapp-comments/README.md)
-
-And install the package with `pip install baseapp-backend`.
+Install the package with `pip install baseapp-backend[pages]`.
 
 And its 3rd-party dependencies with `pip install django-quill-editor 0.1.42`.
 

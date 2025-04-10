@@ -7,7 +7,7 @@ Reusable app to enable User's reactions on any model, features like like/dislike
 Install in your environment:
 
 ```bash
-pip install baseapp-reactions
+pip install baseapp-backend
 ```
 
 If you want to develop, [install using this other guide](#how-to-develop).

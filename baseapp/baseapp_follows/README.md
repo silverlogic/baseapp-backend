@@ -3,13 +3,9 @@
 Reusable app to enable any model follow/unfollow any model.
 
 
-## Requirements:
-```
-- **baseapp-core** >= 0.2.3
-```
+## How to install:
 
-Run `pip install baseapp-follows`
-And make sure to add the frozen version to your `requirements/base.txt` file
+And install the package with `pip install baseapp-backend`.
 
 If you want to develop, [install using this other guide](#how-to-develop).
 

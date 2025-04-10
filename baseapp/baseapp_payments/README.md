@@ -4,13 +4,9 @@ This app integrates Stripe with your Django project using Django REST Framework.
 
 It provides API endpoints to manage Stripe customers and subscriptions, while also handling webhooks for real-time synchronization between Stripe and your system.
 
-## Install the Package
+## How to install:
 
-Add the package to your `requirements/base.txt`:
-
-```bash
-baseapp-payments==0.16.1
-```
+Install the package with `pip install baseapp-backend[payments]`.
 
 ## Setup Stripe Credentials
 

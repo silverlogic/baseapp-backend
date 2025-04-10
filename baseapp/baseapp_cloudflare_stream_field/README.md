@@ -2,13 +2,9 @@
 
 This app provides integration with Cloudflare Stream, where you can upload [directly to Cloudflare](https://developers.cloudflare.com/stream/uploading-videos/direct-creator-uploads/) using [TUS protocol](https://tus.io/).
 
-## Install the package
+## How to install:
 
-Install in your environment:
-
-```bash
-pip install baseapp-cloudflare-stream-field
-```
+And install the package with `pip install baseapp-backend`.
 
 Add the following to your `settings/base.py`:
 

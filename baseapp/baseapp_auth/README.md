@@ -47,7 +47,7 @@ There is a [test project](testproject/) with a complete demo set up.
 Install in your environment:
 
 ```bash
-pip install baseapp-auth
+pip install baseapp-backend[auth]
 ```
 
 ### Settings

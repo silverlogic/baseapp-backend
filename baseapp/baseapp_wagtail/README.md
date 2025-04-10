@@ -11,10 +11,8 @@ Use this package to load the Wagtail CMS initial Setup. You can also follow its 
 Install in your environment:
 
 ```bash
-pip install baseapp-wagtail
+pip install baseapp-backend[wagtail]
 ```
-
-
 
 ## Usage
 
