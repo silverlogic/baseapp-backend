@@ -150,7 +150,7 @@ class StripePaymentMethodViewset(viewsets.ViewSet):
         try:
             result = serializer.create(serializer.validated_data)
             return Response(result, status=201)
-        except ValidationError as e:
+        except ValidationError:
             return Response({"error": "Invalid input provided"}, status=400)
         except Exception as e:
             logger.exception("Failed to create payment method: %s", e)
