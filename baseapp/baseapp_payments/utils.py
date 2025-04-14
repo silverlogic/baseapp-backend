@@ -174,23 +174,12 @@ class StripeService:
     def retrieve_subscription(self, subscription_id):
         try:
             subscription = stripe.Subscription.retrieve(subscription_id)
+            return subscription
         except Exception as e:
             if "No such subscription" in str(e):
                 return None
             logger.exception(e)
             raise Exception("Error retrieving subscription in Stripe")
-
-        customer = subscription.get("customer", None)
-        try:
-            upcoming_invoice = stripe.Invoice.upcoming(customer=customer)
-            subscription["upcoming_invoice"] = {
-                "amount_due": upcoming_invoice.amount_due,
-                "next_payment_attempt": upcoming_invoice.next_payment_attempt,
-            }
-        except Exception as e:
-            logger.warning(f"Failed to retrieve upcoming invoice for customer {customer}: {str(e)}")
-
-        return subscription
 
     def list_subscriptions(self, customer_id, **kwargs):
         try:
@@ -204,7 +193,7 @@ class StripeService:
 
     def delete_subscription(self, subscription_id):
         try:
-            response = stripe.Subscription.delete(subscription_id)
+            response = stripe.Subscription.cancel(subscription_id)
             return response
         except Exception as e:
             if "No such subscription" in str(e):
