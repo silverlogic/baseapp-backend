@@ -28,7 +28,3 @@ class DjangoObjectType(GrapheneDjangoObjectType):
 
     def resolve_pk(self, info):
         return self.pk
-
-    @classmethod
-    def run_instance_checks(cls, instance, info) -> None:
-        pass
