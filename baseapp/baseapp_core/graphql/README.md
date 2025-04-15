@@ -2,7 +2,7 @@
 
 ## How to install
 
-Run `pip install baseapp-core[graphql]`
+Run `pip install baseapp-backend[graphql]`
 And make sure to add the frozen version to your `requirements/base.txt` file
 
 ## Setup

@@ -13,7 +13,7 @@ Use this package to login/signup using social networks (Facebook, Google and oth
 Install in your environment:
 
 ```bash
-pip install baseapp-social-auth
+pip install baseapp-backend[socialauth]
 ```
 
 ### Add to your routes

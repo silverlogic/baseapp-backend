@@ -30,15 +30,9 @@ For example: [nossila](https://github.com/nossila/) `(actor)`
 - [X] Finish implementing push notifications
 - [ ] DRF views and serializers
 
-## How to install
+## How to install:
 
-Requirements:
-- **baseapp-core** >= 0.2.0
-- **django-notifications-hq** >= 1.8
-- **django-push-notifications >= 3.2.0
-
-Run `pip install baseapp-notifications`
-And make sure to add the frozen version to your `requirements/base.txt` file
+Install the package with `pip install baseapp-backend[notifications]`.
 
 If you want to develop, [install using this other guide](#how-to-develop).
 
