@@ -17,8 +17,6 @@ def test_delete_user_with_comment():
     user_id = user.pk
     CommentFactory.create_batch(2, user=user)
     assert Comment.objects_visible.filter(user_id=user_id).count() == 2
-    user.profile = None
-    user.save()
     user.delete()
     assert Comment.objects_visible.filter(user_id=user_id).count() == 0
     assert User.objects.all().count() == 0
