@@ -3,8 +3,8 @@ import graphene_django_optimizer as gql_optimizer
 import swapper
 from django.contrib.contenttypes.models import ContentType
 from graphene import relay
-from graphene_django.filter import DjangoFilterConnectionField
 from graphene.types.generic import GenericScalar
+from graphene_django.filter import DjangoFilterConnectionField
 
 from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
 
