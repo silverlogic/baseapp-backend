@@ -3,28 +3,41 @@ import graphene_django_optimizer as gql_optimizer
 import swapper
 from django.contrib.contenttypes.models import ContentType
 from graphene import relay
+from graphene.types.generic import GenericScalar
 from graphene_django.filter import DjangoFilterConnectionField
 
 from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
 
+from .filters import ReportTypeFilter
+
 Report = swapper.load_model("baseapp_reports", "Report")
-
-ReportTypesEnum = graphene.Enum.from_enum(Report.ReportTypes)
-
-
-def create_object_type_from_enum(name, enum):
-    fields = {}
-    for reaction_type in enum:
-        fields[reaction_type.name] = graphene.Int()
-    fields["total"] = graphene.Int()
-    return type(name, (graphene.ObjectType,), fields)
+ReportType = swapper.load_model("baseapp_reports", "ReportType")
 
 
-ReportsCount = create_object_type_from_enum("ReportsCount", Report.ReportTypes)
+class BaseReportTypeObjectType:
+    class Meta:
+        interfaces = (relay.Node,)
+        model = ReportType
+        fields = (
+            "id",
+            "key",
+            "label",
+            "content_types",
+            "sub_types",
+            "parent_type",
+        )
+        filterset_class = ReportTypeFilter
+
+
+class ReportTypeObjectType(
+    BaseReportTypeObjectType, gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType
+):
+    class Meta(BaseReportTypeObjectType.Meta):
+        pass
 
 
 class ReportsInterface(relay.Node):
-    reports_count = graphene.Field(ReportsCount)
+    reports_count = GenericScalar()
     reports = DjangoFilterConnectionField(get_object_type_for_model(Report))
     my_reports = graphene.Field(get_object_type_for_model(Report), required=False)
 
@@ -47,7 +60,6 @@ class ReportsInterface(relay.Node):
 
 class BaseReportObjectType:
     target = graphene.Field(relay.Node)
-    report_type = graphene.Field(ReportTypesEnum)
 
     class Meta:
         interfaces = (relay.Node,)
