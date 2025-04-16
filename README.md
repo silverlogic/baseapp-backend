@@ -2,92 +2,99 @@
 
 This repository contains baseapp django packages to be reused accross projects based on TSL's BaseApp
 
-## [baseapp-core](baseapp/baseapp_core)
+## [baseapp-core](baseapp_core)
 
-The core contains the basics for BaseApp like Django Rest Framework's basic setup, custom ModelSerializer and fields, also base email template, testing helpers and other utilities. It also contains the base GraphQL setup, check [baseapp_core/graphql](baseapp/baseapp_core/graphql) for more info.
+The core contains the basics for BaseApp like Django Rest Framework's basic setup, custom ModelSerializer and fields, also base email template, testing helpers and other utilities. It also contains the base GraphQL setup, check [baseapp_core/graphql](baseapp_core/graphql) for more info.
 
-## [baseapp-auth](baseapp/baseapp_auth)
+## [baseapp-auth](baseapp_auth)
 
 Reusable user and authentication utilities. Authentication setup using AuthToken, JWT and Multi-factor authentication (MFA)
 
-## [baseapp-referrals](baseapp/baseapp_referrals)
+## [baseapp-referrals](baseapp_referrals)
 
 Models and utilities for user referrals
 
-## [baseapp-cloudflare-stream-field](baseapp/baseapp_cloudflare_stream_field)
+## [baseapp-cloudflare-stream-field](baseapp_cloudflare_stream_field)
 
 Integration with Cloudflare Stream for file streaming
 
-## [baseapp-drf-view-action-permissions](baseapp/baseapp_drf_view_action_permissions)
+## [baseapp-drf-view-action-permissions](baseapp_drf_view_action_permissions)
 
 This app uses django provided permission and group model and provides the ability to add roles to a django model, and make views from the [django-restframework](https://www.django-rest-framework.org/) check for them. A **Permission** represents the lowest single unit of access. A **Group** is a collection of Permissions. A **Role** can have many Permission Groups, many Permissions and many **Excluded Permissions**. The access of a Role is the aggregation of its single Permissions + the permissions on its **Permission** Groups - its Excluded Permissions.
 
-## [baseapp-e2e](baseapp/baseapp_e2e)
+## [baseapp-e2e](baseapp_e2e)
 
 Utilities for performing E2E (End-To-End) tests with front-end client. (Database initialization and seeding)
 
-## [baseapp-message-templates](baseapp/baseapp_message_templates)
+## [baseapp-message-templates](baseapp_message_templates)
 
-## [baseapp-notifications](baseapp/baseapp_notifications)
+## [baseapp-notifications](baseapp_notifications)
 
 Reusable app to handle in-app, email and push notifications.
 
-## [baseapp-payments](baseapp/baseapp_payments)
+## [baseapp-payments](baseapp_payments)
 
 Utilities for payments
 
-## [baseapp-reactions](baseapp/baseapp_reactions)
+## [baseapp-reactions](baseapp_reactions)
 
 Reusable app to enable User's reactions on any model, features like like/dislike or any other reactions type, customizable for project's needs.
 
-## [baseapp-reports](baseapp/baseapp_reports)
+## [baseapp-reports](baseapp_reports)
 
 App to allow users to report other user generated content.
 
-## [baseapp-blocks](baseapp/baseapp_blocks)
+## [baseapp-blocks](baseapp_blocks)
 
 Let a Profile block another Profile.
 
-## [baseapp-ratings](baseapp/baseapp_ratings)
+## [baseapp-ratings](baseapp_ratings)
 
 Rate from 0 to N on any model. With support for average ratings.
 
-## [baseapp-social-auth](baseapp/baseapp_social_auth)
+## [baseapp-social-auth](baseapp_social_auth)
 
 Login/signup using social networks (Facebook, Google and others)
 
-## [baseapp-url-shortening](baseapp/baseapp_url_shortening)
+## [baseapp-url-shortening](baseapp_url_shortening)
 
 Functionality for url shortening
 
-## [baseapp-follows](baseapp/baseapp_follows)
+## [baseapp-follows](baseapp_follows)
 
 Reusable app to enable any model follow/unfollow any model.
 
-## [baseapp-pages](baseapp/baseapp_pages)
+## [baseapp-pages](baseapp_pages)
 
 Reusable app to handle pages, URL's paths and metadata. It provides useful models and GraphQL Interfaces.
 
-## [baseapp-wagtail](baseapp/baseapp_wagtail)
+## [baseapp-wagtail](baseapp_wagtail)
 
 Wagtail CMS integration with BaseApp
 
-## [baseapp-comments](baseapp/baseapp_comments)
+## [baseapp-comments](baseapp_comments)
 
 Comment threads on any model. With support for reactions, notifications and GraphQL subscriptions.
 
-## [baseapp-organizations](baseapp/baseapp_organizations)
+## [baseapp-organizations](baseapp_organizations)
 
 Reusable app to handle organizations. Users can have and manage multiple Organizations.
 
-## [baseapp-chats](baseapp/baseapp_chats)
+## [baseapp-chats](baseapp_chats)
 
 Real-time chat between users, and groups of users.
 
-## [baseapp-profiles](baseapp/baseapp_profiles)
+## [baseapp-profiles](baseapp_profiles)
 
 This app provides user profile management functionalities, allowing users to create, update, and manage their profiles. Allowing the user to manage multiple profiles and act as a profile when commenting, posting, etc.
 
+## [baseapp.activity_log](baseapp/activity_log)
+ 
+Reusable app to handle activity logs.
+
+## [baseapp.content_feed](baseapp/content_feed)
+
+Reusable app to handle content feeds.
 
 ## How to develop
 
@@ -120,7 +127,7 @@ Run testproject inside the backend docker container:
 
 ```bash
 # Install baseapp-backend's testproject dependencies
-pip3 install -r baseapp/testproject/requirements.txt
+pip3 install -r testproject/requirements.txt
 
 # Change folder to your app's testproject:
 cd baseapp
@@ -138,7 +145,7 @@ git clone git@github.com:silverlogic/baseapp-backend.git
 And manually install the package:
 
 ```bash
-pip install -e baseapp-backend/baseapp
+pip install -e baseapp-backend
 ```
 
 The `-e` flag will make it like any change you make in the cloned files will effect into the project, even with django's auto reload.
@@ -181,7 +188,7 @@ To do this, assuming you've opened the folder at the root of the repo, just add 
 Running unit tests:
 
 ```bash
-docker compose exec backend pytest baseapp/baseapp_APPNAME/tests
+docker compose exec backend pytest baseapp_APPNAME/tests
 ```
 
 ### Implementation
@@ -199,12 +206,12 @@ baseapp/
 
 #### Minimum requires
 
-- All app tests in `baseapp/baseapp_APPNAME/tests` directory
+- All app tests in `baseapp_APPNAME/tests` directory
 - In the testproject dir:
   - Change the settings.py file to enable your app
     - Add your app to the `INSTALLED_APPS` list
   - If your app needs a new dependency, add it to the "extras_require" of the main `setup.cfg`.
-    - Change `baseapp/testproject/requirements.txt` to include your new dependency from your "extras_require" using `pip install -e .[your_extra]`
+    - Change `testproject/requirements.txt` to include your new dependency from your "extras_require" using `pip install -e .[your_extra]`
 
 ## Publishing baseapp-backend package to pypi registry
 
