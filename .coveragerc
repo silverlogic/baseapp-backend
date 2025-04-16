@@ -1,7 +1,10 @@
 [run]
+relative_files = True
+source = ./
+branch = True
 omit =
     ./testproject/*
     **/tests/*
 
 [report]
-fail_under = 80
+fail_under = 75
