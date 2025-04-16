@@ -1,10 +1,62 @@
-name: GitHub Actions
+name: Lint & Tests & SonarCloud
 run-name: ${{ github.actor }} is checking ${{ github.ref }} branch 🚀
 on: [push, workflow_dispatch]
+permissions:
+  contents: read
+  pull-requests: write
 jobs:
-  baseapp-backend:
-    uses: ./.github/workflows/project-workflow.yml
-    with:
-      project: baseapp
-      custom_tests_path: "."
-      second_pytest: "pytest baseapp_drf_view_action_permissions --ds=baseapp_drf_view_action_permissions.tests.settings"
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+        django-version: ["4.2.15", "5.0.8"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # for sonarcloud
+
+      - name: docker compose build
+        run: docker compose build --build-arg "PYTHON_VERSION=${{ matrix.python-version }}"
+
+      - name: docker compose up
+        run: docker compose up -d --wait
+
+      - name: flake8
+        id: flake8
+        run: docker compose exec backend flake8 ./ --show-source --statistics --count
+
+      - name: isort
+        id: isort
+        if: steps.flake8.outcome == 'success'
+        run: docker compose exec backend isort --check ./
+
+      - name: black
+        id: black
+        if: steps.isort.outcome == 'success'
+        run: docker compose exec backend black --check ./
+
+      - name: Install tests requirements with Django ${{ matrix.django-version }}
+        if: steps.black.outcome == 'success'
+        id: requirements_installation
+        run: |
+          docker compose exec backend pip install "Django~=${{ matrix.django-version }}"
+
+      - name: pytest
+        if: steps.requirements_installation.outcome == 'success'
+        run: |
+          docker compose exec backend pytest --cov=./ --cov-report=xml --cov-branch .
+      
+      - name: pytest drf_view_action_permissions
+        if: steps.requirements_installation.outcome == 'success'
+        run: |
+          docker compose exec backend pytest --cov=./ --cov-report=xml --cov-branch --cov-append baseapp_drf_view_action_permissions --ds=baseapp_drf_view_action_permissions.tests.settings
+      
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: docker compose down
+        run: docker compose down --volumes --remove-orphans
