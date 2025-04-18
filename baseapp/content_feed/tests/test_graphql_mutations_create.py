@@ -16,6 +16,7 @@ CONTENT_POST_CREATE_GRAPHQL = """
                 node {
                     id
                     content
+                    isReactionsEnabled
                     images {
                       edges {
                             node {
@@ -38,7 +39,7 @@ CONTENT_POST_CREATE_GRAPHQL = """
 def test_anon_cant_create(graphql_client):
     response = graphql_client(
         CONTENT_POST_CREATE_GRAPHQL,
-        variables={"input": {"content": "Content"}},
+        variables={"input": {"content": "Content", "isReactionsEnabled": True}},
     )
 
     content = response.json()
@@ -50,7 +51,7 @@ def test_anon_cant_create(graphql_client):
 def test_user_can_create(django_user_client, graphql_user_client):
     response = graphql_user_client(
         CONTENT_POST_CREATE_GRAPHQL,
-        variables={"input": {"content": "Content"}},
+        variables={"input": {"content": "Content", "isReactionsEnabled": True}},
     )
 
     content = response.json()
@@ -68,7 +69,7 @@ def test_user_can_create_post_with_images(
     images = {"images.0": image_djangofile, "images.1": image_djangofile}
     response = graphql_user_client(
         CONTENT_POST_CREATE_GRAPHQL,
-        variables={"input": {"content": "Content"}},
+        variables={"input": {"content": "Content", "isReactionsEnabled": True}},
         content_type=MULTIPART_CONTENT,
         extra={**images},
     )
