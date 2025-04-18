@@ -7,12 +7,15 @@ ContentPostImage = swapper.load_model("baseapp_content_feed", "ContentPostImage"
 
 
 class ContentPostFilter(django_filters.FilterSet):
+
+    order_by = django_filters.OrderingFilter(fields=(("created", "created"),))
+
     class Meta:
         model = ContentPost
-        fields = []
+        fields = ["order_by"]
 
 
 class ContentPostImageFilter(django_filters.FilterSet):
     class Meta:
         model = ContentPostImage
-        fields = ["id"]
+        fields = ["id", "post"]

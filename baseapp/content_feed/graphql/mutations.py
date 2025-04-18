@@ -9,6 +9,7 @@ from baseapp_core.graphql import RelayMutation, login_required
 ContentPost = swapper.load_model(
     "baseapp_content_feed", "ContentPost", required=False, require_ready=False
 )
+app_label = ContentPost._meta.app_label
 ContentPostImage = swapper.load_model("baseapp_content_feed", "ContentPostImage")
 
 ContentPostObjectType = ContentPost.get_graphql_object_type()
@@ -19,7 +20,7 @@ ContentPostImageType = ContentPostImage.get_graphql_object_type()
 class ContentPostForm(forms.ModelForm):
     class Meta:
         model = ContentPost
-        fields = ("content",)
+        fields = ("content", "is_reactions_enabled")
 
 
 class ContentPostCreate(RelayMutation):
@@ -27,6 +28,7 @@ class ContentPostCreate(RelayMutation):
 
     class Input:
         content = graphene.String(required=True)
+        is_reactions_enabled = graphene.Boolean(required=True)
 
     @classmethod
     @login_required
