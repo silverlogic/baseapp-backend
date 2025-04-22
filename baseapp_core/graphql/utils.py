@@ -23,10 +23,12 @@ def get_pk_from_relay_id(relay_id):
     return gid
 
 
-def get_obj_from_relay_id(info: graphene.ResolveInfo, relay_id):
+def get_obj_from_relay_id(info: graphene.ResolveInfo, relay_id, get_node=False):
     gid_type, gid = from_global_id(relay_id)
     object_type = info.schema.get_type(gid_type)
-    return object_type.graphene_type.get_node(info, gid)
+    if get_node:
+        return object_type.graphene_type.get_node(info, gid)
+    return object_type.graphene_type._meta.model.objects.get(pk=gid)
 
 
 def get_obj_relay_id(obj):

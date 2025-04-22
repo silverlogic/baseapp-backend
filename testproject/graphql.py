@@ -28,6 +28,7 @@ from baseapp_ratings.graphql.queries import RatingsQueries
 from baseapp_reactions.graphql.mutations import ReactionsMutations
 from baseapp_reactions.graphql.queries import ReactionsQueries
 from baseapp_reports.graphql.mutations import ReportsMutations
+from baseapp_reports.graphql.queries import ReportsQueries
 from testproject.users.graphql.queries import UsersQueries
 
 
@@ -43,6 +44,7 @@ class Query(
     OrganizationsQueries,
     ChatsQueries,
     ContentFeedQueries,
+    ReportsQueries,
 ):
     node = RelayNodeField(relay.Node)
     debug = graphene.Field(DjangoDebug, name="_debug")
