@@ -28,7 +28,11 @@ def create_default_report_types_and_transfer_values(apps, schema_editor):
             "label": "Other",
             "content_types": [comment_content_type, page_content_type, profile_content_type],
         },
-        {"key": "scam", "label": "Scam or fraud", "content_types": [page_content_type, profile_content_type]},
+        {
+            "key": "scam",
+            "label": "Scam or fraud",
+            "content_types": [page_content_type, profile_content_type],
+        },
         {
             "key": "adult_content",
             "label": "Adult Content",
