@@ -1,6 +1,12 @@
+import base64
+from io import BytesIO
+
 import pytest
 import swapper
+from django.core.files.images import ImageFile
 from django.test.client import MULTIPART_CONTENT
+
+from baseapp_core.tests.fixtures import IMAGE_BASE64
 
 pytestmark = pytest.mark.django_db
 
@@ -16,11 +22,15 @@ CONTENT_POST_CREATE_GRAPHQL = """
                 node {
                     id
                     content
+                    isReactionsEnabled
                     images {
                       edges {
                             node {
+                                id
                                 pk
-                                image
+                                image(width:600, height:0){
+                                    url
+                                }
                             }
                         }
                     }
@@ -38,7 +48,7 @@ CONTENT_POST_CREATE_GRAPHQL = """
 def test_anon_cant_create(graphql_client):
     response = graphql_client(
         CONTENT_POST_CREATE_GRAPHQL,
-        variables={"input": {"content": "Content"}},
+        variables={"input": {"content": "Content", "isReactionsEnabled": True}},
     )
 
     content = response.json()
@@ -50,7 +60,7 @@ def test_anon_cant_create(graphql_client):
 def test_user_can_create(django_user_client, graphql_user_client):
     response = graphql_user_client(
         CONTENT_POST_CREATE_GRAPHQL,
-        variables={"input": {"content": "Content"}},
+        variables={"input": {"content": "Content", "isReactionsEnabled": True}},
     )
 
     content = response.json()
@@ -62,13 +72,14 @@ def test_user_can_create(django_user_client, graphql_user_client):
     assert ContentPost.objects.all().first().user.pk == django_user_client.user.pk
 
 
-def test_user_can_create_post_with_images(
-    django_user_client, graphql_user_client, image_djangofile
-):
-    images = {"images.0": image_djangofile, "images.1": image_djangofile}
+def test_user_can_create_post_with_images(django_user_client, graphql_user_client):
+    images = {
+        "images.0": ImageFile(BytesIO(base64.b64decode(IMAGE_BASE64)), name="image0.png"),
+        "images.1": ImageFile(BytesIO(base64.b64decode(IMAGE_BASE64)), name="image1.png"),
+    }
     response = graphql_user_client(
         CONTENT_POST_CREATE_GRAPHQL,
-        variables={"input": {"content": "Content"}},
+        variables={"input": {"content": "Content", "isReactionsEnabled": True}},
         content_type=MULTIPART_CONTENT,
         extra={**images},
     )

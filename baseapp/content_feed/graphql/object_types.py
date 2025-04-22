@@ -7,6 +7,8 @@ from baseapp.content_feed.graphql.filters import (
     ContentPostImageFilter,
 )
 from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql.fields import ThumbnailField
+from baseapp_reactions.graphql.object_types import ReactionsInterface
 
 ContentPost = swapper.load_model(
     "baseapp_content_feed", "ContentPost", required=False, require_ready=False
@@ -18,6 +20,8 @@ ContentPostImage = swapper.load_model(
 
 
 class ContentPostImageObjectType(DjangoObjectType):
+    image = ThumbnailField(required=False)
+
     class Meta:
         interfaces = (relay.Node,)
         model = ContentPostImage
@@ -29,9 +33,21 @@ class ContentPostObjectType(DjangoObjectType):
     images = DjangoFilterConnectionField(lambda: ContentPostImageObjectType)
 
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (
+            relay.Node,
+            ReactionsInterface,
+        )
         model = ContentPost
-        fields = ("pk", "user", "profile", "content", "images")
+        fields = (
+            "pk",
+            "user",
+            "profile",
+            "content",
+            "images",
+            "created",
+            "modified",
+            "is_reactions_enabled",
+        )
         filterset_class = ContentPostFilter
 
     def resolve_images(self, info, **kwargs):
