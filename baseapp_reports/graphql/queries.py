@@ -10,7 +10,8 @@ ReportTypeObjectType = ReportType.get_graphql_object_type()
 ReportObjectType = Report.get_graphql_object_type()
 
 
-class ReportTypesQueries:
+class ReportsQueries:
+    report = Node.Field(get_object_type_for_model(Report))
     report_types = Node.Field(ReportTypeObjectType)
     all_report_types = DjangoFilterConnectionField(ReportTypeObjectType)
 
@@ -21,7 +22,3 @@ class ReportTypesQueries:
         obj = get_obj_from_relay_id(info, target_object_id)
         content_type = ContentType.objects.get_for_model(obj)
         return ReportType.objects.filter(content_types__pk=content_type.pk)
-
-
-class ReportsQueries:
-    report = Node.Field(get_object_type_for_model(Report))
