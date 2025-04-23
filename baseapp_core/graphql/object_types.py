@@ -1,9 +1,9 @@
 import graphene
-
-# from graphene_django import DjangoObjectType as GrapheneDjangoObjectType
 from query_optimizer import DjangoObjectType as OptimizerDjangoObjectType
 
 from .connections import CountedConnection
+
+# from graphene_django import DjangoObjectType as GrapheneDjangoObjectType
 
 
 class DjangoObjectType(OptimizerDjangoObjectType):
