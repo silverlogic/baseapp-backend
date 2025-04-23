@@ -17,7 +17,7 @@ class ReportsQueries:
 
     def resolve_all_report_types(self, info, **kwargs):
         target_object_id = kwargs.get("target_object_id")
-        if target_object_id is None or target_object_id == "":
+        if not target_object_id:
             return ReportType.objects.all()
         obj = get_obj_from_relay_id(info, target_object_id)
         content_type = ContentType.objects.get_for_model(obj)
