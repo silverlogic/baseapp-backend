@@ -1,12 +1,12 @@
 import graphene
-from graphene_django import DjangoObjectType as GrapheneDjangoObjectType
+# from graphene_django import DjangoObjectType as GrapheneDjangoObjectType
 
 from .connections import CountedConnection
 
-# from query_optimizer import DjangoObjectType as OptimizerDjangoObjectType
+from query_optimizer import DjangoObjectType as OptimizerDjangoObjectType
 
 
-class DjangoObjectType(GrapheneDjangoObjectType):
+class DjangoObjectType(OptimizerDjangoObjectType):
     pk = graphene.Int(required=True)
 
     class Meta:
@@ -28,6 +28,3 @@ class DjangoObjectType(GrapheneDjangoObjectType):
 
     def resolve_pk(self, info):
         return self.pk
-
-    def run_instance_checks(self, info):
-        pass
