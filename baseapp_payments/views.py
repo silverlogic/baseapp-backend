@@ -128,7 +128,7 @@ class StripeCustomerViewset(viewsets.GenericViewSet):
         return Response(customer, status=200)
 
 
-class StripePaymentMethodViewset(viewsets.ViewSet):
+class StripePaymentMethodViewset(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = StripePaymentMethodSerializer
 
@@ -150,6 +150,7 @@ class StripePaymentMethodViewset(viewsets.ViewSet):
             logger.exception("Failed to retrieve payment methods: %s", e)
             return Response({"error": "An internal error has occurred"}, status=500)
 
+    # This method is used to create a new creating SetupIntent in Stripe
     def create(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
