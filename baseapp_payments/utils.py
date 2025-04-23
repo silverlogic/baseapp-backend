@@ -104,6 +104,42 @@ class StripeWebhookHandler:
             return JsonResponse({"status": "success"}, status=200)
 
 
+class CustomerNotFound(Exception):
+    pass
+
+
+class CustomerOwnershipError(Exception):
+    pass
+
+
+class PaymentIntendNotFound(Exception):
+    pass
+
+
+class PaymentMethodUpdateError(Exception):
+    pass
+
+
+class SetupIntentCreationError(Exception):
+    pass
+
+
+class PriceRetrievalError(Exception):
+    pass
+
+
+class InvoiceNotFound(Exception):
+    pass
+
+
+class SubscriptionCreationError(Exception):
+    pass
+
+
+class SubscriptionNotFound(Exception):
+    pass
+
+
 class StripeService:
     def __init__(
         self,
@@ -129,7 +165,7 @@ class StripeService:
                 return None
         except Exception as e:
             logger.exception(e)
-            raise Exception("Error retrieving customer in Stripe")
+            raise CustomerNotFound("Error retrieving customer in Stripe")
 
     def delete_customer(self, customer_id):
         try:
@@ -151,17 +187,46 @@ class StripeService:
             return subscription
         except Exception as e:
             logger.exception(e)
-            raise Exception("Error creating subscription in Stripe")
+            raise SubscriptionCreationError("Error creating subscription in Stripe")
+
+    def create_subscription_intent(
+        self, customer_id, price_id, payment_method_id=None, product_id=None
+    ):
+        try:
+            subscription = stripe.Subscription.create(
+                customer=customer_id,
+                items=[{"price": price_id}],
+                default_payment_method=payment_method_id,
+                payment_behavior="default_incomplete",
+                payment_settings={"save_default_payment_method": "on_subscription"},
+                expand=["latest_invoice.payment_intent"],
+                metadata={"product_id": product_id} if product_id else None,
+            )
+            return subscription
+        except Exception as e:
+            logger.exception(e)
+            raise SubscriptionCreationError("Error creating subscription intent in Stripe")
 
     def retrieve_subscription(self, subscription_id):
         try:
             subscription = stripe.Subscription.retrieve(subscription_id)
-            return subscription
         except Exception as e:
             if "No such subscription" in str(e):
                 return None
             logger.exception(e)
-            raise Exception("Error retrieving subscription in Stripe")
+            raise SubscriptionNotFound("Error retrieving subscription in Stripe")
+
+        customer = subscription.get("customer", None)
+        try:
+            upcoming_invoice = stripe.Invoice.upcoming(customer=customer)
+            subscription["upcoming_invoice"] = {
+                "amount_due": upcoming_invoice.amount_due,
+                "next_payment_attempt": upcoming_invoice.next_payment_attempt,
+            }
+        except Exception as e:
+            logger.warning(f"Failed to retrieve upcoming invoice for customer {customer}: {str(e)}")
+
+        return subscription
 
     def list_subscriptions(self, customer_id, **kwargs):
         try:
@@ -171,7 +236,7 @@ class StripeService:
             if "No such customer" in str(e):
                 return None
             logger.exception(e)
-            raise Exception("Error retrieving subscriptions for customer in Stripe")
+            raise SubscriptionNotFound("Error retrieving subscriptions for customer in Stripe")
 
     def delete_subscription(self, subscription_id):
         try:
@@ -190,3 +255,129 @@ class StripeService:
         except Exception as e:
             logger.exception(e)
             raise Exception("Error retrieving products in Stripe")
+
+    def retrieve_product(self, product_id):
+        try:
+            product = stripe.Product.retrieve(product_id, expand=["default_price"])
+            return product
+        except stripe.error.InvalidRequestError as e:
+            logger.error(f"Failed to retrieve product: {str(e)}")
+            return None
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe API error: {str(e)}")
+            return None
+
+    def list_payment_methods(self, customer_id, type="card"):
+        try:
+            payment_methods = stripe.PaymentMethod.list(
+                customer=customer_id,
+                type=type,
+            )
+            return payment_methods.data
+        except Exception as e:
+            logger.exception(e)
+            raise CustomerNotFound("Customer not found in Stripe")
+
+    def get_customer_payment_methods(self, remote_customer_id):
+        customer = self.retrieve_customer(remote_customer_id)
+        if not customer:
+            raise CustomerNotFound("Customer not found in Stripe")
+        default_payment_method = customer.get("invoice_settings", {}).get("default_payment_method")
+        try:
+            payment_methods = self.list_payment_methods(remote_customer_id)
+            if default_payment_method:
+                for pm in payment_methods:
+                    if pm.id == default_payment_method:
+                        pm["is_default"] = True
+                        break
+            else:
+                for pm in payment_methods:
+                    pm["is_default"] = False
+            return payment_methods
+        except Exception as e:
+            logger.exception(e)
+            raise PaymentIntendNotFound("Failed to retrieve payment methods")
+
+    def get_upcoming_invoice(self, customer_id):
+        try:
+            invoice = stripe.Invoice.upcoming(customer=customer_id)
+            return invoice
+        except Exception as e:
+            logger.exception(e)
+            raise InvoiceNotFound("Error retrieving upcoming invoice in Stripe")
+
+    def get_payment_intent(self, payment_intent_id):
+        try:
+            payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+            return payment_intent
+        except stripe.error.InvalidRequestError as e:
+            if "No such PaymentIntent" in str(e):
+                return None
+            logger.error(f"Failed to retrieve PaymentIntent: {str(e)}")
+            raise PaymentIntendNotFound("Error retrieving PaymentIntent in Stripe")
+        except Exception as e:
+            logger.exception(e)
+            raise PaymentIntendNotFound("Error retrieving PaymentIntent in Stripe")
+
+    def update_payment_method_billing_details(self, payment_method_id, billing_details):
+        try:
+            return stripe.PaymentMethod.modify(
+                payment_method_id,
+                billing_details=billing_details,
+            )
+        except Exception as e:
+            logger.exception(e)
+            raise PaymentMethodUpdateError(
+                "Error updating payment method billing details in Stripe"
+            )
+
+    def create_setup_intent(self, customer_id):
+
+        try:
+            setup_intent = stripe.SetupIntent.create(
+                customer=customer_id,
+                payment_method_types=["card"],
+            )
+            return setup_intent
+        except Exception as e:
+            logger.exception(e)
+            raise SetupIntentCreationError("Error creating SetupIntent in Stripe")
+
+    def retrieve_price(self, price_id):
+
+        try:
+            price = stripe.Price.retrieve(price_id, expand=["product"])
+            return price
+        except stripe.error.InvalidRequestError as e:
+            if "No such price" in str(e):
+                logger.error(f"Price not found: {price_id}")
+                return None
+            logger.error(f"Invalid request for price {price_id}: {str(e)}")
+            return None
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe API error retrieving price {price_id}: {str(e)}")
+            return None
+        except Exception as e:
+            logger.exception(f"Unexpected error retrieving price {price_id}: {str(e)}")
+            raise PriceRetrievalError(f"Error retrieving price from Stripe: {str(e)}")
+
+    def checkCustomerIdForUser(self, remote_customer_id, user):
+
+        try:
+            customer = self.retrieve_customer(remote_customer_id)
+            if not customer:
+                logger.warning(f"Customer {remote_customer_id} not found in Stripe.")
+                return False
+
+            linked_customer = Customer.objects.filter(
+                remote_customer_id=remote_customer_id, entity_id=user.id
+            ).first()
+
+            if linked_customer:
+                return True
+            else:
+                logger.warning(f"Customer {remote_customer_id} does not belong to user {user.id}.")
+                return False
+        except Exception as e:
+            logger.exception(f"Error checking customer ID for user: {e}")
+            raise CustomerOwnershipError("Error verifying customer ownership.")

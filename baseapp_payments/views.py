@@ -2,13 +2,15 @@ import logging
 
 from django.conf import settings
 from rest_framework import viewsets
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Customer, Subscription
 from .serializers import (
     StripeCustomerSerializer,
+    StripePaymentMethodSerializer,
+    StripeProductSerializer,
     StripeSubscriptionSerializer,
     StripeWebhookSerializer,
 )
@@ -33,11 +35,14 @@ class StripeSubscriptionViewset(
     def create(self, request):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
-            return Response(serializer.data, status=201)
+            result = serializer.save()
+            return Response(result, status=201)
         return Response(serializer.errors, status=400)
 
     def retrieve(self, request, remote_subscription_id=None):
-        subscription = StripeService().retrieve_subscription(remote_subscription_id)
+        subscription = StripeService().retrieve_subscription(
+            remote_subscription_id, user=request.user
+        )
         if not subscription:
             raise NotFound("Subscription not found")
         return Response(subscription, status=200)
@@ -76,10 +81,20 @@ class StripeWebhookViewset(viewsets.GenericViewSet):
 
 class StripeProductViewset(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
+    serializer_class = StripeProductSerializer
+    lookup_field = "remote_product_id"
 
     def list(self, request):
         products = StripeService().list_products()
         return Response(products, status=200)
+
+    def retrieve(self, request, remote_product_id=None):
+        product = StripeService().retrieve_product(remote_product_id)
+        if not product:
+            raise NotFound("Product not found")
+
+        serializer = self.serializer_class(product)
+        return Response(serializer.data, status=200)
 
 
 class StripeCustomerViewset(viewsets.GenericViewSet):
@@ -111,3 +126,40 @@ class StripeCustomerViewset(viewsets.GenericViewSet):
         if not customer:
             raise NotFound("Customer not found")
         return Response(customer, status=200)
+
+
+class StripePaymentMethodViewset(viewsets.GenericViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = StripePaymentMethodSerializer
+
+    def list(self, request):
+        remote_customer_id = request.query_params.get("customer_id")
+        if not remote_customer_id:
+            raise ValidationError("Missing customer_id")
+
+        if not StripeService().checkCustomerIdForUser(remote_customer_id, request.user):
+            raise ValidationError(
+                "The provided customer_id does not belong to the authenticated user."
+            )
+
+        try:
+            payment_methods = StripeService().get_customer_payment_methods(remote_customer_id)
+            serializer = self.get_serializer(payment_methods, many=True)
+            return Response(serializer.data, status=200)
+        except Exception as e:
+            logger.exception("Failed to retrieve payment methods: %s", e)
+            return Response({"error": "An internal error has occurred"}, status=500)
+
+    # This method is used to create a new creating SetupIntent in Stripe
+    def create(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            result = serializer.create(serializer.validated_data)
+            return Response(result, status=201)
+        except ValidationError:
+            return Response({"error": "Invalid input provided"}, status=400)
+        except Exception as e:
+            logger.exception("Failed to create payment method: %s", e)
+            return Response({"error": "An internal error has occurred"}, status=500)

@@ -74,6 +74,44 @@ The app includes a `StripeWebhookHandler` to process various Stripe events:
 `customer.subscription.deleted`: Deletes a subscription record.
 These handlers ensure that any changes in Stripe are reflected in your local database, keeping your system in sync.
 
+### Stripe Webhook Configuration
+
+For the integration to work properly, you must configure webhooks in your Stripe dashboard:
+
+#### Production Setup
+
+1. Log into your [Stripe Dashboard](https://dashboard.stripe.com)
+2. Navigate to **Developers → Webhooks → Add endpoint**
+3. Add your webhook URL: `https://yourdomain.com/payments/stripe/webhooks`
+4. Select the following events to listen for:
+   - `customer.created`
+   - `customer.deleted`
+   - `customer.subscription.created`
+   - `customer.subscription.deleted`
+   - `customer.subscription.updated`
+   - `invoice.payment_succeeded`
+   - `invoice.payment_failed`
+5. After creating the webhook, copy the **Signing Secret** and add it to your environment variables:
+   ```
+   STRIPE_WEBHOOK_SECRET=whsec_...
+   ```
+
+#### Local Development
+
+For local testing, use the [Stripe CLI](https://stripe.com/docs/stripe-cli):
+
+1. Install the Stripe CLI
+2. Log in with `stripe login`
+3. Forward events to your local server:
+   ```
+   stripe listen --forward-to localhost:8000/payments/stripe/webhooks
+   ```
+4. The CLI will display a webhook secret. Add this to your local environment:
+   ```
+   STRIPE_WEBHOOK_SECRET=whsec_...
+   ```
+
+
 ## Stripe Service
 
 The StripeService class encapsulates all interactions with the Stripe API. It provides methods to:
