@@ -361,24 +361,23 @@ class StripeService:
             logger.exception(f"Unexpected error retrieving price {price_id}: {str(e)}")
             raise PriceRetrievalError(f"Error retrieving price from Stripe: {str(e)}")
 
+    def checkCustomerIdForUser(self, remote_customer_id, user):
 
-def checkCustomerIdForUser(self, remote_customer_id, user):
+        try:
+            customer = self.retrieve_customer(remote_customer_id)
+            if not customer:
+                logger.warning(f"Customer {remote_customer_id} not found in Stripe.")
+                return False
 
-    try:
-        customer = self.retrieve_customer(remote_customer_id)
-        if not customer:
-            logger.warning(f"Customer {remote_customer_id} not found in Stripe.")
-            return False
+            linked_customer = Customer.objects.filter(
+                remote_customer_id=remote_customer_id, entity_id=user.id
+            ).first()
 
-        linked_customer = Customer.objects.filter(
-            remote_customer_id=remote_customer_id, entity_id=user.id
-        ).first()
-
-        if linked_customer:
-            return True
-        else:
-            logger.warning(f"Customer {remote_customer_id} does not belong to user {user.id}.")
-            return False
-    except Exception as e:
-        logger.exception(f"Error checking customer ID for user: {e}")
-        raise CustomerOwnershipError("Error verifying customer ownership.")
+            if linked_customer:
+                return True
+            else:
+                logger.warning(f"Customer {remote_customer_id} does not belong to user {user.id}.")
+                return False
+        except Exception as e:
+            logger.exception(f"Error checking customer ID for user: {e}")
+            raise CustomerOwnershipError("Error verifying customer ownership.")
