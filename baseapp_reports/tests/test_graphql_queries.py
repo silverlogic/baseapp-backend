@@ -39,7 +39,7 @@ def test_anon_can_list_report_types(graphql_client):
 
 
 def test_user_can_get_report_types(django_user_client, graphql_user_client):
-    response = graphql_user_client(REPORT_TYPES_LIST_GRAPHQL)
+    response = graphql_user_client(REPORT_TYPES_LIST_GRAPHQL, variables={})
     content = response.json()
 
     assert (
