@@ -33,7 +33,9 @@ def test_anon_can_list_report_types(graphql_client):
 def test_anon_can_get_report_type_filtered_by_top_level(graphql_client):
     response = graphql_client(REPORT_TYPES_LIST_GRAPHQL, variables={"topLevelOnly": True})
     content = response.json()
-    assert len(content["data"]["allReportTypes"]["edges"]) == 8  # 11 total, with 3 subtypes
+    assert (
+        len(content["data"]["allReportTypes"]["edges"]) == 8
+    )  # 11 total created by baseapp_reports migrations, with 3 subtypes
 
 
 def test_anon_can_get_report_type_filtered_by_content_type(graphql_client):
