@@ -144,8 +144,10 @@ class StripeService:
     def __init__(
         self,
         api_key=settings.STRIPE_SECRET_KEY,
+        api_version=getattr(settings, "STRIPE_API_VERSION", "2025-02-24.acacia"),
     ):
         stripe.api_key = api_key
+        stripe.api_version = api_version
 
     def create_customer(self, email=None):
         try:
@@ -202,6 +204,12 @@ class StripeService:
                 expand=["latest_invoice.payment_intent"],
                 metadata={"product_id": product_id} if product_id else None,
             )
+            client_secret = (
+                subscription.get("latest_invoice", {})
+                .get("payment_intent", {})
+                .get("client_secret", None)
+            )
+            subscription["client_secret"] = client_secret
             return subscription
         except Exception as e:
             logger.exception(e)

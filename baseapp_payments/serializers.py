@@ -94,9 +94,7 @@ class StripeSubscriptionSerializer(serializers.Serializer):
                 subscription = StripeService().create_subscription_intent(**kwargs)
                 result = {
                     "remote_subscription_id": subscription["id"],
-                    "client_secret": subscription["latest_invoice"]["payment_intent"][
-                        "client_secret"
-                    ],
+                    "client_secret": subscription["client_secret"],
                     "invoice_id": subscription["latest_invoice"]["id"],
                 }
             else:
