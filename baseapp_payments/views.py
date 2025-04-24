@@ -33,10 +33,11 @@ class StripeSubscriptionViewset(
         return Subscription.objects.all()
 
     def create(self, request):
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.get_serializer(data=request.data, context={"request": request})
         if serializer.is_valid():
             result = serializer.save()
             return Response(result, status=201)
+        logger.error(f"Validation errors: {serializer.errors}")
         return Response(serializer.errors, status=400)
 
     def retrieve(self, request, remote_subscription_id=None):
