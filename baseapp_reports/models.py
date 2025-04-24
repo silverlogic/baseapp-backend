@@ -31,6 +31,13 @@ class AbstractBaseReportType(RelayModel, TimeStampedModel):
         blank=True,
         related_name="report_types",
     )
+    parent_type = models.ForeignKey(
+        swapper.get_model_name("baseapp_reports", "ReportType"),
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="sub_types",
+    )
 
     class Meta:
         abstract = True
@@ -40,14 +47,6 @@ class AbstractBaseReportType(RelayModel, TimeStampedModel):
 
 
 class ReportType(AbstractBaseReportType):
-    parent_type = models.ForeignKey(
-        swapper.get_model_name("baseapp_reports", "ReportType"),
-        blank=True,
-        null=True,
-        on_delete=models.SET_NULL,
-        related_name="sub_types",
-    )
-
     class Meta(AbstractBaseReportType.Meta):
         swappable = swapper.swappable_setting("baseapp_reports", "ReportType")
 
