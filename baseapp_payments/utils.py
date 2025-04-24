@@ -141,7 +141,11 @@ class SubscriptionNotFound(Exception):
 
 
 class StripeService:
-    def __init__(self, api_key=settings.STRIPE_SECRET_KEY, api_version=settings.STRIPE_API_VERSION):
+    def __init__(
+        self,
+        api_key=settings.STRIPE_SECRET_KEY,
+        api_version=getattr(settings, "STRIPE_API_VERSION", "2025-02-24.acacia"),
+    ):
         stripe.api_key = api_key
         stripe.api_version = api_version
 
