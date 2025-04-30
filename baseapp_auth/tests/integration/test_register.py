@@ -12,7 +12,7 @@ from baseapp_referrals.utils import get_referral_code
 User = get_user_model()
 UserFactory = h.get_user_factory()
 
-pytestmark = [pytest.mark.django_db, pytest.mark.referrals]
+pytestmark = pytest.mark.django_db
 
 skip_if_no_referrals = pytest.mark.skipif(
     "baseapp_referrals" not in settings.INSTALLED_APPS, reason="No referrals app"
