@@ -34,7 +34,14 @@ class StripeSubscriptionSerializer(serializers.Serializer):
     latest_invoice = serializers.DictField(read_only=True)
 
     def validate(self, data):
-        customer_id = data["remote_customer_id"]
+        customer_id = data.get("remote_customer_id")
+        if "remote_customer_id" in data and not customer_id:
+            raise serializers.ValidationError({"remote_customer_id": "This field is required."})
+
+        price_id = data.get("price_id")
+        if "price_id" in data and not price_id:
+            raise serializers.ValidationError({"price_id": "This field is required."})
+
         user = self.context.get("request").user
         if not StripeService().checkCustomerIdForUser(customer_id, user=user):
             raise serializers.ValidationError(
@@ -106,6 +113,47 @@ class StripeSubscriptionSerializer(serializers.Serializer):
         except Exception as e:
             logger.exception(e)
             raise serializers.ValidationError("Failed to create subscription")
+
+
+class StripeSubscriptionPatchSerializer(serializers.Serializer):
+    default_payment_method = serializers.CharField(required=False)
+    remote_customer_id = serializers.CharField(required=True)
+
+    def validate_remote_customer_id(self, value):
+        user = self.context.get("request").user
+        if not StripeService().checkCustomerIdForUser(value, user=user):
+            raise serializers.ValidationError(
+                "The provided customer ID does not belong to the authenticated user."
+            )
+        return value
+
+    def validate_default_payment_method(self, value):
+        remote_customer_id = self.initial_data.get("remote_customer_id")
+
+        try:
+            payment_methods = StripeService().list_payment_methods(remote_customer_id)
+            if not any(pm["id"] == value for pm in payment_methods):
+                raise serializers.ValidationError(
+                    "The provided payment method ID does not belong to the customer."
+                )
+
+        except Exception as e:
+            logger.error(f"Failed to validate payment method: {str(e)}")
+            raise serializers.ValidationError("Invalid payment method ID.")
+        return value
+
+    def update(self, instance, validated_data):
+
+        if "remote_customer_id" in validated_data:
+            validated_data.pop("remote_customer_id")
+        try:
+            StripeService().update_subscription(
+                subscription_id=instance.remote_subscription_id, **validated_data
+            )
+        except Exception as e:
+            logger.exception("Failed to update subscription in Stripe: %s", e)
+            raise serializers.ValidationError("Failed to update subscription in Stripe")
+        return instance
 
 
 class StripeCustomerSerializer(serializers.Serializer):

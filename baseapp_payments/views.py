@@ -11,6 +11,7 @@ from .serializers import (
     StripeCustomerSerializer,
     StripePaymentMethodSerializer,
     StripeProductSerializer,
+    StripeSubscriptionPatchSerializer,
     StripeSubscriptionSerializer,
     StripeWebhookSerializer,
 )
@@ -23,6 +24,7 @@ class StripeSubscriptionViewset(
     viewsets.GenericViewSet,
     viewsets.mixins.RetrieveModelMixin,
     viewsets.mixins.DestroyModelMixin,
+    viewsets.mixins.UpdateModelMixin,
 ):
     serializer_class = StripeSubscriptionSerializer
     queryset = Subscription.objects.all()
@@ -66,6 +68,19 @@ class StripeSubscriptionViewset(
         except Exception as e:
             logger.exception(e)
             return Response({"error": "Error deleting subscription"}, status=500)
+
+    def partial_update(self, request, *args, **kwargs):
+
+        instance = self.get_object()
+        serializer = StripeSubscriptionPatchSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        serializer.update(instance, serializer.validated_data)
+        return Response(
+            {"status": "success", "message": "Subscription updated in Stripe"}, status=200
+        )
 
 
 class StripeWebhookViewset(viewsets.GenericViewSet):
