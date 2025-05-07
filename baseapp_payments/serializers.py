@@ -36,20 +36,21 @@ class StripeSubscriptionSerializer(serializers.Serializer):
     def validate(self, data):
         customer_id = data["remote_customer_id"]
         user = self.context.get("request").user
-        if not StripeService().checkCustomerIdForUser(customer_id, user=user):
+        stripe_service = StripeService()
+        if not stripe_service.checkCustomerIdForUser(customer_id, user=user):
             raise serializers.ValidationError(
                 "The provided customer ID does not belong to the authenticated user."
             )
         price_id = data["price_id"]
 
         try:
-            price = StripeService().retrieve_price(price_id)
+            price = stripe_service.retrieve_price(price_id)
             if not price:
                 raise serializers.ValidationError(f"Price not found: {price_id}")
 
             new_product_id = price.get("product").get("id", None)
 
-            subscriptions = StripeService().list_subscriptions(customer_id, status="all")
+            subscriptions = stripe_service.list_subscriptions(customer_id, status="all")
             for subscription in subscriptions:
                 if subscription["status"] in STRIPE_ACTIVE_SUBSCRIPTION_STATUSES:
                     sub_price = subscription["items"]["data"][0]["price"]
@@ -75,12 +76,13 @@ class StripeSubscriptionSerializer(serializers.Serializer):
         allow_incomplete = validated_data.get("allow_incomplete", False)
         payment_method_id = validated_data.get("payment_method_id")
         billing_details = validated_data.get("billing_details")
+        stripe_service = StripeService()
 
         try:
             if payment_method_id and billing_details:
                 try:
-                    StripeService().update_payment_method_billing_details(
-                        payment_method_id, billing_details
+                    stripe_service.update_payment_method(
+                        payment_method_id, billing_details=billing_details
                     )
                 except Exception as e:
                     logger.error(f"Failed to update payment method: {str(e)}")
@@ -91,14 +93,14 @@ class StripeSubscriptionSerializer(serializers.Serializer):
                 kwargs["payment_method_id"] = payment_method_id
 
             if allow_incomplete:
-                subscription = StripeService().create_subscription_intent(**kwargs)
+                subscription = stripe_service.create_incomplete_subscription(**kwargs)
                 result = {
                     "remote_subscription_id": subscription["id"],
                     "client_secret": subscription["client_secret"],
                     "invoice_id": subscription["latest_invoice"]["id"],
                 }
             else:
-                subscription = StripeService().create_subscription(**kwargs)
+                subscription = stripe_service.create_subscription(**kwargs)
                 result = {"remote_subscription_id": subscription.id}
 
             return result
@@ -211,29 +213,39 @@ class StripePaymentMethodSerializer(serializers.Serializer):
     created = serializers.IntegerField(read_only=True)
     customer = serializers.CharField(read_only=True)
     is_default = serializers.BooleanField(read_only=True, default=False)
-
     customer_id = serializers.CharField(write_only=True, required=False)
-
     client_secret = serializers.CharField(read_only=True)
+    pk = serializers.CharField(write_only=True, required=False)
+    default_payment_method_id = serializers.CharField(write_only=True, required=False)
 
     def create(self, validated_data):
+        stripe_service = StripeService()
         customer_id = validated_data.get("customer_id")
-        if not customer_id:
-            raise serializers.ValidationError({"customer_id": "This field is required"})
-
-        if not StripeService().checkCustomerIdForUser(
-            customer_id, self.context.get("request").user
-        ):
-            raise serializers.ValidationError(
-                "The provided customer ID does not belong to the authenticated user."
-            )
-
         try:
-            setup_intent = StripeService().create_setup_intent(
+            setup_intent = stripe_service.create_setup_intent(
                 customer_id=customer_id,
             )
             return {"id": setup_intent["id"], "client_secret": setup_intent["client_secret"]}
         except Exception as e:
             logger.error(f"Failed to create setup intent: {str(e)}")
-
             serializers.ValidationError("An internal error has occurred. Please try again later.")
+
+    def update(self, validated_data):
+        stripe_service = StripeService()
+        customer_id = validated_data.get("customer_id")
+        default_payment_method_id = validated_data.get("default_payment_method_id")
+        payment_method_id = validated_data.get("pk")
+        if default_payment_method_id:
+            try:
+                resp = stripe_service.update_customer(customer_id, invoice_settings={"default_payment_method": default_payment_method_id})
+                return resp
+            except Exception as e:
+                logger.exception(e)
+                raise serializers.ValidationError("Failed to update payment method")
+        else:
+            validated_data.pop("customer_id")
+            try:
+                stripe_service.update_payment_method(payment_method_id, **validated_data)
+            except Exception as e:
+                logger.exception(e)
+                raise serializers.ValidationError("Failed to update payment method")
