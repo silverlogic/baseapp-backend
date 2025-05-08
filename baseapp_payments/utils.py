@@ -339,16 +339,13 @@ class StripeService:
             )
         except Exception as e:
             logger.exception(e)
-            raise PaymentMethodUpdateError(
-                "Error updating payment method in Stripe"
-            )
+            raise PaymentMethodUpdateError("Error updating payment method in Stripe")
 
     def delete_payment_method(self, payment_method_id, customer_id, is_default=False):
         try:
             if is_default:
                 stripe.Customer.modify(
-                    customer_id, 
-                    invoice_settings={"default_payment_method": None}
+                    customer_id, invoice_settings={"default_payment_method": None}
                 )
             response = stripe.PaymentMethod.detach(payment_method_id)
             return response

@@ -237,7 +237,10 @@ class StripePaymentMethodSerializer(serializers.Serializer):
         payment_method_id = validated_data.get("pk")
         if default_payment_method_id:
             try:
-                resp = stripe_service.update_customer(customer_id, invoice_settings={"default_payment_method": default_payment_method_id})
+                resp = stripe_service.update_customer(
+                    customer_id,
+                    invoice_settings={"default_payment_method": default_payment_method_id},
+                )
                 return resp
             except Exception as e:
                 logger.exception(e)

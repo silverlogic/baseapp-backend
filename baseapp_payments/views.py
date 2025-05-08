@@ -5,6 +5,7 @@ from rest_framework import viewsets
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
 from .models import Customer, Subscription
 from .serializers import (
     StripeCustomerSerializer,
@@ -136,7 +137,10 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
         if not remote_customer_id:
             return Response({"error": "Missing customer_id"}, status=400)
         if not stripe_service.checkCustomerIdForUser(remote_customer_id, request.user):
-            return Response({"error": "The provided customer_id does not belong to the authenticated user."}, status=401)
+            return Response(
+                {"error": "The provided customer_id does not belong to the authenticated user."},
+                status=401,
+            )
         try:
             payment_methods = stripe_service.get_customer_payment_methods(remote_customer_id)
             serializer = self.get_serializer(payment_methods, many=True)
@@ -154,7 +158,12 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
             if not remote_customer_id:
                 return Response({"error": "Missing customer_id"}, status=400)
             if not StripeService().checkCustomerIdForUser(remote_customer_id, request.user):
-                return Response({"error": "The provided customer_id does not belong to the authenticated user."}, status=401)
+                return Response(
+                    {
+                        "error": "The provided customer_id does not belong to the authenticated user."
+                    },
+                    status=401,
+                )
             result = serializer.create(serializer.validated_data)
             return Response(result, status=201)
         except ValidationError:
@@ -171,7 +180,12 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
             if not remote_customer_id:
                 return Response({"error": "Missing customer_id"}, status=400)
             if not StripeService().checkCustomerIdForUser(remote_customer_id, request.user):
-                return Response({"error": "The provided customer_id does not belong to the authenticated user."}, status=401)
+                return Response(
+                    {
+                        "error": "The provided customer_id does not belong to the authenticated user."
+                    },
+                    status=401,
+                )
             result = serializer.update(serializer.validated_data)
             return Response(result, status=200)
         except Exception as e:
@@ -185,8 +199,15 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
             if not remote_customer_id:
                 return Response({"error": "Missing customer_id"}, status=400)
             if not stripe_service.checkCustomerIdForUser(remote_customer_id, request.user):
-                return Response({"error": "The provided customer_id does not belong to the authenticated user."}, status=401)
-            payment_method = stripe_service.delete_payment_method(pk, remote_customer_id, request.query_params.get("is_default"))
+                return Response(
+                    {
+                        "error": "The provided customer_id does not belong to the authenticated user."
+                    },
+                    status=401,
+                )
+            payment_method = stripe_service.delete_payment_method(
+                pk, remote_customer_id, request.query_params.get("is_default")
+            )
             return Response(payment_method, status=200)
         except Exception as e:
             logger.exception("Failed to delete payment method: %s", e)
