@@ -248,7 +248,7 @@ class StripeService:
 
     def delete_subscription(self, subscription_id):
         try:
-            response = stripe.Subscription.delete(subscription_id)
+            response = stripe.Subscription.cancel(subscription_id)
             return response
         except Exception as e:
             if "No such subscription" in str(e):
@@ -389,3 +389,17 @@ class StripeService:
         except Exception as e:
             logger.exception(f"Error checking customer ID for user: {e}")
             raise CustomerOwnershipError("Error verifying customer ownership.")
+
+    def update_subscription(self, subscription_id, **kwargs):
+
+        try:
+            subscription = stripe.Subscription.modify(subscription_id, **kwargs)
+            return subscription
+        except stripe.error.InvalidRequestError as e:
+            if "No such subscription" in str(e):
+                raise SubscriptionNotFound("Subscription not found in Stripe")
+            logger.error(f"Invalid request: {str(e)}")
+            raise
+        except Exception as e:
+            logger.exception(e)
+            raise SubscriptionCreationError("Error updating subscription in Stripe")

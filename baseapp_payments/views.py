@@ -11,6 +11,7 @@ from .serializers import (
     StripeCustomerSerializer,
     StripePaymentMethodSerializer,
     StripeProductSerializer,
+    StripeSubscriptionPatchSerializer,
     StripeSubscriptionSerializer,
     StripeWebhookSerializer,
 )
@@ -23,6 +24,7 @@ class StripeSubscriptionViewset(
     viewsets.GenericViewSet,
     viewsets.mixins.RetrieveModelMixin,
     viewsets.mixins.DestroyModelMixin,
+    viewsets.mixins.UpdateModelMixin,
 ):
     serializer_class = StripeSubscriptionSerializer
     queryset = Subscription.objects.all()
@@ -41,15 +43,13 @@ class StripeSubscriptionViewset(
         return Response(serializer.errors, status=400)
 
     def retrieve(self, request, remote_subscription_id=None):
-        subscription = StripeService().retrieve_subscription(
-            remote_subscription_id, user=request.user
-        )
+        subscription = StripeService().retrieve_subscription(remote_subscription_id)
         if not subscription:
             raise NotFound("Subscription not found")
         return Response(subscription, status=200)
 
     def delete(self, request):
-        remote_subscription_id = request.data.get("remote_subscription_id")
+        remote_subscription_id = request.query_params.get("remote_subscription_id")
         customer = Customer.objects.filter(entity_id=self.request.user.id).first()
         if not customer:
             raise NotFound("Customer does not exist.")
@@ -68,6 +68,19 @@ class StripeSubscriptionViewset(
         except Exception as e:
             logger.exception(e)
             return Response({"error": "Error deleting subscription"}, status=500)
+
+    def partial_update(self, request, *args, **kwargs):
+
+        instance = self.get_object()
+        serializer = StripeSubscriptionPatchSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        serializer.update(instance, serializer.validated_data)
+        return Response(
+            {"status": "success", "message": "Subscription updated in Stripe"}, status=200
+        )
 
 
 class StripeWebhookViewset(viewsets.GenericViewSet):
