@@ -175,7 +175,7 @@ class StripeService:
     def retrieve_customer(self, customer_id=None, email=None):
         try:
             if not customer_id and email:
-                results =  stripe.Customer.search(query=f"email:'{email}'")
+                results = stripe.Customer.search(query=f"email:'{email}'")
                 if results.data:
                     return results.data[0]
                 else:
