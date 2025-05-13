@@ -104,6 +104,10 @@ class StripeWebhookHandler:
             return JsonResponse({"status": "success"}, status=200)
 
 
+class CustomerCreationError(Exception):
+    pass
+
+
 class CustomerNotFound(Exception):
     pass
 
@@ -161,19 +165,22 @@ class StripeService:
         stripe.api_key = api_key
         stripe.api_version = api_version
 
-    def create_customer(self, email=None):
+    def create_customer(self, **kwargs):
         try:
-            if email is None:
-                return stripe.Customer.create()
-            return stripe.Customer.create(email=email)
+            return stripe.Customer.create(**kwargs)
         except Exception as e:
             logger.exception(e)
-            raise Exception("Error creating customer in Stripe")
+            raise CustomerCreationError("Error creating customer in Stripe")
 
-    def retrieve_customer(self, customer_id):
+    def retrieve_customer(self, customer_id=None, email=None):
         try:
-            customer = stripe.Customer.retrieve(customer_id)
-            return customer
+            if not customer_id and email:
+                results =  stripe.Customer.search(query=f"email:'{email}'")
+                if results.data:
+                    return results.data[0]
+                else:
+                    return None
+            return stripe.Customer.retrieve(customer_id)
         except stripe.error.InvalidRequestError as e:
             if "No such customer" in str(e):
                 return None
