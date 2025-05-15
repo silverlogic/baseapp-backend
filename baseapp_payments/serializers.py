@@ -27,7 +27,6 @@ class StripeSubscriptionSerializer(serializers.Serializer):
     billing_details = serializers.DictField(
         required=False,
     )
-
     remote_subscription_id = serializers.CharField(read_only=True)
     client_secret = serializers.CharField(read_only=True)
     invoice_id = serializers.CharField(read_only=True)
@@ -37,11 +36,9 @@ class StripeSubscriptionSerializer(serializers.Serializer):
         customer_id = data.get("remote_customer_id")
         if "remote_customer_id" in data and not customer_id:
             raise serializers.ValidationError({"remote_customer_id": "This field is required."})
-
         price_id = data.get("price_id")
         if "price_id" in data and not price_id:
             raise serializers.ValidationError({"price_id": "This field is required."})
-
         user = self.context.get("request").user
         stripe_service = StripeService()
         if not stripe_service.checkCustomerIdForUser(customer_id, user=user):
@@ -49,20 +46,16 @@ class StripeSubscriptionSerializer(serializers.Serializer):
                 "The provided customer ID does not belong to the authenticated user."
             )
         price_id = data["price_id"]
-
         try:
             price = stripe_service.retrieve_price(price_id)
             if not price:
                 raise serializers.ValidationError(f"Price not found: {price_id}")
-
             new_product_id = price.get("product").get("id", None)
-
             subscriptions = stripe_service.list_subscriptions(customer_id, status="all")
             for subscription in subscriptions:
                 if subscription["status"] in STRIPE_ACTIVE_SUBSCRIPTION_STATUSES:
                     sub_price = subscription["items"]["data"][0]["price"]
                     sub_product_id = sub_price.get("product")
-
                     if sub_product_id == new_product_id:
                         raise serializers.ValidationError(
                             f"You already have an active subscription to this product. "
@@ -84,7 +77,6 @@ class StripeSubscriptionSerializer(serializers.Serializer):
         payment_method_id = validated_data.get("payment_method_id")
         billing_details = validated_data.get("billing_details")
         stripe_service = StripeService()
-
         try:
             if payment_method_id and billing_details:
                 try:
@@ -94,11 +86,9 @@ class StripeSubscriptionSerializer(serializers.Serializer):
                 except Exception as e:
                     logger.error(f"Failed to update payment method: {str(e)}")
                     # Continue with subscription creation even if billing update fails
-
             kwargs = {"customer_id": customer_id, "price_id": price_id}
             if payment_method_id:
                 kwargs["payment_method_id"] = payment_method_id
-
             if allow_incomplete:
                 subscription = stripe_service.create_incomplete_subscription(**kwargs)
                 result = {
@@ -109,9 +99,7 @@ class StripeSubscriptionSerializer(serializers.Serializer):
             else:
                 subscription = stripe_service.create_subscription(**kwargs)
                 result = {"remote_subscription_id": subscription.id}
-
             return result
-
         except Exception as e:
             logger.exception(e)
             raise serializers.ValidationError("Failed to create subscription")
@@ -131,21 +119,18 @@ class StripeSubscriptionPatchSerializer(serializers.Serializer):
 
     def validate_default_payment_method(self, value):
         remote_customer_id = self.initial_data.get("remote_customer_id")
-
         try:
             payment_methods = StripeService().list_payment_methods(remote_customer_id)
             if not any(pm["id"] == value for pm in payment_methods):
                 raise serializers.ValidationError(
                     "The provided payment method ID does not belong to the customer."
                 )
-
         except Exception as e:
             logger.error(f"Failed to validate payment method: {str(e)}")
             raise serializers.ValidationError("Invalid payment method ID.")
         return value
 
     def update(self, instance, validated_data):
-
         if "remote_customer_id" in validated_data:
             validated_data.pop("remote_customer_id")
         try:
@@ -189,17 +174,15 @@ class StripeCustomerSerializer(serializers.Serializer):
     def create(self, validated_data):
         customer_entity_model = config.STRIPE_CUSTOMER_ENTITY_MODEL
         user = validated_data.pop("user")
-
         if customer_entity_model == "profiles.Profile":
             entity_model = apps.get_model(customer_entity_model)
             entity = entity_model.objects.get(owner=user.id)
         else:
             entity_model = apps.get_model(customer_entity_model)
             entity = entity_model.objects.get(profile_id=user.id)
-
         try:
             customer = Customer.objects.create(entity=entity)
-            stripe_customer = StripeService().create_customer(user.email)
+            stripe_customer = StripeService().create_customer(email=user.email)
             customer.remote_customer_id = stripe_customer.id
             customer.save()
         except IntegrityError:
