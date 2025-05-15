@@ -1,5 +1,6 @@
 import logging
 
+from constance import config
 from django.conf import settings
 from rest_framework import viewsets
 from rest_framework.exceptions import NotFound, ValidationError
@@ -122,11 +123,18 @@ class StripeCustomerViewset(viewsets.GenericViewSet):
     def retrieve(self, request, pk=None):
         stripe_service = StripeService()
         if pk == "me":
-            customer = stripe_service.retrieve_customer(email=request.user.email)
-            if customer:
-                customer = Customer.objects.filter(remote_customer_id=customer.id).first()
+            customer_entity_model = config.STRIPE_CUSTOMER_ENTITY_MODEL
+            customer = Customer.objects.filter(
+                entity_id=request.user.profile.id, entity_type=customer_entity_model
+            ).first()
+            if not customer:
+                customer = stripe_service.retrieve_customer(email=request.user.email)
+                if customer:
+                    Customer.objects.create(
+                        entity=request.user.profile, remote_customer_id=customer.id
+                    )
         else:
-            customer = Customer.objects.filter(user_id=pk).first()
+            customer = Customer.objects.filter(remote_customer_id=pk).first()
         if not customer:
             return Response({"error": "Customer not found"}, status=404)
         serializer = self.get_serializer(customer)

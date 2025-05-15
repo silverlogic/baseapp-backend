@@ -2,6 +2,7 @@ import swapper
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from model_utils.fields import FieldTracker
 
 
 class BaseCustomer(models.Model):
@@ -15,6 +16,16 @@ class BaseCustomer(models.Model):
 
     class Meta:
         abstract = True
+
+    tracker = FieldTracker(fields=["entity"])
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.tracker.has_changed("entity"):
+            if self.entity:
+                self.entity_type = ContentType.objects.get_for_model(self.entity)
+                self.entity_id = self.entity.id
+                self.save()
 
 
 class BaseSubscription(models.Model):
