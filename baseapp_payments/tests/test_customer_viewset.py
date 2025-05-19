@@ -7,12 +7,13 @@ from django.urls import reverse
 from rest_framework import status
 
 from baseapp_core.tests.helpers import responseEquals
-from baseapp_payments.models import Customer
+from baseapp_payments.tests.factories import CustomerFactory
 
 pytestmark = pytest.mark.django_db
 
 
 Profile = swapper.load_model("profiles", "Profile")
+Customer = swapper.load_model("baseapp_payments", "Customer")
 
 
 class TestCustomerRetrieveView:
@@ -23,7 +24,7 @@ class TestCustomerRetrieveView:
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
     def test_user_can_get_self_customer_with_existing_db_entry(self, user_client):
-        Customer.objects.create(entity=user_client.user.profile, remote_customer_id="cus_123")
+        CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.get(reverse(self.viewname, kwargs={"pk": "me"}))
         responseEquals(response, status.HTTP_200_OK)
 

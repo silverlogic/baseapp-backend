@@ -1,5 +1,6 @@
 import logging
 
+import swapper
 from constance import config
 from django.apps import apps
 from django.conf import settings
@@ -9,7 +10,7 @@ from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Customer, Subscription
+from .models import Subscription
 from .serializers import (
     StripeCustomerSerializer,
     StripePaymentMethodSerializer,
@@ -21,6 +22,8 @@ from .serializers import (
 from .utils import StripeService, StripeWebhookHandler
 
 logger = logging.getLogger(__name__)
+
+Customer = swapper.load_model("baseapp_payments", "Customer")
 
 
 class StripeSubscriptionViewset(
@@ -111,7 +114,11 @@ class StripeProductViewset(viewsets.GenericViewSet):
         return Response(serializer.data, status=200)
 
 
-class StripeCustomerViewset(viewsets.GenericViewSet):
+class StripeCustomerViewset(
+    viewsets.GenericViewSet,
+    viewsets.mixins.RetrieveModelMixin,
+    viewsets.mixins.CreateModelMixin,
+):
     serializer_class = StripeCustomerSerializer
     queryset = Customer.objects.all()
     permission_classes = [IsAuthenticated]
@@ -227,10 +234,10 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
                     },
                     status=401,
                 )
-            payment_method = stripe_service.delete_payment_method(
+            stripe_service.delete_payment_method(
                 pk, remote_customer_id, request.query_params.get("is_default")
             )
-            return Response(payment_method, status=200)
+            return Response({}, status=204)
         except Exception as e:
             logger.exception("Failed to delete payment method: %s", e)
             return Response({"error": "An internal error has occurred"}, status=500)

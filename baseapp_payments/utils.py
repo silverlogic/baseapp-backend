@@ -421,12 +421,12 @@ class StripeService:
                 logger.warning(f"Customer {remote_customer_id} not found in Stripe.")
                 return False
             linked_customer = Customer.objects.filter(
-                remote_customer_id=remote_customer_id, entity_id=user.id
+                remote_customer_id=remote_customer_id, entity_id=user.profile.id
             ).first()
             if linked_customer:
                 return True
             else:
-                logger.warning(f"Customer {remote_customer_id} does not belong to user {user.id}.")
+                logger.warning(f"Customer {remote_customer_id} does not belong to user {user.profile.id}.")
                 return False
         except Exception as e:
             logger.exception(f"Error checking customer ID for user: {e}")

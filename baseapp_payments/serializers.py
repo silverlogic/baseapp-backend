@@ -1,12 +1,12 @@
 import logging
 
+import swapper
 from constance import config
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
-from .models import Customer
 from .utils import StripeService
 
 logger = logging.getLogger(__name__)
@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 STRIPE_ACTIVE_SUBSCRIPTION_STATUSES = {"active", "trialing", "incomplete", "past_due"}
 
+Customer = swapper.load_model("baseapp_payments", "Customer")
 
 class StripeSubscriptionSerializer(serializers.Serializer):
     remote_customer_id = serializers.CharField(help_text="Stripe customer ID")
