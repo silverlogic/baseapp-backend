@@ -12,20 +12,11 @@ class BaseCustomer(TimeStampedModel):
     entity = GenericForeignKey("entity_type", "entity_id")
     remote_customer_id = models.CharField(max_length=255)
 
-    def __str__(self):
-        return f"{self.entity} - {self.remote_customer_id}"
-
     class Meta:
         abstract = True
 
-    tracker = FieldTracker(fields=["entity"])
-
-    def save(self, *args, **kwargs):
-        if self.tracker.has_changed("entity"):
-            if self.entity:
-                self.entity_type = ContentType.objects.get_for_model(self.entity)
-                self.entity_id = self.entity.id
-        super().save(*args, **kwargs)
+    def __str__(self):
+        return f"{self.entity} - {self.remote_customer_id}"
 
 
 class BaseSubscription(TimeStampedModel):
@@ -37,9 +28,17 @@ class BaseSubscription(TimeStampedModel):
 
 
 class Customer(BaseCustomer):
+    tracker = FieldTracker(["entity"])
+
     class Meta:
         swappable = swapper.swappable_setting("baseapp_payments", "Customer")
         unique_together = ("entity_type", "entity_id")
+
+    def save(self, *args, **kwargs):
+        if self.tracker.has_changed("entity") and self.entity:
+            self.entity_type = ContentType.objects.get_for_model(self.entity)
+            self.entity_id = self.entity.id
+        super().save(*args, **kwargs)
 
 
 class Subscription(BaseSubscription):

@@ -6,7 +6,6 @@ from constance import config
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db.utils import IntegrityError
 from django.http import JsonResponse
 
 from .models import Subscription
@@ -30,6 +29,11 @@ class StripeWebhookHandler:
         customer_entity_model = config.STRIPE_CUSTOMER_ENTITY_MODEL
         customer_data = event["data"]["object"]
         try:
+            existing_customer = Customer.objects.filter(
+                remote_customer_id=customer_data["id"]
+            ).first()
+            if existing_customer:
+                return JsonResponse({"status": "success"}, status=200)
             user = get_user_model().objects.get(email=customer_data["email"])
             if customer_entity_model != "profiles.Profile":
                 entity_model = apps.get_model(customer_entity_model)
@@ -38,8 +42,6 @@ class StripeWebhookHandler:
                 entity_model = apps.get_model(customer_entity_model)
                 entity = entity_model.objects.get(owner=user.id)
             Customer.objects.create(entity=entity, remote_customer_id=customer_data["id"])
-            return JsonResponse({"status": "success"}, status=200)
-        except IntegrityError:
             return JsonResponse({"status": "success"}, status=200)
         except Exception as e:
             logger.exception(e)
@@ -59,12 +61,15 @@ class StripeWebhookHandler:
     def subscription_created(event):
         subscription_data = event["data"]["object"]
         try:
+            existing_subscription = Subscription.objects.filter(
+                remote_subscription_id=subscription_data["id"]
+            ).first()
+            if existing_subscription:
+                return JsonResponse({"status": "success"}, status=200)
             Subscription.objects.create(
                 remote_customer_id=subscription_data["customer"],
                 remote_subscription_id=subscription_data["id"],
             )
-            return JsonResponse({"status": "success"}, status=200)
-        except IntegrityError:
             return JsonResponse({"status": "success"}, status=200)
         except Exception as e:
             logger.exception(e)
@@ -428,7 +433,6 @@ class StripeService:
             raise CustomerOwnershipError("Error verifying customer ownership.")
 
     def update_subscription(self, subscription_id, **kwargs):
-
         try:
             subscription = stripe.Subscription.modify(subscription_id, **kwargs)
             return subscription

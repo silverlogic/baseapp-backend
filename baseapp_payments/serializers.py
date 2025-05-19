@@ -3,7 +3,7 @@ import logging
 from constance import config
 from django.apps import apps
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
 from .models import Customer
@@ -171,20 +171,18 @@ class StripeCustomerSerializer(serializers.Serializer):
         data["user"] = user
         return data
 
+    @transaction.atomic
     def create(self, validated_data):
         customer_entity_model = config.STRIPE_CUSTOMER_ENTITY_MODEL
         user = validated_data.pop("user")
+        entity_model = apps.get_model(customer_entity_model)
         if customer_entity_model == "profiles.Profile":
-            entity_model = apps.get_model(customer_entity_model)
             entity = entity_model.objects.get(owner=user.id)
         else:
-            entity_model = apps.get_model(customer_entity_model)
             entity = entity_model.objects.get(profile_id=user.id)
         try:
-            customer = Customer.objects.create(entity=entity)
             stripe_customer = StripeService().create_customer(email=user.email)
-            customer.remote_customer_id = stripe_customer.id
-            customer.save()
+            customer = Customer.objects.create(entity=entity, remote_customer_id=stripe_customer.id)
         except IntegrityError:
             raise serializers.ValidationError("Customer already exists for this entity.")
         except Exception as e:
@@ -193,10 +191,13 @@ class StripeCustomerSerializer(serializers.Serializer):
         return customer
 
     def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        representation["entity_type"] = instance.entity._meta.model_name
-        representation["entity_id"] = instance.entity.id
-        return representation
+        if isinstance(instance, Customer):
+            representation = super().to_representation(instance)
+            representation["entity_type"] = instance.entity._meta.model_name
+            representation["entity_id"] = instance.entity.id
+            return representation
+        else:
+            return super().to_representation(instance)
 
 
 class StripeWebhookSerializer(serializers.Serializer):

@@ -1,7 +1,9 @@
 import logging
 
 from constance import config
+from django.apps import apps
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from rest_framework import viewsets
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -121,17 +123,23 @@ class StripeCustomerViewset(viewsets.GenericViewSet):
         return Response(serializer.data, status=201)
 
     def retrieve(self, request, pk=None):
-        stripe_service = StripeService()
         if pk == "me":
             customer_entity_model = config.STRIPE_CUSTOMER_ENTITY_MODEL
-            customer = Customer.objects.filter(
-                entity_id=request.user.profile.id, entity_type=customer_entity_model
-            ).first()
+            entity_model = apps.get_model(customer_entity_model)
+            model_content_type = ContentType.objects.get_for_model(entity_model)
+            if customer_entity_model == "profiles.Profile":
+                customer = Customer.objects.filter(
+                    entity_id=request.user.profile.id, entity_type=model_content_type
+                ).first()
+            else:
+                customer = Customer.objects.filter(
+                    entity_id=request.user.id, entity_type=model_content_type
+                ).first()
             if not customer:
-                customer = stripe_service.retrieve_customer(email=request.user.email)
+                customer = StripeService().retrieve_customer(email=request.user.email)
                 if customer:
                     Customer.objects.create(
-                        entity=request.user.profile, remote_customer_id=customer.id
+                        entity=request.user.profile, remote_customer_id=customer.get("id")
                     )
         else:
             customer = Customer.objects.filter(remote_customer_id=pk).first()
