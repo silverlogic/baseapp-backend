@@ -24,7 +24,9 @@ class TestPaymentMethodListView:
 
     @patch("baseapp_payments.views.StripeService.retrieve_customer")
     @patch("baseapp_payments.views.StripeService.get_customer_payment_methods")
-    def test_user_can_list_self_payment_methods(self, mock_get_customer_payment_methods, mock_retrieve_customer, user_client):
+    def test_user_can_list_self_payment_methods(
+        self, mock_get_customer_payment_methods, mock_retrieve_customer, user_client
+    ):
         CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         mock_retrieve_customer.return_value = {"id": "cus_123"}
         mock_get_customer_payment_methods.return_value = [{"id": "pm_123"}]
@@ -42,7 +44,9 @@ class TestPaymentMethodUpdateView:
 
     @patch("baseapp_payments.views.StripeService.update_customer")
     @patch("baseapp_payments.views.StripeService.retrieve_customer")
-    def test_user_can_update_payment_method(self, mock_retrieve_customer, mock_update_customer, user_client):
+    def test_user_can_update_payment_method(
+        self, mock_retrieve_customer, mock_update_customer, user_client
+    ):
         mock_retrieve_customer.return_value = {"id": "cus_123"}
         mock_update_customer.return_value = {"id": "pm_123"}
         CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
@@ -69,18 +73,24 @@ class TestPaymentMethodDeleteView:
         assert response.json() == {"error": "Missing customer_id"}
 
     @patch("baseapp_payments.views.StripeService.retrieve_customer")
-    def test_user_cannot_delete_other_user_payment_method(self, mock_retrieve_customer, user_client):
+    def test_user_cannot_delete_other_user_payment_method(
+        self, mock_retrieve_customer, user_client
+    ):
         mock_retrieve_customer.return_value = {"id": "cus_123"}
         CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.delete(
             reverse(self.viewname, kwargs={"pk": "pm_123"}) + "?customer_id=cus_432",
         )
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
-        assert response.json() == {"error": "The provided customer_id does not belong to the authenticated user."}
+        assert response.json() == {
+            "error": "The provided customer_id does not belong to the authenticated user."
+        }
 
     @patch("baseapp_payments.views.StripeService.retrieve_customer")
     @patch("baseapp_payments.views.StripeService.delete_payment_method")
-    def test_user_can_delete_payment_method(self, mock_delete_payment_method, mock_retrieve_customer, user_client):
+    def test_user_can_delete_payment_method(
+        self, mock_delete_payment_method, mock_retrieve_customer, user_client
+    ):
         mock_retrieve_customer.return_value = {"id": "cus_123"}
         mock_delete_payment_method.return_value = {}
         CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")

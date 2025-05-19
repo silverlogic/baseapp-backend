@@ -426,7 +426,9 @@ class StripeService:
             if linked_customer:
                 return True
             else:
-                logger.warning(f"Customer {remote_customer_id} does not belong to user {user.profile.id}.")
+                logger.warning(
+                    f"Customer {remote_customer_id} does not belong to user {user.profile.id}."
+                )
                 return False
         except Exception as e:
             logger.exception(f"Error checking customer ID for user: {e}")

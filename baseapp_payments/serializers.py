@@ -16,6 +16,7 @@ STRIPE_ACTIVE_SUBSCRIPTION_STATUSES = {"active", "trialing", "incomplete", "past
 
 Customer = swapper.load_model("baseapp_payments", "Customer")
 
+
 class StripeSubscriptionSerializer(serializers.Serializer):
     remote_customer_id = serializers.CharField(help_text="Stripe customer ID")
     price_id = serializers.CharField(help_text="Stripe price ID")
