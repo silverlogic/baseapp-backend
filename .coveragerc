@@ -5,11 +5,6 @@ branch = True
 omit =
     ./testproject/*
     **/tests/*
-    **/admin.py
 
 [report]
 fail_under = 75
-omit = 
-    ./testproject/*
-    **/tests/*
-    **/admin.py
