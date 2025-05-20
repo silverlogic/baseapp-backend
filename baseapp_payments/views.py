@@ -114,11 +114,7 @@ class StripeProductViewset(viewsets.GenericViewSet):
         return Response(serializer.data, status=200)
 
 
-class StripeCustomerViewset(
-    viewsets.GenericViewSet,
-    viewsets.mixins.RetrieveModelMixin,
-    viewsets.mixins.CreateModelMixin,
-):
+class StripeCustomerViewset(viewsets.GenericViewSet):
     serializer_class = StripeCustomerSerializer
     queryset = Customer.objects.all()
     permission_classes = [IsAuthenticated]
