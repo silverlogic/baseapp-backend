@@ -45,12 +45,9 @@ jobs:
       - name: pytest
         if: steps.requirements_installation.outcome == 'success'
         run: |
-          docker compose exec backend pytest \
-            --cov=./ \
-            --cov-report=xml \
-            --cov-branch \
-            --cov-omit="*/admin.py"
+          docker compose exec backend pytest
 
+      
       - name: pytest drf_view_action_permissions
         if: steps.requirements_installation.outcome == 'success'
         run: |
