@@ -139,11 +139,15 @@ class StripeCustomerViewset(viewsets.GenericViewSet):
                     entity_id=request.user.id, entity_type=model_content_type
                 ).first()
             if not customer:
-                customer = StripeService().retrieve_customer(False, request.user.email)
-                if customer:
-                    Customer.objects.create(
-                        entity=request.user.profile, remote_customer_id=customer.get("id")
-                    )
+                try:
+                    customer = StripeService().retrieve_customer(False, request.user.email)
+                    if customer:
+                        Customer.objects.create(
+                            entity=request.user.profile, remote_customer_id=customer.get("id")
+                        )
+                except Exception as e:
+                    logger.exception("Failed to retrieve or create customer: %s", e)
+                    return Response({"error": "An internal error has occurred"}, status=500)
         else:
             customer = Customer.objects.filter(remote_customer_id=pk).first()
         if not customer:
