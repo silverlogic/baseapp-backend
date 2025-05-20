@@ -5,6 +5,13 @@ branch = True
 omit =
     ./testproject/*
     **/tests/*
+    **/migrations/*
+    settings/*
+    */migration*
 
 [report]
 fail_under = 75
+omit = 
+    settings/*
+    **/migrations/*
+    */migration*
