@@ -5,13 +5,20 @@ branch = True
 omit =
     ./testproject/*
     **/tests/*
-    **/migrations/*
     settings/*
-    */migration*
+    */migrations/*
+    */*/migrations/*
+    */*/*/migrations/*
+    */admin.py
+    */*/admin.py
+    */*/*/admin.py
 
 [report]
 fail_under = 75
 omit = 
-    settings/*
-    **/migrations/*
-    */migration*
+    */migrations/*
+    */*/migrations/*
+    */*/*/migrations/*
+    */admin.py
+    */*/admin.py
+    */*/*/admin.py
