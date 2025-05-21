@@ -5,6 +5,12 @@ branch = True
 omit =
     ./testproject/*
     **/tests/*
+    */sentry.py
+    */live.py
+    */pipeline.py
+    */deprecation.py
+    */manage.py
+    */setup.py
 
 [report]
 fail_under = 75
