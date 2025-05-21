@@ -140,7 +140,7 @@ class StripeCustomerViewset(viewsets.GenericViewSet):
                 ).first()
             if not customer:
                 try:
-                    customer = StripeService().retrieve_customer(False, request.user.email)
+                    customer = StripeService().retrieve_customer(email=request.user.email)
                     if customer:
                         Customer.objects.create(
                             entity=request.user.profile, remote_customer_id=customer.get("id")
