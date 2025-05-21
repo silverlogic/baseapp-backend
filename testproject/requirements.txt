@@ -24,4 +24,6 @@ isort==5.13.2
 channels==4.0.0
 channels_redis==4.0.0
 
+django-notifications-hq @ git+https://github.com/openwisp/django-notifications.git@f4918c2409a734ec1aa9798d86c3a729b505f753
+
 -e ./[auth,referrals,graphql,pages,payments,notifications,urlshortening,messagetemplates,wagtail,socialauth]
