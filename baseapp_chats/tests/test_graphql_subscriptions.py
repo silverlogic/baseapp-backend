@@ -4,10 +4,12 @@ import pytest
 import swapper
 from channels.db import database_sync_to_async
 
-from baseapp_core.tests.factories import UserFactory
+from baseapp_core.tests.factories import TokenFactory, UserFactory
 
 from ..utils import send_message
 from .factories import ChatRoomFactory, ChatRoomParticipantFactory
+
+from rest_framework.authtoken.models import Token
 
 Message = swapper.load_model("baseapp_chats", "Message")
 Verbs = Message.Verbs
@@ -163,6 +165,82 @@ async def test_user_recieves_message_count_update(django_user_client, graphql_ws
                     profile {
                       ... on ChatRoomsInterface {
                         unreadMessagesCount
+                      }
+                    }
+                  }
+                }
+                """
+            ),
+            "variables": {"profileId": django_user_client.user.profile.relay_id},
+            "operationName": "op_name",
+        },
+    )
+
+    await client.assert_no_messages()
+
+    await database_sync_to_async(send_message)(
+        user=user,
+        profile=user.profile,
+        content="Hi!",
+        room=room,
+        verb=Verbs.SENT_MESSAGE,
+    )
+
+    # Check that subscription message were sent.
+
+    resp = await client.receive(assert_id=sub_id, assert_type="next")
+
+    # Disconnect and wait the application to finish gracefully.
+    await client.finalize()
+
+    assert resp["data"]["chatRoomOnMessagesCountUpdate"]["profile"]["unreadMessagesCount"] == 1
+
+
+@pytest.mark.asyncio
+async def test_current_profile_ws_context(django_user_client, graphql_ws_user_client):
+    room = await database_sync_to_async(ChatRoomFactory)(created_by=django_user_client.user)
+    await database_sync_to_async(ChatRoomParticipantFactory)(
+        profile=django_user_client.user.profile, room=room
+    )
+    user = await database_sync_to_async(UserFactory)()
+    await database_sync_to_async(ChatRoomParticipantFactory)(room=room, profile=user.profile)
+
+    # Establish & initialize WebSocket GraphQL connection.
+    client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
+    import pdb; pdb.set_trace()
+    token = await database_sync_to_async(Token.objects.get)(user=django_user_client.user)
+    authorization_header = f"Bearer {token.key}"
+
+    await client.send(
+      msg_type="connection_init",
+      payload={
+          "Authorization": authorization_header,
+          "Current-Profile": django_user_client.user.profile.relay_id,
+      },
+    )
+
+    # Subscribe to GraphQL subscription.
+    sub_id = await client.send(
+        msg_type="subscribe",
+        payload={
+            "query": textwrap.dedent(
+                """
+                subscription op_name($profileId: ID!) {
+                  chatRoomOnMessagesCountUpdate(profileId: $profileId) {
+                    profile {
+                      ... on ChatRoomsInterface {
+                        unreadMessagesCount
+                        chatRooms {
+                          edges {
+                            node {
+                              id
+                              unreadMessages(profileId: $profileId) {
+                                count
+                                markedUnread
+                              }
+                            }
+                          }
+                        }
                       }
                     }
                   }

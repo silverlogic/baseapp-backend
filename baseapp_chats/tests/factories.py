@@ -1,11 +1,17 @@
 import factory
 
+import swapper
+
+ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
+Message = swapper.load_model("baseapp_chats", "Message")
+ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
+MessageStatus = swapper.load_model("baseapp_chats", "MessageStatus")
 
 class ChatRoomFactory(factory.django.DjangoModelFactory):
     created_by = factory.SubFactory("baseapp_core.tests.factories.UserFactory")
 
     class Meta:
-        model = "baseapp_chats.ChatRoom"
+        model = ChatRoom
 
 
 class MessageFactory(factory.django.DjangoModelFactory):
@@ -13,7 +19,7 @@ class MessageFactory(factory.django.DjangoModelFactory):
     room = factory.SubFactory(ChatRoomFactory)
 
     class Meta:
-        model = "baseapp_chats.Message"
+        model = Message
 
 
 class ChatRoomParticipantFactory(factory.django.DjangoModelFactory):
@@ -21,7 +27,7 @@ class ChatRoomParticipantFactory(factory.django.DjangoModelFactory):
     profile = factory.SubFactory("baseapp_profiles.tests.factories.ProfileFactory")
 
     class Meta:
-        model = "baseapp_chats.ChatRoomParticipant"
+        model = ChatRoomParticipant
 
 
 class MessageStatusFactory(factory.django.DjangoModelFactory):
@@ -29,4 +35,4 @@ class MessageStatusFactory(factory.django.DjangoModelFactory):
     profile = factory.SubFactory("baseapp_profiles.tests.factories.ProfileFactory")
 
     class Meta:
-        model = "baseapp_chats.MessageStatus"
+        model = MessageStatus
