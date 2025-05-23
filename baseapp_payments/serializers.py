@@ -219,13 +219,18 @@ class StripeProductSerializer(serializers.Serializer):
     name = serializers.CharField()
     description = serializers.CharField(allow_null=True, required=False)
     active = serializers.BooleanField()
-    default_price = StripePriceSerializer(allow_null=True)
+    default_price = serializers.SerializerMethodField()
     metadata = serializers.DictField(required=False)
     images = serializers.ListField(child=serializers.URLField(), required=False)
     marketing_features = serializers.ListField(
         read_only=True,
         child=serializers.DictField(),
     )
+
+    def get_default_price(self, obj):
+        stripe_service = StripeService()
+        price = stripe_service.retrieve_price(obj.default_price)
+        return StripePriceSerializer(price).data
 
 
 class StripeCardSerializer(serializers.Serializer):
