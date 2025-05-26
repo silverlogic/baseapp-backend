@@ -205,19 +205,9 @@ async def test_current_profile_ws_context(django_user_client, graphql_ws_user_cl
     user = await database_sync_to_async(UserFactory)()
     await database_sync_to_async(ChatRoomParticipantFactory)(room=room, profile=user.profile)
 
-    # Establish & initialize WebSocket GraphQL connection.
+    # This is what creates the ws connection with the Current-Profile header.
+    # It's also responsible for triggering the `on_connect` method in the consumer. Which will then inject the current profile into the graphql scope.
     client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
-    import pdb; pdb.set_trace()
-    token = await database_sync_to_async(Token.objects.get)(user=django_user_client.user)
-    authorization_header = f"Bearer {token.key}"
-
-    await client.send(
-      msg_type="connection_init",
-      payload={
-          "Authorization": authorization_header,
-          "Current-Profile": django_user_client.user.profile.relay_id,
-      },
-    )
 
     # Subscribe to GraphQL subscription.
     sub_id = await client.send(
@@ -234,7 +224,7 @@ async def test_current_profile_ws_context(django_user_client, graphql_ws_user_cl
                           edges {
                             node {
                               id
-                              unreadMessages(profileId: $profileId) {
+                              unreadMessages {
                                 count
                                 markedUnread
                               }
@@ -262,11 +252,14 @@ async def test_current_profile_ws_context(django_user_client, graphql_ws_user_cl
         verb=Verbs.SENT_MESSAGE,
     )
 
-    # Check that subscription message were sent.
-
     resp = await client.receive(assert_id=sub_id, assert_type="next")
 
     # Disconnect and wait the application to finish gracefully.
     await client.finalize()
 
     assert resp["data"]["chatRoomOnMessagesCountUpdate"]["profile"]["unreadMessagesCount"] == 1
+
+    # This resolver is using the current_profile from the graphql scope since we are not passing a profile_id within the subscription query.
+    assert resp["data"]["chatRoomOnMessagesCountUpdate"]["profile"]["chatRooms"]["edges"][0][
+        "node"
+    ]["unreadMessages"]["count"] == 1

@@ -11,6 +11,11 @@ from django.contrib.auth.models import AnonymousUser
 from graphene_django.settings import graphene_settings
 from rest_framework.authtoken.models import Token
 
+from baseapp_core.graphql import (
+    get_pk_from_relay_id,
+)
+
+
 python_version = sys.version_info
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
@@ -48,9 +53,21 @@ class GraphqlWsAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
             Token.objects.select_related("user").filter(key=payload["Authorization"]).first
         )()
 
-        if token and token.user.is_active:
+        try:
+            user = token.user
+        except AttributeError:
+            user = None
+
+        if user and user.is_active:
             self.scope["user"] = token.user
-            return
+            if "Current-Profile" in payload:
+                pk = get_pk_from_relay_id(payload["Current-Profile"])
+                if pk:
+                    profile = await database_sync_to_async(Profile.objects.filter(pk=pk).first)()
+                    if profile and database_sync_to_async(user.has_perm)(
+                        f"{profile._meta.app_label}.use_profile", profile
+                    ):
+                        token.user.current_profile = profile
         else:
             self.scope["user"] = AnonymousUser()
             return
@@ -88,27 +105,7 @@ class GraphqlWsJWTAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
             logging.error(e)
             return None
 
-    # async def on_connect(self, payload):
-    #     import pdb; pdb.set_trace()
-    #     if "user" in self.scope:
-    #         # do nothing if already authenticated
-    #         return
-
-    #     if "Authorization" not in payload:
-    #         self.scope["user"] = AnonymousUser()
-    #         return
-
-    #     user = await self.get_jwt_user_instance(payload["Authorization"])
-
-    #     if user and user.is_active:
-    #         self.scope["user"] = user
-    #         return
-    #     else:
-    #         self.scope["user"] = AnonymousUser()
-    #         return
-
     async def on_connect(self, payload):
-        import pdb; pdb.set_trace()
         if "user" in self.scope:
             # do nothing if already authenticated
             return
@@ -119,22 +116,18 @@ class GraphqlWsJWTAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
 
         user = await self.get_jwt_user_instance(payload["Authorization"])
 
-        # Skip if unauthenticated
-        if not user.is_authenticated:
-            return
-        
-        
         if user and user.is_active:
-            current_profile_header = payload.get("Current-Profile")
-
-            if not current_profile_header:
-                user.current_profile = getattr(user, "profile", None)
-            else:
-                pk = get_pk_from_relay_id(current_profile_header)
+            if "Current-Profile" in payload:
+                pk = get_pk_from_relay_id(payload["Current-Profile"])
                 if pk:
                     profile = await database_sync_to_async(Profile.objects.filter(pk=pk).first)()
-                    if profile and user.has_perm(f"{profile._meta.app_label}.use_profile", profile):
+                    if profile and await database_sync_to_async(user.has_perm)(
+                        f"{profile._meta.app_label}.use_profile", profile
+                    ):
                         user.current_profile = profile
 
             self.scope["user"] = user
+            return
+        else:
+            self.scope["user"] = AnonymousUser()
             return
