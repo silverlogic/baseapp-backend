@@ -1,11 +1,11 @@
 import factory
-
 import swapper
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 Message = swapper.load_model("baseapp_chats", "Message")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
 MessageStatus = swapper.load_model("baseapp_chats", "MessageStatus")
+
 
 class ChatRoomFactory(factory.django.DjangoModelFactory):
     created_by = factory.SubFactory("baseapp_core.tests.factories.UserFactory")

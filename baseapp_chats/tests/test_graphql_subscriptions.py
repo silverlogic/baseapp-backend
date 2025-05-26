@@ -4,12 +4,11 @@ import pytest
 import swapper
 from channels.db import database_sync_to_async
 
-from baseapp_core.tests.factories import TokenFactory, UserFactory
+from baseapp_core.tests.factories import UserFactory
 
 from ..utils import send_message
 from .factories import ChatRoomFactory, ChatRoomParticipantFactory
 
-from rest_framework.authtoken.models import Token
 
 Message = swapper.load_model("baseapp_chats", "Message")
 Verbs = Message.Verbs
