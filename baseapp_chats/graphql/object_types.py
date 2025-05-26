@@ -217,24 +217,16 @@ class BaseChatRoomObjectType:
         return self.participants.filter(profile_id=profile_pk, has_archived_room=True).exists()
 
     def resolve_unread_messages(self, info, profile_id=None, **kwargs):
-        import pdb; pdb.set_trace()
         if profile_id:
             profile_pk = get_pk_from_relay_id(profile_id)
             profile = Profile.objects.get_if_member(pk=profile_pk, user=info.context.user)
             if not profile:
                 return None
+
+        if hasattr(info.context.user, "current_profile"):
+            profile_pk = info.context.user.current_profile.pk
         else:
-            profile_pk = (
-                info.context.user.current_profile
-                if hasattr(info.context.user, "current_profile")
-                and hasattr(info.context.user.current_profile, "pk")
-                else (
-                    info.context.user.profile.pk
-                    if hasattr(info.context.user, "profile")
-                    and hasattr(info.context.user.profile, "pk")
-                    else None
-                )
-            )
+            return None
 
         unread_messages = UnreadMessageCount.objects.filter(
             room=self,
