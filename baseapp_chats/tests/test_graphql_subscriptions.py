@@ -9,7 +9,6 @@ from baseapp_core.tests.factories import UserFactory
 from ..utils import send_message
 from .factories import ChatRoomFactory, ChatRoomParticipantFactory
 
-
 Message = swapper.load_model("baseapp_chats", "Message")
 Verbs = Message.Verbs
 
@@ -259,6 +258,9 @@ async def test_current_profile_ws_context(django_user_client, graphql_ws_user_cl
     assert resp["data"]["chatRoomOnMessagesCountUpdate"]["profile"]["unreadMessagesCount"] == 1
 
     # This resolver is using the current_profile from the graphql scope since we are not passing a profile_id within the subscription query.
-    assert resp["data"]["chatRoomOnMessagesCountUpdate"]["profile"]["chatRooms"]["edges"][0][
-        "node"
-    ]["unreadMessages"]["count"] == 1
+    assert (
+        resp["data"]["chatRoomOnMessagesCountUpdate"]["profile"]["chatRooms"]["edges"][0]["node"][
+            "unreadMessages"
+        ]["count"]
+        == 1
+    )

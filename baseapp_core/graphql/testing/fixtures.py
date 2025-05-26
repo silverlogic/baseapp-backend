@@ -5,12 +5,10 @@ import channels_graphql_ws
 import channels_graphql_ws.testing
 import django
 import pytest
+from channels.db import database_sync_to_async
 from django.test import Client
 from graphene_django.settings import graphene_settings
 from rest_framework.authtoken.models import Token
-
-from channels.db import database_sync_to_async
-
 
 from baseapp_core.graphql.utils import capture_database_queries
 
@@ -213,7 +211,9 @@ def graphql_ws_client(graphql_websocket):
             lambda: django_user_client.user.profile.relay_id
         )()
 
-        await client.connect_and_init(payload={"Authorization": token.key, "Current-Profile": profile_id})
+        await client.connect_and_init(
+            payload={"Authorization": token.key, "Current-Profile": profile_id}
+        )
 
         return client
 
