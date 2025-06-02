@@ -130,6 +130,21 @@ CONSTANCE_BACKEND = "constance.backends.memory.MemoryBackend"
 CONSTANCE_CONFIG = OrderedDict(
     [
         (
+            "USER_PASSWORD_EXPIRATION_INTERVAL",
+            (
+                365 * 2,
+                "The time interval (in days) after which a user will need to reset their password.",
+            ),
+        ),
+        (
+            "BLOCKLISTED_WORDS",
+            ("", "Comma-separated list of blocked words for user generated content."),
+        ),
+        (
+            "EMAIL_VERIFICATION_REQUIRED",
+            (False, "Require email verification for new users."),
+        ),
+        (
             "STRIPE_CUSTOMER_ENTITY_MODEL",
             ("profiles.Profile", "The model to use for the Stripe customer entity."),
         ),
