@@ -184,7 +184,10 @@ class StripeCustomerSerializer(serializers.Serializer):
             entity = entity_model.objects.get(profile_id=user.id)
         try:
             stripe_customer = StripeService().create_customer(email=user.email)
-            customer = Customer.objects.create(entity=entity, remote_customer_id=stripe_customer.id)
+            if isinstance(stripe_customer, dict):
+                customer = Customer.objects.create(entity=entity, remote_customer_id=stripe_customer.get("id"))
+            else:
+                customer = Customer.objects.create(entity=entity, remote_customer_id=stripe_customer.id)
         except IntegrityError:
             raise serializers.ValidationError("Customer already exists for this entity.")
         except Exception as e:

@@ -49,8 +49,11 @@ class TestCustomerCreateView:
         response = client.post(reverse(self.viewname, kwargs={}))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
-    def test_user_can_create_customer(self, user_client):
+    @patch("baseapp_payments.views.StripeService.create_customer")
+    def test_user_can_create_customer(self, mock_create_customer, user_client):
+        mock_create_customer.return_value = {"id": "cus_123"}
         response = user_client.post(reverse(self.viewname))
+        import ipdb; ipdb.set_trace()
         responseEquals(response, status.HTTP_201_CREATED)
         assert Customer.objects.all().count() == 1
         assert Customer.objects.filter(
