@@ -53,7 +53,6 @@ class TestCustomerCreateView:
     def test_user_can_create_customer(self, mock_create_customer, user_client):
         mock_create_customer.return_value = {"id": "cus_123"}
         response = user_client.post(reverse(self.viewname))
-        import ipdb; ipdb.set_trace()
         responseEquals(response, status.HTTP_201_CREATED)
         assert Customer.objects.all().count() == 1
         assert Customer.objects.filter(
