@@ -131,6 +131,7 @@ CONSTANCE_BACKEND = "constance.backends.memory.MemoryBackend"
 # Stripe
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET")
+STRIPE_CUSTOMER_ENTITY_MODEL = "profiles.Profile"
 
 # Comments
 BASEAPP_COMMENTS_COMMENT_MODEL = "comments.Comment"
