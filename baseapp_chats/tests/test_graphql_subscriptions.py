@@ -192,3 +192,75 @@ async def test_user_recieves_message_count_update(django_user_client, graphql_ws
     await client.finalize()
 
     assert resp["data"]["chatRoomOnMessagesCountUpdate"]["profile"]["unreadMessagesCount"] == 1
+
+
+@pytest.mark.asyncio
+async def test_current_profile_ws_context(django_user_client, graphql_ws_user_client):
+    room = await database_sync_to_async(ChatRoomFactory)(created_by=django_user_client.user)
+    await database_sync_to_async(ChatRoomParticipantFactory)(
+        profile=django_user_client.user.profile, room=room
+    )
+    user = await database_sync_to_async(UserFactory)()
+    await database_sync_to_async(ChatRoomParticipantFactory)(room=room, profile=user.profile)
+
+    # This is what creates the ws connection with the Current-Profile header.
+    # It's also responsible for triggering the `on_connect` method in the consumer. Which will then inject the current profile into the graphql scope.
+    client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
+
+    # Subscribe to GraphQL subscription.
+    sub_id = await client.send(
+        msg_type="subscribe",
+        payload={
+            "query": textwrap.dedent(
+                """
+                subscription op_name($profileId: ID!) {
+                  chatRoomOnMessagesCountUpdate(profileId: $profileId) {
+                    profile {
+                      ... on ChatRoomsInterface {
+                        unreadMessagesCount
+                        chatRooms {
+                          edges {
+                            node {
+                              id
+                              unreadMessages {
+                                count
+                                markedUnread
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                """
+            ),
+            "variables": {"profileId": django_user_client.user.profile.relay_id},
+            "operationName": "op_name",
+        },
+    )
+
+    await client.assert_no_messages()
+
+    await database_sync_to_async(send_message)(
+        user=user,
+        profile=user.profile,
+        content="Hi!",
+        room=room,
+        verb=Verbs.SENT_MESSAGE,
+    )
+
+    resp = await client.receive(assert_id=sub_id, assert_type="next")
+
+    # Disconnect and wait the application to finish gracefully.
+    await client.finalize()
+
+    assert resp["data"]["chatRoomOnMessagesCountUpdate"]["profile"]["unreadMessagesCount"] == 1
+
+    # This resolver is using the current_profile from the graphql scope since we are not passing a profile_id within the subscription query.
+    assert (
+        resp["data"]["chatRoomOnMessagesCountUpdate"]["profile"]["chatRooms"]["edges"][0]["node"][
+            "unreadMessages"
+        ]["count"]
+        == 1
+    )

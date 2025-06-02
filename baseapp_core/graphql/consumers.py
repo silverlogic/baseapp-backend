@@ -5,12 +5,17 @@ import logging
 import sys
 
 import channels_graphql_ws
+import swapper
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
 from graphene_django.settings import graphene_settings
 from rest_framework.authtoken.models import Token
 
+from baseapp_core.graphql import get_pk_from_relay_id
+
 python_version = sys.version_info
+
+Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
 async def threadpool_for_sync_resolvers(next_middleware, root, info, *args, **kwds):
@@ -45,9 +50,21 @@ class GraphqlWsAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
             Token.objects.select_related("user").filter(key=payload["Authorization"]).first
         )()
 
-        if token and token.user.is_active:
+        try:
+            user = token.user
+        except AttributeError:
+            user = None
+
+        if user and user.is_active:
             self.scope["user"] = token.user
-            return
+            if "Current-Profile" in payload:
+                pk = get_pk_from_relay_id(payload["Current-Profile"])
+                if pk:
+                    profile = await database_sync_to_async(Profile.objects.filter(pk=pk).first)()
+                    if profile and database_sync_to_async(user.has_perm)(
+                        f"{profile._meta.app_label}.use_profile", profile
+                    ):
+                        token.user.current_profile = profile
         else:
             self.scope["user"] = AnonymousUser()
             return
@@ -97,6 +114,15 @@ class GraphqlWsJWTAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
         user = await self.get_jwt_user_instance(payload["Authorization"])
 
         if user and user.is_active:
+            if "Current-Profile" in payload:
+                pk = get_pk_from_relay_id(payload["Current-Profile"])
+                if pk:
+                    profile = await database_sync_to_async(Profile.objects.filter(pk=pk).first)()
+                    if profile and await database_sync_to_async(user.has_perm)(
+                        f"{profile._meta.app_label}.use_profile", profile
+                    ):
+                        user.current_profile = profile
+
             self.scope["user"] = user
             return
         else:
