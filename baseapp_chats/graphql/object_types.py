@@ -222,18 +222,11 @@ class BaseChatRoomObjectType:
             profile = Profile.objects.get_if_member(pk=profile_pk, user=info.context.user)
             if not profile:
                 return None
+
+        if hasattr(info.context.user, "current_profile"):
+            profile_pk = info.context.user.current_profile.pk
         else:
-            profile_pk = (
-                info.context.user.current_profile
-                if hasattr(info.context.user, "current_profile")
-                and hasattr(info.context.user.current_profile, "pk")
-                else (
-                    info.context.user.profile.pk
-                    if hasattr(info.context.user, "profile")
-                    and hasattr(info.context.user.profile, "pk")
-                    else None
-                )
-            )
+            return None
 
         unread_messages = UnreadMessageCount.objects.filter(
             room=self,
