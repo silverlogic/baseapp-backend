@@ -184,7 +184,7 @@ class StripeCustomerSerializer(serializers.Serializer):
             entity = entity_model.objects.get(profile_id=user.id)
         try:
             stripe_customer = StripeService().create_customer(email=user.email)
-            if hasattr(stripe_customer, "id"):
+            if isinstance(stripe_customer, dict) and "id" in stripe_customer:
                 customer = Customer.objects.create(
                     entity=entity, remote_customer_id=stripe_customer.get("id")
                 )
