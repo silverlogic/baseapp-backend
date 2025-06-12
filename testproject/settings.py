@@ -50,6 +50,7 @@ INSTALLED_APPS += [
     *WAGTAIL_INSTALLED_INTERNAL_APPS,
     *WAGTAIL_INSTALLED_APPS,
     "baseapp_wagtail.tests",
+    "baseapp_pdf",
 ]
 
 MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")
