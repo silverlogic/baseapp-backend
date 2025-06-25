@@ -2,6 +2,7 @@ from baseapp_core.rest_framework.routers import DefaultRouter
 
 from .views import (
     StripeCustomerViewset,
+    StripeInvoiceViewset,
     StripePaymentMethodViewset,
     StripeProductViewset,
     StripeSubscriptionViewset,
@@ -19,3 +20,4 @@ payments_router.register(r"stripe/webhooks", StripeWebhookViewset, basename="web
 payments_router.register(
     r"stripe/payment-methods", StripePaymentMethodViewset, basename="payment-methods"
 )
+payments_router.register(r"stripe/invoices", StripeInvoiceViewset, basename="invoices")

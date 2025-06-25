@@ -433,3 +433,11 @@ class StripeService:
         except Exception as e:
             logger.exception(e)
             raise SubscriptionCreationError("Error updating subscription in Stripe")
+
+    def get_user_invoices(self, customer_id):
+        try:
+            invoices = stripe.Invoice.list(customer=customer_id)
+            return invoices
+        except Exception as e:
+            logger.exception(e)
+            raise InvoiceNotFound("Error retrieving invoices in Stripe")

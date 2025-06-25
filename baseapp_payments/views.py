@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from .models import Customer, Subscription
 from .serializers import (
     StripeCustomerSerializer,
+    StripeInvoiceSerializer,
     StripePaymentMethodSerializer,
     StripeProductSerializer,
     StripeSubscriptionPatchSerializer,
@@ -226,4 +227,27 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
             return Response(payment_method, status=200)
         except Exception as e:
             logger.exception("Failed to delete payment method: %s", e)
+            return Response({"error": "An internal error has occurred"}, status=500)
+
+
+class StripeInvoiceViewset(viewsets.GenericViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = StripeInvoiceSerializer
+
+    def get_queryset(self):
+        return []
+
+    def list(self, request):
+        try:
+            customer = Customer.objects.get(entity_id=request.user.profile.id)
+            if not customer:
+                return Response({"error": "Customer not found"}, status=404)
+            invoices = StripeService().get_user_invoices(customer.remote_customer_id)
+            serializer = self.get_serializer(invoices, many=True)
+            page = self.paginate_queryset(serializer.data)
+            if page is not None:
+                return self.get_paginated_response(page)
+            return Response(serializer.data, status=200)
+        except Exception as e:
+            logger.exception("Failed to retrieve invoices: %s", e)
             return Response({"error": "An internal error has occurred"}, status=500)

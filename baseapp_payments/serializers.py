@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from constance import config
 from django.apps import apps
@@ -304,3 +305,35 @@ class StripePaymentMethodSerializer(serializers.Serializer):
             except Exception as e:
                 logger.exception(e)
                 raise serializers.ValidationError("Failed to update payment method")
+
+
+class StripeInvoiceLineSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    amount = serializers.IntegerField(read_only=True)
+    description = serializers.CharField(read_only=True)
+    quantity = serializers.IntegerField(read_only=True)
+    type = serializers.CharField(read_only=True)
+    price = StripePriceSerializer(read_only=True)
+
+
+class StripeInvoiceSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    amount_due = serializers.IntegerField(read_only=True)
+    amount_paid = serializers.IntegerField(read_only=True)
+    amount_remaining = serializers.IntegerField(read_only=True)
+    created = serializers.IntegerField(read_only=True)
+    status = serializers.CharField(read_only=True)
+    lines = serializers.DictField(read_only=True)
+    metadata = serializers.DictField(read_only=True)
+    hosted_invoice_url = serializers.URLField(read_only=True)
+    webhooks_delivered_at = serializers.IntegerField(read_only=True)
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        lines = representation.get("lines", {}).get("data", [])
+        representation["lines"] = StripeInvoiceLineSerializer(lines, many=True).data
+        representation["created"] = datetime.fromtimestamp(representation["created"])
+        representation["webhooks_delivered_at"] = datetime.fromtimestamp(
+            representation["webhooks_delivered_at"]
+        )
+        return representation
