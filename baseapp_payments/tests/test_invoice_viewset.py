@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 import pytest
-import swapper
 from django.urls import reverse
 from rest_framework import status
 
@@ -11,11 +10,7 @@ from baseapp_payments.tests.factories import CustomerFactory
 pytestmark = pytest.mark.django_db
 
 
-Profile = swapper.load_model("profiles", "Profile")
-Customer = swapper.load_model("baseapp_payments", "Customer")
-
-
-class TestCustomerRetrieveView:
+class TestInvoiceListView:
     viewname = "v1:invoices-list"
 
     def test_anon_user_cannot_get_invoices(self, client):
