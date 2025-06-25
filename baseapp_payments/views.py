@@ -239,7 +239,7 @@ class StripeInvoiceViewset(viewsets.GenericViewSet):
 
     def list(self, request):
         try:
-            customer = Customer.objects.get(entity_id=request.user.profile.id)
+            customer = Customer.objects.filter(entity_id=request.user.profile.id).first()
             if not customer:
                 return Response({"error": "Customer not found"}, status=404)
             invoices = StripeService().get_user_invoices(customer.remote_customer_id)
