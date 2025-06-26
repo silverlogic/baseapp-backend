@@ -1,16 +1,14 @@
 import logging
 
 import swapper
-from constance import config
-from django.apps import apps
 from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
 from rest_framework import viewsets
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Subscription
+from .permissions import HasCustomerPermissions
 from .serializers import (
     StripeCustomerSerializer,
     StripeInvoiceSerializer,
@@ -20,7 +18,7 @@ from .serializers import (
     StripeSubscriptionSerializer,
     StripeWebhookSerializer,
 )
-from .utils import StripeService, StripeWebhookHandler
+from .utils import StripeService, StripeWebhookHandler, get_customer
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +33,7 @@ class StripeSubscriptionViewset(
 ):
     serializer_class = StripeSubscriptionSerializer
     queryset = Subscription.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasCustomerPermissions]
     lookup_field = "remote_subscription_id"
 
     def get_queryset(self):
@@ -57,9 +55,9 @@ class StripeSubscriptionViewset(
 
     def delete(self, request):
         remote_subscription_id = request.query_params.get("remote_subscription_id")
-        customer = Customer.objects.filter(entity_id=self.request.user.id).first()
+        customer = get_customer(False, request.user)
         if not customer:
-            return Response({"error": "Customer does not exist."}, status=404)
+            return Response({"error": "Customer not found"}, status=404)
         try:
             subscription = Subscription.objects.filter(
                 remote_subscription_id=remote_subscription_id,
@@ -127,30 +125,13 @@ class StripeCustomerViewset(viewsets.GenericViewSet):
         return Response(serializer.data, status=201)
 
     def retrieve(self, request, pk=None):
+        remote_customer_id = request.query_params.get("customer_id")
         if pk == "me":
-            customer_entity_model = config.STRIPE_CUSTOMER_ENTITY_MODEL
-            entity_model = apps.get_model(customer_entity_model)
-            model_content_type = ContentType.objects.get_for_model(entity_model)
-            if customer_entity_model == "profiles.Profile":
-                customer = Customer.objects.filter(
-                    entity_id=request.user.profile.id, entity_type=model_content_type
-                ).first()
-            else:
-                customer = Customer.objects.filter(
-                    entity_id=request.user.id, entity_type=model_content_type
-                ).first()
-            if not customer:
-                try:
-                    customer = StripeService().retrieve_customer(email=request.user.email)
-                    if customer:
-                        Customer.objects.create(
-                            entity=request.user.profile, remote_customer_id=customer.get("id")
-                        )
-                except Exception as e:
-                    logger.exception("Failed to retrieve or create customer: %s", e)
-                    return Response({"error": "An internal error has occurred"}, status=500)
+            customer = get_customer(False, request.user)
         else:
-            customer = Customer.objects.filter(remote_customer_id=pk).first()
+            if not remote_customer_id:
+                return Response({"error": "Missing customer_id"}, status=400)
+            customer = get_customer(remote_customer_id, request.user)
         if not customer:
             return Response({"error": "Customer not found"}, status=404)
         serializer = self.get_serializer(customer)
@@ -158,20 +139,18 @@ class StripeCustomerViewset(viewsets.GenericViewSet):
 
 
 class StripePaymentMethodViewset(viewsets.GenericViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasCustomerPermissions]
     serializer_class = StripePaymentMethodSerializer
 
     def list(self, request):
-        remote_customer_id = request.query_params.get("customer_id")
-        stripe_service = StripeService()
-        if not remote_customer_id:
-            return Response({"error": "Missing customer_id"}, status=400)
-        if not stripe_service.checkCustomerIdForUser(remote_customer_id, request.user):
-            return Response(
-                {"error": "The provided customer_id does not belong to the authenticated user."},
-                status=401,
-            )
         try:
+            stripe_service = StripeService()
+            remote_customer_id = request.query_params.get("customer_id")
+            if not remote_customer_id:
+                return Response({"error": "Missing customer_id"}, status=400)
+            customer = get_customer(remote_customer_id, request.user, stripe_service)
+            if not customer:
+                return Response({"error": "Customer not found"}, status=404)
             payment_methods = stripe_service.get_customer_payment_methods(remote_customer_id)
             serializer = self.get_serializer(payment_methods, many=True)
             return Response(serializer.data, status=200)
@@ -184,16 +163,12 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
-            remote_customer_id = request.data.get("customer_id")
+            remote_customer_id = request.query_params.get("customer_id")
             if not remote_customer_id:
                 return Response({"error": "Missing customer_id"}, status=400)
-            if not StripeService().checkCustomerIdForUser(remote_customer_id, request.user):
-                return Response(
-                    {
-                        "error": "The provided customer_id does not belong to the authenticated user."
-                    },
-                    status=401,
-                )
+            customer = get_customer(remote_customer_id, request.user)
+            if not customer:
+                return Response({"error": "Customer not found"}, status=404)
             result = serializer.create(serializer.validated_data)
             return Response(result, status=201)
         except ValidationError:
@@ -206,16 +181,12 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
         serializer = self.get_serializer(data={"pk": pk, **request.data})
         serializer.is_valid(raise_exception=True)
         try:
-            remote_customer_id = request.data.get("customer_id")
+            remote_customer_id = request.query_params.get("customer_id")
             if not remote_customer_id:
                 return Response({"error": "Missing customer_id"}, status=400)
-            if not StripeService().checkCustomerIdForUser(remote_customer_id, request.user):
-                return Response(
-                    {
-                        "error": "The provided customer_id does not belong to the authenticated user."
-                    },
-                    status=401,
-                )
+            customer = get_customer(remote_customer_id, request.user, None, create_customer=False)
+            if not customer:
+                return Response({"error": "Customer not found"}, status=404)
             result = serializer.update(serializer.validated_data)
             return Response(result, status=200)
         except Exception as e:
@@ -224,17 +195,13 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
 
     def delete(self, request, pk=None):
         try:
-            remote_customer_id = request.query_params.get("customer_id")
             stripe_service = StripeService()
+            remote_customer_id = request.query_params.get("customer_id")
             if not remote_customer_id:
                 return Response({"error": "Missing customer_id"}, status=400)
-            if not stripe_service.checkCustomerIdForUser(remote_customer_id, request.user):
-                return Response(
-                    {
-                        "error": "The provided customer_id does not belong to the authenticated user."
-                    },
-                    status=401,
-                )
+            customer = get_customer(remote_customer_id, request.user, stripe_service)
+            if not customer:
+                return Response({"error": "Customer not found"}, status=404)
             stripe_service.delete_payment_method(
                 pk, remote_customer_id, request.query_params.get("is_default")
             )
@@ -245,17 +212,22 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
 
 
 class StripeInvoiceViewset(viewsets.GenericViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasCustomerPermissions]
     serializer_class = StripeInvoiceSerializer
 
+    # This is necessary to avoid errors when using the list method without a table in our db,
+    # using only Stripe's API.
     def get_queryset(self):
         return []
 
     def list(self, request):
+        remote_customer_id = request.query_params.get("customer_id")
+        if not remote_customer_id:
+            return Response({"error": "Missing customer_id"}, status=400)
+        customer = get_customer(remote_customer_id, request.user)
+        if not customer:
+            return Response({"error": "Customer not found"}, status=404)
         try:
-            customer = Customer.objects.filter(entity_id=request.user.profile.id).first()
-            if not customer:
-                return Response({"error": "Customer not found"}, status=404)
             invoices = StripeService().get_user_invoices(customer.remote_customer_id)
             serializer = self.get_serializer(invoices, many=True)
             page = self.paginate_queryset(serializer.data)

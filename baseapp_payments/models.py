@@ -1,4 +1,5 @@
 import swapper
+from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -11,6 +12,11 @@ class BaseCustomer(TimeStampedModel):
     entity_id = models.PositiveIntegerField()
     entity = GenericForeignKey("entity_type", "entity_id")
     remote_customer_id = models.CharField(max_length=255)
+    authorized_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name="customer_access",
+        blank=True,
+    )
 
     class Meta:
         abstract = True

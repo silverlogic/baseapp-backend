@@ -15,6 +15,39 @@ logger = logging.getLogger(__name__)
 Customer = swapper.load_model("baseapp_payments", "Customer")
 
 
+def get_customer(remote_customer_id, user, stripe_service, create_customer=True):
+    customer_entity_model = config.STRIPE_CUSTOMER_ENTITY_MODEL
+    if not stripe_service:
+        stripe_service = StripeService()
+    if remote_customer_id:
+        customer = Customer.objects.filter(remote_customer_id=remote_customer_id).first()
+    else:
+        if customer_entity_model == "profiles.Profile":
+            customer = Customer.objects.filter(entity_id=user.profile.id).first()
+        else:
+            customer = Customer.objects.filter(entity_id=user.id).first()
+    if not customer:
+        customer = stripe_service.retrieve_customer(remote_customer_id)
+        if customer and customer.get("email") == user.email and create_customer:
+            if customer_entity_model == "profiles.Profile":
+                Customer.objects.create(
+                    entity=user.profile,
+                    remote_customer_id=customer.get("id"),
+                    authorized_users=[user],
+                )
+            else:
+                entity_model = apps.get_model(customer_entity_model)
+                entity = entity_model.objects.get(user=user.id)
+                Customer.objects.create(
+                    entity=entity,
+                    remote_customer_id=customer.get("id"),
+                    authorized_users=[user],
+                )
+    if not customer:
+        return False
+    return True
+
+
 class StripeWebhookHandler:
     def __init__(self):
         self.EVENT_HANDLERS = {
