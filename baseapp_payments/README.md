@@ -63,6 +63,9 @@ The following endpoints are provided via the payments router:
 `GET/POST payments/stripe/customer/`: Retrieve or create a customer.
 `GET payments/stripe/products/`: List available Stripe products.
 `POST payments/stripe/webhook/`: Endpoint for handling Stripe webhook events.
+`GET payments/stripe/payment-methods`: List available payment methods for the requesting user or provided id 
+`POST payments/stripe/payment-methods`: Create or update payment methods
+`DELETE payments/stripe/payment-methods`: Delete existing payment methods
 
 ## Stripe Webhooks
 

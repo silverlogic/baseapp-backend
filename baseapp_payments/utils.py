@@ -6,7 +6,6 @@ from constance import config
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db.utils import IntegrityError
 from django.http import JsonResponse
 
 from .models import Subscription
@@ -30,6 +29,11 @@ class StripeWebhookHandler:
         customer_entity_model = config.STRIPE_CUSTOMER_ENTITY_MODEL
         customer_data = event["data"]["object"]
         try:
+            existing_customer = Customer.objects.filter(
+                remote_customer_id=customer_data["id"]
+            ).first()
+            if existing_customer:
+                return JsonResponse({"status": "success"}, status=200)
             user = get_user_model().objects.get(email=customer_data["email"])
             if customer_entity_model != "profiles.Profile":
                 entity_model = apps.get_model(customer_entity_model)
@@ -38,8 +42,6 @@ class StripeWebhookHandler:
                 entity_model = apps.get_model(customer_entity_model)
                 entity = entity_model.objects.get(owner=user.id)
             Customer.objects.create(entity=entity, remote_customer_id=customer_data["id"])
-            return JsonResponse({"status": "success"}, status=200)
-        except IntegrityError:
             return JsonResponse({"status": "success"}, status=200)
         except Exception as e:
             logger.exception(e)
@@ -59,12 +61,15 @@ class StripeWebhookHandler:
     def subscription_created(event):
         subscription_data = event["data"]["object"]
         try:
+            existing_subscription = Subscription.objects.filter(
+                remote_subscription_id=subscription_data["id"]
+            ).first()
+            if existing_subscription:
+                return JsonResponse({"status": "success"}, status=200)
             Subscription.objects.create(
                 remote_customer_id=subscription_data["customer"],
                 remote_subscription_id=subscription_data["id"],
             )
-            return JsonResponse({"status": "success"}, status=200)
-        except IntegrityError:
             return JsonResponse({"status": "success"}, status=200)
         except Exception as e:
             logger.exception(e)
@@ -102,6 +107,10 @@ class StripeWebhookHandler:
         else:
             # if event is not handled, return 200 so stripe doesn't keep resending
             return JsonResponse({"status": "success"}, status=200)
+
+
+class CustomerCreationError(Exception):
+    pass
 
 
 class CustomerNotFound(Exception):
@@ -161,19 +170,22 @@ class StripeService:
         stripe.api_key = api_key
         stripe.api_version = api_version
 
-    def create_customer(self, email=None):
+    def create_customer(self, **kwargs):
         try:
-            if email is None:
-                return stripe.Customer.create()
-            return stripe.Customer.create(email=email)
+            return stripe.Customer.create(**kwargs)
         except Exception as e:
             logger.exception(e)
-            raise Exception("Error creating customer in Stripe")
+            raise CustomerCreationError("Error creating customer in Stripe")
 
-    def retrieve_customer(self, customer_id):
+    def retrieve_customer(self, customer_id=None, email=None):
         try:
-            customer = stripe.Customer.retrieve(customer_id)
-            return customer
+            if not customer_id and email:
+                results = stripe.Customer.search(query=f"email:'{email}'")
+                if results.data:
+                    return results.data[0]
+                else:
+                    return None
+            return stripe.Customer.retrieve(customer_id)
         except stripe.error.InvalidRequestError as e:
             if "No such customer" in str(e):
                 return None
@@ -409,19 +421,20 @@ class StripeService:
                 logger.warning(f"Customer {remote_customer_id} not found in Stripe.")
                 return False
             linked_customer = Customer.objects.filter(
-                remote_customer_id=remote_customer_id, entity_id=user.id
+                remote_customer_id=remote_customer_id, entity_id=user.profile.id
             ).first()
             if linked_customer:
                 return True
             else:
-                logger.warning(f"Customer {remote_customer_id} does not belong to user {user.id}.")
+                logger.warning(
+                    f"Customer {remote_customer_id} does not belong to user {user.profile.id}."
+                )
                 return False
         except Exception as e:
             logger.exception(f"Error checking customer ID for user: {e}")
             raise CustomerOwnershipError("Error verifying customer ownership.")
 
     def update_subscription(self, subscription_id, **kwargs):
-
         try:
             subscription = stripe.Subscription.modify(subscription_id, **kwargs)
             return subscription

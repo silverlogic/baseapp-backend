@@ -1,0 +1,221 @@
+{% load tz %}
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>{{ pdf_title|default:"-" }} {{ pdf_datetime|date:"d/m/Y g:i A e" }}</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap"
+      rel="stylesheet"
+    />
+    <style media="print" type="text/css">
+      @page {
+        size: Letter portrait;
+        /* Set to 0cm to remove headers/footers */
+        margin: {
+           {
+            pdf_margins|default: "1cm 1cm";
+          }
+        }
+      }
+      @media print {
+        body {
+          -webkit-print-color-adjust: exact;
+          font-family: "Lato", sans-serif;
+          margin: 0cm 0cm;
+        }
+        table {
+          page-break-inside: auto;
+        }
+        tr {
+          page-break-inside: avoid;
+          page-break-after: auto;
+        }
+        thead {
+          display: table-header-group;
+        }
+        tfoot {
+          display: table-footer-group;
+        }
+      }
+    </style>
+    <style>
+      body {
+        font-family: 'Lato', sans-serif;
+        margin: 0cm 0cm;
+      }
+      span {
+        word-break: break-word;
+      }
+      .flex-h {
+        display: flex;
+        flex-direction: row;
+      }
+      .flex-v {
+        display: flex;
+        flex-direction: column;
+      }
+      .padding-h {
+        padding-left: 7px;
+        padding-right: 7px;
+      }
+      .padding-v {
+        padding-top: 7px;
+        padding-bottom: 7px;
+      }
+      /* HEADER_CSS */
+      {% block header_css %}
+        .header {
+          display: flex;
+          flex-direction: row;
+          width: 100%;
+          align-content: stretch;
+          font-size: clamp(13px, 1.5vw, 21px);
+        }
+        .header .left-item {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          flex-wrap: wrap;
+          align-content: flex-start;
+        }
+        .header .left-item .logo-container {
+          display: flex;
+          width: 45vw;
+          height: calc(clamp(70px, 35vh, 140px));
+        }
+        .header .left-item .logo-container img:first-child {
+          max-width: 100%;
+          max-height: 100%;
+          align-self: center;
+          object-fit: scale-down;
+          overflow: hidden;
+        }
+        .header .right-item {
+          flex-grow: 1;
+          /* Centre vertically on logo */
+          margin-top: calc(clamp(70px, 35vh, 140px) / 2);
+          margin-left: 5vw;
+        }
+        .header .right-item tr:nth-child(1) {
+          font-weight: 900; /* Bold */
+        }
+        .header .right-item td:nth-child(2) {
+          text-align: right;
+        }
+      {% endblock header_css %}
+      /* CONTENT_CSS */
+      {% block content_css %}
+        .content {
+          width: 100%;
+          font-size: clamp(13px, 1.5vw, 21px);
+        }
+        .content .title-container {
+          display: flex;
+          flex-direction: row;
+          align-content: stretch;
+          font-weight: 900; /* Bold */
+          color: lightblue; /* Bold */
+        }
+        .content .title {
+          width: 100%;
+          font-size: 2vw;
+          color: lightslategray;
+        }
+        .content .table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+        .content .table th {
+          box-sizing: border-box;
+          border: 4px solid #3D8ED4;
+          background-color: #3D8ED4;
+          color: #EDF1F3;
+        }
+      {% endblock content_css %}
+      /* FOOTER_CSS */
+      {% block footer_css %}
+        .footer {
+          display: flex;
+          flex-direction: row;
+          width: 100%;
+          align-content: stretch;
+          font-size: clamp(13px, 1.5vw, 21px);
+        }
+      {% endblock footer_css %}
+    </style>
+  </head>
+  <body>
+    <!-- HEADER -->
+    {% block header %}
+    <div class="header">
+      <table class="left-item">
+        <tr>
+          <th>
+            <div class="logo-container">
+              <img alt="logo" src="{{ LOGO_IMAGE }}" />
+            </div>
+          </th>
+        </tr>
+        {% for element in pdf_header_data.left.table_data %}
+        <tr>
+          <td>{{ element }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      <table class="right-item">
+        {% for element in pdf_header_data.right.table_data %}
+        <tr>
+          <td>{{ element.0|default:"-" }}</td>
+          <td>{{ element.1|date:"d/m/Y"|default:element.1|default:"-" }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    <p>&nbsp;</p>
+    {% endblock header %}
+    <!-- CONTENT -->
+    {% block content %}
+    <div class="content">
+      {% if pdf_content.title %}
+      <div class="title">
+        <span>{{ pdf_content.title }}</span>
+      </div>
+      {% endif %}
+      <table class="table">
+        {% if pdf_content.table_data|length == 0 %}
+        <tr>
+          <td>
+            <div class="flex-v">
+              <span style="text-align: center">No Data</span>
+            </div>
+          </td>
+        </tr>
+        {% else %} {% for element in pdf_content.table_data %}
+        <tr>
+          <th>
+            <div class="flex-v">
+              <span>{{ element.title }}</span>
+            </div>
+          </th>
+        </tr>
+        {% for item in element.items %}
+        <tr>
+          <td>
+            <div class="flex-h">
+              <span style="flex: 1">{{ item.0 }}</span>
+              <span>${{ item.1|floatformat:2 }}</span>
+            </div>
+          </td>
+        </tr>
+        {% endfor %} {% endfor %} {% endif %}
+      </table>
+    </div>
+    {% endblock content %}
+    <!-- FOOTER -->
+    {% block footer %}
+    <div class="footer"></div>
+    {% endblock footer %}
+  </body>
+</html>
