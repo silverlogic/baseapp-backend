@@ -66,6 +66,7 @@ The following endpoints are provided via the payments router:
 `GET payments/stripe/payment-methods`: List available payment methods for the requesting user or provided id 
 `POST payments/stripe/payment-methods`: Create or update payment methods
 `DELETE payments/stripe/payment-methods`: Delete existing payment methods
+`GET payments/stripe/invoices`: List invoices for a given user or customer id
 
 ## Stripe Webhooks
 
