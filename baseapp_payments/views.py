@@ -222,8 +222,6 @@ class StripeInvoiceViewset(viewsets.GenericViewSet):
 
     def list(self, request):
         remote_customer_id = request.query_params.get("customer_id")
-        if not remote_customer_id:
-            return Response({"error": "Missing customer_id"}, status=400)
         customer = get_customer(remote_customer_id, request.user)
         if not customer:
             return Response({"error": "Customer not found"}, status=404)

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 Customer = swapper.load_model("baseapp_payments", "Customer")
 
 
-def get_customer(remote_customer_id, user, stripe_service, create_customer=True):
+def get_customer(remote_customer_id, user, stripe_service=None, create_customer=True):
     customer_entity_model = config.STRIPE_CUSTOMER_ENTITY_MODEL
     if not stripe_service:
         stripe_service = StripeService()
@@ -45,7 +45,7 @@ def get_customer(remote_customer_id, user, stripe_service, create_customer=True)
                 )
     if not customer:
         return False
-    return True
+    return customer
 
 
 class StripeWebhookHandler:
