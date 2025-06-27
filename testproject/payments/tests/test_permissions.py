@@ -1,1 +1,1 @@
-from baseapp_payments.tests.test_permissions import *
+from baseapp_payments.tests.test_permissions import *  # noqa
