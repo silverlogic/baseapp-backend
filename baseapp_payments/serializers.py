@@ -53,7 +53,7 @@ class StripeSubscriptionSerializer(serializers.Serializer):
             if not price:
                 raise serializers.ValidationError(f"Price not found: {price_id}")
             new_product_id = price.get("product").get("id", None)
-            subscriptions = stripe_service.list_subscriptions(customer_id, status="all")
+            subscriptions = stripe_service.list_subscriptions(remote_customer_id, status="all")
             for subscription in subscriptions:
                 if subscription["status"] in STRIPE_ACTIVE_SUBSCRIPTION_STATUSES:
                     sub_price = subscription["items"]["data"][0]["price"]
@@ -88,7 +88,7 @@ class StripeSubscriptionSerializer(serializers.Serializer):
                 except Exception as e:
                     logger.error(f"Failed to update payment method: {str(e)}")
                     # Continue with subscription creation even if billing update fails
-            kwargs = {"customer_id": customer_id, "price_id": price_id}
+            kwargs = {"customer_id": remote_customer_id, "price_id": price_id}
             if payment_method_id:
                 kwargs["payment_method_id"] = payment_method_id
             if allow_incomplete:
