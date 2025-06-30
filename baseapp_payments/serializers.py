@@ -37,8 +37,8 @@ class StripeSubscriptionSerializer(serializers.Serializer):
 
     def validate(self, data):
         remote_customer_id = data.get("customer_id")
-        if "remote_customer_id" in data and not remote_customer_id:
-            raise serializers.ValidationError({"remote_customer_id": "This field is required."})
+        if "customer_id" in data and not remote_customer_id:
+            raise serializers.ValidationError({"customer_id": "This field is required."})
         price_id = data.get("price_id")
         if "price_id" in data and not price_id:
             raise serializers.ValidationError({"price_id": "This field is required."})
@@ -113,7 +113,7 @@ class StripeSubscriptionPatchSerializer(serializers.Serializer):
 
     def validate_remote_customer_id(self, value):
         user = self.context.get("request").user
-        remote_customer_id = self.initial_data.get("remote_customer_id")
+        remote_customer_id = self.initial_data.get("customer_id")
         if not remote_customer_id:
             raise serializers.ValidationError("Missing customer_id")
         customer = get_customer(remote_customer_id, user)
