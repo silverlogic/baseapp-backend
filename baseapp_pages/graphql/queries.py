@@ -4,10 +4,14 @@ from django.db.models import Q
 from django.utils.translation import get_language
 from graphene_django.filter import DjangoFilterConnectionField
 
-from baseapp_core.graphql import Node
-
 from ..models import URLPath
 from .object_types import URLPathNode
+
+# TODO: Fix in next story
+# https://app.approvd.io/silverlogic/BA/stories/36399
+# Resolve GraphQL Conflicts and Sync Metadata with baseapp-pages
+# from baseapp_core.graphql import Node
+
 
 Page = swapper.load_model("baseapp_pages", "Page")
 PageObjectType = Page.get_graphql_object_type()
@@ -16,7 +20,10 @@ PageObjectType = Page.get_graphql_object_type()
 class PagesQueries:
     url_path = graphene.Field(URLPathNode, path=graphene.String(required=True))
     all_pages = DjangoFilterConnectionField(PageObjectType)
-    page = Node.Field(PageObjectType)
+    # TODO: Fix in next story
+    # https://app.approvd.io/silverlogic/BA/stories/36399
+    # Resolve GraphQL Conflicts and Sync Metadata with baseapp-pages
+    # page = Node.Field(PageObjectType)
 
     def resolve_url_path(self, info, path):
         language = get_language()

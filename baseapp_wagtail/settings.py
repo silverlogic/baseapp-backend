@@ -22,6 +22,8 @@ WAGTAIL_INSTALLED_APPS = [
     # wagtail dependencies
     "modelcluster",
     "taggit",
+    "grapple",
+    "graphene_django",
 ]
 
 WAGTAIL_INSTALLED_INTERNAL_APPS = [

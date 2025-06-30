@@ -1,4 +1,5 @@
 from django.urls import include, path
+from grapple import urls as grapple_urls
 from wagtail import urls as wagtail_urls
 from wagtail.admin import urls as wagtailadmin_urls
 from wagtail.documents import urls as wagtaildocs_urls
@@ -16,4 +17,5 @@ urlpatterns = [
     # the system won't provide a final path for the pages and we need it to generate the headless
     # pages.
     path("", include(wagtail_urls)),
+    path("cms/", include(grapple_urls)),
 ]
