@@ -96,6 +96,10 @@ Reusable app to handle activity logs.
 
 Reusable app to handle content feeds.
 
+## [baseapp-pdf](baseapp_pdf)
+
+Functionality for pdf files
+
 ## How to develop
 
 Each module of baseapp-backend has a demo project in `testproject/` directory, which can be run as a standalone Django app to test. Then in baseapp-backend directory:

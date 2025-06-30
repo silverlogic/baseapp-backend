@@ -14,6 +14,7 @@ from baseapp_auth.rest_framework.routers.account import (
 from baseapp_core.graphql import GraphQLView
 from baseapp_core.rest_framework.routers import DefaultRouter
 from baseapp_e2e.rest_framework.views import E2EViewSet
+from baseapp_payments.router import payments_router
 
 __all__ = [
     "urlpatterns",
@@ -28,6 +29,7 @@ v1_urlpatterns = [
     re_path(r"auth/mfa/", include(auth_mfa_urls)),
     re_path(r"auth/mfa/jwt/", include(auth_mfa_jwt_urls)),
     re_path(r"auth/pre-auth/", include(pre_auth_urls)),
+    re_path(r"payments/", include(payments_router.urls)),
 ]
 
 router = DefaultRouter(trailing_slash=False)
