@@ -190,29 +190,26 @@ class StripeCustomerSerializer(serializers.Serializer):
                 entity = entity_model.objects.get(owner=entity_id)
             else:
                 entity = entity_model.objects.get(id=entity_id)
+            try:
+                stripe_customer = StripeService().create_customer(email=entity.owner.email)
+            except Exception as e:
+                logger.exception(e)
+                raise serializers.ValidationError("Failed to create customer")
         else:
             if customer_entity_model == "profiles.Profile":
                 entity = entity_model.objects.get(owner=user.id)
             else:
                 entity = entity_model.objects.get(id=user.id)
-        try:
-            if entity_id:
-                stripe_customer = StripeService().create_customer(email=entity.owner.email)
-            else:
+            try:
                 stripe_customer = StripeService().create_customer(email=user.email)
-            if isinstance(stripe_customer, dict) and "id" in stripe_customer:
                 customer = Customer.objects.create(
-                    entity=entity, remote_customer_id=stripe_customer.get("id")
+                    entity=entity,
+                    remote_customer_id=stripe_customer.get("id"),
+                    authorized_users=[user],
                 )
-            else:
-                customer = Customer.objects.create(
-                    entity=entity, remote_customer_id=stripe_customer.id, authorized_users=[user]
-                )
-        except IntegrityError:
-            raise serializers.ValidationError("Customer already exists for this entity.")
-        except Exception as e:
-            logger.exception(e)
-            raise serializers.ValidationError("Failed to create customer")
+            except Exception as e:
+                logger.exception(e)
+                raise serializers.ValidationError("Failed to create customer")
         return customer
 
     def to_representation(self, instance):
