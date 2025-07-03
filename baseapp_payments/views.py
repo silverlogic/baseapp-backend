@@ -7,6 +7,8 @@ from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from baseapp_core import action
+
 from .models import Subscription
 from .permissions import HasCustomerPermissions
 from .serializers import (
@@ -137,6 +139,33 @@ class StripeCustomerViewset(viewsets.GenericViewSet):
         serializer = self.get_serializer(customer)
         return Response(serializer.data, status=200)
 
+    @action(
+        methods=["GET"],
+        detail=True,
+        serializer_class=StripeInvoiceSerializer,
+        permission_classes=(
+            IsAuthenticated,
+            HasCustomerPermissions
+        ),
+    )
+    def list_invoices(self, request, pk=None, *args, **kwargs):
+        user = request.user
+        stripe_service = StripeService()
+        if pk == "me":
+            customer = get_customer(False, user)
+        else:
+            remote_customer_id = pk
+            if not remote_customer_id:
+                return Response({"error": "Missing customer_id"}, status=400)
+            customer = get_customer(remote_customer_id, user)
+        if not customer:
+            return Response({"error": "Customer not found"}, status=404)
+        user.has_perm('baseapp_payments.list_invoices', customer)
+        invoices = stripe_service.get_customer_invoices(customer.id)
+        serializer = self.get_serializer(data=invoices, many=True)
+        serializer.is_valid(raise_exception=True)
+        return Response(data=serializer.data, status=200)
+
 
 class StripePaymentMethodViewset(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated, HasCustomerPermissions]
@@ -208,30 +237,4 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
             return Response({}, status=204)
         except Exception as e:
             logger.exception("Failed to delete payment method: %s", e)
-            return Response({"error": "An internal error has occurred"}, status=500)
-
-
-class StripeInvoiceViewset(viewsets.GenericViewSet):
-    permission_classes = [IsAuthenticated, HasCustomerPermissions]
-    serializer_class = StripeInvoiceSerializer
-
-    # This is necessary to avoid errors when using the list method without a table in our db,
-    # using only Stripe's API.
-    def get_queryset(self):
-        return []
-
-    def list(self, request):
-        remote_customer_id = request.query_params.get("customer_id")
-        customer = get_customer(remote_customer_id, request.user)
-        if not customer:
-            return Response({"error": "Customer not found"}, status=404)
-        try:
-            invoices = StripeService().get_user_invoices(customer.remote_customer_id)
-            serializer = self.get_serializer(invoices, many=True)
-            page = self.paginate_queryset(serializer.data)
-            if page is not None:
-                return self.get_paginated_response(page)
-            return Response(serializer.data, status=200)
-        except Exception as e:
-            logger.exception("Failed to retrieve invoices: %s", e)
             return Response({"error": "An internal error has occurred"}, status=500)

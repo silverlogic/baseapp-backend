@@ -480,7 +480,7 @@ class StripeService:
             logger.exception(e)
             raise SubscriptionCreationError("Error updating subscription in Stripe")
 
-    def get_user_invoices(self, customer_id):
+    def get_customer_invoices(self, customer_id):
         try:
             invoices = stripe.Invoice.list(customer=customer_id)
             return invoices

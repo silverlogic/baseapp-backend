@@ -202,14 +202,13 @@ class StripeCustomerSerializer(serializers.Serializer):
                 entity = entity_model.objects.get(id=user.id)
             try:
                 stripe_customer = StripeService().create_customer(email=user.email)
-                customer = Customer.objects.create(
-                    entity=entity,
-                    remote_customer_id=stripe_customer.get("id"),
-                    authorized_users=[user],
-                )
             except Exception as e:
                 logger.exception(e)
                 raise serializers.ValidationError("Failed to create customer")
+        customer = Customer.objects.create(
+            entity=entity,
+            remote_customer_id=stripe_customer.get("id"),
+        )
         return customer
 
     def to_representation(self, instance):
