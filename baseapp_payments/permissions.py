@@ -12,12 +12,14 @@ class HasCustomerPermissions(BasePermission):
         remote_customer_id = request.query_params.get("remote_customer_id")
         if remote_customer_id:
             customer = Customer.objects.filter(remote_customer_id=remote_customer_id).first()
-            if customer and customer_entity_model == "profiles.Profile":
-                return (
-                    customer.entity.owner.id == request.user.profile.id
-                    or request.user.profile.role == "admin"
-                )
-            return customer.entity.id == request.user.id
+            if customer:
+                if customer_entity_model == "profiles.Profile":
+                    return (
+                        customer.entity.owner.id == request.user.profile.id
+                        or request.user.profile.role == "admin"
+                    )
+                return customer.entity.id == request.user.id
+            return False
         else:
             if customer_entity_model == "profiles.Profile":
                 customer = Customer.objects.filter(entity_id=request.user.profile.id).first()

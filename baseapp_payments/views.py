@@ -143,10 +143,7 @@ class StripeCustomerViewset(viewsets.GenericViewSet):
         methods=["GET"],
         detail=True,
         serializer_class=StripeInvoiceSerializer,
-        permission_classes=(
-            IsAuthenticated,
-            HasCustomerPermissions
-        ),
+        permission_classes=(IsAuthenticated, HasCustomerPermissions),
     )
     def list_invoices(self, request, pk=None, *args, **kwargs):
         user = request.user
@@ -160,7 +157,7 @@ class StripeCustomerViewset(viewsets.GenericViewSet):
             customer = get_customer(remote_customer_id, user)
         if not customer:
             return Response({"error": "Customer not found"}, status=404)
-        user.has_perm('baseapp_payments.list_invoices', customer)
+        user.has_perm("baseapp_payments.list_invoices", customer)
         invoices = stripe_service.get_customer_invoices(customer.id)
         serializer = self.get_serializer(data=invoices, many=True)
         serializer.is_valid(raise_exception=True)
