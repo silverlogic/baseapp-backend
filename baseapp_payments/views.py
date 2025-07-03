@@ -7,7 +7,7 @@ from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from baseapp_core import action
+from baseapp_core.rest_framework.decorators import action
 
 from .models import Subscription
 from .permissions import HasCustomerPermissions

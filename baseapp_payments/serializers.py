@@ -5,7 +5,7 @@ import swapper
 from constance import config
 from django.apps import apps
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from rest_framework import serializers
 
 from .utils import StripeService, get_customer
