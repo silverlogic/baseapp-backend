@@ -61,12 +61,12 @@ The following endpoints are provided via the payments router:
 `GET payments/stripe/{remote_subscription_id}`: Retrieve subscription details from Stripe.
 `DELETE payments/stripe/`: Delete a subscription.
 `GET/POST payments/stripe/customer/`: Retrieve or create a customer.
+`GET payments/stripe/customer/:id/list-invoices`: Retrieve a customer or self invoice list.
 `GET payments/stripe/products/`: List available Stripe products.
 `POST payments/stripe/webhook/`: Endpoint for handling Stripe webhook events.
 `GET payments/stripe/payment-methods`: List available payment methods for the requesting user or provided id 
 `POST payments/stripe/payment-methods`: Create or update payment methods
 `DELETE payments/stripe/payment-methods`: Delete existing payment methods
-`GET payments/stripe/invoices`: List invoices for a given user or customer id
 
 ## Stripe Webhooks
 
