@@ -219,6 +219,9 @@ class StripePriceSerializer(serializers.Serializer):
     currency = serializers.CharField()
     unit_amount = serializers.IntegerField()
     recurring = serializers.DictField()
+    nickname = serializers.CharField(allow_null=True)
+    billing_scheme = serializers.CharField()
+    metadata = serializers.DictField()
 
 
 class StripeProductSerializer(serializers.Serializer):
@@ -226,13 +229,26 @@ class StripeProductSerializer(serializers.Serializer):
     name = serializers.CharField()
     description = serializers.CharField(allow_null=True, required=False)
     active = serializers.BooleanField()
-    default_price = StripePriceSerializer(allow_null=True)
+    default_price = serializers.SerializerMethodField()
     metadata = serializers.DictField(required=False)
     images = serializers.ListField(child=serializers.URLField(), required=False)
     marketing_features = serializers.ListField(
         read_only=True,
         child=serializers.DictField(),
     )
+    prices = serializers.SerializerMethodField()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.stripe_service = StripeService()
+
+    def get_default_price(self, obj):
+        price = self.stripe_service.retrieve_price(obj.default_price)
+        return StripePriceSerializer(price).data
+
+    def get_prices(self, obj):
+        prices = self.stripe_service.list_prices(product=obj.id).auto_paging_iter()
+        return StripePriceSerializer(prices, many=True).data
 
 
 class StripeCardSerializer(serializers.Serializer):

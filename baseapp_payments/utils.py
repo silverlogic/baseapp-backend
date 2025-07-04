@@ -286,9 +286,55 @@ class StripeService:
             raise Exception("Error deleting subscription in Stripe")
 
     def list_products(self, **kwargs):
+        # Breakout: One product cannot have multiples prices intervals, or the logic wont work
         try:
-            products = stripe.Product.list(**kwargs)
-            return products
+            extra_fields = {**kwargs}
+            name = extra_fields.pop("name", None)
+            category = extra_fields.pop("category", None)
+            price_range = extra_fields.pop("price_range", None)
+            type_ = extra_fields.pop("type", None)
+            if "status" not in extra_fields:
+                extra_fields["active"] = True
+            products = stripe.Product.list(
+                expand=["data.default_price"], active=True, **extra_fields
+            ).auto_paging_iter()
+            if "category" not in kwargs and "price_range" not in kwargs and "type" not in kwargs:
+                return products
+            # Stripe list doesnt support filtering by name, description, or metadata, so we need
+            # to filter manually
+            products_filtered_by_category_and_name = []
+            filtered_products = []
+            for product in products:
+                if (
+                    category
+                    and category != "all"
+                    and category not in product.metadata.get("categories", [])
+                ):
+                    continue
+                if name and (name not in product.name and name not in product.description):
+                    continue
+                products_filtered_by_category_and_name.append(product)
+            for product in products_filtered_by_category_and_name:
+                if type_ == "one_time":
+                    if not product.default_price.recurring:
+                        if not price_range:
+                            filtered_products.append(product)
+                            continue
+                        else:
+                            if (
+                                price_range[0]
+                                <= product.default_price.unit_amount
+                                <= price_range[1]
+                            ):
+                                filtered_products.append(product)
+                                continue
+                elif type_ in ("month", "year"):
+                    prices = self.list_prices(product=product.id).auto_paging_iter()
+                    for price in prices:
+                        if price.recurring.get("interval") == type_:
+                            filtered_products.append(product)
+                            break
+            return filtered_products
         except Exception as e:
             logger.exception(e)
             raise Exception("Error retrieving products in Stripe")
@@ -303,6 +349,16 @@ class StripeService:
         except stripe.error.StripeError as e:
             logger.error(f"Stripe API error: {str(e)}")
             return None
+
+    def list_prices(self, **kwargs):
+        try:
+            if "active" not in kwargs:
+                kwargs["active"] = True
+            prices = stripe.Price.list(**kwargs).auto_paging_iter()
+            return prices
+        except Exception as e:
+            logger.exception(e)
+            raise PriceRetrievalError("Error retrieving prices in Stripe")
 
     def retrieve_payment_method(self, payment_method_id):
         try:

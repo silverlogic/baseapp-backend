@@ -100,18 +100,31 @@ class StripeWebhookViewset(viewsets.GenericViewSet):
 class StripeProductViewset(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = StripeProductSerializer
-    lookup_field = "remote_product_id"
+
+    def get_queryset(self):
+        return []
 
     def list(self, request):
-        products = StripeService().list_products()
-        return Response(products, status=200)
+        try:
+            stripe_service = StripeService()
+            query_params = request.query_params
+            products = stripe_service.list_products(**query_params)
+            serializer = self.serializer_class(products, many=True)
+            return Response(serializer.data, status=200)
+        except Exception as e:
+            logger.exception("Failed to retrieve products: %s", e)
+            return Response({"error": "An internal error has occurred"}, status=500)
 
     def retrieve(self, request, remote_product_id=None):
-        product = StripeService().retrieve_product(remote_product_id)
-        if not product:
-            return Response({"error": "Product not found"}, status=404)
-        serializer = self.serializer_class(product)
-        return Response(serializer.data, status=200)
+        try:
+            product = StripeService().retrieve_product(remote_product_id)
+            if not product:
+                return Response({"error": "Product not found"}, status=404)
+            serializer = self.serializer_class(product)
+            return Response(serializer.data, status=200)
+        except Exception as e:
+            logger.exception("Failed to retrieve product: %s", e)
+            return Response({"error": "An internal error has occurred"}, status=500)
 
 
 class StripeCustomerViewset(viewsets.GenericViewSet):
