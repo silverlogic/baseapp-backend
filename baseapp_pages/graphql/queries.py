@@ -21,7 +21,7 @@ PageObjectType = Page.get_graphql_object_type()
 class PagesQueries:
     url_path = graphene.Field(URLPathNode, path=graphene.String(required=True))
     all_pages = DjangoFilterConnectionField(PageObjectType)
-    page = Node.Field(PageObjectType)
+    ba_page = Node.Field(PageObjectType)
 
     def resolve_url_path(self, info, path):
         language = get_language()

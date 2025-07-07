@@ -3,7 +3,6 @@ from graphene import relay
 from graphene.relay.node import NodeField as RelayNodeField
 from graphene_django.debug import DjangoDebug
 from grapple.registry import registry
-from grapple.schema import schema as grapple_schema
 
 from baseapp.activity_log.graphql.queries import ActivityLogQueries
 from baseapp.content_feed.graphql.mutations import ContentFeedMutations
@@ -31,22 +30,10 @@ from baseapp_reactions.graphql.mutations import ReactionsMutations
 from baseapp_reactions.graphql.queries import ReactionsQueries
 from baseapp_reports.graphql.mutations import ReportsMutations
 from baseapp_reports.graphql.queries import ReportsQueries
+from baseapp_wagtail.base.graphql.mutations import WagtailMutation
+from baseapp_wagtail.base.graphql.queries import WagtailQuery
+from baseapp_wagtail.base.graphql.subscriptions import WagtailSubscription
 from testproject.users.graphql.queries import UsersQueries
-
-try:
-    WagtailMutation = grapple_schema.Mutation
-except AttributeError:
-
-    class WagtailMutation:
-        pass
-
-
-try:
-    WagtailSubscription = grapple_schema.Subscription
-except AttributeError:
-
-    class WagtailSubscription:
-        pass
 
 
 class Query(
@@ -61,7 +48,7 @@ class Query(
     ChatsQueries,
     ContentFeedQueries,
     ReportsQueries,
-    grapple_schema.Query,
+    WagtailQuery,
     graphene.ObjectType,
 ):
     node = RelayNodeField(relay.Node)
