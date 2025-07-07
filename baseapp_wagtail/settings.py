@@ -70,10 +70,6 @@ GRAPPLE = {
     "APPS": [
         "baseapp_wagtail_base",
         "baseapp_wagtail_medias",
-        # TODO: (wagtail) move this to the testproject.
-        "base",
-        # TODO: (wagtail) remove.
-        "tests",
     ],
     "PAGE_INTERFACE": "baseapp_wagtail.base.graphql.object_types.WagtailPageInterface",
 }
