@@ -9,12 +9,6 @@ from baseapp_core.graphql import Node
 from ..models import URLPath
 from .object_types import URLPathNode
 
-# TODO: Fix in next story
-# https://app.approvd.io/silverlogic/BA/stories/36399
-# Resolve GraphQL Conflicts and Sync Metadata with baseapp-pages
-# from baseapp_core.graphql import Node
-
-
 Page = swapper.load_model("baseapp_pages", "Page")
 PageObjectType = Page.get_graphql_object_type()
 

@@ -36,6 +36,7 @@ class HeadlessPageMixin(HeadlessPreviewMixin):
             return root_url + url
         return url
 
+    # TODO: Review if we will need the headless plugin after graphql is implemented.
     # This is a workaround to fix the headless_url property for "View live" buttons.
     url = headless_url
 
@@ -69,7 +70,9 @@ class DefaultPageModel(HeadlessPageMixin, Page, metaclass=HeadlessPageBase):
     class Meta:
         abstract = True
 
-    graphql_fields = []
+    graphql_fields = [
+        GraphQLStreamfield("featured_image"),
+    ]
 
 
 class BaseStandardPage(
@@ -78,13 +81,6 @@ class BaseStandardPage(
     body = PageBodyStreamField.create(
         StandardPageStreamBlock(required=False),
     )
-
-    graphql_fields = [
-        GraphQLStreamfield("body"),
-        # TODO: (wagtail) Add the featured image to the graphql fields
-    ]
-
-    graphql_interfaces = ["baseapp_wagtail.base.graphql.object_types.WagtailCommentsInterface"]
 
     class Meta:
         verbose_name = _("Standard page")
