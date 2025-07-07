@@ -30,10 +30,11 @@ class PageInterface(relay.Node):
 
     @classmethod
     def resolve_url_paths(cls, instance, info, **kwargs):
-        return URLPath.objects.filter(
-            target_content_type=ContentType.objects.get_for_model(instance),
-            target_object_id=instance.id,
-        )
+        return instance.url_paths.all()
+        # return URLPath.objects.filter(
+        #     target_content_type=ContentType.objects.get_for_model(instance),
+        #     target_object_id=instance.id,
+        # )
 
     @classmethod
     def resolve_metadata(cls, instance, info, **kwargs):
@@ -143,7 +144,7 @@ class BasePageObjectType:
 
 class PageObjectType(BasePageObjectType, DjangoObjectType):
     class Meta(BasePageObjectType.Meta):
-        pass
+        name = "BAPage"
 
 
 class MetadataObjectType(DjangoObjectType):

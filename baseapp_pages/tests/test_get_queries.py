@@ -20,7 +20,7 @@ GET_PAGE_BY_PATH = """
                     metaTitle
                 }
 
-                ... on Page {
+                ... on BAPage {
                     pk
                     title
                     body
