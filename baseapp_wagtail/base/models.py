@@ -79,6 +79,13 @@ class BaseStandardPage(
         StandardPageStreamBlock(required=False),
     )
 
+    graphql_fields = [
+        GraphQLStreamfield("body"),
+        # TODO: (wagtail) Add the featured image to the graphql fields
+    ]
+
+    graphql_interfaces = ["baseapp_wagtail.base.graphql.object_types.WagtailCommentsInterface"]
+
     class Meta:
         verbose_name = _("Standard page")
         verbose_name_plural = _("Standard pages")

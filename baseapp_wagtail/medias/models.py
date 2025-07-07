@@ -2,6 +2,7 @@ from collections import OrderedDict
 
 from django.conf import settings
 from django.db import models
+from grapple.models import GraphQLString
 from wagtail.documents.models import AbstractDocument, Document
 from wagtail.images.models import AbstractImage, AbstractRendition, Image
 
@@ -10,6 +11,11 @@ class CustomImage(AbstractImage):
     alt_text = models.TextField(blank=True)
 
     admin_form_fields = Image.admin_form_fields + ("alt_text",)
+
+    # TODO: (wagtail) review if this is needed
+    graphql_fields = [
+        GraphQLString("alt_text"),
+    ]
 
     @property
     def default_alt_text(self):

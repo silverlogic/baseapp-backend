@@ -49,6 +49,9 @@ WAGTAIL_CONTENT_LANGUAGES = LANGUAGES = [
 
 # Wagtail settings
 WAGTAILADMIN_BASE_URL = env("URL", default="http://localhost:8000")
+# TODO: Remove the following line when this PR is merged:
+# https://github.com/torchbox/wagtail-grapple/pull/422/
+BASE_URL = WAGTAILADMIN_BASE_URL
 
 # Wagtail Preview
 if "FRONT_URL" not in globals():
@@ -61,6 +64,19 @@ FRONT_PAGE_PREVIEW_URL = urljoin(
 WAGTAIL_HEADLESS_PREVIEW = {
     "CLIENT_URLS": {"default": f"{FRONT_PAGE_PREVIEW_URL}"},
     "ENFORCE_TRAILING_SLASH": False,
+}
+
+# Graphql
+GRAPPLE = {
+    "APPS": [
+        "baseapp_wagtail_base",
+        "baseapp_wagtail_medias",
+        # TODO: (wagtail) move this to the testproject.
+        "base",
+        # TODO: (wagtail) remove.
+        "tests",
+    ],
+    "PAGE_INTERFACE": "baseapp_wagtail.base.graphql.object_types.WagtailPageInterface",
 }
 
 WAGTAILIMAGES_IMAGE_MODEL = "baseapp_wagtail_medias.CustomImage"
