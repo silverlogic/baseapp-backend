@@ -23,7 +23,6 @@ WAGTAIL_INSTALLED_APPS = [
     "modelcluster",
     "taggit",
     "grapple",
-    "graphene_django",
 ]
 
 WAGTAIL_INSTALLED_INTERNAL_APPS = [
