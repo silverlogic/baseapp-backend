@@ -7,7 +7,7 @@ Subscription = swapper.load_model("baseapp_payments", "Subscription")
 
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ("entity_id", "entity_type", "remote_customer_id")
+    list_display = ("entity_id", "remote_customer_id")
     search_fields = ("entity_id", "remote_customer_id")
     readonly_fields = ("remote_customer_id",)
 

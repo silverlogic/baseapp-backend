@@ -4,11 +4,10 @@ from datetime import datetime
 import swapper
 from constance import config
 from django.apps import apps
-from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework import serializers
 
-from .utils import StripeService, get_customer
+from .utils import StripeService
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +18,7 @@ Customer = swapper.load_model("baseapp_payments", "Customer")
 
 
 class StripeSubscriptionSerializer(serializers.Serializer):
-    customer_id = serializers.CharField(help_text="Stripe customer ID")
+    entity_id = serializers.CharField()
     price_id = serializers.CharField(help_text="Stripe price ID")
     allow_incomplete = serializers.BooleanField(
         default=False,
@@ -36,24 +35,24 @@ class StripeSubscriptionSerializer(serializers.Serializer):
     latest_invoice = serializers.DictField(read_only=True)
 
     def validate(self, data):
-        remote_customer_id = data.get("customer_id")
-        if "customer_id" in data and not remote_customer_id:
-            raise serializers.ValidationError({"customer_id": "This field is required."})
+        entity_id = data.get("entity_id")
+        if not entity_id:
+            raise serializers.ValidationError({"entity_id": "This field is required."})
+        customer = Customer.objects.filter(entity_id=entity_id).first()
+        if not customer:
+            raise serializers.ValidationError({"entity_id": "Customer not found."})
         price_id = data.get("price_id")
         if "price_id" in data and not price_id:
             raise serializers.ValidationError({"price_id": "This field is required."})
-        user = self.context.get("request").user
         stripe_service = StripeService()
-        customer = get_customer(remote_customer_id, user, stripe_service)
-        if not customer:
-            raise serializers.ValidationError("Customer not found")
-        price_id = data["price_id"]
         try:
             price = stripe_service.retrieve_price(price_id)
             if not price:
                 raise serializers.ValidationError(f"Price not found: {price_id}")
             new_product_id = price.get("product").get("id", None)
-            subscriptions = stripe_service.list_subscriptions(remote_customer_id, status="all")
+            subscriptions = stripe_service.list_subscriptions(
+                customer.remote_customer_id, status="all"
+            )
             for subscription in subscriptions:
                 if subscription["status"] in STRIPE_ACTIVE_SUBSCRIPTION_STATUSES:
                     sub_price = subscription["items"]["data"][0]["price"]
@@ -109,24 +108,22 @@ class StripeSubscriptionSerializer(serializers.Serializer):
 
 class StripeSubscriptionPatchSerializer(serializers.Serializer):
     default_payment_method = serializers.CharField(required=False)
-    customer_id = serializers.CharField(required=True)
+    entity_id = serializers.CharField(required=True)
 
-    def validate_remote_customer_id(self, value):
-        user = self.context.get("request").user
-        remote_customer_id = self.initial_data.get("customer_id")
-        if not remote_customer_id:
-            raise serializers.ValidationError("Missing customer_id")
-        customer = get_customer(remote_customer_id, user)
+    def validate_entity(self, value):
+        entity_id = self.initial_data.get("entity_id")
+        if not entity_id:
+            raise serializers.ValidationError({"entity_id": "This field is required."})
+        customer = Customer.objects.filter(entity_id=entity_id).first()
         if not customer:
-            raise serializers.ValidationError(
-                "The provided customer ID does not belong to the authenticated user."
-            )
+            raise serializers.ValidationError({"entity_id": "Customer not found."})
+        value["customer"] = customer
         return value
 
     def validate_default_payment_method(self, value):
-        remote_customer_id = self.initial_data.get("customer_id")
         try:
-            payment_methods = StripeService().list_payment_methods(remote_customer_id)
+            customer = value["customer"]
+            payment_methods = StripeService().list_payment_methods(customer.remote_customer_id)
             if not any(pm["id"] == value for pm in payment_methods):
                 raise serializers.ValidationError(
                     "The provided payment method ID does not belong to the customer."
@@ -137,8 +134,10 @@ class StripeSubscriptionPatchSerializer(serializers.Serializer):
         return value
 
     def update(self, instance, validated_data):
-        if "customer_id" in validated_data:
-            validated_data.pop("customer_id")
+        if "entity_id" in validated_data:
+            validated_data.pop("entity_id")
+        if "customer" in validated_data:
+            validated_data.pop("customer")
         try:
             StripeService().update_subscription(
                 subscription_id=instance.remote_subscription_id, **validated_data
@@ -151,9 +150,7 @@ class StripeSubscriptionPatchSerializer(serializers.Serializer):
 
 class StripeCustomerSerializer(serializers.Serializer):
     remote_customer_id = serializers.ReadOnlyField()
-    entity_type = serializers.ReadOnlyField()
-    entity_id = serializers.ReadOnlyField()
-    user_id = serializers.CharField(required=False)
+    entity_id = serializers.CharField(required=False)
     upcoming_invoice = serializers.DictField(read_only=True)
 
     class Meta:
@@ -161,64 +158,42 @@ class StripeCustomerSerializer(serializers.Serializer):
         fields = (
             "id",
             "remote_customer_id",
-            "entity_type",
             "entity_id",
         )
 
     def validate(self, data):
-        if "user_id" in data:
-            try:
-                user = get_user_model().objects.get(id=data["user_id"])
-                data["user"] = user
-                return data
-            except get_user_model().DoesNotExist:
-                raise serializers.ValidationError("User does not exist.")
-        user = self.context.get("request").user
-        data["user"] = user
+        entity_id = data.get("entity_id")
+        if entity_id:
+            customer_model = apps.get_model(config.STRIPE_CUSTOMER_ENTITY_MODEL)
+            entity = customer_model.objects.get(id=entity_id)
+            if customer_model == "profiles.Profile":
+                if not entity.target.email:
+                    raise serializers.ValidationError(
+                        "Entity does not have a target with an email field."
+                    )
+            else:
+                if not entity.email:
+                    raise serializers.ValidationError("Entity does not have an email field.")
+            data["entity"] = entity
         return data
 
     @transaction.atomic
     def create(self, validated_data):
-        customer_entity_model = config.STRIPE_CUSTOMER_ENTITY_MODEL
-        user = validated_data.pop("user")
-        entity_model = apps.get_model(customer_entity_model)
-        # Entity id is used when creating a customer for a different user/entity than the one making
-        # the request, and it's not necessary for creating a customer for the current user.
-        entity_id = validated_data.get("entity_id", False)
-        if entity_id:
-            if customer_entity_model == "profiles.Profile":
-                entity = entity_model.objects.get(owner=entity_id)
-            else:
-                entity = entity_model.objects.get(id=entity_id)
-            try:
-                stripe_customer = StripeService().create_customer(email=entity.owner.email)
-            except Exception as e:
-                logger.exception(e)
-                raise serializers.ValidationError("Failed to create customer")
-        else:
-            if customer_entity_model == "profiles.Profile":
-                entity = entity_model.objects.get(owner=user.id)
-            else:
-                entity = entity_model.objects.get(id=user.id)
-            try:
-                stripe_customer = StripeService().create_customer(email=user.email)
-            except Exception as e:
-                logger.exception(e)
-                raise serializers.ValidationError("Failed to create customer")
+        entity = validated_data.pop("entity")
+        customer_model = apps.get_model(config.STRIPE_CUSTOMER_ENTITY_MODEL)
+        email = entity.target.email if customer_model == "profiles.Profile" else entity.email
+        try:
+            stripe_customer = StripeService().create_customer(
+                email=email, metadata={"entity_id": entity.id}
+            )
+        except Exception as e:
+            logger.exception(e)
+            raise serializers.ValidationError("Failed to create customer")
         customer = Customer.objects.create(
             entity=entity,
             remote_customer_id=stripe_customer.get("id"),
         )
         return customer
-
-    def to_representation(self, instance):
-        if isinstance(instance, Customer):
-            representation = super().to_representation(instance)
-            representation["entity_type"] = instance.entity._meta.model_name
-            representation["entity_id"] = instance.entity.id
-            return representation
-        else:
-            return super().to_representation(instance)
 
 
 class StripeWebhookSerializer(serializers.Serializer):
@@ -270,17 +245,26 @@ class StripePaymentMethodSerializer(serializers.Serializer):
     created = serializers.IntegerField(read_only=True)
     customer = serializers.CharField(read_only=True)
     is_default = serializers.BooleanField(read_only=True, default=False)
-    customer_id = serializers.CharField(write_only=True, required=False)
+    entity_id = serializers.CharField(write_only=True, required=False)
     client_secret = serializers.CharField(read_only=True)
     pk = serializers.CharField(write_only=True, required=False)
     default_payment_method_id = serializers.CharField(write_only=True, required=False)
 
+    def validate(self, value):
+        entity_id = value.get("entity_id")
+        if not entity_id:
+            raise serializers.ValidationError({"entity_id": "This field is required."})
+        customer = Customer.objects.filter(entity_id=entity_id).first()
+        if not customer:
+            raise serializers.ValidationError({"entity_id": "Customer not found."})
+        value["customer"] = customer
+        return value
+
     def create(self, validated_data):
         stripe_service = StripeService()
-        customer_id = validated_data.get("customer_id")
         try:
             setup_intent = stripe_service.create_setup_intent(
-                customer_id=customer_id,
+                customer_id=validated_data.get("customer").remote_customer_id,
             )
             return {"id": setup_intent["id"], "client_secret": setup_intent["client_secret"]}
         except Exception as e:
@@ -289,13 +273,12 @@ class StripePaymentMethodSerializer(serializers.Serializer):
 
     def update(self, validated_data):
         stripe_service = StripeService()
-        customer_id = validated_data.get("customer_id")
         default_payment_method_id = validated_data.get("default_payment_method_id")
         payment_method_id = validated_data.get("pk")
         if default_payment_method_id:
             try:
                 resp = stripe_service.update_customer(
-                    customer_id,
+                    validated_data.get("customer").remote_customer_id,
                     invoice_settings={"default_payment_method": default_payment_method_id},
                 )
                 return resp
@@ -303,7 +286,7 @@ class StripePaymentMethodSerializer(serializers.Serializer):
                 logger.exception(e)
                 raise serializers.ValidationError("Failed to update payment method")
         else:
-            validated_data.pop("customer_id")
+            validated_data.pop("customer")
             try:
                 stripe_service.update_payment_method(payment_method_id, **validated_data)
             except Exception as e:

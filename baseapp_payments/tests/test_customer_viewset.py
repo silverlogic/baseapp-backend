@@ -20,12 +20,12 @@ class TestCustomerRetrieveView:
     viewname = "v1:customers-detail"
 
     def test_anon_user_cannot_get_customer(self, client):
-        response = client.get(reverse(self.viewname, kwargs={"pk": "me"}))
+        response = client.get(reverse(self.viewname, kwargs={"pk": 1}))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
     def test_user_can_get_self_customer_with_existing_db_entry(self, user_client):
         CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
-        response = user_client.get(reverse(self.viewname, kwargs={"pk": "me"}))
+        response = user_client.get(reverse(self.viewname, kwargs={"pk": 1}))
         responseEquals(response, status.HTTP_200_OK)
 
     @patch("baseapp_payments.views.StripeService.retrieve_customer")
@@ -33,7 +33,7 @@ class TestCustomerRetrieveView:
         self, mock_retrieve_customer, user_client
     ):
         mock_retrieve_customer.return_value = {"id": "cus_123"}
-        response = user_client.get(reverse(self.viewname, kwargs={"pk": "me"}))
+        response = user_client.get(reverse(self.viewname, kwargs={"pk": 1}))
         responseEquals(response, status.HTTP_200_OK)
         assert Customer.objects.filter(
             entity_id=user_client.user.profile.id,
@@ -52,7 +52,10 @@ class TestCustomerCreateView:
     @patch("baseapp_payments.views.StripeService.create_customer")
     def test_user_can_create_customer(self, mock_create_customer, user_client):
         mock_create_customer.return_value = {"id": "cus_123"}
-        response = user_client.post(reverse(self.viewname))
+        response = user_client.post(
+            reverse(self.viewname),
+            data={"entity_id": user_client.user.profile.id},
+        )
         responseEquals(response, status.HTTP_201_CREATED)
         assert Customer.objects.all().count() == 1
         assert Customer.objects.filter(

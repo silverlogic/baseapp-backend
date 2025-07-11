@@ -116,6 +116,7 @@ AUTHENTICATION_BACKENDS = [
     "baseapp_pages.permissions.PagesPermissionsBackend",
     "baseapp_organizations.permissions.OrganizationsPermissionsBackend",
     "baseapp_chats.permissions.ChatsPermissionsBackend",
+    "baseapp_payments.permissions.PaymentsPermissionsBackend",
 ]
 
 ADMIN_TIME_ZONE = "UTC"
@@ -147,7 +148,10 @@ CONSTANCE_CONFIG = OrderedDict(
         ),
         (
             "STRIPE_CUSTOMER_ENTITY_MODEL",
-            ("profiles.Profile", "The model to use for the Stripe customer entity."),
+            (
+                "profiles.Profile",
+                "The model used to link the Stripe customer entity. It must have an target field that point to an entity with an email field, or have an email field itself.",
+            ),
         ),
     ]
 )

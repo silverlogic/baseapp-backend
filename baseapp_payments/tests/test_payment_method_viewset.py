@@ -11,7 +11,7 @@ pytestmark = pytest.mark.django_db
 
 
 class TestPaymentMethodListView:
-    viewname = "v1:payment-methods-list"
+    viewname = "v1:customers-payment-methods"
 
     def test_anon_user_cannot_list_payment_methods(self, client):
         response = client.get(reverse(self.viewname))
@@ -36,7 +36,7 @@ class TestPaymentMethodListView:
 
 
 class TestPaymentMethodUpdateView:
-    viewname = "v1:payment-methods-detail"
+    viewname = "v1:customers-payment-methods"
 
     def test_anon_user_cannot_create_payment_method(self, client):
         response = client.put(reverse(self.viewname, kwargs={"pk": "pm_123"}))
@@ -61,7 +61,7 @@ class TestPaymentMethodUpdateView:
 
 
 class TestPaymentMethodDeleteView:
-    viewname = "v1:payment-methods-detail"
+    viewname = "v1:customers-payment-methods"
 
     def test_anon_user_cannot_delete_payment_method(self, client):
         response = client.delete(reverse(self.viewname, kwargs={"pk": "pm_123"}))
