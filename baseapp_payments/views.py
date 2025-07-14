@@ -127,8 +127,7 @@ class StripeCustomerViewset(viewsets.GenericViewSet, viewsets.mixins.RetrieveMod
     )
     def payment_methods(self, request, pk=None, payment_method_id=None, *args, **kwargs):
         customer = self.get_object()
-        request.query_params = request.query_params.copy()
-        request.query_params["customer"] = customer
+        request._request.customer = customer
         payment_method_viewset = StripePaymentMethodViewset()
         payment_method_viewset.request = request
         payment_method_viewset.format_kwarg = getattr(self, "format_kwarg", None)
@@ -158,7 +157,10 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
 
     def list(self, request):
         try:
-            customer = request.query_params.get("customer")
+            customer = getattr(request._request, "customer", None)
+            if not customer:
+                return Response({"error": "Customer information is required"}, status=400)
+
             payment_methods = StripeService().get_customer_payment_methods(
                 customer.remote_customer_id
             )
@@ -185,6 +187,8 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
         serializer = self.get_serializer(data={"pk": pk, **request.data})
         serializer.is_valid(raise_exception=True)
         try:
+            customer = getattr(request._request, "customer", None)
+            serializer.validated_data["customer"] = customer
             result = serializer.update(serializer.validated_data)
             return Response(result, status=200)
         except Exception as e:
@@ -193,7 +197,7 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
 
     def delete(self, request, pk=None):
         try:
-            customer = request.query_params.get("customer")
+            customer = getattr(request._request, "customer", None)
             StripeService().delete_payment_method(
                 pk, customer.remote_customer_id, request.query_params.get("is_default")
             )

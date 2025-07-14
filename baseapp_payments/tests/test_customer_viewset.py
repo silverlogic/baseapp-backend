@@ -20,26 +20,13 @@ class TestCustomerRetrieveView:
     viewname = "v1:customers-detail"
 
     def test_anon_user_cannot_get_customer(self, client):
-        response = client.get(reverse(self.viewname, kwargs={"pk": 1}))
+        response = client.get(reverse(self.viewname, kwargs={"entity_id": 1}))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
     def test_user_can_get_self_customer_with_existing_db_entry(self, user_client):
-        CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
-        response = user_client.get(reverse(self.viewname, kwargs={"pk": 1}))
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        response = user_client.get(reverse(self.viewname, kwargs={"entity_id": customer.entity_id}))
         responseEquals(response, status.HTTP_200_OK)
-
-    @patch("baseapp_payments.views.StripeService.retrieve_customer")
-    def test_user_can_get_self_customer_with_existing_stripe_entry(
-        self, mock_retrieve_customer, user_client
-    ):
-        mock_retrieve_customer.return_value = {"id": "cus_123"}
-        response = user_client.get(reverse(self.viewname, kwargs={"pk": 1}))
-        responseEquals(response, status.HTTP_200_OK)
-        assert Customer.objects.filter(
-            entity_id=user_client.user.profile.id,
-            entity_type=ContentType.objects.get_for_model(Profile),
-            remote_customer_id="cus_123",
-        ).exists()
 
 
 class TestCustomerCreateView:

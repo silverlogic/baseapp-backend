@@ -164,9 +164,10 @@ class StripeCustomerSerializer(serializers.Serializer):
     def validate(self, data):
         entity_id = data.get("entity_id")
         if entity_id:
-            customer_model = apps.get_model(config.STRIPE_CUSTOMER_ENTITY_MODEL)
+            entity_model_name = config.STRIPE_CUSTOMER_ENTITY_MODEL
+            customer_model = apps.get_model(entity_model_name)
             entity = customer_model.objects.get(id=entity_id)
-            if customer_model == "profiles.Profile":
+            if entity_model_name == "profiles.Profile":
                 if not entity.target.email:
                     raise serializers.ValidationError(
                         "Entity does not have a target with an email field."
@@ -180,8 +181,8 @@ class StripeCustomerSerializer(serializers.Serializer):
     @transaction.atomic
     def create(self, validated_data):
         entity = validated_data.pop("entity")
-        customer_model = apps.get_model(config.STRIPE_CUSTOMER_ENTITY_MODEL)
-        email = entity.target.email if customer_model == "profiles.Profile" else entity.email
+        entity_model_name = config.STRIPE_CUSTOMER_ENTITY_MODEL
+        email = entity.target.email if entity_model_name == "profiles.Profile" else entity.email
         try:
             stripe_customer = StripeService().create_customer(
                 email=email, metadata={"entity_id": entity.id}
@@ -245,20 +246,9 @@ class StripePaymentMethodSerializer(serializers.Serializer):
     created = serializers.IntegerField(read_only=True)
     customer = serializers.CharField(read_only=True)
     is_default = serializers.BooleanField(read_only=True, default=False)
-    entity_id = serializers.CharField(write_only=True, required=False)
     client_secret = serializers.CharField(read_only=True)
     pk = serializers.CharField(write_only=True, required=False)
     default_payment_method_id = serializers.CharField(write_only=True, required=False)
-
-    def validate(self, value):
-        entity_id = value.get("entity_id")
-        if not entity_id:
-            raise serializers.ValidationError({"entity_id": "This field is required."})
-        customer = Customer.objects.filter(entity_id=entity_id).first()
-        if not customer:
-            raise serializers.ValidationError({"entity_id": "Customer not found."})
-        value["customer"] = customer
-        return value
 
     def create(self, validated_data):
         stripe_service = StripeService()
