@@ -56,7 +56,7 @@ class Migration(migrations.Migration):
                         {"admin_text": "<hr />", "label": " "},
                     ),
                     4: (
-                        "baseapp_wagtail.base.blocks.basic_blocks.custom_image_chooser_block.block.CustomImageChooserBlock",
+                        "wagtail.images.blocks.ImageChooserBlock",
                         (),
                         {"label": " ", "required": False},
                     ),

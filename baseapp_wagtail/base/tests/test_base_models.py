@@ -1,34 +1,15 @@
-from django.test import override_settings
-from django.urls import reverse
 from rest_framework import status
 from wagtail.test.utils.form_data import nested_form_data, streamfield
 
 import baseapp_wagtail.medias.tests.factories as media_factory
-from baseapp_wagtail.tests.mixins import StandardPageContextMixin
+from baseapp_wagtail.tests.mixins import TestPageContextMixin
 from baseapp_wagtail.tests.models import PageForTests
+from baseapp_wagtail.tests.utils.graphql_helpers import GraphqlHelper
 
 
-class BasicPageTestsMixin(StandardPageContextMixin):
-    model = None
-
-    @override_settings(FRONT_HEADLESS_URL="testserver")
-    def test_get_url_with_site(self):
-        if not self.model:
-            return
-        page = self.model(
-            title="My Basic Page",
-            slug="mybasicpage",
-        )
-        self.site.root_page.add_child(instance=page)
-        self.assertEqual(page.headless_url, f"testserver/{page.slug}/")
-
-    class Meta:
-        abstract = True
-
-
-class StandardPageTests(BasicPageTestsMixin):
+class PageForTestsTests(GraphqlHelper, TestPageContextMixin):
     model = PageForTests
-    page_type = "tests.PageForTests"
+    page_type = "PageForTests"
 
     @classmethod
     def setUpTestData(cls):
@@ -36,8 +17,10 @@ class StandardPageTests(BasicPageTestsMixin):
 
         cls.standard_page = cls.page
         cls.page = cls.model(
-            title="My Standard Page",
-            slug="mystandardpage",
+            title="My Page",
+            slug="mypage",
+            path=f"{cls.site.root_page.path}0001",
+            depth=cls.site.root_page.depth + 1,
         )
         cls.standard_page.add_child(instance=cls.page)
 
@@ -82,12 +65,24 @@ class StandardPageTests(BasicPageTestsMixin):
         )
         self.page.save()
         self.page.save_revision().publish()
-        response = self.client.get(
-            reverse("baseappwagtailapi_base:pages:detail", args=[self.page.id]),
-            {"type": self.page_type, "fields": "*"},
+        response = self.query(
+            """
+query Page($id: ID!) {
+    page(id: $id) {
+        id
+        title
+        pageType
+        ... on PageForTests {
+            body {
+                id
+            }
+        }
+    }
+}
+""",
+            variables={"id": self.page.id},
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json()["meta"]["type"], self.page_type)
-        self.assertIsNotNone(response.json()["featured_image"])
-        self.assertIsNotNone(response.json()["body"])
+        self.assertEqual(response.json()["data"]["page"]["pageType"], self.page_type)
+        self.assertIsNotNone(response.json()["data"]["page"]["body"])

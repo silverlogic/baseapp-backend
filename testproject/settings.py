@@ -10,12 +10,6 @@ from baseapp_wagtail.settings import (
     WAGTAIL_MIDDLEWARE,
 )
 
-MEDIA_ROOT = "/media/"
-MEDIA_URL = "/media/"
-STATIC_ROOT = "/static/"
-STATIC_URL = "/static/"
-
-
 # Application definition
 INSTALLED_APPS += [
     "channels",

@@ -16,5 +16,5 @@ class CustomImageBlockTests(BlocksHelper, TestPageContextMixin):
         blocks = self.get_response_body_blocks(r)
 
         self.assertEqual(len(blocks), 1)
-        self.assertIsNotNone(blocks[0]["value"]["image"])
-        self.assertEqual(blocks[0]["value"]["alt_text"], "Test alt text")
+        self.assertIsNotNone(blocks[0]["image"]["url"])
+        self.assertEqual(blocks[0]["altText"], "Test alt text")

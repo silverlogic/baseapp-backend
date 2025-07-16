@@ -3,10 +3,8 @@ from rest_framework.response import Response
 from wagtail.api.v2.views import PagesAPIViewSet
 from wagtail_headless_preview.models import PagePreview
 
-from ..pages.views import CustomPagesAPIEndpoint
 
-
-class PagePreviewAPIViewSet(CustomPagesAPIEndpoint):
+class PagePreviewAPIViewSet(PagesAPIViewSet):
     known_query_parameters = PagesAPIViewSet.known_query_parameters.union(["content_type", "token"])
 
     def listing_view(self, request):

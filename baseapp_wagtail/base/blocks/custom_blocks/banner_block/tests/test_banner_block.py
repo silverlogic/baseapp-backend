@@ -22,7 +22,7 @@ class BannerBlockTests(BlocksHelper, TestPageContextMixin):
         block = self.get_response_body_blocks(r)
 
         self.assertEqual(len(block), 1)
-        self.assertEqual(block[0]["value"]["title"], "Banner")
-        self.assertEqual(block[0]["value"]["description"], "Banner description")
-        self.assertEqual(block[0]["value"]["image_position"], "left")
-        self.assertIsNotNone(block[0]["value"]["featured_image"])
+        self.assertEqual(block[0]["title"], "Banner")
+        self.assertEqual(block[0]["description"], "Banner description")
+        self.assertEqual(block[0]["imagePosition"], "left")
+        self.assertIsNotNone(block[0]["featuredImage"])

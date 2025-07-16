@@ -9,10 +9,8 @@ from wagtail.blocks import (
     StaticBlock,
     StructBlock,
 )
+from wagtail.images.blocks import ImageChooserBlock
 
-from baseapp_wagtail.base.blocks.basic_blocks.custom_image_chooser_block import (
-    CustomImageChooserBlock,
-)
 from baseapp_wagtail.base.graphql.fields import GraphQLDynamicField
 
 RICH_TEXT_FEATURES = ["bold", "italic", "link", "ul", "hr"]
@@ -33,7 +31,7 @@ class BannerBlock(StructBlock):
         label=" ",
     )
 
-    featured_image = CustomImageChooserBlock(label=" ", required=False)
+    featured_image = ImageChooserBlock(label=" ", required=False)
     image_position = ChoiceBlock(
         choices=[
             ("left", "Left"),

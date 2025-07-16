@@ -36,8 +36,6 @@ class HeadlessPageMixin(HeadlessPreviewMixin):
             return root_url + url
         return url
 
-    # TODO: Review if we will need the headless plugin after graphql is implemented.
-    # This is a workaround to fix the headless_url property for "View live" buttons.
     url = headless_url
 
     def _has_no_domain(self, url: str) -> bool:

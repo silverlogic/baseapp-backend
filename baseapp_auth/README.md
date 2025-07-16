@@ -29,7 +29,7 @@ When your `DjangoObjectType` implements `PermissionsInterface` you are able to q
 
 ```graphql
 query {
-  page(id: 1) {
+  baPage(id: 1) {
     canDelete: hasPerm(perm: "delete")
     canChange: hasPerm(perm: "change")
   }

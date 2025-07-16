@@ -1,8 +1,7 @@
 from grapple.helpers import register_streamfield_block
 from grapple.models import GraphQLImage, GraphQLString
 from wagtail.blocks import CharBlock, StructBlock
-
-from ..custom_image_chooser_block import CustomImageChooserBlock
+from wagtail.images.blocks import ImageChooserBlock
 
 
 @register_streamfield_block
@@ -13,10 +12,9 @@ class CustomImageBlock(StructBlock):
     ]
 
     def __init__(self, *args, **kwargs):
-        image_sizes = kwargs.pop("image_sizes", None)
         required = kwargs.pop("required", False)
         local_blocks = [
-            ("image", CustomImageChooserBlock(required=required, image_sizes=image_sizes)),
+            ("image", ImageChooserBlock(required=required)),
             (
                 "alt_text",
                 CharBlock(
