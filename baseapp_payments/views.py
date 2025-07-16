@@ -3,11 +3,12 @@ import logging
 import swapper
 from django.conf import settings
 from rest_framework import viewsets
-from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from baseapp_core.rest_framework.decorators import action
+from baseapp_core.rest_framework.mixins import DestroyModelMixin
 
 from .models import Subscription
 from .permissions import DRFCustomerPermissions, DRFSubscriptionPermissions
@@ -16,7 +17,6 @@ from .serializers import (
     StripeInvoiceSerializer,
     StripePaymentMethodSerializer,
     StripeProductSerializer,
-    StripeSubscriptionPatchSerializer,
     StripeSubscriptionSerializer,
     StripeWebhookSerializer,
 )
@@ -30,7 +30,9 @@ Customer = swapper.load_model("baseapp_payments", "Customer")
 class StripeSubscriptionViewset(
     viewsets.GenericViewSet,
     viewsets.mixins.RetrieveModelMixin,
-    viewsets.mixins.DestroyModelMixin,
+    viewsets.mixins.ListModelMixin,
+    viewsets.mixins.CreateModelMixin,
+    DestroyModelMixin,
     viewsets.mixins.UpdateModelMixin,
 ):
     serializer_class = StripeSubscriptionSerializer
@@ -38,15 +40,33 @@ class StripeSubscriptionViewset(
     permission_classes = [IsAuthenticated, DRFSubscriptionPermissions]
     lookup_field = "remote_subscription_id"
 
-    def create(self, request):
-        serializer = self.get_serializer(data=request.data, context={"request": request})
-        if serializer.is_valid():
-            result = serializer.save()
-            return Response(result, status=201)
-        logger.error(f"Validation errors: {serializer.errors}")
-        return Response(serializer.errors, status=400)
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        subscription = StripeService().retrieve_subscription(
+            instance.remote_subscription_id,
+            expand=["latest_invoice.payment_intent"],
+        )
+        serializer = self.get_serializer(subscription)
+        return Response(serializer.data, status=200)
 
-    def delete(self, request, *args, **kwargs):
+    def list(self, request, *args, **kwargs):
+        entity_id = request.query_params.get("entity_id")
+        if not entity_id:
+            return Response({"error": "entity_id is required"}, status=400)
+        customer = Customer.objects.filter(entity_id=entity_id).first()
+        if not customer:
+            return Response({"error": "Customer not found"}, status=404)
+        subscriptions = StripeService().list_subscriptions(customer.remote_customer_id, **kwargs)
+        serializer = self.get_serializer(subscriptions.data, many=True)
+        return Response(serializer.data, status=200)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=201)
+
+    def destroy(self, request, *args, **kwargs):
         try:
             subscription = self.get_object()
             StripeService().delete_subscription(subscription.remote_subscription_id)
@@ -54,20 +74,13 @@ class StripeSubscriptionViewset(
             return Response({}, status=204)
         except NotFound:
             return Response({"error": "Subscription not found"}, status=404)
+        except PermissionDenied:
+            return Response(
+                {"error": "You are not allowed to delete this subscription"}, status=403
+            )
         except Exception as e:
             logger.exception(e)
             return Response({"error": "Error deleting subscription"}, status=500)
-
-    def partial_update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = StripeSubscriptionPatchSerializer(
-            data=request.data, context={"request": request}
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.update(instance, serializer.validated_data)
-        return Response(
-            {"status": "success", "message": "Subscription updated in Stripe"}, status=200
-        )
 
 
 class StripeWebhookViewset(viewsets.GenericViewSet):
@@ -102,6 +115,7 @@ class StripeCustomerViewset(viewsets.GenericViewSet, viewsets.mixins.RetrieveMod
     permission_classes = [IsAuthenticated, DRFCustomerPermissions]
     lookup_field = "entity_id"
 
+    # TODO: Check if this is needed
     def create(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)

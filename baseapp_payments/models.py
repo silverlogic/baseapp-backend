@@ -23,7 +23,6 @@ class BaseCustomer(TimeStampedModel):
 
 
 class BaseSubscription(TimeStampedModel):
-    remote_customer_id = models.CharField(max_length=255)
     remote_subscription_id = models.CharField(max_length=255)
 
     class Meta:
@@ -58,6 +57,11 @@ class Customer(BaseCustomer):
 
 
 class Subscription(BaseSubscription):
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name="subscriptions",
+    )
+
     class Meta:
         swappable = swapper.swappable_setting("baseapp_payments", "Subscription")
-        unique_together = ("remote_customer_id", "remote_subscription_id")

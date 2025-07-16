@@ -43,7 +43,7 @@ class PaymentsPermissionsBackend(BaseBackend):
                 return False
             if config.STRIPE_CUSTOMER_ENTITY_MODEL == "profiles.Profile":
                 return (
-                    customer.entity.id == user_obj.id
+                    customer.entity.id == user_obj.profile.id
                     or customer.entity.members.filter(id=user_obj.id, role=1).exists()
                 )
             return customer.entity.id == user_obj.id
@@ -56,7 +56,7 @@ class PaymentsPermissionsBackend(BaseBackend):
                 return False
             if obj and isinstance(obj, Subscription):
                 return (
-                    obj.customer.entity.id == user_obj.id
+                    obj.customer.entity.id == user_obj.profile.id
                     or obj.customer.entity.members.filter(id=user_obj.id, role=1).exists()
                 )
             return False

@@ -16,8 +16,8 @@ class CustomerAdmin(admin.ModelAdmin):
 class SubscriptionAdmin(admin.ModelAdmin):
     list_display = (
         "id",
-        "remote_customer_id",
+        "customer_id",
         "remote_subscription_id",
     )
-    search_fields = ("remote_customer_id", "remote_subscription_id")
-    readonly_fields = ("remote_subscription_id", "remote_customer_id")
+    search_fields = ("customer_id", "remote_subscription_id")
+    readonly_fields = ("remote_subscription_id", "customer_id")

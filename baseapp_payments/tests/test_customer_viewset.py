@@ -23,7 +23,7 @@ class TestCustomerRetrieveView:
         response = client.get(reverse(self.viewname, kwargs={"entity_id": 1}))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
-    def test_user_can_get_self_customer_with_existing_db_entry(self, user_client):
+    def test_user_can_get_customer(self, user_client):
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.get(reverse(self.viewname, kwargs={"entity_id": customer.entity_id}))
         responseEquals(response, status.HTTP_200_OK)
