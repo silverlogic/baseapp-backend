@@ -30,16 +30,6 @@ class StripeSubscriptionSerializer(serializers.Serializer):
     latest_invoice = serializers.DictField(read_only=True)
     status = serializers.CharField(read_only=True)
 
-    def validate_entity_id_and_get_customer(self, data):
-        entity_id = data["entity_id"]
-        if not entity_id:
-            raise serializers.ValidationError({"entity_id": "This field is required."})
-        customer = Customer.objects.filter(entity_id=entity_id).first()
-        if not customer:
-            raise serializers.ValidationError({"entity_id": "Customer not found."})
-        data["customer"] = customer
-        return data
-
     def validate_create(self, data):
         entity_id = data["entity_id"]
         if not entity_id:
@@ -47,6 +37,7 @@ class StripeSubscriptionSerializer(serializers.Serializer):
         customer = Customer.objects.filter(entity_id=entity_id).first()
         if not customer:
             raise serializers.ValidationError({"entity_id": "Customer not found."})
+        data["customer"] = customer
         price_id = data.get("price_id")
         if not price_id:
             raise serializers.ValidationError({"price_id": "This field is required."})
