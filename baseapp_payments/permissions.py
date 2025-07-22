@@ -21,7 +21,7 @@ class PaymentsPermissionsBackend(BaseBackend):
             f"{payments_app_label}.delete_payment_method",
         ]:
             if not obj:
-                return True
+                return False
             if not isinstance(obj, Customer):
                 return False
             if config.STRIPE_CUSTOMER_ENTITY_MODEL == "profiles.Profile":
@@ -60,7 +60,7 @@ class PaymentsPermissionsBackend(BaseBackend):
                     or obj.customer.entity.members.filter(id=user_obj.id, role=1).exists()
                 )
             return False
-        return True
+        return False
 
 
 class DRFCustomerPermissions(BasePermission):
