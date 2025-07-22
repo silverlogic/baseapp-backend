@@ -4,6 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from baseapp_core.tests.settings import *  # noqa
 from baseapp_wagtail.settings import *  # noqa
 from baseapp_wagtail.settings import (
+    GRAPPLE,
     WAGTAIL_INSTALLED_APPS,
     WAGTAIL_INSTALLED_INTERNAL_APPS,
     WAGTAIL_MIDDLEWARE,
@@ -125,6 +126,10 @@ URL_SHORTENING_PREFIX = "c"
 
 # Wagtail
 WAGTAIL_SITE_NAME = "Test Project"
+GRAPPLE["APPS"] += [
+    "base",
+    "tests",
+]
 
 # Constance
 CONSTANCE_BACKEND = "constance.backends.memory.MemoryBackend"

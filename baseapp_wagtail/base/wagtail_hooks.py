@@ -10,6 +10,14 @@ def register_core_features(features):
     features.register_link_type(EmailLinkHandler)
 
 
+@hooks.register("register_schema_query")
+def register_schema_query(query_mixins):
+    for query_mixin in query_mixins:
+        # TODO: (wagtail) this is conflicting with the search query from BA.
+        if query_mixin.__module__ == "grapple.types.search":
+            query_mixins.remove(query_mixin)
+
+
 class ExternalLinkHandler(LinkHandler):
     identifier = "external"
 

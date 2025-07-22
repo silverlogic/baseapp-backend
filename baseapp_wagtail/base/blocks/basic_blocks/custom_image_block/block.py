@@ -1,14 +1,20 @@
+from grapple.helpers import register_streamfield_block
+from grapple.models import GraphQLImage, GraphQLString
 from wagtail.blocks import CharBlock, StructBlock
+from wagtail.images.blocks import ImageChooserBlock
 
-from ..custom_image_chooser_block import CustomImageChooserBlock
 
-
+@register_streamfield_block
 class CustomImageBlock(StructBlock):
+    graphql_fields = [
+        GraphQLImage("image"),
+        GraphQLString("alt_text"),
+    ]
+
     def __init__(self, *args, **kwargs):
-        image_sizes = kwargs.pop("image_sizes", None)
         required = kwargs.pop("required", False)
         local_blocks = [
-            ("image", CustomImageChooserBlock(required=required, image_sizes=image_sizes)),
+            ("image", ImageChooserBlock(required=required)),
             (
                 "alt_text",
                 CharBlock(
@@ -18,12 +24,6 @@ class CustomImageBlock(StructBlock):
             ),
         ]
         super().__init__(local_blocks, *args, **kwargs)
-
-    def get_api_representation(self, value, context=None):
-        serialized_data = super().get_api_representation(value, context)
-        if not serialized_data["image"]:
-            return None
-        return serialized_data
 
     class Meta:
         icon = "image"

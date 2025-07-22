@@ -91,6 +91,7 @@ class BasePageObjectType:
         model = Page
         fields = ("pk", "user", "title", "body", "status", "created", "modified")
         filterset_class = PageFilter
+        name = "BAPage"
 
     @classmethod
     def get_node(cls, info, id):

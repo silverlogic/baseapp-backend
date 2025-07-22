@@ -62,7 +62,7 @@ Example:
                 metaTitle
             }
 
-            ... on Page {
+            ... on BAPage {
                 title
             }
         }

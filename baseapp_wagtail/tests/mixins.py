@@ -7,6 +7,7 @@ from wagtail.test.utils import WagtailPageTestCase, WagtailTestUtils
 
 import baseapp_wagtail.medias.tests.factories as medias_factories
 from baseapp_core.tests.factories import UserFactory
+from baseapp_wagtail.tests.factories.wagtail_factories import LocaleFactory
 from baseapp_wagtail.tests.models import PageForTests
 
 
@@ -15,15 +16,26 @@ class WagtailBasicMixin(WagtailPageTestCase, WagtailTestUtils, TestCase):
     pass
 
 
-class StandardPageContextMixin(WagtailBasicMixin):
+class TestPageContextMixin(WagtailBasicMixin):
     @classmethod
     def setUpTestData(cls):
         cls.user = UserFactory()
+        root_page = Page.get_first_root_node()
+        if not root_page:
+            LocaleFactory(language_code="en")
+            root_page = PageForTests(
+                title="Root",
+                slug="root",
+                depth=1,
+                path="0001",
+            )
+            root_page.save()
+        cls.root_page = root_page
         cls.site, _ = Site.objects.get_or_create(
             is_default_site=True,
             defaults={
                 "hostname": "localhost",
-                "root_page": Page.get_first_root_node(),
+                "root_page": root_page,
                 "is_default_site": True,
                 "site_name": "localhost",
             },
@@ -31,6 +43,8 @@ class StandardPageContextMixin(WagtailBasicMixin):
         cls.page = PageForTests(
             title="My Page",
             slug="mypage",
+            depth=cls.site.root_page.depth + 1,
+            path=f"{cls.site.root_page.path}0001",
         )
         cls.site.root_page.add_child(instance=cls.page)
 
@@ -54,21 +68,6 @@ class StandardPageContextMixin(WagtailBasicMixin):
             "featured_image-0-value-attribution": "",
             "featured_image-0-value-caption": "",
         }
-
-
-class TestPageContextMixin(StandardPageContextMixin):
-    @classmethod
-    def setUpTestData(cls):
-        super().setUpTestData()
-        cls.standard_page = cls.page
-        cls.page = PageForTests(
-            title="My Test Page",
-            slug="mytestpage",
-        )
-        cls.site.root_page.add_child(instance=cls.page)
-
-    def _reload_the_page(self):
-        self.page = PageForTests.objects.get(id=self.page.id)
 
 
 class WagtailApiMixin:

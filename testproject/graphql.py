@@ -2,6 +2,7 @@ import graphene
 from graphene import relay
 from graphene.relay.node import NodeField as RelayNodeField
 from graphene_django.debug import DjangoDebug
+from grapple.registry import registry
 
 from baseapp.activity_log.graphql.queries import ActivityLogQueries
 from baseapp.content_feed.graphql.mutations import ContentFeedMutations
@@ -29,11 +30,13 @@ from baseapp_reactions.graphql.mutations import ReactionsMutations
 from baseapp_reactions.graphql.queries import ReactionsQueries
 from baseapp_reports.graphql.mutations import ReportsMutations
 from baseapp_reports.graphql.queries import ReportsQueries
+from baseapp_wagtail.base.graphql.mutations import WagtailMutation
+from baseapp_wagtail.base.graphql.queries import WagtailQuery
+from baseapp_wagtail.base.graphql.subscriptions import WagtailSubscription
 from testproject.users.graphql.queries import UsersQueries
 
 
 class Query(
-    graphene.ObjectType,
     UsersQueries,
     ProfilesQueries,
     CommentsQueries,
@@ -45,13 +48,14 @@ class Query(
     ChatsQueries,
     ContentFeedQueries,
     ReportsQueries,
+    WagtailQuery,
+    graphene.ObjectType,
 ):
     node = RelayNodeField(relay.Node)
     debug = graphene.Field(DjangoDebug, name="_debug")
 
 
 class Mutation(
-    graphene.ObjectType,
     ProfilesMutations,
     CommentsMutations,
     ReactionsMutations,
@@ -64,14 +68,22 @@ class Mutation(
     OrganizationsMutations,
     ChatsMutations,
     ContentFeedMutations,
+    WagtailMutation,
+    graphene.ObjectType,
 ):
     delete_node = DeleteNode.Field()
 
 
 class Subscription(
-    graphene.ObjectType, NotificationsSubscription, CommentsSubscriptions, ChatsSubscriptions
+    NotificationsSubscription,
+    CommentsSubscriptions,
+    ChatsSubscriptions,
+    WagtailSubscription,
+    graphene.ObjectType,
 ):
     pass
 
 
-schema = graphene.Schema(query=Query, mutation=Mutation, subscription=Subscription)
+schema = graphene.Schema(
+    query=Query, mutation=Mutation, subscription=Subscription, types=list(registry.models.values())
+)

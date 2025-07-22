@@ -1,8 +1,8 @@
-from wagtail.blocks import StreamBlock
+from wagtail.blocks import RichTextBlock, StreamBlock
 
-from ..blocks import BannerBlock, CustomRichTextBlock
+from ..blocks import BannerBlock
 
 
 class StandardPageStreamBlock(StreamBlock):
-    rich_text_block = CustomRichTextBlock(icon="pilcrow")
+    rich_text_block = RichTextBlock(icon="pilcrow")
     banner_block = BannerBlock()

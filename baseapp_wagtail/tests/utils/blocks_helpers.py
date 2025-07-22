@@ -1,7 +1,74 @@
-from django.urls import reverse
+from baseapp_wagtail.tests.utils.graphql_helpers import GraphqlHelper
+
+WAGTAIL_PAGE_FIELDS = """
+id
+title
+pageType
+ancestors {
+    urlPath
+    title
+}
+... on PageForTests {
+    featuredImage {
+        ... on CustomImageBlock {
+            altText
+            image {
+                url
+                sizes
+            }
+        }
+    }
+    body {
+        id
+        field
+        blockType
+        ... on RichTextBlock {
+            value
+        }
+        ... on ImageChooserBlock {
+            image {
+                url
+                sizes
+            }
+        }
+        ... on CustomImageBlock {
+            altText
+            image {
+                url
+                srcSet
+            }
+        }
+        ... on BannerBlock {
+            title
+            description
+            featuredImage {
+                url
+                sizes
+            }
+            imagePosition
+        }
+    }
+}
+"""
+
+WAGTAIL_PAGE_QUERY_BY_ID = f"""
+query Page($id: ID!) {{
+    page(id: $id) {{
+        {WAGTAIL_PAGE_FIELDS}
+    }}
+}}
+"""
+
+WAGTAIL_PAGE_QUERY_BY_PATH = f"""
+query Page($path: String!) {{
+    page(urlPath: $path) {{
+        {WAGTAIL_PAGE_FIELDS}
+    }}
+}}
+"""
 
 
-class BlocksHelper:
+class BlocksHelper(GraphqlHelper):
     block_type = ""
     block_class = None
 
@@ -22,22 +89,18 @@ class BlocksHelper:
         )
         page.save()
 
-    def get_page(self, page, extra_params=None):
-        params = {"type": type(page)._meta.app_label + "." + type(page).__name__, "fields": "*"}
-        if extra_params:
-            params.update(extra_params)
-        return self.client.get(
-            reverse("baseappwagtailapi_base:pages:detail", args=[page.id]), params
+    def get_page(self, page):
+        return self.query(
+            WAGTAIL_PAGE_QUERY_BY_ID,
+            variables={"id": page.id},
         )
 
-    def get_page_by_path(self, page, extra_params=None):
-        url_parts = page.get_url_parts()
-        _, _, page_path = url_parts
-        params = {"html_path": page_path, "fields": "*"}
-        if extra_params:
-            params.update(extra_params)
-        return self.client.get(reverse("baseappwagtailapi_base:pages:path"), params)
+    def get_page_by_path(self, page):
+        return self.query(
+            WAGTAIL_PAGE_QUERY_BY_PATH,
+            variables={"path": page.url_path},
+        )
 
     def get_response_body_blocks(self, response):
-        body = response.json().get("body", [])
-        return [block for block in body if block.get("type") == self.block_type]
+        body = response.json().get("data", {}).get("page", {}).get("body", [])
+        return [block for block in body if block.get("field") == self.block_type]

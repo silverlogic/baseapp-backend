@@ -20,7 +20,7 @@ GET_PAGE_BY_PATH = """
                     metaTitle
                 }
 
-                ... on Page {
+                ... on BAPage {
                     pk
                     title
                     body
@@ -84,7 +84,7 @@ def test_active_url_path_on_object_type(django_user_client, graphql_user_client)
     response = graphql_user_client(
         query="""
             query Page($id: ID!) {
-                page(id: $id) {
+                baPage(id: $id) {
                     urlPath {
                         id
                         path
@@ -96,7 +96,7 @@ def test_active_url_path_on_object_type(django_user_client, graphql_user_client)
     )
 
     content = response.json()
-    assert content["data"]["page"]["urlPath"]["path"] == url_path.path
+    assert content["data"]["baPage"]["urlPath"]["path"] == url_path.path
 
 
 def test_deliver_localized_title_and_body(django_user_client, graphql_user_client):
@@ -116,7 +116,7 @@ def test_deliver_localized_title_and_body(django_user_client, graphql_user_clien
     response = graphql_user_client(
         query="""
             query Page($id: ID!) {
-                page(id: $id) {
+                baPage(id: $id) {
                     title
                     body
                 }
@@ -128,8 +128,8 @@ def test_deliver_localized_title_and_body(django_user_client, graphql_user_clien
 
     content = response.json()
 
-    assert content["data"]["page"]["title"] == title_pt
-    assert content["data"]["page"]["body"] == body_pt
+    assert content["data"]["baPage"]["title"] == title_pt
+    assert content["data"]["baPage"]["body"] == body_pt
 
 
 def test_deliver_localized_title_and_body_by_path(django_user_client, graphql_user_client):
@@ -166,7 +166,7 @@ def test_anon_can_view_page(graphql_client):
     response = graphql_client(
         query="""
             query Page($id: ID!) {
-                page(id: $id) {
+                baPage(id: $id) {
                     pk
                 }
             }
@@ -176,7 +176,7 @@ def test_anon_can_view_page(graphql_client):
 
     content = response.json()
 
-    assert content["data"]["page"]["pk"] == page.pk
+    assert content["data"]["baPage"]["pk"] == page.pk
 
 
 def test_owner_can_view_unpublished_page(django_user_client, graphql_user_client):
@@ -185,7 +185,7 @@ def test_owner_can_view_unpublished_page(django_user_client, graphql_user_client
     response = graphql_user_client(
         query="""
             query Page($id: ID!) {
-                page(id: $id) {
+                baPage(id: $id) {
                     pk
                 }
             }
@@ -195,7 +195,7 @@ def test_owner_can_view_unpublished_page(django_user_client, graphql_user_client
 
     content = response.json()
 
-    assert content["data"]["page"]["pk"] == page.pk
+    assert content["data"]["baPage"]["pk"] == page.pk
 
 
 def test_anon_cant_view_unpublished_page(graphql_client):
@@ -204,7 +204,7 @@ def test_anon_cant_view_unpublished_page(graphql_client):
     response = graphql_client(
         query="""
             query Page($id: ID!) {
-                page(id: $id) {
+                baPage(id: $id) {
                     pk
                 }
             }
@@ -214,7 +214,7 @@ def test_anon_cant_view_unpublished_page(graphql_client):
 
     content = response.json()
 
-    assert content["data"]["page"] is None
+    assert content["data"]["baPage"] is None
 
 
 def test_another_user_cant_view_unpublished_page(graphql_user_client):
@@ -223,7 +223,7 @@ def test_another_user_cant_view_unpublished_page(graphql_user_client):
     response = graphql_user_client(
         query="""
             query Page($id: ID!) {
-                page(id: $id) {
+                baPage(id: $id) {
                     pk
                 }
             }
@@ -233,7 +233,7 @@ def test_another_user_cant_view_unpublished_page(graphql_user_client):
 
     content = response.json()
 
-    assert content["data"]["page"] is None
+    assert content["data"]["baPage"] is None
 
 
 def test_anon_cant_view_unpublished_page_by_url(graphql_client):
@@ -274,7 +274,7 @@ def test_owner_can_change_page(django_user_client, graphql_user_client):
     response = graphql_user_client(
         query=f"""
             query Page($id: ID!) {{
-                page(id: $id) {{
+                baPage(id: $id) {{
                     canChange: hasPerm(perm: "change")
                     canDelete: hasPerm(perm: "delete")
                     canChangeFull: hasPerm(perm: "{page_app_label}.change_page")
@@ -287,10 +287,10 @@ def test_owner_can_change_page(django_user_client, graphql_user_client):
 
     content = response.json()
 
-    assert content["data"]["page"]["canChange"]
-    assert content["data"]["page"]["canDelete"]
-    assert content["data"]["page"]["canChangeFull"]
-    assert content["data"]["page"]["canDeleteFull"]
+    assert content["data"]["baPage"]["canChange"]
+    assert content["data"]["baPage"]["canDelete"]
+    assert content["data"]["baPage"]["canChangeFull"]
+    assert content["data"]["baPage"]["canDeleteFull"]
 
 
 def test_another_user_cant_change_page(graphql_user_client):
@@ -299,7 +299,7 @@ def test_another_user_cant_change_page(graphql_user_client):
     response = graphql_user_client(
         query="""
             query Page($id: ID!) {
-                page(id: $id) {
+                baPage(id: $id) {
                     canChange: hasPerm(perm: "change")
                     canDelete: hasPerm(perm: "delete")
                     canChangeFull: hasPerm(perm: "baseapp_pages.change_page")
@@ -312,7 +312,7 @@ def test_another_user_cant_change_page(graphql_user_client):
 
     content = response.json()
 
-    assert not content["data"]["page"]["canChange"]
-    assert not content["data"]["page"]["canDelete"]
-    assert not content["data"]["page"]["canChangeFull"]
-    assert not content["data"]["page"]["canDeleteFull"]
+    assert not content["data"]["baPage"]["canChange"]
+    assert not content["data"]["baPage"]["canDelete"]
+    assert not content["data"]["baPage"]["canChangeFull"]
+    assert not content["data"]["baPage"]["canDeleteFull"]

@@ -1,19 +1,25 @@
+import graphene
 from django.utils.safestring import mark_safe
-from wagtail.blocks import CharBlock, ChoiceBlock, StaticBlock, StructBlock
+from grapple.helpers import register_streamfield_block
+from grapple.models import GraphQLImage, GraphQLRichText, GraphQLString
+from wagtail.blocks import (
+    CharBlock,
+    ChoiceBlock,
+    RichTextBlock,
+    StaticBlock,
+    StructBlock,
+)
+from wagtail.images.blocks import ImageChooserBlock
 
-from baseapp_wagtail.base.blocks.basic_blocks.custom_image_chooser_block import (
-    CustomImageChooserBlock,
-)
-from baseapp_wagtail.base.blocks.basic_blocks.custom_rich_text_block import (
-    CustomRichTextBlock,
-)
+from baseapp_wagtail.base.graphql.fields import GraphQLDynamicField
 
 RICH_TEXT_FEATURES = ["bold", "italic", "link", "ul", "hr"]
 
 
+@register_streamfield_block
 class BannerBlock(StructBlock):
     title = CharBlock(required=True, use_json_field=True, max_length=50)
-    description = CustomRichTextBlock(
+    description = RichTextBlock(
         icon="pilcrow",
         required=False,
         features=RICH_TEXT_FEATURES,
@@ -25,7 +31,7 @@ class BannerBlock(StructBlock):
         label=" ",
     )
 
-    featured_image = CustomImageChooserBlock(label=" ", required=False)
+    featured_image = ImageChooserBlock(label=" ", required=False)
     image_position = ChoiceBlock(
         choices=[
             ("left", "Left"),
@@ -38,11 +44,16 @@ class BannerBlock(StructBlock):
         help_text="This indicates the position of the image in the desktop view.",
     )
 
-    def get_api_representation(self, value, context=None):
-        serialized_data = super().get_api_representation(value, context)
-        serialized_data.pop("hr")
-
-        return serialized_data
+    graphql_fields = [
+        GraphQLString("title", required=True),
+        GraphQLRichText("description"),
+        GraphQLImage("featured_image"),
+        GraphQLDynamicField(
+            "image_position",
+            graphene.Enum("ImagePosition", [("left", "Left"), ("right", "Right")]),
+            required=True,
+        ),
+    ]
 
     class Meta:
         template = "base/blocks/empty.html"

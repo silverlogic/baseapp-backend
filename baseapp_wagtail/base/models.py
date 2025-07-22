@@ -2,11 +2,17 @@ from urllib.parse import urlparse
 
 from django.conf import settings
 from django.utils.translation import gettext as _
+from grapple.models import GraphQLStreamfield
 from wagtail.admin.panels import FieldPanel
 from wagtail.api import APIField
 from wagtail.models import Page, PageBase
 from wagtail.search import index
 from wagtail_headless_preview.models import HeadlessPreviewMixin
+
+from baseapp_comments.models import CommentableModel
+from baseapp_core.graphql.models import RelayModel
+from baseapp_reactions.models import ReactableModel
+from baseapp_reports.models import ReportableModel
 
 from .stream_fields import (
     FeaturedImageStreamField,
@@ -30,7 +36,6 @@ class HeadlessPageMixin(HeadlessPreviewMixin):
             return root_url + url
         return url
 
-    # This is a workaround to fix the headless_url property for "View live" buttons.
     url = headless_url
 
     def _has_no_domain(self, url: str) -> bool:
@@ -63,8 +68,14 @@ class DefaultPageModel(HeadlessPageMixin, Page, metaclass=HeadlessPageBase):
     class Meta:
         abstract = True
 
+    graphql_fields = [
+        GraphQLStreamfield("featured_image"),
+    ]
 
-class BaseStandardPage(DefaultPageModel):
+
+class BaseStandardPage(
+    DefaultPageModel, CommentableModel, ReactableModel, ReportableModel, RelayModel
+):
     body = PageBodyStreamField.create(
         StandardPageStreamBlock(required=False),
     )
@@ -73,3 +84,15 @@ class BaseStandardPage(DefaultPageModel):
         verbose_name = _("Standard page")
         verbose_name_plural = _("Standard pages")
         abstract = True
+
+    graphql_fields = [
+        *DefaultPageModel.graphql_fields,
+        GraphQLStreamfield("body"),
+    ]
+
+    graphql_interfaces = [
+        "baseapp_wagtail.base.graphql.object_types.WagtailCommentsInterface",
+        "baseapp_wagtail.base.graphql.object_types.WagtailReactionsInterface",
+        "baseapp_wagtail.base.graphql.object_types.WagtailNotificationsInterfaceInterface",
+        "baseapp_wagtail.base.graphql.object_types.WagtailReportsInterfaceInterface",
+    ]
