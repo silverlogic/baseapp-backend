@@ -25,8 +25,9 @@ class PaymentsPermissionsBackend(BaseBackend):
             if not isinstance(obj, Customer):
                 return False
             if config.STRIPE_CUSTOMER_ENTITY_MODEL == "profiles.Profile":
-                return obj.entity.id == user_obj.profile.id or obj.entity.members.filter(
-                    id=user_obj.id, role=1
+                return (
+                    obj.entity.id == user_obj.profile.id
+                    or obj.entity.members.filter(id=user_obj.id, role=1).exists()
                 )
             return obj.entity.id == user_obj.id
         if perm in [
