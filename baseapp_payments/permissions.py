@@ -61,7 +61,6 @@ class PaymentsPermissionsBackend(BaseBackend):
                     or obj.customer.entity.members.filter(id=user_obj.id, role=1).exists()
                 )
             return False
-        return False
 
 
 class DRFCustomerPermissions(BasePermission):
@@ -85,7 +84,6 @@ class DRFCustomerPermissions(BasePermission):
             return request.user.has_perm("baseapp_payments.change_payment_method", obj)
         elif action == "delete_payment_method":
             return request.user.has_perm("baseapp_payments.delete_payment_method", obj)
-        return True
 
 
 class DRFSubscriptionPermissions(BasePermission):
@@ -101,4 +99,3 @@ class DRFSubscriptionPermissions(BasePermission):
             return request.user.has_perm("baseapp_payments.change_subscription", obj)
         elif action == "destroy":
             return request.user.has_perm("baseapp_payments.delete_subscription", obj)
-        return True
