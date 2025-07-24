@@ -14,7 +14,7 @@ from baseapp_pdf.utils import (
 pytestmark = pytest.mark.django_db
 
 
-@pytest.mark.usefixtures("use_httpretty")
+@pytest.mark.usefixtures("responses_mock")
 class TestUtils:
     def test_utils_ensure_google_chrome_installed(self):
         ensure_google_chrome_installed()
