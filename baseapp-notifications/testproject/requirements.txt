@@ -5,4 +5,4 @@
 -e ./baseapp-auth
 -e ./baseapp-notifications
 
-django-notifications-hq==1.8.2
+django-notifications-hq @ git+https://github.com/django-notifications/django-notifications.git@1.9.0
