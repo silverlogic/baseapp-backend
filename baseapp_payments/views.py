@@ -9,6 +9,7 @@ from rest_framework.response import Response
 
 from baseapp_core.rest_framework.decorators import action
 from baseapp_core.rest_framework.mixins import DestroyModelMixin
+from baseapp_core.graphql import get_pk_from_relay_id
 
 from .models import Subscription
 from .permissions import DRFCustomerPermissions, DRFSubscriptionPermissions
@@ -109,18 +110,28 @@ class StripeProductViewset(viewsets.GenericViewSet):
         return Response(serializer.data, status=200)
 
 
-class StripeCustomerViewset(viewsets.GenericViewSet, viewsets.mixins.RetrieveModelMixin):
+class StripeCustomerViewset(
+    viewsets.GenericViewSet,
+    viewsets.mixins.RetrieveModelMixin,
+    viewsets.mixins.CreateModelMixin,
+):
     serializer_class = StripeCustomerSerializer
     queryset = Customer.objects.all()
     permission_classes = [IsAuthenticated, DRFCustomerPermissions]
     lookup_field = "entity_id"
 
-    # TODO: Check if this is needed
-    def create(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=201)
+    def get_object(self):
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        relay_id = self.kwargs[lookup_url_kwarg]
+        if relay_id == "me":
+            return self.queryset.get(entity_id=self.request.user.profile.id)
+        try:
+            entity_id = get_pk_from_relay_id(relay_id)
+            return self.queryset.get(entity_id=entity_id)
+        except (ValueError, TypeError):
+            return super().get_object()
+        except Customer.DoesNotExist:
+            raise NotFound("Customer not found")
 
     @action(
         methods=["GET"],
@@ -130,14 +141,18 @@ class StripeCustomerViewset(viewsets.GenericViewSet, viewsets.mixins.RetrieveMod
     def invoices(self, request, pk=None, *args, **kwargs):
         customer = self.get_object()
         invoices = StripeService().get_customer_invoices(customer.remote_customer_id)
-        serializer = self.get_serializer(invoices.data, many=True)
-        return Response(data=serializer.data, status=200)
+        page = self.paginate_queryset(invoices)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(invoices, many=True)
+        return Response(serializer.data, status=200)
 
     @action(
         methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         detail=True,
         serializer_class=StripePaymentMethodSerializer,
-        url_path="payment_methods(?:/(?P<payment_method_id>[^/.]+))?",
+        url_path="payment-methods(?:/(?P<payment_method_id>[^/.]+))?",
     )
     def payment_methods(self, request, pk=None, payment_method_id=None, *args, **kwargs):
         customer = self.get_object()
@@ -166,7 +181,6 @@ class StripeCustomerViewset(viewsets.GenericViewSet, viewsets.mixins.RetrieveMod
 
 
 class StripePaymentMethodViewset(viewsets.GenericViewSet):
-    permission_classes = [IsAuthenticated, DRFCustomerPermissions]
     serializer_class = StripePaymentMethodSerializer
 
     def list(self, request):
@@ -186,7 +200,9 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
 
     # This method is used to create a new creating SetupIntent in Stripe
     def create(self, request):
-        serializer = self.get_serializer(data=request.data)
+        customer = getattr(request._request, "customer", None)
+        # Question for reviewers: Can this be passed as the instance instead of the id?
+        serializer = self.get_serializer(data={"customer": customer.id, **request.data})
         serializer.is_valid(raise_exception=True)
         try:
             result = serializer.create(serializer.validated_data)
@@ -198,11 +214,10 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
             return Response({"error": "An internal error has occurred"}, status=500)
 
     def update(self, request, pk=None):
-        serializer = self.get_serializer(data={"pk": pk, **request.data})
+        customer = getattr(request._request, "customer", None)
+        serializer = self.get_serializer(data={"customer": customer.id, "pk": pk, **request.data})
         serializer.is_valid(raise_exception=True)
         try:
-            customer = getattr(request._request, "customer", None)
-            serializer.validated_data["customer"] = customer
             result = serializer.update(serializer.validated_data)
             return Response(result, status=200)
         except Exception as e:
