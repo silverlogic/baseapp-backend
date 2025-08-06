@@ -10,7 +10,6 @@ from rest_framework.response import Response
 from baseapp_core.graphql import get_pk_from_relay_id
 from baseapp_core.rest_framework.decorators import action
 from baseapp_core.rest_framework.mixins import DestroyModelMixin
-from baseapp_core.graphql import get_pk_from_relay_id
 
 from .models import Subscription
 from .permissions import DRFCustomerPermissions, DRFSubscriptionPermissions
