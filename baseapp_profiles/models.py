@@ -207,7 +207,6 @@ class AbstractProfileUserRole(RelayModel, models.Model):
         ACTIVE = 1, _("active")
         PENDING = 2, _("pending")
         INACTIVE = 3, _("inactive")
-        EXPIRED = 4, _("expired")
 
         @property
         def description(self):
@@ -244,7 +243,7 @@ class AbstractProfileUserRole(RelayModel, models.Model):
         return ProfileUserRoleObjectType
 
 
-class ProfileUserRole(TimeStampedModel, AbstractProfileUserRole):
+class ProfileUserRole(AbstractProfileUserRole):
     class Meta(AbstractProfileUserRole.Meta):
         swappable = swapper.swappable_setting("baseapp_profiles", "ProfileUserRole")
 
