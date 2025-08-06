@@ -34,8 +34,7 @@ class TestInvoiceListView:
     @patch("baseapp_payments.utils.StripeService.get_customer_invoices")
     def test_user_can_get_invoices(self, mock_get_customer_invoices, user_client):
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
-        mock_invoices = Mock()
-        mock_invoices.data = []
+        mock_invoices = []
         mock_get_customer_invoices.return_value = mock_invoices
         response = user_client.get(reverse(self.viewname, kwargs={"entity_id": customer.entity_id}))
         responseEquals(response, status.HTTP_200_OK)
