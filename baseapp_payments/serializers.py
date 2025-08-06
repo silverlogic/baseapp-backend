@@ -247,7 +247,9 @@ class StripePaymentMethodSerializer(serializers.Serializer):
     billing_details = StripeBillingDetailsSerializer(read_only=True)
     card = StripeCardSerializer(read_only=True)
     created = serializers.IntegerField(read_only=True)
-    customer = serializers.PrimaryKeyRelatedField(queryset=Customer.objects.all(), write_only=True, required=False)
+    customer = serializers.PrimaryKeyRelatedField(
+        queryset=Customer.objects.all(), write_only=True, required=False
+    )
     is_default = serializers.BooleanField(read_only=True, default=False)
     client_secret = serializers.CharField(read_only=True)
     pk = serializers.CharField(write_only=True, required=False)
