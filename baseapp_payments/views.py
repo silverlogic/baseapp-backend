@@ -188,7 +188,6 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
             customer = getattr(request._request, "customer", None)
             if not customer:
                 return Response({"error": "Customer information is required"}, status=400)
-
             payment_methods = StripeService().get_customer_payment_methods(
                 customer.remote_customer_id
             )
@@ -200,11 +199,11 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
 
     # This method is used to create a new creating SetupIntent in Stripe
     def create(self, request):
-        customer = getattr(request._request, "customer", None)
-        # Question for reviewers: Can this be passed as the instance instead of the id?
-        serializer = self.get_serializer(data={"customer": customer.id, **request.data})
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
+            customer = getattr(request._request, "customer", None)
+            serializer.context["customer"] = customer
             result = serializer.create(serializer.validated_data)
             return Response(result, status=201)
         except ValidationError:
@@ -214,10 +213,11 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
             return Response({"error": "An internal error has occurred"}, status=500)
 
     def update(self, request, pk=None):
-        customer = getattr(request._request, "customer", None)
-        serializer = self.get_serializer(data={"customer": customer.id, "pk": pk, **request.data})
+        serializer = self.get_serializer(data={"pk": pk, **request.data})
         serializer.is_valid(raise_exception=True)
         try:
+            customer = getattr(request._request, "customer", None)
+            serializer.context["customer"] = customer
             result = serializer.update(serializer.validated_data)
             return Response(result, status=200)
         except Exception as e:
