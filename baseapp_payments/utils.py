@@ -445,7 +445,7 @@ class StripeService:
 
     def get_customer_invoices(self, customer_id):
         try:
-            invoices = stripe.Invoice.list(customer=customer_id)
+            invoices = list(stripe.Invoice.list(customer=customer_id).auto_paging_iter())
             return invoices
         except Exception as e:
             logger.exception(e)
