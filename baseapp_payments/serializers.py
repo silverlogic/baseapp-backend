@@ -7,6 +7,7 @@ from django.apps import apps
 from django.db import transaction
 from rest_framework import serializers
 
+from baseapp_core.utils import get_pk_from_relay_id
 from .utils import StripeService
 
 logger = logging.getLogger(__name__)
@@ -158,6 +159,8 @@ class StripeCustomerSerializer(serializers.Serializer):
     def validate(self, data):
         entity_id = data.get("entity_id")
         if entity_id:
+            if isinstance(entity_id, str):
+                entity_id = get_pk_from_relay_id(entity_id)
             entity_model_name = config.STRIPE_CUSTOMER_ENTITY_MODEL
             customer_model = apps.get_model(entity_model_name)
             entity = customer_model.objects.get(id=entity_id)
