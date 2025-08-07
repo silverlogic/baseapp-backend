@@ -7,7 +7,7 @@ from django.apps import apps
 from django.db import transaction
 from rest_framework import serializers
 
-from baseapp_core.utils import get_pk_from_relay_id
+from baseapp_core.graphql import get_pk_from_relay_id
 from .utils import StripeService
 
 logger = logging.getLogger(__name__)
