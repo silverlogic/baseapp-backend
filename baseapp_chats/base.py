@@ -62,24 +62,24 @@ class AbstractBaseMessage(TimeStampedModel, RelayModel):
     content_linked_profile_actor = models.ForeignKey(
         swapper.get_model_name("baseapp_profiles", "Profile"),
         related_name="linked_as_content_actor_set",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
     content_linked_profile_target = models.ForeignKey(
         swapper.get_model_name("baseapp_profiles", "Profile"),
         related_name="linked_as_content_target_set",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
     )
     profile = models.ForeignKey(
         swapper.get_model_name("baseapp_profiles", "Profile"),
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
