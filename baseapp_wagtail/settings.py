@@ -71,7 +71,7 @@ GRAPPLE = {
         "baseapp_wagtail_base",
         "baseapp_wagtail_medias",
     ],
-    "PAGE_INTERFACE": "baseapp_wagtail.base.graphql.object_types.WagtailPageInterface",
+    "PAGE_INTERFACE": "baseapp_wagtail.base.graphql.interfaces.WagtailPageInterface",
 }
 
 WAGTAILIMAGES_IMAGE_MODEL = "baseapp_wagtail_medias.CustomImage"

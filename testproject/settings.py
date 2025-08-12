@@ -48,8 +48,8 @@ INSTALLED_APPS += [
     "testproject.profiles",
     "testproject.base",
     "testproject.e2e",
-    *WAGTAIL_INSTALLED_INTERNAL_APPS,
     *WAGTAIL_INSTALLED_APPS,
+    *WAGTAIL_INSTALLED_INTERNAL_APPS,
     "baseapp_wagtail.tests",
     "baseapp_pdf",
 ]

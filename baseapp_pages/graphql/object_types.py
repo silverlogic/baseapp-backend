@@ -11,6 +11,7 @@ from baseapp_auth.graphql import PermissionsInterface
 from baseapp_comments.graphql.object_types import CommentsInterface
 from baseapp_core.graphql import DjangoObjectType, LanguagesEnum, ThumbnailField
 from baseapp_pages.models import AbstractPage, Metadata, URLPath
+from baseapp_pages.urlpath_registry import urlpath_registry
 
 from ..meta import AbstractMetadataObjectType
 
@@ -41,37 +42,11 @@ class PageInterface(relay.Node):
         raise NotImplementedError
 
 
-class URLPathNode(DjangoObjectType):
-    target = graphene.Field(PageInterface)
-    language = graphene.Field(LanguagesEnum)
+class UrlPathTargetInterface(graphene.Interface):
+    data = graphene.Field(PageInterface)
 
-    class Meta:
-        interfaces = (relay.Node,)
-        model = URLPath
-        fields = (
-            "id",
-            "pk",
-            "path",
-            "language",
-            "is_active",
-            "created",
-            "modified",
-            "target",
-        )
-        filter_fields = {
-            "id": ["exact"],
-        }
-
-    def resolve_target(self, info, **kwargs):
-        if isinstance(self.target, AbstractPage):
-            if not info.context.user.has_perm(f"{page_app_label}.view_page", self.target):
-                return None
-        return self.target
-
-    @classmethod
-    def get_queryset(cls, queryset, info):
-        MAX_COMPLEXITY = 3
-        return optimize(queryset, info, max_complexity=MAX_COMPLEXITY)
+    def resolve_data(self, info):
+        return self
 
 
 class PageFilter(django_filters.FilterSet):
@@ -83,7 +58,7 @@ class PageFilter(django_filters.FilterSet):
 class BasePageObjectType:
     metadata = graphene.Field(lambda: MetadataObjectType)
     status = graphene.Field(PageStatusEnum)
-    title = graphene.String()
+    title = graphene.String(required=True)
     body = graphene.String()
 
     class Meta:
@@ -162,3 +137,61 @@ class MetadataObjectType(DjangoObjectType):
         if isinstance(root, AbstractMetadataObjectType):
             return True
         return super().is_type_of(root, info)
+
+
+class PagesPageObjectType(graphene.ObjectType):
+    class Meta:
+        interfaces = (UrlPathTargetInterface,)
+        name = "PagesPage"
+
+
+class TargetAvailableTypes(graphene.Union):
+    class Meta:
+        types = (PagesPageObjectType, *urlpath_registry.get_all_types())
+
+    @classmethod
+    def resolve_type(cls, instance, info):
+        if isinstance(instance, AbstractPage):
+            return PageObjectType
+
+        graphql_type = urlpath_registry.get_type(instance)
+        if graphql_type:
+            return graphql_type
+
+        return None
+
+
+class URLPathNode(DjangoObjectType):
+    target = graphene.Field(TargetAvailableTypes)
+    language = graphene.Field(LanguagesEnum)
+
+    class Meta:
+        interfaces = (relay.Node,)
+        model = URLPath
+        fields = (
+            "id",
+            "pk",
+            "path",
+            "language",
+            "is_active",
+            "created",
+            "modified",
+            "target",
+        )
+        filter_fields = {
+            "id": ["exact"],
+        }
+
+    def resolve_target(self, info, **kwargs):
+        if isinstance(self.target, AbstractPage):
+            if not info.context.user.has_perm(f"{page_app_label}.view_page", self.target):
+                return None
+        # For other targets, we rely on the registry to provide the correct GraphQL type
+        # Permission checking would need to be implemented in the foreign app's GraphQL types
+
+        return self.target
+
+    @classmethod
+    def get_queryset(cls, queryset, info):
+        MAX_COMPLEXITY = 3
+        return optimize(queryset, info, max_complexity=MAX_COMPLEXITY)

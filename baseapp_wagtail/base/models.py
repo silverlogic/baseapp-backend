@@ -11,6 +11,7 @@ from wagtail_headless_preview.models import HeadlessPreviewMixin
 
 from baseapp_comments.models import CommentableModel
 from baseapp_core.graphql.models import RelayModel
+from baseapp_pages.urlpath_interfaces import URLPathTargetMixin
 from baseapp_reactions.models import ReactableModel
 from baseapp_reports.models import ReportableModel
 
@@ -46,7 +47,7 @@ class HeadlessPageMixin(HeadlessPreviewMixin):
         abstract = True
 
 
-class DefaultPageModel(HeadlessPageMixin, Page, metaclass=HeadlessPageBase):
+class DefaultPageModel(URLPathTargetMixin, HeadlessPageMixin, Page, metaclass=HeadlessPageBase):
     featured_image = FeaturedImageStreamField.create()
     body = None
 
@@ -65,12 +66,12 @@ class DefaultPageModel(HeadlessPageMixin, Page, metaclass=HeadlessPageBase):
         index.AutocompleteField("body"),
     ]
 
-    class Meta:
-        abstract = True
-
     graphql_fields = [
         GraphQLStreamfield("featured_image"),
     ]
+
+    class Meta:
+        abstract = True
 
 
 class BaseStandardPage(
@@ -91,8 +92,8 @@ class BaseStandardPage(
     ]
 
     graphql_interfaces = [
-        "baseapp_wagtail.base.graphql.object_types.WagtailCommentsInterface",
-        "baseapp_wagtail.base.graphql.object_types.WagtailReactionsInterface",
-        "baseapp_wagtail.base.graphql.object_types.WagtailNotificationsInterfaceInterface",
-        "baseapp_wagtail.base.graphql.object_types.WagtailReportsInterfaceInterface",
+        "baseapp_wagtail.base.graphql.interfaces.WagtailCommentsInterface",
+        "baseapp_wagtail.base.graphql.interfaces.WagtailReactionsInterface",
+        "baseapp_wagtail.base.graphql.interfaces.WagtailNotificationsInterfaceInterface",
+        "baseapp_wagtail.base.graphql.interfaces.WagtailReportsInterfaceInterface",
     ]
