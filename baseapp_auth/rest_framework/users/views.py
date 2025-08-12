@@ -11,8 +11,7 @@ from rest_framework import (
     viewsets,
 )
 from rest_framework_nested.viewsets import NestedViewSetMixin
-
-from apps.users.tasks import anonymize_user_task
+from .tasks import anonymize_user_task
 from baseapp_core.rest_framework.decorators import action
 
 User = get_user_model()
