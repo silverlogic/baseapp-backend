@@ -6,8 +6,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from rest_framework import status
 
-from baseapp_core.tests.helpers import responseEquals
 from baseapp_core.graphql.utils import get_obj_relay_id
+from baseapp_core.tests.helpers import responseEquals
 from baseapp_payments.tests.factories import CustomerFactory
 
 pytestmark = pytest.mark.django_db
