@@ -92,6 +92,9 @@ class WagtailURLPathSync:
         if not url_parts:
             return None
         _, _, page_path = url_parts
+        # TODO: (BA-2636) Add this "url formatter" in the baseapp_pages package.
+        if page_path and page_path.endswith("/"):
+            page_path = page_path[:-1]
         return page_path
 
     def _generate_unique_path(self, base_path: str) -> str:
