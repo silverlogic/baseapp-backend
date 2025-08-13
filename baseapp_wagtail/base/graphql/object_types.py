@@ -2,6 +2,7 @@ import graphene
 from graphene import relay
 
 from baseapp_pages.graphql import PageInterface
+from baseapp_pages.graphql.object_types import AbstractMetadataObjectType
 from baseapp_wagtail.base.graphql.interfaces import WagtailPageInterface
 
 
@@ -22,4 +23,25 @@ class WagtailURLPathObjectType(graphene.ObjectType):
     def resolve_data(self, info):
         return self
 
-    # TODO: (BA-2636) Solve the metadata interface.
+    @classmethod
+    def resolve_metadata(cls, instance, info, **kwargs):
+        # TODO: (BA-2636) Review metadata for Wagtail pages.
+        return WagtailMetadata(instance)
+
+
+class WagtailMetadata(AbstractMetadataObjectType):
+    @property
+    def meta_title(self):
+        return self.instance.title
+
+    @property
+    def meta_description(self):
+        return None
+
+    @property
+    def meta_og_type(self):
+        return "wagtail"
+
+    @property
+    def meta_og_image(self):
+        return None

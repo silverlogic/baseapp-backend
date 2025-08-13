@@ -11,6 +11,7 @@ class WagtailURLPathSync:
     def __init__(self, page: Page):
         self.page = page
         self.urlpath_model = None
+        # TODO: (BA-2636) Home page is failing.
         self._load_urlpath_model()
 
     def _load_urlpath_model(self):
