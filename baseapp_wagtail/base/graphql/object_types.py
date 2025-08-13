@@ -40,7 +40,7 @@ class WagtailMetadata(AbstractMetadataObjectType):
 
     @property
     def meta_og_type(self):
-        return "wagtail"
+        return "article"
 
     @property
     def meta_og_image(self):
