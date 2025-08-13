@@ -26,7 +26,7 @@ class WagtailURLPathObjectType(graphene.ObjectType):
     @classmethod
     def resolve_metadata(cls, instance, info, **kwargs):
         # TODO: (BA-2636) Review metadata for Wagtail pages.
-        return WagtailMetadata(instance)
+        return WagtailMetadata(instance, info)
 
 
 class WagtailMetadata(AbstractMetadataObjectType):
