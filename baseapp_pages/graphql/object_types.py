@@ -11,7 +11,6 @@ from baseapp_auth.graphql import PermissionsInterface
 from baseapp_comments.graphql.object_types import CommentsInterface
 from baseapp_core.graphql import DjangoObjectType, LanguagesEnum, ThumbnailField
 from baseapp_pages.models import AbstractPage, Metadata, URLPath
-from baseapp_pages.urlpath_registry import urlpath_registry
 
 from ..meta import AbstractMetadataObjectType
 
@@ -24,6 +23,11 @@ class PageInterface(relay.Node):
     url_path = graphene.Field(lambda: URLPathNode)
     url_paths = graphene.List(lambda: URLPathNode)
     metadata = graphene.Field(lambda: MetadataObjectType)
+
+    def resolve_type(self, info):
+        if hasattr(self, "get_graphql_object_type"):
+            return self.get_graphql_object_type()
+        return None
 
     @classmethod
     def resolve_url_path(cls, instance, info, **kwargs):
@@ -139,30 +143,8 @@ class MetadataObjectType(DjangoObjectType):
         return super().is_type_of(root, info)
 
 
-class PagesPageObjectType(graphene.ObjectType):
-    class Meta:
-        interfaces = (UrlPathTargetInterface,)
-        name = "PagesPage"
-
-
-class TargetAvailableTypes(graphene.Union):
-    class Meta:
-        types = (PagesPageObjectType, *urlpath_registry.get_all_types())
-
-    @classmethod
-    def resolve_type(cls, instance, info):
-        if isinstance(instance, AbstractPage):
-            return PageObjectType
-
-        graphql_type = urlpath_registry.get_type(instance)
-        if graphql_type:
-            return graphql_type
-
-        return None
-
-
 class URLPathNode(DjangoObjectType):
-    target = graphene.Field(TargetAvailableTypes)
+    target = graphene.Field(PageInterface)
     language = graphene.Field(LanguagesEnum)
 
     class Meta:

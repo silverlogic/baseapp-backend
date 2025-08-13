@@ -3,8 +3,6 @@ from typing import Optional
 from django.db.models import Model
 from wagtail.models import Page
 
-from baseapp_pages.urlpath_interfaces import URLPathTargetMixin
-
 
 class WagtailURLPathSync:
     page: Page
@@ -82,7 +80,9 @@ class WagtailURLPathSync:
         return self._is_available() and self._is_urlpath_target()
 
     def _is_urlpath_target(self) -> bool:
-        return isinstance(self.page, URLPathTargetMixin)
+        from baseapp_pages.models import PageMixin
+
+        return isinstance(self.page, PageMixin)
 
     def _is_available(self) -> bool:
         return self.urlpath_model is not None

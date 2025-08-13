@@ -11,7 +11,7 @@ from wagtail_headless_preview.models import HeadlessPreviewMixin
 
 from baseapp_comments.models import CommentableModel
 from baseapp_core.graphql.models import RelayModel
-from baseapp_pages.urlpath_interfaces import URLPathTargetMixin
+from baseapp_pages.models import PageMixin
 from baseapp_reactions.models import ReactableModel
 from baseapp_reports.models import ReportableModel
 
@@ -47,7 +47,7 @@ class HeadlessPageMixin(HeadlessPreviewMixin):
         abstract = True
 
 
-class DefaultPageModel(URLPathTargetMixin, HeadlessPageMixin, Page, metaclass=HeadlessPageBase):
+class DefaultPageModel(HeadlessPageMixin, Page, PageMixin, RelayModel, metaclass=HeadlessPageBase):
     featured_image = FeaturedImageStreamField.create()
     body = None
 
@@ -70,13 +70,17 @@ class DefaultPageModel(URLPathTargetMixin, HeadlessPageMixin, Page, metaclass=He
         GraphQLStreamfield("featured_image"),
     ]
 
+    @classmethod
+    def get_graphql_object_type(cls):
+        from baseapp_wagtail.base.graphql.object_types import WagtailURLPathObjectType
+
+        return WagtailURLPathObjectType
+
     class Meta:
         abstract = True
 
 
-class BaseStandardPage(
-    DefaultPageModel, CommentableModel, ReactableModel, ReportableModel, RelayModel
-):
+class BaseStandardPage(DefaultPageModel, CommentableModel, ReactableModel, ReportableModel):
     body = PageBodyStreamField.create(
         StandardPageStreamBlock(required=False),
     )

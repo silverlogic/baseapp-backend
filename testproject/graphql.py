@@ -31,6 +31,7 @@ from baseapp_reactions.graphql.queries import ReactionsQueries
 from baseapp_reports.graphql.mutations import ReportsMutations
 from baseapp_reports.graphql.queries import ReportsQueries
 from baseapp_wagtail.base.graphql.mutations import WagtailMutation
+from baseapp_wagtail.base.graphql.object_types import WagtailURLPathObjectType
 from baseapp_wagtail.base.graphql.queries import WagtailQuery
 from baseapp_wagtail.base.graphql.subscriptions import WagtailSubscription
 from testproject.users.graphql.queries import UsersQueries
@@ -85,5 +86,9 @@ class Subscription(
 
 
 schema = graphene.Schema(
-    query=Query, mutation=Mutation, subscription=Subscription, types=list(registry.models.values())
+    query=Query,
+    mutation=Mutation,
+    subscription=Subscription,
+    # TODO: (BA-2636) Unify this inside of the wagtail package.
+    types=list(registry.models.values()) + [WagtailURLPathObjectType],
 )
