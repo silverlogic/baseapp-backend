@@ -7,7 +7,7 @@ from .views import (
     StripeWebhookViewset,
 )
 
-payments_router = DefaultRouter(trailing_slash=False)
+payments_router = DefaultRouter(trailing_slash=True)
 
 payments_router.register(
     r"stripe/subscriptions", StripeSubscriptionViewset, basename="subscriptions"

@@ -7,6 +7,8 @@ from django.apps import apps
 from django.db import transaction
 from rest_framework import serializers
 
+from baseapp_core.graphql import get_pk_from_relay_id
+
 from .utils import StripeService
 
 logger = logging.getLogger(__name__)
@@ -158,6 +160,8 @@ class StripeCustomerSerializer(serializers.Serializer):
     def validate(self, data):
         entity_id = data.get("entity_id")
         if entity_id:
+            if isinstance(entity_id, str):
+                entity_id = get_pk_from_relay_id(entity_id)
             entity_model_name = config.STRIPE_CUSTOMER_ENTITY_MODEL
             customer_model = apps.get_model(entity_model_name)
             entity = customer_model.objects.get(id=entity_id)
@@ -247,7 +251,6 @@ class StripePaymentMethodSerializer(serializers.Serializer):
     billing_details = StripeBillingDetailsSerializer(read_only=True)
     card = StripeCardSerializer(read_only=True)
     created = serializers.IntegerField(read_only=True)
-    customer = serializers.CharField(read_only=True)
     is_default = serializers.BooleanField(read_only=True, default=False)
     client_secret = serializers.CharField(read_only=True)
     pk = serializers.CharField(write_only=True, required=False)
@@ -257,7 +260,7 @@ class StripePaymentMethodSerializer(serializers.Serializer):
         stripe_service = StripeService()
         try:
             setup_intent = stripe_service.create_setup_intent(
-                customer_id=validated_data.get("customer").remote_customer_id,
+                customer_id=self.context.get("customer").remote_customer_id,
             )
             return {"id": setup_intent["id"], "client_secret": setup_intent["client_secret"]}
         except Exception as e:
@@ -271,7 +274,7 @@ class StripePaymentMethodSerializer(serializers.Serializer):
         if default_payment_method_id:
             try:
                 resp = stripe_service.update_customer(
-                    validated_data.get("customer").remote_customer_id,
+                    self.context.get("customer").remote_customer_id,
                     invoice_settings={"default_payment_method": default_payment_method_id},
                 )
                 return resp
@@ -279,7 +282,6 @@ class StripePaymentMethodSerializer(serializers.Serializer):
                 logger.exception(e)
                 raise serializers.ValidationError("Failed to update payment method")
         else:
-            validated_data.pop("customer")
             try:
                 stripe_service.update_payment_method(payment_method_id, **validated_data)
             except Exception as e:
