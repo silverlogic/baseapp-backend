@@ -7,7 +7,7 @@ from django.urls import reverse
 from rest_framework import status
 
 from baseapp_core.tests.helpers import responseEquals
-from baseapp_core.utils import get_relay_id_from_pk
+from baseapp_core.graphql.utils import get_obj_relay_id
 from baseapp_payments.tests.factories import CustomerFactory
 
 pytestmark = pytest.mark.django_db
@@ -40,7 +40,7 @@ class TestCustomerCreateView:
     @patch("baseapp_payments.views.StripeService.create_customer")
     def test_user_can_create_customer(self, mock_create_customer, user_client):
         mock_create_customer.return_value = {"id": "cus_123"}
-        relay_id = get_relay_id_from_pk(user_client.user.profile.id)
+        relay_id = get_obj_relay_id(user_client.user.profile)
         response = user_client.post(
             reverse(self.viewname),
             data={"entity_id": relay_id},
