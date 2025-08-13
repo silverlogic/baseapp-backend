@@ -19,7 +19,7 @@ class AbstractBaseChatRoom(TimeStampedModel, RelayModel):
     )
 
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, related_name="created_rooms", on_delete=models.CASCADE
+        settings.AUTH_USER_MODEL, related_name="created_rooms", on_delete=models.SET_NULL, null=True, blank=True
     )
     last_message = models.ForeignKey(
         swapper.get_model_name("baseapp_chats", "Message"),

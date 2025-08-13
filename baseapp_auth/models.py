@@ -8,7 +8,8 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 from phonenumber_field.modelfields import PhoneNumberField
-
+from .anonymization import anonymize_activitylog
+# from . import emails  # Moved import inside method to avoid circular import
 from baseapp_core.models import CaseInsensitiveEmailField
 
 from .managers import UserManager
@@ -127,6 +128,15 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_pr
                     self.password_changed_date = timezone.now()
                 super().save(*args, **kwargs)
 
+    def anonymize(self):
+        from baseapp_auth.emails import send_anonymize_user_success_email, send_anonymize_user_error_email
+        try:
+            anonymize_activitylog(self)
+            self.delete()
+            send_anonymize_user_success_email(self)
+        except Exception:
+            send_anonymize_user_error_email
+            pass
 
 class PasswordValidation(models.Model):
     class Validators(TextChoices):
