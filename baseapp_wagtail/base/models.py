@@ -1,5 +1,6 @@
 from urllib.parse import urlparse
 
+from django.apps import apps
 from django.conf import settings
 from django.utils.translation import gettext as _
 from grapple.models import GraphQLStreamfield
@@ -9,11 +10,7 @@ from wagtail.models import Page, PageBase
 from wagtail.search import index
 from wagtail_headless_preview.models import HeadlessPreviewMixin
 
-from baseapp_comments.models import CommentableModel
 from baseapp_core.graphql.models import RelayModel
-from baseapp_pages.models import PageMixin
-from baseapp_reactions.models import ReactableModel
-from baseapp_reports.models import ReportableModel
 
 from .stream_fields import (
     FeaturedImageStreamField,
@@ -47,7 +44,19 @@ class HeadlessPageMixin(HeadlessPreviewMixin):
         abstract = True
 
 
-class DefaultPageModel(HeadlessPageMixin, Page, PageMixin, RelayModel, metaclass=HeadlessPageBase):
+default_page_model_inheritances = []
+
+if apps.is_installed("baseapp_pages"):
+    from baseapp_pages.models import PageMixin
+
+    default_page_model_inheritances.append(PageMixin)
+
+default_page_model_inheritances.append(RelayModel)
+
+
+class DefaultPageModel(
+    HeadlessPageMixin, Page, *default_page_model_inheritances, metaclass=HeadlessPageBase
+):
     featured_image = FeaturedImageStreamField.create()
     body = None
 
@@ -70,6 +79,8 @@ class DefaultPageModel(HeadlessPageMixin, Page, PageMixin, RelayModel, metaclass
         GraphQLStreamfield("featured_image"),
     ]
 
+    graphql_interfaces = []
+
     @classmethod
     def get_graphql_object_type(cls):
         from baseapp_wagtail.base.graphql.object_types import WagtailURLPathObjectType
@@ -80,7 +91,23 @@ class DefaultPageModel(HeadlessPageMixin, Page, PageMixin, RelayModel, metaclass
         abstract = True
 
 
-class BaseStandardPage(DefaultPageModel, CommentableModel, ReactableModel, ReportableModel):
+base_standard_page_model_inheritances = []
+
+if apps.is_installed("baseapp_comments"):
+    from baseapp_comments.models import CommentableModel
+
+    base_standard_page_model_inheritances.append(CommentableModel)
+
+
+base_standard_page_model_graphql_interfaces = []
+
+if apps.is_installed("baseapp_comments"):
+    base_standard_page_model_graphql_interfaces.append(
+        "baseapp_wagtail.base.graphql.interfaces.WagtailCommentsInterface",
+    )
+
+
+class BaseStandardPage(DefaultPageModel, *base_standard_page_model_inheritances):
     body = PageBodyStreamField.create(
         StandardPageStreamBlock(required=False),
     )
@@ -96,8 +123,5 @@ class BaseStandardPage(DefaultPageModel, CommentableModel, ReactableModel, Repor
     ]
 
     graphql_interfaces = [
-        "baseapp_wagtail.base.graphql.interfaces.WagtailCommentsInterface",
-        "baseapp_wagtail.base.graphql.interfaces.WagtailReactionsInterface",
-        "baseapp_wagtail.base.graphql.interfaces.WagtailNotificationsInterfaceInterface",
-        "baseapp_wagtail.base.graphql.interfaces.WagtailReportsInterfaceInterface",
+        *base_standard_page_model_graphql_interfaces,
     ]
