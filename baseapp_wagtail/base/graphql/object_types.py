@@ -1,6 +1,7 @@
 import graphene
 from django.apps import apps
 from graphene import relay
+from grapple.registry import registry
 
 from baseapp_wagtail.base.graphql.interfaces import WagtailPageInterface
 
@@ -53,3 +54,9 @@ class WagtailURLPathObjectType(graphene.ObjectType):
 
             return WagtailMetadata(instance, info)
         return None
+
+
+BASEAPP_WAGTAIL_TYPES = [
+    *registry.models.values(),
+    WagtailURLPathObjectType,
+]

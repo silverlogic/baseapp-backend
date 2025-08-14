@@ -1,7 +1,10 @@
+from typing import Optional
 from urllib.parse import urlparse
 
 from django.apps import apps
 from django.conf import settings
+from django.db.models import Q
+from django.utils.translation import get_language
 from django.utils.translation import gettext as _
 from grapple.models import GraphQLStreamfield
 from wagtail.admin.panels import FieldPanel
@@ -80,6 +83,32 @@ class DefaultPageModel(
     ]
 
     graphql_interfaces = []
+
+    @property
+    def pages_url_path(self):
+        """
+        baseapp_pages.models.PageMixin.url_path alternative.
+        Defines a new property because wagtail pages are have have a defined "url_path" property.
+        """
+        return self.url_paths.filter(
+            Q(is_active=True), Q(language=get_language()) | Q(language__isnull=True)
+        ).first()
+
+    def update_url_path(self, path: str, language: Optional[str] = None, is_active: bool = True):
+        """
+        Overrides the baseapp_pages.models.PageMixin.update_url_path method.
+        This is necessary in order to use the new "pages_url_path" property.
+        """
+        from baseapp_pages.utils.url_path_formater import URLPathFormater
+
+        primary_path = self.pages_url_path
+        if primary_path:
+            primary_path.path = URLPathFormater(path)()
+            primary_path.language = language
+            primary_path.is_active = is_active
+            primary_path.save()
+        else:
+            self.create_url_path(path, language, is_active)
 
     @classmethod
     def get_graphql_object_type(cls):
