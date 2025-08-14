@@ -46,13 +46,6 @@ class PageInterface(relay.Node):
         raise NotImplementedError
 
 
-class UrlPathTargetInterface(graphene.Interface):
-    data = graphene.Field(PageInterface)
-
-    def resolve_data(self, info):
-        return self
-
-
 class PageFilter(django_filters.FilterSet):
     class Meta:
         model = Page
@@ -62,7 +55,7 @@ class PageFilter(django_filters.FilterSet):
 class BasePageObjectType:
     metadata = graphene.Field(lambda: MetadataObjectType)
     status = graphene.Field(PageStatusEnum)
-    title = graphene.String(required=True)
+    title = graphene.String()
     body = graphene.String()
 
     class Meta:
@@ -168,9 +161,6 @@ class URLPathNode(DjangoObjectType):
         if isinstance(self.target, AbstractPage):
             if not info.context.user.has_perm(f"{page_app_label}.view_page", self.target):
                 return None
-        # For other targets, we rely on the registry to provide the correct GraphQL type
-        # Permission checking would need to be implemented in the foreign app's GraphQL types
-
         return self.target
 
     @classmethod

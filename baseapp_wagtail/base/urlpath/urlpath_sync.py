@@ -11,18 +11,20 @@ logger = logging.getLogger(__name__)
 class WagtailURLPathSync:
     page: Page
     urlpath_model: Optional[Model]
+    is_baseapp_pages_installed: bool
 
     def __init__(self, page: Page):
         self.page = page
         self.urlpath_model = None
+        self.is_baseapp_pages_installed = apps.is_installed("baseapp_pages")
         self._load_urlpath_model()
 
     def _load_urlpath_model(self):
-        try:
+        if self.is_baseapp_pages_installed:
             from baseapp_pages.models import URLPath
 
             self.urlpath_model = URLPath
-        except ImportError:
+        else:
             self.urlpath_model = None
 
     def create_urlpath(self):
@@ -82,17 +84,17 @@ class WagtailURLPathSync:
             return
 
     def _can_sync(self) -> bool:
-        return self._is_available() and self._is_urlpath_target()
+        return (
+            self.is_baseapp_pages_installed and self._is_available() and self._is_urlpath_target()
+        )
 
     def _is_available(self) -> bool:
         return self.urlpath_model is not None
 
     def _is_urlpath_target(self) -> bool:
-        if apps.is_installed("baseapp_pages"):
-            from baseapp_pages.models import PageMixin
+        from baseapp_pages.models import PageMixin
 
-            return isinstance(self.page, PageMixin)
-        return False
+        return isinstance(self.page, PageMixin)
 
     def _get_wagtail_path(self) -> Optional[str]:
         url_parts = self.page.get_url_parts()
