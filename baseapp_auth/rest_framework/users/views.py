@@ -11,7 +11,7 @@ from rest_framework import (
     viewsets,
 )
 from rest_framework_nested.viewsets import NestedViewSetMixin
-from .tasks import anonymize_user_task
+
 from baseapp_core.rest_framework.decorators import action
 
 User = get_user_model()
@@ -82,13 +82,10 @@ class UsersViewSet(
     )
     def delete_account(self, request):
         user = request.user
-        if user.is_superuser:
-            user.is_active = False
-            user.save()
-        else:
-            user.is_active = False
-            user.save()
-            anonymize_user_task.delay(user.id)
+        user.is_active = False
+        user.save()
+        if not user.is_superuser:
+            user.anonymize()
         return response.Response(data={}, status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["get", "post"], serializer_class=UserPermissionSerializer)
