@@ -19,14 +19,11 @@ STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET")
 
 ## Customer Integration
 
-A Customer represents any entity (such as a User, Organization, or any model with an email attribute) that will be billed through Stripe. You can configure the customer entity model by setting the corresponding value in your settings:
+A Customer represents any entity (such as a User, Organization, or any model with an email attribute) that will be billed through Stripe. 
 
-```python
-# This can be updated in the Constance config
-STRIPE_CUSTOMER_ENTITY_MODEL = "profiles.Profile"
-```
+By default we have configured to work with profiles, meaning it will get the email through `profile.target.email`, but you can also use other models if the model has a email field, simply changing the STRIPE_CUSTOMER_ENTITY_MODEL to your chosen model. Be aware that this model must have a ContentType though.
 
-When a customer is created via the API, the `StripeCustomerSerializer` will use the authenticated user (or a provided `user_id`) to retrieve the appropriate entity from your customer model. This entity is then linked to the Stripe customer record via the `remote_customer_id`.
+With a provided `entity_id`, the `StripeCustomerSerializer` creates a customer in Stripe and our Customer model links them via the `remote_customer_id` and `entity_id`.
 
 ## Subscription Management
 
@@ -37,7 +34,7 @@ The Subscription model stores Stripe subscription details including:
 
 ## Creating a Subscription
 
-To create a subscription, use the `payments/stripe/customer/` (assuming your route is registered at `payments/`) endpoint. A validation will check that no active subscription exists for the same product and price id, to redduce duplicate subscriptions, and then creates a new subscription through the Stripe API. It returns the new `remote_subscription_id` upon success.
+To create a subscription, use the `payments/stripe/customer/` (assuming your route is registered at `payments/`) endpoint. A validation will check that no active subscription exists for the same product and price id, to reduce duplicate subscriptions, and then creates a new subscription through the Stripe API. It returns the new `remote_subscription_id` upon success.
 
 ## Configure URL Patterns
 
@@ -61,6 +58,11 @@ The following endpoints are provided via the payments router:
 `GET payments/stripe/{remote_subscription_id}`: Retrieve subscription details from Stripe.
 `DELETE payments/stripe/`: Delete a subscription.
 `GET/POST payments/stripe/customer/`: Retrieve or create a customer.
+`GET payments/stripe/customer/:id/invoices`: Retrieve a customer or self invoice list.
+`GET payments/stripe/customer/:id/payment-methods`: List available payment methods for the requesting user or provided entity id.
+`POST payments/stripe/customer/:id/payment-methods`: Create a setup intent, to be used on frontend and create a payment method
+`PUT/PATCH payments/stripe/customer/:id/payment-methods/:id`: Update existing payment methods  
+`DELETE payments/stripe/customer/:id/payment-methods/:id`: Delete existing payment methods
 `GET payments/stripe/products/`: List available Stripe products.
 `POST payments/stripe/webhook/`: Endpoint for handling Stripe webhook events.
 `GET payments/stripe/payment-methods`: List available payment methods for the requesting user or provided id 
@@ -136,8 +138,8 @@ Subscription = swapper.load_model("baseapp_payments", "Subscription")
 
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
-list_display = ("entity", "remote_customer_id")
-search_fields = ("entity", "remote_customer_id")
+list_display = ("entity_id", "remote_customer_id")
+search_fields = ("entity_id", "remote_customer_id")
 readonly_fields = ("remote_customer_id",)
 
 @admin.register(Subscription)

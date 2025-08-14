@@ -5,7 +5,6 @@ import swapper
 from constance import config
 from django.apps import apps
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.http import JsonResponse
 
 from .models import Subscription
@@ -26,7 +25,6 @@ class StripeWebhookHandler:
 
     @staticmethod
     def customer_created(event):
-        customer_entity_model = config.STRIPE_CUSTOMER_ENTITY_MODEL
         customer_data = event["data"]["object"]
         try:
             existing_customer = Customer.objects.filter(
@@ -34,13 +32,9 @@ class StripeWebhookHandler:
             ).first()
             if existing_customer:
                 return JsonResponse({"status": "success"}, status=200)
-            user = get_user_model().objects.get(email=customer_data["email"])
-            if customer_entity_model != "profiles.Profile":
-                entity_model = apps.get_model(customer_entity_model)
-                entity = entity_model.objects.get(profile_id=user.id)
-            else:
-                entity_model = apps.get_model(customer_entity_model)
-                entity = entity_model.objects.get(owner=user.id)
+            entity_id = customer_data["metadata"].get("entity_id")
+            entity_model = apps.get_model(config.STRIPE_CUSTOMER_ENTITY_MODEL)
+            entity = entity_model.objects.get(id=entity_id)
             Customer.objects.create(entity=entity, remote_customer_id=customer_data["id"])
             return JsonResponse({"status": "success"}, status=200)
         except Exception as e:
@@ -267,6 +261,8 @@ class StripeService:
 
     def list_subscriptions(self, customer_id, **kwargs) -> list:
         try:
+            if "status" not in kwargs:
+                kwargs["status"] = "active"
             subscriptions = stripe.Subscription.list(customer=customer_id, **kwargs)
             return subscriptions
         except Exception as e:
@@ -446,3 +442,11 @@ class StripeService:
         except Exception as e:
             logger.exception(e)
             raise SubscriptionCreationError("Error updating subscription in Stripe")
+
+    def get_customer_invoices(self, customer_id):
+        try:
+            invoices = list(stripe.Invoice.list(customer=customer_id).auto_paging_iter())
+            return invoices
+        except Exception as e:
+            logger.exception(e)
+            raise InvoiceNotFound("Error retrieving invoices in Stripe")

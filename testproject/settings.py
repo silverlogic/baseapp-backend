@@ -50,6 +50,7 @@ INSTALLED_APPS += [
     *WAGTAIL_INSTALLED_INTERNAL_APPS,
     *WAGTAIL_INSTALLED_APPS,
     "baseapp_wagtail.tests",
+    "baseapp_pdf",
 ]
 
 MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")
@@ -115,6 +116,7 @@ AUTHENTICATION_BACKENDS = [
     "baseapp_pages.permissions.PagesPermissionsBackend",
     "baseapp_organizations.permissions.OrganizationsPermissionsBackend",
     "baseapp_chats.permissions.ChatsPermissionsBackend",
+    "baseapp_payments.permissions.PaymentsPermissionsBackend",
 ]
 
 ADMIN_TIME_ZONE = "UTC"
@@ -127,6 +129,32 @@ WAGTAIL_SITE_NAME = "Test Project"
 
 # Constance
 CONSTANCE_BACKEND = "constance.backends.memory.MemoryBackend"
+CONSTANCE_CONFIG = OrderedDict(
+    [
+        (
+            "USER_PASSWORD_EXPIRATION_INTERVAL",
+            (
+                365 * 2,
+                "The time interval (in days) after which a user will need to reset their password.",
+            ),
+        ),
+        (
+            "BLOCKLISTED_WORDS",
+            ("", "Comma-separated list of blocked words for user generated content."),
+        ),
+        (
+            "EMAIL_VERIFICATION_REQUIRED",
+            (False, "Require email verification for new users."),
+        ),
+        (
+            "STRIPE_CUSTOMER_ENTITY_MODEL",
+            (
+                "profiles.Profile",
+                "The model used to link the Stripe customer entity. It must have an target field that point to an entity with an email field, or have an email field itself.",
+            ),
+        ),
+    ]
+)
 
 # Stripe
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
