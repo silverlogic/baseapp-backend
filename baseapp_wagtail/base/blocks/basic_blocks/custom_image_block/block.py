@@ -6,6 +6,9 @@ from wagtail.images.blocks import ImageChooserBlock
 
 @register_streamfield_block
 class CustomImageBlock(StructBlock):
+    # TODO (wagtail) Relay.Node creates the id based on the page model (e.g. StandardPage-{img_id}).
+    # This is a problem when the page has the same id as the image, causing two identical node ids for two different objects.
+    # The idea of this TODO is to try to fix this behavior from the baseapp_wagtail side.
     graphql_fields = [
         GraphQLImage("image"),
         GraphQLString("alt_text"),

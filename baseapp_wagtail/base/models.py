@@ -1,6 +1,9 @@
+from typing import Optional
 from urllib.parse import urlparse
 
+from django.apps import apps
 from django.conf import settings
+from django.db.models import Q
 from django.utils.translation import gettext as _
 from grapple.models import GraphQLStreamfield
 from wagtail.admin.panels import FieldPanel
@@ -9,10 +12,7 @@ from wagtail.models import Page, PageBase
 from wagtail.search import index
 from wagtail_headless_preview.models import HeadlessPreviewMixin
 
-from baseapp_comments.models import CommentableModel
 from baseapp_core.graphql.models import RelayModel
-from baseapp_reactions.models import ReactableModel
-from baseapp_reports.models import ReportableModel
 
 from .stream_fields import (
     FeaturedImageStreamField,
@@ -46,7 +46,19 @@ class HeadlessPageMixin(HeadlessPreviewMixin):
         abstract = True
 
 
-class DefaultPageModel(HeadlessPageMixin, Page, metaclass=HeadlessPageBase):
+default_page_model_inheritances = []
+
+if apps.is_installed("baseapp_pages"):
+    from baseapp_pages.models import PageMixin
+
+    default_page_model_inheritances.append(PageMixin)
+
+default_page_model_inheritances.append(RelayModel)
+
+
+class DefaultPageModel(
+    HeadlessPageMixin, Page, *default_page_model_inheritances, metaclass=HeadlessPageBase
+):
     featured_image = FeaturedImageStreamField.create()
     body = None
 
@@ -65,17 +77,61 @@ class DefaultPageModel(HeadlessPageMixin, Page, metaclass=HeadlessPageBase):
         index.AutocompleteField("body"),
     ]
 
-    class Meta:
-        abstract = True
-
     graphql_fields = [
         GraphQLStreamfield("featured_image"),
     ]
 
+    graphql_interfaces = []
 
-class BaseStandardPage(
-    DefaultPageModel, CommentableModel, ReactableModel, ReportableModel, RelayModel
-):
+    @property
+    def pages_url_path(self):
+        """
+        baseapp_pages.models.PageMixin.url_path alternative.
+        Defines a new property because wagtail pages are have have a defined "url_path" property.
+        """
+        return self.url_paths.filter(
+            Q(is_active=True), Q(language=self.locale.language_code) | Q(language__isnull=True)
+        ).first()
+
+    def update_url_path(self, path: str, language: Optional[str] = None, is_active: bool = True):
+        """
+        Overrides the baseapp_pages.models.PageMixin.update_url_path method.
+        This is necessary in order to use the new "pages_url_path" property.
+        """
+        from baseapp_pages.utils.url_path_formatter import URLPathFormatter
+
+        primary_path = (
+            self.pages_url_path or self.url_paths.filter(language=self.locale.language_code).first()
+        )
+        if primary_path:
+            primary_path.path = URLPathFormatter(path)()
+            primary_path.language = language
+            primary_path.is_active = is_active
+            primary_path.save()
+        else:
+            self.create_url_path(path, language, is_active)
+
+    class Meta:
+        abstract = True
+
+
+base_standard_page_model_inheritances = []
+
+if apps.is_installed("baseapp_comments"):
+    from baseapp_comments.models import CommentableModel
+
+    base_standard_page_model_inheritances.append(CommentableModel)
+
+
+base_standard_page_model_graphql_interfaces = []
+
+if apps.is_installed("baseapp_comments"):
+    base_standard_page_model_graphql_interfaces.append(
+        "baseapp_wagtail.base.graphql.interfaces.WagtailCommentsInterface",
+    )
+
+
+class BaseStandardPage(DefaultPageModel, *base_standard_page_model_inheritances):
     body = PageBodyStreamField.create(
         StandardPageStreamBlock(required=False),
     )
@@ -91,8 +147,5 @@ class BaseStandardPage(
     ]
 
     graphql_interfaces = [
-        "baseapp_wagtail.base.graphql.object_types.WagtailCommentsInterface",
-        "baseapp_wagtail.base.graphql.object_types.WagtailReactionsInterface",
-        "baseapp_wagtail.base.graphql.object_types.WagtailNotificationsInterfaceInterface",
-        "baseapp_wagtail.base.graphql.object_types.WagtailReportsInterfaceInterface",
+        *base_standard_page_model_graphql_interfaces,
     ]
