@@ -4,6 +4,23 @@ from grapple.types.interfaces import PageInterface
 
 from baseapp_core.graphql.models import RelayModel
 
+"""
+Baseapp Interfaces Compatibility
+
+Wagtail page type IDs are set at runtime, so the graphene ID field is not required by default. This
+conflicts with relay.Node, which expects an ID to always be present. Since multiple baseapp
+interfaces extend relay.Node, this can cause issues.
+
+To fix this, we extend the original interfaces and explicitly resolve the ID field, as shown in
+WagtailCommentsInterface. Because Wagtail page IDs always exist, this approach ensures compatibility
+with relay.Node and avoids ID-related problems.
+
+However, this approach only works when querying the page directly. When the Wagtail page is
+referenced dynamically—such as via content_type and target id (e.g., as a comment target) — the
+original interfaces must also be included in WagtailPageObjectType. This ensures the connection and
+ID resolution work correctly in these dynamic GraphQL structures.
+"""
+
 if apps.is_installed("baseapp_comments"):
     from baseapp_comments.graphql.object_types import CommentsInterface
 
@@ -11,20 +28,13 @@ if apps.is_installed("baseapp_comments"):
         """
         Wagtail-specific comments interface for Wagtail page types that do not support
         relay.Node.
-
-        Extends baseapp_comments.graphql.CommentsInterface to enable comments on Wagtail
-        pages with dynamic or non-relay-compliant id fields, avoiding relay.Node conflicts.
-
-        If needed, an intermediate object type could be used to connect CommentsInterface.
-
-        @see baseapp_wagtail.base.graphql.object_types.WagtailURLPathObjectType
         """
 
         id = graphene.ID()
 
         def resolve_id(self, info, **kwargs):
             if isinstance(self, RelayModel):
-                return self.relay_id
+                return self.id
             raise ValueError("WagtailCommentsInterface can only be used with RelayModel instances.")
 
 

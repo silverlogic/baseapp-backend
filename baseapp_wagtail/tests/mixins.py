@@ -1,4 +1,5 @@
 import urllib.parse
+from typing import Type
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -17,13 +18,17 @@ class WagtailBasicMixin(WagtailPageTestCase, WagtailTestUtils, TestCase):
 
 
 class TestPageContextMixin(WagtailBasicMixin):
+    page_model: Type[Page] = PageForTests
+    root_page: PageForTests
+    page: PageForTests
+
     @classmethod
     def setUpTestData(cls):
         cls.user = UserFactory()
         root_page = Page.get_first_root_node()
         if not root_page:
             LocaleFactory(language_code="en")
-            root_page = PageForTests(
+            root_page = cls.page_model(
                 title="Root",
                 slug="root",
                 depth=1,
@@ -40,7 +45,7 @@ class TestPageContextMixin(WagtailBasicMixin):
                 "site_name": "localhost",
             },
         )
-        cls.page = PageForTests(
+        cls.page = cls.page_model(
             title="My Page",
             slug="mypage",
             depth=cls.site.root_page.depth + 1,
@@ -49,7 +54,7 @@ class TestPageContextMixin(WagtailBasicMixin):
         cls.site.root_page.add_child(instance=cls.page)
 
     def _reload_the_page(self):
-        self.page = PageForTests.objects.get(id=self.page.id)
+        self.page = self.page_model.objects.get(id=self.page.id)
 
     def _get_edit_page(self, page):
         response = self.client.get(reverse("wagtailadmin_pages:edit", args=[page.id]))

@@ -37,5 +37,7 @@ class PagesQueries:
             ).first()
             if active_url_path:
                 url_path = active_url_path
+            else:
+                url_path = None
 
         return url_path

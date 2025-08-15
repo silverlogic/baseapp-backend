@@ -24,11 +24,6 @@ class PageInterface(relay.Node):
     url_paths = graphene.List(lambda: URLPathNode)
     metadata = graphene.Field(lambda: MetadataObjectType)
 
-    def resolve_type(self, info):
-        if hasattr(self, "get_graphql_object_type"):
-            return self.get_graphql_object_type()
-        return None
-
     @classmethod
     def resolve_url_path(cls, instance, info, **kwargs):
         return instance.url_path

@@ -1,7 +1,7 @@
 import re
 
 
-class URLPathFormater:
+class URLPathFormatter:
     """
     Ensures the path is valid:
     - Always starts with a single slash

@@ -17,7 +17,7 @@ from translated_fields import TranslatedField
 from baseapp_comments.models import CommentableModel
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import random_name_in
-from baseapp_pages.utils.url_path_formater import URLPathFormater
+from baseapp_pages.utils.url_path_formatter import URLPathFormatter
 
 
 class URLPath(TimeStampedModel, RelayModel):
@@ -118,7 +118,7 @@ class PageMixin(models.Model):
         if not self.pk:
             raise ValueError("Save the instance before creating URL paths.")
         return self.url_paths.create(
-            path=URLPathFormater(path)(), language=language, is_active=is_active
+            path=URLPathFormatter(path)(), language=language, is_active=is_active
         )
 
     def update_url_path(self, path: str, language: Optional[str] = None, is_active: bool = True):
@@ -126,7 +126,7 @@ class PageMixin(models.Model):
             raise ValueError("Save the instance before updating URL paths.")
         primary_path = self.url_path
         if primary_path:
-            primary_path.path = URLPathFormater(path)()
+            primary_path.path = URLPathFormatter(path)()
             primary_path.language = language
             primary_path.is_active = is_active
             primary_path.save()
