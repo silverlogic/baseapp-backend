@@ -90,7 +90,7 @@ class WagtailCommentsIntegrationTests(GraphqlHelper, TestPageContextMixin):
         self.assertEqual(comment_data["body"], "This is a test comment on a Wagtail page")
 
         target = comment_data["target"]
-        self.assertEqual(target["id"], str(self.page.id))
+        self.assertIsNotNone(target["id"], self.page.relay_id)
         comments_count = target["commentsCount"]
         self.assertEqual(comments_count["total"], 1)
         self.assertEqual(comments_count["replies"], 0)

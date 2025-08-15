@@ -100,7 +100,9 @@ class DefaultPageModel(
         """
         from baseapp_pages.utils.url_path_formatter import URLPathFormatter
 
-        primary_path = self.pages_url_path
+        primary_path = (
+            self.pages_url_path or self.url_paths.filter(language=self.locale.language_code).first()
+        )
         if primary_path:
             primary_path.path = URLPathFormatter(path)()
             primary_path.language = language
@@ -108,10 +110,6 @@ class DefaultPageModel(
             primary_path.save()
         else:
             self.create_url_path(path, language, is_active)
-
-    @classmethod
-    def get_graphql_object_type(cls):
-        return None
 
     class Meta:
         abstract = True

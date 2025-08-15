@@ -29,7 +29,6 @@ class WagtailPageObjectType(DjangoObjectType):
     shown in WagtailCommentsInterface.
     """
 
-    id = graphene.ID(required=True)
     data = graphene.Field(WagtailPageInterface)
 
     class Meta:
@@ -45,9 +44,6 @@ class WagtailPageObjectType(DjangoObjectType):
         if isinstance(root, DefaultPageModel):
             return True
         return super().is_type_of(root, info)
-
-    def resolve_id(self, info):
-        return self.id
 
     def resolve_data(self, info):
         return self
