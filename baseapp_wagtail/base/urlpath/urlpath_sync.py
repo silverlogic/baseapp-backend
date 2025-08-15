@@ -35,8 +35,9 @@ class WagtailURLPathSync:
         if not wagtail_path:
             return
 
-        if self.urlpath_model.objects.filter(path=wagtail_path).exists():
-            wagtail_path = self._generate_unique_path(wagtail_path)
+        if not hasattr(self.page, "url_paths") or not self.page.url_paths.exists():
+            if self.urlpath_model.objects.filter(path=wagtail_path).exists():
+                wagtail_path = self._generate_unique_path(wagtail_path)
 
         try:
             # The created action can be triggered after the publish action when the page is created.
