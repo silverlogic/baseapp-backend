@@ -39,8 +39,8 @@ class WagtailURLPathSync:
             wagtail_path = self._generate_unique_path(wagtail_path)
 
         try:
-            # Use the mixin method
-            self.page.create_url_path(
+            # The created action can be triggered after the publish action when the page is created.
+            self.page.update_url_path(
                 path=wagtail_path, language=self.page.locale.language_code, is_active=self.page.live
             )
         except Exception as e:
@@ -101,6 +101,10 @@ class WagtailURLPathSync:
         if not url_parts:
             return None
         _, _, page_path = url_parts
+        if self.is_baseapp_pages_installed:
+            from baseapp_pages.utils.url_path_formatter import URLPathFormatter
+
+            return URLPathFormatter(page_path)()
         return page_path
 
     def _generate_unique_path(self, base_path: str) -> str:

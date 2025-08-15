@@ -7,7 +7,7 @@ from baseapp_wagtail.tests.utils.graphql_helpers import GraphqlHelper
 from testproject.base.models import StandardPage
 
 
-class WagtailURLPathObjectTypeTests(GraphqlHelper, TestPageContextMixin):
+class WagtailURLPathQueryTests(GraphqlHelper, TestPageContextMixin):
     def setUp(self):
         super().setUp()
         self.page.save_revision().publish()
@@ -63,13 +63,12 @@ class WagtailURLPathObjectTypeTests(GraphqlHelper, TestPageContextMixin):
                     target {
                         ... on WagtailPage {
                             data {
-                                ... on PageForTests {
-                                    metadata {
-                                        metaTitle
-                                        metaDescription
-                                        metaOgType
-                                    }
-                                }
+                                title
+                            }
+                            metadata {
+                                metaTitle
+                                metaDescription
+                                metaOgType
                             }
                         }
                     }
@@ -82,7 +81,7 @@ class WagtailURLPathObjectTypeTests(GraphqlHelper, TestPageContextMixin):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         content = response.json()
 
-        data = content["data"]["urlPath"]["target"]["data"]
+        data = content["data"]["urlPath"]["target"]
         metadata = data["metadata"]
         self.assertIsNotNone(metadata)
         self.assertEqual(metadata["metaTitle"], self.page.title)
