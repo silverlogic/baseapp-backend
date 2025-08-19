@@ -224,3 +224,69 @@ def send_password_expired_email(user):
         from_email=None,
         recipient_list=[user.email],
     )
+
+
+def send_anonymize_user_success_email(user_email):
+    superusers = User.objects.filter(is_superuser=True).exclude(email__in=[user_email]).all()
+    recipient_list = list(superusers.values_list("email", flat=True))
+    context = {"user_email": user_email}
+    # Email to superusers
+    subject = render_to_string(
+        "users/emails/anonymize-user-success-superuser-subject.txt.j2"
+    ).strip()
+    message = render_to_string("users/emails/anonymize-user-success-superuser-body.txt.j2", context)
+    html_message = render_to_string(
+        "users/emails/anonymize-user-success-superuser-body.html.j2", context
+    )
+    if recipient_list:
+        send_mail(
+            subject,
+            message,
+            html_message=html_message,
+            from_email=None,
+            recipient_list=recipient_list,
+        )
+
+    # Email to the user
+    subject = render_to_string("users/emails/anonymize-user-success-subject.txt.j2").strip()
+    message = render_to_string("users/emails/anonymize-user-success-body.txt.j2", context)
+    html_message = render_to_string("users/emails/anonymize-user-success-body.html.j2", context)
+    send_mail(
+        subject,
+        message,
+        html_message=html_message,
+        from_email=None,
+        recipient_list=[user_email],
+    )
+
+
+def send_anonymize_user_error_email(user_email):
+    superusers = User.objects.filter(is_superuser=True).exclude(email__in=[user_email]).all()
+    recipient_list = list(superusers.values_list("email", flat=True))
+    context = {"user_email": user_email}
+    # Email to superusers
+    subject = render_to_string("users/emails/anonymize-user-error-superuser-subject.txt.j2").strip()
+    message = render_to_string("users/emails/anonymize-user-error-superuser-body.txt.j2", context)
+    html_message = render_to_string(
+        "users/emails/anonymize-user-error-superuser-body.html.j2", context
+    )
+    if recipient_list:
+        send_mail(
+            subject,
+            message,
+            html_message=html_message,
+            from_email=None,
+            recipient_list=recipient_list,
+        )
+
+    # Email to the user
+    subject = render_to_string("users/emails/anonymize-user-error-subject.txt.j2").strip()
+    message = render_to_string("users/emails/anonymize-user-error-body.txt.j2", context)
+    html_message = render_to_string("users/emails/anonymize-user-error-body.html.j2", context)
+    send_mail(
+        subject,
+        message,
+        html_message=html_message,
+        from_email=None,
+        recipient_list=[user_email],
+    )

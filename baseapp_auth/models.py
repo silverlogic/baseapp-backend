@@ -1,4 +1,7 @@
+from datetime import timedelta
+
 import swapper
+from constance import config
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
@@ -126,6 +129,13 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_pr
                 if self.tracker.has_changed("password"):
                     self.password_changed_date = timezone.now()
                 super().save(*args, **kwargs)
+
+    def anonymize(self):
+        from .rest_framework.users.tasks import anonymize_user_task
+
+        delay_days = config.ANONYMIZE_TASK_DELAY_DAYS
+        eta = timezone.now() + timedelta(days=delay_days)
+        anonymize_user_task.apply_async(args=[self.id], eta=eta)
 
 
 class PasswordValidation(models.Model):
