@@ -75,7 +75,11 @@ def test_refresh_from_cloudflare_not_ready(
 @patch("baseapp_cloudflare_stream_field.tasks.stream_client.get_video_data")
 @patch("django.contrib.contenttypes.models.ContentType.objects.get")
 def test_refresh_from_cloudflare_ready_with_error(
-    mock_get_content_type, mock_get_video_data, setup_video_not_ready, video_uid
+    mock_get_content_type,
+    mock_get_video_data,
+    setup_video_not_ready,
+    video_uid,
+    mock_delete_video_data,
 ):
     content_type, obj = setup_video_not_ready
 
