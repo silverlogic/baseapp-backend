@@ -100,7 +100,7 @@ class TestWagtailURLPathSyncIntegration(TestPageContextMixin):
 
         self.assertFalse(self.page.url_paths.exists())
 
-    def test_exists_urlpath_returns_true_if_path_taken(self):
+    def test_urlpath_exists_returns_true_if_path_taken(self):
         sync = WagtailURLPathSync(self.page)
 
         other_page = self.page_model(
@@ -112,19 +112,19 @@ class TestWagtailURLPathSyncIntegration(TestPageContextMixin):
         self.site.root_page.add_child(instance=other_page)
         URLPathFactory(path="/mypage", target=other_page, is_active=False)
 
-        self.assertTrue(sync.exists_urlpath("/mypage"))
+        self.assertTrue(sync.urlpath_exists("/mypage"))
 
-    def test_exists_urlpath_returns_false_if_path_not_taken(self):
+    def test_urlpath_exists_returns_false_if_path_not_taken(self):
         sync = WagtailURLPathSync(self.page)
 
-        self.assertFalse(sync.exists_urlpath("/nonexistent"))
+        self.assertFalse(sync.urlpath_exists("/nonexistent"))
 
-    def test_exists_urlpath_returns_false_if_path_taken_by_same_target(self):
+    def test_urlpath_exists_returns_false_if_path_taken_by_same_target(self):
         sync = WagtailURLPathSync(self.page)
 
         URLPathFactory(path="/mypage", target=self.page, is_active=False)
 
-        self.assertFalse(sync.exists_urlpath("/mypage"))
+        self.assertFalse(sync.urlpath_exists("/mypage"))
 
     def test_can_sync_true_for_page_mixin(self):
         sync = WagtailURLPathSync(self.page)

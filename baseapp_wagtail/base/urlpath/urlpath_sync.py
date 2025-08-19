@@ -119,7 +119,7 @@ class WagtailURLPathSync:
             logger.error(f"(Wagtail urlpath sync) Error deleting urlpath: {e}")
             return
 
-    def exists_urlpath(self, path: str) -> bool:
+    def urlpath_exists(self, path: str) -> bool:
         if not self._can_sync():
             return False
 

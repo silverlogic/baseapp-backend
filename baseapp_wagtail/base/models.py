@@ -128,7 +128,7 @@ class DefaultPageModel(
         parent_path = self.get_front_url_path(self.get_parent()) if self.get_parent() else "/"
         path = urljoin(parent_path, self.slug)
 
-        if WagtailURLPathSync(self).exists_urlpath(path):
+        if WagtailURLPathSync(self).urlpath_exists(path):
             raise ValidationError(
                 {
                     "slug": _(
