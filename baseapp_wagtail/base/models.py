@@ -1,8 +1,9 @@
 from typing import Optional
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 from django.apps import apps
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.utils.translation import gettext as _
 from grapple.models import GraphQLStreamfield
@@ -41,6 +42,14 @@ class HeadlessPageMixin(HeadlessPreviewMixin):
     def _has_no_domain(self, url: str) -> bool:
         parsed_url = urlparse(url)
         return not parsed_url.netloc
+
+    @classmethod
+    def get_front_url_path(cls, page) -> str:
+        url_parts = page.get_url_parts()
+        if not url_parts:
+            return None
+        _, _, page_path = url_parts
+        return page_path
 
     class Meta:
         abstract = True
@@ -100,9 +109,7 @@ class DefaultPageModel(
         """
         from baseapp_pages.utils.url_path_formatter import URLPathFormatter
 
-        primary_path = (
-            self.pages_url_path or self.url_paths.filter(language=self.locale.language_code).first()
-        )
+        primary_path = self.pages_url_path or self.url_paths.first()
         if primary_path:
             primary_path.path = URLPathFormatter(path)()
             primary_path.language = language
@@ -110,6 +117,25 @@ class DefaultPageModel(
             primary_path.save()
         else:
             self.create_url_path(path, language, is_active)
+
+    def clean(self):
+        super().clean()
+        self._check_urlpath_is_unique()
+
+    def _check_urlpath_is_unique(self):
+        from baseapp_wagtail.base.urlpath.urlpath_sync import WagtailURLPathSync
+
+        parent_path = self.get_front_url_path(self.get_parent()) if self.get_parent() else "/"
+        path = urljoin(parent_path, self.slug)
+
+        if WagtailURLPathSync(self).exists_urlpath(path):
+            raise ValidationError(
+                {
+                    "slug": _(
+                        "The url path generated from the slug is already in use by another page. Please try a different slug."
+                    )
+                }
+            )
 
     class Meta:
         abstract = True

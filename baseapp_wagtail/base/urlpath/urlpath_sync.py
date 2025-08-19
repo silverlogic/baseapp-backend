@@ -1,19 +1,27 @@
 import logging
 from typing import Optional
+from urllib.parse import urljoin
 
 from django.apps import apps
 from django.db.models import Model
-from wagtail.models import Page
+
+from baseapp_wagtail.base.models import DefaultPageModel
 
 logger = logging.getLogger(__name__)
 
 
+class SlugAlreadyTakenError(Exception):
+    """Exception raised when a slug/path is already taken by a different target."""
+
+    pass
+
+
 class WagtailURLPathSync:
-    page: Page
+    page: DefaultPageModel
     urlpath_model: Optional[Model]
     is_baseapp_pages_installed: bool
 
-    def __init__(self, page: Page):
+    def __init__(self, page: DefaultPageModel):
         self.page = page
         self.urlpath_model = None
         self.is_baseapp_pages_installed = apps.is_installed("baseapp_pages")
@@ -27,7 +35,7 @@ class WagtailURLPathSync:
         else:
             self.urlpath_model = None
 
-    def create_urlpath(self):
+    def create_or_update_urlpath_draft(self):
         if not self._can_sync():
             return
 
@@ -35,27 +43,44 @@ class WagtailURLPathSync:
         if not wagtail_path:
             return
 
-        if not hasattr(self.page, "url_paths") or not self.page.url_paths.exists():
-            if self.urlpath_model.objects.filter(path=wagtail_path).exists():
-                wagtail_path = self._generate_unique_path(wagtail_path)
+        if self._is_path_taken_by_different_target(wagtail_path):
+            raise SlugAlreadyTakenError(f"Slug '{wagtail_path}' is already taken by another page")
 
         try:
-            # The created action can be triggered after the publish action when the page is created.
-            self.page.update_url_path(
-                path=wagtail_path, language=self.page.locale.language_code, is_active=self.page.live
-            )
+            live_version = self.page.url_paths.filter(is_active=True).first()
+            if not live_version:
+                self.page.update_url_path(
+                    path=wagtail_path, language=self.page.locale.language_code, is_active=False
+                )
+            elif live_version.path != wagtail_path:
+                if url_path := self.page.url_paths.filter(is_active=False).first():
+                    url_path.path = wagtail_path
+                    url_path.language = self.page.locale.language_code
+                    url_path.is_active = False
+                    url_path.save()
+                else:
+                    self.page.create_url_path(
+                        path=wagtail_path, language=self.page.locale.language_code, is_active=False
+                    )
         except Exception as e:
             logger.error(f"(Wagtail urlpath sync) Error creating urlpath: {e}")
             return
 
-    def deactivate_urlpath(self):
+    def publish_urlpath(self):
         if not self._can_sync():
             return
 
+        wagtail_path = self._get_wagtail_path()
+        if not wagtail_path:
+            return
+
         try:
-            self.page.deactivate_url_paths()
+            self.page.url_paths.filter(is_active=True).delete()
+            self.page.update_url_path(
+                path=wagtail_path, language=self.page.locale.language_code, is_active=True
+            )
         except Exception as e:
-            logger.error(f"(Wagtail urlpath sync) Error deactivating urlpath: {e}")
+            logger.error(f"(Wagtail urlpath sync) Error publishing urlpath: {e}")
             return
 
     def update_urlpath(self):
@@ -74,6 +99,16 @@ class WagtailURLPathSync:
             logger.error(f"(Wagtail urlpath sync) Error updating urlpath: {e}")
             return
 
+    def deactivate_urlpath(self):
+        if not self._can_sync():
+            return
+
+        try:
+            self.page.deactivate_url_paths()
+        except Exception as e:
+            logger.error(f"(Wagtail urlpath sync) Error deactivating urlpath: {e}")
+            return
+
     def delete_urlpath(self):
         if not self._can_sync():
             return
@@ -83,6 +118,14 @@ class WagtailURLPathSync:
         except Exception as e:
             logger.error(f"(Wagtail urlpath sync) Error deleting urlpath: {e}")
             return
+
+    def exists_urlpath(self, path: str) -> bool:
+        if not self._can_sync():
+            return False
+
+        path = self._format_path(path)
+
+        return self._is_path_taken_by_different_target(path)
 
     def _can_sync(self) -> bool:
         return (
@@ -97,23 +140,23 @@ class WagtailURLPathSync:
 
         return isinstance(self.page, PageMixin)
 
-    def _get_wagtail_path(self) -> Optional[str]:
-        url_parts = self.page.get_url_parts()
-        if not url_parts:
-            return None
-        _, _, page_path = url_parts
+    def _is_path_taken_by_different_target(self, path: str) -> bool:
+        path = self._format_path(path)
+
+        existing_urlpath = self.urlpath_model.objects.filter(path=path).first()
+        if existing_urlpath and existing_urlpath.target != self.page:
+            return True
+
+        return False
+
+    def _format_path(self, path: str) -> str:
         if self.is_baseapp_pages_installed:
             from baseapp_pages.utils.url_path_formatter import URLPathFormatter
 
-            return URLPathFormatter(page_path)()
-        return page_path
+            return URLPathFormatter(path)()
+        return path
 
-    def _generate_unique_path(self, base_path: str) -> str:
-        counter = 1
-        new_path = base_path
-
-        while self.urlpath_model.objects.filter(path=new_path).exists():
-            new_path = f"{base_path}-{counter}"
-            counter += 1
-
-        return new_path
+    def _get_wagtail_path(self) -> Optional[str]:
+        parent_path = self.page.get_front_url_path(self.page.get_parent())
+        page_path = urljoin(parent_path, self.page.slug)
+        return self._format_path(page_path)

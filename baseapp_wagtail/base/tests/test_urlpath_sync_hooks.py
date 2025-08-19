@@ -1,121 +1,75 @@
+from datetime import timedelta
+
+from django.utils import timezone
 from rest_framework import status
 
-from baseapp_pages.models import URLPath
 from baseapp_wagtail.tests.mixins import TestAdminActionsMixin
-from baseapp_wagtail.tests.models import PageForTests
 
 
 class URLPathSyncHooksTests(TestAdminActionsMixin):
-    def test_urlpath_creation_on_page_create(self):
-        response = self._post_new_page({"slug": "test-page-2"})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+    def test_scheduled_publish_creates_scheduled_revision(self):
+        go_live_at = timezone.now() + timedelta(hours=1)
 
-        new_page = self._get_page_by_slug("test-page-2")
-        self.assertIsNotNone(new_page)
-
-        urlpath = new_page.pages_url_path
-        self.assertIsNone(urlpath)
-
-        urlpath = URLPath.objects.get(path="/mypage/test-page-2")
-        self.assertEqual(urlpath.path, "/mypage/test-page-2")
-        self.assertFalse(urlpath.is_active)
-
-    def test_urlpath_creation_on_page_create_and_publish(self):
-        response = self._post_new_page({"action-publish": "action-publish", "slug": "test-page-2"})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        new_page = self._get_page_by_slug("test-page-2")
-        self.assertIsNotNone(new_page)
-
-        urlpath = new_page.pages_url_path
-        self.assertIsNotNone(urlpath)
-        self.assertEqual(urlpath.path, "/mypage/test-page-2")
-        self.assertTrue(urlpath.is_active)
-
-    def test_urlpath_update_on_page_publish(self):
-        self.assertIsNone(self.page.pages_url_path)
-
-        response = self._post_publish_page(self.page)
+        response = self._post_publish_page(
+            self.page,
+            {
+                "slug": "scheduled-page",
+                "go_live_at": go_live_at.strftime("%Y-%m-%d %H:%M:%S"),
+            },
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         self._reload_the_page()
 
-        urlpath = self.page.pages_url_path
-        self.assertTrue(urlpath.is_active)
+        self.assertIsNotNone(self.page.scheduled_revision)
+        self.assertEqual(self.page.slug, "scheduled-page")
 
-    def test_urlpath_deactivation_on_page_unpublish(self):
-        response = self._post_publish_page(self.page)
+    def test_scheduled_publish_hook_integration(self):
+        go_live_at = timezone.now() + timedelta(hours=1)
+
+        response = self._post_publish_page(
+            self.page,
+            {
+                "slug": "hook-test-page",
+                "go_live_at": go_live_at.strftime("%Y-%m-%d %H:%M:%S"),
+            },
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         self._reload_the_page()
 
-        urlpath = self.page.pages_url_path
-        self.assertTrue(urlpath.is_active)
+        self.assertIsNotNone(self.page.scheduled_revision)
 
-        response = self._post_unpublish_page(self.page)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        urlpath_draft = self.page.url_paths.filter(is_active=False).first()
+        self.assertIsNotNone(urlpath_draft)
+        self.assertFalse(urlpath_draft.is_active)
+
+    def test_scheduled_publish_hook_handles_multiple_scheduled_pages(self):
+        go_live_at_1 = timezone.now() + timedelta(hours=1)
+        go_live_at_2 = timezone.now() + timedelta(hours=2)
+
+        response1 = self._post_publish_page(
+            self.page,
+            {
+                "slug": "scheduled-page-1",
+                "go_live_at": go_live_at_1.strftime("%Y-%m-%d %H:%M:%S"),
+            },
+        )
+        self.assertEqual(response1.status_code, status.HTTP_200_OK)
+
+        response2 = self._post_publish_page(
+            self.page,
+            {
+                "slug": "scheduled-page-2",
+                "go_live_at": go_live_at_2.strftime("%Y-%m-%d %H:%M:%S"),
+            },
+        )
+        self.assertEqual(response2.status_code, status.HTTP_200_OK)
 
         self._reload_the_page()
 
-        urlpath = self.page.pages_url_path
-        self.assertIsNone(urlpath)
+        self.assertIsNotNone(self.page.scheduled_revision)
 
-        urlpath = URLPath.objects.get(path="/test-page")
-        self.assertFalse(urlpath.is_active)
-
-    def test_urlpath_deletion_on_page_delete(self):
-        response = self._post_new_page({"action-publish": "action-publish", "slug": "test-page-2"})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        page = self._get_page_by_slug("test-page-2")
-
-        urlpath = page.pages_url_path
-        self.assertTrue(urlpath.is_active)
-
-        response = self._post_delete_page(page)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        self.assertFalse(PageForTests.objects.filter(id=page.id).exists())
-
-        urlpath = URLPath.objects.filter(path="/mypage/test-page-2").exists()
-        self.assertFalse(urlpath)
-
-    def test_editting_page_already_published_not_changing_existing_urlpath(self):
-        response = self._post_new_page({"action-publish": "action-publish", "slug": "test-page-2"})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        page = self._get_page_by_slug("test-page-2")
-
-        urlpath = page.pages_url_path
-        self.assertTrue(urlpath.is_active)
-
-        edit_data = {
-            "title": "Updated Page Title",
-            "slug": "updated-page-slug",
-        }
-
-        response = self._post_edit_page(page, edit_data)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        urlpath = page.pages_url_path
-        self.assertEqual(urlpath.path, "/mypage/test-page-2")
-
-    def test_urlpath_path_update_on_page_edit(self):
-        response = self._post_new_page({"action-publish": "action-publish", "slug": "test-page-2"})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        page = self._get_page_by_slug("test-page-2")
-
-        urlpath = page.pages_url_path
-        self.assertTrue(urlpath.is_active)
-
-        edit_data = {
-            "title": "Updated Page Title",
-            "slug": "updated-page-slug",
-        }
-
-        response = self._post_publish_page(page, edit_data)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        urlpath = page.pages_url_path
-        self.assertEqual(urlpath.path, "/mypage/updated-page-slug")
+        urlpath_draft = self.page.url_paths.filter(is_active=False).first()
+        self.assertIsNotNone(urlpath_draft)
+        self.assertFalse(urlpath_draft.is_active)

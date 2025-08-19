@@ -13,24 +13,10 @@ def register_schema_query(query_mixins):
             query_mixins.remove(query_mixin)
 
 
-@hooks.register("after_create_page")
-def create_urlpath_for_page(request, page):
-    WagtailURLPathSync(page).create_urlpath()
-
-
 @hooks.register("after_publish_page")
-def update_urlpath_on_publish(request, page):
-    WagtailURLPathSync(page).update_urlpath()
-
-
-@hooks.register("after_unpublish_page")
-def deactivate_urlpath_on_unpublish(request, page):
-    WagtailURLPathSync(page).deactivate_urlpath()
-
-
-@hooks.register("after_delete_page")
-def delete_urlpath_on_delete(request, page):
-    WagtailURLPathSync(page).delete_urlpath()
+def save_urlpath_draft_on_schedule_publish(request, page):
+    if page.scheduled_revision:
+        WagtailURLPathSync(page.scheduled_revision.as_object()).create_or_update_urlpath_draft()
 
 
 @hooks.register("register_rich_text_features")

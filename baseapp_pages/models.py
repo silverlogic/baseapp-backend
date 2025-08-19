@@ -124,7 +124,7 @@ class PageMixin(models.Model):
     def update_url_path(self, path: str, language: Optional[str] = None, is_active: bool = True):
         if not self.pk:
             raise ValueError("Save the instance before updating URL paths.")
-        primary_path = self.url_path
+        primary_path = self.url_path or self.url_paths.first()
         if primary_path:
             primary_path.path = URLPathFormatter(path)()
             primary_path.language = language

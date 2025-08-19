@@ -1,7 +1,6 @@
 from rest_framework import status
 from wagtail.models import Locale
 
-from baseapp_wagtail.base.urlpath.urlpath_sync import WagtailURLPathSync
 from baseapp_wagtail.tests.mixins import TestPageContextMixin
 from baseapp_wagtail.tests.utils.graphql_helpers import GraphqlHelper
 from testproject.base.models import StandardPage
@@ -11,7 +10,6 @@ class WagtailURLPathQueryTests(GraphqlHelper, TestPageContextMixin):
     def setUp(self):
         super().setUp()
         self.page.save_revision().publish()
-        WagtailURLPathSync(self.page).create_urlpath()
         self.url_path = self.page.pages_url_path
 
     def test_urlpath_query_returns_wagtail_page_data(self):
@@ -96,7 +94,6 @@ class WagtailURLPathQueryTests(GraphqlHelper, TestPageContextMixin):
         )
         self.site.root_page.add_child(instance=standard_page)
         standard_page.save_revision().publish()
-        WagtailURLPathSync(standard_page).create_urlpath()
         standard_url_path = standard_page.pages_url_path
 
         response = self.query(
@@ -142,7 +139,6 @@ class WagtailURLPathQueryTests(GraphqlHelper, TestPageContextMixin):
         )
         self.site.root_page.add_child(instance=standard_page)
         standard_page.save_revision().publish()
-        WagtailURLPathSync(standard_page).create_urlpath()
         standard_url_path = standard_page.pages_url_path
 
         response = self.query(
@@ -231,7 +227,6 @@ class WagtailURLPathQueryTests(GraphqlHelper, TestPageContextMixin):
         )
         self.site.root_page.add_child(instance=standard_page)
         standard_page.save_revision().publish()
-        WagtailURLPathSync(standard_page).create_urlpath()
         pt_url_path = standard_page.pages_url_path
 
         response = self.query(
