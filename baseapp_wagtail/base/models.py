@@ -96,7 +96,7 @@ class DefaultPageModel(
     def pages_url_path(self):
         """
         baseapp_pages.models.PageMixin.url_path alternative.
-        Defines a new property because wagtail pages are have have a defined "url_path" property.
+        Defines a new property because wagtail pages already have a defined "url_path" property.
         """
         return self.url_paths.filter(
             Q(is_active=True), Q(language=self.locale.language_code) | Q(language__isnull=True)
