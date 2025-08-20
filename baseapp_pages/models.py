@@ -1,6 +1,9 @@
+from typing import Optional, Type
+
 import pghistory
 import swapper
 from django.conf import settings
+from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -14,6 +17,7 @@ from translated_fields import TranslatedField
 from baseapp_comments.models import CommentableModel
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import random_name_in
+from baseapp_pages.utils.url_path_formatter import URLPathFormatter
 
 
 class URLPath(TimeStampedModel, RelayModel):
@@ -103,6 +107,39 @@ class PageMixin(models.Model):
         return self.url_paths.filter(
             Q(is_active=True), Q(language=get_language()) | Q(language__isnull=True)
         ).first()
+
+    def get_graphql_object_type(self) -> Type:
+        raise NotImplementedError
+
+    def get_permission_check(self, user: AbstractUser) -> bool:
+        return True
+
+    def create_url_path(self, path: str, language: Optional[str] = None, is_active: bool = True):
+        if not self.pk:
+            raise ValueError("Save the instance before creating URL paths.")
+        return self.url_paths.create(
+            path=URLPathFormatter(path)(), language=language, is_active=is_active
+        )
+
+    def update_url_path(self, path: str, language: Optional[str] = None, is_active: bool = True):
+        if not self.pk:
+            raise ValueError("Save the instance before updating URL paths.")
+        primary_path = self.url_path or self.url_paths.first()
+        if primary_path:
+            primary_path.path = URLPathFormatter(path)()
+            primary_path.language = language
+            primary_path.is_active = is_active
+            primary_path.save()
+        else:
+            self.create_url_path(path, language, is_active)
+
+    def deactivate_url_paths(self):
+        if self.pk:
+            self.url_paths.update(is_active=False)
+
+    def delete_url_paths(self):
+        if self.pk:
+            self.url_paths.all().delete()
 
 
 class AbstractPage(PageMixin, TimeStampedModel, RelayModel, CommentableModel):

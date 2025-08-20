@@ -2,7 +2,6 @@ import graphene
 from graphene import relay
 from graphene.relay.node import NodeField as RelayNodeField
 from graphene_django.debug import DjangoDebug
-from grapple.registry import registry
 
 from baseapp.activity_log.graphql.queries import ActivityLogQueries
 from baseapp.content_feed.graphql.mutations import ContentFeedMutations
@@ -31,6 +30,7 @@ from baseapp_reactions.graphql.queries import ReactionsQueries
 from baseapp_reports.graphql.mutations import ReportsMutations
 from baseapp_reports.graphql.queries import ReportsQueries
 from baseapp_wagtail.base.graphql.mutations import WagtailMutation
+from baseapp_wagtail.base.graphql.object_types import BASEAPP_WAGTAIL_TYPES
 from baseapp_wagtail.base.graphql.queries import WagtailQuery
 from baseapp_wagtail.base.graphql.subscriptions import WagtailSubscription
 from testproject.users.graphql.queries import UsersQueries
@@ -84,6 +84,14 @@ class Subscription(
     pass
 
 
+schema_types = [
+    *BASEAPP_WAGTAIL_TYPES,
+]
+
+
 schema = graphene.Schema(
-    query=Query, mutation=Mutation, subscription=Subscription, types=list(registry.models.values())
+    query=Query,
+    mutation=Mutation,
+    subscription=Subscription,
+    types=schema_types,
 )

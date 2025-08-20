@@ -41,39 +41,6 @@ class PageInterface(relay.Node):
         raise NotImplementedError
 
 
-class URLPathNode(DjangoObjectType):
-    target = graphene.Field(PageInterface)
-    language = graphene.Field(LanguagesEnum)
-
-    class Meta:
-        interfaces = (relay.Node,)
-        model = URLPath
-        fields = (
-            "id",
-            "pk",
-            "path",
-            "language",
-            "is_active",
-            "created",
-            "modified",
-            "target",
-        )
-        filter_fields = {
-            "id": ["exact"],
-        }
-
-    def resolve_target(self, info, **kwargs):
-        if isinstance(self.target, AbstractPage):
-            if not info.context.user.has_perm(f"{page_app_label}.view_page", self.target):
-                return None
-        return self.target
-
-    @classmethod
-    def get_queryset(cls, queryset, info):
-        MAX_COMPLEXITY = 3
-        return optimize(queryset, info, max_complexity=MAX_COMPLEXITY)
-
-
 class PageFilter(django_filters.FilterSet):
     class Meta:
         model = Page
@@ -162,3 +129,36 @@ class MetadataObjectType(DjangoObjectType):
         if isinstance(root, AbstractMetadataObjectType):
             return True
         return super().is_type_of(root, info)
+
+
+class URLPathNode(DjangoObjectType):
+    target = graphene.Field(PageInterface)
+    language = graphene.Field(LanguagesEnum)
+
+    class Meta:
+        interfaces = (relay.Node,)
+        model = URLPath
+        fields = (
+            "id",
+            "pk",
+            "path",
+            "language",
+            "is_active",
+            "created",
+            "modified",
+            "target",
+        )
+        filter_fields = {
+            "id": ["exact"],
+        }
+
+    def resolve_target(self, info, **kwargs):
+        if isinstance(self.target, AbstractPage):
+            if not info.context.user.has_perm(f"{page_app_label}.view_page", self.target):
+                return None
+        return self.target
+
+    @classmethod
+    def get_queryset(cls, queryset, info):
+        MAX_COMPLEXITY = 3
+        return optimize(queryset, info, max_complexity=MAX_COMPLEXITY)

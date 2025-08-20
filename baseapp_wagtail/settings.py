@@ -56,7 +56,7 @@ BASE_URL = WAGTAILADMIN_BASE_URL
 if "FRONT_URL" not in globals():
     FRONT_URL = env("FRONT_URL", "", required=False)
 
-FRONT_HEADLESS_URL = urljoin(FRONT_URL, env("WAGTAIL_FRONT_URL_PATH", default="/pages"))
+FRONT_HEADLESS_URL = urljoin(FRONT_URL, env("WAGTAIL_FRONT_URL_PATH", default="/"))
 FRONT_PAGE_PREVIEW_URL = urljoin(
     FRONT_URL, env("WAGTAIL_FRONT_PAGE_PREVIEW_URL_PATH", default="/page-preview")
 )
@@ -71,7 +71,7 @@ GRAPPLE = {
         "baseapp_wagtail_base",
         "baseapp_wagtail_medias",
     ],
-    "PAGE_INTERFACE": "baseapp_wagtail.base.graphql.object_types.WagtailPageInterface",
+    "PAGE_INTERFACE": "baseapp_wagtail.base.graphql.interfaces.WagtailPageInterface",
 }
 
 WAGTAILIMAGES_IMAGE_MODEL = "baseapp_wagtail_medias.CustomImage"
