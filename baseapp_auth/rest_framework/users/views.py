@@ -85,7 +85,7 @@ class UsersViewSet(
         user.is_active = False
         user.save()
         if not user.is_superuser:
-            user.anonymize()
+            user.anonymize_and_delete()
         return response.Response(data={}, status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["get", "post"], serializer_class=UserPermissionSerializer)
