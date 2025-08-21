@@ -146,6 +146,10 @@ CONSTANCE_CONFIG = OrderedDict(
             (False, "Require email verification for new users."),
         ),
         (
+            "SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS",
+            (False, "Send email notifications to superusers when a user is anonymized."),
+        ),
+        (
             "STRIPE_CUSTOMER_ENTITY_MODEL",
             ("profiles.Profile", "The model to use for the Stripe customer entity."),
         ),
