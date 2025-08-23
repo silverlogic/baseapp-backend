@@ -1,9 +1,8 @@
 import base64
-import json
 from io import BytesIO
 
-import httpretty
 import pytest
+import responses
 from asgiref.sync import sync_to_async
 from django.core.files.base import ContentFile
 from django.core.files.images import ImageFile
@@ -76,13 +75,10 @@ async def async_user_client():
     await sync_to_async(user.delete)()
 
 
-@pytest.fixture()
-def use_httpretty():
-    httpretty.enable()
-    httpretty.HTTPretty.allow_net_connect = False
-    yield
-    httpretty.disable()
-    httpretty.reset()
+@pytest.fixture(autouse=True)
+def responses_mock():
+    with responses.RequestsMock() as r:
+        yield r
 
 
 @pytest.fixture
@@ -102,17 +98,18 @@ def corrupted_image():
 
 
 @pytest.fixture
-def deep_link_mock_success(use_httpretty):
-    httpretty.register_uri(
-        httpretty.POST,
+def deep_link_mock_success(responses_mock):
+    responses_mock.add(
+        responses.POST,
         "https://api.branch.io/v1/url",
-        body=json.dumps({"url": "https://example.com/128z8x81"}),
+        json={"url": "https://example.com/128z8x81"},
+        status=200,
     )
 
 
 @pytest.fixture
-def deep_link_mock_error(use_httpretty):
-    httpretty.register_uri(httpretty.POST, "https://api.branch.io/v1/url", status=400)
+def deep_link_mock_error(responses_mock):
+    responses_mock.add(responses.POST, "https://api.branch.io/v1/url", status=400)
 
 
 @pytest.fixture(scope="session")
