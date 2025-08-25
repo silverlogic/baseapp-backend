@@ -82,10 +82,11 @@ class UsersViewSet(
     )
     def delete_account(self, request):
         user = request.user
-        user.is_active = False
-        user.save()
-        if not user.is_superuser:
-            user.anonymize_and_delete()
+        if user.is_superuser:
+            user.is_active = False
+            user.save()
+        else:
+            user.delete()
         return response.Response(data={}, status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["get", "post"], serializer_class=UserPermissionSerializer)
