@@ -25,4 +25,4 @@ def test_delete_user_with_message():
     assert Message.objects.filter(user_id=user_id).count() == 2
     user.delete()
     assert Message.objects.filter(user_id=user_id).count() == 0
-    assert Message.objects.count() == 0
+    assert Message.objects.count() == 2

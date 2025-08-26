@@ -1,4 +1,3 @@
-from constance import config
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
@@ -228,8 +227,8 @@ def send_password_expired_email(user):
 
 
 def send_anonymize_user_success_email(user_email):
-    superusers = User.objects.filter(is_superuser=True).exclude(email__in=[user_email]).all()
-    recipient_list = list(superusers.values_list("email", flat=True))
+    from constance import config
+
     context = {"user_email": user_email}
     # Email to the user
     subject = render_to_string("users/emails/anonymize-user-success-subject.txt.j2").strip()
@@ -246,6 +245,8 @@ def send_anonymize_user_success_email(user_email):
     # Email to superusers
     if not config.SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS:
         return None
+    superusers = User.objects.filter(is_superuser=True).exclude(email__in=[user_email]).all()
+    recipient_list = list(superusers.values_list("email", flat=True))
     subject = render_to_string(
         "users/emails/anonymize-user-success-superuser-subject.txt.j2"
     ).strip()
@@ -264,8 +265,8 @@ def send_anonymize_user_success_email(user_email):
 
 
 def send_anonymize_user_error_email(user_email):
-    superusers = User.objects.filter(is_superuser=True).exclude(email__in=[user_email]).all()
-    recipient_list = list(superusers.values_list("email", flat=True))
+    from constance import config
+
     context = {"user_email": user_email}
 
     # Email to the user
@@ -283,6 +284,8 @@ def send_anonymize_user_error_email(user_email):
     # Email to superusers
     if not config.SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS:
         return None
+    superusers = User.objects.filter(is_superuser=True).exclude(email__in=[user_email]).all()
+    recipient_list = list(superusers.values_list("email", flat=True))
     subject = render_to_string("users/emails/anonymize-user-error-superuser-subject.txt.j2").strip()
     message = render_to_string("users/emails/anonymize-user-error-superuser-body.txt.j2", context)
     html_message = render_to_string(

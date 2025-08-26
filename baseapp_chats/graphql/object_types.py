@@ -100,7 +100,7 @@ class BaseMessageObjectType:
     @staticmethod
     def get_replaced_profile_name(profile, profile_pk, replacement_text):
         if not profile:
-            return None
+            return "Introuvable Profile"
         elif profile.id == profile_pk:
             return replacement_text
         else:
