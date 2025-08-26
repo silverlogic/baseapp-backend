@@ -10,9 +10,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
 import baseapp_auth.tests.helpers as h
-from baseapp_auth.rest_framework.users.tasks import (
-    anonymize_and_delete_user_task,
-)
+from baseapp_auth.rest_framework.users.tasks import anonymize_and_delete_user_task
 from baseapp_auth.tests.factories import PasswordValidationFactory
 from baseapp_auth.tests.mixins import ApiMixin
 from baseapp_auth.utils.referral_utils import get_user_referral_model
