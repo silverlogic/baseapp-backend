@@ -31,10 +31,9 @@ def anonymize_and_delete_user_task(user_id):
                 room = ChatRoom.objects.get(id=room_id)
                 room.participants_count = ChatRoomParticipant.objects.filter(room=room).count()
                 room.save(update_fields=["participants_count"])
-
         user.delete()
         send_anonymize_user_success_email(user_email)
     except Exception as e:
         logging.exception(e)
-        send_anonymize_user_error_email(user.id)
+        send_anonymize_user_error_email(user_email)
         pass
