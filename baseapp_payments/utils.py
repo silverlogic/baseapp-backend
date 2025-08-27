@@ -287,7 +287,7 @@ class StripeService:
 
     def list_products(self, **kwargs):
         try:
-            products = stripe.Product.list(**kwargs)
+            products = stripe.Product.list(expand=["data.default_price"], **kwargs)
             return products
         except Exception as e:
             logger.exception(e)
