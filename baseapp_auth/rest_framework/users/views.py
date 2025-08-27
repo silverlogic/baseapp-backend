@@ -93,7 +93,6 @@ class UsersViewSet(
             user.anonymize_and_delete()
         return response.Response(data={}, status=status.HTTP_204_NO_CONTENT)
 
-
     @action(detail=False, methods=["get", "post"], serializer_class=UserPermissionSerializer)
     def permissions(self, request):
         user = request.user
