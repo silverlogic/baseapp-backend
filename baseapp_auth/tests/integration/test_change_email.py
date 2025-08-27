@@ -79,7 +79,7 @@ class TestChangeEmailConfirm(ApiMixin):
     @override_settings(
         BA_AUTH_CHANGE_EMAIL_CONFIRM_TOKEN_EXPIRATION_TIME_DELTA=timedelta(seconds=1)
     )
-    def test_guest_cant_confirm_with_expired_token(self, client, data, deep_link_mock_success):
+    def test_guest_cant_confirm_with_expired_token(self, client, data):
         time.sleep(1.1)
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)

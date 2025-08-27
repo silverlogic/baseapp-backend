@@ -121,7 +121,6 @@ def test_owner_can_update_profile_url_path_already_in_use(django_user_client, gr
         variables={"input": {"id": profile.relay_id, "urlPath": url_path}},
     )
     content = response.json()
-    print(content)
     assert (
         content["data"]["profileUpdate"]["errors"][0]["messages"][0]
         == "Username already in use, suggested username: /existingpath1"

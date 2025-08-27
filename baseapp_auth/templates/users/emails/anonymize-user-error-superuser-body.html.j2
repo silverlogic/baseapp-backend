@@ -1,0 +1,7 @@
+{% extends 'emails/base.html.j2' %}
+
+{% block content %}
+<p class="t-h5">{% trans %}Hello Superusers,{% endtrans %}</p>
+<p class="t-body2 gap-top-3">{% trans %}We were unable to fully anonymize the account for {{ user_email }} due to an unexpected error. Some personal information may remain in our system.{% endtrans %}</p>
+<p class="t-body2 gap-top-3">{% trans %}Please contact our support team for assistance or more information.{% endtrans %}</p>
+{% endblock %}

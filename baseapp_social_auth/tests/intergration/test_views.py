@@ -1,9 +1,8 @@
-import json
 import re
 from unittest.mock import patch
 
-import httpretty
 import pytest
+import responses
 from django.contrib.auth import get_user_model
 from django.urls import include, path, reverse
 from rest_framework.test import APITestCase, URLPatternsTestCase
@@ -29,12 +28,17 @@ class SocialAuthViewSetMock(APITestCase, URLPatternsTestCase):
     def reverse(self):
         return reverse("social-auth-list")
 
+    def setUp(self):
+        super().setUp()
+        self.responses_mock = responses.RequestsMock(assert_all_requests_are_fired=False)
+        self.responses_mock.start()
+
     def tearDown(self):
-        httpretty.reset()
+        self.responses_mock.stop()
         super().tearDown()
 
 
-@pytest.mark.usefixtures("use_httpretty")
+@pytest.mark.usefixtures("responses_mock")
 class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
     def base_data(self):
         return {
@@ -46,50 +50,53 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
     def data(self):
         base_data = self.base_data()
 
-        httpretty.register_uri(
-            httpretty.GET,
-            re.compile(r"https://graph.facebook.com/v\d+.\d+/me/picture$"),
+        self.responses_mock.add(
+            responses.GET,
+            re.compile(r"https://graph\.facebook\.com/v\d+\.\d+/me/picture"),
             body="1234",
+            status=200,
         )
 
         return base_data
 
     def success_data(self):
-        httpretty.register_uri(
-            httpretty.GET,
-            re.compile(r"https://graph.facebook.com/v\d+.\d+/oauth/access_token$"),
-            body=json.dumps({"access_token": "1234", "token_type": "type", "expires_in": 6000}),
+        self.responses_mock.add(
+            responses.GET,
+            re.compile(r"https://graph\.facebook\.com/v\d+\.\d+/oauth/access_token"),
+            json={"access_token": "1234", "token_type": "type", "expires_in": 6000},
+            status=200,
         )
         return self.data()
 
     def complete_data(self):
-        httpretty.register_uri(
-            httpretty.GET,
-            re.compile(r"https://graph.facebook.com/v\d+.\d+/me$"),
-            body=json.dumps(
-                {
-                    "id": "1387123",
-                    "first_name": "John",
-                    "last_name": "Smith",
-                    "email": "johnsmith@example.com",
-                }
-            ),
-        )
         self.success_data()
+        self.responses_mock.add(
+            responses.GET,
+            re.compile(r"https://graph\.facebook\.com/v\d+\.\d+/me"),
+            json={
+                "id": "1387123",
+                "first_name": "John",
+                "last_name": "Smith",
+                "email": "johnsmith@example.com",
+            },
+            status=200,
+        )
         return self.data()
 
     def no_email_data(self):
-        httpretty.register_uri(
-            httpretty.GET,
-            re.compile(r"https://graph.facebook.com/v\d+.\d+/me$"),
-            body=json.dumps({"id": "1387123", "first_name": "John", "last_name": "Smith"}),
+        self.responses_mock.add(
+            responses.GET,
+            re.compile(r"https://graph\.facebook\.com/v\d+\.\d+/me"),
+            json={"id": "1387123", "first_name": "John", "last_name": "Smith"},
+            status=200,
         )
         return self.success_data()
 
     def invalid_code_data(self):
-        httpretty.register_uri(
-            httpretty.GET,
-            re.compile(r"https://graph.facebook.com/v\d+.\d+/oauth/access_token$"),
+        self.responses_mock.add(
+            responses.GET,
+            re.compile(r"https://graph\.facebook\.com/v\d+\.\d+/oauth/access_token"),
+            json={"error": "invalid_code"},
             status=400,
         )
         return self.data()
@@ -177,7 +184,7 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
         assert not r.data["is_new"]
 
 
-@pytest.mark.usefixtures("use_httpretty")
+@pytest.mark.usefixtures("responses_mock")
 class TestTwitterSocialAuth(SocialAuthViewSetMock):
     def base_data(self):
         return {}
@@ -190,8 +197,11 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
 
     def step1_data(self):
         data = self.data()
-        httpretty.register_uri(
-            httpretty.POST, "https://api.twitter.com/oauth/request_token", body=""
+        self.responses_mock.add(
+            responses.POST,
+            "https://api.twitter.com/oauth/request_token",
+            body="",
+            status=200,
         )
         return data
 
@@ -202,10 +212,11 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
         data["oauth_verifier"] = "12345"
         data["email"] = "seancook@example.com"
 
-        httpretty.register_uri(
-            httpretty.GET,
-            re.compile(r"https://api.twitter.com/1.\d+/account/verify_credentials.json"),
-            body=json.dumps({"id": 543, "name": "Sean Cook", "screen_name": "thecooker"}),
+        self.responses_mock.add(
+            responses.GET,
+            re.compile(r"https://api\.twitter\.com/1\.\d+/account/verify_credentials\.json"),
+            json={"id": 543, "name": "Sean Cook", "screen_name": "thecooker"},
+            status=200,
         )
 
         with patch("social_core.backends.twitter.TwitterOAuth.get_unauthorized_token") as mock:
@@ -220,23 +231,23 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
         data["oauth_verifier"] = "12345"
         data["email"] = "seancook@example.com"
 
-        httpretty.register_uri(
-            httpretty.GET,
-            re.compile(r"https://api.twitter.com/1.\d+/account/verify_credentials.json"),
-            body=json.dumps(
-                {
-                    "id": 543,
-                    "name": "Sean Cook",
-                    "screen_name": "thecooker",
-                    "profile_image_url": "http://example.com/profile_images/1234431/18272_bigger.jpg",
-                }
-            ),
+        self.responses_mock.add(
+            responses.GET,
+            re.compile(r"https://api\.twitter\.com/1\.\d+/account/verify_credentials\.json"),
+            json={
+                "id": 543,
+                "name": "Sean Cook",
+                "screen_name": "thecooker",
+                "profile_image_url": "http://example.com/profile_images/1234431/18272_bigger.jpg",
+            },
+            status=200,
         )
 
-        httpretty.register_uri(
-            httpretty.GET,
+        self.responses_mock.add(
+            responses.GET,
             "http://example.com/profile_images/1234431/18272_400x400.jpg",
             body=IMAGE_BASE64,
+            status=200,
         )
 
         with patch("social_core.backends.twitter.TwitterOAuth.get_unauthorized_token") as mock:
@@ -251,17 +262,16 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
         data["oauth_verifier"] = "12345"
         data["email"] = "seancook@example.com"
 
-        httpretty.register_uri(
-            httpretty.GET,
-            re.compile(r"https://api.twitter.com/1.\d+/account/verify_credentials.json"),
-            body=json.dumps(
-                {
-                    "id": 543,
-                    "name": "Sean Cook",
-                    "screen_name": "thecooker",
-                    "profile_image_url": "http://example.com/sticky/default_profile_images/default_profile_3_bigger.png",
-                }
-            ),
+        self.responses_mock.add(
+            responses.GET,
+            re.compile(r"https://api\.twitter\.com/1\.\d+/account/verify_credentials\.json"),
+            json={
+                "id": 543,
+                "name": "Sean Cook",
+                "screen_name": "thecooker",
+                "profile_image_url": "http://example.com/sticky/default_profile_images/default_profile_3_bigger.png",
+            },
+            status=200,
         )
 
         with patch("social_core.backends.twitter.TwitterOAuth.get_unauthorized_token") as mock:
@@ -311,7 +321,7 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
         assert not user.profile.image
 
 
-@pytest.mark.usefixtures("use_httpretty")
+@pytest.mark.usefixtures("responses_mock")
 class TestLinkedInSocialAuth(SocialAuthViewSetMock):
     def base_data(self):
         return {
@@ -323,90 +333,86 @@ class TestLinkedInSocialAuth(SocialAuthViewSetMock):
     def data(self):
         base_data = self.base_data()
 
-        httpretty.register_uri(
-            httpretty.GET,
-            re.compile("https://media.licdn.com/mpr/asd/image"),
+        self.responses_mock.add(
+            responses.GET,
+            re.compile(r"https://media\.licdn\.com/mpr/asd/image"),
             body=IMAGE_BASE64,
+            status=200,
         )
 
         return base_data
 
     def success_data(self):
         data = self.data()
-        httpretty.register_uri(
-            httpretty.POST,
-            re.compile("https://www.linkedin.com/oauth/v2/accessToken$"),
-            body=json.dumps({"access_token": "1234", "expires_in": 6000}),
+        self.responses_mock.add(
+            responses.POST,
+            re.compile(r"https://www\.linkedin\.com/oauth/v2/accessToken"),
+            json={"access_token": "1234", "expires_in": 6000},
+            status=200,
         )
         return data
 
     def complete_data(self):
         success_data = self.success_data()
-        httpretty.register_uri(
-            httpretty.GET,
-            re.compile("https://api.linkedin.com/v2/me$"),
-            body=json.dumps(
-                {
-                    "emailAddress": "bobsmith@example.com",
-                    "firstName": {
-                        "localized": {"en_US": "Bob"},
-                        "preferredLocale": {"country": "US", "language": "en"},
-                    },
-                    "localizedFirstName": "Bob",
-                    "headline": {
-                        "localized": {"en_US": "API Enthusiast at LinkedIn"},
-                        "preferredLocale": {"country": "US", "language": "en"},
-                    },
-                    "localizedHeadline": "API Enthusiast at LinkedIn",
-                    "vanityName": "bsmith",
-                    "id": "yrZCpj2Z12",
-                    "lastName": {
-                        "localized": {"en_US": "Smith"},
-                        "preferredLocale": {"country": "US", "language": "en"},
-                    },
-                    "localizedLastName": "Smith",
-                    "profilePicture": {
-                        "displayImage": "urn:li:digitalmediaAsset:C4D00AAAAbBCDEFGhiJ"
-                    },
-                }
-            ),
+        self.responses_mock.add(
+            responses.GET,
+            re.compile(r"https://api\.linkedin\.com/v2/me"),
+            json={
+                "emailAddress": "bobsmith@example.com",
+                "firstName": {
+                    "localized": {"en_US": "Bob"},
+                    "preferredLocale": {"country": "US", "language": "en"},
+                },
+                "localizedFirstName": "Bob",
+                "headline": {
+                    "localized": {"en_US": "API Enthusiast at LinkedIn"},
+                    "preferredLocale": {"country": "US", "language": "en"},
+                },
+                "localizedHeadline": "API Enthusiast at LinkedIn",
+                "vanityName": "bsmith",
+                "id": "yrZCpj2Z12",
+                "lastName": {
+                    "localized": {"en_US": "Smith"},
+                    "preferredLocale": {"country": "US", "language": "en"},
+                },
+                "localizedLastName": "Smith",
+                "profilePicture": {"displayImage": "urn:li:digitalmediaAsset:C4D00AAAAbBCDEFGhiJ"},
+            },
+            status=200,
         )
         return success_data
 
     def picture_data(self):
         success_data = self.success_data()
-        httpretty.register_uri(
-            httpretty.GET,
-            re.compile("https://api.linkedin.com/v2/me$"),
-            body=json.dumps(
-                {
-                    "emailAddress": "bobsmith@example.com",
-                    "firstName": {
-                        "localized": {"en_US": "Bob"},
-                        "preferredLocale": {"country": "US", "language": "en"},
-                    },
-                    "localizedFirstName": "Bob",
-                    "headline": {
-                        "localized": {"en_US": "API Enthusiast at LinkedIn"},
-                        "preferredLocale": {"country": "US", "language": "en"},
-                    },
-                    "localizedHeadline": "API Enthusiast at LinkedIn",
-                    "vanityName": "bsmith",
-                    "id": "yrZCpj2Z12",
-                    "lastName": {
-                        "localized": {"en_US": "Smith"},
-                        "preferredLocale": {"country": "US", "language": "en"},
-                    },
-                    "localizedLastName": "Smith",
-                    "profilePicture": {
-                        "displayImage": "urn:li:digitalmediaAsset:C4D00AAAAbBCDEFGhiJ"
-                    },
-                    "pictureUrls": {
-                        "_total": 1,
-                        "values": ["https://media.licdn.com/mpr/asd/image"],
-                    },
-                }
-            ),
+        self.responses_mock.add(
+            responses.GET,
+            re.compile(r"https://api\.linkedin\.com/v2/me"),
+            json={
+                "emailAddress": "bobsmith@example.com",
+                "firstName": {
+                    "localized": {"en_US": "Bob"},
+                    "preferredLocale": {"country": "US", "language": "en"},
+                },
+                "localizedFirstName": "Bob",
+                "headline": {
+                    "localized": {"en_US": "API Enthusiast at LinkedIn"},
+                    "preferredLocale": {"country": "US", "language": "en"},
+                },
+                "localizedHeadline": "API Enthusiast at LinkedIn",
+                "vanityName": "bsmith",
+                "id": "yrZCpj2Z12",
+                "lastName": {
+                    "localized": {"en_US": "Smith"},
+                    "preferredLocale": {"country": "US", "language": "en"},
+                },
+                "localizedLastName": "Smith",
+                "profilePicture": {"displayImage": "urn:li:digitalmediaAsset:C4D00AAAAbBCDEFGhiJ"},
+                "pictureUrls": {
+                    "_total": 1,
+                    "values": ["https://media.licdn.com/mpr/asd/image"],
+                },
+            },
+            status=200,
         )
         return success_data
 
@@ -432,7 +438,7 @@ class TestLinkedInSocialAuth(SocialAuthViewSetMock):
         assert user.profile.image
 
 
-@pytest.mark.usefixtures("use_httpretty")
+@pytest.mark.usefixtures("responses_mock")
 class TestGoogleSocialAuthViewSet(SocialAuthViewSetMock):
     def base_data(self):
         return {
@@ -443,25 +449,25 @@ class TestGoogleSocialAuthViewSet(SocialAuthViewSetMock):
 
     def data(self):
         base_data = self.base_data()
-        httpretty.register_uri(
-            httpretty.GET,
-            re.compile(r"https://www.googleapis.com/oauth2/v3/userinfo"),
-            body=json.dumps(
-                {
-                    "id": "1387123",
-                    "given_name": "John",
-                    "family_name": "Doe",
-                    "email": "johndoe@example.com",
-                }
-            ),
+        self.responses_mock.add(
+            responses.GET,
+            re.compile(r"https://www\.googleapis\.com/oauth2/v3/userinfo"),
+            json={
+                "id": "1387123",
+                "given_name": "John",
+                "family_name": "Doe",
+                "email": "johndoe@example.com",
+            },
+            status=200,
         )
         return base_data
 
     def success_data(self):
-        httpretty.register_uri(
-            httpretty.POST,
-            re.compile(r"https://accounts.google.com/o/oauth2/token$"),
-            body=json.dumps({"access_token": "1234", "token_type": "type", "expires_in": 6000}),
+        self.responses_mock.add(
+            responses.POST,
+            re.compile(r"https://accounts\.google\.com/o/oauth2/token"),
+            json={"access_token": "1234", "token_type": "type", "expires_in": 6000},
+            status=200,
         )
         return self.data()
 

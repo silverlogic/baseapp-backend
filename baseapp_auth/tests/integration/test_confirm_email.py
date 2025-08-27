@@ -34,22 +34,22 @@ class TestConfirmEmailRequest(ApiMixin):
         h.responseBadRequest(r)
 
     @override_settings(BA_AUTH_CONFIRM_EMAIL_TOKEN_EXPIRATION_TIME_DELTA=timedelta(minutes=5))
-    def test_user_can_request(self, user_client, data, deep_link_mock_success):
+    def test_user_can_request(self, user_client, data):
         r = user_client.put(self.reverse(kwargs={"pk": self.user.pk}), data)
         h.responseOk(r)
 
     @override_settings(BA_AUTH_CONFIRM_EMAIL_TOKEN_EXPIRATION_TIME_DELTA=timedelta(seconds=1))
-    def test_user_cant_request_with_expired_token(self, user_client, data, deep_link_mock_success):
+    def test_user_cant_request_with_expired_token(self, user_client, data):
         time.sleep(1.1)
         r = user_client.put(self.reverse(kwargs={"pk": self.user.pk}), data)
         h.responseBadRequest(r)
 
-    def test_user_can_request_when_deep_link_errors(self, user_client, data, deep_link_mock_error):
+    def test_user_can_request_when_deep_link_errors(self, user_client, data):
         r = user_client.put(self.reverse(kwargs={"pk": self.user.pk}), data)
         h.responseOk(r)
 
     @override_settings(BA_AUTH_CONFIRM_EMAIL_TOKEN_EXPIRATION_TIME_DELTA=timedelta(minutes=5))
-    def test_sets_user_is_email_verified(self, user_client, data, deep_link_mock_success):
+    def test_sets_user_is_email_verified(self, user_client, data):
         assert not self.user.is_email_verified
         r = user_client.put(self.reverse(kwargs={"pk": self.user.pk}), data)
         h.responseOk(r)
@@ -57,7 +57,7 @@ class TestConfirmEmailRequest(ApiMixin):
         assert self.user.is_email_verified
 
     @override_settings(BA_AUTH_CONFIRM_EMAIL_TOKEN_EXPIRATION_TIME_DELTA=timedelta(seconds=1))
-    def test_user_cant_varify_with_expired_token(self, user_client, data, deep_link_mock_success):
+    def test_user_cant_varify_with_expired_token(self, user_client, data):
         assert not self.user.is_email_verified
         time.sleep(1.1)
         r = user_client.put(self.reverse(kwargs={"pk": self.user.pk}), data)
