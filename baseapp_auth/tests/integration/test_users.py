@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 import swapper
+from constance.test import override_config
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -238,13 +239,29 @@ class TestUsersDeleteAccount(ApiMixin):
                 args=[user_id], eta=mock_apply_async.call_args[1]["eta"]
             )
 
-    def test_anonymize_and_delete_user_task_sends_success_email(self, outbox):
+    @override_config(SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS=True)
+    def test_anonymize_and_delete_user_task_sends_success_email_to_superusers(self, outbox):
         user = UserFactory()
         user_id = user.id
+        superuser = UserFactory(is_superuser=True, email="superuser@example.com")
+        anonymize_and_delete_user_task(user_id)
+        assert len(outbox) == 2
+        assert outbox[0].to == [user.email]
+        assert any("successfully" in m.subject.lower() for m in outbox)
+        assert any(user.email in m.to for m in outbox)
+        assert any(superuser.email in m.to for m in outbox)
 
+    @override_config(SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS=False)
+    def test_anonymize_and_delete_user_task_sends_success_email_not_to_superusers(self, outbox):
+        user = UserFactory()
+        user_id = user.id
+        superuser = UserFactory(is_superuser=True, email="superuser@example.com")
         anonymize_and_delete_user_task(user_id)
         assert len(outbox) == 1
         assert outbox[0].to == [user.email]
+        assert any("successfully" in m.subject.lower() for m in outbox)
+        assert any(user.email in m.to for m in outbox)
+        assert not any(superuser.email in m.to for m in outbox)
 
     def test_anonymize_and_delete_user_task_sends_error_email(self, outbox):
         user = UserFactory()
