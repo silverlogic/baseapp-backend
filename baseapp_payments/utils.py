@@ -263,6 +263,8 @@ class StripeService:
         try:
             if "status" not in kwargs:
                 kwargs["status"] = "active"
+            if "status" in kwargs and kwargs["status"] == "all":
+                kwargs.pop("status")
             subscriptions = stripe.Subscription.list(customer=customer_id, **kwargs)
             return subscriptions
         except Exception as e:
@@ -283,7 +285,9 @@ class StripeService:
 
     def list_products(self, **kwargs):
         try:
-            products = stripe.Product.list(**kwargs)
+            if "active" not in kwargs:
+                kwargs["active"] = True
+            products = list(stripe.Product.list(**kwargs).auto_paging_iter())
             return products
         except Exception as e:
             logger.exception(e)
@@ -360,14 +364,6 @@ class StripeService:
         except Exception as e:
             logger.exception(e)
             raise PaymentMethodDeletionError("Error deleting payment method in Stripe")
-
-    def get_upcoming_invoice(self, customer_id):
-        try:
-            invoice = stripe.Invoice.upcoming(customer=customer_id)
-            return invoice
-        except Exception as e:
-            logger.exception(e)
-            raise InvoiceNotFound("Error retrieving upcoming invoice in Stripe")
 
     def get_payment_intent(self, payment_intent_id):
         try:

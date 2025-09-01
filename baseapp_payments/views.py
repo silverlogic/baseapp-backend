@@ -102,12 +102,16 @@ class StripeProductViewset(viewsets.GenericViewSet):
         products = StripeService().list_products()
         return Response(products, status=200)
 
-    def retrieve(self, request, productId=None):
-        product = StripeService().retrieve_product(productId)
-        if not product:
-            return Response({"error": "Product not found"}, status=404)
-        serializer = self.serializer_class(product)
-        return Response(serializer.data, status=200)
+    def retrieve(self, request, pk=None):
+        try:
+            product = StripeService().retrieve_product(pk)
+            if not product:
+                return Response({"error": "Product not found"}, status=404)
+            serializer = self.serializer_class(product)
+            return Response(serializer.data, status=200)
+        except Exception as e:
+            logger.exception("Failed to retrieve product: %s", e)
+            return Response({"error": "An internal error has occurred"}, status=500)
 
 
 class StripeCustomerViewset(
