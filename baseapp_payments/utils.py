@@ -240,9 +240,9 @@ class StripeService:
             logger.exception(e)
             raise SubscriptionCreationError("Error creating subscription intent in Stripe")
 
-    def retrieve_subscription(self, subscription_id):
+    def retrieve_subscription(self, subscription_id, **kwargs):
         try:
-            subscription = stripe.Subscription.retrieve(subscription_id)
+            subscription = stripe.Subscription.retrieve(subscription_id, **kwargs)
         except Exception as e:
             if "No such subscription" in str(e):
                 return None
@@ -250,7 +250,10 @@ class StripeService:
             raise SubscriptionNotFound("Error retrieving subscription in Stripe")
         customer = subscription.get("customer", None)
         try:
-            upcoming_invoice = stripe.Invoice.upcoming(customer=customer)
+            upcoming_invoice = stripe.Invoice.create_preview(
+                customer=customer,
+                subscription=subscription_id
+            )
             subscription["upcoming_invoice"] = {
                 "amount_due": upcoming_invoice.amount_due,
                 "next_payment_attempt": upcoming_invoice.next_payment_attempt,
@@ -283,7 +286,9 @@ class StripeService:
 
     def list_products(self, **kwargs):
         try:
-            products = stripe.Product.list(**kwargs)
+            if "active" not in kwargs:
+                kwargs["active"] = True
+            products = stripe.Product.list(**kwargs).auto_paging_iter()
             return products
         except Exception as e:
             logger.exception(e)
