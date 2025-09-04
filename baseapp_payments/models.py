@@ -55,12 +55,6 @@ class Customer(BaseCustomer):
                     raise ValueError("Entity type must be set when entity is None")
         super().save(*args, **kwargs)
 
-    def save(self, *args, **kwargs):
-        if self.tracker.has_changed("entity") and self.entity:
-            self.entity_type = ContentType.objects.get_for_model(self.entity)
-            self.entity_id = self.entity.id
-        super().save(*args, **kwargs)
-
 
 class Subscription(BaseSubscription):
     customer = models.ForeignKey(
