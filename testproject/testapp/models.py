@@ -11,6 +11,12 @@ class Post(models.Model):
     video = CloudflareStreamField(null=True, blank=True, downloadable=False)
 
 
-# This model is only used for PublicIdMixin tests.
+# ==============================
+# The following models are used for testing baseapp_core.hashids features.
+# ==============================
 class DummyPublicIdModel(PublicIdMixin, models.Model):
+    name = models.CharField(max_length=100)
+
+
+class DummyLegacyModel(models.Model):
     name = models.CharField(max_length=100)

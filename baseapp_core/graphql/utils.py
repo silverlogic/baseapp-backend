@@ -1,5 +1,6 @@
 import logging as _logging
 import traceback
+import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import partial
@@ -14,8 +15,19 @@ from django.db.models.sql import query as _query
 from graphene_django import views as _views
 from graphene_django.debug.sql import tracking as _tracking
 from graphene_django.registry import get_global_registry
-from graphql_relay import to_global_id
 from graphql_relay.node.node import from_global_id
+
+_registry_map = None
+
+
+def _get_registry_map():
+    global _registry_map
+    if _registry_map is None:
+        _registry_map = {
+            object_type._meta.name: model
+            for model, object_type in get_global_registry()._registry.items()
+        }
+    return _registry_map
 
 
 def get_pk_from_relay_id(relay_id):
@@ -24,16 +36,25 @@ def get_pk_from_relay_id(relay_id):
 
 
 def get_obj_from_relay_id(info: graphene.ResolveInfo, relay_id, get_node=False):
-    gid_type, gid = from_global_id(relay_id)
-    object_type = info.schema.get_type(gid_type)
-    if get_node:
-        return object_type.graphene_type.get_node(info, gid)
-    return object_type.graphene_type._meta.model.objects.get(pk=gid)
+    if get_node is not False:
+        warnings.warn(
+            "The 'get_node' parameter of 'get_obj_from_relay_id' is deprecated and will be removed in a future version. "
+            "Please update your code to not use this parameter.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+    from baseapp_core.hashids.strategies import (
+        graphql_get_node_from_global_id_using_strategy,
+    )
+
+    return graphql_get_node_from_global_id_using_strategy(info, relay_id)
 
 
 def get_obj_relay_id(obj):
+    from baseapp_core.hashids.strategies import graphql_to_global_id_using_strategy
+
     object_type = _cache_object_type(obj)
-    return to_global_id(object_type._meta.name, obj.pk)
+    return graphql_to_global_id_using_strategy(object_type._meta.name, obj.pk)
 
 
 def _cache_object_type(obj):
@@ -53,6 +74,10 @@ def get_object_type_for_model(model):
         return model.get_graphql_object_type()
 
     return get_object_type
+
+
+def get_model_from_graphql_object_type(object_type_name: str):
+    return _get_registry_map().get(object_type_name)
 
 
 BASE_PATH = str(Path(__file__).parent.parent.parent.resolve())

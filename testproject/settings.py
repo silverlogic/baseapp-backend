@@ -149,6 +149,10 @@ CONSTANCE_CONFIG = OrderedDict(
             "STRIPE_CUSTOMER_ENTITY_MODEL",
             ("profiles.Profile", "The model to use for the Stripe customer entity."),
         ),
+        (
+            "ENABLE_PUBLIC_ID_LOGIC",
+            (True, "Enable public ID logic."),
+        ),
     ]
 )
 
