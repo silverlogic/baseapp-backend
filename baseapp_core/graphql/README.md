@@ -18,6 +18,7 @@ GRAPHENE = {
         "graphene_django.debug.DjangoDebugMiddleware",
         "baseapp_core.graphql.LogExceptionMiddleware",
         "baseapp_core.graphql.TokenAuthentication",
+        "baseapp_api_key.graphql.APIKeyAuthentication",
     ),
     "SCHEMA_OUTPUT": "schema.graphql",
 }
