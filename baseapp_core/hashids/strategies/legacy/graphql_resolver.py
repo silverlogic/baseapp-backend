@@ -1,4 +1,5 @@
 from graphene.relay import Node as GrapheneRelayNode
+from graphql_relay import from_global_id
 
 from baseapp_core.hashids.strategies.interfaces.graphql_resolver import (
     GraphQLResolverStrategy,
@@ -47,3 +48,7 @@ class LegacyGraphQLResolverStrategy(GraphQLResolverStrategy):
         get_node = getattr(graphene_type, "get_node", None)
         if get_node:
             return get_node(info, _id)
+
+    def get_pk_from_global_id(self, global_id):
+        gid_type, gid = from_global_id(global_id)
+        return gid

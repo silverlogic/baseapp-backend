@@ -120,6 +120,7 @@ class SerializerMutation(RelayMutation):
 
         if model_class:
             if "update" in cls._meta.model_operations and lookup_field in input:
+                # TODO: Figure out how to handle public id lookup.
                 instance = get_object_or_404(model_class, **{lookup_field: input[lookup_field]})
                 partial = True
             elif "create" in cls._meta.model_operations:

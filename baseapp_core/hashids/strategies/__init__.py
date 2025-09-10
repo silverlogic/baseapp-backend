@@ -58,13 +58,21 @@ def graphql_to_global_id_using_strategy(type_, id) -> str:
 
 
 def graphql_get_node_from_global_id_using_strategy(info, global_id, only_type=None) -> Any:
-    if is_uuid4(global_id):
+    if is_uuid4(global_id) and _is_public_id_logic_enabled():
         public_id_strategy = get_public_id_strategy()
-        node = public_id_strategy.graphql_resolver.get_node_from_global_id(
+        if node := public_id_strategy.graphql_resolver.get_node_from_global_id(
             info, global_id, only_type
-        )
-        if node:
+        ):
             return node
 
     legacy_strategy = get_legacy_strategy()
     return legacy_strategy.graphql_resolver.get_node_from_global_id(info, global_id, only_type)
+
+
+def graphql_get_pk_from_global_id_using_strategy(global_id):
+    if is_uuid4(global_id) and _is_public_id_logic_enabled():
+        public_id_strategy = get_public_id_strategy()
+        if pk := public_id_strategy.graphql_resolver.get_pk_from_global_id(global_id):
+            return pk
+
+    return get_legacy_strategy().graphql_resolver.get_pk_from_global_id(global_id)

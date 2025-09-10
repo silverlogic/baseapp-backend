@@ -17,3 +17,7 @@ class PublicIdGraphQLResolverStrategy(GraphQLResolverStrategy):
 
     def get_node_from_global_id(self, info, global_id, only_type=None):
         return self.id_resolver.resolve_id(global_id, None)
+
+    def get_pk_from_global_id(self, global_id):
+        if node := self.id_resolver.resolve_id(global_id, None):
+            return node.pk

@@ -3,11 +3,12 @@ import swapper
 from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
-from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
 
 from baseapp_auth.graphql import PermissionsInterface
-from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
+from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import Node as RelayNode
+from baseapp_core.graphql import get_object_type_for_model
 from baseapp_reactions.graphql.object_types import ReactionsInterface
 
 from ..models import CommentStatus, default_comments_count
@@ -29,7 +30,7 @@ def create_object_type_from_dict(name, d):
 CommentsCount = create_object_type_from_dict("CommentsCount", default_comments_count())
 
 
-class CommentsInterface(relay.Node):
+class CommentsInterface(RelayNode):
     comments_count = graphene.Field(CommentsCount, required=True)
     comments = DjangoFilterConnectionField(get_object_type_for_model(Comment))
     is_comments_enabled = graphene.Boolean(required=True)
@@ -62,7 +63,7 @@ class CommentsInterface(relay.Node):
 
 
 comment_interfaces = (
-    relay.Node,
+    RelayNode,
     CommentsInterface,
     ReactionsInterface,
     PermissionsInterface,

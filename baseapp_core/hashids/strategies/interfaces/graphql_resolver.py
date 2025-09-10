@@ -10,3 +10,6 @@ class GraphQLResolverStrategy:
 
     def get_node_from_global_id(self, info, global_id, only_type=None):
         raise NotImplementedError
+
+    def get_pk_from_global_id(self, global_id):
+        raise NotImplementedError

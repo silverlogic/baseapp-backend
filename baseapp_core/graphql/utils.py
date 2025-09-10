@@ -15,7 +15,6 @@ from django.db.models.sql import query as _query
 from graphene_django import views as _views
 from graphene_django.debug.sql import tracking as _tracking
 from graphene_django.registry import get_global_registry
-from graphql_relay.node.node import from_global_id
 
 _registry_map = None
 
@@ -31,8 +30,11 @@ def _get_registry_map():
 
 
 def get_pk_from_relay_id(relay_id):
-    gid_type, gid = from_global_id(relay_id)
-    return gid
+    from baseapp_core.hashids.strategies import (
+        graphql_get_pk_from_global_id_using_strategy,
+    )
+
+    return graphql_get_pk_from_global_id_using_strategy(relay_id)
 
 
 def get_obj_from_relay_id(info: graphene.ResolveInfo, relay_id, get_node=False):
