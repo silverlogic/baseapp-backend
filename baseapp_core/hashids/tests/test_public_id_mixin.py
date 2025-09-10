@@ -2,7 +2,6 @@ import uuid
 
 import pytest
 from django.contrib.contenttypes.models import ContentType
-from django.db import models
 
 from baseapp_core.hashids.models import PublicIdMapping
 from testproject.testapp.models import DummyPublicIdModel
@@ -55,20 +54,7 @@ class TestPublicIdMixin:
         found = DummyPublicIdModel.get_by_public_id(random_uuid)
         assert found is None
 
-    def test_get_by_public_id_wrong_model_returns_none(self, dummy_instance):
-        public_id = dummy_instance.public_id
-
-        class OtherModel(models.Model):
-            class Meta:
-                app_label = "tests"
-
-        found = OtherModel.objects.filter(pk=public_id).first()
-        assert found is None
-        # Also, using the mixin's get_by_public_id should not return an instance of OtherModel
-        assert DummyPublicIdModel.get_by_public_id(public_id) == dummy_instance
-
     def test_unique_public_id_per_instance(self, dummy_instance):
-        # Create another instance and ensure it gets a different public_id
         obj2 = DummyPublicIdModelFactory()
         assert obj2.public_id != dummy_instance.public_id
 

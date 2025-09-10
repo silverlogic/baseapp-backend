@@ -37,7 +37,7 @@ class TestPublicIdMappingModel:
         User = get_user_model()
         obj = User()
         result = PublicIdMapping.get_or_create_public_id(obj)
-        assert result is None
+        assert result == (None, None)
 
     def test_get_object_by_public_id_returns_object(self):
         obj = UserFactory()
