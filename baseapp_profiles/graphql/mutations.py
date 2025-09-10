@@ -1,4 +1,5 @@
 import string
+from django.db import transaction
 
 import graphene
 import swapper
@@ -22,6 +23,7 @@ Profile = swapper.load_model("baseapp_profiles", "Profile")
 profile_app_label = Profile._meta.app_label
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 profile_user_role_app_label = ProfileUserRole._meta.app_label
+User = swapper.load_model("users", "User")
 
 
 class BaseProfileSerializer(serializers.ModelSerializer):
@@ -134,7 +136,55 @@ class ProfileCreate(SerializerMutation):
         )
 
 
-class RoleUpdate(RelayMutation):
+class ProfileUserRoleCreate(RelayMutation):
+    profile_user_roles = graphene.List(get_object_type_for_model(ProfileUserRole))
+
+    class Input:
+        profile_id = graphene.ID(required=True)
+        users_ids = graphene.List(graphene.ID)
+        emails_to_invite = graphene.List(graphene.String)
+        role_type = graphene.Field(ProfileRoleTypesEnum)
+
+    @classmethod
+    @login_required
+    @transaction.atomic
+    def mutate_and_get_payload(cls, root, info, **input):
+        users_ids = input.get("users_ids")
+        profile_id = input.get("profile_id")
+        profile_pk = get_pk_from_relay_id(profile_id)
+        role_type = input.get("role_type")
+        emails_to_invite = input.get("emails_to_invite")
+        if not info.context.user.has_perm(
+            f"{profile_user_role_app_label}.add_profileuserrole", profile_id
+        ):
+            raise GraphQLError(
+                str(_("You don't have permission to perform this action")),
+                extensions={"code": "permission_required"},
+            )
+        if role_type and role_type not in ProfileUserRole.ProfileRoles.values:
+            raise GraphQLError(_("Invalid role type"))
+        else:
+            role_type = ProfileUserRole.ProfileRoles.MANAGER
+
+        # TODO on BA-2426: send invitation to new users emails
+        # if emails_to_invite:
+        #     pass
+
+        profile_user_roles = [
+            ProfileUserRole(user_id=get_pk_from_relay_id(user_id), profile_id=profile_pk, role=role_type)
+            for user_id in users_ids
+        ]
+        profile_user_roles = ProfileUserRole.objects.bulk_create(profile_user_roles)
+
+        # TODO on BA-2426: send invitation to existing users
+
+        return cls(
+            errors=None,
+            profile_user_roles=profile_user_roles,
+        )
+
+
+class ProfileUserRoleUpdate(RelayMutation):
     profile_user_role = graphene.Field(get_object_type_for_model(ProfileUserRole))
 
     class Input:
@@ -167,10 +217,10 @@ class RoleUpdate(RelayMutation):
         obj.role = role_type
         obj.save()
 
-        return RoleUpdate(profile_user_role=obj)
+        return cls(profile_user_role=obj)
 
 
-class ProfileRemoveMember(RelayMutation):
+class ProfileUserRoleDelete(RelayMutation):
     deleted_id = graphene.ID()
 
     class Input:
@@ -200,7 +250,7 @@ class ProfileRemoveMember(RelayMutation):
         id_to_return = obj.relay_id
         obj.delete()
 
-        return ProfileRemoveMember(deleted_id=id_to_return)
+        return cls(deleted_id=id_to_return)
 
 
 class ProfileUpdate(SerializerMutation):
@@ -286,12 +336,13 @@ class ProfileDelete(RelayMutation):
 
         obj.delete()
 
-        return ProfileDelete(deleted_id=relay_id)
+        return cls(deleted_id=relay_id)
 
 
 class ProfilesMutations(object):
     profile_create = ProfileCreate.Field()
     profile_update = ProfileUpdate.Field()
     profile_delete = ProfileDelete.Field()
-    profile_role_update = RoleUpdate.Field()
-    profile_remove_member = ProfileRemoveMember.Field()
+    profile_user_role_create = ProfileUserRoleCreate.Field()
+    profile_user_role_update = ProfileUserRoleUpdate.Field()
+    profile_user_role_delete = ProfileUserRoleDelete.Field()
