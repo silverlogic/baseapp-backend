@@ -8,7 +8,7 @@ from baseapp_core.hashids.strategies import (
 
 class Node(GrapheneRelayNode):
     class Meta:
-        name = "NodeV2"
+        name = "Node"
 
     @classmethod
     def to_global_id(cls, type_, id):

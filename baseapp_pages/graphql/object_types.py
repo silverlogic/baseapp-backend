@@ -6,6 +6,8 @@ from django.db.models import Q
 from django.utils.translation import get_language
 from query_optimizer import optimize
 
+from baseapp_auth.graphql import PermissionsInterface
+from baseapp_comments.graphql.object_types import CommentsInterface
 from baseapp_core.graphql import DjangoObjectType, LanguagesEnum
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import ThumbnailField
@@ -86,7 +88,7 @@ class BasePageObjectType:
     body = graphene.String()
 
     class Meta:
-        interfaces = (RelayNode,)
+        interfaces = (RelayNode, PageInterface, PermissionsInterface, CommentsInterface)
         model = Page
         fields = ("pk", "user", "title", "body", "status", "created", "modified")
         filterset_class = PageFilter

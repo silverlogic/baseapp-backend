@@ -74,20 +74,21 @@ class PublicIdMixin:
 
     @property
     def public_id(self):
-        """
-        Get the public UUID for this instance.
-        Creates a mapping if one doesn't exist.
-        """
-        from .models import PublicIdMapping
+        from baseapp_core.hashids.strategies import (
+            get_hashids_strategy_from_instance_or_cls,
+        )
 
-        public_id, created = PublicIdMapping.get_or_create_public_id(self)
-        return public_id
+        strategy = get_hashids_strategy_from_instance_or_cls(self)
+        return strategy.id_resolver.get_id_from_instance(self)
 
     @classmethod
     def get_by_public_id(cls, public_id):
-        from .models import PublicIdMapping
+        from baseapp_core.hashids.strategies import (
+            get_hashids_strategy_from_instance_or_cls,
+        )
 
-        return PublicIdMapping.get_object_by_public_id(public_id, cls)
+        strategy = get_hashids_strategy_from_instance_or_cls(cls)
+        return strategy.id_resolver.resolve_id(public_id, cls)
 
 
 class PublicIdFunc(pgtrigger.Func):
