@@ -1,9 +1,9 @@
 import string
-from django.db import transaction
 
 import graphene
 import swapper
 from django.apps import apps
+from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from rest_framework import serializers
@@ -167,11 +167,13 @@ class ProfileUserRoleCreate(RelayMutation):
             role_type = ProfileUserRole.ProfileRoles.MANAGER
 
         # TODO on BA-2426: send invitation to new users emails
-        # if emails_to_invite:
-        #     pass
+        if emails_to_invite:
+            pass
 
         profile_user_roles = [
-            ProfileUserRole(user_id=get_pk_from_relay_id(user_id), profile_id=profile_pk, role=role_type)
+            ProfileUserRole(
+                user_id=get_pk_from_relay_id(user_id), profile_id=profile_pk, role=role_type
+            )
             for user_id in users_ids
         ]
         profile_user_roles = ProfileUserRole.objects.bulk_create(profile_user_roles)

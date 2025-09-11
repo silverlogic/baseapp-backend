@@ -1,4 +1,5 @@
 import django_filters
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 
@@ -18,8 +19,7 @@ class UsersFilter(django_filters.FilterSet):
         fields = ["q", "order_by"]
 
     def filter_by_q(self, queryset, name, value):
-        return queryset.filter(
-            Q(profile__name__icontains=value) |
-            Q(profile__name__icontains=value) |
-            Q(email__icontains=value)
-        )
+        if apps.is_installed("baseapp_profiles"):
+            return queryset.filter(Q(profile__name__icontains=value) | Q(email__icontains=value))
+
+        return queryset.filter(email__icontains=value)
