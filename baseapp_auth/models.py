@@ -143,6 +143,7 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_pr
                 super().save(*args, **kwargs)
 
     def anonymize_and_delete(self):
+
         from .rest_framework.users.tasks import anonymize_and_delete_user_task
 
         delay_days = config.ANONYMIZE_TASK_DELAY_DAYS
