@@ -1,3 +1,4 @@
+from constance import config
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
@@ -227,8 +228,6 @@ def send_password_expired_email(user):
 
 
 def send_anonymize_user_success_email(user_email):
-    from constance import config
-
     context = {"user_email": user_email}
     # Email to the user
     subject = render_to_string("users/emails/anonymize-user-success-subject.txt.j2").strip()
@@ -265,8 +264,6 @@ def send_anonymize_user_success_email(user_email):
 
 
 def send_anonymize_user_error_email(user_email):
-    from constance import config
-
     context = {"user_email": user_email}
 
     # Email to the user
