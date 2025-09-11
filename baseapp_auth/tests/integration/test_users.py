@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 import swapper
+from constance import config
 from constance.test import override_config
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -278,7 +279,6 @@ class TestUsersDeleteAccount(ApiMixin):
         assert any(user.email in m.to for m in outbox)
 
     def test_send_anonymize_user_success_email_with_superusers(self, outbox):
-        from constance import config
 
         config.SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS = True
         user = UserFactory()
@@ -295,7 +295,6 @@ class TestUsersDeleteAccount(ApiMixin):
         assert any(superuser.email in m.to for m in outbox)
 
     def test_send_anonymize_user_error_email_with_superusers(self, outbox):
-        from constance import config
 
         config.SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS = True
         user = UserFactory()
