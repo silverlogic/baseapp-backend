@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 import swapper
+from constance import config
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
@@ -130,7 +131,6 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_pr
                 super().save(*args, **kwargs)
 
     def anonymize_and_delete(self):
-        from constance import config
 
         from .rest_framework.users.tasks import anonymize_and_delete_user_task
 
