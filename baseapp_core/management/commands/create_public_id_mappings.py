@@ -89,7 +89,7 @@ class Command(BaseCommand):
             total_instances = instances.count()
 
             if total_instances == 0:
-                self.stdout.write(f"  All instances already have public ID mappings")
+                self.stdout.write("  All instances already have public ID mappings")
                 continue
 
             self.stdout.write(f"  Found {total_instances} instances without public ID mappings")
@@ -106,7 +106,7 @@ class Command(BaseCommand):
                         for instance in batch:
                             try:
                                 # This will create the mapping
-                                public_id = instance.public_id
+                                instance.public_id
                                 created_count += 1
                             except Exception as e:
                                 self.stdout.write(

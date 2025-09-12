@@ -16,18 +16,6 @@ from graphene_django import views as _views
 from graphene_django.debug.sql import tracking as _tracking
 from graphene_django.registry import get_global_registry
 
-_registry_map = None
-
-
-def _get_registry_map():
-    global _registry_map
-    if _registry_map is None:
-        _registry_map = {
-            object_type._meta.name: model
-            for model, object_type in get_global_registry()._registry.items()
-        }
-    return _registry_map
-
 
 def get_pk_from_relay_id(relay_id):
     from baseapp_core.hashids.strategies import (
@@ -56,7 +44,7 @@ def get_obj_relay_id(obj):
     from baseapp_core.hashids.strategies import graphql_to_global_id_using_strategy
 
     object_type = _cache_object_type(obj)
-    return graphql_to_global_id_using_strategy(object_type._meta.name, obj.pk)
+    return graphql_to_global_id_using_strategy(obj, object_type._meta.name, obj.pk)
 
 
 def _cache_object_type(obj):
@@ -76,10 +64,6 @@ def get_object_type_for_model(model):
         return model.get_graphql_object_type()
 
     return get_object_type
-
-
-def get_model_from_graphql_object_type(object_type_name: str):
-    return _get_registry_map().get(object_type_name)
 
 
 BASE_PATH = str(Path(__file__).parent.parent.parent.resolve())

@@ -13,6 +13,8 @@ from pgtrigger import utils
 class PublicIdMapping(TimeStampedModel):
     """
     Centralized mapping of model instances to public IDs.
+
+    This model is designed to give a unique public ID for models with an auto-incrementing primary key.
     """
 
     public_id = models.UUIDField(

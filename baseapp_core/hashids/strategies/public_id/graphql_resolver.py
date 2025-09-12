@@ -1,7 +1,4 @@
-from baseapp_core.graphql.utils import get_model_from_graphql_object_type
-from baseapp_core.hashids.strategies.interfaces.graphql_resolver import (
-    GraphQLResolverStrategy,
-)
+from baseapp_core.hashids.strategies.interfaces import GraphQLResolverStrategy
 from baseapp_core.hashids.strategies.public_id.id_resolver import (
     PublicIdResolverStrategy,
 )
@@ -10,10 +7,8 @@ from baseapp_core.hashids.strategies.public_id.id_resolver import (
 class PublicIdGraphQLResolverStrategy(GraphQLResolverStrategy):
     id_resolver: PublicIdResolverStrategy
 
-    def to_global_id(self, type_, id):
-        model = get_model_from_graphql_object_type(type_)
-        instance = model.objects.get(pk=id)
-        return str(self.id_resolver.get_id_from_instance(instance))
+    def to_global_id(self, model_instance, type_, id):
+        return str(self.id_resolver.get_id_from_instance(model_instance))
 
     def get_node_from_global_id(self, info, global_id, only_type=None):
         from baseapp_core.graphql import Node

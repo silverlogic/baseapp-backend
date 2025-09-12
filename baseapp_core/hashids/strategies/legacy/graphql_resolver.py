@@ -1,13 +1,11 @@
 from graphene.relay import Node as GrapheneRelayNode
 from graphql_relay import from_global_id
 
-from baseapp_core.hashids.strategies.interfaces.graphql_resolver import (
-    GraphQLResolverStrategy,
-)
+from baseapp_core.hashids.strategies.interfaces import GraphQLResolverStrategy
 
 
 class LegacyGraphQLResolverStrategy(GraphQLResolverStrategy):
-    def to_global_id(self, type_, id):
+    def to_global_id(self, model_instance, type_, id):
         return GrapheneRelayNode.to_global_id(type_, id)
 
     def get_node_from_global_id(self, info, global_id, only_type=None):

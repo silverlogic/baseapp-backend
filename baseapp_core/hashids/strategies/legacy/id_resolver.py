@@ -1,4 +1,4 @@
-from baseapp_core.hashids.strategies.interfaces.id_resolver import IdResolverStrategy
+from baseapp_core.hashids.strategies.interfaces import IdResolverStrategy
 
 
 class LegacyIdResolverStrategy(IdResolverStrategy):
