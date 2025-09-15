@@ -1,8 +1,13 @@
+import logging
+
 from django.contrib.auth.models import BaseUserManager
 
 from baseapp_auth.querysets import UserQuerySet
 
+logger = logging.getLogger(__name__)
 
+
+# from .managers import UserManager
 class UserManager(BaseUserManager):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

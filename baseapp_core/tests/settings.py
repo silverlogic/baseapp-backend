@@ -213,6 +213,7 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.TokenAuthentication",
         "rest_framework.authentication.SessionAuthentication",
+        "baseapp_api_key.rest_framework.authentication.APIKeyAuthentication",
     ),
     "DEFAULT_PAGINATION_CLASS": "baseapp_core.rest_framework.pagination.DefaultPageNumberPagination",
     "PAGE_SIZE": 30,
