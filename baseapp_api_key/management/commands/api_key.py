@@ -1,3 +1,5 @@
+# pragma: no cover
+
 import typing
 
 from django.apps import apps
