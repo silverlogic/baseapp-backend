@@ -35,9 +35,9 @@ PROFILE_UPDATE_GRAPHQL = """
     }
 """
 
-PROFILE_ROLE_UPDATE_GRAPHQL = """
-mutation ProfileRoleUpdateMutation($input: RoleUpdateInput!) {
-    profileRoleUpdate(input: $input) {
+PROFILE_USER_ROLE_UPDATE_GRAPHQL = """
+mutation ProfileUserRoleUpdateMutation($input: ProfileUserRoleUpdateInput!) {
+    profileUserRoleUpdate(input: $input) {
         profileUserRole {
             id
             role
@@ -52,8 +52,8 @@ mutation ProfileRoleUpdateMutation($input: RoleUpdateInput!) {
 """
 
 PROFILE_MEMBER_REMOVE_GRAPHQL = """
-mutation ProfileRemoveMemberMutation($input: ProfileRemoveMemberInput!) {
-    profileRemoveMember(input: $input) {
+mutation ProfileUserRoleDeleteMutation($input: ProfileUserRoleDeleteInput!) {
+    profileUserRoleDelete(input: $input) {
         deletedId
     }
 }
@@ -242,7 +242,7 @@ def test_user_profile_owner_can_update_role(django_user_client, graphql_user_cli
     ProfileUserRoleFactory(profile=profile, user=user_2, role=ProfileUserRole.ProfileRoles.MANAGER)
 
     response = graphql_user_client(
-        PROFILE_ROLE_UPDATE_GRAPHQL,
+        PROFILE_USER_ROLE_UPDATE_GRAPHQL,
         variables={
             "input": {"userId": user_2.relay_id, "profileId": profile.relay_id, "roleType": "ADMIN"}
         },
@@ -269,7 +269,7 @@ def test_user_with_permission_can_update_role(django_user_client, graphql_user_c
     ProfileUserRoleFactory(profile=profile, user=user_3, role=ProfileUserRole.ProfileRoles.MANAGER)
 
     response = graphql_user_client(
-        PROFILE_ROLE_UPDATE_GRAPHQL,
+        PROFILE_USER_ROLE_UPDATE_GRAPHQL,
         variables={
             "input": {"userId": user_3.relay_id, "profileId": profile.relay_id, "roleType": "ADMIN"}
         },
@@ -296,7 +296,7 @@ def test_user_without_permission_cant_update_role(django_user_client, graphql_us
     ProfileUserRoleFactory(profile=profile, user=user_3, role=ProfileUserRole.ProfileRoles.MANAGER)
 
     response = graphql_user_client(
-        PROFILE_ROLE_UPDATE_GRAPHQL,
+        PROFILE_USER_ROLE_UPDATE_GRAPHQL,
         variables={
             "input": {"userId": user_3.relay_id, "profileId": profile.relay_id, "roleType": "ADMIN"}
         },
