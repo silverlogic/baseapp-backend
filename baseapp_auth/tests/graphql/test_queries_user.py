@@ -71,7 +71,7 @@ QUERY_USERS_LIST = """
 
 QUERY_USERS_LIST_WITH_FILTERS = """
     query GetUsersList($q: String) {
-        users(filters: {q: $q}) {
+        users(q: $q) {
             edges {
                 node {
                     id
@@ -183,13 +183,14 @@ def test_anon_can_query_users_list_with_filter_by_email(graphql_client_with_quer
 
 
 def test_anon_can_query_users_list_with_filter_by_profile_name(graphql_client_with_queries):
+    UserFactory.create_batch(2)
     if apps.is_installed("baseapp_profiles"):
-        from apps.social.profiles.tests.factories import ProfileFactory
-
         user_1 = UserFactory()
-        ProfileFactory(owner=user_1, name="test")
+        user_1.profile.name = "test"
+        user_1.profile.save()
         user_2 = UserFactory()
-        ProfileFactory(owner=user_2, name="testing")
+        user_2.profile.name = "testing"
+        user_2.profile.save()
     response, queries = graphql_client_with_queries(
         QUERY_USERS_LIST_WITH_FILTERS, variables={"q": "test"}
     )
