@@ -113,3 +113,6 @@ recursive-include baseapp_referrals/locale *
 
 include baseapp_pdf/README.md
 recursive-include baseapp_pdf/templates *
+
+include baseapp_api_key/README.md
+recursive-include baseapp_api_key/templates *

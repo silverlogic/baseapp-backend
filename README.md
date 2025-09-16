@@ -100,6 +100,10 @@ Reusable app to handle content feeds.
 
 Functionality for pdf files
 
+## [baseapp-api-key](baseapp_api_key)
+
+Functionality for API keys
+
 ## How to develop
 
 Each module of baseapp-backend has a demo project in `testproject/` directory, which can be run as a standalone Django app to test. Then in baseapp-backend directory:
