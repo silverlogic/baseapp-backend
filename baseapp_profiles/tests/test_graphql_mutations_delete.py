@@ -100,6 +100,7 @@ def test_user_with_permission_can_delete_profile(django_user_client, graphql_use
     with pytest.raises(Profile.DoesNotExist):
         profile.refresh_from_db()
 
+
 def test_user_profile_owner_can_remove_profile_member(django_user_client, graphql_user_client):
     perm = Permission.objects.get(
         content_type__app_label=ProfileUserRole._meta.app_label, codename="delete_profileuserrole"
