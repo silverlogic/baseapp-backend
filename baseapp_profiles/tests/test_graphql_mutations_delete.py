@@ -3,6 +3,7 @@ import swapper
 from django.contrib.auth.models import Permission
 
 from baseapp_core.tests.factories import UserFactory
+
 from .factories import ProfileFactory, ProfileUserRoleFactory
 
 pytestmark = pytest.mark.django_db
