@@ -85,6 +85,10 @@ class BaseReportObjectType:
             return None
         return node
 
+    @classmethod
+    def get_queryset(cls, queryset, info):
+        return super().get_queryset(queryset, info)
+
 
 class ReportObjectType(
     BaseReportObjectType, gql_optimizer.OptimizedDjangoObjectType, DjangoObjectType

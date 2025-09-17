@@ -1,6 +1,5 @@
 import logging as _logging
 import traceback
-import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import partial
@@ -26,25 +25,20 @@ def get_pk_from_relay_id(relay_id):
 
 
 def get_obj_from_relay_id(info: graphene.ResolveInfo, relay_id, get_node=False):
-    if get_node is not False:
-        warnings.warn(
-            "The 'get_node' parameter of 'get_obj_from_relay_id' is deprecated and will be removed in a future version. "
-            "Please update your code to not use this parameter.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
     from baseapp_core.hashids.strategies import (
-        graphql_get_node_from_global_id_using_strategy,
+        graphql_get_instance_from_global_id_using_strategy,
     )
 
-    return graphql_get_node_from_global_id_using_strategy(info, relay_id)
+    return graphql_get_instance_from_global_id_using_strategy(info, relay_id, get_node)
 
 
 def get_obj_relay_id(obj):
     from baseapp_core.hashids.strategies import graphql_to_global_id_using_strategy
 
     object_type = _cache_object_type(obj)
-    return graphql_to_global_id_using_strategy(obj, object_type._meta.name, obj.pk)
+    if object_type:
+        return graphql_to_global_id_using_strategy(obj, object_type._meta.name, obj.pk)
+    return None
 
 
 def _cache_object_type(obj):

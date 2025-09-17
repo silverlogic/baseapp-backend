@@ -1,6 +1,7 @@
 from django.db import models
 
 from baseapp_cloudflare_stream_field import CloudflareStreamField
+from baseapp_core.hashids.models import LegacyWithPkMixin
 from baseapp_core.models import PublicIdMixin
 
 
@@ -15,6 +16,10 @@ class Post(models.Model):
 # The following models are used for testing baseapp_core.hashids features.
 # ==============================
 class DummyPublicIdModel(PublicIdMixin, models.Model):
+    name = models.CharField(max_length=100)
+
+
+class DummyLegacyWithPkModel(LegacyWithPkMixin, models.Model):
     name = models.CharField(max_length=100)
 
 

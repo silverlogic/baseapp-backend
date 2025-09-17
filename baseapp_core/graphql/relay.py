@@ -1,5 +1,3 @@
-from functools import partial
-
 from graphene.relay import BaseGlobalIDType, DefaultGlobalIDType
 from graphene.relay import GlobalID as GrapheneGlobalID
 from graphene.relay import Node as GrapheneRelayNode
@@ -18,14 +16,6 @@ class GlobalID(GrapheneGlobalID):
         type_id = parent_resolver(root, info, **args)
         parent_type_name = parent_type_name or info.parent_type.name
         return node.to_global_id_via_strategy(root, parent_type_name, type_id)  # root._meta.name
-
-    def wrap_resolve(self, parent_resolver):
-        return partial(
-            self.id_resolver,
-            parent_resolver,
-            self.node,
-            parent_type_name=self.parent_type_name,
-        )
 
 
 class AbstractBaseappNode(GrapheneRelayNode):
@@ -47,6 +37,11 @@ class AbstractBaseappNode(GrapheneRelayNode):
         _meta.fields = {
             "id": GlobalID(cls, global_id_type=global_id_type, description="The ID of the object")
         }
+
+        # Workaround so query_optimizer.GraphQLASTWalker can resolve fragment_model from Interfaces.
+        if model := options.get("model"):
+            _meta.model = model
+
         super(AbstractNode, cls).__init_subclass_with_meta__(_meta=_meta, **options)
 
     @classmethod
@@ -62,9 +57,6 @@ class AbstractBaseappNode(GrapheneRelayNode):
 
 
 class Node(AbstractBaseappNode):
-    class Meta:
-        name = "Node"
-
     @classmethod
     def to_global_id_via_strategy(cls, model_instance, type_, id):
         return graphql_to_global_id_using_strategy(model_instance, type_, id)

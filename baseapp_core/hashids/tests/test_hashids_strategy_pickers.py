@@ -15,19 +15,20 @@ from baseapp_core.hashids.strategies import (
     graphql_to_global_id_using_strategy,
 )
 from baseapp_core.hashids.strategies.bundle import HashidsStrategyBundle
-from baseapp_core.hashids.strategies.legacy.graphql_resolver import (
+from baseapp_core.hashids.strategies.legacy import (
     LegacyGraphQLResolverStrategy,
+    LegacyIdResolverStrategy,
+    LegacyQuerysetAnnotatorStrategy,
 )
-from baseapp_core.hashids.strategies.legacy.id_resolver import LegacyIdResolverStrategy
-from baseapp_core.hashids.strategies.public_id.graphql_resolver import (
+from baseapp_core.hashids.strategies.public_id import (
     PublicIdGraphQLResolverStrategy,
-)
-from baseapp_core.hashids.strategies.public_id.id_resolver import (
+    PublicIdQuerysetAnnotatorStrategy,
     PublicIdResolverStrategy,
 )
 from testproject.testapp.models import DummyLegacyModel, DummyPublicIdModel
 from testproject.testapp.tests.factories import (
     DummyLegacyModelFactory,
+    DummyLegacyWithPkModelFactory,
     DummyPublicIdModelFactory,
 )
 
@@ -51,6 +52,7 @@ class TestStrategyGetters:
         assert isinstance(strategy, HashidsStrategyBundle)
         assert isinstance(strategy.id_resolver, LegacyIdResolverStrategy)
         assert isinstance(strategy.graphql_resolver, LegacyGraphQLResolverStrategy)
+        assert isinstance(strategy.queryset_annotator, LegacyQuerysetAnnotatorStrategy)
 
     def test_get_public_id_strategy_returns_correct_bundle(self):
         strategy = get_public_id_strategy()
@@ -58,6 +60,7 @@ class TestStrategyGetters:
         assert isinstance(strategy, HashidsStrategyBundle)
         assert isinstance(strategy.id_resolver, PublicIdResolverStrategy)
         assert isinstance(strategy.graphql_resolver, PublicIdGraphQLResolverStrategy)
+        assert isinstance(strategy.queryset_annotator, PublicIdQuerysetAnnotatorStrategy)
 
     def test_get_legacy_strategy_returns_different_instances(self):
         strategy1 = get_legacy_strategy()
@@ -67,6 +70,7 @@ class TestStrategyGetters:
         assert strategy1 is not strategy2
         assert strategy1.id_resolver is not strategy2.id_resolver
         assert strategy1.graphql_resolver is not strategy2.graphql_resolver
+        assert strategy1.queryset_annotator is not strategy2.queryset_annotator
 
     def test_get_public_id_strategy_returns_different_instances(self):
         strategy1 = get_public_id_strategy()
@@ -76,6 +80,7 @@ class TestStrategyGetters:
         assert strategy1 is not strategy2
         assert strategy1.id_resolver is not strategy2.id_resolver
         assert strategy1.graphql_resolver is not strategy2.graphql_resolver
+        assert strategy1.queryset_annotator is not strategy2.queryset_annotator
 
 
 @pytest.mark.django_db
@@ -90,6 +95,7 @@ class TestGetHashidsStrategyFromInstanceOrCls:
             assert isinstance(strategy, HashidsStrategyBundle)
             assert isinstance(strategy.id_resolver, PublicIdResolverStrategy)
             assert isinstance(strategy.graphql_resolver, PublicIdGraphQLResolverStrategy)
+            assert isinstance(strategy.queryset_annotator, PublicIdQuerysetAnnotatorStrategy)
 
     def test_returns_public_id_strategy_for_public_id_model_class_when_enabled(self):
         with patch(
@@ -100,6 +106,7 @@ class TestGetHashidsStrategyFromInstanceOrCls:
             assert isinstance(strategy, HashidsStrategyBundle)
             assert isinstance(strategy.id_resolver, PublicIdResolverStrategy)
             assert isinstance(strategy.graphql_resolver, PublicIdGraphQLResolverStrategy)
+            assert isinstance(strategy.queryset_annotator, PublicIdQuerysetAnnotatorStrategy)
 
     def test_returns_legacy_strategy_for_public_id_model_when_disabled(self):
         with patch(
@@ -111,6 +118,7 @@ class TestGetHashidsStrategyFromInstanceOrCls:
             assert isinstance(strategy, HashidsStrategyBundle)
             assert isinstance(strategy.id_resolver, LegacyIdResolverStrategy)
             assert isinstance(strategy.graphql_resolver, LegacyGraphQLResolverStrategy)
+            assert isinstance(strategy.queryset_annotator, LegacyQuerysetAnnotatorStrategy)
 
     def test_returns_legacy_strategy_for_legacy_model_when_enabled(self):
         with patch(
@@ -122,6 +130,7 @@ class TestGetHashidsStrategyFromInstanceOrCls:
             assert isinstance(strategy, HashidsStrategyBundle)
             assert isinstance(strategy.id_resolver, LegacyIdResolverStrategy)
             assert isinstance(strategy.graphql_resolver, LegacyGraphQLResolverStrategy)
+            assert isinstance(strategy.queryset_annotator, LegacyQuerysetAnnotatorStrategy)
 
     def test_returns_legacy_strategy_for_legacy_model_when_disabled(self):
         with patch(
@@ -133,6 +142,7 @@ class TestGetHashidsStrategyFromInstanceOrCls:
             assert isinstance(strategy, HashidsStrategyBundle)
             assert isinstance(strategy.id_resolver, LegacyIdResolverStrategy)
             assert isinstance(strategy.graphql_resolver, LegacyGraphQLResolverStrategy)
+            assert isinstance(strategy.queryset_annotator, LegacyQuerysetAnnotatorStrategy)
 
     def test_returns_legacy_strategy_for_legacy_model_class(self):
         with patch(
@@ -143,6 +153,7 @@ class TestGetHashidsStrategyFromInstanceOrCls:
             assert isinstance(strategy, HashidsStrategyBundle)
             assert isinstance(strategy.id_resolver, LegacyIdResolverStrategy)
             assert isinstance(strategy.graphql_resolver, LegacyGraphQLResolverStrategy)
+            assert isinstance(strategy.queryset_annotator, LegacyQuerysetAnnotatorStrategy)
 
 
 @pytest.mark.django_db
@@ -151,21 +162,13 @@ class TestGraphQLToGlobalIdUsingStrategy:
         with patch(
             "baseapp_core.hashids.strategies._is_public_id_logic_enabled", return_value=True
         ):
-            with patch(
-                "baseapp_core.hashids.strategies.get_model_from_graphql_object_type",
-                return_value=DummyPublicIdModel,
-            ):
-                with patch(
-                    "baseapp_core.hashids.strategies.public_id.graphql_resolver.get_model_from_graphql_object_type",
-                    return_value=DummyPublicIdModel,
-                ):
-                    dummy_instance = DummyPublicIdModelFactory()
+            dummy_instance = DummyPublicIdModelFactory()
 
-                    result = graphql_to_global_id_using_strategy(
-                        "DummyPublicIdModel", dummy_instance.pk
-                    )
+            result = graphql_to_global_id_using_strategy(
+                dummy_instance, "DummyPublicIdModel", dummy_instance.pk
+            )
 
-                    assert result == dummy_instance.public_id
+            assert result == str(dummy_instance.public_id)
 
     def test_uses_legacy_strategy_when_disabled(self):
         with patch(
@@ -173,7 +176,9 @@ class TestGraphQLToGlobalIdUsingStrategy:
         ):
             dummy_instance = DummyLegacyModelFactory()
 
-            result = graphql_to_global_id_using_strategy("DummyLegacyModel", dummy_instance.pk)
+            result = graphql_to_global_id_using_strategy(
+                dummy_instance, "DummyLegacyModel", dummy_instance.pk
+            )
 
             expected_global_id = to_global_id("DummyLegacyModel", dummy_instance.pk)
             assert result == expected_global_id
@@ -184,7 +189,14 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
     def test_uses_public_id_strategy_for_uuid4_global_id(self):
         dummy_instance = DummyPublicIdModelFactory()
         test_uuid = dummy_instance.public_id
+        graphene_type_mock = MagicMock()
+        graphene_type_mock._meta.name = "DummyPublicIdModel"
+        graphene_type_mock._meta.interfaces = [Node]
+        graphene_type_mock.get_node = MagicMock(return_value=dummy_instance)
         mock_info = MagicMock()
+        mock_info.schema.get_type = MagicMock(
+            return_value=MagicMock(graphene_type=graphene_type_mock)
+        )
 
         result = graphql_get_node_from_global_id_using_strategy(mock_info, str(test_uuid))
 
@@ -196,6 +208,10 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
         test_uuid = dummy_instance.public_id
         mock_info = MagicMock()
         mock_only_type = MagicMock()
+        mock_only_type._meta.name = "DummyPublicIdModel"
+        mock_only_type._meta.interfaces = [Node]
+        mock_only_type.get_node = MagicMock(return_value=dummy_instance)
+        mock_info.schema.get_type = MagicMock(return_value=MagicMock(graphene_type=mock_only_type))
 
         result = graphql_get_node_from_global_id_using_strategy(
             mock_info, str(test_uuid), mock_only_type
@@ -231,18 +247,32 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
 
         assert result.pk == dummy_instance.pk
 
-    def test_uses_legacy_strategy_for_integer_id(self):
+    def test_uses_legacy_strategy_for_integer_id_should_fail(self):
         dummy_instance = DummyLegacyModelFactory()
         mock_info = MagicMock()
         mock_only_type = MagicMock()
-        mock_only_type._meta.name = "DummyLegacyModel"
+
+        with pytest.raises(Exception) as e:
+            graphql_get_node_from_global_id_using_strategy(
+                mock_info, str(dummy_instance.pk), mock_only_type
+            )
+            assert (
+                f"{dummy_instance.__class__.__name__} is not compatible with the PK strategy"
+                in str(e.value)
+            )
+
+    def test_users_legacy_with_pk_model_with_pk_strategy(self):
+        dummy_instance = DummyLegacyWithPkModelFactory()
+        mock_info = MagicMock()
+        mock_only_type = MagicMock()
+        mock_only_type._meta.name = "DummyLegacyWithPkModel"
         mock_only_type._meta.interfaces = [Node]
         mock_only_type.get_node = MagicMock(return_value=dummy_instance)
+        mock_info.schema.get_type = MagicMock(return_value=MagicMock(graphene_type=mock_only_type))
 
         result = graphql_get_node_from_global_id_using_strategy(
             mock_info, str(dummy_instance.pk), mock_only_type
         )
-
         assert result.pk == dummy_instance.pk
 
 
@@ -296,7 +326,14 @@ class TestHashidsStrategyIntegrationScenarios:
         with override_config(ENABLE_PUBLIC_ID_LOGIC=True):
             dummy_instance = DummyPublicIdModelFactory()
             test_uuid = str(dummy_instance.public_id)
+            graphene_type_mock = MagicMock()
+            graphene_type_mock._meta.name = "DummyPublicIdModel"
+            graphene_type_mock._meta.interfaces = [Node]
+            graphene_type_mock.get_node = MagicMock(return_value=dummy_instance)
             mock_info = MagicMock()
+            mock_info.schema.get_type = MagicMock(
+                return_value=MagicMock(graphene_type=graphene_type_mock)
+            )
 
             result = graphql_get_node_from_global_id_using_strategy(mock_info, test_uuid)
 

@@ -1,9 +1,10 @@
+from typing import Any
+
 import graphene
 from django.db.models import QuerySet
 from query_optimizer import DjangoObjectType as OptimizerDjangoObjectType
-from query_optimizer.compiler import optimize_single
 from query_optimizer.optimizer import QueryOptimizer
-from query_optimizer.typing import PK, GQLInfo, Optional, TModel
+from query_optimizer.typing import TModel
 
 from .connections import CountedConnection
 
@@ -11,10 +12,10 @@ from .connections import CountedConnection
 
 
 class DjangoObjectType(OptimizerDjangoObjectType):
-    pk = graphene.Int(required=True)
-
     class Meta:
         abstract = True
+
+    pk = graphene.Int(required=True)
 
     @classmethod
     def __init_subclass_with_meta__(cls, **kwargs):
@@ -30,39 +31,40 @@ class DjangoObjectType(OptimizerDjangoObjectType):
 
         super().__init_subclass_with_meta__(**kwargs)
 
-    def resolve_pk(self, info):
-        return self.pk
+    def resolve_pk(root, info):
+        return root.pk
 
     @classmethod
     def pre_optimization_hook(
         cls, queryset: QuerySet[TModel], optimizer: QueryOptimizer
     ) -> QuerySet[TModel]:
-        """A hook for modifying the optimizer results before optimization happens."""
-        queryset = cls._add_annotation(queryset)
+        """
+        A hook for modifying the optimizer results before optimization happens.
+        Recursively sets annotations for optimizer and its related optimizers.
+        Also checks only_fields to avoid unnecessary annotations.
+        """
+
+        def recursive_set_annotations(opt: QueryOptimizer, model_cls: TModel):
+            # Only add the annotations if the id field is in the only_fields
+            only_fields_set = set(opt.only_fields)
+            if "id" in only_fields_set:
+                opt.annotations = cls._get_annotations(model_cls)
+
+            for related_opt in opt.select_related.values():
+                recursive_set_annotations(related_opt, related_opt.model)
+
+            for related_opt in opt.prefetch_related.values():
+                recursive_set_annotations(related_opt, related_opt.model)
+
+        recursive_set_annotations(optimizer, queryset.model)
+
         return super().pre_optimization_hook(queryset, optimizer)
 
     @classmethod
-    def get_queryset(cls, queryset: QuerySet[TModel], info: GQLInfo) -> QuerySet[TModel]:
-        queryset = cls._add_annotation(queryset)
-        return super().get_queryset(queryset, info)
-
-    @classmethod
-    def get_node(cls, info: GQLInfo, pk: PK) -> Optional[TModel]:
-        queryset = cls._meta.model._default_manager.all()
-        queryset = cls._add_annotation(queryset)
-        maybe_instance = optimize_single(
-            queryset, info, pk=pk, max_complexity=cls._meta.max_complexity
-        )
-        if maybe_instance is not None:  # pragma: no cover
-            cls.run_instance_checks(maybe_instance, info)
-        return maybe_instance
-
-    @classmethod
-    def _add_annotation(cls, queryset: QuerySet[TModel]) -> QuerySet[TModel]:
+    def _get_annotations(cls, model_cls: TModel) -> dict[str, Any]:
         from baseapp_core.hashids.strategies import (
             get_hashids_strategy_from_instance_or_cls,
         )
 
-        strategy = get_hashids_strategy_from_instance_or_cls(cls._meta.model)
-        queryset = strategy.queryset_annotator.annotate(cls._meta.model, queryset)
-        return queryset
+        strategy = get_hashids_strategy_from_instance_or_cls(model_cls)
+        return strategy.queryset_annotator.get_annotations(model_cls)

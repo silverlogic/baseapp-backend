@@ -42,14 +42,17 @@ class PublicIdMapping(TimeStampedModel):
         return f"{self.content_type.model}:{self.object_id} -> {self.public_id}"
 
     @classmethod
-    def get_or_create_public_id(cls, obj):
+    def get_public_id(cls, obj):
         if not obj or not obj.pk:
-            return None, None
+            return None
 
-        mapping, created = cls.objects.get_or_create(
-            content_type=ContentType.objects.get_for_model(obj), object_id=obj.pk
-        )
-        return mapping.public_id, created
+        try:
+            mapping = cls.objects.get(
+                content_type=ContentType.objects.get_for_model(obj), object_id=obj.pk
+            )
+            return mapping.public_id
+        except cls.DoesNotExist:
+            return None
 
     @classmethod
     def get_object_by_public_id(cls, public_id, model_class=None):
@@ -62,6 +65,24 @@ class PublicIdMapping(TimeStampedModel):
             return mapping.content_object
         except cls.DoesNotExist:
             return None
+
+    @classmethod
+    def get_content_type_and_id(cls, public_id) -> tuple[ContentType, int] | None:
+        try:
+            mapping = cls.objects.select_related("content_type").get(public_id=public_id)
+            return mapping.content_type, mapping.object_id
+        except cls.DoesNotExist:
+            return None
+
+
+class LegacyWithPkMixin:
+    """
+    Mixin that adds the option of queryring by PK along with GraphQL global id.
+
+    This will only affect the method get_node_from_global_id of the baseapp_core.graphql.relay.Node interface.
+    """
+
+    pass
 
 
 class PublicIdMixin:
@@ -112,6 +133,32 @@ class PublicIdFunc(pgtrigger.Func):
         )
 
 
+def insert_public_id_mapping_trigger():
+    """
+    Trigger to automatically insert a PublicIdMapping when a model using PublicIdMixin is inserted.
+    """
+    return pgtrigger.Trigger(
+        name="insert_public_id_mapping",
+        level=pgtrigger.Row,
+        when=pgtrigger.After,
+        operation=pgtrigger.Insert,
+        func=PublicIdFunc(
+            """
+            INSERT INTO {public_id_mapping_table} (public_id, content_type_id, object_id, created, modified)
+            VALUES (
+                gen_random_uuid(),
+                (SELECT id FROM {content_type_table} WHERE app_label = '{meta.app_label}' AND model = '{meta.model_name}'),
+                NEW.{pk},
+                NOW(),
+                NOW()
+            )
+            ON CONFLICT (content_type_id, object_id) DO NOTHING;
+            RETURN NULL;
+            """
+        ),
+    )
+
+
 def delete_public_id_mapping_trigger():
     """
     Trigger to automatically delete the PublicIdMapping when a model using PublicIdMixin is deleted.
@@ -150,5 +197,7 @@ def add_public_id_trigger(sender, **kwargs):
         sender._meta.triggers = []
 
     existing = [t.name for t in sender._meta.triggers]
+    if "insert_public_id_mapping" not in existing:
+        sender._meta.triggers.append(insert_public_id_mapping_trigger())
     if "delete_public_id_mapping" not in existing:
         sender._meta.triggers.append(delete_public_id_mapping_trigger())
