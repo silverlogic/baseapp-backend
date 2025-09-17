@@ -2,10 +2,9 @@ import uuid
 
 import pytest
 from django.contrib.contenttypes.models import ContentType
-from django.db import models
 
 from baseapp_core.hashids.models import PublicIdMapping
-from testproject.testapp.models import DummyPublicIdModel
+from testproject.testapp.models import DummyLegacyModel, DummyPublicIdModel
 from testproject.testapp.tests.factories import DummyPublicIdModelFactory
 
 
@@ -51,11 +50,7 @@ class TestPublicIdMappingModel:
         obj = DummyPublicIdModelFactory()
         public_id = PublicIdMapping.get_public_id(obj)
 
-        class OtherModel(models.Model):
-            class Meta:
-                app_label = "tests"
-
-        found = PublicIdMapping.get_object_by_public_id(public_id, model_class=OtherModel)
+        found = PublicIdMapping.get_object_by_public_id(public_id, model_class=DummyLegacyModel)
         assert found is None
 
     def test_get_object_by_public_id_invalid_id_returns_none(self):
