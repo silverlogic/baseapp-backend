@@ -1,4 +1,3 @@
-from django.contrib.auth import get_user_model
 from rest_framework import response, viewsets
 from rest_framework.permissions import AllowAny
 from trench.views.authtoken import MFAAuthTokenViewSetMixin
@@ -7,8 +6,6 @@ from baseapp_auth.rest_framework.mfa.mixins import MFAJWTLoginViewSetMixin
 
 from .helpers import redirect_if_user_has_expired_password
 from .serializers import LoginSerializer
-
-User = get_user_model()
 
 
 class BaseAuthViewSet(viewsets.GenericViewSet):
