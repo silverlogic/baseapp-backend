@@ -297,7 +297,10 @@ def test_user_without_permission_cant_update_role(django_user_client, graphql_us
     assert content["errors"][0]["message"] == "You don't have permission to perform this action"
     profile.refresh_from_db()
 
-def test_user_without_permission_cant_add_profile_user_role(django_user_client, graphql_user_client):
+
+def test_user_without_permission_cant_add_profile_user_role(
+    django_user_client, graphql_user_client
+):
     perm = Permission.objects.get(
         content_type__app_label=ProfileUserRole._meta.app_label, codename="add_profileuserrole"
     )
@@ -316,6 +319,7 @@ def test_user_without_permission_cant_add_profile_user_role(django_user_client, 
     content = response.json()
     assert content["errors"][0]["message"] == "You don't have permission to perform this action"
     profile.refresh_from_db()
+
 
 def test_user_with_permission_can_add_profile_user_role(django_user_client, graphql_user_client):
     perm = Permission.objects.get(
