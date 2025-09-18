@@ -120,7 +120,7 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_pr
         if "is_password_expired" in self.__dict__:
             return bool(self.__dict__["is_password_expired"])
 
-        expiration_interval = int(getattr(config, "USER_PASSWORD_EXPIRATION_INTERVAL", 0) or 0)
+        expiration_interval = int(getattr(config, "USER_PASSWORD_EXPIRATION_INTERVAL", 0))
         if expiration_interval <= 0:
             return False
 
