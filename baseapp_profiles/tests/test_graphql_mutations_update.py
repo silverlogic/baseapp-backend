@@ -296,3 +296,42 @@ def test_user_without_permission_cant_update_role(django_user_client, graphql_us
     content = response.json()
     assert content["errors"][0]["message"] == "You don't have permission to perform this action"
     profile.refresh_from_db()
+
+def test_user_without_permission_cant_add_profile_user_role(django_user_client, graphql_user_client):
+    perm = Permission.objects.get(
+        content_type__app_label=ProfileUserRole._meta.app_label, codename="add_profileuserrole"
+    )
+
+    user = django_user_client.user
+    user.user_permissions.add(perm)
+    user_2 = UserFactory()
+    profile = ProfileFactory(owner=user_2)
+
+    response = graphql_user_client(
+        PROFILE_USER_ROLE_UPDATE_GRAPHQL,
+        variables={
+            "input": {"userId": user_2.relay_id, "profileId": profile.relay_id, "roleType": "ADMIN"}
+        },
+    )
+    content = response.json()
+    assert content["errors"][0]["message"] == "You don't have permission to perform this action"
+    profile.refresh_from_db()
+
+def test_user_with_permission_can_add_profile_user_role(django_user_client, graphql_user_client):
+    perm = Permission.objects.get(
+        content_type__app_label=ProfileUserRole._meta.app_label, codename="add_profileuserrole"
+    )
+
+    user = django_user_client.user
+    user.user_permissions.add(perm)
+    user_2 = UserFactory()
+    profile = ProfileFactory(owner=user_2)
+    response = graphql_user_client(
+        PROFILE_USER_ROLE_UPDATE_GRAPHQL,
+        variables={
+            "input": {"userId": user_2.relay_id, "profileId": profile.relay_id, "roleType": "ADMIN"}
+        },
+    )
+    content = response.json()
+    assert content["data"]["profileUserRoleUpdate"]["profileUserRole"]["role"] == "ADMIN"
+    profile.refresh_from_db()
