@@ -56,12 +56,12 @@ class TestChangeExpiredPasswordCreate(TestChangeExpiredPasswordListMixin):
             token=token,
         )
 
-        User.objects.get(pk=user.pk).is_password_expired is True
+        User.objects.get(pk=user.pk).password_expired is True
         r = client.post(self.reverse(), data=data)
         h.responseOk(r)
         self.check_data_keys(r.data)
         assert r.data["detail"] == "success"
-        User.objects.get(pk=user.pk).is_password_expired is False
+        User.objects.get(pk=user.pk).password_expired is False
 
         old_password = user.password
         user.refresh_from_db()
