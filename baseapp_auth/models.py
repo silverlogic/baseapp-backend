@@ -1,4 +1,5 @@
 import swapper
+from constance import config
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
@@ -113,6 +114,18 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_pr
     def avatar(self):
         # TODO: deprecate
         return self.profile.image if self.profile_id else None
+
+    @property
+    def password_expired(self) -> bool:
+        if "is_password_expired" in self.__dict__:
+            return bool(self.__dict__["is_password_expired"])
+
+        expiration_interval = int(getattr(config, "USER_PASSWORD_EXPIRATION_INTERVAL", 0) or 0)
+        if expiration_interval <= 0:
+            return False
+
+        expires_at = self.password_changed_date + timezone.timedelta(days=expiration_interval)
+        return timezone.now() >= expires_at
 
     @classmethod
     def get_graphql_object_type(cls):

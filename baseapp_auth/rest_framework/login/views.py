@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from rest_framework import response, viewsets
 from rest_framework.permissions import AllowAny
 from trench.views.authtoken import MFAAuthTokenViewSetMixin
@@ -7,9 +8,14 @@ from baseapp_auth.rest_framework.mfa.mixins import MFAJWTLoginViewSetMixin
 from .helpers import redirect_if_user_has_expired_password
 from .serializers import LoginSerializer
 
+User = get_user_model()
 
-class AuthTokenViewSet(viewsets.GenericViewSet):
+
+class BaseAuthViewSet(viewsets.GenericViewSet):
     serializer_class = LoginSerializer
+
+
+class AuthTokenViewSet(BaseAuthViewSet):
 
     @redirect_if_user_has_expired_password
     def create(self, request, *args, **kwargs):
@@ -19,8 +25,7 @@ class AuthTokenViewSet(viewsets.GenericViewSet):
         return response.Response({"token": token.key})
 
 
-class MfaAuthTokenViewSet(viewsets.GenericViewSet, MFAAuthTokenViewSetMixin):
-    serializer_class = LoginSerializer
+class MfaAuthTokenViewSet(BaseAuthViewSet, MFAAuthTokenViewSetMixin):
     permission_classes = (AllowAny,)
 
     @redirect_if_user_has_expired_password
@@ -30,8 +35,7 @@ class MfaAuthTokenViewSet(viewsets.GenericViewSet, MFAAuthTokenViewSetMixin):
         return self.first_step_response(serializer.user)
 
 
-class MfaJwtViewSet(viewsets.GenericViewSet, MFAJWTLoginViewSetMixin):
-    serializer_class = LoginSerializer
+class MfaJwtViewSet(BaseAuthViewSet, MFAJWTLoginViewSetMixin):
     permission_classes = (AllowAny,)
 
     @redirect_if_user_has_expired_password
