@@ -42,13 +42,16 @@ async def test_user_recieves_created_comment_subscription_event(graphql_ws_user_
     target = await database_sync_to_async(CommentFactory)()
     target_content_type = await database_sync_to_async(ContentType.objects.get_for_model)(target)
 
+    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
+    target_relay_id = await database_sync_to_async(lambda: target.relay_id)()
+
     # Subscribe to GraphQL subscription.
     sub_id = await client.send(
         msg_type="subscribe",
         payload={
             "query": SUBSCRIPTION_QUERY,
             "operationName": "op_name",
-            "variables": {"targetObjectId": target.relay_id},
+            "variables": {"targetObjectId": target_relay_id},
         },
     )
     await client.assert_no_messages()
@@ -56,10 +59,11 @@ async def test_user_recieves_created_comment_subscription_event(graphql_ws_user_
     comment = await database_sync_to_async(CommentFactory)(
         target_object_id=target.pk, target_content_type=target_content_type
     )
+    comment_relay_id = await database_sync_to_async(lambda: comment.relay_id)()
 
     # Check that subscription message were sent.
     resp = await client.receive(assert_id=sub_id, assert_type="next")
-    assert resp["data"]["onCommentChange"]["createdComment"]["node"]["id"] == comment.relay_id
+    assert resp["data"]["onCommentChange"]["createdComment"]["node"]["id"] == comment_relay_id
 
     # Disconnect and wait the application to finish gracefully.
     await client.finalize()
@@ -73,9 +77,13 @@ async def test_user_recieves_updated_comment_subscription_event(graphql_ws_user_
     target = await database_sync_to_async(CommentFactory)()
     target_content_type = await database_sync_to_async(ContentType.objects.get_for_model)(target)
 
+    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
+    target_relay_id = await database_sync_to_async(lambda: target.relay_id)()
+
     comment = await database_sync_to_async(CommentFactory)(
         target_object_id=target.pk, target_content_type=target_content_type
     )
+    comment_relay_id = await database_sync_to_async(lambda: comment.relay_id)()
 
     # Subscribe to GraphQL subscription.
     sub_id = await client.send(
@@ -83,7 +91,7 @@ async def test_user_recieves_updated_comment_subscription_event(graphql_ws_user_
         payload={
             "query": SUBSCRIPTION_QUERY,
             "operationName": "op_name",
-            "variables": {"targetObjectId": target.relay_id},
+            "variables": {"targetObjectId": target_relay_id},
         },
     )
     await client.assert_no_messages()
@@ -95,7 +103,7 @@ async def test_user_recieves_updated_comment_subscription_event(graphql_ws_user_
     # Check that subscription message were sent.
     resp = await client.receive(assert_id=sub_id, assert_type="next")
 
-    assert resp["data"]["onCommentChange"]["updatedComment"]["id"] == comment.relay_id
+    assert resp["data"]["onCommentChange"]["updatedComment"]["id"] == comment_relay_id
     assert resp["data"]["onCommentChange"]["updatedComment"]["body"] == new_body
 
     # Disconnect and wait the application to finish gracefully.
@@ -114,13 +122,17 @@ async def test_user_recieves_deleted_comment_subscription_event(graphql_ws_user_
         target_object_id=target.pk, target_content_type=target_content_type
     )
 
+    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
+    target_relay_id = await database_sync_to_async(lambda: target.relay_id)()
+    comment_relay_id = await database_sync_to_async(lambda: comment.relay_id)()
+
     # Subscribe to GraphQL subscription.
     sub_id = await client.send(
         msg_type="subscribe",
         payload={
             "query": SUBSCRIPTION_QUERY,
             "operationName": "op_name",
-            "variables": {"targetObjectId": target.relay_id},
+            "variables": {"targetObjectId": target_relay_id},
         },
     )
     await client.assert_no_messages()
@@ -130,7 +142,7 @@ async def test_user_recieves_deleted_comment_subscription_event(graphql_ws_user_
     # Check that subscription message were sent.
     resp = await client.receive(assert_id=sub_id, assert_type="next")
 
-    assert resp["data"]["onCommentChange"]["deletedCommentId"] == comment.relay_id
+    assert resp["data"]["onCommentChange"]["deletedCommentId"] == comment_relay_id
 
     # Disconnect and wait the application to finish gracefully.
     await client.finalize()
@@ -144,13 +156,16 @@ async def test_anon_recieves_created_comment_subscription_event(graphql_websocke
     target = await database_sync_to_async(CommentFactory)()
     target_content_type = await database_sync_to_async(ContentType.objects.get_for_model)(target)
 
+    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
+    target_relay_id = await database_sync_to_async(lambda: target.relay_id)()
+
     # Subscribe to GraphQL subscription.
     sub_id = await client.send(
         msg_type="subscribe",
         payload={
             "query": SUBSCRIPTION_QUERY,
             "operationName": "op_name",
-            "variables": {"targetObjectId": target.relay_id},
+            "variables": {"targetObjectId": target_relay_id},
         },
     )
     await client.assert_no_messages()
@@ -158,10 +173,11 @@ async def test_anon_recieves_created_comment_subscription_event(graphql_websocke
     comment = await database_sync_to_async(CommentFactory)(
         target_object_id=target.pk, target_content_type=target_content_type
     )
+    comment_relay_id = await database_sync_to_async(lambda: comment.relay_id)()
 
     # Check that subscription message were sent.
     resp = await client.receive(assert_id=sub_id, assert_type="next")
-    assert resp["data"]["onCommentChange"]["createdComment"]["node"]["id"] == comment.relay_id
+    assert resp["data"]["onCommentChange"]["createdComment"]["node"]["id"] == comment_relay_id
 
     # Disconnect and wait the application to finish gracefully.
     await client.finalize()
@@ -176,13 +192,16 @@ async def test_anon_cant_recieve_created_comment_subscription_event(graphql_webs
     target = await database_sync_to_async(CommentFactory)()
     target_content_type = await database_sync_to_async(ContentType.objects.get_for_model)(target)
 
+    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
+    target_relay_id = await database_sync_to_async(lambda: target.relay_id)()
+
     # Subscribe to GraphQL subscription.
     await client.send(
         msg_type="subscribe",
         payload={
             "query": SUBSCRIPTION_QUERY,
             "operationName": "op_name",
-            "variables": {"targetObjectId": target.relay_id},
+            "variables": {"targetObjectId": target_relay_id},
         },
     )
     await client.assert_no_messages()

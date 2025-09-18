@@ -5,6 +5,8 @@ from django.db import models
 from django.utils.deconstruct import deconstructible
 from django.utils.translation import gettext_lazy as _
 
+from baseapp_core.hashids.models import *  # noqa
+
 
 class CaseInsensitiveCharField(models.CharField):
     description = _("Case insensitive character")

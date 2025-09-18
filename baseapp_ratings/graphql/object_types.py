@@ -2,20 +2,17 @@ import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
 from django.contrib.contenttypes.models import ContentType
-from graphene import relay
 from graphene_django import DjangoConnectionField
 
-from baseapp_core.graphql import (
-    DjangoObjectType,
-    get_object_type_for_model,
-    get_pk_from_relay_id,
-)
+from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import Node as RelayNode
+from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
 
 RateModel = swapper.load_model("baseapp_ratings", "Rate")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
-class RatingsInterface(relay.Node):
+class RatingsInterface(RelayNode):
     ratings_count = graphene.Int()
     ratings_sum = graphene.Int()
     ratings_average = graphene.Float()
@@ -58,10 +55,10 @@ class RatingsInterface(relay.Node):
 
 
 class BaseRatingObjectType:
-    target = graphene.Field(relay.Node)
+    target = graphene.Field(RelayNode)
 
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         model = RateModel
         fields = (
             "id",

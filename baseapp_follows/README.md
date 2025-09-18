@@ -24,11 +24,12 @@ class User(models.Model, FollowableModel):
 Also make sure your GraphQL object types extends `FollowsInterface` interface:
 
 ```python
+from baseapp_core.graphql import Node as RelayNode
 from baseapp_follows.graphql.object_types import FollowsInterface
 
 class UserNode(DjangoObjectType):
     class Meta:
-        interfaces = (relay.Node, FollowsInterface)
+        interfaces = (RelayNode, FollowsInterface)
 ```
 
 Expose `FollowsMutations` in your GraphQL/graphene endpoint, like:

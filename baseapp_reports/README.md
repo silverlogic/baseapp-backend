@@ -26,11 +26,12 @@ class Comment(models.Model, ReactableModel):
 Also make sure your GraphQL object types extends `ReportsInterface` interface:
 
 ```python
+from baseapp_core.graphql import Node as RelayNode
 from baseapp_reports.graphql.object_types import ReportsInterface
 
 class UserNode(DjangoObjectType):
     class Meta:
-        interfaces = (relay.Node, ReportsInterface)
+        interfaces = (RelayNode, ReportsInterface)
 ```
 
 Expose `ReportsMutations` and `ReportsQuery` in your GraphQL/graphene endpoint, like:

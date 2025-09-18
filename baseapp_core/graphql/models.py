@@ -1,10 +1,12 @@
 from django.db import models
 from django.utils.functional import cached_property
 
+from baseapp_core.hashids.models import PublicIdMixin
+
 from .utils import _cache_object_type, get_obj_relay_id
 
 
-class RelayModel(models.Model):
+class RelayModel(PublicIdMixin, models.Model):
     class Meta:
         abstract = True
 

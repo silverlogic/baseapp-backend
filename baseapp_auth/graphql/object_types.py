@@ -1,17 +1,18 @@
 import graphene
 from django.apps import apps
 from django.contrib.auth import get_user_model
-from graphene import relay
 from query_optimizer import optimize
 
-from baseapp_core.graphql import DjangoObjectType, ThumbnailField
+from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import Node as RelayNode
+from baseapp_core.graphql import ThumbnailField
 
 from .filters import UsersFilter
 from .permissions import PermissionsInterface
 
 User = get_user_model()
 
-interfaces = (relay.Node, PermissionsInterface)
+interfaces = (RelayNode, PermissionsInterface)
 inheritances = tuple()
 
 if apps.is_installed("baseapp_notifications"):

@@ -163,6 +163,7 @@ SwappedComment = swapper.load_model(
 class CommentableModel(AbstractCommentableModel):
     comments = GenericRelation(
         SwappedComment,
+        related_name="comments",
         verbose_name=_("comments"),
         content_type_field="target_content_type",
         object_id_field="target_object_id",

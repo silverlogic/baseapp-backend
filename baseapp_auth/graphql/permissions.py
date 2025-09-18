@@ -1,9 +1,10 @@
 import graphene
 from django.utils.translation import gettext_lazy as _
-from graphene import relay
+
+from baseapp_core.graphql import Node as RelayNode
 
 
-class PermissionsInterface(relay.Node):
+class PermissionsInterface(RelayNode):
     has_perm = graphene.Boolean(
         perm=graphene.String(required=True),
         description=_("Determine if the logged in user has a specific permission for this object."),

@@ -1,12 +1,13 @@
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
-from graphene import relay
 from graphene.types.generic import GenericScalar
 from graphene_django import DjangoConnectionField
 from graphene_django.filter import DjangoFilterConnectionField
 
-from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
+from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import Node as RelayNode
+from baseapp_core.graphql import get_object_type_for_model
 
 from ..utils import can_user_receive_notification
 from .filters import NotificationFilter
@@ -16,7 +17,7 @@ NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationS
 NotificationChannelTypesEnum = graphene.Enum.from_enum(NotificationSetting.NotificationChannelTypes)
 
 
-class NotificationsInterface(relay.Node):
+class NotificationsInterface(RelayNode):
     notifications_unread_count = graphene.Int()
     notifications = DjangoFilterConnectionField(
         get_object_type_for_model(Notification), filterset_class=NotificationFilter
@@ -51,13 +52,13 @@ class NotificationsInterface(relay.Node):
 
 
 class BaseNotificationNode:
-    actor = graphene.Field(relay.Node)
-    target = graphene.Field(relay.Node)
-    action_object = graphene.Field(relay.Node)
+    actor = graphene.Field(RelayNode)
+    target = graphene.Field(RelayNode)
+    action_object = graphene.Field(RelayNode)
     data = GenericScalar(required=False)
 
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         model = Notification
         fields = "__all__"
 
@@ -93,7 +94,7 @@ class BaseNotificationSettingNode:
     class Meta:
         model = NotificationSetting
         fields = "__all__"
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
 
     @classmethod
     def get_queryset(cls, queryset, info):
