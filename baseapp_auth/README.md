@@ -107,7 +107,7 @@ CONSTANCE_CONFIG = OrderedDict(
         (
             "USER_PASSWORD_EXPIRATION_INTERVAL",
             (
-                365 * 2,
+                0,
                 "The time interval (in days) after which a user will need to reset their password.",
             ),
         ),

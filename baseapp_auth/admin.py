@@ -72,6 +72,10 @@ class AbstractUserAdmin(UserAdmin):
     filter_horizontal = ()
     actions = ["force_expire_password"]
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.add_is_password_expired()
+
     def force_expire_password(self, request, queryset):
         if not request.user.mfa_methods.filter(is_active=True).exists():
             self.message_user(
@@ -91,7 +95,7 @@ class AbstractUserAdmin(UserAdmin):
     force_expire_password.short_description = "Expire password"
 
     def is_password_expired(self, obj):
-        return obj.is_password_expired
+        return obj.password_expired
 
     def save_model(self, request, obj, form, change):
         if change and hasattr(obj, "tracker") and obj.tracker.has_changed("is_superuser"):
