@@ -27,9 +27,6 @@ class UserManager(BaseUserManager):
         extra_fields["is_superuser"] = True
         return self._create_user(email, password, **extra_fields)
 
-    def get_queryset(self, *args, **kwargs) -> UserQuerySet:
-        return super().get_queryset(*args, **kwargs)
-
     def get_by_natural_key(self, email):
         # to be used by deserialization by natural keys (https://docs.djangoproject.com/en/4.2/topics/serialization/#deserialization-of-natural-keys)
         return self.get(email=email)
