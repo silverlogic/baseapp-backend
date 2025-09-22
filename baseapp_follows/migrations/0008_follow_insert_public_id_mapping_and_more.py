@@ -9,6 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("baseapp_follows", "0007_alter_follow_unique_together"),
+        ("baseapp_core", "0001_initial"),
     ]
 
     operations = [

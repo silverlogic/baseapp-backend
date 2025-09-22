@@ -9,6 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("baseapp_organizations", "0003_alter_organization_profile"),
+        ("baseapp_core", "0001_initial"),
     ]
 
     operations = [

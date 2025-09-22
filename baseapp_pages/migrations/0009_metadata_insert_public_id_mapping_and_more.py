@@ -9,6 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("baseapp_pages", "0008_remove_pageevent_pgh_context_and_more"),
+        ("baseapp_core", "0001_initial"),
     ]
 
     operations = [

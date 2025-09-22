@@ -9,6 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("baseapp_reports", "0006_delete_old_rename_new_report_type"),
+        ("baseapp_core", "0001_initial"),
     ]
 
     operations = [

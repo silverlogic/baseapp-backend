@@ -25,18 +25,18 @@ class TestLegacyIdResolverStrategy:
 
     def test_resolve_id_calls_mapping(self, resolver):
         dummy_obj = DummyLegacyModelFactory()
-        result = resolver.resolve_id(dummy_obj.pk, type(dummy_obj))
+        result = resolver.resolve_id(dummy_obj.pk, model_cls=type(dummy_obj))
         assert result.pk == dummy_obj.pk
 
     def test_resolve_id_returns_none_for_nonexistent_id(self, resolver):
         random_id = 99999999  # unlikely to exist
         with pytest.raises(DummyLegacyModel.DoesNotExist):
-            resolver.resolve_id(str(random_id), DummyLegacyModel)
+            resolver.resolve_id(str(random_id), model_cls=DummyLegacyModel)
 
     def test_resolve_id_raises_for_invalid_id(self, resolver):
         invalid_id = "not-an-int"
         with pytest.raises(ValueError):
-            resolver.resolve_id(invalid_id, DummyLegacyModel)
+            resolver.resolve_id(invalid_id, model_cls=DummyLegacyModel)
 
 
 @pytest.mark.django_db

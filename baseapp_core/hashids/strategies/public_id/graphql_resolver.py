@@ -18,7 +18,7 @@ class PublicIdGraphQLResolverStrategy(GraphQLResolverStrategy):
             raise self.NoInstanceFound(global_id)
 
         _content_type, _id = instance
-        if get_node := self._get_node(info, _content_type, _id):
+        if get_node := self._get_node(info, _content_type, _id, only_type):
             return get_node(info, _id)
 
     def get_instance_from_global_id(self, info, global_id, get_node=False):

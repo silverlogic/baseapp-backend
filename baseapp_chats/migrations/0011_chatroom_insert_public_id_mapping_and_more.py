@@ -9,6 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("baseapp_chats", "0010_message_deleted"),
+        ("baseapp_core", "0001_initial"),
     ]
 
     operations = [

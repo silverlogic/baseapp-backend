@@ -9,6 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("baseapp_reactions", "0004_alter_reaction_unique_together_and_more"),
+        ("baseapp_core", "0001_initial"),
     ]
 
     operations = [

@@ -18,7 +18,7 @@ QUERY = """
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=False)
-def get_get_node_with_old_1586_pk_issue(graphql_client):
+def test_get_node_with_old_1586_pk_issue(graphql_client):
     # The global_id is created by a Base64-encoding string in the format "TypeName:ID".
     # For certain IDs (like 1586), the resulting Base64 string will mislead how Graphene resolves the global_id to _type and _id. e.g. "1586" will be resolved as _type="ן" and _id="".
     # This test ensures that our custom Node handles these edge cases properly.

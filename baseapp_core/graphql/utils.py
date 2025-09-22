@@ -36,9 +36,9 @@ def get_obj_relay_id(obj):
     from baseapp_core.hashids.strategies import graphql_to_global_id_using_strategy
 
     object_type = _cache_object_type(obj)
-    if object_type:
-        return graphql_to_global_id_using_strategy(obj, object_type._meta.name, obj.pk)
-    return None
+    if not object_type:
+        raise Exception(f"Model {obj.__class__.__name__} does not inherit from RelayModel")
+    return graphql_to_global_id_using_strategy(obj, object_type._meta.name, obj.pk)
 
 
 def _cache_object_type(obj):

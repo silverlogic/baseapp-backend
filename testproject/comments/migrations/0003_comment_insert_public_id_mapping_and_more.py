@@ -9,6 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("comments", "0002_alter_comment_profile"),
+        ("baseapp_core", "0001_initial"),
     ]
 
     operations = [

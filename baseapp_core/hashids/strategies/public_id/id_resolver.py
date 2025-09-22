@@ -1,5 +1,5 @@
+from baseapp_core.hashids.models import PublicIdMapping, PublicIdMixin
 from baseapp_core.hashids.strategies.interfaces import IdResolverStrategy
-from baseapp_core.models import PublicIdMapping, PublicIdMixin
 
 
 class PublicIdResolverStrategy(IdResolverStrategy):
@@ -8,10 +8,10 @@ class PublicIdResolverStrategy(IdResolverStrategy):
             return instance.mapped_public_id
         return PublicIdMapping.get_public_id(instance)
 
-    def resolve_id(self, id, resolve_query=True, **kwargs):
+    def resolve_id(self, id, *, resolve_query: bool = True, **_kwargs):
         """
-        When resolve_type == True, it will return the instance of the model.
-        When resolve_type == False, it will return the content_type and object_id.
+        When resolve_query == True, return the instance of the model.
+        When resolve_query == False, return (content_type, object_id).
         """
         if resolve_query:
             return PublicIdMapping.get_object_by_public_id(id)

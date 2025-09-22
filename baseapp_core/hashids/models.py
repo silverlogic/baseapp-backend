@@ -26,7 +26,7 @@ class PublicIdMapping(TimeStampedModel):
     content_type = models.ForeignKey(
         ContentType, on_delete=models.CASCADE, help_text="The model type this UUID maps to"
     )
-    object_id = models.PositiveIntegerField(help_text="The primary key of the mapped object")
+    object_id = models.PositiveBigIntegerField(help_text="The primary key of the mapped object")
     content_object = GenericForeignKey("content_type", "object_id")
 
     class Meta:
@@ -111,7 +111,7 @@ class PublicIdMixin:
         )
 
         strategy = get_hashids_strategy_from_instance_or_cls(cls)
-        return strategy.id_resolver.resolve_id(public_id, cls)
+        return strategy.id_resolver.resolve_id(public_id, model_cls=cls)
 
 
 class PublicIdFunc(pgtrigger.Func):

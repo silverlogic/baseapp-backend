@@ -5,6 +5,7 @@ import uuid
 import django.db.models.deletion
 import django.utils.timezone
 import model_utils.fields
+from django.contrib.postgres.operations import CreateExtension
 from django.db import migrations, models
 
 
@@ -17,6 +18,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        CreateExtension("pgcrypto"),
         migrations.CreateModel(
             name="PublicIdMapping",
             fields=[
@@ -44,7 +46,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "object_id",
-                    models.PositiveIntegerField(help_text="The primary key of the mapped object"),
+                    models.PositiveBigIntegerField(
+                        help_text="The primary key of the mapped object"
+                    ),
                 ),
                 (
                     "content_type",

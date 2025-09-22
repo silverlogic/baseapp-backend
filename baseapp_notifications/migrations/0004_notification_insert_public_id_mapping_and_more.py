@@ -12,6 +12,7 @@ class Migration(migrations.Migration):
             "baseapp_notifications",
             "0003_rename_notification_recipient_unread_baseapp_not_recipie_8567c3_idx",
         ),
+        ("baseapp_core", "0001_initial"),
     ]
 
     operations = [

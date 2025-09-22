@@ -9,6 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("baseapp_content_feed", "0005_contentpost_is_reactions_enabled_and_more"),
+        ("baseapp_core", "0001_initial"),
     ]
 
     operations = [

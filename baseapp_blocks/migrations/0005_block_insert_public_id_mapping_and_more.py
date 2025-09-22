@@ -9,6 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("baseapp_blocks", "0004_alter_block_unique_together_and_more"),
+        ("baseapp_core", "0001_initial"),
     ]
 
     operations = [

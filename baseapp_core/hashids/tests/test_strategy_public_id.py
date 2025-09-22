@@ -29,18 +29,18 @@ class TestPublicIdResolverStrategy:
 
     def test_resolve_id_calls_mapping(self, resolver):
         dummy_obj = DummyPublicIdModelFactory()
-        result = resolver.resolve_id(dummy_obj.public_id, type(dummy_obj))
+        result = resolver.resolve_id(dummy_obj.public_id, model_cls=type(dummy_obj))
         assert result.public_id == dummy_obj.public_id
 
     def test_resolve_id_returns_none_for_nonexistent_id(self, resolver):
         random_uuid = uuid.uuid4()
-        result = resolver.resolve_id(str(random_uuid), DummyPublicIdModel)
+        result = resolver.resolve_id(str(random_uuid), model_cls=DummyPublicIdModel)
         assert result is None
 
     def test_resolve_id_returns_none_for_invalid_uuid(self, resolver):
         invalid_id = "not-a-uuid"
         with pytest.raises(ValidationError):
-            resolver.resolve_id(invalid_id, DummyPublicIdModel)
+            resolver.resolve_id(invalid_id, model_cls=DummyPublicIdModel)
 
 
 @pytest.mark.django_db

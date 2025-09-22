@@ -9,6 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("baseapp_profiles", "0006_alter_profile_name"),
+        ("baseapp_core", "0001_initial"),
     ]
 
     operations = [

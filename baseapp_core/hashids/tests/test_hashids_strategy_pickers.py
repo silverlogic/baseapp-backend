@@ -289,9 +289,7 @@ class TestHashidsStrategyIntegrationScenarios:
             resolved_id = strategy.id_resolver.get_id_from_instance(dummy_instance)
             assert resolved_id == dummy_instance.public_id
 
-            resolved_instance = strategy.id_resolver.resolve_id(
-                dummy_instance.public_id, DummyPublicIdModel
-            )
+            resolved_instance = strategy.id_resolver.resolve_id(dummy_instance.public_id)
             assert resolved_instance.pk == dummy_instance.pk
 
     def test_public_id_model_with_public_id_logic_disabled_uses_legacy_strategy(self):
@@ -306,7 +304,7 @@ class TestHashidsStrategyIntegrationScenarios:
             assert resolved_id == dummy_instance.pk
 
             resolved_instance = strategy.id_resolver.resolve_id(
-                dummy_instance.pk, DummyPublicIdModel
+                dummy_instance.pk, model_cls=DummyPublicIdModel
             )
             assert resolved_instance.pk == dummy_instance.pk
 
@@ -371,11 +369,11 @@ class TestHashidsStrategyIntegrationScenarios:
             assert isinstance(legacy_strategy.id_resolver, LegacyIdResolverStrategy)
 
             public_id_resolved = public_id_strategy.id_resolver.resolve_id(
-                public_id_instance.public_id, DummyPublicIdModel
+                public_id_instance.public_id
             )
             assert public_id_resolved.pk == public_id_instance.pk
 
             legacy_id_resolved = legacy_strategy.id_resolver.resolve_id(
-                legacy_instance.pk, DummyLegacyModel
+                legacy_instance.pk, model_cls=DummyLegacyModel
             )
             assert legacy_id_resolved.pk == legacy_instance.pk

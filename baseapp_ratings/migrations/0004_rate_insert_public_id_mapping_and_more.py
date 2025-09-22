@@ -9,6 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("baseapp_ratings", "0003_rate_profile"),
+        ("baseapp_core", "0001_initial"),
     ]
 
     operations = [

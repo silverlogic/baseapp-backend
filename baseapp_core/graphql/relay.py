@@ -42,6 +42,8 @@ class AbstractBaseappNode(GrapheneRelayNode):
         if model := options.get("model"):
             _meta.model = model
 
+        # It has to go straight to the AbstractNode parent, because we are replacing the logic
+        # inside of AbstractNode.
         super(AbstractNode, cls).__init_subclass_with_meta__(_meta=_meta, **options)
 
     @classmethod

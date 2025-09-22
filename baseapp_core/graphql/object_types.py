@@ -8,14 +8,10 @@ from query_optimizer.typing import TModel
 
 from .connections import CountedConnection
 
-# from graphene_django import DjangoObjectType as GrapheneDjangoObjectType
-
 
 class DjangoObjectType(OptimizerDjangoObjectType):
     class Meta:
         abstract = True
-
-    pk = graphene.Int(required=True)
 
     @classmethod
     def __init_subclass_with_meta__(cls, **kwargs):
@@ -31,9 +27,6 @@ class DjangoObjectType(OptimizerDjangoObjectType):
 
         super().__init_subclass_with_meta__(**kwargs)
 
-    def resolve_pk(root, info):
-        return root.pk
-
     @classmethod
     def pre_optimization_hook(
         cls, queryset: QuerySet[TModel], optimizer: QueryOptimizer
@@ -48,7 +41,8 @@ class DjangoObjectType(OptimizerDjangoObjectType):
             # Only add the annotations if the id field is in the only_fields
             only_fields_set = set(opt.only_fields)
             if "id" in only_fields_set:
-                opt.annotations = cls._get_annotations(model_cls)
+                new_ann = cls._get_annotations(model_cls)
+                opt.annotations = {**(opt.annotations or {}), **new_ann}
 
             for related_opt in opt.select_related.values():
                 recursive_set_annotations(related_opt, related_opt.model)
@@ -68,3 +62,13 @@ class DjangoObjectType(OptimizerDjangoObjectType):
 
         strategy = get_hashids_strategy_from_instance_or_cls(model_cls)
         return strategy.queryset_annotator.get_annotations(model_cls)
+
+
+class DjangoObjectTypeWithPkField(DjangoObjectType):
+    class Meta:
+        abstract = True
+
+    pk = graphene.Int(required=True)
+
+    def resolve_pk(root, info):
+        return root.pk
