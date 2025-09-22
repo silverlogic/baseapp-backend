@@ -268,7 +268,7 @@ mutation {
     recipient { notificationsUnreadCount }
   }
 
-  notificationsMarkAsRead(input: { notificationIds: ["Tm90aWZpY2F0aW9uOjE=", "Tm90aWZpY2F0aW9uOjI="], read: true }) {
+  notificationsMarkAsRead(input: { notificationIds: ["b3b6c8e2-8f2a-4e3a-9c1d-2f7e6a1b2c3d", "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"], read: true }) {
     recipient { notificationsUnreadCount }
   }
 }
