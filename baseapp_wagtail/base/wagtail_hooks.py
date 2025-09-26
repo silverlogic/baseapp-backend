@@ -3,7 +3,6 @@ from wagtail import hooks
 from wagtail.rich_text import LinkHandler
 
 from baseapp_wagtail.base.urlpath.urlpath_sync import WagtailURLPathSync
-from baseapp_wagtail.base.metadata.metadata_sync import WagtailMetadataSync
 
 
 @hooks.register("register_schema_query")

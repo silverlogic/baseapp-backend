@@ -2,7 +2,7 @@ import factory
 import swapper
 from django.contrib.contenttypes.models import ContentType
 
-from baseapp_pages.models import URLPath, Metadata
+from baseapp_pages.models import Metadata, URLPath
 
 Page = swapper.load_model("baseapp_pages", "Page")
 

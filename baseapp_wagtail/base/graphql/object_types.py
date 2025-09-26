@@ -51,10 +51,11 @@ class WagtailPageObjectType(DjangoObjectType):
     @classmethod
     def resolve_metadata(cls, instance, info, **kwargs):
         if apps.is_installed("baseapp_pages"):
-            from baseapp_pages.graphql.object_types import MetadataObjectType
-            from baseapp_pages.models import Metadata
             from django.contrib.contenttypes.models import ContentType
             from django.utils.translation import get_language
+
+            from baseapp_pages.graphql.object_types import MetadataObjectType
+            from baseapp_pages.models import Metadata
 
             target_content_type = ContentType.objects.get_for_model(instance)
             metadata = Metadata.objects.filter(

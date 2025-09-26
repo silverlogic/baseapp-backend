@@ -1,11 +1,11 @@
 import logging
 from typing import Optional
+
 from django.apps import apps
-from django.db.models import Model
-from baseapp_pages.models import PageMixin
-
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Model
 
+from baseapp_pages.models import PageMixin
 from baseapp_wagtail.base.models import DefaultPageModel
 
 logger = logging.getLogger(__name__)

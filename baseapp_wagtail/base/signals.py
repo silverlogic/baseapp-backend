@@ -1,8 +1,8 @@
 from django.dispatch import receiver
 from wagtail.signals import page_published, page_unpublished, post_page_move
 
-from baseapp_wagtail.base.urlpath.urlpath_sync import WagtailURLPathSync
 from baseapp_wagtail.base.metadata.metadata_sync import WagtailMetadataSync
+from baseapp_wagtail.base.urlpath.urlpath_sync import WagtailURLPathSync
 
 
 @receiver(page_published)
