@@ -104,8 +104,8 @@ class WagtailMetadataSync:
 
         if featured is not None:
             try:
-                if len(featured) > 0:
-                    item = featured[0]
+                item = next(iter(featured), None)
+                if item is not None:
                     struct_value = getattr(item, "value", None)
                     if struct_value is not None:
                         social_image = (
