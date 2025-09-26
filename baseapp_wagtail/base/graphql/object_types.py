@@ -70,8 +70,7 @@ class WagtailPageObjectType(DjangoObjectType):
             # Fallback to Wagtail fields if no Metadata object exists
             return MetadataObjectType(
                 meta_title=instance.title,
-                meta_description=None,
-                meta_og_image=None,
+                meta_description=instance.search_description,
                 meta_og_type="article",
             )
         return None
