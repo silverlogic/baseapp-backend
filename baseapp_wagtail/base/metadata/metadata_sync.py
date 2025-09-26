@@ -2,6 +2,8 @@ import logging
 from typing import Optional
 from django.apps import apps
 from django.db.models import Model
+from baseapp_pages.models import PageMixin
+
 from django.contrib.contenttypes.models import ContentType
 
 from baseapp_wagtail.base.models import DefaultPageModel
@@ -133,6 +135,4 @@ class WagtailMetadataSync:
         return self.metadata_model is not None
 
     def _is_metadata_target(self) -> bool:
-        from baseapp_pages.models import PageMixin
-
         return isinstance(self.page, PageMixin)

@@ -20,11 +20,6 @@ def save_urlpath_draft_on_schedule_publish(request, page):
         WagtailURLPathSync(page.scheduled_revision.as_object()).create_or_update_urlpath_draft()
 
 
-@hooks.register("after_publish_page")
-def sync_metadata_on_publish(request, page):
-    WagtailMetadataSync(page).create_or_update_metadata()
-
-
 @hooks.register("register_rich_text_features")
 def register_core_features(features):
     features.default_features.append("blockquote")
