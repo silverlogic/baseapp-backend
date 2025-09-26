@@ -15,7 +15,6 @@ def update_urlpath_on_publish(sender, instance, revision, **kwargs):
 
 @receiver(page_published)
 def update_metadata_on_publish(sender, instance, revision, **kwargs):
-    """Update metadata when a page is published"""
     WagtailMetadataSync(instance).create_or_update_metadata()
 
 
@@ -26,7 +25,6 @@ def update_urlpath_on_move(sender, instance, **kwargs):
 
 @receiver(post_page_move)
 def update_metadata_on_move(sender, instance, **kwargs):
-    """Update metadata when a page is moved (in case title changes)"""
     WagtailMetadataSync(instance.specific).create_or_update_metadata()
 
 
@@ -37,5 +35,4 @@ def deactivate_urlpath_on_unpublish(sender, instance, **kwargs):
 
 @receiver(page_unpublished)
 def delete_metadata_on_unpublish(sender, instance, **kwargs):
-    """Deactivate metadata when a page is unpublished"""
     WagtailMetadataSync(instance).delete_metadata()
