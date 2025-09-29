@@ -21,4 +21,4 @@ class UsersFilter(django_filters.FilterSet):
     def filter_by_q(self, queryset, name, value):
         if apps.is_installed("baseapp_profiles"):
             return queryset.filter(Q(profile__name__search=value) | Q(email__iexact=value))
-        return queryset.filter(email__search=value)
+        return queryset.filter(email__iexact=value)
