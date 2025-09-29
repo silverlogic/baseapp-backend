@@ -105,7 +105,6 @@ class TestLoginAuthToken(TestLoginBase):
         self.check_can_login_with_expired_password_when_interval_is_zero(client, data)
 
 
-
 class TestJwtRefresh(ApiMixin):
     login_endpoint_path = "/v1/auth/jwt/refresh"
 
