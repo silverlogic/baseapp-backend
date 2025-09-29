@@ -175,7 +175,7 @@ def test_anon_can_query_users_list_with_filter_by_email(graphql_client_with_quer
     UserFactory.create_batch(2)
     UserFactory(email="test@test.com")
     response, queries = graphql_client_with_queries(
-        QUERY_USERS_LIST_WITH_FILTERS, variables={"q": "test"}
+        QUERY_USERS_LIST_WITH_FILTERS, variables={"q": "test@test.com"}
     )
     content = response.json()
 
