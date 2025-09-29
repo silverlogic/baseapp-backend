@@ -42,18 +42,12 @@ class WagtailMetadataSync:
                 else None
             )
 
-            metadata, created = self.metadata_model.objects.get_or_create(
+            metadata, created = self.metadata_model.objects.update_or_create(
                 target_content_type=content_type,
                 target_object_id=self.page.id,
                 language=language,
-                defaults=self._get_metadata_fields(),
+                defaults=self.get_metadata_fields(),
             )
-
-            if not created:
-                metadata_fields = self._get_metadata_fields()
-                for field, value in metadata_fields.items():
-                    setattr(metadata, field, value)
-                metadata.save()
 
             logger.info(
                 f"(Wagtail metadata sync) {'Created' if created else 'Updated'} metadata for page {self.page.id}"
@@ -90,7 +84,12 @@ class WagtailMetadataSync:
             logger.error(f"(Wagtail metadata sync) Error deleting metadata: {e}")
             return
 
-    def _get_metadata_fields(self) -> dict:
+    def get_metadata_fields(self) -> dict:
+        """
+        Extract metadata fields from the Wagtail page to be used in Metadata model.
+        Returns a dictionary with keys: meta_title, meta_description, meta_og_image, meta_og_type.
+        Can be overridden for custom behavior.
+        """
         fields = {}
 
         if getattr(self.page, "seo_title", None) and self.page.seo_title.strip():

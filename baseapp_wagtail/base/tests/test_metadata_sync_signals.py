@@ -1,4 +1,7 @@
+from datetime import timedelta
 from unittest.mock import patch
+
+from django.utils import timezone
 
 from baseapp_wagtail.base.metadata.metadata_sync import WagtailMetadataSync
 from baseapp_wagtail.tests.mixins import TestPageContextMixin

@@ -15,6 +15,8 @@ def update_urlpath_on_publish(sender, instance, revision, **kwargs):
 
 @receiver(page_published)
 def update_metadata_on_publish(sender, instance, revision, **kwargs):
+    if instance.scheduled_revision:
+        return
     WagtailMetadataSync(instance).create_or_update_metadata()
 
 
