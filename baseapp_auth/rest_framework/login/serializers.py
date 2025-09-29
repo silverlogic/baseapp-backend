@@ -1,3 +1,4 @@
+from constance import config
 from django.contrib.auth import authenticate, get_user_model
 from django.utils.translation import gettext_lazy as _
 from rest_framework import exceptions, serializers
@@ -10,7 +11,9 @@ User = get_user_model()
 
 class LoginPasswordExpirationMixin:
     def check_password_expiration(self, user):
-        if user.is_password_expired:
+        if config.USER_PASSWORD_EXPIRATION_INTERVAL == 0:
+            return
+        if user.password_expired:
             raise UserPasswordExpiredException(user=user)
 
 

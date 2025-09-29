@@ -69,6 +69,15 @@ class TestLoginBase(ApiMixin):
         h.responseOk(r)
         assert "change-expired-password" in r.data["redirect_url"]
 
+    @override_config(USER_PASSWORD_EXPIRATION_INTERVAL=0)
+    def check_can_login_with_expired_password_when_interval_is_zero(self, client, data):
+        user = UserFactory(email=data["email"], password=data["password"])
+        user.password_changed_date = timezone.now() - timezone.timedelta(days=1)
+        user.save()
+        r = self.send_login_request(client, data)
+        h.responseOk(r)
+        assert "redirect_url" not in r.data
+
 
 class TestLoginAuthToken(TestLoginBase):
     login_endpoint_path = "/v1/auth/authtoken/login"
@@ -91,6 +100,9 @@ class TestLoginAuthToken(TestLoginBase):
 
     def test_login_with_expired_password_redirects_to_change_expired_password(self, client, data):
         self.check_login_with_expired_password_redirects_to_change_expired_password(client, data)
+
+    def test_can_login_with_expired_password_when_interval_is_zero(self, client, data):
+        self.check_can_login_with_expired_password_when_interval_is_zero(client, data)
 
 
 class TestJwtRefresh(ApiMixin):
@@ -126,6 +138,9 @@ class TestLoginJwt(TestLoginBase):
 
     def test_login_with_expired_password_redirects_to_change_expired_password(self, client, data):
         self.check_login_with_expired_password_redirects_to_change_expired_password(client, data)
+
+    def test_can_login_with_expired_password_when_interval_is_zero(self, client, data):
+        self.check_can_login_with_expired_password_when_interval_is_zero(client, data)
 
     def test_jwt_token_contains_user_data(self, client, data):
         user = UserFactory(email=data["email"], password=data["password"])
