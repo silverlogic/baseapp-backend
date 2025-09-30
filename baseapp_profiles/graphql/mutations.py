@@ -154,17 +154,22 @@ class ProfileUserRoleCreate(RelayMutation):
         profile_pk = get_pk_from_relay_id(profile_id)
         role_type = input.get("role_type")
         emails_to_invite = input.get("emails_to_invite")
+        try:
+            profile = Profile.objects.get(pk=profile_pk)
+        except Profile.DoesNotExist:
+            raise GraphQLError(str(_("Profile not found")))
+
         if not info.context.user.has_perm(
-            f"{profile_user_role_app_label}.add_profileuserrole", profile_id
+            f"{profile_user_role_app_label}.add_profileuserrole", profile
         ):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
             )
-        if role_type and role_type not in ProfileUserRole.ProfileRoles.values:
-            raise GraphQLError(_("Invalid role type"))
-        else:
+        if not role_type:
             role_type = ProfileUserRole.ProfileRoles.MANAGER
+        elif role_type and role_type not in ProfileUserRole.ProfileRoles.values:
+            raise GraphQLError(str(_("Invalid role type")))
 
         # TODO on BA-2426: send invitation to new users emails
         if emails_to_invite:
@@ -206,7 +211,7 @@ class ProfileUserRoleUpdate(RelayMutation):
         try:
             obj = ProfileUserRole.objects.get(user_id=user_pk, profile_id=profile_pk)
         except ProfileUserRole.DoesNotExist:
-            raise GraphQLError(_("Role not found"))
+            raise GraphQLError(str(_("Role not found")))
 
         if not info.context.user.has_perm(
             f"{profile_user_role_app_label}.change_profileuserrole", obj.profile
@@ -239,7 +244,7 @@ class ProfileUserRoleDelete(RelayMutation):
         obj = ProfileUserRole.objects.get(user_id=user_pk, profile_id=profile_pk)
 
         if not obj:
-            raise GraphQLError(_("User role not found"))
+            raise GraphQLError(str(_("User role not found")))
 
         if not info.context.user.has_perm(
             f"{profile_user_role_app_label}.delete_profileuserrole", obj.profile
@@ -273,7 +278,7 @@ class ProfileUpdate(SerializerMutation):
             pk = get_pk_from_relay_id(id)
             instance = Profile.objects.get(pk=pk)
         except Profile.DoesNotExist:
-            raise ValueError(_("Profile not found"))
+            raise ValueError(str(_("Profile not found")))
 
         if not info.context.user.has_perm(f"{profile_app_label}.change_profile", instance):
             raise GraphQLError(

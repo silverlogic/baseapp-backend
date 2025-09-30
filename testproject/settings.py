@@ -20,6 +20,7 @@ INSTALLED_APPS += [
     "rest_social_auth",
     "trench",
     "rest_framework_simplejwt",
+    "django.contrib.postgres",
     "baseapp_profiles",
     "baseapp_reactions",
     "baseapp_reports",

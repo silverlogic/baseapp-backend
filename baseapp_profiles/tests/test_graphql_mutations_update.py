@@ -35,6 +35,18 @@ PROFILE_UPDATE_GRAPHQL = """
     }
 """
 
+PROFILE_USER_ROLE_CREATE_GRAPHQL = """
+mutation ProfileUserRoleCreateMutation($input: ProfileUserRoleCreateInput!) {
+    profileUserRoleCreate(input: $input) {
+        profileUserRoles {
+            id
+            role
+            status
+        }
+    }
+}
+"""
+
 PROFILE_USER_ROLE_UPDATE_GRAPHQL = """
 mutation ProfileUserRoleUpdateMutation($input: ProfileUserRoleUpdateInput!) {
     profileUserRoleUpdate(input: $input) {
@@ -268,7 +280,7 @@ def test_user_with_permission_can_update_role(django_user_client, graphql_user_c
     )
     content = response.json()
 
-    assert content["data"]["profileUserRoleUpdate"]["profileUserRole"]["role"] == "ADMIN"
+    assert content["data"]["profileUserRoleCreate"]["profileUserRole"]["role"] == "ADMIN"
     profile.refresh_from_db()
 
 
@@ -311,9 +323,13 @@ def test_user_without_permission_cant_add_profile_user_role(
     profile = ProfileFactory(owner=user_2)
 
     response = graphql_user_client(
-        PROFILE_USER_ROLE_UPDATE_GRAPHQL,
+        PROFILE_USER_ROLE_CREATE_GRAPHQL,
         variables={
-            "input": {"userId": user_2.relay_id, "profileId": profile.relay_id, "roleType": "ADMIN"}
+            "input": {
+                "usersIds": [user_2.relay_id],
+                "profileId": profile.relay_id,
+                "roleType": "ADMIN",
+            }
         },
     )
     content = response.json()
@@ -331,11 +347,15 @@ def test_user_with_permission_can_add_profile_user_role(django_user_client, grap
     user_2 = UserFactory()
     profile = ProfileFactory(owner=user_2)
     response = graphql_user_client(
-        PROFILE_USER_ROLE_UPDATE_GRAPHQL,
+        PROFILE_USER_ROLE_CREATE_GRAPHQL,
         variables={
-            "input": {"userId": user_2.relay_id, "profileId": profile.relay_id, "roleType": "ADMIN"}
+            "input": {
+                "usersIds": [user_2.relay_id],
+                "profileId": user.profile.relay_id,
+                "roleType": "ADMIN",
+            }
         },
     )
     content = response.json()
-    assert content["data"]["profileUserRoleUpdate"]["profileUserRole"]["role"] == "ADMIN"
+    assert content["data"]["profileUserRoleCreate"]["profileUserRoles"][0]["role"] == "ADMIN"
     profile.refresh_from_db()
