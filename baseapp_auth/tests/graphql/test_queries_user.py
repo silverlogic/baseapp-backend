@@ -1,5 +1,4 @@
 import pytest
-from django.apps import apps
 from django.contrib.auth.models import Permission
 
 from baseapp_core.tests.factories import UserFactory
@@ -184,13 +183,12 @@ def test_anon_can_query_users_list_with_filter_by_email(graphql_client_with_quer
 
 def test_anon_can_query_users_list_with_filter_by_profile_name(graphql_client_with_queries):
     UserFactory.create_batch(2)
-    if apps.is_installed("baseapp_profiles"):
-        user_1 = UserFactory()
-        user_1.profile.name = "test"
-        user_1.profile.save()
-        user_2 = UserFactory()
-        user_2.profile.name = "testing"
-        user_2.profile.save()
+    user_1 = UserFactory()
+    user_1.profile.name = "test"
+    user_1.profile.save()
+    user_2 = UserFactory()
+    user_2.profile.name = "testing"
+    user_2.profile.save()
     response, queries = graphql_client_with_queries(
         QUERY_USERS_LIST_WITH_FILTERS, variables={"q": "test"}
     )

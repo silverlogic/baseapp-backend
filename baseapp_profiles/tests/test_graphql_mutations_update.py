@@ -280,7 +280,7 @@ def test_user_with_permission_can_update_role(django_user_client, graphql_user_c
     )
     content = response.json()
 
-    assert content["data"]["profileUserRoleCreate"]["profileUserRole"]["role"] == "ADMIN"
+    assert content["data"]["profileUserRoleUpdate"]["profileUserRole"]["role"] == "ADMIN"
     profile.refresh_from_db()
 
 
