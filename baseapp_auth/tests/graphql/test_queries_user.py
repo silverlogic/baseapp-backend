@@ -68,6 +68,21 @@ QUERY_USERS_LIST = """
     }
 """
 
+QUERY_USERS_LIST_WITH_FILTERS = """
+    query GetUsersList($q: String) {
+        users(q: $q) {
+            edges {
+                node {
+                    id
+                    fullName
+                    email
+                    isActive
+                }
+            }
+        }
+    }
+"""
+
 
 def test_anon_can_query_user_by_pk(graphql_client):
     user = UserFactory()
@@ -153,3 +168,30 @@ def test_anon_can_query_users_list_with_optimized_query(graphql_client_with_quer
     # SELECT "users_user"."id", "users_user"."profile_id", "users_user"."first_name", "users_user"."last_name", ("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AS "password_expiry_date", (("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AT TIME ZONE UTC)::date <= 2025-02-28 AS "is_password_expired", "profiles_profile"."id", "profiles_profile"."name" FROM "users_user" LEFT OUTER JOIN "profiles_profile" ON ("users_user"."profile_id" = "profiles_profile"."id") WHERE "users_user"."is_active"
     # SELECT COUNT(*) AS "__count" FROM "users_user" WHERE "users_user"."is_active"
     # SELECT "users_user"."id", "users_user"."profile_id", "users_user"."first_name", "users_user"."last_name", ("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AS "password_expiry_date", (("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AT TIME ZONE UTC)::date <= 2025-02-28 AS "is_password_expired", "profiles_profile"."id", "profiles_profile"."name" FROM "users_user" LEFT OUTER JOIN "profiles_profile" ON ("users_user"."profile_id" = "profiles_profile"."id") WHERE "users_user"."is_active" LIMIT 10
+
+
+def test_anon_can_query_users_list_with_filter_by_email(graphql_client_with_queries):
+    UserFactory.create_batch(2)
+    UserFactory(email="test@test.com")
+    response, queries = graphql_client_with_queries(
+        QUERY_USERS_LIST_WITH_FILTERS, variables={"q": "test@test.com"}
+    )
+    content = response.json()
+
+    assert len(content["data"]["users"]["edges"]) == 1
+
+
+def test_anon_can_query_users_list_with_filter_by_profile_name(graphql_client_with_queries):
+    UserFactory.create_batch(2)
+    user_1 = UserFactory()
+    user_1.profile.name = "test"
+    user_1.profile.save()
+    user_2 = UserFactory()
+    user_2.profile.name = "testing"
+    user_2.profile.save()
+    response, queries = graphql_client_with_queries(
+        QUERY_USERS_LIST_WITH_FILTERS, variables={"q": "test"}
+    )
+    content = response.json()
+
+    assert len(content["data"]["users"]["edges"]) == 2
