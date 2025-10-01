@@ -493,7 +493,10 @@ class AbstractProfileUserRole(DocumentIdMixin, RelayModel, models.Model):
         related_name="profile_members",
         on_delete=models.CASCADE,
         verbose_name=_("user"),
+        null=True,
+        blank=True,
     )
+    email = models.EmailField(_("email"), null=True, blank=True)
     profile = models.ForeignKey(
         swapper.get_model_name("baseapp_profiles", "Profile"),
         related_name="members",
@@ -502,7 +505,7 @@ class AbstractProfileUserRole(DocumentIdMixin, RelayModel, models.Model):
     )
     role = models.IntegerField(choices=ProfileRoles.choices, default=ProfileRoles.MANAGER)
     status = models.IntegerField(
-        choices=ProfileRoleStatus.choices, default=ProfileRoleStatus.PENDING
+        choices=ProfileRoleStatus.choices, default=ProfileRoleStatus.INACTIVE
     )
 
     class Meta:

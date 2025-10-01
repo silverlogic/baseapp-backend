@@ -70,6 +70,21 @@ QUERY_USERS_LIST = """
     }
 """
 
+QUERY_USERS_LIST_WITH_FILTERS = """
+    query GetUsersList($q: String) {
+        users(q: $q) {
+            edges {
+                node {
+                    id
+                    fullName
+                    email
+                    isActive
+                }
+            }
+        }
+    }
+"""
+
 
 def test_anon_cannot_query_user_by_pk(graphql_client):
     user = UserFactory()
@@ -185,3 +200,30 @@ def test_anon_can_query_users_list_with_optimized_query_with_public_id(graphql_c
     # 5. SELECT COUNT(*) for pagination
     # 6. Same as #3 with LIMIT 10 for the returned page slice
     # 7. Same as #4 for the page's profiles
+
+
+def test_anon_can_query_users_list_with_filter_by_email(graphql_client_with_queries):
+    UserFactory.create_batch(2)
+    UserFactory(email="test@test.com")
+    response, queries = graphql_client_with_queries(
+        QUERY_USERS_LIST_WITH_FILTERS, variables={"q": "test@test.com"}
+    )
+    content = response.json()
+
+    assert len(content["data"]["users"]["edges"]) == 1
+
+
+def test_anon_can_query_users_list_with_filter_by_profile_name(graphql_client_with_queries):
+    UserFactory.create_batch(2)
+    user_1 = UserFactory()
+    user_1.profile.name = "test"
+    user_1.profile.save()
+    user_2 = UserFactory()
+    user_2.profile.name = "testing"
+    user_2.profile.save()
+    response, queries = graphql_client_with_queries(
+        QUERY_USERS_LIST_WITH_FILTERS, variables={"q": "test"}
+    )
+    content = response.json()
+
+    assert len(content["data"]["users"]["edges"]) == 2
