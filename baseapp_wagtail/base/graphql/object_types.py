@@ -51,13 +51,26 @@ class WagtailPageObjectType(DjangoObjectType):
     @classmethod
     def resolve_metadata(cls, instance, info, **kwargs):
         if apps.is_installed("baseapp_pages"):
-            from baseapp_pages.graphql.object_types import MetadataObjectType
+            from django.contrib.contenttypes.models import ContentType
+            from django.utils.translation import get_language
 
-            # TODO: (BA-2635) Complete the metadata for Wagtail pages when implementing the story BA-2635.
+            from baseapp_pages.graphql.object_types import MetadataObjectType
+            from baseapp_pages.models import Metadata
+
+            target_content_type = ContentType.objects.get_for_model(instance)
+            metadata = Metadata.objects.filter(
+                target_content_type=target_content_type,
+                target_object_id=instance.id,
+                language=get_language(),
+            ).first()
+
+            if metadata:
+                return metadata
+
+            # Fallback to Wagtail fields if no Metadata object exists
             return MetadataObjectType(
                 meta_title=instance.title,
-                meta_description=None,
-                meta_og_image=None,
+                meta_description=instance.search_description,
                 meta_og_type="article",
             )
         return None
