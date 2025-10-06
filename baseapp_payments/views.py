@@ -2,6 +2,7 @@ import logging
 
 import swapper
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from rest_framework import viewsets
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -33,8 +34,8 @@ class StripeSubscriptionViewset(
     viewsets.mixins.RetrieveModelMixin,
     viewsets.mixins.ListModelMixin,
     viewsets.mixins.CreateModelMixin,
-    DestroyModelMixin,
     viewsets.mixins.UpdateModelMixin,
+    DestroyModelMixin,
 ):
     serializer_class = StripeSubscriptionSerializer
     queryset = Subscription.objects.all()
@@ -45,7 +46,7 @@ class StripeSubscriptionViewset(
         instance = self.get_object()
         subscription = StripeService().retrieve_subscription(
             instance.remote_subscription_id,
-            expand=["latest_invoice.payment_intent"],
+            expand=["latest_invoice.payment_intent", "items.data.price.product"],
         )
         serializer = self.get_serializer(subscription)
         return Response(serializer.data, status=200)
@@ -60,12 +61,6 @@ class StripeSubscriptionViewset(
         subscriptions = StripeService().list_subscriptions(customer.remote_customer_id, **kwargs)
         serializer = self.get_serializer(subscriptions.data, many=True)
         return Response(serializer.data, status=200)
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=201)
 
     def destroy(self, request, *args, **kwargs):
         try:
@@ -98,9 +93,17 @@ class StripeProductViewset(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = StripeProductSerializer
 
+    def get_queryset(self):
+        return []
+
     def list(self, request):
-        products = StripeService().list_products()
-        return Response(products, status=200)
+        try:
+            products = StripeService().list_products(expand=["data.default_price"])
+            serializer = self.serializer_class(products, many=True)
+            return Response(serializer.data, status=200)
+        except Exception as e:
+            logger.exception("Failed to retrieve products: %s", e)
+            return Response({"error": "An internal error has occurred"}, status=500)
 
     def retrieve(self, request, pk=None):
         try:

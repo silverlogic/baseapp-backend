@@ -229,20 +229,21 @@ class StripeService:
                 expand=["latest_invoice.payment_intent"],
                 metadata={"product_id": product_id} if product_id else None,
             )
-            client_secret = (
-                subscription.get("latest_invoice", {})
-                .get("payment_intent", {})
-                .get("client_secret", None)
-            )
+            client_secret = None
+            latest_invoice = subscription.get("latest_invoice")
+            if latest_invoice:
+                payment_intent = latest_invoice.get("payment_intent")
+                if payment_intent:
+                    client_secret = payment_intent.get("client_secret")
             subscription["client_secret"] = client_secret
             return subscription
         except Exception as e:
             logger.exception(e)
             raise SubscriptionCreationError("Error creating subscription intent in Stripe")
 
-    def retrieve_subscription(self, subscription_id):
+    def retrieve_subscription(self, subscription_id, **kwargs):
         try:
-            subscription = stripe.Subscription.retrieve(subscription_id)
+            subscription = stripe.Subscription.retrieve(subscription_id, **kwargs)
         except Exception as e:
             if "No such subscription" in str(e):
                 return None
@@ -250,7 +251,10 @@ class StripeService:
             raise SubscriptionNotFound("Error retrieving subscription in Stripe")
         customer = subscription.get("customer", None)
         try:
-            upcoming_invoice = stripe.Invoice.upcoming(customer=customer)
+            upcoming_invoice = stripe.Invoice.create_preview(
+                customer=customer,
+                subscription=subscription_id
+            )
             subscription["upcoming_invoice"] = {
                 "amount_due": upcoming_invoice.amount_due,
                 "next_payment_attempt": upcoming_invoice.next_payment_attempt,

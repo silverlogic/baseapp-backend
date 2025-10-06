@@ -97,9 +97,13 @@ class StripeSubscriptionSerializer(serializers.Serializer):
     billing_details = serializers.DictField(required=False, write_only=True)
     default_payment_method = serializers.CharField(required=False, write_only=True)
     id = serializers.CharField(read_only=True)
-    client_secret = serializers.CharField(read_only=True, source="get_client_secret")
-    latest_invoice = serializers.DictField(read_only=True)
+    client_secret = serializers.SerializerMethodField()
+    latest_invoice = StripeInvoiceSerializer(read_only=True)
     status = serializers.CharField(read_only=True)
+    product = serializers.SerializerMethodField()
+    current_period_end = serializers.DateTimeField(read_only=True)
+    upcoming_invoice = serializers.SerializerMethodField()
+    default_payment_method = serializers.CharField(read_only=True)
 
     def validate_create(self, data):
         entity_id = data["entity_id"]
@@ -149,7 +153,12 @@ class StripeSubscriptionSerializer(serializers.Serializer):
             stripe_service = StripeService()
             payment_methods = stripe_service.list_payment_methods(customer.remote_customer_id)
             payment_method_id = data.get("payment_method_id")
-            if not any(pm["id"] == payment_method_id for pm in payment_methods):
+            default_payment_method = data.get("default_payment_method")
+            if payment_method_id and not any(pm["id"] == payment_method_id for pm in payment_methods):
+                raise serializers.ValidationError(
+                    "The provided payment method ID does not belong to the customer."
+                )
+            if default_payment_method and not any(pm["id"] == default_payment_method for pm in payment_methods):
                 raise serializers.ValidationError(
                     "The provided payment method ID does not belong to the customer."
                 )
@@ -196,10 +205,11 @@ class StripeSubscriptionSerializer(serializers.Serializer):
             raise serializers.ValidationError("Failed to create subscription")
 
     def update(self, instance, validated_data):
-        data = self.validate_update(instance, validated_data)
+        data = self.validate_update(instance, validated_data if validated_data else self.initial_data)
         default_payment_method = data.get("default_payment_method")
         payment_method_id = data.get("payment_method_id")
-        billing_details = data.pop("billing_details")
+        if data.get("billing_details"):
+            billing_details = data.pop("billing_details")
         current_subscription = data.pop("current_subscription")
         stripe_service = StripeService()
         try:
@@ -211,7 +221,7 @@ class StripeSubscriptionSerializer(serializers.Serializer):
                         payment_method_id, billing_details=billing_details
                     )
                 except Exception as e:
-                    logger.error(f"Failed to update payment method: {str(e)}")
+                    logger.exception(f"Failed to update payment method: {str(e)}")
                     # Continue with subscription update even if billing update fails
                 current_item_id = current_subscription.get("items", {}).get("data", [{}])[0].get("id")
                 fields = {
@@ -273,12 +283,17 @@ class StripeSubscriptionSerializer(serializers.Serializer):
 class StripeSubscriptionCustomerListSerializer(serializers.Serializer):
     id = serializers.CharField(read_only=True)
     status = serializers.CharField(read_only=True)
+    products_ids = serializers.SerializerMethodField()
+
+    def get_products_ids(self, instance):
+        items = instance.get("items", {}).get("data", [])
+        return [item.get("price", {}).get("product", {}) for item in items]
 
 
 class StripeCustomerSerializer(serializers.Serializer):
     remote_customer_id = serializers.ReadOnlyField()
     entity_id = serializers.CharField(required=False)
-    subscriptions = StripeSubscriptionCustomerListSerializer(many=True, read_only=True)
+    subscriptions = serializers.SerializerMethodField()
     upcoming_invoice = serializers.DictField(read_only=True)
 
     class Meta:
@@ -326,40 +341,14 @@ class StripeCustomerSerializer(serializers.Serializer):
         )
         return customer
 
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        if instance.subscriptions.exists():
-            stripe_subscriptions = StripeService().list_subscriptions(instance.remote_customer_id)
-            representation["subscriptions"] = StripeSubscriptionCustomerListSerializer(
-                stripe_subscriptions.data, many=True
-            ).data
-        return representation
+    def get_subscriptions(self, instance):
+        stripe_subscriptions = StripeService().list_subscriptions(instance.remote_customer_id)
+        return StripeSubscriptionCustomerListSerializer(stripe_subscriptions.data, many=True).data
 
 
 class StripeWebhookSerializer(serializers.Serializer):
     id = serializers.CharField()
     object = serializers.CharField()
-
-
-class StripePriceSerializer(serializers.Serializer):
-    id = serializers.CharField()
-    currency = serializers.CharField()
-    unit_amount = serializers.IntegerField()
-    recurring = serializers.DictField()
-
-
-class StripeProductSerializer(serializers.Serializer):
-    id = serializers.CharField()
-    name = serializers.CharField()
-    description = serializers.CharField(allow_null=True, required=False)
-    active = serializers.BooleanField()
-    default_price = StripePriceSerializer(allow_null=True)
-    metadata = serializers.DictField(required=False)
-    images = serializers.ListField(child=serializers.URLField(), required=False)
-    marketing_features = serializers.ListField(
-        read_only=True,
-        child=serializers.DictField(),
-    )
 
 
 class StripeCardSerializer(serializers.Serializer):
@@ -419,35 +408,3 @@ class StripePaymentMethodSerializer(serializers.Serializer):
             except Exception as e:
                 logger.exception(e)
                 raise serializers.ValidationError("Failed to update payment method")
-
-
-class StripeInvoiceLineSerializer(serializers.Serializer):
-    id = serializers.CharField(read_only=True)
-    amount = serializers.IntegerField(read_only=True)
-    description = serializers.CharField(read_only=True)
-    quantity = serializers.IntegerField(read_only=True)
-    type = serializers.CharField(read_only=True)
-    price = StripePriceSerializer(read_only=True)
-
-
-class StripeInvoiceSerializer(serializers.Serializer):
-    id = serializers.CharField(read_only=True)
-    amount_due = serializers.IntegerField(read_only=True)
-    amount_paid = serializers.IntegerField(read_only=True)
-    amount_remaining = serializers.IntegerField(read_only=True)
-    created = serializers.IntegerField(read_only=True)
-    status = serializers.CharField(read_only=True)
-    lines = serializers.DictField(read_only=True)
-    metadata = serializers.DictField(read_only=True)
-    hosted_invoice_url = serializers.URLField(read_only=True)
-    webhooks_delivered_at = serializers.IntegerField(read_only=True)
-
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        lines = representation.get("lines", {}).get("data", [])
-        representation["lines"] = StripeInvoiceLineSerializer(lines, many=True).data
-        representation["created"] = datetime.fromtimestamp(representation["created"])
-        representation["webhooks_delivered_at"] = datetime.fromtimestamp(
-            representation["webhooks_delivered_at"]
-        )
-        return representation
