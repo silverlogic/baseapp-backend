@@ -68,8 +68,7 @@ class BaseAPIKeyManager(models.Manager):
         else:
             raise TypeError("unencrypted_value must be str or bytes")
 
-        if not isinstance(encryption_key, str):
-            encryption_key = settings.BA_API_KEY_ENCRYPTION_KEY
+        encryption_key = self._get_encryption_key(encryption_key)
         aessiv = AESSIV(base64.urlsafe_b64decode(encryption_key))
         associated_data = []
 
@@ -87,9 +86,7 @@ class BaseAPIKeyManager(models.Manager):
         Returns:
             bytes: The decrypted value as str.
         """
-
-        if not isinstance(encryption_key, str):
-            encryption_key = settings.BA_API_KEY_ENCRYPTION_KEY
+        encryption_key = self._get_encryption_key(encryption_key)
         aessiv = AESSIV(base64.urlsafe_b64decode(encryption_key))
         associated_data = []
 
@@ -118,3 +115,10 @@ class BaseAPIKeyManager(models.Manager):
 
     def get_queryset(self, *args, **kwargs) -> models.QuerySet:
         return super().get_queryset(*args, **kwargs).add_is_expired()
+
+    def _get_encryption_key(self, encryption_key: str | None = None) -> str:
+        if not isinstance(encryption_key, str):
+            if not settings.BA_API_KEY_ENCRYPTION_KEY:
+                raise ValueError("BA_API_KEY_ENCRYPTION_KEY is not set")
+            encryption_key = settings.BA_API_KEY_ENCRYPTION_KEY
+        return encryption_key

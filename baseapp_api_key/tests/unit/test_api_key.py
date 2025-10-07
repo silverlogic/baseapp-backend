@@ -72,6 +72,31 @@ class TestAPIKey(TestCase):
             ):
                 APIKey.objects.decrypt(encrypted_value=api_key.encrypted_api_key)
 
+    def test_encrypt_raises_if_encryption_key_not_set(self):
+        with override_settings(BA_API_KEY_ENCRYPTION_KEY=None):
+            with self.assertRaises(ValueError) as excinfo:
+                APIKey.objects.encrypt("some-value")
+            assert "BA_API_KEY_ENCRYPTION_KEY is not set" in str(excinfo.exception)
+
+    def test_decrypt_raises_if_encryption_key_not_set(self):
+        with override_settings(BA_API_KEY_ENCRYPTION_KEY=None):
+            with self.assertRaises(ValueError) as excinfo:
+                APIKey.objects.decrypt(b"00")
+            assert "BA_API_KEY_ENCRYPTION_KEY is not set" in str(excinfo.exception)
+
+    def test_rotate_encryption_key_raises_if_encryption_key_not_set(self):
+        with override_settings(
+            BA_API_KEY_ENCRYPTION_KEY="jCe8USiQJDatFT5T0WCIl86QBxYs0-Q7iDJQc77Dh7LR1VAnWW3PA9UyXK-V7LhFnKq9sLd3xDw5FTrrYYtj2Q=="
+        ):
+            f.APIKeyFactory()
+        with override_settings(BA_API_KEY_ENCRYPTION_KEY=None):
+            with self.assertRaises(ValueError) as excinfo:
+                APIKey.objects.rotate_encryption_key(
+                    encryption_key_old=None,
+                    encryption_key_new=None,
+                )
+            assert "BA_API_KEY_ENCRYPTION_KEY is not set" in str(excinfo.exception)
+
 
 class TestAPIKeyAuthentication(APITestCase, URLPatternsTestCase):
     class DummyViewSet(viewsets.GenericViewSet):
