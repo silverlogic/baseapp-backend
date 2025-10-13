@@ -77,3 +77,19 @@ class ChatRoomFilter(django_filters.FilterSet):
         return queryset.filter(
             participants__profile_id=user_profile.pk, participants__has_archived_room=value
         ).distinct()
+
+
+class ChatRoomParticipantFilter(django_filters.FilterSet):
+    q = django_filters.CharFilter(method="filter_q")
+
+    order_by = django_filters.OrderingFilter(fields=(("profile__name", "created"),))
+
+    class Meta:
+        model = ChatRoomParticipant
+        fields = ["q", "order_by"]
+
+    def filter_q(self, queryset, name, value):
+        if not value:
+            return queryset
+
+        return queryset.filter(Q(profile__name__icontains=value)).distinct()

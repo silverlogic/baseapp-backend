@@ -13,7 +13,7 @@ from baseapp_core.graphql import (
     get_pk_from_relay_id,
 )
 
-from .filters import ChatRoomFilter
+from .filters import ChatRoomFilter, ChatRoomParticipantFilter
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
@@ -32,7 +32,8 @@ class BaseChatRoomParticipantObjectType:
         interfaces = (relay.Node,)
         model = ChatRoomParticipant
         fields = ("id", "has_archived_room", "profile", "role")
-        filter_fields = ("profile__target_content_type",)
+        # filter_fields = ("profile__target_content_type",)
+        filterset_class = ChatRoomParticipantFilter
 
 
 class ChatRoomParticipantObjectType(BaseChatRoomParticipantObjectType, DjangoObjectType):
