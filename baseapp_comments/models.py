@@ -62,7 +62,7 @@ class AbstractComment(
         swapper.get_model_name("baseapp_profiles", "Profile"),
         verbose_name=_("profile"),
         related_name="comments",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
