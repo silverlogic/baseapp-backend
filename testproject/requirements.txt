@@ -1,6 +1,6 @@
 # baseapp dependencies
-djangorestframework==3.15.2
-djangorestframework-simplejwt[crypto]==5.2.2
+djangorestframework==3.16.1
+djangorestframework-simplejwt[crypto]==5.5.1
 drf-nested-routers==0.93.5
 easy_thumbnails==2.10.1
 rest-social-auth==8.4.0
