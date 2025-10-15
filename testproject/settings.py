@@ -119,6 +119,8 @@ AUTHENTICATION_BACKENDS = [
     "baseapp_chats.permissions.ChatsPermissionsBackend",
 ]
 
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
 ADMIN_TIME_ZONE = "UTC"
 
 # URL Shortening
