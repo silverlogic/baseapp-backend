@@ -82,7 +82,10 @@ class StripeInvoiceSerializer(serializers.Serializer):
         representation["lines"] = StripeInvoiceLineSerializer(lines, many=True).data
         if "created" in representation and representation["created"] is not None:
             representation["created"] = datetime.fromtimestamp(representation["created"])
-        if "webhooks_delivered_at" in representation and representation["webhooks_delivered_at"] is not None:
+        if (
+            "webhooks_delivered_at" in representation
+            and representation["webhooks_delivered_at"] is not None
+        ):
             representation["webhooks_delivered_at"] = datetime.fromtimestamp(
                 representation["webhooks_delivered_at"]
             )
@@ -154,11 +157,15 @@ class StripeSubscriptionSerializer(serializers.Serializer):
             payment_methods = stripe_service.list_payment_methods(customer.remote_customer_id)
             payment_method_id = data.get("payment_method_id")
             default_payment_method = data.get("default_payment_method")
-            if payment_method_id and not any(pm["id"] == payment_method_id for pm in payment_methods):
+            if payment_method_id and not any(
+                pm["id"] == payment_method_id for pm in payment_methods
+            ):
                 raise serializers.ValidationError(
                     "The provided payment method ID does not belong to the customer."
                 )
-            if default_payment_method and not any(pm["id"] == default_payment_method for pm in payment_methods):
+            if default_payment_method and not any(
+                pm["id"] == default_payment_method for pm in payment_methods
+            ):
                 raise serializers.ValidationError(
                     "The provided payment method ID does not belong to the customer."
                 )
@@ -205,7 +212,9 @@ class StripeSubscriptionSerializer(serializers.Serializer):
             raise serializers.ValidationError("Failed to create subscription")
 
     def update(self, instance, validated_data):
-        data = self.validate_update(instance, validated_data if validated_data else self.initial_data)
+        data = self.validate_update(
+            instance, validated_data if validated_data else self.initial_data
+        )
         default_payment_method = data.get("default_payment_method")
         payment_method_id = data.get("payment_method_id")
         if data.get("billing_details"):
@@ -223,7 +232,9 @@ class StripeSubscriptionSerializer(serializers.Serializer):
                 except Exception as e:
                     logger.exception(f"Failed to update payment method: {str(e)}")
                     # Continue with subscription update even if billing update fails
-                current_item_id = current_subscription.get("items", {}).get("data", [{}])[0].get("id")
+                current_item_id = (
+                    current_subscription.get("items", {}).get("data", [{}])[0].get("id")
+                )
                 fields = {
                     "items": [
                         {"id": current_item_id, "deleted": True},

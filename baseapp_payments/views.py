@@ -2,7 +2,6 @@ import logging
 
 import swapper
 from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
 from rest_framework import viewsets
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated

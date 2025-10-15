@@ -252,8 +252,7 @@ class StripeService:
         customer = subscription.get("customer", None)
         try:
             upcoming_invoice = stripe.Invoice.create_preview(
-                customer=customer,
-                subscription=subscription_id
+                customer=customer, subscription=subscription_id
             )
             subscription["upcoming_invoice"] = {
                 "amount_due": upcoming_invoice.amount_due,
