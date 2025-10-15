@@ -97,10 +97,7 @@ class TestSubscriptionCreateView:
     def test_user_can_create_subscription(
         self, mock_retrieve_price, mock_create_subscription, mock_list_subscriptions, user_client
     ):
-        mock_retrieve_price.return_value = {
-            "id": "price_123",
-            "product": {"id": "prod_123"}
-        }
+        mock_retrieve_price.return_value = {"id": "price_123", "product": {"id": "prod_123"}}
         mock_list_subscriptions.return_value = Mock(data=[])
         mock_create_subscription.return_value = {
             "id": "sub_123",
@@ -126,19 +123,12 @@ class TestSubscriptionCreateView:
         mock_list_subscriptions,
         user_client,
     ):
-        mock_retrieve_price.return_value = {
-            "id": "price_123",
-            "product": {"id": "prod_123"}
-        }
+        mock_retrieve_price.return_value = {"id": "price_123", "product": {"id": "prod_123"}}
         mock_list_subscriptions.return_value = Mock(data=[])
         mock_create_incomplete_subscription.return_value = {
             "id": "sub_123",
             "status": "incomplete",
-            "latest_invoice": {
-                "payment_intent": {
-                    "client_secret": "client_secret_123"
-                }
-            }
+            "latest_invoice": {"payment_intent": {"client_secret": "client_secret_123"}},
         }
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.post(
@@ -181,7 +171,11 @@ class TestSubscriptionUpdateView:
     @patch("baseapp_payments.views.StripeService.list_payment_methods")
     @patch("baseapp_payments.views.StripeService.retrieve_subscription")
     def test_user_can_update_subscription_payment_method(
-        self, mock_retrieve_subscription, mock_list_payment_methods, mock_update_subscription, user_client
+        self,
+        mock_retrieve_subscription,
+        mock_list_payment_methods,
+        mock_update_subscription,
+        user_client,
     ):
         mock_list_payment_methods.return_value = [
             {

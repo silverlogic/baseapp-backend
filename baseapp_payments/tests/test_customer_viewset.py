@@ -49,7 +49,9 @@ class TestCustomerCreateView:
 
     @patch("baseapp_payments.views.StripeService.list_subscriptions")
     @patch("baseapp_payments.views.StripeService.create_customer")
-    def test_user_can_create_customer(self, mock_create_customer, mock_list_subscriptions, user_client):
+    def test_user_can_create_customer(
+        self, mock_create_customer, mock_list_subscriptions, user_client
+    ):
         mock_list_subscriptions.return_value.data = []
         mock_create_customer.return_value = {"id": "cus_123"}
         relay_id = get_obj_relay_id(user_client.user.profile)
