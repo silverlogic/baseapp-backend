@@ -217,7 +217,8 @@ class StripeSubscriptionSerializer(serializers.Serializer):
         )
         default_payment_method = data.get("default_payment_method")
         payment_method_id = data.get("payment_method_id")
-        if data.get("billing_details"):
+        billing_details = data.get("billing_details")
+        if billing_details:
             billing_details = data.pop("billing_details")
         current_subscription = data.pop("current_subscription")
         stripe_service = StripeService()

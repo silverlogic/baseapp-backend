@@ -54,6 +54,8 @@ class StripeSubscriptionViewset(
         entity_id = request.query_params.get("entity_id")
         if not entity_id:
             return Response({"error": "entity_id is required"}, status=400)
+        if isinstance(entity_id, str):
+            entity_id = get_pk_from_relay_id(entity_id)
         customer = Customer.objects.filter(entity_id=entity_id).first()
         if not customer:
             return Response({"error": "Customer not found"}, status=404)

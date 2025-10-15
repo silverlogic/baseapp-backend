@@ -76,7 +76,7 @@ class TestSubscriptionListView:
         mock_list_subscriptions.return_value = mock_subscriptions
         response = user_client.get(
             reverse(self.viewname),
-            data={"entity_id": customer.entity_id},
+            data={"entity_id": customer.entity.relay_id},
         )
         responseEquals(response, status.HTTP_200_OK)
         assert len(response.data) == 1
@@ -97,19 +97,19 @@ class TestSubscriptionCreateView:
     def test_user_can_create_subscription(
         self, mock_retrieve_price, mock_create_subscription, mock_list_subscriptions, user_client
     ):
-        mock_retrieve_price = Mock()
-        mock_retrieve_price.product = Mock()
-        mock_retrieve_price.product.id = "prod_123"
+        mock_retrieve_price.return_value = {
+            "id": "price_123",
+            "product": {"id": "prod_123"}
+        }
+        mock_list_subscriptions.return_value = Mock(data=[])
         mock_create_subscription.return_value = {
             "id": "sub_123",
             "status": "active",
         }
-        mock_list_subscriptions = Mock()
-        mock_list_subscriptions.data = []
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.post(
             reverse(self.viewname),
-            data={"entity_id": customer.entity_id, "price_id": "price_123"},
+            data={"entity_id": customer.entity.relay_id, "price_id": "price_123"},
         )
         responseEquals(response, status.HTTP_201_CREATED)
         assert Subscription.objects.filter(customer=customer).count() == 1
@@ -126,31 +126,25 @@ class TestSubscriptionCreateView:
         mock_list_subscriptions,
         user_client,
     ):
-        mock_retrieve_price = Mock()
-        mock_retrieve_price.product = Mock()
-        mock_retrieve_price.product.id = "prod_123"
-        mock_subscription = Mock()
-        mock_subscription.get = Mock(
-            side_effect=lambda key, default=None: {"id": "sub_123", "status": "incomplete"}.get(
-                key, default
-            )
-        )
-        mock_subscription.id = "sub_123"
-        mock_subscription.status = "incomplete"
-        mock_subscription.get_client_secret = Mock(return_value="client_secret_123")
-        mock_latest_invoice = Mock()
-        mock_latest_invoice.items = Mock(
-            return_value=[("payment_intent", {"client_secret": "client_secret_123"})]
-        )
-        mock_subscription.latest_invoice = mock_latest_invoice
-        mock_create_incomplete_subscription.return_value = mock_subscription
-        mock_list_subscriptions = Mock()
-        mock_list_subscriptions.data = []
+        mock_retrieve_price.return_value = {
+            "id": "price_123",
+            "product": {"id": "prod_123"}
+        }
+        mock_list_subscriptions.return_value = Mock(data=[])
+        mock_create_incomplete_subscription.return_value = {
+            "id": "sub_123",
+            "status": "incomplete",
+            "latest_invoice": {
+                "payment_intent": {
+                    "client_secret": "client_secret_123"
+                }
+            }
+        }
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.post(
             reverse(self.viewname),
             data={
-                "entity_id": customer.entity_id,
+                "entity_id": customer.entity.relay_id,
                 "price_id": "price_123",
                 "allow_incomplete": True,
             },
@@ -159,7 +153,7 @@ class TestSubscriptionCreateView:
         assert Subscription.objects.filter(customer=customer).count() == 1
         assert response.data["id"] == "sub_123"
         assert response.data["status"] == "incomplete"
-        assert response.data["client_secret"] is not None
+        assert response.data["client_secret"] == "client_secret_123"
 
 
 class TestSubscriptionUpdateView:
@@ -185,8 +179,9 @@ class TestSubscriptionUpdateView:
 
     @patch("baseapp_payments.views.StripeService.update_subscription")
     @patch("baseapp_payments.views.StripeService.list_payment_methods")
+    @patch("baseapp_payments.views.StripeService.retrieve_subscription")
     def test_user_can_update_subscription_payment_method(
-        self, mock_list_payment_methods, mock_update_subscription, user_client
+        self, mock_retrieve_subscription, mock_list_payment_methods, mock_update_subscription, user_client
     ):
         mock_list_payment_methods.return_value = [
             {
@@ -198,6 +193,10 @@ class TestSubscriptionUpdateView:
             "id": "sub_123",
             "status": "active",
         }
+        mock_retrieve_subscription.return_value = {
+            "id": "sub_123",
+            "status": "active",
+        }
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         subscription = SubscriptionFactory(customer=customer)
         response = user_client.patch(
@@ -205,7 +204,7 @@ class TestSubscriptionUpdateView:
                 self.viewname,
                 kwargs={"remote_subscription_id": subscription.remote_subscription_id},
             ),
-            data={"payment_method_id": "pm_123"},
+            data={"default_payment_method": "pm_123"},
         )
         responseEquals(response, status.HTTP_200_OK)
         assert mock_update_subscription.call_count == 1
