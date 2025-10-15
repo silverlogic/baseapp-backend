@@ -81,8 +81,12 @@ class ChatRoomFilter(django_filters.FilterSet):
 
 class ChatRoomParticipantFilter(django_filters.FilterSet):
     q = django_filters.CharFilter(method="filter_q")
-
-    order_by = django_filters.OrderingFilter(fields=(("profile__name", "created"),))
+    order_by = django_filters.OrderingFilter(
+        fields=(
+            ("profile__name", "name"),
+            ("created", "created"),
+        )
+    )
 
     class Meta:
         model = ChatRoomParticipant
