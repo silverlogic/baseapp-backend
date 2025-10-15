@@ -51,6 +51,7 @@ INSTALLED_APPS += [
     *WAGTAIL_INSTALLED_APPS,
     "baseapp_wagtail.tests",
     "baseapp_pdf",
+    "baseapp_api_key",
 ]
 
 MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")
@@ -174,6 +175,10 @@ BASEAPP_PROFILES_PROFILE_MODEL = "profiles.Profile"
 NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"
 BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False
 BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS = False
+
+# API Key
+BA_API_KEY_REQUEST_HEADER = env("BA_API_KEY_REQUEST_HEADER")
+BA_API_KEY_ENCRYPTION_KEY = env("BA_API_KEY_ENCRYPTION_KEY")
 
 # Graphene query optimizer
 GRAPHQL_QUERY_OPTIMIZER = {

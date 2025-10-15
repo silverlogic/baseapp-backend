@@ -57,3 +57,18 @@ def test_user_only_notified_once_for_expired_password():
         tasks.notify_users_is_password_expired()
         assert mock.call_count == 0
         mock.reset_mock()
+
+
+@override_config(USER_PASSWORD_EXPIRATION_INTERVAL=0)
+def test_user_password_never_expires_when_interval_is_zero():
+    user = UserFactory()
+    user.password_changed_date = timezone.now() - timezone.timedelta(days=1)
+    user.save()
+
+    mock = MagicMock()
+    tasks.send_password_expired_email = mock
+
+    tasks.notify_users_is_password_expired()
+
+    assert mock.call_count == 0
+    assert user.password_expired is False
