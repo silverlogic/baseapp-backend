@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
 from model_utils.models import TimeStampedModel
+from django_prose_editor.fields import ProseEditorField
 
 from .custom_templates import get_full_copy_template
 from .sendgrid import mass_send_personalized_mail, send_personalized_mail
@@ -36,14 +37,49 @@ class EmailTemplate(TimeStampedModel):
     subject = models.CharField(
         max_length=255, blank=True, null=True, help_text="Email subject line"
     )
-    html_content = RichTextField(
+    html_content = ProseEditorField(
         blank=True,
-        help_text="Text that will be inputted into Template html version",
         null=True,
+        extensions={
+            "Heading": {"levels": [1, 2, 3, 4]},
+            "Paragraph": True,
+            "Bold": True, "Italic": True, "Underline": True, "Strike": True,
+            "BulletList": True, "OrderedList": True, "ListItem": True,
+            "Blockquote": True,
+            "Link": {"autolink": True, "openOnClick": True},
+            "Image": {"allowBase64": False},  # use URLs; see upload note below
+            "Table": {"resizable": True}, "TableRow": True, "TableCell": True, "TableHeader": True,
+            "HorizontalRule": True, "HardBreak": True,
+            "Code": True, "CodeBlock": True,
+            "TextAlign": {"types": ["heading", "paragraph"]},
+            "TextStyle": True,
+            "Color": True, "Highlight": True,
+            "History": True,
+        },
+        sanitize=True,
+        help_text="HTML content for the template",
     )
-    plain_text_content = RichTextField(
+
+    plain_text_content = ProseEditorField(
         blank=True,
-        help_text="Text that will be inputted into Template plain text version",
+        extensions={
+            "Heading": {"levels": [1, 2, 3, 4]},
+            "Paragraph": True,
+            "Bold": True, "Italic": True, "Underline": True, "Strike": True,
+            "BulletList": True, "OrderedList": True, "ListItem": True,
+            "Blockquote": True,
+            "Link": {"autolink": True, "openOnClick": True},
+            "Image": {"allowBase64": False},  # use URLs; see upload note below
+            "Table": {"resizable": True}, "TableRow": True, "TableCell": True, "TableHeader": True,
+            "HorizontalRule": True, "HardBreak": True,
+            "Code": True, "CodeBlock": True,
+            "TextAlign": {"types": ["heading", "paragraph"]},
+            "TextStyle": True,
+            "Color": True, "Highlight": True,
+            "History": True,
+        },
+        sanitize=True,
+        help_text="Plain text (will be sanitized HTML; render as text/plain when sending)",
     )
 
     class Meta:
