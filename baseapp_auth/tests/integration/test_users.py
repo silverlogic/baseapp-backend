@@ -1,6 +1,10 @@
 from datetime import timedelta
+from unittest.mock import patch
 
 import pytest
+import swapper
+from constance import config
+from constance.test import override_config
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -8,9 +12,16 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
 import baseapp_auth.tests.helpers as h
+from baseapp_auth.rest_framework.users.tasks import anonymize_and_delete_user_task
 from baseapp_auth.tests.factories import PasswordValidationFactory
 from baseapp_auth.tests.mixins import ApiMixin
 from baseapp_auth.utils.referral_utils import get_user_referral_model
+from baseapp_chats.tests.factories import (
+    ChatRoomFactory,
+    ChatRoomParticipantFactory,
+    MessageFactory,
+)
+from baseapp_comments.tests.factories import CommentFactory
 from baseapp_referrals.utils import get_referral_code
 
 User = get_user_model()
@@ -214,6 +225,118 @@ class TestUsersDeleteAccount(ApiMixin):
         r = user_client.delete(self.reverse())
         h.responseNoContent(r)
         assert User.objects.filter(id=user_id, is_active=False).exists() is True
+
+    def test_anonymize_and_delete_is_triggered(self, user_client):
+        user_client.user.is_superuser = False
+        user_client.user.save()
+        user_id = user_client.user.id
+
+        with patch(
+            "baseapp_auth.rest_framework.users.tasks.anonymize_and_delete_user_task.apply_async"
+        ) as mock_apply_async:
+            r = user_client.delete(self.reverse())
+            h.responseNoContent(r)
+            mock_apply_async.assert_called_once_with(
+                args=[user_id], eta=mock_apply_async.call_args[1]["eta"]
+            )
+
+    @override_config(SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS=True)
+    def test_anonymize_and_delete_user_task_sends_success_email_to_superusers(self, outbox):
+        user = UserFactory()
+        user_id = user.id
+        superuser = UserFactory(is_superuser=True, email="superuser@example.com")
+        anonymize_and_delete_user_task(user_id)
+        assert len(outbox) == 2
+        assert outbox[0].to == [user.email]
+        assert any("successfully" in m.subject.lower() for m in outbox)
+        assert any(user.email in m.to for m in outbox)
+        assert any(superuser.email in m.to for m in outbox)
+
+    @override_config(SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS=False)
+    def test_anonymize_and_delete_user_task_sends_success_email_not_to_superusers(self, outbox):
+        user = UserFactory()
+        user_id = user.id
+        superuser = UserFactory(is_superuser=True, email="superuser@example.com")
+        anonymize_and_delete_user_task(user_id)
+        assert len(outbox) == 1
+        assert outbox[0].to == [user.email]
+        assert any("successfully" in m.subject.lower() for m in outbox)
+        assert any(user.email in m.to for m in outbox)
+        assert not any(superuser.email in m.to for m in outbox)
+
+    def test_anonymize_and_delete_user_task_sends_error_email(self, outbox):
+        user = UserFactory()
+        user_id = user.id
+
+        with patch(
+            "baseapp_auth.rest_framework.users.tasks.anonymize_activitylog",
+            side_effect=Exception("fail"),
+        ):
+            anonymize_and_delete_user_task(user_id)
+
+        assert len(outbox) == 1
+        assert any("error" in m.subject.lower() for m in outbox)
+        assert any(user.email in m.to for m in outbox)
+
+    def test_send_anonymize_user_success_email_with_superusers(self, outbox):
+
+        config.SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS = True
+        user = UserFactory()
+        user_id = user.id
+        superuser = UserFactory(is_superuser=True, email="superuser@example.com")
+        with patch(
+            "baseapp_auth.rest_framework.users.tasks.anonymize_activitylog",
+        ):
+            anonymize_and_delete_user_task(user_id)
+
+        assert len(outbox) == 2
+        assert any("successfully" in m.subject.lower() for m in outbox)
+        assert any(user.email in m.to for m in outbox)
+        assert any(superuser.email in m.to for m in outbox)
+
+    def test_send_anonymize_user_error_email_with_superusers(self, outbox):
+
+        config.SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS = True
+        user = UserFactory()
+        user_id = user.id
+        superuser = UserFactory(is_superuser=True, email="superuser@example.com")
+        with patch(
+            "baseapp_auth.rest_framework.users.tasks.anonymize_activitylog",
+            side_effect=Exception("fail"),
+        ):
+            anonymize_and_delete_user_task(user_id)
+
+        assert len(outbox) == 2
+        assert any("error" in m.subject.lower() for m in outbox)
+        assert any(user.email in m.to for m in outbox)
+        assert any(superuser.email in m.to for m in outbox)
+
+    def test_anonymize_and_delete_user_task_anonymizes_user_comments(self):
+        Comment = swapper.load_model("baseapp_comments", "Comment")
+
+        user = UserFactory()
+        user_id = user.pk
+        CommentFactory.create_batch(2, user=user)
+        assert Comment.objects_visible.filter(user_id=user_id).count() == 2
+
+        anonymize_and_delete_user_task(user_id)
+        assert Comment.objects_visible.filter(user_id=user_id).count() == 0
+        assert User.objects.all().count() == 0
+
+    def test_anonymize_and_delete_user_task_anonymizes_user_messages(self):
+        Message = swapper.load_model("baseapp_chats", "Message")
+
+        user = UserFactory()
+        user_id = user.pk
+        room = ChatRoomFactory()
+        participants_count = 2
+        ChatRoomParticipantFactory.create_batch(participants_count, room=room)
+        MessageFactory.create_batch(2, user=user, room=room)
+        assert Message.objects.filter(user_id=user_id).count() == 2
+
+        anonymize_and_delete_user_task(user_id)
+        assert Message.objects.filter(user_id=user_id).count() == 0
+        assert User.objects.all().count() == 3
 
 
 class TestUsersChangePassword(ApiMixin):
