@@ -138,7 +138,6 @@ Run testproject inside the backend docker container:
 pip3 install -r testproject/requirements.txt
 
 # Change folder to your app's testproject:
-cd baseapp
 python manage.py runserver 0.0.0.0:8000
 ```
 
