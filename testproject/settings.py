@@ -150,6 +150,10 @@ CONSTANCE_CONFIG = OrderedDict(
             "STRIPE_CUSTOMER_ENTITY_MODEL",
             ("profiles.Profile", "The model to use for the Stripe customer entity."),
         ),
+        (
+            "ANONYMIZE_TASK_DELAY_DAYS",
+            (19, "Delay in days before running anonymize user task"),
+        ),
     ]
 )
 
