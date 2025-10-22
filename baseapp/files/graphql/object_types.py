@@ -27,7 +27,6 @@ class FileObjectType(DjangoObjectType):
         filterset_class = FileFilter
     
     def resolve_url(self, info, **kwargs):
-        # return self.file.url
         return info.context.build_absolute_uri(self.file.url)
     
     # @classmethod
@@ -42,7 +41,7 @@ class FileObjectType(DjangoObjectType):
     #         return None
 
 
-class FilesNode(relay.Node):
+class FilesInterface(graphene.Interface):
     files_count = GenericScalar()
     files = DjangoFilterConnectionField(lambda: FileObjectType)
 
