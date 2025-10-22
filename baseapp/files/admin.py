@@ -13,6 +13,6 @@ class FileInlineAdmin(GenericStackedInline):
 
 @admin.register(File)
 class FileAdmin(admin.ModelAdmin):
-    list_display = ("pk", "name", "content_type", "parent", "created_by", "created")
+    list_display = ("pk", "name", "file_content_type", "parent", "created_by", "created")
     search_fields = ("name",)
     raw_id_fields = ("created_by",)

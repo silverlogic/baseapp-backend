@@ -1,3 +1,6 @@
+import sys
+sys.path.append("/usr/src/app/testproject")
+
 from celery.schedules import crontab
 from django.utils.translation import gettext_lazy as _
 
@@ -52,6 +55,7 @@ INSTALLED_APPS += [
     "baseapp_wagtail.tests",
     "baseapp_pdf",
     "baseapp_api_key",
+    "baseapp.files",
 ]
 
 MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")

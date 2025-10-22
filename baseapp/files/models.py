@@ -1,31 +1,24 @@
 import pghistory
+import swapper
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
-from base.utils.upload import set_upload_to_random_filename
+
+from baseapp_core.models import random_name_in
+from baseapp_comments.models import CommentableModel
+from baseapp_core.graphql import RelayModel
+from baseapp_reactions.models import ReactableModel
+from baseapp_reports.models import ReportableModel
 
 
 def default_files_count():
     return {"total": 0}
 
 
-class FilesModel(models.Model):
-    files_count = models.JSONField(default=default_files_count)
-    files = GenericRelation(
-        "baseapp_files.File",
-        content_type_field="parent_content_type",
-        object_id_field="parent_object_id",
-    )
-
-    class Meta:
-        abstract = True
-
-
-@pghistory.track(pghistory.Snapshot())
-class File(TimeStampedModel):
+class AbstractFile(TimeStampedModel, CommentableModel, ReactableModel, ReportableModel, RelayModel):
     parent_content_type = models.ForeignKey(
         ContentType,
         null=True,
@@ -35,18 +28,13 @@ class File(TimeStampedModel):
     parent_object_id = models.PositiveIntegerField(null=True, blank=True)
     parent = GenericForeignKey("parent_content_type", "parent_object_id")
 
-    content_type = models.CharField(max_length=150, null=True, blank=True)
+    file_content_type = models.CharField(max_length=150, null=True, blank=True)
     file_name = models.CharField(max_length=512, null=True, blank=True)
     file_size = models.PositiveIntegerField(null=True, help_text=_("File size in bytes"))
-    file = models.FileField(
-        max_length=512, upload_to=set_upload_to_random_filename("files")
-    )
+    file = models.FileField(max_length=512, upload_to=random_name_in("files"))
 
     name = models.CharField(max_length=512, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
-
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -54,18 +42,36 @@ class File(TimeStampedModel):
         on_delete=models.CASCADE,
         null=True,
     )
+    profile = models.ForeignKey(
+        swapper.get_model_name("baseapp_profiles", "Profile"),
+        verbose_name=_("profile"),
+        related_name="files",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
 
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
+    class Meta:
+        abstract = True
 
-        parent = self.parent
-        if parent:
-            files_count_qs = parent.files.values("content_type").annotate(
-                count=models.Count("content_type")
-            )
-            parent.files_count = default_files_count()
-            for item in files_count_qs:
-                count = item["count"]
-                parent.files_count[item["content_type"]] = count
-                parent.files_count["total"] += count
-            parent.save(update_fields=["files_count"])
+
+# @pghistory.track()
+class File(AbstractFile):
+    class Meta(AbstractFile.Meta):
+        abstract = False
+        swappable = swapper.swappable_setting("baseapp_files", "File")
+
+
+SwappedFile = swapper.load_model("baseapp_files", "File", required=False, require_ready=False)
+
+
+class FileableModel(models.Model):
+    files_count = models.JSONField(default=default_files_count)
+    files = GenericRelation(
+        SwappedFile,
+        content_type_field="parent_content_type",
+        object_id_field="parent_object_id",
+    )
+
+    class Meta:
+        abstract = True
