@@ -2,7 +2,6 @@ import logging
 
 import swapper
 from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
 from rest_framework import viewsets
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -34,8 +33,8 @@ class StripeSubscriptionViewset(
     viewsets.mixins.RetrieveModelMixin,
     viewsets.mixins.ListModelMixin,
     viewsets.mixins.CreateModelMixin,
-    DestroyModelMixin,
     viewsets.mixins.UpdateModelMixin,
+    DestroyModelMixin,
 ):
     serializer_class = StripeSubscriptionSerializer
     queryset = Subscription.objects.all()
@@ -55,6 +54,8 @@ class StripeSubscriptionViewset(
         entity_id = request.query_params.get("entity_id")
         if not entity_id:
             return Response({"error": "entity_id is required"}, status=400)
+        if isinstance(entity_id, str):
+            entity_id = get_pk_from_relay_id(entity_id)
         customer = Customer.objects.filter(entity_id=entity_id).first()
         if not customer:
             return Response({"error": "Customer not found"}, status=404)
@@ -105,9 +106,9 @@ class StripeProductViewset(viewsets.GenericViewSet):
             logger.exception("Failed to retrieve products: %s", e)
             return Response({"error": "An internal error has occurred"}, status=500)
 
-    def retrieve(self, request, remote_product_id=None):
+    def retrieve(self, request, pk=None):
         try:
-            product = StripeService().retrieve_product(remote_product_id)
+            product = StripeService().retrieve_product(pk)
             if not product:
                 return Response({"error": "Product not found"}, status=404)
             serializer = self.serializer_class(product)

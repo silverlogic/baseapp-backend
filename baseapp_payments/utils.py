@@ -229,11 +229,12 @@ class StripeService:
                 expand=["latest_invoice.payment_intent"],
                 metadata={"product_id": product_id} if product_id else None,
             )
-            client_secret = (
-                subscription.get("latest_invoice", {})
-                .get("payment_intent", {})
-                .get("client_secret", None)
-            )
+            client_secret = None
+            latest_invoice = subscription.get("latest_invoice")
+            if latest_invoice:
+                payment_intent = latest_invoice.get("payment_intent")
+                if payment_intent:
+                    client_secret = payment_intent.get("client_secret")
             subscription["client_secret"] = client_secret
             return subscription
         except Exception as e:
@@ -251,8 +252,7 @@ class StripeService:
         customer = subscription.get("customer", None)
         try:
             upcoming_invoice = stripe.Invoice.create_preview(
-                customer=customer,
-                subscription=subscription_id
+                customer=customer, subscription=subscription_id
             )
             subscription["upcoming_invoice"] = {
                 "amount_due": upcoming_invoice.amount_due,
@@ -266,6 +266,8 @@ class StripeService:
         try:
             if "status" not in kwargs:
                 kwargs["status"] = "active"
+            if "status" in kwargs and kwargs["status"] == "all":
+                kwargs.pop("status")
             subscriptions = stripe.Subscription.list(customer=customer_id, **kwargs)
             return subscriptions
         except Exception as e:
@@ -288,7 +290,7 @@ class StripeService:
         try:
             if "active" not in kwargs:
                 kwargs["active"] = True
-            products = stripe.Product.list(**kwargs).auto_paging_iter()
+            products = list(stripe.Product.list(**kwargs).auto_paging_iter())
             return products
         except Exception as e:
             logger.exception(e)
@@ -365,14 +367,6 @@ class StripeService:
         except Exception as e:
             logger.exception(e)
             raise PaymentMethodDeletionError("Error deleting payment method in Stripe")
-
-    def get_upcoming_invoice(self, customer_id):
-        try:
-            invoice = stripe.Invoice.upcoming(customer=customer_id)
-            return invoice
-        except Exception as e:
-            logger.exception(e)
-            raise InvoiceNotFound("Error retrieving upcoming invoice in Stripe")
 
     def get_payment_intent(self, payment_intent_id):
         try:

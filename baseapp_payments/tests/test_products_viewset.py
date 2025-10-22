@@ -16,7 +16,22 @@ class TestProductListView:
         response = client.get(reverse(self.viewname))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
-    def test_user_can_get_products(self, user_client):
+    @patch("baseapp_payments.views.StripeService.list_products")
+    def test_user_can_get_products(self, mock_list_products, user_client):
+        mock_list_products.return_value = [
+            {
+                "id": "prod_123",
+                "name": "Product 1",
+                "default_price": {
+                    "id": "price_123",
+                    "unit_amount": 1000,
+                    "currency": "USD",
+                    "recurring": {"interval": "month", "interval_count": 1},
+                },
+                "active": True,
+                "marketing_features": [],
+            }
+        ]
         response = user_client.get(reverse(self.viewname))
         responseEquals(response, status.HTTP_200_OK)
 
@@ -25,11 +40,22 @@ class TestProductRetrieveView:
     viewname = "v1:products-detail"
 
     def test_anon_user_cannot_create_customer(self, client):
-        response = client.post(reverse(self.viewname, kwargs={}))
+        response = client.post(reverse(self.viewname, kwargs={"pk": "prod_123"}))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
     @patch("baseapp_payments.views.StripeService.retrieve_product")
     def test_user_can_get_product(self, mock_retrieve_product, user_client):
-        mock_retrieve_product.return_value = {"id": "prod_123"}
+        mock_retrieve_product.return_value = {
+            "id": "prod_123",
+            "name": "Product 1",
+            "default_price": {
+                "id": "price_123",
+                "unit_amount": 1000,
+                "currency": "USD",
+                "recurring": {"interval": "month", "interval_count": 1},
+            },
+            "active": True,
+            "marketing_features": [],
+        }
         response = user_client.get(reverse(self.viewname, kwargs={"pk": "prod_123"}))
         responseEquals(response, status.HTTP_200_OK)

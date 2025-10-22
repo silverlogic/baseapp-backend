@@ -80,10 +80,15 @@ class StripeInvoiceSerializer(serializers.Serializer):
         representation = super().to_representation(instance)
         lines = representation.get("lines", {}).get("data", [])
         representation["lines"] = StripeInvoiceLineSerializer(lines, many=True).data
-        representation["created"] = datetime.fromtimestamp(representation["created"])
-        representation["webhooks_delivered_at"] = datetime.fromtimestamp(
-            representation["webhooks_delivered_at"]
-        )
+        if "created" in representation and representation["created"] is not None:
+            representation["created"] = datetime.fromtimestamp(representation["created"])
+        if (
+            "webhooks_delivered_at" in representation
+            and representation["webhooks_delivered_at"] is not None
+        ):
+            representation["webhooks_delivered_at"] = datetime.fromtimestamp(
+                representation["webhooks_delivered_at"]
+            )
         return representation
 
 
@@ -107,6 +112,8 @@ class StripeSubscriptionSerializer(serializers.Serializer):
         entity_id = data["entity_id"]
         if not entity_id:
             raise serializers.ValidationError({"entity_id": "This field is required."})
+        if isinstance(entity_id, str):
+            entity_id = get_pk_from_relay_id(entity_id)
         customer = Customer.objects.filter(entity_id=entity_id).first()
         if not customer:
             raise serializers.ValidationError({"entity_id": "Customer not found."})
@@ -146,12 +153,26 @@ class StripeSubscriptionSerializer(serializers.Serializer):
             customer = Customer.objects.filter(id=instance.customer_id).first()
             if not customer:
                 raise serializers.ValidationError({"customer_id": "Customer not found."})
-            payment_methods = StripeService().list_payment_methods(customer.remote_customer_id)
+            stripe_service = StripeService()
+            payment_methods = stripe_service.list_payment_methods(customer.remote_customer_id)
             payment_method_id = data.get("payment_method_id")
-            if not any(pm["id"] == payment_method_id for pm in payment_methods):
+            default_payment_method = data.get("default_payment_method")
+            if payment_method_id and not any(
+                pm["id"] == payment_method_id for pm in payment_methods
+            ):
                 raise serializers.ValidationError(
                     "The provided payment method ID does not belong to the customer."
                 )
+            if default_payment_method and not any(
+                pm["id"] == default_payment_method for pm in payment_methods
+            ):
+                raise serializers.ValidationError(
+                    "The provided payment method ID does not belong to the customer."
+                )
+            current_subscription = stripe_service.retrieve_subscription(
+                instance.remote_subscription_id
+            )
+            data["current_subscription"] = current_subscription
         except Exception as e:
             logger.error(f"Failed to validate payment method: {str(e)}")
             raise serializers.ValidationError("Invalid payment method ID.")
@@ -191,24 +212,57 @@ class StripeSubscriptionSerializer(serializers.Serializer):
             raise serializers.ValidationError("Failed to create subscription")
 
     def update(self, instance, validated_data):
-        data = self.validate_update(instance, validated_data)
-        if "entity_id" in data:
-            data.pop("entity_id")
-        if "customer" in data:
-            data.pop("customer")
+        data = self.validate_update(
+            instance, validated_data if validated_data else self.initial_data
+        )
+        default_payment_method = data.get("default_payment_method")
+        payment_method_id = data.get("payment_method_id")
+        billing_details = data.get("billing_details")
+        if billing_details:
+            billing_details = data.pop("billing_details")
+        current_subscription = data.pop("current_subscription")
+        stripe_service = StripeService()
         try:
-            subscription = StripeService().update_subscription(
-                subscription_id=instance.remote_subscription_id, **data
+            if default_payment_method:
+                fields = {"default_payment_method": default_payment_method}
+            elif payment_method_id and billing_details:
+                try:
+                    stripe_service.update_payment_method(
+                        payment_method_id, billing_details=billing_details
+                    )
+                except Exception as e:
+                    logger.exception(f"Failed to update payment method: {str(e)}")
+                    # Continue with subscription update even if billing update fails
+                current_item_id = (
+                    current_subscription.get("items", {}).get("data", [{}])[0].get("id")
+                )
+                fields = {
+                    "items": [
+                        {"id": current_item_id, "deleted": True},
+                        {"price": data["price_id"]},
+                    ]
+                }
+                if (
+                    payment_method_id
+                    and current_subscription.default_payment_method != payment_method_id
+                ):
+                    fields["default_payment_method"] = payment_method_id
+            subscription = stripe_service.update_subscription(
+                instance.remote_subscription_id, **fields
             )
+            return subscription
         except Exception as e:
             logger.exception("Failed to update subscription in Stripe: %s", e)
             raise serializers.ValidationError("Failed to update subscription in Stripe")
-        return subscription
 
     def get_client_secret(self, instance):
-        payment_intent = instance.get("latest_invoice", {}).get("payment_intent", {})
-        client_secret = payment_intent.get("client_secret")
-        return client_secret
+        latest_invoice = instance.get("latest_invoice", {})
+        if isinstance(latest_invoice, dict):
+            payment_intent = latest_invoice.get("payment_intent", {})
+            if isinstance(payment_intent, dict):
+                client_secret = payment_intent.get("client_secret")
+                return client_secret
+        return None
 
     def get_product(self, instance):
         items = instance.get("items", {}).get("data", [])
@@ -216,7 +270,9 @@ class StripeSubscriptionSerializer(serializers.Serializer):
             price = items[0].get("price", {})
             product = price.get("product")
             if product:
-                return StripeProductSerializer(product).data
+                if isinstance(product, dict):
+                    return StripeProductSerializer(product).data
+                return product
         return None
 
     def get_upcoming_invoice(self, instance):
