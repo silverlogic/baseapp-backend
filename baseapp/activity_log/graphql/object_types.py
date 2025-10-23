@@ -114,7 +114,7 @@ class BaseActivityLogObjectType:
             if user_id:
                 return User.objects.filter(pk=user_id).first()
             return getattr(self, "user", None)
-        except User.DoesNotExist: 
+        except User.DoesNotExist:
             return None
 
     def resolve_profile(self, info, **kwargs):
@@ -123,7 +123,7 @@ class BaseActivityLogObjectType:
             if profile_id:
                 return Profile.objects.filter(pk=profile_id).first()
             return getattr(self, "profile", None)
-        except Profile.DoesNotExist: 
+        except Profile.DoesNotExist:
             return None
 
 
