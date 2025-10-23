@@ -49,6 +49,12 @@ class AbstractFile(TimeStampedModel, CommentableModel, ReactableModel, Reportabl
     class Meta:
         abstract = True
 
+    @classmethod
+    def get_graphql_object_type(cls):
+        from .graphql.object_types import FileObjectType
+
+        return FileObjectType
+
 
 class File(AbstractFile):
     class Meta(AbstractFile.Meta):

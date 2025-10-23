@@ -1,3 +1,4 @@
+import swapper
 from graphene import Field
 from graphene_django.debug import DjangoDebug
 from graphene_django_cud.mutations import (
@@ -8,8 +9,8 @@ from graphene_django_cud.mutations import (
 
 from baseapp_core.graphql.errors import Errors
 
-from ..models import File
-from .object_types import FileObjectType
+File = swapper.load_model("baseapp_files", "File")
+FileObjectType = File.get_graphql_object_type()
 
 
 class FileCreateMutation(DjangoCreateMutation):

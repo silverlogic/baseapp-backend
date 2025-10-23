@@ -12,7 +12,10 @@ except InvalidCacheBackendError:
 
 def get_file_object_type():
     if apps.is_installed("baseapp.files"):
-        from baseapp.files.graphql.object_types import FileObjectType
+        import swapper
+
+        File = swapper.load_model("baseapp_files", "File")
+        FileObjectType = File.get_graphql_object_type()
     else:
 
         class FileObjectType(graphene.ObjectType):

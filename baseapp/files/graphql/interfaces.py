@@ -4,9 +4,8 @@ from django.contrib.contenttypes.models import ContentType
 from graphene.types.generic import GenericScalar
 from graphene_django.filter import DjangoFilterConnectionField
 
-from .object_types import FileObjectType
-
 File = swapper.load_model("baseapp_files", "File")
+FileObjectType = File.get_graphql_object_type()
 
 
 class FilesInterface(graphene.Interface):

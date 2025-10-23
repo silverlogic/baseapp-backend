@@ -1,10 +1,11 @@
 import django_filters
 import graphene
 from graphene import relay
+import swapper
 
 from baseapp_core.graphql import DjangoObjectType
 
-from ..models import File
+File = swapper.load_model("baseapp_files", "File")
 
 
 class FileFilter(django_filters.FilterSet):
@@ -25,6 +26,8 @@ class FileObjectType(DjangoObjectType):
         filterset_class = FileFilter
 
     def resolve_url(self, info, **kwargs):
+        if not self.file:
+            return None
         return info.context.build_absolute_uri(self.file.url)
 
     # @classmethod
