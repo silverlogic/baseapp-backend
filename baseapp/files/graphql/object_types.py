@@ -1,7 +1,7 @@
 import django_filters
 import graphene
-from graphene import relay
 import swapper
+from graphene import relay
 
 from baseapp_core.graphql import DjangoObjectType
 
