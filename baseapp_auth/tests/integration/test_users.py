@@ -215,7 +215,7 @@ class TestUsersDeleteAccount(ApiMixin):
         user_client.user.save()
         user_id = user_client.user.id
         r = user_client.delete(self.reverse())
-        h.responseNoContent(r)
+        h.responseAccepted(r)
         assert User.objects.filter(id=user_id).exists() is False
 
     def test_admin_can_only_deactivate_account(self, user_client):
@@ -223,7 +223,7 @@ class TestUsersDeleteAccount(ApiMixin):
         user_client.user.save()
         user_id = user_client.user.id
         r = user_client.delete(self.reverse())
-        h.responseNoContent(r)
+        h.responseAccepted(r)
         assert User.objects.filter(id=user_id, is_active=False).exists() is True
 
     def test_anonymize_and_delete_is_triggered(self, user_client):
@@ -235,7 +235,7 @@ class TestUsersDeleteAccount(ApiMixin):
             "baseapp_auth.rest_framework.users.tasks.anonymize_and_delete_user_task.apply_async"
         ) as mock_apply_async:
             r = user_client.delete(self.reverse())
-            h.responseNoContent(r)
+            h.responseAccepted(r)
             mock_apply_async.assert_called_once_with(
                 args=[user_id], eta=mock_apply_async.call_args[1]["eta"]
             )
