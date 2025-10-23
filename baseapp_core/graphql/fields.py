@@ -10,8 +10,8 @@ except InvalidCacheBackendError:
     cache = None
 
 def get_file_object_type():
-    if apps.is_installed("baseapp_files"):
-        from baseapp_files.graphql.object_types import FileObjectType
+    if apps.is_installed("baseapp.files"):
+        from baseapp.files.graphql.object_types import FileObjectType
     else:
         class FileObjectType(graphene.ObjectType):
             url = graphene.String(required=True)

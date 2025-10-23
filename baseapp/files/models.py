@@ -14,10 +14,6 @@ from baseapp_reactions.models import ReactableModel
 from baseapp_reports.models import ReportableModel
 
 
-def default_files_count():
-    return {"total": 0}
-
-
 class AbstractFile(TimeStampedModel, CommentableModel, ReactableModel, ReportableModel, RelayModel):
     parent_content_type = models.ForeignKey(
         ContentType,
@@ -55,23 +51,7 @@ class AbstractFile(TimeStampedModel, CommentableModel, ReactableModel, Reportabl
         abstract = True
 
 
-# @pghistory.track()
 class File(AbstractFile):
     class Meta(AbstractFile.Meta):
         abstract = False
         swappable = swapper.swappable_setting("baseapp_files", "File")
-
-
-SwappedFile = swapper.load_model("baseapp_files", "File", required=False, require_ready=False)
-
-
-class FileableModel(models.Model):
-    files_count = models.JSONField(default=default_files_count)
-    files = GenericRelation(
-        SwappedFile,
-        content_type_field="parent_content_type",
-        object_id_field="parent_object_id",
-    )
-
-    class Meta:
-        abstract = True
