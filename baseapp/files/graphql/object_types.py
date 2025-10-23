@@ -1,17 +1,18 @@
 import django_filters
 import graphene
 from graphene import relay
+
 from baseapp_core.graphql import DjangoObjectType
 
 from ..models import File
 
 
 class FileFilter(django_filters.FilterSet):
-    no_parent = django_filters.BooleanFilter(field_name='parent_object_id', lookup_expr='isnull')
+    no_parent = django_filters.BooleanFilter(field_name="parent_object_id", lookup_expr="isnull")
 
     class Meta:
         model = File
-        fields = ['no_parent']
+        fields = ["no_parent"]
 
 
 class FileObjectType(DjangoObjectType):
@@ -22,10 +23,10 @@ class FileObjectType(DjangoObjectType):
         interfaces = (relay.Node,)
         model = File
         filterset_class = FileFilter
-    
+
     def resolve_url(self, info, **kwargs):
         return info.context.build_absolute_uri(self.file.url)
-    
+
     # @classmethod
     # def get_node(cls, info, id):
     #     if not info.context.user.is_authenticated:

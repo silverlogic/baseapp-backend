@@ -1,15 +1,14 @@
-import pghistory
 import swapper
 from django.conf import settings
-from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
-from baseapp_core.models import random_name_in
 from baseapp_comments.models import CommentableModel
 from baseapp_core.graphql import RelayModel
+from baseapp_core.models import random_name_in
 from baseapp_reactions.models import ReactableModel
 from baseapp_reports.models import ReportableModel
 

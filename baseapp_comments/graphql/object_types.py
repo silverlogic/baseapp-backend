@@ -78,6 +78,7 @@ if apps.is_installed("baseapp.files"):
 
     comment_interfaces += (FilesInterface,)
 
+
 class BaseCommentObjectType:
     target = graphene.Field(CommentsInterface)
     status = graphene.Field(CommentStatusEnum)

@@ -1,4 +1,5 @@
-import json, logging
+import json
+import logging
 from contextlib import contextmanager
 
 import pghistory
@@ -7,8 +8,6 @@ from graphene_django.views import GraphQLView as GrapheneGraphQLView
 from graphene_django.views import HttpError
 from graphql import get_operation_ast, parse
 from graphql.execution import ExecutionResult
-# from graphene_file_upload.utils import place_files_in_operations
-
 
 try:
     import sentry_sdk
@@ -68,13 +67,11 @@ class GraphQLView(GrapheneGraphQLView):
         content_type = self.get_content_type(request)
         # logging.info('content_type: %s' % content_type)
         # import pdb; pdb.set_trace()
-        if content_type == 'multipart/form-data' and 'operations' in request.POST:
-            operations = json.loads(request.POST.get('operations', '{}'))
+        if content_type == "multipart/form-data" and "operations" in request.POST:
+            operations = json.loads(request.POST.get("operations", "{}"))
             # import pdb; pdb.set_trace()
-            files_map = json.loads(request.POST.get('map', '{}'))
-            return place_files_in_operations(
-                operations,
-                files_map,
-                request.FILES
-            )
+            files_map = json.loads(request.POST.get("map", "{}"))
+            from graphene_file_upload.utils import place_files_in_operations
+
+            return place_files_in_operations(operations, files_map, request.FILES)
         return super(GraphQLView, self).parse_body(request)

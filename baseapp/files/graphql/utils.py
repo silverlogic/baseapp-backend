@@ -28,7 +28,9 @@ def attach_files_from_relay_ids(parent, file_ids, user):
 
     if user and not user.is_superuser:
         unauthorized = [
-            file_obj for file_obj in files if file_obj.created_by_id and file_obj.created_by_id != user.id
+            file_obj
+            for file_obj in files
+            if file_obj.created_by_id and file_obj.created_by_id != user.id
         ]
         if unauthorized:
             raise GraphQLError(

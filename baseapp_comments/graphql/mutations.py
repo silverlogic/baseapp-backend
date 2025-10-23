@@ -9,14 +9,13 @@ from graphene_django.forms.mutation import _set_errors_flag_to_context
 from graphene_django.types import ErrorType
 from graphql.error import GraphQLError
 
+from baseapp.files.graphql.utils import attach_files_from_relay_ids
 from baseapp_core.graphql import (
     RelayMutation,
     get_obj_from_relay_id,
     get_pk_from_relay_id,
     login_required,
 )
-
-from baseapp.files.graphql.utils import attach_files_from_relay_ids
 
 from .object_types import CommentsInterface
 

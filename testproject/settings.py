@@ -1,4 +1,5 @@
 import sys
+
 sys.path.append("/usr/src/app/testproject")
 
 from celery.schedules import crontab

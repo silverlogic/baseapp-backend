@@ -1,12 +1,13 @@
 import graphene
-from graphene.types.generic import GenericScalar
 import swapper
-from graphene_django.filter import DjangoFilterConnectionField
 from django.contrib.contenttypes.models import ContentType
+from graphene.types.generic import GenericScalar
+from graphene_django.filter import DjangoFilterConnectionField
 
 from .object_types import FileObjectType
 
 File = swapper.load_model("baseapp_files", "File")
+
 
 class FilesInterface(graphene.Interface):
     files_count = GenericScalar()
