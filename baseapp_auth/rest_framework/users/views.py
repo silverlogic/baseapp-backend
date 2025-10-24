@@ -81,13 +81,17 @@ class UsersViewSet(
         permission_classes=[permissions.IsAuthenticated],
     )
     def delete_account(self, request):
+        """
+        TODO: When implementing full account deletion (not just anonymization), ensure all related data
+        (e.g., profile pages, notifications, etc.) are thoroughly reviewed and deleted to avoid missing any user information.
+        """
         user = request.user
-        if user.is_superuser:
-            user.is_active = False
-            user.save()
-        else:
-            user.delete()
-        return response.Response(data={}, status=status.HTTP_204_NO_CONTENT)
+        user.is_active = False
+        user.save()
+
+        if not user.is_superuser:
+            user.anonymize_and_delete()
+        return response.Response(data={}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["get", "post"], serializer_class=UserPermissionSerializer)
     def permissions(self, request):
