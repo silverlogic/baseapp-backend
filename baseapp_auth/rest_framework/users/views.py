@@ -91,7 +91,7 @@ class UsersViewSet(
 
         if not user.is_superuser:
             user.anonymize_and_delete()
-        return response.Response(data={}, status=status.HTTP_202_ACCEPTED)
+        return response.Response(data={}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["get", "post"], serializer_class=UserPermissionSerializer)
     def permissions(self, request):
