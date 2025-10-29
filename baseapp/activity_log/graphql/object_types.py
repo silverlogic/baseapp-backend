@@ -109,22 +109,22 @@ class BaseActivityLogObjectType:
         return MiddlewareEvents.objects.filter(pgh_context_id=self.pk)
 
     def resolve_user(self, info, **kwargs):
-        try:
-            user_id = getattr(self, "user_id", None)
-            if user_id:
-                return User.objects.filter(pk=user_id).first()
-            return getattr(self, "user", None)
-        except User.DoesNotExist:
-            return None
+        user_id = getattr(self, "user_id", None)
+        if user_id is not None:
+            try:
+                return User.objects.get(pk=user_id)
+            except User.DoesNotExist:
+                return None
+        return getattr(self, "user", None)
 
     def resolve_profile(self, info, **kwargs):
-        try:
-            profile_id = getattr(self, "profile_id", None)
-            if profile_id:
-                return Profile.objects.filter(pk=profile_id).first()
-            return getattr(self, "profile", None)
-        except Profile.DoesNotExist:
-            return None
+        profile_id = getattr(self, "profile_id", None)
+        if profile_id is not None:
+            try:
+                return Profile.objects.get(pk=profile_id)
+            except Profile.DoesNotExist:
+                return None
+        return getattr(self, "profile", None)
 
 
 class ActivityLogObjectType(BaseActivityLogObjectType, DjangoObjectType):
