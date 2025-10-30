@@ -1,3 +1,5 @@
+import swapper
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.shortcuts import get_object_or_404
@@ -86,6 +88,19 @@ class UsersViewSet(
         (e.g., profile pages, notifications, etc.) are thoroughly reviewed and deleted to avoid missing any user information.
         """
         user = request.user
+
+        if apps.is_installed("baseapp_organizations"):
+            Organization = swapper.load_model("baseapp_organizations", "Organization")
+            if Organization.objects.filter(profile__owner_id=user.id).exists():
+                return response.Response(
+                    data={
+                        "detail": _(
+                            "Account cannot be deleted because you're the owner of an organization. Transfer ownership or delete the organization first."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         user.is_active = False
         user.save()
 
