@@ -242,7 +242,7 @@ def send_anonymize_user_success_email(user_email):
     )
 
     # Email to superusers
-    if not config.SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS:
+    if not getattr(config, "SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS", False):
         return None
     superusers = User.objects.filter(is_superuser=True).exclude(email__in=[user_email]).all()
     recipient_list = list(superusers.values_list("email", flat=True))
@@ -279,7 +279,7 @@ def send_anonymize_user_error_email(user_email):
     )
 
     # Email to superusers
-    if not config.SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS:
+    if not getattr(config, "SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS", False):
         return None
     superusers = User.objects.filter(is_superuser=True).exclude(email__in=[user_email]).all()
     recipient_list = list(superusers.values_list("email", flat=True))

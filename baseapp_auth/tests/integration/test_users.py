@@ -22,6 +22,8 @@ from baseapp_chats.tests.factories import (
     MessageFactory,
 )
 from baseapp_comments.tests.factories import CommentFactory
+from baseapp_organizations.tests.factories import OrganizationFactory
+from baseapp_profiles.tests.factories import ProfileFactory
 from baseapp_referrals.utils import get_referral_code
 
 User = get_user_model()
@@ -31,6 +33,11 @@ pytestmark = [pytest.mark.django_db, pytest.mark.referrals]
 
 skip_if_no_referrals = pytest.mark.skipif(
     "baseapp_referrals" not in settings.INSTALLED_APPS, reason="No referrals app"
+)
+
+skip_if_no_organizations = pytest.mark.skipif(
+    "baseapp_organizations" not in settings.INSTALLED_APPS,
+    reason="No organizations app",
 )
 
 UserReferral = get_user_referral_model()
@@ -239,6 +246,26 @@ class TestUsersDeleteAccount(ApiMixin):
             mock_apply_async.assert_called_once_with(
                 args=[user_id], eta=mock_apply_async.call_args[1]["eta"]
             )
+
+    @skip_if_no_organizations
+    def test_owner_of_organization_cannot_delete_account(self, user_client):
+        user = user_client.user
+        user.is_superuser = False
+        user.is_active = True
+        user.save()
+
+        profile = ProfileFactory(owner=user)
+        OrganizationFactory(profile=profile)
+
+        r = user_client.delete(self.reverse())
+
+        h.responseBadRequest(r)
+        assert (
+            r.data["detail"]
+            == "Account cannot be deleted because you're the owner of an organization. Transfer ownership or delete the organization first."
+        )
+        user.refresh_from_db()
+        assert user.is_active is True
 
     @override_config(SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS=True)
     def test_anonymize_and_delete_user_task_sends_success_email_to_superusers(self, outbox):
