@@ -22,8 +22,6 @@ from baseapp_chats.tests.factories import (
     MessageFactory,
 )
 from baseapp_comments.tests.factories import CommentFactory
-from baseapp_organizations.tests.factories import OrganizationFactory
-from baseapp_profiles.tests.factories import ProfileFactory
 from baseapp_referrals.utils import get_referral_code
 
 User = get_user_model()
@@ -249,6 +247,9 @@ class TestUsersDeleteAccount(ApiMixin):
 
     @skip_if_no_organizations
     def test_owner_of_organization_cannot_delete_account(self, user_client):
+        from baseapp_organizations.tests.factories import OrganizationFactory
+        from baseapp_profiles.tests.factories import ProfileFactory
+
         user = user_client.user
         user.is_superuser = False
         user.is_active = True
