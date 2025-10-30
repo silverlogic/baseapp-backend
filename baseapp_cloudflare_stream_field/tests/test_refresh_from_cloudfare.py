@@ -128,8 +128,9 @@ def test_refresh_from_cloudflare_ready_with_trim(
         "status": {"state": "ready"},
     }
 
-    with patch.object(settings, "CLOUDFLARE_VIDEO_AUTOMATIC_TRIM", True), patch.object(
-        settings, "CLOUDFLARE_VIDEO_TRIM_DURATION_SECONDS", 60
+    with (
+        patch.object(settings, "CLOUDFLARE_VIDEO_AUTOMATIC_TRIM", True),
+        patch.object(settings, "CLOUDFLARE_VIDEO_TRIM_DURATION_SECONDS", 60),
     ):
         refresh_from_cloudflare(content_type.pk, obj.pk, "video")
 
