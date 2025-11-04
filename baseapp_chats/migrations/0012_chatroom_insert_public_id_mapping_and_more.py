@@ -8,7 +8,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("baseapp_chats", "0010_message_deleted"),
+        ("baseapp_chats", "0011_alter_chatroom_created_by_and_more"),
         ("baseapp_core", "0001_initial"),
     ]
 
