@@ -153,6 +153,8 @@ CONSTANCE_CONFIG = OrderedDict(
         (
             "ENABLE_PUBLIC_ID_LOGIC",
             (True, "Enable public ID logic."),
+        ),
+        (
             "ANONYMIZE_TASK_DELAY_DAYS",
             (19, "Delay in days before running anonymize user task"),
         ),
