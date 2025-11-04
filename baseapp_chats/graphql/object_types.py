@@ -1,6 +1,7 @@
 import graphene
 import swapper
 from django.db.models import Case, When
+from django.utils.translation import gettext_lazy as _
 from graphene_django import DjangoConnectionField
 from graphene_django.filter import DjangoFilterConnectionField
 
@@ -100,7 +101,7 @@ class BaseMessageObjectType:
     @staticmethod
     def get_replaced_profile_name(profile, profile_pk, replacement_text):
         if not profile:
-            return None
+            return _("Profile Not Found")
         elif profile.id == profile_pk:
             return replacement_text
         else:
