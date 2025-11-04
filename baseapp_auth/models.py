@@ -1,4 +1,7 @@
+from datetime import timedelta
+
 import swapper
+from constance import config
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
@@ -114,6 +117,18 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_pr
         # TODO: deprecate
         return self.profile.image if self.profile_id else None
 
+    @property
+    def password_expired(self) -> bool:
+        if "is_password_expired" in self.__dict__:
+            return bool(self.__dict__["is_password_expired"])
+
+        expiration_interval = int(getattr(config, "USER_PASSWORD_EXPIRATION_INTERVAL", 0))
+        if expiration_interval <= 0:
+            return False
+
+        expires_at = self.password_changed_date + timezone.timedelta(days=expiration_interval)
+        return timezone.now() >= expires_at
+
     @classmethod
     def get_graphql_object_type(cls):
         from .graphql.object_types import UserObjectType
@@ -126,6 +141,14 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_pr
                 if self.tracker.has_changed("password"):
                     self.password_changed_date = timezone.now()
                 super().save(*args, **kwargs)
+
+    def anonymize_and_delete(self):
+
+        from .rest_framework.users.tasks import anonymize_and_delete_user_task
+
+        delay_days = config.ANONYMIZE_TASK_DELAY_DAYS
+        eta = timezone.now() + timedelta(days=delay_days)
+        anonymize_and_delete_user_task.apply_async(args=[self.id], eta=eta)
 
 
 class PasswordValidation(models.Model):
