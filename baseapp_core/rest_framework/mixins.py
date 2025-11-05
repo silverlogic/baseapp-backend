@@ -46,19 +46,21 @@ class PublicIdLookupMixin:
             if isinstance(value, str) and value.isdigit():
                 return int(value)
         except Exception:
+            # Ignore conversion errors; will attempt to resolve via PublicIdMapping below.
             pass
-        # Lazy import to avoid circular imports
         try:
             from baseapp_core.hashids.models import PublicIdMapping
         except Exception:
             return value
 
         try:
-            content_type, object_id = PublicIdMapping.get_content_type_and_id(value)
-            if not (content_type and object_id):
+            ct_and_id = PublicIdMapping.get_content_type_and_id(value)
+            if not ct_and_id:
                 return value
+            content_type, object_id = ct_and_id
             model_cls = content_type.model_class()
             if expected_model is not None:
+                # if a queryset/manager was passed, extract the model class
                 try:
                     expected_cls = (
                         expected_model.model if hasattr(expected_model, "model") else expected_model
