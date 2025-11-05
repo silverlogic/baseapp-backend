@@ -138,7 +138,7 @@ class TestUsersUpdate(ApiMixin):
         not hasattr(User, "public_id"),
         reason="User model does not expose public_id; skip until PublicIdMixin is enabled",
     )
-    def test_can_update_public_fieldsusing_public_id(self, user_client):
+    def test_can_update_public_field_using_public_id(self, user_client):
         data = {"preferred_language": "pt"}
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.public_id}), data)
         h.responseOk(r)
