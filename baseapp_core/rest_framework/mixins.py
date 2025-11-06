@@ -65,7 +65,7 @@ class PublicIdLookupMixin:
                     expected_cls = (
                         expected_model.model if hasattr(expected_model, "model") else expected_model
                     )
-                except Exception:
+                except AttributeError:
                     expected_cls = expected_model
                 if model_cls != expected_cls:
                     return value
