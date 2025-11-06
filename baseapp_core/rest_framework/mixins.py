@@ -70,7 +70,7 @@ class PublicIdLookupMixin:
                 if model_cls != expected_cls:
                     return value
             return object_id
-        except Exception:
+        except (AttributeError, ValueError, TypeError):
             return value
 
 
