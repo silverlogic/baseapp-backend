@@ -50,7 +50,7 @@ class PublicIdLookupMixin:
             pass
         try:
             from baseapp_core.hashids.models import PublicIdMapping
-        except Exception:
+        except ImportError:
             return value
 
         try:
