@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional, Type
 
 from constance import config
 
@@ -130,3 +130,31 @@ def graphql_get_instance_from_global_id_using_strategy(info, global_id, get_node
         strategy = get_legacy_strategy()
 
     return strategy.graphql_resolver.get_instance_from_global_id(info, global_id, get_node)
+
+
+def drf_get_pk_from_public_id_using_strategy(value: Any, expected_model: Optional[Type] = None):
+    if is_uuid4(value) and _is_public_id_logic_enabled():
+        strategy = get_public_id_strategy()
+    else:
+        strategy = get_legacy_strategy()
+
+    if getattr(strategy, "drf_resolver", None):
+        return strategy.drf_resolver.resolve_public_id_to_pk(value, expected_model=expected_model)
+
+    try:
+        ct_and_id = strategy.id_resolver.resolve_id(value, resolve_query=False)
+        if not ct_and_id:
+            return value
+        content_type, object_id = ct_and_id
+        if expected_model is not None:
+            try:
+                expected_cls = (
+                    expected_model.model if hasattr(expected_model, "model") else expected_model
+                )
+            except Exception:
+                expected_cls = expected_model
+            if content_type.model_class() != expected_cls:
+                return value
+        return object_id
+    except Exception:
+        return value

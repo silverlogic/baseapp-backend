@@ -20,7 +20,6 @@ class PublicIdLookupMixin:
         )
         if lookup_url_kwarg and lookup_url_kwarg in self.kwargs:
             lookup_val = self.kwargs[lookup_url_kwarg]
-            # infer expected model from the view's queryset if possible
             expected_model: Optional[Type] = None
             try:
                 expected_model = self.get_queryset().model
@@ -39,45 +38,11 @@ class PublicIdLookupMixin:
 
     @staticmethod
     def resolve_public_id_to_pk(value: Any, expected_model: Optional[Type] = None):
-        """Try to resolve `value` (possibly a public_id) into an integer PK.
-        expected_model: optional model class to validate mapping belongs to it.
-        """
-        try:
-            # allow ints or numeric strings
-            if isinstance(value, int):
-                return value
-            if isinstance(value, str) and value.isdigit():
-                return int(value)
-        except (AttributeError, ValueError, TypeError):
-            pass
+        from baseapp_core.hashids.strategies import (
+            drf_get_pk_from_public_id_using_strategy,
+        )
 
-        try:
-            from baseapp_core.hashids.strategies.public_id.id_resolver import (
-                PublicIdResolverStrategy,
-            )
-        except ImportError:
-            return value
-
-        try:
-            resolver = PublicIdResolverStrategy()
-            ct_and_id = resolver.resolve_id(value, resolve_query=False)
-            if not ct_and_id:
-                return value
-            content_type, object_id = ct_and_id
-            model_cls = content_type.model_class()
-            if expected_model is not None:
-                # if a queryset/manager was passed, extract the model class
-                try:
-                    expected_cls = (
-                        expected_model.model if hasattr(expected_model, "model") else expected_model
-                    )
-                except AttributeError:
-                    expected_cls = expected_model
-                if model_cls != expected_cls:
-                    return value
-            return object_id
-        except (AttributeError, ValueError, TypeError):
-            return value
+        return drf_get_pk_from_public_id_using_strategy(value, expected_model=expected_model)
 
 
 class DestroyModelMixin:
