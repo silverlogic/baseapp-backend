@@ -1,5 +1,6 @@
 from typing import Any, Optional, Type
 
+from django.core.exceptions import ImproperlyConfigured
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
@@ -23,7 +24,7 @@ class PublicIdLookupMixin:
             expected_model: Optional[Type] = None
             try:
                 expected_model = self.get_queryset().model
-            except Exception:
+            except (ImproperlyConfigured, AttributeError):
                 expected_model = None
 
             resolved = self.resolve_public_id_to_pk(lookup_val, expected_model=expected_model)
@@ -47,7 +48,6 @@ class PublicIdLookupMixin:
                 return value
             if isinstance(value, str) and value.isdigit():
                 return int(value)
-        # avoid generic exception catch
         except (AttributeError, ValueError, TypeError):
             pass
 
