@@ -55,7 +55,7 @@ class PublicIdLookupMixin:
             from baseapp_core.hashids.strategies.public_id.id_resolver import (
                 PublicIdResolverStrategy,
             )
-        except Exception:
+        except ImportError:
             return value
 
         try:
