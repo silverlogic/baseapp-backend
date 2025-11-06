@@ -1,4 +1,4 @@
-from typing import Optional, Type
+from typing import Type
 
 from baseapp_core.hashids.strategies.interfaces import (
     DRFResolverStrategy,
@@ -19,9 +19,9 @@ class HashidsStrategyBundle:
         id_resolver: Type[IdResolverStrategy],
         graphql_resolver: Type[GraphQLResolverStrategy],
         queryset_annotator: Type[QuerysetAnnotatorStrategy],
-        drf_resolver: Optional[Type[DRFResolverStrategy]] = None,
+        drf_resolver: Type[DRFResolverStrategy],
     ):
         self.id_resolver = id_resolver()
         self.graphql_resolver = graphql_resolver(id_resolver=self.id_resolver)
-        self.drf_resolver = drf_resolver(id_resolver=self.id_resolver) if drf_resolver else None
+        self.drf_resolver = drf_resolver(id_resolver=self.id_resolver)
         self.queryset_annotator = queryset_annotator()

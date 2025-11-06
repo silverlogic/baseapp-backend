@@ -1,3 +1,6 @@
+from baseapp_core.hashids.strategies.public_id.drf_resolver import (
+    PublicIdDRFResolverStrategy,
+)
 from baseapp_core.hashids.strategies.public_id.graphql_resolver import (
     PublicIdGraphQLResolverStrategy,
 )
@@ -12,4 +15,5 @@ __all__ = [
     "PublicIdResolverStrategy",
     "PublicIdGraphQLResolverStrategy",
     "PublicIdQuerysetAnnotatorStrategy",
+    "PublicIdDRFResolverStrategy",
 ]

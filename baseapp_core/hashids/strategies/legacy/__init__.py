@@ -1,3 +1,6 @@
+from baseapp_core.hashids.strategies.legacy.drf_resolver import (
+    LegacyDRFResolverStrategy,
+)
 from baseapp_core.hashids.strategies.legacy.graphql_resolver import (
     LegacyGraphQLResolverStrategy,
 )
@@ -10,4 +13,5 @@ __all__ = [
     "LegacyIdResolverStrategy",
     "LegacyGraphQLResolverStrategy",
     "LegacyQuerysetAnnotatorStrategy",
+    "LegacyDRFResolverStrategy",
 ]
