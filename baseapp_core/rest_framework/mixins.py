@@ -1,4 +1,4 @@
-from typing import Any, Optional, Type
+from typing import Optional, Type
 
 from django.core.exceptions import ImproperlyConfigured
 from django.shortcuts import get_object_or_404
@@ -26,7 +26,13 @@ class PublicIdLookupMixin:
             except (ImproperlyConfigured, AttributeError):
                 expected_model = None
 
-            resolved = self.resolve_public_id_to_pk(lookup_val, expected_model=expected_model)
+            from baseapp_core.hashids.strategies import (
+                drf_get_pk_from_public_id_using_strategy,
+            )
+
+            resolved = drf_get_pk_from_public_id_using_strategy(
+                lookup_val, expected_model=expected_model
+            )
             if isinstance(resolved, int):
                 # apply same filtering/context the view would use
                 queryset = self.filter_queryset(self.get_queryset())
@@ -35,14 +41,6 @@ class PublicIdLookupMixin:
                 self.check_object_permissions(self.request, obj)
                 return obj
         return super().get_object()
-
-    @staticmethod
-    def resolve_public_id_to_pk(value: Any, expected_model: Optional[Type] = None):
-        from baseapp_core.hashids.strategies import (
-            drf_get_pk_from_public_id_using_strategy,
-        )
-
-        return drf_get_pk_from_public_id_using_strategy(value, expected_model=expected_model)
 
 
 class DestroyModelMixin:
