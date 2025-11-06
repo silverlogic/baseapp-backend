@@ -14,7 +14,7 @@ class PublicIdLookupMixin:
         This applies the view's queryset filters and permission checks to
         preserve DRF semantics.
         """
-        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        lookup_url_kwarg = getattr(self, 'lookup_url_kwarg', None) or getattr(self, 'lookup_field', 'pk')
         if lookup_url_kwarg and lookup_url_kwarg in self.kwargs:
             lookup_val = self.kwargs[lookup_url_kwarg]
             # infer expected model from the view's queryset if possible
