@@ -14,7 +14,9 @@ class PublicIdLookupMixin:
         This applies the view's queryset filters and permission checks to
         preserve DRF semantics.
         """
-        lookup_url_kwarg = getattr(self, 'lookup_url_kwarg', None) or getattr(self, 'lookup_field', 'pk')
+        lookup_url_kwarg = getattr(self, "lookup_url_kwarg", None) or getattr(
+            self, "lookup_field", "pk"
+        )
         if lookup_url_kwarg and lookup_url_kwarg in self.kwargs:
             lookup_val = self.kwargs[lookup_url_kwarg]
             # infer expected model from the view's queryset if possible
@@ -45,16 +47,20 @@ class PublicIdLookupMixin:
                 return value
             if isinstance(value, str) and value.isdigit():
                 return int(value)
-        except Exception:
-            # Ignore conversion errors; will attempt to resolve via PublicIdMapping below.
+        # avoid generic exception catch
+        except (AttributeError, ValueError, TypeError):
             pass
+
         try:
-            from baseapp_core.hashids.models import PublicIdMapping
-        except ImportError:
+            from baseapp_core.hashids.strategies.public_id.id_resolver import (
+                PublicIdResolverStrategy,
+            )
+        except Exception:
             return value
 
         try:
-            ct_and_id = PublicIdMapping.get_content_type_and_id(value)
+            resolver = PublicIdResolverStrategy()
+            ct_and_id = resolver.resolve_id(value, resolve_query=False)
             if not ct_and_id:
                 return value
             content_type, object_id = ct_and_id
