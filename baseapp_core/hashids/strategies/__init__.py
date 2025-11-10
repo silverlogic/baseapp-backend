@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional, Type
 
 from constance import config
 
@@ -26,6 +26,7 @@ def _is_model_pk_compatible(model_cls: type) -> bool:
 
 def get_legacy_strategy() -> HashidsStrategyBundle:
     from baseapp_core.hashids.strategies.legacy import (
+        LegacyDRFResolverStrategy,
         LegacyGraphQLResolverStrategy,
         LegacyIdResolverStrategy,
         LegacyQuerysetAnnotatorStrategy,
@@ -35,11 +36,13 @@ def get_legacy_strategy() -> HashidsStrategyBundle:
         id_resolver=LegacyIdResolverStrategy,
         graphql_resolver=LegacyGraphQLResolverStrategy,
         queryset_annotator=LegacyQuerysetAnnotatorStrategy,
+        drf_resolver=LegacyDRFResolverStrategy,
     )
 
 
 def get_public_id_strategy() -> HashidsStrategyBundle:
     from baseapp_core.hashids.strategies.public_id import (
+        PublicIdDRFResolverStrategy,
         PublicIdGraphQLResolverStrategy,
         PublicIdQuerysetAnnotatorStrategy,
         PublicIdResolverStrategy,
@@ -49,6 +52,7 @@ def get_public_id_strategy() -> HashidsStrategyBundle:
         id_resolver=PublicIdResolverStrategy,
         graphql_resolver=PublicIdGraphQLResolverStrategy,
         queryset_annotator=PublicIdQuerysetAnnotatorStrategy,
+        drf_resolver=PublicIdDRFResolverStrategy,
     )
 
 
@@ -57,12 +61,16 @@ def get_pk_strategy() -> HashidsStrategyBundle:
         LegacyIdResolverStrategy,
         LegacyQuerysetAnnotatorStrategy,
     )
-    from baseapp_core.hashids.strategies.pk import PkGraphQLResolverStrategy
+    from baseapp_core.hashids.strategies.pk import (
+        PkDRFResolverStrategy,
+        PkGraphQLResolverStrategy,
+    )
 
     return HashidsStrategyBundle(
         id_resolver=LegacyIdResolverStrategy,
         graphql_resolver=PkGraphQLResolverStrategy,
         queryset_annotator=LegacyQuerysetAnnotatorStrategy,
+        drf_resolver=PkDRFResolverStrategy,
     )
 
 
@@ -130,3 +138,12 @@ def graphql_get_instance_from_global_id_using_strategy(info, global_id, get_node
         strategy = get_legacy_strategy()
 
     return strategy.graphql_resolver.get_instance_from_global_id(info, global_id, get_node)
+
+
+def drf_get_pk_from_public_id_using_strategy(value: Any, expected_model: Optional[Type] = None):
+    if is_uuid4(value) and _is_public_id_logic_enabled():
+        strategy = get_public_id_strategy()
+    else:
+        strategy = get_legacy_strategy()
+
+    return strategy.drf_resolver.resolve_public_id_to_pk(value, expected_model=expected_model)

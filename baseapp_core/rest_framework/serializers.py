@@ -1,7 +1,10 @@
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField as PhoneNumberModelField
 from phonenumber_field.serializerfields import PhoneNumberField
+from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer as OrigModelSerializer
+
+from baseapp_core.models import PublicIdMixin
 
 from .fields import ThumbnailImageField
 
@@ -21,6 +24,11 @@ class ModelSerializer(OrigModelSerializer):
 
     def build_standard_field(self, field_name, model_field):
         field_class, field_kwargs = super().build_standard_field(field_name, model_field)
+        is_primary = bool(getattr(model_field, "primary_key", False))
+        if (is_primary) and issubclass(self.Meta.model, PublicIdMixin):
+            field_class = serializers.CharField
+            field_kwargs["source"] = "public_id"
+            field_kwargs["read_only"] = True
         if issubclass(field_class, PhoneNumberField) and model_field.blank:
             field_kwargs["allow_blank"] = True
         return field_class, field_kwargs

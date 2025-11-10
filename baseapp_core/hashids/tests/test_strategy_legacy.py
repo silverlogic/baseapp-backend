@@ -5,6 +5,7 @@ from graphql_relay import to_global_id
 
 from baseapp_core.graphql.relay import Node
 from baseapp_core.hashids.strategies.legacy import (
+    LegacyDRFResolverStrategy,
     LegacyGraphQLResolverStrategy,
     LegacyIdResolverStrategy,
     LegacyQuerysetAnnotatorStrategy,
@@ -131,3 +132,15 @@ class TestLegacyQuerysetAnnotatorStrategy:
         annotated_queryset = strategy.annotate(DummyLegacyModel, queryset)
         assert annotated_queryset == queryset
         assert annotated_queryset.query.annotations == queryset.query.annotations
+
+
+@pytest.mark.django_db
+class TestLegacyDRFResolverStrategy:
+    @pytest.fixture
+    def resolver(self):
+        return LegacyDRFResolverStrategy(id_resolver=LegacyIdResolverStrategy())
+
+    def test_resolve_public_id_to_pk_returns_input(self, resolver):
+        # legacy DRF resolver is a no-op and should return the input unchanged
+        dummy = DummyLegacyModelFactory()
+        assert resolver.resolve_public_id_to_pk(str(dummy.pk)) == str(dummy.pk)
