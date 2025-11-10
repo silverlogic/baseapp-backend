@@ -5,8 +5,17 @@ from graphql_relay import to_global_id
 
 from baseapp_core.graphql.relay import Node
 from baseapp_core.hashids.strategies.legacy import LegacyIdResolverStrategy
-from baseapp_core.hashids.strategies.pk import PkGraphQLResolverStrategy
-from testproject.testapp.tests.factories import DummyLegacyModelFactory
+from baseapp_core.hashids.strategies.pk import (
+    PkDRFResolverStrategy,
+    PkGraphQLResolverStrategy,
+)
+from baseapp_core.hashids.strategies.public_id.id_resolver import (
+    PublicIdResolverStrategy,
+)
+from testproject.testapp.tests.factories import (
+    DummyLegacyModelFactory,
+    DummyPublicIdModelFactory,
+)
 
 
 @pytest.mark.django_db
@@ -70,3 +79,29 @@ class TestPkGraphQLResolverStrategy:
 
         result = resolver.get_node_from_global_id(info, global_id)
         assert result.pk == dummy_instance.pk
+
+
+@pytest.mark.django_db
+class TestPkDRFResolverStrategy:
+    @pytest.fixture
+    def resolver(self):
+        return PkDRFResolverStrategy(id_resolver=PublicIdResolverStrategy())
+
+    def test_resolve_public_id_to_pk_returns_object_id(self, resolver):
+        dummy = DummyPublicIdModelFactory()
+        result = resolver.resolve_public_id_to_pk(str(dummy.public_id), expected_model=type(dummy))
+        assert result == dummy.pk
+
+    def test_cant_resolve_invalid_public_id(self, resolver):
+        invalid_public_id = "invalid-uuid"
+        with pytest.raises(Exception):
+            resolver.resolve_public_id_to_pk(
+                invalid_public_id, expected_model=DummyPublicIdModelFactory._meta.model
+            )
+
+    def test_cant_resolve_public_id_of_different_model(self, resolver):
+        dummy = DummyPublicIdModelFactory()
+        with pytest.raises(Exception):
+            resolver.resolve_public_id_to_pk(
+                str(dummy.public_id), expected_model=DummyLegacyModelFactory._meta.model
+            )

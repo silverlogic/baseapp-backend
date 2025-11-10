@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 
 from baseapp_core.graphql.relay import Node
 from baseapp_core.hashids.strategies.public_id import (
+    PublicIdDRFResolverStrategy,
     PublicIdGraphQLResolverStrategy,
     PublicIdQuerysetAnnotatorStrategy,
     PublicIdResolverStrategy,
@@ -128,3 +129,15 @@ class TestPublicIdQuerysetAnnotatorStrategy:
 
         assert "mapped_public_id" in annotated_queryset.query.annotations
         assert hasattr(annotated_queryset.first(), "mapped_public_id") is True
+
+
+@pytest.mark.django_db
+class TestPublicIdDRFResolverStrategy:
+    @pytest.fixture
+    def resolver(self):
+        return PublicIdDRFResolverStrategy(id_resolver=PublicIdResolverStrategy())
+
+    def test_resolve_public_id_to_pk_returns_object_id(self, resolver):
+        dummy = DummyPublicIdModelFactory()
+        result = resolver.resolve_public_id_to_pk(str(dummy.public_id))
+        assert result == dummy.pk
