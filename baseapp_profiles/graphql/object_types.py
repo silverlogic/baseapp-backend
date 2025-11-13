@@ -28,7 +28,7 @@ class BaseProfileUserRoleObjectType:
     class Meta:
         model = ProfileUserRole
         interfaces = [RelayNode]
-        fields = ["id", "pk", "user", "role", "status"]
+        fields = ["id", "pk", "user", "role", "created", "modified", "status"]
         filterset_class = MemberFilter
 
 
