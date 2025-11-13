@@ -1,3 +1,4 @@
+from constance import config
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
@@ -224,3 +225,74 @@ def send_password_expired_email(user):
         from_email=None,
         recipient_list=[user.email],
     )
+
+
+def send_anonymize_user_success_email(user_email):
+    context = {"user_email": user_email}
+    # Email to the user
+    subject = render_to_string("users/emails/anonymize-user-success-subject.txt.j2").strip()
+    message = render_to_string("users/emails/anonymize-user-success-body.txt.j2", context)
+    html_message = render_to_string("users/emails/anonymize-user-success-body.html.j2", context)
+    send_mail(
+        subject,
+        message,
+        html_message=html_message,
+        from_email=None,
+        recipient_list=[user_email],
+    )
+
+    # Email to superusers
+    if not getattr(config, "SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS", False):
+        return None
+    superusers = User.objects.filter(is_superuser=True).exclude(email__in=[user_email]).all()
+    recipient_list = list(superusers.values_list("email", flat=True))
+    subject = render_to_string(
+        "users/emails/anonymize-user-success-superuser-subject.txt.j2"
+    ).strip()
+    message = render_to_string("users/emails/anonymize-user-success-superuser-body.txt.j2", context)
+    html_message = render_to_string(
+        "users/emails/anonymize-user-success-superuser-body.html.j2", context
+    )
+    if recipient_list:
+        send_mail(
+            subject,
+            message,
+            html_message=html_message,
+            from_email=None,
+            recipient_list=recipient_list,
+        )
+
+
+def send_anonymize_user_error_email(user_email):
+    context = {"user_email": user_email}
+
+    # Email to the user
+    subject = render_to_string("users/emails/anonymize-user-error-subject.txt.j2").strip()
+    message = render_to_string("users/emails/anonymize-user-error-body.txt.j2", context)
+    html_message = render_to_string("users/emails/anonymize-user-error-body.html.j2", context)
+    send_mail(
+        subject,
+        message,
+        html_message=html_message,
+        from_email=None,
+        recipient_list=[user_email],
+    )
+
+    # Email to superusers
+    if not getattr(config, "SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS", False):
+        return None
+    superusers = User.objects.filter(is_superuser=True).exclude(email__in=[user_email]).all()
+    recipient_list = list(superusers.values_list("email", flat=True))
+    subject = render_to_string("users/emails/anonymize-user-error-superuser-subject.txt.j2").strip()
+    message = render_to_string("users/emails/anonymize-user-error-superuser-body.txt.j2", context)
+    html_message = render_to_string(
+        "users/emails/anonymize-user-error-superuser-body.html.j2", context
+    )
+    if recipient_list:
+        send_mail(
+            subject,
+            message,
+            html_message=html_message,
+            from_email=None,
+            recipient_list=recipient_list,
+        )
