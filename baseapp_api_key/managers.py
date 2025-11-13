@@ -4,7 +4,7 @@ import logging
 import typing
 
 from cryptography.hazmat.primitives.ciphers.aead import AESSIV
-from django.conf import settings
+from django.conf import ImproperlyConfigured, settings
 from django.db import models
 from django.utils.crypto import get_random_string
 
@@ -119,6 +119,6 @@ class BaseAPIKeyManager(models.Manager):
     def _get_encryption_key(self, encryption_key: str | None = None) -> str:
         if not isinstance(encryption_key, str):
             if not settings.BA_API_KEY_ENCRYPTION_KEY:
-                raise ValueError("BA_API_KEY_ENCRYPTION_KEY is not set")
+                raise ImproperlyConfigured("BA_API_KEY_ENCRYPTION_KEY is not set")
             encryption_key = settings.BA_API_KEY_ENCRYPTION_KEY
         return encryption_key
