@@ -22,7 +22,8 @@ if apps.is_installed("baseapp_pages"):
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    search_fields = ("name",)
-    list_display = ("id", "name", "target", "created", "modified")
+    search_fields = ("name")
+    list_display = ("id", "public_id", "name", "target", "created", "modified")
+    readonly_fields = ("public_id",)
     raw_id_fields = ("owner",)
     inlines = profile_inlines
