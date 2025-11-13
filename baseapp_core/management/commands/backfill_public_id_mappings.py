@@ -52,9 +52,13 @@ class Command(BaseCommand):
                 app_label, model_name = model_path.split(".", 1)
                 model = django_apps.get_model(app_label, model_name)
             except Exception as exc:  # pragma: no cover - input parsing
-                self.stdout.write(self.style.ERROR(f"Invalid --instance format: {instance_spec}. Use app_label.Model:pk (error: {exc})"))
+                self.stdout.write(
+                    self.style.ERROR(
+                        f"Invalid --instance format: {instance_spec}. Use app_label.Model:pk (error: {exc})"
+                    )
+                )
                 return
-            
+
             # Parse pk according to the model's primary key field type
             pk_field = model._meta.pk
             try:
@@ -65,13 +69,17 @@ class Command(BaseCommand):
                     pk = pk_field.to_python(pk_str)
             except (ValueError, TypeError) as exc:
                 self.stdout.write(
-                    self.style.ERROR(f"Invalid pk value '{pk_str}' for {app_label}.{model_name} (expected {pk_field.__class__.__name__}): {exc}")
+                    self.style.ERROR(
+                        f"Invalid pk value '{pk_str}' for {app_label}.{model_name} (expected {pk_field.__class__.__name__}): {exc}"
+                    )
                 )
                 return
 
             if not issubclass(model, PublicIdMixin):
                 self.stdout.write(
-                    self.style.WARNING(f"Model {app_label}.{model_name} does not inherit from PublicIdMixin. Skipping.")
+                    self.style.WARNING(
+                        f"Model {app_label}.{model_name} does not inherit from PublicIdMixin. Skipping."
+                    )
                 )
                 return
 
@@ -85,28 +93,48 @@ class Command(BaseCommand):
                 return
 
             ct = ContentType.objects.get_for_model(model)
-            
+
             # Check if the instance actually exists in the database
             if not model.objects.filter(pk=pk).exists():
                 self.stdout.write(
-                    self.style.ERROR(f"Instance {app_label}.{model_name}:{pk} does not exist in database. Cannot create mapping.")
+                    self.style.ERROR(
+                        f"Instance {app_label}.{model_name}:{pk} does not exist in database. Cannot create mapping."
+                    )
                 )
                 return
-            
+
             exists = PublicIdMapping.objects.filter(content_type=ct, object_id=pk).exists()
             if exists:
-                self.stdout.write(self.style.NOTICE(f"PublicIdMapping already exists for {app_label}.{model_name}:{pk}"))
+                self.stdout.write(
+                    self.style.NOTICE(
+                        f"PublicIdMapping already exists for {app_label}.{model_name}:{pk}"
+                    )
+                )
                 return
 
             if dry_run:
-                self.stdout.write(self.style.NOTICE(f"[DRY RUN] Would create mapping for {app_label}.{model_name}:{pk}"))
+                self.stdout.write(
+                    self.style.NOTICE(
+                        f"[DRY RUN] Would create mapping for {app_label}.{model_name}:{pk}"
+                    )
+                )
                 return
 
             try:
-                m = PublicIdMapping.objects.create(public_id=uuid.uuid4(), content_type=ct, object_id=pk)
-                self.stdout.write(self.style.SUCCESS(f"Created mapping {m.public_id} for {app_label}.{model_name}:{pk}"))
+                m = PublicIdMapping.objects.create(
+                    public_id=uuid.uuid4(), content_type=ct, object_id=pk
+                )
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"Created mapping {m.public_id} for {app_label}.{model_name}:{pk}"
+                    )
+                )
             except Exception as exc:  # pragma: no cover - runtime DB errors
-                self.stdout.write(self.style.ERROR(f"Failed to create mapping for {app_label}.{model_name}:{pk}: {exc}"))
+                self.stdout.write(
+                    self.style.ERROR(
+                        f"Failed to create mapping for {app_label}.{model_name}:{pk}: {exc}"
+                    )
+                )
             return
 
         # Find all concrete models that inherit from PublicIdMixin
@@ -152,24 +180,26 @@ class Command(BaseCommand):
 
                 # find existing mappings for this batch
                 existing_ids = set(
-                    PublicIdMapping.objects.filter(content_type=ct, object_id__in=batch).values_list(
-                        "object_id", flat=True
-                    )
+                    PublicIdMapping.objects.filter(
+                        content_type=ct, object_id__in=batch
+                    ).values_list("object_id", flat=True)
                 )
                 missing = [obj_id for obj_id in batch if obj_id not in existing_ids]
 
                 if missing:
                     # Verify that the instances still exist before creating mappings
                     # (they could have been deleted between the values_list query and now)
-                    verified_ids = set(model.objects.filter(pk__in=missing).values_list(pk_field.name, flat=True))
+                    verified_ids = set(
+                        model.objects.filter(pk__in=missing).values_list(pk_field.name, flat=True)
+                    )
                     still_missing = [obj_id for obj_id in missing if obj_id in verified_ids]
-                    
+
                     if not still_missing:
                         self.stdout.write(
                             f"Skipped batch for {model._meta.app_label}.{model._meta.model_name} — all {len(missing)} IDs no longer exist"
                         )
                         continue
-                    
+
                     to_create = [
                         PublicIdMapping(public_id=uuid.uuid4(), content_type=ct, object_id=obj_id)
                         for obj_id in still_missing
@@ -184,7 +214,9 @@ class Command(BaseCommand):
                     else:
                         try:
                             with transaction.atomic():
-                                PublicIdMapping.objects.bulk_create(to_create, batch_size=batch_size, ignore_conflicts=True)
+                                PublicIdMapping.objects.bulk_create(
+                                    to_create, batch_size=batch_size, ignore_conflicts=True
+                                )
                             created_for_model += len(to_create)
                         except Exception as exc:  # pragma: no cover - runtime DB errors
                             self.stdout.write(

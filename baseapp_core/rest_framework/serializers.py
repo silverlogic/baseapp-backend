@@ -25,7 +25,9 @@ class ModelSerializer(OrigModelSerializer):
     def build_standard_field(self, field_name, model_field):
         field_class, field_kwargs = super().build_standard_field(field_name, model_field)
         is_primary = bool(getattr(model_field, "primary_key", False))
-        if (model_field.name in ("id", "pk") or is_primary) and issubclass(self.Meta.model, PublicIdMixin):
+        if (model_field.name in ("id", "pk") or is_primary) and issubclass(
+            self.Meta.model, PublicIdMixin
+        ):
             field_class = serializers.CharField
             field_kwargs["source"] = "public_id"
             field_kwargs["read_only"] = True
