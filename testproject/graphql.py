@@ -6,6 +6,8 @@ from graphene_django.debug import DjangoDebug
 from baseapp.activity_log.graphql.queries import ActivityLogQueries
 from baseapp.content_feed.graphql.mutations import ContentFeedMutations
 from baseapp.content_feed.graphql.queries import ContentFeedQueries
+from baseapp.maps.graphql.mutations import GeoJSONFeatureMutations
+from baseapp.maps.graphql.queries import GeoJSONFeaturesQueries
 from baseapp_blocks.graphql.mutations import BlocksMutations
 from baseapp_chats.graphql.mutations import ChatsMutations
 from baseapp_chats.graphql.queries import ChatsQueries
@@ -45,6 +47,7 @@ class Query(
     ChatsQueries,
     ContentFeedQueries,
     ReportsQueries,
+    GeoJSONFeaturesQueries,
 ):
     node = RelayNodeField(relay.Node)
     debug = graphene.Field(DjangoDebug, name="_debug")
@@ -64,6 +67,7 @@ class Mutation(
     OrganizationsMutations,
     ChatsMutations,
     ContentFeedMutations,
+    GeoJSONFeatureMutations,
 ):
     delete_node = DeleteNode.Field()
 
