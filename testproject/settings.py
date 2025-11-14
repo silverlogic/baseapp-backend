@@ -150,6 +150,14 @@ CONSTANCE_CONFIG = OrderedDict(
             "STRIPE_CUSTOMER_ENTITY_MODEL",
             ("profiles.Profile", "The model to use for the Stripe customer entity."),
         ),
+        (
+            "ANONYMIZE_TASK_DELAY_DAYS",
+            (19, "Delay in days before running anonymize user task"),
+        ),
+        (
+            "SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS",
+            (False, "Whether to send anonymize/delete user notification emails to superusers"),
+        ),
     ]
 )
 
@@ -169,8 +177,8 @@ BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False
 BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS = False
 
 # API Key
-BA_API_KEY_REQUEST_HEADER = env("BA_API_KEY_REQUEST_HEADER")
-BA_API_KEY_ENCRYPTION_KEY = env("BA_API_KEY_ENCRYPTION_KEY")
+BA_API_KEY_REQUEST_HEADER = env("BA_API_KEY_REQUEST_HEADER", default="HTTP_API_KEY")
+BA_API_KEY_ENCRYPTION_KEY = env("BA_API_KEY_ENCRYPTION_KEY", default=None)
 
 # Graphene query optimizer
 GRAPHQL_QUERY_OPTIMIZER = {
