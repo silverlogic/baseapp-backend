@@ -1,8 +1,9 @@
 import pytest
+import swapper
 
 from baseapp_profiles.tests.factories import ProfileFactory
 
-from ..models import GeoJSONFeature
+GeoJSONFeature = swapper.load_model("baseapp_maps", "GeoJSONFeature")
 
 pytestmark = pytest.mark.django_db
 

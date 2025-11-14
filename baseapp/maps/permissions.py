@@ -1,4 +1,6 @@
-from .models import GeoJSONFeature
+import swapper
+
+GeoJSONFeature = swapper.load_model("baseapp_maps", "GeoJSONFeature")
 
 
 class GeoJSONFeaturesPermissionsBackend:

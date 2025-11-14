@@ -1,3 +1,4 @@
+import swapper
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -51,7 +52,8 @@ class AbstractGeoJSONFeature(TimeStampedModel, RelayModel):
 
 
 class GeoJSONFeature(AbstractGeoJSONFeature):
-    """Concrete implementation of GeoJSON Feature model."""
+    """Swappable GeoJSON Feature model."""
 
     class Meta(AbstractGeoJSONFeature.Meta):
-        swappable = "BASEAPP_MAPS_GEOJSONFEATURE_MODEL"
+        abstract = False
+        swappable = swapper.swappable_setting("baseapp_maps", "GeoJSONFeature")

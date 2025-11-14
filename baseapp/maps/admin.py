@@ -1,6 +1,7 @@
+import swapper
 from django.contrib.gis import admin
 
-from .models import GeoJSONFeature
+GeoJSONFeature = swapper.load_model("baseapp_maps", "GeoJSONFeature")
 
 
 @admin.register(GeoJSONFeature)

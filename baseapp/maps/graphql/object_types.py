@@ -1,9 +1,11 @@
 import graphene
+import swapper
 from graphene import relay
 from graphene_django import DjangoObjectType
 
-from ..models import GeoJSONFeature
 from .filters import GeoJSONFeatureFilter
+
+GeoJSONFeature = swapper.load_model("baseapp_maps", "GeoJSONFeature")
 
 
 class GeoJSONType(graphene.ObjectType):

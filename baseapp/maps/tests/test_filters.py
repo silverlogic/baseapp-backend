@@ -1,8 +1,10 @@
 import pytest
+import swapper
 from django.contrib.gis.geos import Point, Polygon
 
-from ..models import GeoJSONFeature
 from .factories import GeoJSONFeatureFactory
+
+GeoJSONFeature = swapper.load_model("baseapp_maps", "GeoJSONFeature")
 
 pytestmark = pytest.mark.django_db
 

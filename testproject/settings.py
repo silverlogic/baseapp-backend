@@ -42,6 +42,7 @@ INSTALLED_APPS += [
     "baseapp.maps",
     "baseapp_social_auth.cache",
     "testproject.users",
+    "testproject.maps",
     "baseapp.content_feed",
     "testproject.testapp",
     "testproject.comments",
@@ -172,6 +173,9 @@ BASEAPP_COMMENTS_COMMENT_MODEL = "comments.Comment"
 
 # Profiles
 BASEAPP_PROFILES_PROFILE_MODEL = "profiles.Profile"
+
+# Maps
+BASEAPP_MAPS_GEOJSONFEATURE_MODEL = "maps.GeoJSONFeature"
 
 # Notifications
 NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"

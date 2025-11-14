@@ -1,8 +1,9 @@
 import factory
+import swapper
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.geos import Point
 
-from ..models import GeoJSONFeature
+GeoJSONFeature = swapper.load_model("baseapp_maps", "GeoJSONFeature")
 
 
 def get_content_type(field_name):

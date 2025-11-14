@@ -1,4 +1,5 @@
 import graphene
+import swapper
 from django import forms
 from django.apps import apps
 from django.contrib.gis.geos import GEOSGeometry
@@ -9,9 +10,9 @@ from graphql.error import GraphQLError
 
 from baseapp_core.graphql import RelayMutation, get_obj_from_relay_id, login_required
 
-from ..models import GeoJSONFeature
 from .object_types import GeoJSONFeatureObjectType
 
+GeoJSONFeature = swapper.load_model("baseapp_maps", "GeoJSONFeature")
 app_label = GeoJSONFeature._meta.app_label
 
 

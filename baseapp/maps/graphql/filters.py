@@ -1,7 +1,8 @@
 import django_filters
+import swapper
 from django.contrib.gis.geos import Polygon
 
-from ..models import GeoJSONFeature
+GeoJSONFeature = swapper.load_model("baseapp_maps", "GeoJSONFeature")
 
 
 class GeoJSONFeatureFilter(django_filters.FilterSet):
