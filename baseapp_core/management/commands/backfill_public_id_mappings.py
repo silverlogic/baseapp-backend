@@ -1,14 +1,8 @@
 from __future__ import annotations
 
-import itertools
-import uuid
-
-from django.apps import apps as django_apps
 from django.core.management.base import BaseCommand
-from django.contrib.contenttypes.models import ContentType
-from django.db import models, transaction
 
-from baseapp_core.hashids.models import PublicIdMapping, PublicIdMixin
+from baseapp_core.hashids.backfill import backfill_all_models, backfill_single_instance
 
 
 class Command(BaseCommand):
@@ -45,196 +39,59 @@ class Command(BaseCommand):
         dry_run: bool = options.get("dry_run", False)
         instance_spec: str | None = options.get("instance")
 
-        # If an instance is specified, handle it directly and exit
+        # Logger function that writes to stdout with appropriate styling
+        def logger(message: str) -> None:
+            if message.startswith("[DRY RUN]"):
+                self.stdout.write(self.style.NOTICE(message))
+            elif message.startswith("Skipping") or message.startswith("Skipped"):
+                self.stdout.write(self.style.WARNING(message))
+            elif message.startswith("Created") or message.startswith("Done"):
+                self.stdout.write(self.style.SUCCESS(message))
+            elif "error" in message.lower() or "fail" in message.lower():
+                self.stdout.write(self.style.ERROR(message))
+            else:
+                self.stdout.write(message)
+
+        # Handle single instance backfill
         if instance_spec:
             try:
                 model_path, pk_str = instance_spec.split(":", 1)
                 app_label, model_name = model_path.split(".", 1)
-                model = django_apps.get_model(app_label, model_name)
-            except Exception as exc:  # pragma: no cover - input parsing
+            except Exception as exc:
                 self.stdout.write(
                     self.style.ERROR(
-                        f"Invalid --instance format: {instance_spec}. Use app_label.Model:pk (error: {exc})"
+                        f"Invalid --instance format: {instance_spec}. "
+                        f"Use app_label.Model:pk (error: {exc})"
                     )
                 )
                 return
 
-            # Parse pk according to the model's primary key field type
-            pk_field = model._meta.pk
-            try:
-                if isinstance(pk_field, (models.AutoField, models.BigAutoField)):
-                    pk = int(pk_str)
-                else:
-                    # For other field types, use to_python to convert
-                    pk = pk_field.to_python(pk_str)
-            except (ValueError, TypeError) as exc:
-                self.stdout.write(
-                    self.style.ERROR(
-                        f"Invalid pk value '{pk_str}' for {app_label}.{model_name} (expected {pk_field.__class__.__name__}): {exc}"
-                    )
-                )
-                return
-
-            if not issubclass(model, PublicIdMixin):
-                self.stdout.write(
-                    self.style.WARNING(
-                        f"Model {app_label}.{model_name} does not inherit from PublicIdMixin. Skipping."
-                    )
-                )
-                return
-
-            pk_field = model._meta.pk
-            if not isinstance(pk_field, (models.AutoField, models.BigAutoField)):
-                self.stdout.write(
-                    self.style.WARNING(
-                        f"Skipping {app_label}.{model_name}:{pk} - primary key is not AutoField/BigAutoField ({pk_field})"
-                    )
-                )
-                return
-
-            ct = ContentType.objects.get_for_model(model)
-
-            # Check if the instance actually exists in the database
-            if not model.objects.filter(pk=pk).exists():
-                self.stdout.write(
-                    self.style.ERROR(
-                        f"Instance {app_label}.{model_name}:{pk} does not exist in database. Cannot create mapping."
-                    )
-                )
-                return
-
-            exists = PublicIdMapping.objects.filter(content_type=ct, object_id=pk).exists()
-            if exists:
-                self.stdout.write(
-                    self.style.NOTICE(
-                        f"PublicIdMapping already exists for {app_label}.{model_name}:{pk}"
-                    )
-                )
-                return
-
-            if dry_run:
-                self.stdout.write(
-                    self.style.NOTICE(
-                        f"[DRY RUN] Would create mapping for {app_label}.{model_name}:{pk}"
-                    )
-                )
-                return
-
-            try:
-                m = PublicIdMapping.objects.create(
-                    public_id=uuid.uuid4(), content_type=ct, object_id=pk
-                )
-                self.stdout.write(
-                    self.style.SUCCESS(
-                        f"Created mapping {m.public_id} for {app_label}.{model_name}:{pk}"
-                    )
-                )
-            except Exception as exc:  # pragma: no cover - runtime DB errors
-                self.stdout.write(
-                    self.style.ERROR(
-                        f"Failed to create mapping for {app_label}.{model_name}:{pk}: {exc}"
-                    )
-                )
-            return
-
-        # Find all concrete models that inherit from PublicIdMixin
-        all_models = django_apps.get_models()
-        target_models = []
-        for m in all_models:
-            try:
-                if m._meta.abstract:
-                    continue
-                if apps_filter and m._meta.app_label not in apps_filter:
-                    continue
-                if issubclass(m, PublicIdMixin):
-                    target_models.append(m)
-            except Exception:
-                # safety: some models may error on import; skip them
-                continue
-
-        if not target_models:
-            self.stdout.write(self.style.NOTICE("No models found that inherit from PublicIdMixin."))
-            return
-
-        total_created = 0
-        for model in target_models:
-            pk_field = model._meta.pk
-            # Only sensible for integer PKs (auto increment).
-            if not isinstance(pk_field, (models.AutoField, models.BigAutoField)):
-                self.stdout.write(
-                    self.style.WARNING(
-                        f"Skipping {model._meta.app_label}.{model._meta.model_name}: primary key is not AutoField/BigAutoField ({pk_field})"
-                    )
-                )
-                continue
-
-            ct = ContentType.objects.get_for_model(model)
-            qs = model.objects.order_by(pk_field.name).values_list(pk_field.name, flat=True)
-
-            created_for_model = 0
-            batch_iter = iter(qs)
-            while True:
-                batch = list(itertools.islice(batch_iter, batch_size))
-                if not batch:
-                    break
-
-                # find existing mappings for this batch
-                existing_ids = set(
-                    PublicIdMapping.objects.filter(
-                        content_type=ct, object_id__in=batch
-                    ).values_list("object_id", flat=True)
-                )
-                missing = [obj_id for obj_id in batch if obj_id not in existing_ids]
-
-                if missing:
-                    # Verify that the instances still exist before creating mappings
-                    # (they could have been deleted between the values_list query and now)
-                    verified_ids = set(
-                        model.objects.filter(pk__in=missing).values_list(pk_field.name, flat=True)
-                    )
-                    still_missing = [obj_id for obj_id in missing if obj_id in verified_ids]
-
-                    if not still_missing:
-                        self.stdout.write(
-                            f"Skipped batch for {model._meta.app_label}.{model._meta.model_name} — all {len(missing)} IDs no longer exist"
-                        )
-                        continue
-
-                    to_create = [
-                        PublicIdMapping(public_id=uuid.uuid4(), content_type=ct, object_id=obj_id)
-                        for obj_id in still_missing
-                    ]
-
-                    if dry_run:
-                        self.stdout.write(
-                            self.style.NOTICE(
-                                f"[DRY RUN] Would create {len(to_create)} mappings for {model._meta.app_label}.{model._meta.model_name} (batch)"
-                            )
-                        )
-                    else:
-                        try:
-                            with transaction.atomic():
-                                PublicIdMapping.objects.bulk_create(
-                                    to_create, batch_size=batch_size, ignore_conflicts=True
-                                )
-                            created_for_model += len(to_create)
-                        except Exception as exc:  # pragma: no cover - runtime DB errors
-                            self.stdout.write(
-                                self.style.WARNING(
-                                    f"Partial failure creating batch for {model._meta.app_label}.{model._meta.model_name}: {exc}"
-                                )
-                            )
-
-                # progress print
-                self.stdout.write(
-                    f"Processed batch of {len(batch)} for {model._meta.app_label}.{model._meta.model_name} — missing {len(missing)}"
-                )
-
-            total_created += created_for_model
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"Created {created_for_model} PublicIdMapping rows for {model._meta.app_label}.{model._meta.model_name}"
-                )
+            success = backfill_single_instance(
+                app_label=app_label,
+                model_name=model_name,
+                pk=pk_str,
+                dry_run=dry_run,
+                logger=logger,
             )
 
-        self.stdout.write(self.style.SUCCESS(f"Done — total mappings created: {total_created}"))
+            if not success and not dry_run:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"No mapping was created for {app_label}.{model_name}:{pk_str}"
+                    )
+                )
+            return
+
+        # Handle bulk backfill
+        total_created = backfill_all_models(
+            apps=None,
+            batch_size=batch_size,
+            dry_run=dry_run,
+            logger=logger,
+            apps_filter=apps_filter,
+        )
+
+        if dry_run:
+            self.stdout.write(
+                self.style.NOTICE(f"[DRY RUN] Would have created {total_created} mappings total")
+            )
