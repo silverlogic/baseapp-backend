@@ -25,7 +25,7 @@ BaseApp uses a **plugin-based architecture** powered by [Stevedore](https://docs
 - **Database Decoupling**: Packages use `DocumentId` as a communication layer
 - **Three Communication Patterns**: Hooks, Services, and GraphQL Interfaces
 
-### Architecture Flow ([Marmaid Playground](https://mermaidchart.com/play?utm_source=mermaid_live_editor&utm_medium=share#pako:eNp1lFGPojAQx78K6b26BlAUeLjEdUn0wU0D93R4MT07xZ7QklLMerrf_Qqshj2XeWrnN_-ZaQd6QXtJAYUoU6Q8WD-et8IyVtW_O8cWvfwhIpNWoonSdblFXUBji2W6KMulFIxnYwWEnn91EATtFg_JnkkFRmMtpYJ-KhynOK8zLmLIeKXVLVNjqzhdSXncEEEyUD2QxGkC6sT38IVqHadroUEx8oCH20s0nID-11u0SaM3DaLiUjw2sdoMdPdqdK-kADogHu6iuwkLk_3RxPdbSXBagZnCuOwfFeO0bCWf3RFOI2FObWHJha6-LrtYWk9P36-5JHTHlCx2XFSa5DnQHSnL6mom0wXiuA2sKzDOaNM5o03rpLzayxOohuAPgjsCjAugFhdX03yHkg6pdiitCON-Sx-VSJaZEKKbeqt4ECXDaB1_umB9zqEJYzzPw2_gMI-xPlrdkc88CPoouSHG2BScPlrf0QQ85qGR-ZM4RaFWNYxQAaogzRZdGtEW6QMUZqShWVKijs1w342mJOKnlMVNpmSdHVDISF6ZXV1Sc6AXTswHUty9ykwS1FLWQqNwMvXaJCi8oDcUuq47duYz255N3Jnvu74_QmcUOu5s7E8DN_DtYG47XhC8j9Dftq49nk8Cx53OZ-7UDmbGRggo11JtuvehfSbe_wHaT0g_))
+### Architecture Flow
 
 ```mermaid
 graph TB
@@ -62,10 +62,10 @@ graph TB
     PR -->|aggregates| SR
     PR -->|aggregates| IR
     
-    style PR fill:#e1f5ff
-    style HR fill:#e8f5e9
-    style SR fill:#fff4e1
-    style IR fill:#f3e5f5
+    style PR fill:#2196F3,stroke:#1565C0,stroke-width:2px,color:#fff
+    style HR fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+    style SR fill:#FF9800,stroke:#E65100,stroke-width:2px,color:#fff
+    style IR fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px,color:#fff
 ```
 
 ---
@@ -204,7 +204,7 @@ INSTALLED_APPS = [
 ]
 ```
 
-### Plugin Discovery Flow ([Marmaid Playground](https://mermaidchart.com/play?utm_source=mermaid_live_editor&utm_medium=share#pako:eNp1k29r2zAQxr-K0Iu1g8SNndRxBCuUdi8LpYO-GIagWRdHqy2pJ7kkC_nuO_9J1i6pX9gn6Xd3z3NGO15YBVxwD68NmALutSxR1rlh9DiJQRfaSRPYPbwx6dsPVNYBnhJP8NoSSJU0Qg0m-Chswin4qF0LOvpo44OsqlPmB4Smo3wbRG57BgmkRVmEFjsuzij_LU1pO_F9dOvcnTUrXZ7zUGofcNvSj1VTanPY6dn-TUMY39yQX8FulWJjYNHVL-lBOrfc2gadLF5kCe9h8izeO2Zj_GRSRBLf-RekR6r_Z9AdtcjBshhkA3pGtUi9s5pqDv07053e3olglZVquUJbLwc1oJak3V9-7VMO5Mcm3zcBjNfWPEhD7vDSyBo8eYVvF4P7yHUz8xdDoWP2h_ZPZACNZ0r7wr4BgmJD3kn7f0nPstJKBvDsCytksaZgSOIjXqJWXARsYMRrwFq2S75ry-U8rGnEORcUKokvOc_NnnLof_-0tj6koW3KNRcrWXlaNa7tNVyG4y6CUYB3tjGBiyTuanCx4xtaJVkUz9PJJM3mSZpOZtmIb7mI4zTKZovpLEkW8fT6eprtR_xP13YSzaeLOJnN53SeZGk8HXFQOlh86K9kdzP3fwF3DDvJ))
+### Plugin Discovery Flow
 
 ```mermaid
 sequenceDiagram
@@ -266,7 +266,7 @@ These settings are merged from all plugins (later plugins override earlier ones)
 | `required_packages` | Packages that must be in `INSTALLED_APPS` |
 | `optional_packages` | Packages that may be in `INSTALLED_APPS` |
 
-### Settings Aggregation Flow ([Marmaid Playground](https://mermaidchart.com/play?utm_source=mermaid_live_editor&utm_medium=share#pako:eNqFk8tu2zAQRX9FYHeFYph6W4sCRgVkIwGOgm4qFQZrjmg11KMUhdZ1_O-hXikdNDU34tw7M4cYimd0aCigEDFB2qMRp3ltqNX13ychRzves7LucjQ5w9rhbFIN_E1TrUW1dNVeVHtWoabT5h1UCqzspDhdEdOMgdwTzvcfjQrksaHdzXaPIGVZs87YMiaAEVk2td403maxIum2dvAoyaLyII0EhDoUu0mLfpCaNcYC1UHRY9bN8qo9aYwvaZz1gr9R7x-yselP_ld_w91h4-7u0_OOHJ4Ig4X5rOY0-9YN3_6_P2elY9YyefUXSPUFuidtq5Lj7T_TqpJSDr-IgHdT6DirfffKjRKdG2-HbDW2KYySq3B21eyu4vuHq4uRJw4Dtig5Dz8ALtyi0C1VNVtB4cJGtxRvsoqicAAjUz2OkqJQih5MVIGoyBCi81CUI3mECnIUqi0l4mm4-IuqaUn9tWmqpUw0PTuisCC8U1HfUiIhKom66OpVFeqWQXxu-lqi0HLHHig8o98qsoIV9r312gt8y_PWTmCiEwox9laBs7Edy9pg23Xt4GKiPyN2vfLtDbYc31e-FXjYNhHQUjYimV78-PAvL5uINEA))
+### Settings Aggregation Flow
 
 ```mermaid
 graph LR
@@ -304,9 +304,9 @@ graph LR
     LA --> URL
     LA --> GQ
     
-    style PR fill:#e1f5ff
-    style LA fill:#e8f5e9
-    style DM fill:#fff4e1
+    style PR fill:#2196F3,stroke:#1565C0,stroke-width:2px,color:#fff
+    style LA fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+    style DM fill:#FF9800,stroke:#E65100,stroke-width:2px,color:#fff
 ```
 
 ---
@@ -321,7 +321,7 @@ Traditional Django apps often create direct foreign key relationships between mo
 
 `DocumentId` is a central table that provides a unique identifier for any object in the system. Instead of packages creating direct relationships, they create **auxiliary tables** that reference `DocumentId`.
 
-### How It Works ([Marmaid Playground](https://mermaidchart.com/play?utm_source=mermaid_live_editor&utm_medium=share#pako:eNqFU11vmzAU_SuWn2nENw1vVdJOVZYGrexhUyRk4Ja6AzsyN1NZkv8-DAQlabf4AeHjc-4999p3RzOZAw0pqDlnhWLVWpB2RXdf7sl-f3Oz35P5avZ9ef8UP85JSNZUCiAbUCRiBazpQP-2enj8elWh5AsvR9Fs9RS3pPhH1Avl7lKYSYEgMMFmAwnPj8L-e8Id1LPVUgOdFJkqAE9EF_TW5UB_ju_i505jhRZJGxItzhN1vdj1_3qlvOACCc81c0RrVFwUBDm2FXbo4R9ur4bS0EXp5GHxQSXTN8i6EseTnCEgr4CUrMaEZch_c2wShp84Onbrqp0BHTt65gXhHUkq82bMcBa9b-7uP8GihXEW8K2Woq2-qtrq6ySTW4EnailLwjU8nINgaQlDBw7UoIXiOQ1RbcGgFaiK6S3tDLSP4hWq9vnpu86Z-qWvWWs2TPyUsjrKlNwWrzR8YWXd7rYb3dRhOEZUgchBzbQ7GlpOF4OGO_pOQ9sJJp7nuYHl2-ataweeQZuW5JqTIPBdK3Cmvml6rnMw6J8urTnxb13P8gM7mNqu4_pTg0LOUaplP5zdjB7-Al9xFWM))
+### How It Works
 
 ```mermaid
 erDiagram
@@ -445,7 +445,7 @@ Hooks enable **event-driven communication** between packages. When an event occu
 - You want to decouple event producers from consumers
 - Replacing Django signals for inter-package communication
 
-### Architecture ([Marmaid Playground](https://mermaidchart.com/play?utm_source=mermaid_live_editor&utm_medium=share#pako:eNqFk19vmzAUxb9KdPdKERD-JDzsYckk5yFsIn0aRJWLLwkqxpEx1bok330GNx3pGpUn27_jc8819hEKwRBi2El62E_uv-XNRH9t92gWcvj-jI2a_JSCdQXKHIyg_5arbCmKjmu-YnZLn3FrIDbMDP4zI0I8rWlDd9dOZJ3tNXngBtnIK_WplwlGaMNqlO3YbkGyheB9rvbCt_9oSrIUaaEq0XyEE5IlQlVlVdCPJO_yLFeTu7uvJ_Z6Dg-FRKqQnXRLRkDWg6AZLLE96XA3QHoLJGRccUEGbAr1fptLsxtFVfsaM32nSjdvTY9liZG1uqu-0I_7q963VyevXmrsw5VVXcdfcFYGOB8jHcygskAfizFKb6PkGoGlb2LFIFayQws4Sk77KRz7TTmoPXLMIdZDRuVT_9fPes-BNr-E4JdtUnS7PcQlrVs96w5MH8Kyovrm8LdVqXtGuRBdoyD23MED4iP81rNpZAdB4Edu6Dkz34sCC14gdn3HjqLQd6PpPHScwJ-eLfgzlHXscOYHbhh50dzzp344twBZpYRcm-c1vLLzX7mTEEs))
+### Architecture
 
 ```mermaid
 graph TB
@@ -472,10 +472,10 @@ graph TB
     RH -->|creates| RS[ReactionStats]
     NH -->|sends| NOT[Notification]
     
-    style HM fill:#e8f5e9
-    style CH fill:#fce4ec
-    style RH fill:#fce4ec
-    style NH fill:#fce4ec
+    style HM fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+    style CH fill:#E91E63,stroke:#AD1457,stroke-width:2px,color:#fff
+    style RH fill:#E91E63,stroke:#AD1457,stroke-width:2px,color:#fff
+    style NH fill:#E91E63,stroke:#AD1457,stroke-width:2px,color:#fff
 ```
 
 ### Step 1: Emit an Event
@@ -547,7 +547,7 @@ Services allow packages to **provide data or functionality** that other packages
 - Package provides functionality others need
 - You want to avoid direct imports between packages
 
-### Architecture ([Marmaid Playground](https://mermaidchart.com/play?utm_source=mermaid_live_editor&utm_medium=share#pako:eNqNkk9TgzAQxb8Ks16xAxqgzcELHnXKND3ZOk6EhaKF1PxxrLXf3QVapx09mFPyXt4vyWZ3kKsCgUOl5Wbl3c2WrUfDuOdBWEKqWuMa1F4m81dZ4RKGLd3IpouMpOnzC-Z2vt3g4-BhWwyTXzSB-r3OcYZVbazensLEbGEG90kf7FGF9ukg_hftZVq91wXqU3YqFqlqGmytSZVrrfgn81Za6QnldI7nuPmRJ6y05m9ONvUuL2--NL45NNZ80QsHQ8wOhnW6JT0Vg56KXqftusZenx-N-WnCK-hav2LnZjY9e5LdrrE7t6zXa35RliXD8NQixsHKkWEOPjVEXQC32qEP9P2N7Jaw60JLsCtsqCKcpoXUr11t9pTZyPZBqeYY08pVK-ClXBtauQ3dDG9rScVtflRNRUPdfwrw66BnAN_BB_AoGbFJMmZjFsdJkkwS5sMWeBgkozBkQXDNojGL4r0Pn_2hwWgSkRJGcRQFQRTGVz5gUVul74ce71t9_w0LHuoo))
+### Architecture
 
 ```mermaid
 graph LR
@@ -573,8 +573,8 @@ graph LR
     CST -->|returns data| CS
     CS -->|returns data| PO
     
-    style SR fill:#fff4e1
-    style CS fill:#fce4ec
+    style SR fill:#FF9800,stroke:#E65100,stroke-width:2px,color:#fff
+    style CS fill:#E91E63,stroke:#AD1457,stroke-width:2px,color:#fff
 ```
 
 ### Step 1: Create a Service
@@ -662,7 +662,7 @@ GraphQL Interfaces allow packages to **extend the GraphQL schema** by providing 
 - You want to extend types without modifying their definitions
 - Multiple packages can contribute to the same type
 
-### Architecture ([Marmaid Playground](https://mermaidchart.com/play?utm_source=mermaid_live_editor&utm_medium=share#pako:eNqFUsFuozAQ_RU0vdIISkgwhz2UShHSrsKmPTWsKhcPhBZs1pjVpkn-vUOgbSK1qmXJ9rx5zzPP3kGmBEIIhebNxrq7TqVFo-0eh0AKsTSoc56hlWj1rxSoUxiS-hHF60jVNUrTvif-GWCUYth8LbnComyN3p4qxqt1-YY_6DFhUqB5eA-3395wt23QipRsu_q83mS5TniBy8cnzEyf9a3Uol9__7Rusw3W_FRrcbteoETNDYoR_lwtiq3Lyx_7oRnUKPbU5QAlyxH622Fr2g8gXo2A6bSkeLI8I5R1U-HR9j3VcVa62VbY0_OyqsKL3EM_908hqmaEMpxiBja9fSkgNLpDG8ivmvdH2PWkFAz1hSmEtBVcP_cGHIjTcHmvVP1G06orNhDmvGrp1DWCTLkpOZn4kUKuoI5UJw2Erjc9akC4g_8QXnnBhM2nQeAwz_PdwLVhS1EKsvmVw5yAecyZzfyDDS_HW51J4DKazPfms2A2d5kNKEqj9K_hPx-_9eEVNBzjzA))
+### Architecture
 
 ```mermaid
 graph TB
@@ -687,8 +687,8 @@ graph TB
     IR -->|returns| PO
     PO -->|implements| GS
     
-    style IR fill:#f3e5f5
-    style CI fill:#fce4ec
+    style IR fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px,color:#fff
+    style CI fill:#E91E63,stroke:#AD1457,stroke-width:2px,color:#fff
 ```
 
 ### Step 1: Create an Interface
@@ -1014,10 +1014,10 @@ graph TB
     PR --> SR
     PR --> IR
     
-    style PR fill:#e1f5ff
-    style HR fill:#e8f5e9
-    style SR fill:#fff4e1
-    style IR fill:#f3e5f5
+    style PR fill:#2196F3,stroke:#1565C0,stroke-width:2px,color:#fff
+    style HR fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+    style SR fill:#FF9800,stroke:#E65100,stroke-width:2px,color:#fff
+    style IR fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px,color:#fff
 ```
 
 ---
