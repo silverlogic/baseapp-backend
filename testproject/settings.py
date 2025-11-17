@@ -1,6 +1,7 @@
 from celery.schedules import crontab
 from django.utils.translation import gettext_lazy as _
 
+from baseapp_core.plugins import plugin_registry
 from baseapp_core.tests.settings import *  # noqa
 from baseapp_wagtail.settings import *  # noqa
 from baseapp_wagtail.settings import (
@@ -8,6 +9,11 @@ from baseapp_wagtail.settings import (
     WAGTAIL_INSTALLED_INTERNAL_APPS,
     WAGTAIL_MIDDLEWARE,
 )
+
+plugin_settings = plugin_registry.get_all_django_settings()
+for key, value in plugin_settings.items():
+    if key not in globals():
+        globals()[key] = value
 
 # Application definition
 INSTALLED_APPS += [
@@ -42,16 +48,17 @@ INSTALLED_APPS += [
     "baseapp_social_auth.cache",
     "testproject.users",
     "baseapp.content_feed",
+    "baseapp_pdf",
+    "baseapp_api_key",
+    *WAGTAIL_INSTALLED_APPS,
+    *WAGTAIL_INSTALLED_INTERNAL_APPS,
+    "baseapp_wagtail.tests",
+    *plugin_registry.get_all_installed_apps(),
     "testproject.testapp",
     "testproject.comments",
     "testproject.profiles",
     "testproject.base",
     "testproject.e2e",
-    *WAGTAIL_INSTALLED_INTERNAL_APPS,
-    *WAGTAIL_INSTALLED_APPS,
-    "baseapp_wagtail.tests",
-    "baseapp_pdf",
-    "baseapp_api_key",
 ]
 
 MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")
@@ -59,10 +66,12 @@ MIDDLEWARE += [
     "baseapp_profiles.middleware.CurrentProfileMiddleware",
     "baseapp_core.middleware.HistoryMiddleware",
     *WAGTAIL_MIDDLEWARE,
+    *plugin_registry.get_all_middleware(),
 ]
 
 GRAPHENE["MIDDLEWARE"] = (
     "baseapp_profiles.graphql.middleware.CurrentProfileMiddleware",
+    *plugin_registry.get_all_graphql_middleware(),
 ) + GRAPHENE["MIDDLEWARE"]
 
 ROOT_URLCONF = "testproject.urls"
@@ -117,6 +126,7 @@ AUTHENTICATION_BACKENDS = [
     "baseapp_pages.permissions.PagesPermissionsBackend",
     "baseapp_organizations.permissions.OrganizationsPermissionsBackend",
     "baseapp_chats.permissions.ChatsPermissionsBackend",
+    *plugin_registry.get_all_auth_backends(),
 ]
 
 ADMIN_TIME_ZONE = "UTC"
@@ -163,6 +173,7 @@ CONSTANCE_CONFIG = OrderedDict(
             (False, "Whether to send anonymize/delete user notification emails to superusers"),
         ),
     ]
+    + plugin_registry.get_all_constance_config(),
 )
 
 # Stripe

@@ -11,7 +11,6 @@ from django_quill.fields import QuillField
 from model_utils.models import TimeStampedModel
 from translated_fields import TranslatedField
 
-from baseapp_comments.models import CommentableModel
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import random_name_in
 
@@ -105,7 +104,7 @@ class PageMixin(models.Model):
         ).first()
 
 
-class AbstractPage(PageMixin, TimeStampedModel, RelayModel, CommentableModel):
+class AbstractPage(PageMixin, TimeStampedModel, RelayModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="pages",

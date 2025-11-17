@@ -5,6 +5,7 @@ from django.db import models
 from django.utils.deconstruct import deconstructible
 from django.utils.translation import gettext_lazy as _
 
+from baseapp_core.documents.models import *  # noqa
 from baseapp_core.hashids.models import *  # noqa
 
 

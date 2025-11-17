@@ -9,11 +9,9 @@ from baseapp_blocks.graphql.mutations import BlocksMutations
 from baseapp_chats.graphql.mutations import ChatsMutations
 from baseapp_chats.graphql.queries import ChatsQueries
 from baseapp_chats.graphql.subscriptions import ChatsSubscriptions
-from baseapp_comments.graphql.mutations import CommentsMutations
-from baseapp_comments.graphql.queries import CommentsQueries
-from baseapp_comments.graphql.subscriptions import CommentsSubscriptions
 from baseapp_core.graphql import DeleteNode
 from baseapp_core.graphql import Node as RelayNode
+from baseapp_core.plugins import plugin_registry
 from baseapp_follows.graphql.mutations import FollowsMutations
 from baseapp_notifications.graphql.mutations import NotificationsMutations
 from baseapp_notifications.graphql.subscriptions import NotificationsSubscription
@@ -31,12 +29,15 @@ from baseapp_reports.graphql.mutations import ReportsMutations
 from baseapp_reports.graphql.queries import ReportsQueries
 from testproject.users.graphql.queries import UsersQueries
 
+queries = plugin_registry.get_all_graphql_queries()
+mutations = plugin_registry.get_all_graphql_mutations()
+subscriptions = plugin_registry.get_all_graphql_subscriptions()
+
 
 class Query(
     graphene.ObjectType,
     UsersQueries,
     ProfilesQueries,
-    CommentsQueries,
     ActivityLogQueries,
     ReactionsQueries,
     RatingsQueries,
@@ -45,6 +46,7 @@ class Query(
     ChatsQueries,
     ContentFeedQueries,
     ReportsQueries,
+    *queries,
 ):
     node = RelayNodeField(RelayNode)
     debug = graphene.Field(DjangoDebug, name="_debug")
@@ -53,7 +55,6 @@ class Query(
 class Mutation(
     graphene.ObjectType,
     ProfilesMutations,
-    CommentsMutations,
     ReactionsMutations,
     ReportsMutations,
     RatingsMutations,
@@ -64,12 +65,16 @@ class Mutation(
     OrganizationsMutations,
     ChatsMutations,
     ContentFeedMutations,
+    *mutations,
 ):
     delete_node = DeleteNode.Field()
 
 
 class Subscription(
-    graphene.ObjectType, NotificationsSubscription, CommentsSubscriptions, ChatsSubscriptions
+    graphene.ObjectType,
+    NotificationsSubscription,
+    ChatsSubscriptions,
+    *subscriptions,
 ):
     pass
 

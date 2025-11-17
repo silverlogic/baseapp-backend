@@ -6,3 +6,7 @@ class PackageConfig(AppConfig):
     label = "baseapp_pages"
     verbose_name = "BaseApp Pages"
     default_auto_field = "django.db.models.AutoField"
+
+    def ready(self):
+        # TODO: If signals.py is deleted, remove this.
+        import baseapp_pages.signals  # noqa

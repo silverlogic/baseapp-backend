@@ -12,6 +12,7 @@ from baseapp_auth.rest_framework.routers.account import (
     users_router_nested,
 )
 from baseapp_core.graphql import GraphQLView
+from baseapp_core.plugins import plugin_registry
 from baseapp_core.rest_framework.routers import DefaultRouter
 from baseapp_e2e.rest_framework.views import E2EViewSet
 from baseapp_payments.router import payments_router
@@ -41,4 +42,5 @@ urlpatterns = [
     path("v1/", include((v1_urlpatterns, "v1"), namespace="v1")),
     path("", include(baseapp_wagtail_urls)),
     path("", include(router.urls)),
+    *plugin_registry.get_all_urlpatterns(),
 ]

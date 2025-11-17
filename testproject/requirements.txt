@@ -32,3 +32,4 @@ django-push-notifications[WP,apns-async,FCM] @ git+https://github.com/jazzband/d
 
 
 -e ./[auth,referrals,graphql,pages,payments,notifications,urlshortening,messagetemplates,wagtail,socialauth,pdf]
+-e ./baseapp_comments

@@ -7,6 +7,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
+from baseapp_core.documents.models import DocumentId
 from baseapp_core.graphql import RelayModel
 from baseapp_reactions.models import ReactableModel
 from baseapp_reports.models import ReportableModel
@@ -170,3 +171,21 @@ class CommentableModel(AbstractCommentableModel):
 
     class Meta:
         abstract = True
+
+
+class CommentStats(TimeStampedModel):
+    target = models.OneToOneField(
+        DocumentId,
+        on_delete=models.CASCADE,
+        related_name="comment_stats",
+        primary_key=True,
+        db_index=True,
+    )
+    comments_count = models.JSONField(default=default_comments_count, editable=False)
+    is_comments_enabled = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "baseapp_comments_commentstats"
+
+    def __str__(self):
+        return f"CommentStats for {self.target}"

@@ -7,3 +7,12 @@ class PackageConfig(AppConfig):
     label = "baseapp_core"
     verbose_name = "BaseApp Core"
     default_auto_field = "django.db.models.BigAutoField"
+
+    def ready(self):
+        from .graphql.interfaces import interface_registry
+        from .plugins.registry import plugin_registry
+        from .services.registry import service_registry
+
+        plugin_registry.load_from_installed_apps()
+        service_registry.load_from_installed_apps()
+        interface_registry.load_from_installed_apps()
