@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from django.core.management.base import BaseCommand
 
-from baseapp_core.hashids.backfill import backfill_all_models, backfill_single_instance
+from baseapp_core.hashids.strategies import (
+    backfill_all_models,
+    backfill_single_instance,
+)
 
 
 class Command(BaseCommand):
@@ -39,19 +42,6 @@ class Command(BaseCommand):
         dry_run: bool = options.get("dry_run", False)
         instance_spec: str | None = options.get("instance")
 
-        # Logger function that writes to stdout with appropriate styling
-        def logger(message: str) -> None:
-            if message.startswith("[DRY RUN]"):
-                self.stdout.write(self.style.NOTICE(message))
-            elif message.startswith("Skipping") or message.startswith("Skipped"):
-                self.stdout.write(self.style.WARNING(message))
-            elif message.startswith("Created") or message.startswith("Done"):
-                self.stdout.write(self.style.SUCCESS(message))
-            elif "error" in message.lower() or "fail" in message.lower():
-                self.stdout.write(self.style.ERROR(message))
-            else:
-                self.stdout.write(message)
-
         # Handle single instance backfill
         if instance_spec:
             try:
@@ -71,7 +61,6 @@ class Command(BaseCommand):
                 model_name=model_name,
                 pk=pk_str,
                 dry_run=dry_run,
-                logger=logger,
             )
 
             if not success and not dry_run:
@@ -87,11 +76,14 @@ class Command(BaseCommand):
             apps=None,
             batch_size=batch_size,
             dry_run=dry_run,
-            logger=logger,
             apps_filter=apps_filter,
         )
 
         if dry_run:
             self.stdout.write(
                 self.style.NOTICE(f"[DRY RUN] Would have created {total_created} mappings total")
+            )
+        else:
+            self.stdout.write(
+                self.style.SUCCESS(f"Backfill complete. Total mappings created: {total_created}")
             )
