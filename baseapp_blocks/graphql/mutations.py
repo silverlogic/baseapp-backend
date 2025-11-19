@@ -40,6 +40,12 @@ class BlockToggle(RelayMutation):
                 extensions={"code": "permission_required"},
             )
 
+        if actor.id == target.id:
+            raise GraphQLError(
+                str(_("You cannot block yourself")),
+                extensions={"code": "invalid_action"},
+            )
+
         block, created = Block.objects.get_or_create(
             actor=actor,
             target=target,
