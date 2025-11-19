@@ -156,6 +156,10 @@ def drf_get_pk_from_public_id_using_strategy(value: Any, expected_model: Optiona
     return strategy.drf_resolver.resolve_public_id_to_pk(value, expected_model=expected_model)
 
 
+def should_use_public_id_in_serializer(model_cls: type) -> bool:
+    return _is_model_public_id_compatible(model_cls) and _is_public_id_logic_enabled()
+
+
 def get_models_with_public_id_mixin(apps: "Apps | None" = None) -> list[type[models.Model]]:
     """Get all concrete models that inherit from PublicIdMixin and have integer PKs."""
     backfiller = PublicIdBackfiller(apps=apps)

@@ -4,10 +4,7 @@ from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer as OrigModelSerializer
 
-from baseapp_core.hashids.strategies import (
-    _is_model_public_id_compatible,
-    _is_public_id_logic_enabled,
-)
+from baseapp_core.hashids.strategies import should_use_public_id_in_serializer
 
 from .fields import ThumbnailImageField
 
@@ -31,7 +28,7 @@ class ModelSerializer(OrigModelSerializer):
 
         # Use public_id for primary key fields if model is compatible and feature is enabled
         if model_field.name in ("id", "pk") or is_primary:
-            if _is_model_public_id_compatible(self.Meta.model) and _is_public_id_logic_enabled():
+            if should_use_public_id_in_serializer(self.Meta.model):
                 field_class = serializers.CharField
                 field_kwargs["source"] = "public_id"
                 field_kwargs["read_only"] = True
