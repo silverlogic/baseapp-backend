@@ -28,7 +28,7 @@ class NotificationsInterface(relay.Node):
     )
 
     def resolve_notifications_unread_count(self, info):
-        if self.is_authenticated:
+        if info.context.user.is_authenticated and info.context.user == self:
             return Notification.objects.filter(recipient=self, unread=True).count()
         return 0
 
