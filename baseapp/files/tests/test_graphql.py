@@ -163,14 +163,12 @@ def test_comment_files_interface_multiple_files(graphql_client):
     comment = CommentFactory()
     comment_content_type = ContentType.objects.get_for_model(comment)
 
-    files = [
+    for i in range(5):
         File.objects.create(
             parent_content_type=comment_content_type,
             parent_object_id=comment.pk,
             file_name=f"file_{i}.txt",
         )
-        for i in range(5)
-    ]
 
     response = graphql_client(COMMENT_FILES_QUERY, variables={"id": comment.relay_id})
     content = response.json()

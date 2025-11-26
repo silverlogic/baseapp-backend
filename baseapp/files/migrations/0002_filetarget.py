@@ -1,8 +1,9 @@
 # Generated migration for FileTarget model
 
-import baseapp.files.utils
-from django.db import migrations, models
 import django.db.models.deletion
+from django.db import migrations, models
+
+import baseapp.files.utils
 
 
 class Migration(migrations.Migration):
