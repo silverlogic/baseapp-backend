@@ -20,6 +20,12 @@ class FileAdmin(admin.ModelAdmin):
 
 @admin.register(FileTarget)
 class FileTargetAdmin(admin.ModelAdmin):
-    list_display = ("pk", "target_content_type", "target_object_id", "is_files_enabled", "files_count")
+    list_display = (
+        "pk",
+        "target_content_type",
+        "target_object_id",
+        "is_files_enabled",
+        "files_count",
+    )
     list_filter = ("is_files_enabled", "target_content_type")
     search_fields = ("target_object_id",)

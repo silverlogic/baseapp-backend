@@ -1,7 +1,7 @@
 # Data migration to populate FileTarget from existing fileable models
 
-from django.db import migrations
 from django.contrib.contenttypes.models import ContentType
+from django.db import migrations
 
 
 def migrate_comment_data_to_filetarget(apps, schema_editor):
@@ -17,9 +17,13 @@ def migrate_comment_data_to_filetarget(apps, schema_editor):
                 target_content_type=comment_content_type,
                 target_object_id=comment.pk,
                 defaults={
-                    "files_count": comment.files_count if hasattr(comment, 'files_count') else {"total": 0},
-                    "is_files_enabled": comment.is_files_enabled if hasattr(comment, 'is_files_enabled') else True,
-                }
+                    "files_count": (
+                        comment.files_count if hasattr(comment, "files_count") else {"total": 0}
+                    ),
+                    "is_files_enabled": (
+                        comment.is_files_enabled if hasattr(comment, "is_files_enabled") else True
+                    ),
+                },
             )
     except Exception:
         pass
@@ -37,11 +41,11 @@ def reverse_migration(apps, schema_editor):
         for file_target in file_targets:
             try:
                 comment = Comment.objects.get(pk=file_target.target_object_id)
-                if hasattr(comment, 'files_count'):
+                if hasattr(comment, "files_count"):
                     comment.files_count = file_target.files_count
-                if hasattr(comment, 'is_files_enabled'):
+                if hasattr(comment, "is_files_enabled"):
                     comment.is_files_enabled = file_target.is_files_enabled
-                comment.save(update_fields=['files_count', 'is_files_enabled'])
+                comment.save(update_fields=["files_count", "is_files_enabled"])
             except Comment.DoesNotExist:
                 pass
     except Exception:
