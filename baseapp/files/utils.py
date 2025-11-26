@@ -8,19 +8,33 @@ def default_files_count():
     return {"total": 0}
 
 
+def get_or_create_file_target(target_obj):
+    """Get or create a FileTarget for the given object."""
+    from .models import FileTarget
+
+    content_type = ContentType.objects.get_for_model(target_obj, for_concrete_model=False)
+    file_target, created = FileTarget.objects.get_or_create(
+        target_content_type=content_type,
+        target_object_id=target_obj.pk,
+    )
+    return file_target
+
+
 def recalculate_files_count(parent):
     if not parent:
         return
 
+    file_target = get_or_create_file_target(parent)
+
     files_count_qs = parent.files.values("file_content_type").annotate(
         count=models.Count("file_content_type")
     )
-    parent.files_count = default_files_count()
+    file_target.files_count = default_files_count()
     for item in files_count_qs:
         count = item["count"]
-        parent.files_count[item["file_content_type"]] = count
-        parent.files_count["total"] += count
-    parent.save(update_fields=["files_count"])
+        file_target.files_count[item["file_content_type"]] = count
+        file_target.files_count["total"] += count
+    file_target.save(update_fields=["files_count"])
 
 
 def set_files_parent(parent, files: Iterable):
