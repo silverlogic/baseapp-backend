@@ -1,6 +1,6 @@
 import swapper
 from django.conf import settings
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -11,6 +11,37 @@ from baseapp_core.graphql import RelayModel
 from baseapp_core.models import random_name_in
 from baseapp_reactions.models import ReactableModel
 from baseapp_reports.models import ReportableModel
+
+from .utils import default_files_count
+
+
+class AbstractFileTarget(models.Model):
+    target_content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        db_index=True,
+    )
+    target_object_id = models.PositiveIntegerField(db_index=True)
+    target = GenericForeignKey("target_content_type", "target_object_id")
+
+    files_count = models.JSONField(default=default_files_count)
+    is_files_enabled = models.BooleanField(default=True, verbose_name=_("is files enabled"))
+
+    class Meta:
+        abstract = True
+        unique_together = [("target_content_type", "target_object_id")]
+        indexes = [
+            models.Index(fields=["target_content_type", "target_object_id"]),
+        ]
+
+    def __str__(self):
+        return f"FileTarget for {self.target_content_type} #{self.target_object_id}"
+
+
+class FileTarget(AbstractFileTarget):
+    class Meta(AbstractFileTarget.Meta):
+        abstract = False
+        swappable = swapper.swappable_setting("baseapp_files", "FileTarget")
 
 
 class AbstractFile(TimeStampedModel, CommentableModel, ReactableModel, ReportableModel, RelayModel):
