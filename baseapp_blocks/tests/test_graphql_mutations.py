@@ -149,6 +149,7 @@ def test_user_profile_cant_self_block(django_user_client, graphql_user_client):
 
     assert content["errors"][0]["message"] == "You cannot block yourself"
 
+
 def test_user_can_block_profile_from_same_user(django_user_client, graphql_user_client):
     profile1 = ProfileFactory(owner=django_user_client.user)
     profile2 = ProfileFactory(owner=django_user_client.user)
@@ -167,6 +168,7 @@ def test_user_can_block_profile_from_same_user(django_user_client, graphql_user_
     assert content["data"]["blockToggle"]["actor"]["blockingCount"] == 1
 
     assert content["data"]["blockToggle"]["target"]["blockersCount"] is None
+
 
 def test_user_can_unblock_profile_from_same_user(django_user_client, graphql_user_client):
     profile1 = ProfileFactory(owner=django_user_client.user)
