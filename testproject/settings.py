@@ -49,6 +49,7 @@ INSTALLED_APPS += [
     "testproject.testapp",
     "testproject.comments",
     "testproject.profiles",
+    "testproject.files",
     "testproject.base",
     "testproject.e2e",
     *WAGTAIL_INSTALLED_INTERNAL_APPS,
@@ -175,6 +176,10 @@ BASEAPP_COMMENTS_COMMENT_MODEL = "comments.Comment"
 
 # Profiles
 BASEAPP_PROFILES_PROFILE_MODEL = "profiles.Profile"
+
+# Files
+BASEAPP_FILES_FILE_MODEL = "files.File"
+BASEAPP_FILES_FILETARGET_MODEL = "files.FileTarget"
 
 # Notifications
 NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"

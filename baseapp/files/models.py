@@ -38,12 +38,6 @@ class AbstractFileTarget(models.Model):
         return f"FileTarget for {self.target_content_type} #{self.target_object_id}"
 
 
-class FileTarget(AbstractFileTarget):
-    class Meta(AbstractFileTarget.Meta):
-        abstract = False
-        swappable = swapper.swappable_setting("baseapp_files", "FileTarget")
-
-
 class AbstractFile(TimeStampedModel, CommentableModel, ReactableModel, ReportableModel, RelayModel):
     parent_content_type = models.ForeignKey(
         ContentType,
@@ -85,9 +79,3 @@ class AbstractFile(TimeStampedModel, CommentableModel, ReactableModel, Reportabl
         from .graphql.object_types import FileObjectType
 
         return FileObjectType
-
-
-class File(AbstractFile):
-    class Meta(AbstractFile.Meta):
-        abstract = False
-        swappable = swapper.swappable_setting("baseapp_files", "File")

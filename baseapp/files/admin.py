@@ -1,7 +1,9 @@
+import swapper
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline
 
-from .models import File, FileTarget
+File = swapper.load_model("baseapp_files", "File")
+FileTarget = swapper.load_model("baseapp_files", "FileTarget")
 
 
 class FileInlineAdmin(GenericStackedInline):
