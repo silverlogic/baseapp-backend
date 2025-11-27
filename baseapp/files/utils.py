@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 
+import swapper
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
@@ -10,7 +11,7 @@ def default_files_count():
 
 def get_or_create_file_target(target_obj):
     """Get or create a FileTarget for the given object."""
-    from .models import FileTarget
+    FileTarget = swapper.load_model("baseapp_files", "FileTarget")
 
     content_type = ContentType.objects.get_for_model(target_obj, for_concrete_model=False)
     file_target, created = FileTarget.objects.get_or_create(
