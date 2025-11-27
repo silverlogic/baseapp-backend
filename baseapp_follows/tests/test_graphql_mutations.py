@@ -118,3 +118,44 @@ def test_user_cant_unfollow_others_follow(django_user_client, graphql_user_clien
 
     assert content["errors"][0]["message"] == "You don't have permission to perform this action"
     assert content["errors"][0]["extensions"]["code"] == "permission_required"
+
+
+def test_user_can_follow_profile_from_same_user(django_user_client, graphql_user_client):
+    profile1 = ProfileFactory(owner=django_user_client.user)
+    profile2 = ProfileFactory(owner=django_user_client.user)
+
+    variables = {
+        "input": {
+            "actorObjectId": profile1.relay_id,
+            "targetObjectId": profile2.relay_id,
+        }
+    }
+
+    response = graphql_user_client(FOLLOW_TOGGLE_GRAPHQL, variables=variables)
+
+    content = response.json()
+    assert content["data"]["followToggle"]["target"]["followersCount"] == 1
+    assert content["data"]["followToggle"]["actor"]["followingCount"] == 1
+
+def test_user_can_unfollow_profile_from_same_user(django_user_client, graphql_user_client):
+    profile1 = ProfileFactory(owner=django_user_client.user)
+    profile2 = ProfileFactory(owner=django_user_client.user)
+
+    variables = {
+        "input": {
+            "actorObjectId": profile1.relay_id,
+            "targetObjectId": profile2.relay_id,
+        }
+    }
+
+    response = graphql_user_client(FOLLOW_TOGGLE_GRAPHQL, variables=variables)
+    content = response.json()
+
+    assert content["data"]["followToggle"]["target"]["followersCount"] == 1
+    assert content["data"]["followToggle"]["actor"]["followingCount"] == 1
+
+    response = graphql_user_client(FOLLOW_TOGGLE_GRAPHQL, variables=variables)
+    content = response.json()
+
+    assert content["data"]["followToggle"]["target"]["followersCount"] == 0
+    assert content["data"]["followToggle"]["actor"]["followingCount"] == 0
