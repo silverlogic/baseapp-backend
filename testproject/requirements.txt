@@ -16,10 +16,10 @@ pytest-celery==1.2.0
 responses==0.25.3
 urllib3==2.5.0
 # test factories
-factory-boy==3.2.1
+factory-boy==3.3.0
 
 # lint
-black==24.1.0
+black==25.11.0
 flake8==7.0.0
 isort==5.13.2
 
