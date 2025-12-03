@@ -8,7 +8,6 @@ from baseapp_core.models import (
 
 
 class TestCaseInsensitiveFields:
-
     def test_case_insensitive_char_field_db_type(self):
         field = CaseInsensitiveCharField()
         db_type = field.db_type(connection)

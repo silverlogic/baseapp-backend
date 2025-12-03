@@ -7,18 +7,18 @@ from django.apps import apps as django_apps
 from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
 
-from baseapp_core.hashids.utils import has_autoincrement_pk
+from baseapp_core.utils import has_autoincrement_pk
 
 if TYPE_CHECKING:
     from django.apps.registry import Apps
 
-    from baseapp_core.hashids.models import PublicIdMapping
+    from baseapp_core.models import DocumentId
 
 logger = logging.getLogger(__name__)
 
 
-class PublicIdBackfiller:
-    """Handles backfilling of PublicIdMapping entries for models with PublicIdMixin."""
+class DocumentIdBackfiller:
+    """Handles backfilling of DocumentId entries for models with DocumentIdMixin."""
 
     def __init__(
         self,
@@ -30,21 +30,21 @@ class PublicIdBackfiller:
         self.batch_size = batch_size
         self.dry_run = dry_run
 
-    def _get_public_id_mapping_model(self) -> type["PublicIdMapping"]:
-        """Get the PublicIdMapping model from the apps registry."""
-        from baseapp_core.hashids.models import PublicIdMapping as GlobalPublicIdMapping
+    def _get_document_id_model(self) -> type["DocumentId"]:
+        """Get the DocumentId model from the apps registry."""
+        from baseapp_core.models import DocumentId as GlobalDocumentId
 
         if self.apps is not django_apps:
-            return self.apps.get_model("baseapp_core", "PublicIdMapping")
-        return GlobalPublicIdMapping
+            return self.apps.get_model("baseapp_core", "DocumentId")
+        return GlobalDocumentId
 
     def _is_valid_model(self, model: type[models.Model]) -> bool:
         """Check if the model is valid for backfilling (has auto-increment PK)."""
         return has_autoincrement_pk(model)
 
-    def get_models_with_public_id_mixin(self) -> list[type[models.Model]]:
-        """Get all concrete models that inherit from PublicIdMixin and have integer PKs."""
-        from baseapp_core.hashids.models import PublicIdMixin
+    def get_models_with_document_id_mixin(self) -> list[type[models.Model]]:
+        """Get all concrete models that inherit from DocumentIdMixin and have integer PKs."""
+        from baseapp_core.models import DocumentIdMixin
 
         target_models = []
         all_models = self.apps.get_models()
@@ -54,7 +54,7 @@ class PublicIdBackfiller:
                 if model_class._meta.abstract:
                     continue
 
-                if issubclass(model_class, PublicIdMixin) and self._is_valid_model(model_class):
+                if issubclass(model_class, DocumentIdMixin) and self._is_valid_model(model_class):
                     target_models.append(model_class)
 
             except Exception:
@@ -66,11 +66,11 @@ class PublicIdBackfiller:
     def backfill_model(
         self,
         model: type[models.Model],
-        PublicIdMapping: type["PublicIdMapping"] | None = None,
+        DocumentId: type["DocumentId"] | None = None,
     ) -> int:
-        """Backfill PublicIdMapping entries for a specific model."""
-        if PublicIdMapping is None:
-            PublicIdMapping = self._get_public_id_mapping_model()
+        """Backfill DocumentId entries for a specific model."""
+        if DocumentId is None:
+            DocumentId = self._get_document_id_model()
 
         pk_field = model._meta.pk
         app_label = model._meta.app_label
@@ -96,16 +96,16 @@ class PublicIdBackfiller:
             if not batch:
                 break
 
-            # Find existing mappings for this batch
+            # Find existing document IDs for this batch
             existing_ids = set(
-                PublicIdMapping.objects.filter(content_type=ct, object_id__in=batch).values_list(
+                DocumentId.objects.filter(content_type=ct, object_id__in=batch).values_list(
                     "object_id", flat=True
                 )
             )
             missing = [obj_id for obj_id in batch if obj_id not in existing_ids]
 
             if missing:
-                # Verify that the instances still exist before creating mappings
+                # Verify that the instances still exist before creating document IDs
                 # (they could have been deleted between the values_list query and now)
                 verified_ids = set(
                     model.objects.filter(pk__in=missing).values_list(pk_field.name, flat=True)
@@ -122,13 +122,13 @@ class PublicIdBackfiller:
                     continue
 
                 to_create = [
-                    PublicIdMapping(public_id=uuid.uuid4(), content_type=ct, object_id=obj_id)
+                    DocumentId(public_id=uuid.uuid4(), content_type=ct, object_id=obj_id)
                     for obj_id in still_missing
                 ]
 
                 if self.dry_run:
                     logger.info(
-                        "[DRY RUN] Would create %d mappings for %s.%s (batch)",
+                        "[DRY RUN] Would create %d document IDs for %s.%s (batch)",
                         len(to_create),
                         app_label,
                         model_name,
@@ -136,7 +136,7 @@ class PublicIdBackfiller:
                 else:
                     try:
                         with transaction.atomic():
-                            PublicIdMapping.objects.bulk_create(
+                            DocumentId.objects.bulk_create(
                                 to_create, batch_size=self.batch_size, ignore_conflicts=True
                             )
                         created_count += len(to_create)
@@ -157,38 +157,36 @@ class PublicIdBackfiller:
                 len(missing),
             )
 
-        logger.info(
-            "Created %d PublicIdMapping rows for %s.%s", created_count, app_label, model_name
-        )
+        logger.info("Created %d DocumentId rows for %s.%s", created_count, app_label, model_name)
         return created_count
 
     def backfill_all_models(self, apps_filter: list[str] | None = None) -> int:
-        """Backfill PublicIdMapping entries for all models with PublicIdMixin."""
-        PublicIdMapping = self._get_public_id_mapping_model()
+        """Backfill DocumentId entries for all models with DocumentIdMixin."""
+        DocumentId = self._get_document_id_model()
 
-        # Get all models with PublicIdMixin
-        target_models = self.get_models_with_public_id_mixin()
+        # Get all models with DocumentIdMixin
+        target_models = self.get_models_with_document_id_mixin()
 
         # Apply apps filter if provided
         if apps_filter:
             target_models = [m for m in target_models if m._meta.app_label in apps_filter]
 
         if not target_models:
-            logger.warning("No models found that inherit from PublicIdMixin.")
+            logger.warning("No models found that inherit from DocumentIdMixin.")
             return 0
 
         total_created = 0
 
         for model in target_models:
-            created = self.backfill_model(model=model, PublicIdMapping=PublicIdMapping)
+            created = self.backfill_model(model=model, DocumentId=DocumentId)
             total_created += created
 
-        logger.info("Done — total mappings created: %d", total_created)
+        logger.info("Done — total document IDs created: %d", total_created)
         return total_created
 
     def backfill_single_instance(self, app_label: str, model_name: str, pk: Any) -> bool:
-        """Backfill PublicIdMapping for a single model instance."""
-        from baseapp_core.hashids.models import PublicIdMapping, PublicIdMixin
+        """Backfill DocumentId for a single model instance."""
+        from baseapp_core.models import DocumentId, DocumentIdMixin
 
         # Get the model class
         try:
@@ -197,9 +195,9 @@ class PublicIdBackfiller:
             logger.error("Error getting model %s.%s: %s", app_label, model_name, exc)
             return False
 
-        # Validate model has PublicIdMixin
-        if not issubclass(model, PublicIdMixin):
-            logger.error("Model %s.%s does not inherit from PublicIdMixin", app_label, model_name)
+        # Validate model has DocumentIdMixin
+        if not issubclass(model, DocumentIdMixin):
+            logger.error("Model %s.%s does not inherit from DocumentIdMixin", app_label, model_name)
             return False
 
         # Validate model has auto-increment PK
@@ -234,28 +232,30 @@ class PublicIdBackfiller:
             )
             return False
 
-        # Check if mapping already exists
+        # Check if document ID already exists
         ct = ContentType.objects.get_for_model(model)
-        exists = PublicIdMapping.objects.filter(content_type=ct, object_id=pk).exists()
+        exists = DocumentId.objects.filter(content_type=ct, object_id=pk).exists()
 
         if exists:
-            logger.info("PublicIdMapping already exists for %s.%s:%s", app_label, model_name, pk)
+            logger.info("DocumentId already exists for %s.%s:%s", app_label, model_name, pk)
             return False
 
         if self.dry_run:
-            logger.info("[DRY RUN] Would create mapping for %s.%s:%s", app_label, model_name, pk)
+            logger.info(
+                "[DRY RUN] Would create document ID for %s.%s:%s", app_label, model_name, pk
+            )
             return True
 
-        # Create the mapping
+        # Create the document ID
         try:
-            m = PublicIdMapping.objects.create(
-                public_id=uuid.uuid4(), content_type=ct, object_id=pk
+            m = DocumentId.objects.create(public_id=uuid.uuid4(), content_type=ct, object_id=pk)
+            logger.info(
+                "Created document ID %s for %s.%s:%s", m.public_id, app_label, model_name, pk
             )
-            logger.info("Created mapping %s for %s.%s:%s", m.public_id, app_label, model_name, pk)
             return True
         except Exception as exc:
             logger.error(
-                "Failed to create mapping for %s.%s:%s: %s",
+                "Failed to create document ID for %s.%s:%s: %s",
                 app_label,
                 model_name,
                 pk,
@@ -263,3 +263,42 @@ class PublicIdBackfiller:
                 exc_info=True,
             )
             return False
+
+
+def get_models_with_document_id_mixin(apps: "Apps | None" = None) -> list[type[models.Model]]:
+    """Get all concrete models that inherit from DocumentIdMixin and have integer PKs."""
+    backfiller = DocumentIdBackfiller(apps=apps)
+    return backfiller.get_models_with_document_id_mixin()
+
+
+def backfill_model_document_ids(
+    model: type[models.Model],
+    DocumentId: type["DocumentId"],
+    batch_size: int = 1000,
+    dry_run: bool = False,
+) -> int:
+    """Backfill DocumentId entries for a specific model."""
+    backfiller = DocumentIdBackfiller(batch_size=batch_size, dry_run=dry_run)
+    return backfiller.backfill_model(model=model, DocumentId=DocumentId)
+
+
+def backfill_all_models(
+    apps: "Apps | None" = None,
+    batch_size: int = 1000,
+    dry_run: bool = False,
+    apps_filter: list[str] | None = None,
+) -> int:
+    """Backfill DocumentId entries for all models with DocumentIdMixin."""
+    backfiller = DocumentIdBackfiller(apps=apps, batch_size=batch_size, dry_run=dry_run)
+    return backfiller.backfill_all_models(apps_filter=apps_filter)
+
+
+def backfill_single_instance(
+    app_label: str,
+    model_name: str,
+    pk: Any,
+    dry_run: bool = False,
+) -> bool:
+    """Backfill DocumentId for a single model instance."""
+    backfiller = DocumentIdBackfiller(dry_run=dry_run)
+    return backfiller.backfill_single_instance(app_label=app_label, model_name=model_name, pk=pk)

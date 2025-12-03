@@ -3,13 +3,13 @@ import uuid
 import pytest
 from django.contrib.contenttypes.models import ContentType
 
-from baseapp_core.hashids.models import PublicIdMapping
+from baseapp_core.models import DocumentId
 from testproject.testapp.models import DummyPublicIdModel
 from testproject.testapp.tests.factories import DummyPublicIdModelFactory
 
 
 @pytest.mark.django_db
-class TestPublicIdMixin:
+class TestDocumentIdMixin:
     @pytest.fixture
     def dummy_instance(self, db):
         obj = DummyPublicIdModelFactory()
@@ -21,14 +21,14 @@ class TestPublicIdMixin:
 
     def test_public_id_property_creates_mapping(self, dummy_instance, dummy_content_type):
         assert (
-            PublicIdMapping.objects.filter(
+            DocumentId.objects.filter(
                 object_id=dummy_instance.pk, content_type=dummy_content_type
             ).exists()
             is True
         )
         public_id = dummy_instance.public_id
         assert public_id is not None
-        mapping = PublicIdMapping.objects.get(
+        mapping = DocumentId.objects.get(
             object_id=dummy_instance.pk, content_type=dummy_content_type
         )
         assert mapping.public_id == public_id
@@ -58,40 +58,36 @@ class TestPublicIdMixin:
         assert obj2.public_id != dummy_instance.public_id
 
     def test_public_id_mapping_deleted_on_model_delete(self, dummy_instance, dummy_content_type):
-        mapping = PublicIdMapping.objects.get(
+        mapping = DocumentId.objects.get(
             object_id=dummy_instance.pk, content_type=dummy_content_type
         )
         assert mapping is not None
 
         dummy_instance.delete()
 
-        with pytest.raises(PublicIdMapping.DoesNotExist):
-            PublicIdMapping.objects.get(
-                object_id=dummy_instance.pk, content_type=dummy_content_type
-            )
+        with pytest.raises(DocumentId.DoesNotExist):
+            DocumentId.objects.get(object_id=dummy_instance.pk, content_type=dummy_content_type)
 
-    def test_public_id_mapping_deleted_only_for_that_instance(
-        self, dummy_instance, dummy_content_type
-    ):
+    def test_document_id_deleted_only_for_that_instance(self, dummy_instance, dummy_content_type):
         obj2 = DummyPublicIdModelFactory()
 
-        assert PublicIdMapping.objects.filter(
+        assert DocumentId.objects.filter(
             object_id=dummy_instance.pk, content_type=dummy_content_type
         ).exists()
-        assert PublicIdMapping.objects.filter(
+        assert DocumentId.objects.filter(
             object_id=obj2.pk, content_type=dummy_content_type
         ).exists()
 
         dummy_instance.delete()
 
-        assert not PublicIdMapping.objects.filter(
+        assert not DocumentId.objects.filter(
             object_id=dummy_instance.pk, content_type=dummy_content_type
         ).exists()
-        assert PublicIdMapping.objects.filter(
+        assert DocumentId.objects.filter(
             object_id=obj2.pk, content_type=dummy_content_type
         ).exists()
 
-    def test_public_id_mapping_trigger_attached(self):
+    def test_document_id_trigger_attached(self):
         triggers = getattr(DummyPublicIdModel._meta, "triggers", [])
         trigger_names = [t.name for t in triggers]
-        assert "delete_public_id_mapping" in trigger_names
+        assert "delete_document_id" in trigger_names
