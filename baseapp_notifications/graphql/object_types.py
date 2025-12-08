@@ -7,6 +7,7 @@ from graphene_django import DjangoConnectionField
 from graphene_django.filter import DjangoFilterConnectionField
 
 from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
+from baseapp_profiles.graphql.object_types import ProfileObjectType
 
 from ..utils import can_user_receive_notification
 from .filters import NotificationFilter
@@ -51,7 +52,7 @@ class NotificationsInterface(relay.Node):
 
 
 class BaseNotificationNode:
-    actor = graphene.Field(relay.Node)
+    actor = graphene.Field(ProfileObjectType)
     target = graphene.Field(relay.Node)
     action_object = graphene.Field(relay.Node)
     data = GenericScalar(required=False)
