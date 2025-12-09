@@ -2,6 +2,8 @@ import swapper
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 
+from .utils import get_or_create_file_target
+
 
 class FileableModel(models.Model):
     files = GenericRelation(
@@ -14,8 +16,6 @@ class FileableModel(models.Model):
         abstract = True
 
     def get_file_target(self):
-        from .utils import get_or_create_file_target
-
         return get_or_create_file_target(self)
 
     @property

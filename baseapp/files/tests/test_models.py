@@ -1,5 +1,6 @@
 import swapper
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from baseapp.files.utils import (
@@ -112,6 +113,44 @@ class FileTargetTest(TestCase):
         file_target.save()
 
         self.assertFalse(comment.is_files_enabled)
+
+    def test_cannot_attach_file_when_files_disabled(self):
+        comment = Comment.objects.create()
+        comment_content_type = ContentType.objects.get_for_model(Comment)
+
+        # Create FileTarget with is_files_enabled=False
+        file_target = comment.get_file_target()
+        file_target.is_files_enabled = False
+        file_target.save()
+
+        # Try to create a file for this comment
+        with self.assertRaises(ValidationError) as cm:
+            File.objects.create(
+                parent_content_type=comment_content_type,
+                parent_object_id=comment.pk,
+                file_content_type="image/png",
+            )
+
+        self.assertEqual(cm.exception.code, "files_disabled")
+        self.assertIn("Files are not enabled", str(cm.exception))
+
+    def test_can_attach_file_when_files_enabled(self):
+        comment = Comment.objects.create()
+        comment_content_type = ContentType.objects.get_for_model(Comment)
+
+        # Create FileTarget with is_files_enabled=True (default)
+        file_target = comment.get_file_target()
+        self.assertTrue(file_target.is_files_enabled)
+
+        # This should work without raising an error
+        file_obj = File.objects.create(
+            parent_content_type=comment_content_type,
+            parent_object_id=comment.pk,
+            file_content_type="image/png",
+        )
+
+        self.assertIsNotNone(file_obj.pk)
+        self.assertEqual(file_obj.parent_object_id, comment.pk)
 
     def test_fileable_model_properties(self):
         comment = Comment.objects.create()

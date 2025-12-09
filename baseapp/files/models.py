@@ -2,6 +2,7 @@ import swapper
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
@@ -70,6 +71,29 @@ class AbstractFile(TimeStampedModel, CommentableModel, ReactableModel, Reportabl
         null=True,
         blank=True,
     )
+
+    def save(self, *args, **kwargs):
+        """
+        Validate that files are enabled for the parent object before saving.
+        """
+        if self.parent_content_type_id and self.parent_object_id:
+            FileTarget = swapper.load_model("baseapp_files", "FileTarget")
+            try:
+                file_target = FileTarget.objects.get(
+                    target_content_type_id=self.parent_content_type_id,
+                    target_object_id=self.parent_object_id,
+                )
+                if not file_target.is_files_enabled:
+                    raise ValidationError(
+                        _("Files are not enabled for this object."),
+                        code="files_disabled",
+                    )
+            except FileTarget.DoesNotExist:
+                # If FileTarget doesn't exist, it will be created by the trigger
+                # and is_files_enabled defaults to True, so we allow the save
+                pass
+
+        super().save(*args, **kwargs)
 
     class Meta:
         abstract = True
