@@ -87,7 +87,7 @@ class DocumentId(TimeStampedModel):
         return f"{self.content_type.model}:{self.object_id} -> {self.public_id}"
 
     @classmethod
-    def get_public_id(cls, obj):
+    def get_public_id_from_object(cls, obj):
         if not obj or not obj.pk:
             return None
 
@@ -112,7 +112,7 @@ class DocumentId(TimeStampedModel):
             return None
 
     @classmethod
-    def get_content_type_and_id(cls, public_id) -> tuple[ContentType, int] | None:
+    def get_content_type_and_id_by_public_id(cls, public_id) -> tuple[ContentType, int] | None:
         try:
             mapping = cls.objects.select_related("content_type").get(public_id=public_id)
             return mapping.content_type, mapping.object_id

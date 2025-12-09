@@ -6,7 +6,7 @@ class PublicIdResolverStrategy(IdResolverStrategy):
     def get_id_from_instance(self, instance: DocumentIdMixin):
         if hasattr(instance, "mapped_public_id"):
             return instance.mapped_public_id
-        return DocumentId.get_public_id(instance)
+        return DocumentId.get_public_id_from_object(instance)
 
     def resolve_id(self, id, *, resolve_query: bool = True, **_kwargs):
         """
@@ -16,4 +16,4 @@ class PublicIdResolverStrategy(IdResolverStrategy):
         if resolve_query:
             return DocumentId.get_object_by_public_id(id)
         else:
-            return DocumentId.get_content_type_and_id(id)
+            return DocumentId.get_content_type_and_id_by_public_id(id)

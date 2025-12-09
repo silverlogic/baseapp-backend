@@ -23,32 +23,32 @@ class TestDocumentIdModel:
 
     def test_get_public_id(self):
         obj = DummyPublicIdModelFactory()
-        public_id = DocumentId.get_public_id(obj)
+        public_id = DocumentId.get_public_id_from_object(obj)
         assert public_id is not None
 
-        public_id2 = DocumentId.get_public_id(obj)
+        public_id2 = DocumentId.get_public_id_from_object(obj)
         assert public_id2 == public_id
 
     def test_get_public_id_returns_none_for_unsaved(self):
         obj = DummyPublicIdModel(name="bar")
-        result = DocumentId.get_public_id(obj)
+        result = DocumentId.get_public_id_from_object(obj)
         assert result is None
 
     def test_get_object_by_public_id_returns_object(self):
         obj = DummyPublicIdModelFactory()
-        public_id = DocumentId.get_public_id(obj)
+        public_id = DocumentId.get_public_id_from_object(obj)
         found = DocumentId.get_object_by_public_id(public_id)
         assert found == obj
 
     def test_get_object_by_public_id_with_model_class(self):
         obj = DummyPublicIdModelFactory()
-        public_id = DocumentId.get_public_id(obj)
+        public_id = DocumentId.get_public_id_from_object(obj)
         found = DocumentId.get_object_by_public_id(public_id, model_class=obj.__class__)
         assert found == obj
 
     def test_get_object_by_public_id_wrong_model_class_returns_none(self):
         obj = DummyPublicIdModelFactory()
-        public_id = DocumentId.get_public_id(obj)
+        public_id = DocumentId.get_public_id_from_object(obj)
 
         found = DocumentId.get_object_by_public_id(public_id, model_class=DummyLegacyModel)
         assert found is None
