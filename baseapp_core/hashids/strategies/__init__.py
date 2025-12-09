@@ -1,17 +1,12 @@
-from typing import TYPE_CHECKING, Any, Optional, Type
+from typing import Any, Optional, Type
 
 from constance import config
-from django.db import models
 
-from baseapp_core.hashids.models import LegacyWithPkMixin, PublicIdMixin
-from baseapp_core.hashids.strategies.backfill import PublicIdBackfiller
+from baseapp_core.hashids.models import LegacyWithPkMixin
 from baseapp_core.hashids.strategies.bundle import HashidsStrategyBundle
-from baseapp_core.hashids.utils import has_autoincrement_pk, is_uuid4
-
-if TYPE_CHECKING:
-    from django.apps.registry import Apps
-
-    from baseapp_core.hashids.models import PublicIdMapping
+from baseapp_core.hashids.utils import is_uuid4
+from baseapp_core.models import DocumentIdMixin
+from baseapp_core.utils import has_autoincrement_pk
 
 
 def _is_public_id_logic_enabled() -> bool:
@@ -21,10 +16,10 @@ def _is_public_id_logic_enabled() -> bool:
 def _is_model_public_id_compatible(model_cls: type) -> bool:
     """
     These are the constraints for a model to be compatible with the public ID feature.
-    - It must extend PublicIdMixin.
+    - It must extend DocumentIdMixin.
     - It must have an auto-incrementing primary key.
     """
-    return issubclass(model_cls, PublicIdMixin) and has_autoincrement_pk(model_cls)
+    return issubclass(model_cls, DocumentIdMixin) and has_autoincrement_pk(model_cls)
 
 
 def _is_model_pk_compatible(model_cls: type) -> bool:
@@ -158,42 +153,3 @@ def drf_get_pk_from_public_id_using_strategy(value: Any, expected_model: Optiona
 
 def should_use_public_id(model_cls: type) -> bool:
     return _is_model_public_id_compatible(model_cls) and _is_public_id_logic_enabled()
-
-
-def get_models_with_public_id_mixin(apps: "Apps | None" = None) -> list[type[models.Model]]:
-    """Get all concrete models that inherit from PublicIdMixin and have integer PKs."""
-    backfiller = PublicIdBackfiller(apps=apps)
-    return backfiller.get_models_with_public_id_mixin()
-
-
-def backfill_model_mappings(
-    model: type[models.Model],
-    PublicIdMapping: type["PublicIdMapping"],
-    batch_size: int = 1000,
-    dry_run: bool = False,
-) -> int:
-    """Backfill PublicIdMapping entries for a specific model."""
-    backfiller = PublicIdBackfiller(batch_size=batch_size, dry_run=dry_run)
-    return backfiller.backfill_model(model=model, PublicIdMapping=PublicIdMapping)
-
-
-def backfill_all_models(
-    apps: "Apps | None" = None,
-    batch_size: int = 1000,
-    dry_run: bool = False,
-    apps_filter: list[str] | None = None,
-) -> int:
-    """Backfill PublicIdMapping entries for all models with PublicIdMixin."""
-    backfiller = PublicIdBackfiller(apps=apps, batch_size=batch_size, dry_run=dry_run)
-    return backfiller.backfill_all_models(apps_filter=apps_filter)
-
-
-def backfill_single_instance(
-    app_label: str,
-    model_name: str,
-    pk: Any,
-    dry_run: bool = False,
-) -> bool:
-    """Backfill PublicIdMapping for a single model instance."""
-    backfiller = PublicIdBackfiller(dry_run=dry_run)
-    return backfiller.backfill_single_instance(app_label=app_label, model_name=model_name, pk=pk)

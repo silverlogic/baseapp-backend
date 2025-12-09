@@ -1,10 +1,10 @@
 from django.contrib import admin
 
-from .models import PublicIdMapping
+from baseapp_core.models import DocumentId
 
 
-@admin.register(PublicIdMapping)
-class PublicIdMappingAdmin(admin.ModelAdmin):
+@admin.register(DocumentId)
+class DocumentIdAdmin(admin.ModelAdmin):
     list_display = ("public_id", "content_type", "object_id")
     search_fields = ("public_id", "content_type__model", "object_id")
     list_filter = ("content_type",)

@@ -13,7 +13,6 @@ class BaseAuthViewSet(viewsets.GenericViewSet):
 
 
 class AuthTokenViewSet(BaseAuthViewSet):
-
     @redirect_if_user_has_expired_password
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

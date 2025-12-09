@@ -90,20 +90,18 @@ class TestUsersRetrieve(ApiMixin):
 
     @pytest.mark.skipif(
         not hasattr(User, "public_id"),
-        reason="User model does not expose public_id; skip until PublicIdMixin is enabled",
+        reason="User model does not expose public_id; skip until DocumentIdMixin is enabled",
     )
     def test_id_returns_public_id(self, user_client):
         """Ensure the serialized `id` is the public_id when available."""
         from django.contrib.contenttypes.models import ContentType
 
-        from baseapp_core.hashids.models import PublicIdMapping
+        from baseapp_core.models import DocumentId
 
         user = UserFactory()
 
         content_type = ContentType.objects.get_for_model(user)
-        mapping = PublicIdMapping.objects.filter(
-            content_type=content_type, object_id=user.pk
-        ).first()
+        mapping = DocumentId.objects.filter(content_type=content_type, object_id=user.pk).first()
         r = user_client.get(self.reverse(kwargs={"pk": user.pk}))
         h.responseOk(r)
         assert user.pk != r.data["id"]
@@ -136,7 +134,7 @@ class TestUsersUpdate(ApiMixin):
 
     @pytest.mark.skipif(
         not hasattr(User, "public_id"),
-        reason="User model does not expose public_id; skip until PublicIdMixin is enabled",
+        reason="User model does not expose public_id; skip until DocumentIdMixin is enabled",
     )
     def test_can_update_public_fields_using_public_id(self, user_client):
         data = {"preferred_language": "pt"}

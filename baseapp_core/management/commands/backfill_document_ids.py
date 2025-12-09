@@ -9,7 +9,7 @@ from baseapp_core.hashids.strategies import (
 
 
 class Command(BaseCommand):
-    help = "Backfill PublicIdMapping rows for existing model instances that use PublicIdMixin."
+    help = "Backfill DocumentId rows for existing model instances that use DocumentIdMixin."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -66,7 +66,7 @@ class Command(BaseCommand):
             if not success and not dry_run:
                 self.stdout.write(
                     self.style.WARNING(
-                        f"No mapping was created for {app_label}.{model_name}:{pk_str}"
+                        f"No document ID was created for {app_label}.{model_name}:{pk_str}"
                     )
                 )
             return
@@ -81,9 +81,13 @@ class Command(BaseCommand):
 
         if dry_run:
             self.stdout.write(
-                self.style.NOTICE(f"[DRY RUN] Would have created {total_created} mappings total")
+                self.style.NOTICE(
+                    f"[DRY RUN] Would have created {total_created} document IDs total"
+                )
             )
         else:
             self.stdout.write(
-                self.style.SUCCESS(f"Backfill complete. Total mappings created: {total_created}")
+                self.style.SUCCESS(
+                    f"Backfill complete. Total document IDs created: {total_created}"
+                )
             )
