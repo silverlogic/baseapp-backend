@@ -238,4 +238,5 @@ def add_document_id_trigger(sender, **kwargs):
         sender._meta.triggers.append(delete_document_id_trigger())
 
 
+# Every baseapp_core model coming from internal folders should be added here
 from baseapp_core.hashids.models import LegacyWithPkMixin  # noqa
