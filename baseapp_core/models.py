@@ -78,7 +78,6 @@ class DocumentId(TimeStampedModel):
     class Meta:
         unique_together = ("content_type", "object_id")
         indexes = [
-            models.Index(fields=["content_type", "object_id"]),
             models.Index(fields=["public_id"]),
         ]
         verbose_name = "Document ID"
