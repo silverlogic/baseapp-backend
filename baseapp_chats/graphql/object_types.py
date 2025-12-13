@@ -147,7 +147,10 @@ class MessageObjectType(BaseMessageObjectType, DjangoObjectType):
 
 class BaseChatRoomObjectType:
     all_messages = DjangoFilterConnectionField(get_object_type_for_model(Message))
-    participants = DjangoConnectionField(get_object_type_for_model(ChatRoomParticipant))
+    participants = DjangoConnectionField(
+    get_object_type_for_model(ChatRoomParticipant),
+    q=graphene.String()
+)
     unread_messages = graphene.Field(
         get_object_type_for_model(UnreadMessageCount), profile_id=graphene.ID(required=False)
     )
@@ -181,7 +184,15 @@ class BaseChatRoomObjectType:
                 )
         return self.messages.all().order_by("-created")
 
-    def resolve_participants(self, info, **kwargs):
+    def resolve_participants(self, info, q=None, **kwargs):
+        qs = self.participants.all()
+        
+        if q:
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(profile__name__icontains=q)
+            ).distinct()
+        
         if self.is_group:
             profile = (
                 info.context.user.current_profile
@@ -190,12 +201,12 @@ class BaseChatRoomObjectType:
             )
             participant = self.participants.filter(profile=profile).first()
             if participant:
-                return self.participants.all().order_by(
+                return qs.order_by(
                     Case(When(id=participant.id, then=0), default=1),
                     "-role",
                     "profile__name",
                 )
-        return self.participants.all()
+        return qs
 
     def resolve_is_archived(self, info, profile_id=None, **kwargs):
         if profile_id:
