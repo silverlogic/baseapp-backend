@@ -148,9 +148,8 @@ class MessageObjectType(BaseMessageObjectType, DjangoObjectType):
 class BaseChatRoomObjectType:
     all_messages = DjangoFilterConnectionField(get_object_type_for_model(Message))
     participants = DjangoConnectionField(
-    get_object_type_for_model(ChatRoomParticipant),
-    q=graphene.String()
-)
+        get_object_type_for_model(ChatRoomParticipant), q=graphene.String()
+    )
     unread_messages = graphene.Field(
         get_object_type_for_model(UnreadMessageCount), profile_id=graphene.ID(required=False)
     )
@@ -186,13 +185,12 @@ class BaseChatRoomObjectType:
 
     def resolve_participants(self, info, q=None, **kwargs):
         qs = self.participants.all()
-        
+
         if q:
             from django.db.models import Q
-            qs = qs.filter(
-                Q(profile__name__icontains=q)
-            ).distinct()
-        
+
+            qs = qs.filter(Q(profile__name__icontains=q)).distinct()
+
         if self.is_group:
             profile = (
                 info.context.user.current_profile
