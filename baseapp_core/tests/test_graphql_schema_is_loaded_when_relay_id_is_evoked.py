@@ -7,17 +7,15 @@ from .factories import UserFactory
 pytestmark = pytest.mark.django_db
 
 
-@pytest.fixture(autouse=True)
-def reset_graphql_loaded():
+def _reset_graphql_loaded():
     """
-    Automatically reset the GraphQL loaded flag before and after each test.
+    Helper to reset the GraphQL loaded flag.
     """
-    decorators._graphql_loaded = False
-    yield
     decorators._graphql_loaded = False
 
 
 def test_relay_id_triggers_schema_load():
+    _reset_graphql_loaded()
     assert decorators._graphql_loaded is False
 
     user = UserFactory()
@@ -27,7 +25,8 @@ def test_relay_id_triggers_schema_load():
     assert relay_id is not None
 
 
-def test_shell_behavior_triggers_schema_load(monkeypatch):
+def test_relay_id_loads_schema_when_argv_looks_like_shell(monkeypatch):
+    _reset_graphql_loaded()
     assert decorators._graphql_loaded is False
 
     monkeypatch.setattr("sys.argv", ["manage.py", "shell"])

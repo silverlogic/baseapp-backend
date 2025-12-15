@@ -72,9 +72,7 @@ def _ensure_graphql_loaded():
             "Check GRAPHENE['SCHEMA'] / GRAPHQL_SCHEMA_PATH."
         ) from e
     except ImportError as e:
-        raise ImportError(
-            f"Error importing GraphQL schema module '{module_path}': {e}"
-        ) from e
+        raise ImportError(f"Error importing GraphQL schema module '{module_path}': {e}") from e
 
     _graphql_loaded = True
 
