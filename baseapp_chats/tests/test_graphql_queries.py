@@ -71,6 +71,25 @@ PROFILE_ROOMS_GRAPHQL = """
     }
 """
 
+ROOM_PARTICIPANTS_GRAPHQL = """
+    query GetRoomParticipants($roomId: ID!, $q: String) {
+        chatRoom(id: $roomId) {
+            id
+            participants(q: $q) {
+                edges {
+                    node {
+                        id
+                        profile {
+                            id
+                            name
+                        }
+                    }
+                }
+            }
+        }
+    }
+"""
+
 
 def test_user_can_list_rooms(graphql_user_client, django_user_client):
     user_profie = ProfileFactory()
@@ -560,3 +579,70 @@ def test_new_participant_cant_list_previous_messages_when_joining_group_room(
         content = response.json()
 
         assert len(content["data"]["chatRoom"]["allMessages"]["edges"]) == 4
+
+
+def test_filter_participants_by_name(django_client):
+    user = UserFactory()
+    profile_1 = ProfileFactory(name="John Doe")
+    profile_2 = ProfileFactory(name="Jane Smith")
+    profile_3 = ProfileFactory(name="Bob Johnson")
+
+    room = ChatRoomFactory(created_by=user, is_group=True)
+
+    ChatRoomParticipantFactory(room=room, profile=user.profile)
+    ChatRoomParticipantFactory(room=room, profile=profile_1)
+    ChatRoomParticipantFactory(room=room, profile=profile_2)
+    ChatRoomParticipantFactory(room=room, profile=profile_3)
+
+    django_client.force_login(user)
+
+    # Test filtering by "john" - should return John Doe and Bob Johnson
+    response = graphql_query(
+        ROOM_PARTICIPANTS_GRAPHQL,
+        variables={"roomId": room.relay_id, "q": "john"},
+        client=django_client,
+    )
+
+    content = response.json()
+    participants = content["data"]["chatRoom"]["participants"]["edges"]
+
+    assert len(participants) == 2
+    participant_names = {p["node"]["profile"]["name"] for p in participants}
+    assert participant_names == {"John Doe", "Bob Johnson"}
+
+    # Test filtering by "jane" - should return only Jane Smith
+    response = graphql_query(
+        ROOM_PARTICIPANTS_GRAPHQL,
+        variables={"roomId": room.relay_id, "q": "jane"},
+        client=django_client,
+    )
+
+    content = response.json()
+    participants = content["data"]["chatRoom"]["participants"]["edges"]
+
+    assert len(participants) == 1
+    assert participants[0]["node"]["profile"]["name"] == "Jane Smith"
+
+    # Test without filter - should return all 4 participants
+    response = graphql_query(
+        ROOM_PARTICIPANTS_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    participants = content["data"]["chatRoom"]["participants"]["edges"]
+
+    assert len(participants) == 4
+
+    # Test with non-matching query - should return empty
+    response = graphql_query(
+        ROOM_PARTICIPANTS_GRAPHQL,
+        variables={"roomId": room.relay_id, "q": "xyz"},
+        client=django_client,
+    )
+
+    content = response.json()
+    participants = content["data"]["chatRoom"]["participants"]["edges"]
+
+    assert len(participants) == 0
