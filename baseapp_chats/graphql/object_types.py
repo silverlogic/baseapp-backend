@@ -13,7 +13,7 @@ from baseapp_core.graphql import (
     get_pk_from_relay_id,
 )
 
-from .filters import ChatRoomFilter
+from .filters import ChatRoomFilter, ChatRoomParticipantFilter
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
@@ -147,8 +147,9 @@ class MessageObjectType(BaseMessageObjectType, DjangoObjectType):
 
 class BaseChatRoomObjectType:
     all_messages = DjangoFilterConnectionField(get_object_type_for_model(Message))
-    participants = DjangoConnectionField(
-        get_object_type_for_model(ChatRoomParticipant), q=graphene.String()
+    participants = DjangoFilterConnectionField(
+        get_object_type_for_model(ChatRoomParticipant),
+        filterset_class=ChatRoomParticipantFilter,
     )
     unread_messages = graphene.Field(
         get_object_type_for_model(UnreadMessageCount), profile_id=graphene.ID(required=False)
@@ -183,14 +184,7 @@ class BaseChatRoomObjectType:
                 )
         return self.messages.all().order_by("-created")
 
-    def resolve_participants(self, info, q=None, **kwargs):
-        qs = self.participants.all()
-
-        if q:
-            from django.db.models import Q
-
-            qs = qs.filter(Q(profile__name__icontains=q)).distinct()
-
+    def resolve_participants(self, info, **kwargs):
         if self.is_group:
             profile = (
                 info.context.user.current_profile
@@ -199,12 +193,12 @@ class BaseChatRoomObjectType:
             )
             participant = self.participants.filter(profile=profile).first()
             if participant:
-                return qs.order_by(
+                return self.participants.all().order_by(
                     Case(When(id=participant.id, then=0), default=1),
                     "-role",
                     "profile__name",
                 )
-        return qs
+        return self.participants.all()
 
     def resolve_is_archived(self, info, profile_id=None, **kwargs):
         if profile_id:
