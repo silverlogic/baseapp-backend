@@ -40,20 +40,42 @@ _graphql_loaded = False
 
 
 def _ensure_graphql_loaded():
+    """
+    Ensure the GraphQL schema module is imported so that the
+    Graphene global registry is populated.
+
+    Raises:
+        ModuleNotFoundError: if the schema module cannot be imported.
+        ImportError: for other import-related errors.
+    """
     global _graphql_loaded
+
     if _graphql_loaded:
         return
 
-    schema_path = getattr(settings, "GRAPHENE", {}).get("SCHEMA")
-
+    schema_path = getattr(settings, "GRAPHQL_SCHEMA_PATH", None) or (
+        getattr(settings, "GRAPHENE", {}).get("SCHEMA")
+    )
     if not schema_path:
+        # Nothing configured – don't keep trying on every call
         _graphql_loaded = True
         return
 
     module_path, _, _ = schema_path.rpartition(".")
-    module_path = module_path or schema_path
+    module_path = module_path or schema_path  # supports module or module.attr style
 
-    import_module(module_path)
+    try:
+        import_module(module_path)
+    except ModuleNotFoundError as e:
+        raise ModuleNotFoundError(
+            f"Could not import GraphQL schema module '{module_path}'. "
+            "Check GRAPHENE['SCHEMA'] / GRAPHQL_SCHEMA_PATH."
+        ) from e
+    except ImportError as e:
+        raise ImportError(
+            f"Error importing GraphQL schema module '{module_path}': {e}"
+        ) from e
+
     _graphql_loaded = True
 
 
