@@ -3,7 +3,6 @@ import swapper
 from django.db.models import Case, When
 from django.utils.translation import gettext_lazy as _
 from graphene import relay
-from graphene_django import DjangoConnectionField
 from graphene_django.filter import DjangoFilterConnectionField
 
 from baseapp_core.graphql import (
