@@ -17,6 +17,8 @@ from graphene_django.registry import get_global_registry
 from graphql_relay import to_global_id
 from graphql_relay.node.node import from_global_id
 
+from .decorators import graphql_schema_required
+
 
 def get_pk_from_relay_id(relay_id):
     gid_type, gid = from_global_id(relay_id)
@@ -31,6 +33,7 @@ def get_obj_from_relay_id(info: graphene.ResolveInfo, relay_id, get_node=False):
     return object_type.graphene_type._meta.model.objects.get(pk=gid)
 
 
+@graphql_schema_required
 def get_obj_relay_id(obj):
     object_type = _cache_object_type(obj)
     return to_global_id(object_type._meta.name, obj.pk)
