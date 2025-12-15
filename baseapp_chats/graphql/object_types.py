@@ -32,6 +32,7 @@ class BaseChatRoomParticipantObjectType:
         model = ChatRoomParticipant
         fields = ("id", "has_archived_room", "profile", "role")
         filter_fields = ("profile__target_content_type",)
+        filterset_class = ChatRoomParticipantFilter
 
 
 class ChatRoomParticipantObjectType(BaseChatRoomParticipantObjectType, DjangoObjectType):
@@ -146,10 +147,7 @@ class MessageObjectType(BaseMessageObjectType, DjangoObjectType):
 
 class BaseChatRoomObjectType:
     all_messages = DjangoFilterConnectionField(get_object_type_for_model(Message))
-    participants = DjangoFilterConnectionField(
-        get_object_type_for_model(ChatRoomParticipant),
-        filterset_class=ChatRoomParticipantFilter,
-    )
+    participants = DjangoFilterConnectionField(get_object_type_for_model(ChatRoomParticipant))
     unread_messages = graphene.Field(
         get_object_type_for_model(UnreadMessageCount), profile_id=graphene.ID(required=False)
     )

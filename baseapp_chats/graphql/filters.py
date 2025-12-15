@@ -84,7 +84,7 @@ class ChatRoomParticipantFilter(django_filters.FilterSet):
 
     class Meta:
         model = ChatRoomParticipant
-        fields = ["q"]
+        fields = ["q", "profile__target_content_type"]
 
     def filter_q(self, qs, name, value):
         if not value:
