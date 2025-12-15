@@ -31,7 +31,6 @@ class BaseChatRoomParticipantObjectType:
         interfaces = (relay.Node,)
         model = ChatRoomParticipant
         fields = ("id", "has_archived_room", "profile", "role")
-        filter_fields = ("profile__target_content_type",)
         filterset_class = ChatRoomParticipantFilter
 
 
