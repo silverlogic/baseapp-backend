@@ -64,7 +64,6 @@ MIDDLEWARE += [
 GRAPHENE["MIDDLEWARE"] = (
     "baseapp_profiles.graphql.middleware.CurrentProfileMiddleware",
 ) + GRAPHENE["MIDDLEWARE"]
-GRAPHENE["SCHEMA"] = "testproject.graphql.schema"
 
 ROOT_URLCONF = "testproject.urls"
 

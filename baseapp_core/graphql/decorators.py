@@ -53,9 +53,7 @@ def _ensure_graphql_loaded():
     if _graphql_loaded:
         return
 
-    schema_path = getattr(settings, "GRAPHQL_SCHEMA_PATH", None) or (
-        getattr(settings, "GRAPHENE", {}).get("SCHEMA")
-    )
+    schema_path = getattr(settings, "GRAPHENE", {}).get("SCHEMA")
     if not schema_path:
         # Nothing configured – don't keep trying on every call
         _graphql_loaded = True
