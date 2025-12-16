@@ -14,14 +14,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        pgtrigger.migrations.RemoveTrigger(
-            model_name="message",
-            name="create_message_status",
-        ),
-        pgtrigger.migrations.RemoveTrigger(
-            model_name="messagestatus",
-            name="increment_unread_count",
-        ),
         migrations.AddField(
             model_name="chatroom",
             name="profile_created_by",
