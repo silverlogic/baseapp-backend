@@ -3,6 +3,7 @@ import string
 import graphene
 import swapper
 from django.apps import apps
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from rest_framework import serializers
@@ -289,9 +290,209 @@ class ProfileDelete(RelayMutation):
         return ProfileDelete(deleted_id=relay_id)
 
 
+class SendProfileInvitation(RelayMutation):
+    profile_user_role = graphene.Field(get_object_type_for_model(ProfileUserRole))
+
+    class Input:
+        profile_id = graphene.ID(required=True)
+        email = graphene.String(required=True)
+        role = graphene.Field(ProfileRoleTypesEnum, required=True)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        from baseapp_profiles.emails import create_invitation, send_invitation_email
+
+        profile_id = input.get("profile_id")
+        email = input.get("email")
+        role = input.get("role")
+
+        profile_pk = get_pk_from_relay_id(profile_id)
+        profile = Profile.objects.get(pk=profile_pk)
+
+        if not info.context.user.has_perm(
+            f"{profile_user_role_app_label}.add_profileuserrole", profile
+        ):
+            raise GraphQLError(
+                str(_("You don't have permission to perform this action")),
+                extensions={"code": "permission_required"},
+            )
+
+        existing_role = ProfileUserRole.objects.filter(
+            profile=profile,
+            invited_email__iexact=email,
+        ).first()
+
+        if existing_role:
+            if existing_role.status == ProfileUserRole.ProfileRoleStatus.PENDING:
+                raise GraphQLError(
+                    str(_("An invitation has already been sent to this email")),
+                    extensions={"code": "duplicate_invitation"},
+                )
+            if existing_role.status == ProfileUserRole.ProfileRoleStatus.ACTIVE:
+                raise GraphQLError(
+                    str(_("This user is already a member of this profile")),
+                    extensions={"code": "already_member"},
+                )
+
+        invitation = create_invitation(
+            profile=profile,
+            inviter=info.context.user,
+            invited_email=email,
+            role=role
+        )
+
+        send_invitation_email(invitation, info.context.user)
+
+        return SendProfileInvitation(profile_user_role=invitation)
+
+
+class AcceptProfileInvitation(RelayMutation):
+    profile_user_role = graphene.Field(get_object_type_for_model(ProfileUserRole))
+    profile = graphene.Field(get_object_type_for_model(Profile))
+
+    class Input:
+        token = graphene.String(required=True)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        token = input.get("token")
+
+        try:
+            invitation = ProfileUserRole.objects.get(invitation_token=token)
+        except ProfileUserRole.DoesNotExist:
+            raise GraphQLError(
+                str(_("Invalid invitation token")),
+                extensions={"code": "invalid_token"},
+            )
+
+        if invitation.is_invitation_expired():
+            invitation.status = ProfileUserRole.ProfileRoleStatus.DECLINED
+            invitation.responded_at = timezone.now()
+            invitation.save()
+            raise GraphQLError(
+                str(_("This invitation has expired")),
+                extensions={"code": "expired_invitation"},
+            )
+
+        if invitation.status != ProfileUserRole.ProfileRoleStatus.PENDING:
+            raise GraphQLError(
+                str(_("This invitation has already been responded to")),
+                extensions={"code": "already_responded"},
+            )
+
+        if not invitation.user:
+            invitation.user = info.context.user
+        elif invitation.user.id != info.context.user.id:
+            raise GraphQLError(
+                str(_("This invitation was sent to a different user")),
+                extensions={"code": "wrong_user"},
+            )
+
+        invitation.status = ProfileUserRole.ProfileRoleStatus.ACTIVE
+        invitation.responded_at = timezone.now()
+        invitation.save()
+
+        return AcceptProfileInvitation(
+            profile_user_role=invitation,
+            profile=invitation.profile
+        )
+
+
+class DeclineProfileInvitation(RelayMutation):
+    success = graphene.Boolean()
+
+    class Input:
+        token = graphene.String(required=True)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        token = input.get("token")
+
+        try:
+            invitation = ProfileUserRole.objects.get(invitation_token=token)
+        except ProfileUserRole.DoesNotExist:
+            raise GraphQLError(
+                str(_("Invalid invitation token")),
+                extensions={"code": "invalid_token"},
+            )
+
+        if invitation.is_invitation_expired():
+            invitation.status = ProfileUserRole.ProfileRoleStatus.DECLINED
+            invitation.responded_at = timezone.now()
+            invitation.save()
+            raise GraphQLError(
+                str(_("This invitation has expired")),
+                extensions={"code": "expired_invitation"},
+            )
+
+        if invitation.status != ProfileUserRole.ProfileRoleStatus.PENDING:
+            raise GraphQLError(
+                str(_("This invitation has already been responded to")),
+                extensions={"code": "already_responded"},
+            )
+
+        if invitation.user and invitation.user.id != info.context.user.id:
+            raise GraphQLError(
+                str(_("This invitation was sent to a different user")),
+                extensions={"code": "wrong_user"},
+            )
+
+        invitation.status = ProfileUserRole.ProfileRoleStatus.DECLINED
+        invitation.responded_at = timezone.now()
+        invitation.save()
+
+        return DeclineProfileInvitation(success=True)
+
+
+class CancelProfileInvitation(RelayMutation):
+    success = graphene.Boolean()
+
+    class Input:
+        invitation_id = graphene.ID(required=True)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        invitation_id = input.get("invitation_id")
+        invitation_pk = get_pk_from_relay_id(invitation_id)
+
+        try:
+            invitation = ProfileUserRole.objects.get(pk=invitation_pk)
+        except ProfileUserRole.DoesNotExist:
+            raise GraphQLError(
+                str(_("Invitation not found")),
+                extensions={"code": "not_found"},
+            )
+
+        if not info.context.user.has_perm(
+            f"{profile_user_role_app_label}.delete_profileuserrole", invitation.profile
+        ):
+            raise GraphQLError(
+                str(_("You don't have permission to perform this action")),
+                extensions={"code": "permission_required"},
+            )
+
+        if invitation.status != ProfileUserRole.ProfileRoleStatus.PENDING:
+            raise GraphQLError(
+                str(_("Can only cancel pending invitations")),
+                extensions={"code": "invalid_status"},
+            )
+
+        invitation.delete()
+
+        return CancelProfileInvitation(success=True)
+
+
 class ProfilesMutations(object):
     profile_create = ProfileCreate.Field()
     profile_update = ProfileUpdate.Field()
     profile_delete = ProfileDelete.Field()
     profile_role_update = RoleUpdate.Field()
     profile_remove_member = ProfileRemoveMember.Field()
+    send_profile_invitation = SendProfileInvitation.Field()
+    accept_profile_invitation = AcceptProfileInvitation.Field()
+    decline_profile_invitation = DeclineProfileInvitation.Field()
+    cancel_profile_invitation = CancelProfileInvitation.Field()
