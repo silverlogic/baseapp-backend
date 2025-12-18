@@ -152,7 +152,7 @@ class ChatRoomCreate(RelayMutation):
 
         room = ChatRoom.objects.create(
             created_by=info.context.user,
-            profile_created_by=profile,
+            created_by_profile=profile,
             last_message_time=timezone.now(),
             is_group=is_group,
             title=title,

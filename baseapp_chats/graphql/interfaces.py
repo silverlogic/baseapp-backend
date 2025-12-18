@@ -39,8 +39,8 @@ class ChatRoomsInterface(relay.Node):
         # Recipients should only see 1-on-1 chats if they have at least one message
         qs = qs.exclude(
             Q(is_group=False)
-            & Q(profile_created_by__isnull=False)
-            & ~Q(profile_created_by_id=self.pk)
+            & Q(created_by_profile__isnull=False)
+            & ~Q(created_by_profile_id=self.pk)
             & Q(last_message__isnull=True)
         )
 

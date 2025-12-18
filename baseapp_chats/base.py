@@ -25,7 +25,7 @@ class AbstractBaseChatRoom(TimeStampedModel, RelayModel):
         null=True,
         blank=True,
     )
-    profile_created_by = models.ForeignKey(
+    created_by_profile = models.ForeignKey(
         swapper.get_model_name("baseapp_profiles", "Profile"),
         related_name="profile_created_rooms",
         on_delete=models.SET_NULL,

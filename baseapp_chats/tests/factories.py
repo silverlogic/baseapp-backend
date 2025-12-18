@@ -9,7 +9,7 @@ MessageStatus = swapper.load_model("baseapp_chats", "MessageStatus")
 
 class ChatRoomFactory(factory.django.DjangoModelFactory):
     created_by = factory.SubFactory("baseapp_core.tests.factories.UserFactory")
-    profile_created_by = factory.LazyAttribute(
+    created_by_profile = factory.LazyAttribute(
         lambda obj: (
             obj.created_by.profile
             if obj.created_by and hasattr(obj.created_by, "profile")
