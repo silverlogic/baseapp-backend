@@ -4,3 +4,6 @@ SIMPLE_JWT = {
 }
 
 JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
+
+PERMISSIONS_HIDE_APPS = []
+PERMISSIONS_HIDE_MODELS = []
