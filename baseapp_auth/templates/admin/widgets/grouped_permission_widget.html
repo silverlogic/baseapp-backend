@@ -1,0 +1,235 @@
+<div class="space-y-6">
+  <!-- Filter -->
+  <div class="mb-4">
+    <input
+      type="text"
+      class="permission-filter w-full rounded-lg px-3 py-2 text-sm"
+      placeholder="Filter permissions…"
+      aria-label="Filter permissions"
+    >
+  </div>
+  <div class="grouped-permissions space-y-6">
+    {% for app_label, models in grouped_permissions.items %}
+    <details class="permission-app rounded-xl p-4" open>
+
+      <!-- App header -->
+      <summary
+        class="flex items-center justify-between cursor-default list-none"
+      >
+        <!-- Left: checkbox + label (NO collapse) -->
+        <div
+          class="flex items-center gap-2 font-semibold"
+          onclick="event.stopPropagation()"
+        >
+          <input
+            type="checkbox"
+            class="select-all-app"
+          >
+          <span>{{ app_label|capfirst }}</span>
+        </div>
+
+        <!-- Right: arrow ONLY (collapse control) -->
+
+        <span class="material-symbols-outlined permission-toggle text-gray-500 hover:text-gray-800">
+            expand_more
+        </span>
+      </summary>
+
+      <!-- Models -->
+      <div class="mt-4 space-y-4">
+        {% for model_name, permissions in models.items %}
+          <details class="permission-model ml-6" open>
+
+            <!-- Model header -->
+            <summary
+              class="flex items-center justify-between cursor-default list-none"
+            >
+              <!-- Left -->
+              <div
+                class="flex items-center gap-2 text-sm font-medium"
+                onclick="event.stopPropagation()"
+              >
+                <input
+                  type="checkbox"
+                  class="select-all-model"
+                >
+                <span>{{ model_name|capfirst }}</span>
+              </div>
+
+              <!-- Right: arrow -->
+              <span class="material-symbols-outlined permission-toggle text-gray-500 hover:text-gray-800">
+                  expand_more
+              </span>
+            </summary>
+
+            <!-- Permissions -->
+            <ul class="ml-6 mt-2 space-y-1 permission-labels-list">
+              {% for perm in permissions %}
+                <li>
+                  <label
+                    class="permission-label flex items-center gap-2 text-sm cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      name="{{ widget.name }}"
+                      value="{{ perm.value }}"
+                      class="permission-checkbox"
+                      {% if perm.checked %}checked{% endif %}
+                    >
+                    {{ perm.label }}
+                  </label>
+                </li>
+              {% endfor %}
+            </ul>
+
+          </details>
+        {% endfor %}
+      </div>
+
+    </details>
+  {% endfor %}
+  </div>
+</div>
+
+
+<style>
+  .permission-filter {
+    border-radius: 8px;
+  }
+  .grouped-permissions {
+    max-height: 400px;
+    overflow-y: overlay;
+    border: 1px solid #2F3544;
+    border-radius: 8px;
+  }
+  .permission-app {
+    border-bottom: 1px solid #2F3544;
+  }
+  .permission-app:last-child {
+    border-bottom: none;
+  }
+  .permission-toggle {
+    transition: transform 0.2s ease;
+    cursor: pointer;
+  }
+  details[open] > summary .permission-toggle {
+    transform: rotate(180deg);
+  }
+  .permission-model {
+    margin-left: 24px;
+  }
+  .permission-labels-list {
+    margin-left: 24px;
+  }
+</style>
+
+<script>
+(function () {
+
+function updateParent(parent, children) {
+  const all = [...children].every(c => c.checked);
+  const some = [...children].some(c => c.checked);
+
+  parent.checked = all;
+  parent.indeterminate = !all && some;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  /* ---------- MODEL LEVEL ---------- */
+
+  document.querySelectorAll(".permission-model").forEach(modelBlock => {
+    const modelToggle = modelBlock.querySelector(".select-all-model");
+    const permissions = modelBlock.querySelectorAll(".permission-checkbox");
+
+    if (!modelToggle) return;
+
+    // Model → permissions
+    modelToggle.addEventListener("change", () => {
+      permissions.forEach(cb => cb.checked = modelToggle.checked);
+    });
+
+    // Permissions → model
+    permissions.forEach(cb => {
+      cb.addEventListener("change", () => {
+        updateParent(modelToggle, permissions);
+      });
+    });
+
+    // Initial state
+    updateParent(modelToggle, permissions);
+  });
+
+  /* ---------- APP LEVEL ---------- */
+
+  document.querySelectorAll(".permission-app").forEach(appBlock => {
+    const appToggle = appBlock.querySelector(".select-all-app");
+    const modelBlocks = appBlock.querySelectorAll(".permission-model");
+    const allPermissions = appBlock.querySelectorAll(".permission-checkbox");
+
+    if (!appToggle) return;
+
+    // App → ALL permissions + models
+    appToggle.addEventListener("change", () => {
+      allPermissions.forEach(cb => cb.checked = appToggle.checked);
+
+      // 🔑 UPDATE ALL MODEL CHECKBOXES
+      modelBlocks.forEach(modelBlock => {
+        const modelToggle = modelBlock.querySelector(".select-all-model");
+        const perms = modelBlock.querySelectorAll(".permission-checkbox");
+
+        if (modelToggle) {
+          updateParent(modelToggle, perms);
+        }
+      });
+    });
+
+    // Any permission → app
+    allPermissions.forEach(cb => {
+      cb.addEventListener("change", () => {
+        updateParent(appToggle, allPermissions);
+      });
+    });
+
+    // Initial state
+    updateParent(appToggle, allPermissions);
+  });
+
+});
+
+})();
+
+
+  document.addEventListener("DOMContentLoaded", () => {
+  const filterInput = document.querySelector(".permission-filter");
+  if (!filterInput) return;
+
+  filterInput.addEventListener("input", () => {
+    const query = filterInput.value.toLowerCase();
+
+    document.querySelectorAll(".permission-label").forEach(label => {
+      const text = label.textContent.toLowerCase();
+      label.closest("li").style.display =
+        text.includes(query) ? "" : "none";
+    });
+
+    // Hide empty models
+    document.querySelectorAll(".permission-model").forEach(model => {
+      const visible = model.querySelectorAll(
+        'li:not([style*="display: none"])'
+      ).length > 0;
+      model.style.display = visible ? "" : "none";
+    });
+
+    // Hide empty apps
+    document.querySelectorAll(".permission-app").forEach(app => {
+      const visible = app.querySelectorAll(
+        '.permission-model:not([style*="display: none"])'
+      ).length > 0;
+      app.style.display = visible ? "" : "none";
+    });
+  });
+});
+
+  
+</script>
