@@ -32,6 +32,20 @@ class TestRegister(ApiMixin):
         assert User.objects.count() == 1
         assert len(outbox) == 1
 
+    def test_registered_user_email_is_lower_case(self, client, data, outbox):
+        r = client.post(
+            self.reverse(),
+            {
+                "email": data["email"].upper(),
+                "password": data["password"],
+            },
+        )
+        h.responseCreated(r)
+        assert User.objects.count() == 1
+        user = User.objects.get()
+        assert user.email == data["email"]
+        assert len(outbox) == 1
+
     def test_user_can_request_deep_link_error(self, user_client, outbox, data):
         with patch("baseapp_auth.emails.get_deep_link") as m:
             m.side_effect = DeepLinkFetchError

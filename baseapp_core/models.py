@@ -155,11 +155,15 @@ class DocumentIdFunc(pgtrigger.Func):
     """
 
     def render(self, model: models.Model) -> str:
+        concrete_model = model._meta.concrete_model
+        app_label = concrete_model._meta.app_config.label
+        model_name = concrete_model._meta.model_name
         fields = utils.AttrDict({field.name: field for field in model._meta.fields})
         columns = utils.AttrDict({field.name: field.column for field in model._meta.fields})
         return self.func.format(
             model=model,
-            meta=model._meta,
+            app_label=app_label,
+            model_name=model_name,
             fields=fields,
             columns=columns,
             document_id_table=DocumentId._meta.db_table,
@@ -182,7 +186,7 @@ def insert_document_id_trigger():
             INSERT INTO {document_id_table} (public_id, content_type_id, object_id, created, modified)
             VALUES (
                 gen_random_uuid(),
-                (SELECT id FROM {content_type_table} WHERE app_label = '{meta.app_label}' AND model = '{meta.model_name}'),
+                (SELECT id FROM {content_type_table} WHERE app_label = '{app_label}' AND model = '{model_name}'),
                 NEW.{pk},
                 NOW(),
                 NOW()
@@ -207,7 +211,7 @@ def delete_document_id_trigger():
             """
             DELETE FROM {document_id_table}
             WHERE
-                content_type_id = (SELECT id FROM {content_type_table} WHERE app_label = '{meta.app_label}' AND model = '{meta.model_name}')
+                content_type_id = (SELECT id FROM {content_type_table} WHERE app_label = '{app_label}' AND model = '{model_name}')
                 AND object_id = OLD.{pk};
             RETURN NULL;
             """
@@ -220,12 +224,16 @@ def add_document_id_trigger(sender, **kwargs):
     """
     Add the document ID triggers to the model when it is prepared through the class_prepared signal.
     """
-    # Only apply to concrete models that inherit from DocumentIdMixin
+    # Only models that inherit from DocumentIdMixin
     if not issubclass(sender, DocumentIdMixin):
         return
 
-    # Skip abstract models
-    if sender._meta.abstract:
+    # Skip non-schema models
+    if sender._meta.abstract or sender._meta.proxy:
+        return
+
+    # Skip swapped-out models
+    if sender._meta.swapped:
         return
 
     if not hasattr(sender._meta, "triggers"):

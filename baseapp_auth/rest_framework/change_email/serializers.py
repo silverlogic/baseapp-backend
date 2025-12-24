@@ -14,6 +14,7 @@ class ChangeEmailRequestSerializer(serializers.Serializer):
     new_email = serializers.EmailField()
 
     def validate_new_email(self, new_email):
+        new_email = new_email.lower()
         if User.objects.filter(email=new_email).exists():
             raise serializers.ValidationError(_("That email is already in use."))
         return new_email

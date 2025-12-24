@@ -127,3 +127,70 @@ def test_user_cant_unblock_others_block(django_user_client, graphql_user_client)
 
     assert content["errors"][0]["message"] == "You don't have permission to perform this action"
     assert content["errors"][0]["extensions"]["code"] == "permission_required"
+
+
+def test_user_profile_cant_self_block(django_user_client, graphql_user_client):
+    profile1 = ProfileFactory(owner=django_user_client.user)
+
+    variables = {
+        "input": {
+            "actorObjectId": profile1.relay_id,
+            "targetObjectId": profile1.relay_id,
+        }
+    }
+
+    response = graphql_user_client(BLOCK_TOGGLE_GRAPHQL, variables=variables)
+    profile1.refresh_from_db()
+    content = response.json()
+
+    assert Block.objects.count() == 0
+    assert profile1.blockers_count == 0
+    assert profile1.blocking_count == 0
+
+    assert content["errors"][0]["message"] == "You cannot block yourself"
+
+
+def test_user_can_block_profile_from_same_user(django_user_client, graphql_user_client):
+    profile1 = ProfileFactory(owner=django_user_client.user)
+    profile2 = ProfileFactory(owner=django_user_client.user)
+
+    variables = {
+        "input": {
+            "actorObjectId": profile1.relay_id,
+            "targetObjectId": profile2.relay_id,
+        }
+    }
+
+    response = graphql_user_client(BLOCK_TOGGLE_GRAPHQL, variables=variables)
+
+    content = response.json()
+
+    assert content["data"]["blockToggle"]["actor"]["blockingCount"] == 1
+
+    assert content["data"]["blockToggle"]["target"]["blockersCount"] is None
+
+
+def test_user_can_unblock_profile_from_same_user(django_user_client, graphql_user_client):
+    profile1 = ProfileFactory(owner=django_user_client.user)
+    profile2 = ProfileFactory(owner=django_user_client.user)
+
+    variables = {
+        "input": {
+            "actorObjectId": profile1.relay_id,
+            "targetObjectId": profile2.relay_id,
+        }
+    }
+
+    response = graphql_user_client(BLOCK_TOGGLE_GRAPHQL, variables=variables)
+    content = response.json()
+
+    assert content["data"]["blockToggle"]["actor"]["blockingCount"] == 1
+
+    assert content["data"]["blockToggle"]["target"]["blockersCount"] is None
+
+    response = graphql_user_client(BLOCK_TOGGLE_GRAPHQL, variables=variables)
+    content = response.json()
+
+    assert content["data"]["blockToggle"]["actor"]["blockingCount"] == 0
+
+    assert content["data"]["blockToggle"]["target"]["blockersCount"] is None

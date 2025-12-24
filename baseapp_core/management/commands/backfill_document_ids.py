@@ -2,10 +2,7 @@ from __future__ import annotations
 
 from django.core.management.base import BaseCommand
 
-from baseapp_core.hashids.strategies import (
-    backfill_all_models,
-    backfill_single_instance,
-)
+from baseapp_core.backfill import backfill_all_models, backfill_single_instance
 
 
 class Command(BaseCommand):
