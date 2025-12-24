@@ -1,0 +1,37 @@
+{% extends "allauth/layouts/entrance.html" %}
+{% load i18n allauth %}
+{% block head_title %}
+    {% trans "Sign Out" %}
+{% endblock head_title %}
+{% block content %}
+    {% element h1 %}
+        {% trans "Sign Out" %}
+    {% endelement %}
+    {% element panel %}
+        {% slot body %}
+            {% element alert %}
+                {% slot message %}
+                    {% trans "Are you sure you want to sign out?" %}
+                {% endslot %}
+            {% endelement %}
+        {% endslot %}
+        {% slot actions %}
+            {% element form method="post" action=action_url no_visible_fields=True %}
+                {% slot body %}
+                    {% csrf_token %}
+                    {% if redirect_field_value %}
+                        <input type="hidden"
+                               name="{{ redirect_field_name }}"
+                               value="{{ redirect_field_value }}" />
+                    {% endif %}
+                {% endslot %}
+                {% slot actions %}
+                    {% element button type="submit" tags="danger,logout" %}
+                        {% trans "Sign Out" %}
+                    {% endelement %}
+                {% endslot %}
+            {% endelement %}
+        {% endslot %}
+    {% endelement %}
+{% endblock content %}
+
