@@ -9,25 +9,15 @@
     {% endelement %}
     {% element panel %}
         {% slot body %}
-            {% element alert %}
-                {% slot message %}
-                    {% trans "Are you sure you want to sign out?" %}
-                {% endslot %}
-            {% endelement %}
+            <p>{% trans 'Are you sure you want to sign out?' %}</p>
         {% endslot %}
         {% slot actions %}
-            {% element form method="post" action=action_url no_visible_fields=True %}
+            {% url 'account_logout' as action_url %}
+            {% element form method="post" action=action_url tags="inline" %}
                 {% slot body %}
                     {% csrf_token %}
-                    {% if redirect_field_value %}
-                        <input type="hidden"
-                               name="{{ redirect_field_name }}"
-                               value="{{ redirect_field_value }}" />
-                    {% endif %}
-                {% endslot %}
-                {% slot actions %}
-                    {% element button type="submit" tags="danger,logout" %}
-                        {% trans "Sign Out" %}
+                    {% element button type="submit" tags="primary,prominent" %}
+                        {% trans 'Sign Out' %}
                     {% endelement %}
                 {% endslot %}
             {% endelement %}
