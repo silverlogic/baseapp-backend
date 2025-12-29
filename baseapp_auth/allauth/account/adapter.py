@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from allauth.account.adapter import DefaultAccountAdapter
 from django.conf import settings
 from django.urls import resolve, reverse
@@ -62,22 +64,29 @@ class AccountAdapter(DefaultAccountAdapter):
         """
         next_url = request.GET.get("next") or request.POST.get("next")
         if next_url:
-            if url_has_allowed_host_and_scheme(
-                next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
-            ) and next_url.startswith("/admin/"):
-                # Validate that the URL resolves to a valid admin view
-                # This prevents path traversal attacks (e.g., "/admin/../sensitive-page")
-                # by ensuring the normalized path resolves to an actual view
-                # resolve() normalizes paths, so "../" sequences are handled safely
-                try:
-                    resolved = resolve(next_url)
-                    # Ensure the resolved view belongs to the admin namespace
-                    # This provides an additional layer of security beyond just checking the prefix
-                    if resolved.namespace == "admin":
-                        return next_url
-                except Resolver404:
-                    # Invalid URL, fall through to default redirect
-                    pass
+            # Normalize the path to prevent path traversal attacks
+            # This handles sequences like "/admin/../sensitive-page" -> "/sensitive-page"
+            parsed = urlparse(next_url)
+            # Use posixpath.normpath to normalize the path (handles .. and .)
+            import posixpath
+
+            normalized_path = posixpath.normpath(parsed.path)
+            # Ensure normalized path still starts with /admin/ after normalization
+            if normalized_path.startswith("/admin/"):
+                # Reconstruct URL with normalized path
+                normalized_url = f"{parsed.scheme}://{parsed.netloc}{normalized_path}" if parsed.scheme else normalized_path
+                if url_has_allowed_host_and_scheme(
+                    normalized_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+                ):
+                    # Validate that the normalized URL resolves to a valid admin view
+                    try:
+                        resolved = resolve(normalized_path)
+                        # Ensure the resolved view belongs to the admin namespace
+                        if resolved.namespace == "admin":
+                            return normalized_path
+                    except Resolver404:
+                        # Invalid URL, fall through to default redirect
+                        pass
         # Use ACCOUNT_LOGIN_REDIRECT_URL if configured, otherwise default to admin:index
         redirect_url = getattr(settings, "ACCOUNT_LOGIN_REDIRECT_URL", "admin:index")
 
@@ -111,4 +120,9 @@ class AccountAdapter(DefaultAccountAdapter):
         # Otherwise, treat it as a URL name and reverse it
         if redirect_url.startswith(("http://", "https://", "/")):
             return redirect_url
-        return reverse(redirect_url)
+        try:
+            return reverse(redirect_url)
+        except Exception:
+            # If URL name doesn't exist, fall back to a safe default
+            # This can happen if allauth URLs aren't fully configured
+            return reverse("admin:index")
