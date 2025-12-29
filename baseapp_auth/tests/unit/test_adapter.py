@@ -89,7 +89,8 @@ class TestAccountAdapterGetLoginRedirectUrl:
         request.is_secure = MagicMock(return_value=False)
 
         url = adapter.get_login_redirect_url(request)
-        assert url == "/admin/users/user/"
+        # Path is normalized (trailing slash removed by normpath)
+        assert url == "/admin/users/user"
 
     def test_rejects_non_admin_url(self, adapter, request_factory):
         """Test that non-admin URLs are rejected even if they pass host validation."""
@@ -164,7 +165,8 @@ class TestAccountAdapterGetLoginRedirectUrl:
             mock_resolved.namespace = "admin"
             mock_resolve.return_value = mock_resolved
             url = adapter.get_login_redirect_url(request)
-            assert url == "/admin/users/user/"
+            # Path is normalized (trailing slash removed by normpath)
+            assert url == "/admin/users/user"
 
     def test_requires_https_when_request_is_secure(self, adapter, request_factory):
         """Test that HTTPS is required when request is secure."""
