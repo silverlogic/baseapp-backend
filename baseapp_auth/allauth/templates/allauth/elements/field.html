@@ -7,6 +7,7 @@
                id="{{ attrs.id }}"
                {% if attrs.value is not None %}value="{{ attrs.value }}"{% endif %}
                {% if attrs.disabled %}disabled{% endif %}
+               {% if attrs.checked %}checked{% endif %}
                type="{{ attrs.type }}">
         <label class="form-check-label" for="{{ attrs.id }}">
             {% slot label %}
