@@ -60,7 +60,7 @@
                {% if attrs.value is not None %}value="{{ attrs.value }}"{% endif %}
                type="{{ attrs.type }}">
         {% if attrs.unlabeled %}
-            <label class="" for="{{ attrs.id }}">
+            <label for="{{ attrs.id }}">
                 {% slot label %}
                 {% endslot %}
             </label>
