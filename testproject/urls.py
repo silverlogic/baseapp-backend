@@ -30,6 +30,7 @@ v1_urlpatterns = [
     re_path(r"auth/mfa/jwt/", include(auth_mfa_jwt_urls)),
     re_path(r"auth/pre-auth/", include(pre_auth_urls)),
     re_path(r"payments/", include(payments_router.urls)),
+    # re_path(r"files/upload/", include("rest_framework_tus.urls")),  # Removed - using custom TUS implementation
 ]
 
 router = DefaultRouter(trailing_slash=False)

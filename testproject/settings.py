@@ -24,6 +24,7 @@ INSTALLED_APPS += [
     "rest_social_auth",
     "trench",
     "rest_framework_simplejwt",
+    # "rest_framework_tus",  # Removed - using custom TUS implementation
     "baseapp_profiles",
     "baseapp_reactions",
     "baseapp_reports",
@@ -180,6 +181,12 @@ BASEAPP_PROFILES_PROFILE_MODEL = "profiles.Profile"
 # Files
 BASEAPP_FILES_FILE_MODEL = "files.File"
 BASEAPP_FILES_FILETARGET_MODEL = "files.FileTarget"
+
+# TUS (resumable file uploads)
+TUS_UPLOAD_MODEL = BASEAPP_FILES_FILE_MODEL
+TUS_SAVE_HANDLER = "baseapp.files.handlers.FileUploadSaveHandler"
+TUS_UPLOAD_DESTINATION = "uploads/tus"
+TUS_MAX_FILE_SIZE = 1024 * 1024 * 1024 * 5  # 5 GB
 
 # Notifications
 NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"
