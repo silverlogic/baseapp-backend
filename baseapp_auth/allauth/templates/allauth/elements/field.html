@@ -37,7 +37,7 @@
                   id="{{ attrs.id }}"
                   {% if attrs.disabled %}disabled{% endif %}>{% slot value %}{% endslot %}</textarea>
         {% if attrs.errors %}
-            {% for error in attrs.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+            {% for error in attrs.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
         {% endif %}
     </div>
 {% elif attrs.type == "hidden" %}
@@ -79,7 +79,7 @@
             </div>
         {% endif %}
         {% if attrs.errors %}
-            {% for error in attrs.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+            {% for error in attrs.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
         {% endif %}
     </div>
 {% endif %}

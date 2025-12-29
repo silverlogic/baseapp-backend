@@ -1,6 +1,7 @@
 from allauth.account.adapter import DefaultAccountAdapter
 from django.conf import settings
-from django.urls import reverse
+from django.urls import resolve, reverse
+from django.urls.exceptions import Resolver404
 from django.utils.http import url_has_allowed_host_and_scheme
 
 
@@ -20,6 +21,7 @@ class AccountAdapter(DefaultAccountAdapter):
     Configuration:
     - ALLAUTH_ADMIN_SIGNUP_ENABLED: Controls whether signup is enabled (default: False)
     - ACCOUNT_LOGIN_REDIRECT_URL: Default redirect URL after login (default: "admin:index")
+    - ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL: Redirect URL after password change (default: "account_change_password_done")
     """
 
     def is_open_for_signup(self, request):
@@ -63,11 +65,16 @@ class AccountAdapter(DefaultAccountAdapter):
             if url_has_allowed_host_and_scheme(
                 next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
             ) and next_url.startswith("/admin/"):
-                return next_url
-        
+                # Validate that the URL resolves to a valid admin view
+                try:
+                    resolve(next_url)
+                    return next_url
+                except Resolver404:
+                    # Invalid URL, fall through to default redirect
+                    pass
         # Use ACCOUNT_LOGIN_REDIRECT_URL if configured, otherwise default to admin:index
         redirect_url = getattr(settings, "ACCOUNT_LOGIN_REDIRECT_URL", "admin:index")
-        
+
         # If it's already a full URL or starts with /, return it directly
         # Otherwise, treat it as a URL name and reverse it
         if redirect_url.startswith(("http://", "https://", "/")):
@@ -78,14 +85,24 @@ class AccountAdapter(DefaultAccountAdapter):
         """
         Determine the redirect URL after successful password change.
 
-        Redirects users to the standard password change done view after they
-        successfully change their password, allowing the
-        ``password_change_done.html`` template to be rendered.
+        Uses ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL setting if configured,
+        otherwise defaults to account_change_password_done to render the
+        password change done template.
 
         Args:
             request: The HTTP request object.
 
         Returns:
-            str: The URL to redirect to after password change (account_change_password_done).
+            str: The URL to redirect to after password change (from
+                 ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL setting, or
+                 account_change_password_done by default).
         """
-        return reverse("account_change_password_done")
+        redirect_url = getattr(
+            settings, "ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL", "account_change_password_done"
+        )
+
+        # If it's already a full URL or starts with /, return it directly
+        # Otherwise, treat it as a URL name and reverse it
+        if redirect_url.startswith(("http://", "https://", "/")):
+            return redirect_url
+        return reverse(redirect_url)

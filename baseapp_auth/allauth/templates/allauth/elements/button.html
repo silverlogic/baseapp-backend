@@ -27,7 +27,7 @@ class="{% block class %}
     {% endif %}
     {% endif %}
 
-{% if not "tool" in attrs.tags %}
+{% if "tool" not in attrs.tags %}
 {% slot %}
 {% endslot %}
 {% endif %}
