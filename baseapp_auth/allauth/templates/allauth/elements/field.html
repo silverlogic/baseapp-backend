@@ -42,7 +42,7 @@
 {% else %}
     <div class="{% if attrs.unlabeled %}form-floating{% endif %} mb-3">
         {% if not attrs.unlabeled %}
-            <label class="" for="{{ attrs.id }}">
+            <label for="{{ attrs.id }}">
                 {% slot label %}
                 {% endslot %}
             </label>
