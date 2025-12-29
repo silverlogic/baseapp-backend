@@ -1,4 +1,5 @@
 from allauth.account.adapter import DefaultAccountAdapter
+from django.conf import settings
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 
@@ -15,23 +16,27 @@ class AccountAdapter(DefaultAccountAdapter):
     The signup is disabled because user registration should be managed through
     administrative processes or specific registration endpoints, not through
     the public allauth signup flow.
+
+    Configuration:
+    - ALLAUTH_ADMIN_SIGNUP_ENABLED: Controls whether signup is enabled (default: False)
+    - ACCOUNT_LOGIN_REDIRECT_URL: Default redirect URL after login (default: "admin:index")
     """
 
     def is_open_for_signup(self, request):
         """
-        Disable public user signup.
+        Determine if signup is open based on configuration.
 
-        Returns False to prevent users from registering through the standard
-        allauth signup flow. User registration should be handled through
-        administrative interfaces or dedicated registration endpoints.
+        Checks the ALLAUTH_ADMIN_SIGNUP_ENABLED setting to determine if signup
+        should be enabled. If not set, defaults to False to disable signup.
 
         Args:
             request: The HTTP request object.
 
         Returns:
-            bool: Always returns False to disable signup.
+            bool: True if signup is enabled (via ALLAUTH_ADMIN_SIGNUP_ENABLED),
+                  False otherwise.
         """
-        return False
+        return getattr(settings, "ALLAUTH_ADMIN_SIGNUP_ENABLED", False)
 
     def get_login_redirect_url(self, request):
         """
@@ -39,7 +44,8 @@ class AccountAdapter(DefaultAccountAdapter):
 
         This method implements the following redirect logic:
         1. If a 'next' parameter is provided and it's a safe admin URL, redirect there
-        2. Otherwise, redirect to the Django admin index page
+        2. Otherwise, use ACCOUNT_LOGIN_REDIRECT_URL setting if available
+        3. Fall back to admin:index if no setting is configured
 
         The 'next' parameter is checked for security (allowed host and scheme)
         and must point to an admin URL (/admin/) to be used.
@@ -48,8 +54,9 @@ class AccountAdapter(DefaultAccountAdapter):
             request: The HTTP request object containing GET/POST parameters.
 
         Returns:
-            str: The URL to redirect to after login (admin:index by default,
-                 or the safe 'next' URL if provided and valid).
+            str: The URL to redirect to after login (from ACCOUNT_LOGIN_REDIRECT_URL
+                 setting, or admin:index by default, or the safe 'next' URL if provided
+                 and valid).
         """
         next_url = request.GET.get("next") or request.POST.get("next")
         if next_url:
@@ -57,7 +64,15 @@ class AccountAdapter(DefaultAccountAdapter):
                 next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
             ) and next_url.startswith("/admin/"):
                 return next_url
-        return reverse("admin:index")
+        
+        # Use ACCOUNT_LOGIN_REDIRECT_URL if configured, otherwise default to admin:index
+        redirect_url = getattr(settings, "ACCOUNT_LOGIN_REDIRECT_URL", "admin:index")
+        
+        # If it's already a full URL or starts with /, return it directly
+        # Otherwise, treat it as a URL name and reverse it
+        if redirect_url.startswith(("http://", "https://", "/")):
+            return redirect_url
+        return reverse(redirect_url)
 
     def get_password_change_redirect_url(self, request):
         """
