@@ -3,7 +3,7 @@
     <div class="form-check mb-3">
         <input {% if attrs.required %}required{% endif %}
                name="{{ attrs.name }}"
-               class="form-check-input"
+               class="form-check-input{% if attrs.errors %} is-invalid{% endif %}"
                id="{{ attrs.id }}"
                {% if attrs.value is not None %}value="{{ attrs.value }}"{% endif %}
                {% if attrs.disabled %}disabled{% endif %}
@@ -20,7 +20,7 @@
             </div>
         {% endif %}
         {% if attrs.errors %}
-            {% for error in attrs.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+            {% for error in attrs.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
         {% endif %}
     </div>
 {% elif attrs.type == "textarea" %}

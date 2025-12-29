@@ -71,6 +71,6 @@ class AccountAdapter(DefaultAccountAdapter):
             request: The HTTP request object.
 
         Returns:
-            str: The URL to redirect to after password change (password_change_done).
+            str: The URL to redirect to after password change (account_change_password_done).
         """
-        return reverse("password_change_done")
+        return reverse("account_change_password_done")
