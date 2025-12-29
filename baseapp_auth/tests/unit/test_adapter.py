@@ -10,6 +10,7 @@ from django.urls.exceptions import Resolver404
 def adapter():
     """Create an instance of AccountAdapter for testing."""
     from baseapp_auth.allauth.account.adapter import AccountAdapter
+
     return AccountAdapter()
 
 
@@ -222,4 +223,3 @@ class TestAccountAdapterGetPasswordChangeRedirectUrl:
         request = request_factory.get("/")
         url = adapter.get_password_change_redirect_url(request)
         assert url == reverse("admin:index")
-
