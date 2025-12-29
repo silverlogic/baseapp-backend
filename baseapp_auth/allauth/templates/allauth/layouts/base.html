@@ -14,7 +14,7 @@ When updating after allauth releases:
 3. Check for new blocks that may need to be added
 {% endcomment %}
 <!DOCTYPE html>
-{% load i18n %}
+{% load i18n static %}
 {% get_current_language as LANGUAGE_CODE %}
 <html lang="{{ LANGUAGE_CODE }}" data-bs-theme="auto">
     <head>
@@ -29,12 +29,22 @@ When updating after allauth releases:
               rel="stylesheet"
               integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
               crossorigin="anonymous">
+        <style>
+            .navbar-custom {
+                background-color: rgb(249, 250, 251) !important;
+            }
+            .navbar-custom .container-fluid {
+                padding-left: 24px;
+            }
+        </style>
     </head>
     <body class="min-vh-100 d-flex flex-shrink-0 flex-column">
         <header data-bs-theme="dark">
-            <nav class="navbar navbar-expand-lg bg-body-tertiary">
+            <nav class="navbar navbar-expand-lg navbar-custom">
                 <div class="container-fluid">
-                    <a class="navbar-brand" href="{% url 'admin:index' %}">Django Admin</a>
+                    <a class="navbar-brand" href="{% url 'admin:index' %}">
+                        <img src="{% static 'images/logo-full-colored.svg' %}" alt="BaseApp" height="32">
+                    </a>
                     <button class="navbar-toggler"
                             type="button"
                             data-bs-toggle="collapse"
