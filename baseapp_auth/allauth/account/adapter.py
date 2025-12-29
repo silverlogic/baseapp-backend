@@ -63,13 +63,14 @@ class AccountAdapter(DefaultAccountAdapter):
         """
         Determine the redirect URL after successful password change.
 
-        Always redirects users to the Django admin index page after they
-        successfully change their password.
+        Redirects users to the standard password change done view after they
+        successfully change their password, allowing the
+        ``password_change_done.html`` template to be rendered.
 
         Args:
             request: The HTTP request object.
 
         Returns:
-            str: The URL to redirect to after password change (admin:index).
+            str: The URL to redirect to after password change (password_change_done).
         """
-        return reverse("admin:index")
+        return reverse("password_change_done")
