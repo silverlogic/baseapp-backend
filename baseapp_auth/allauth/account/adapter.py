@@ -66,9 +66,15 @@ class AccountAdapter(DefaultAccountAdapter):
                 next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
             ) and next_url.startswith("/admin/"):
                 # Validate that the URL resolves to a valid admin view
+                # This prevents path traversal attacks (e.g., "/admin/../sensitive-page")
+                # by ensuring the normalized path resolves to an actual view
+                # resolve() normalizes paths, so "../" sequences are handled safely
                 try:
-                    resolve(next_url)
-                    return next_url
+                    resolved = resolve(next_url)
+                    # Ensure the resolved view belongs to the admin namespace
+                    # This provides an additional layer of security beyond just checking the prefix
+                    if resolved.namespace == "admin":
+                        return next_url
                 except Resolver404:
                     # Invalid URL, fall through to default redirect
                     pass
