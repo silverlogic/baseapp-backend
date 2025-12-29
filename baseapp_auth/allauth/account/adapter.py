@@ -74,9 +74,15 @@ class AccountAdapter(DefaultAccountAdapter):
             # Ensure normalized path still starts with /admin/ after normalization
             if normalized_path.startswith("/admin/"):
                 # Reconstruct URL with normalized path
-                normalized_url = f"{parsed.scheme}://{parsed.netloc}{normalized_path}" if parsed.scheme else normalized_path
+                normalized_url = (
+                    f"{parsed.scheme}://{parsed.netloc}{normalized_path}"
+                    if parsed.scheme
+                    else normalized_path
+                )
                 if url_has_allowed_host_and_scheme(
-                    normalized_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+                    normalized_url,
+                    allowed_hosts={request.get_host()},
+                    require_https=request.is_secure(),
                 ):
                     # Validate that the normalized URL resolves to a valid admin view
                     try:
