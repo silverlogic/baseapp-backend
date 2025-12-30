@@ -7,31 +7,9 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.test import APIClient
 
 File = swapper.load_model("baseapp_files", "File")
 User = get_user_model()
-
-
-@pytest.fixture
-def api_client():
-    return APIClient()
-
-
-@pytest.fixture
-def user(db):
-    return User.objects.create_user(
-        email="test@example.com",
-        password="testpass123",
-        first_name="Test",
-        last_name="User",
-    )
-
-
-@pytest.fixture
-def authenticated_client(api_client, user):
-    api_client.force_authenticate(user=user)
-    return api_client
 
 
 @pytest.fixture
@@ -58,9 +36,9 @@ def mock_s3_handler():
 class TestFileUploadInitiation:
     """Tests for POST /v1/files/uploads/ (initiate upload)."""
 
-    def test_initiate_upload_success(self, authenticated_client, user, mock_s3_handler):
+    def test_initiate_upload_success(self, user_client, mock_s3_handler):
         """Test successful upload initiation."""
-        response = authenticated_client.post(
+        response = user_client.post(
             "/v1/files/uploads",
             {
                 "file_name": "test-video.mp4",
@@ -89,17 +67,17 @@ class TestFileUploadInitiation:
         assert file_obj.file_size == 10485760
         assert file_obj.upload_status == File.UploadStatus.UPLOADING
         assert file_obj.total_parts == 2
-        assert file_obj.created_by == user
+        assert file_obj.created_by == user_client.user
 
         # Verify S3 handler was called
         mock_s3_handler.initiate_upload.assert_called_once()
 
-    def test_initiate_upload_with_parent(self, authenticated_client, user, mock_s3_handler):
+    def test_initiate_upload_with_parent(self, user_client, mock_s3_handler):
         """Test upload initiation with parent object."""
         # Get content type for User model
         user_ct = ContentType.objects.get_for_model(User)
 
-        response = authenticated_client.post(
+        response = user_client.post(
             "/v1/files/uploads",
             {
                 "file_name": "avatar.jpg",
@@ -108,7 +86,7 @@ class TestFileUploadInitiation:
                 "num_parts": 1,
                 "part_size": 1048576,
                 "parent_content_type": f"{user_ct.app_label}.{user_ct.model}",
-                "parent_object_id": user.id,
+                "parent_object_id": user_client.user.id,
             },
             format="json",
         )
@@ -123,11 +101,11 @@ class TestFileUploadInitiation:
 
         file_obj = File.objects.get(id=data["id"])
         assert file_obj.parent_content_type_id == user_ct.id
-        assert file_obj.parent_object_id == user.id
+        assert file_obj.parent_object_id == user_client.user.id
 
-    def test_initiate_upload_requires_authentication(self, api_client):
+    def test_initiate_upload_requires_authentication(self, client):
         """Test that upload initiation requires authentication."""
-        response = api_client.post(
+        response = client.post(
             "/v1/files/uploads",
             {
                 "file_name": "test.mp4",
@@ -141,9 +119,9 @@ class TestFileUploadInitiation:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_initiate_upload_invalid_part_size(self, authenticated_client, mock_s3_handler):
+    def test_initiate_upload_invalid_part_size(self, user_client, mock_s3_handler):
         """Test validation for part size (must be at least 5MB for multipart)."""
-        response = authenticated_client.post(
+        response = user_client.post(
             "/v1/files/uploads",
             {
                 "file_name": "test.mp4",
@@ -157,9 +135,9 @@ class TestFileUploadInitiation:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_initiate_upload_file_size_mismatch(self, authenticated_client, mock_s3_handler):
+    def test_initiate_upload_file_size_mismatch(self, user_client, mock_s3_handler):
         """Test validation for file size matching parts."""
-        response = authenticated_client.post(
+        response = user_client.post(
             "/v1/files/uploads",
             {
                 "file_name": "test.mp4",
@@ -177,9 +155,9 @@ class TestFileUploadInitiation:
         error_message = str(response_data)
         assert "doesn't match" in error_message
 
-    def test_initiate_upload_too_many_parts(self, authenticated_client, mock_s3_handler):
+    def test_initiate_upload_too_many_parts(self, user_client, mock_s3_handler):
         """Test validation for maximum parts (10,000)."""
-        response = authenticated_client.post(
+        response = user_client.post(
             "/v1/files/uploads",
             {
                 "file_name": "test.mp4",
@@ -193,9 +171,9 @@ class TestFileUploadInitiation:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_initiate_upload_missing_parent_fields(self, authenticated_client, mock_s3_handler):
+    def test_initiate_upload_missing_parent_fields(self, user_client, mock_s3_handler):
         """Test that both parent fields must be provided together."""
-        response = authenticated_client.post(
+        response = user_client.post(
             "/v1/files/uploads",
             {
                 "file_name": "test.mp4",
@@ -217,7 +195,7 @@ class TestFileUploadCompletion:
     """Tests for POST /v1/files/uploads/{id}/complete."""
 
     @pytest.fixture
-    def pending_upload(self, user):
+    def pending_upload(self, user_client):
         """Create a pending upload for testing."""
         return File.objects.create(
             file_name="test.mp4",
@@ -226,15 +204,15 @@ class TestFileUploadCompletion:
             upload_status=File.UploadStatus.UPLOADING,
             upload_id="test-upload-id",
             total_parts=2,
-            created_by=user,
+            created_by=user_client.user,
             upload_expires_at=timezone.now() + timedelta(hours=24),
         )
 
     def test_complete_upload_success(
-        self, authenticated_client, user, pending_upload, mock_s3_handler
+        self, user_client, pending_upload, mock_s3_handler
     ):
         """Test successful upload completion."""
-        response = authenticated_client.post(
+        response = user_client.post(
             f"/v1/files/uploads/{pending_upload.id}/complete",
             {
                 "parts": [
@@ -261,10 +239,10 @@ class TestFileUploadCompletion:
         mock_s3_handler.complete_upload.assert_called_once()
 
     def test_complete_upload_wrong_number_of_parts(
-        self, authenticated_client, pending_upload, mock_s3_handler
+        self, user_client, pending_upload, mock_s3_handler
     ):
         """Test validation for incorrect number of parts."""
-        response = authenticated_client.post(
+        response = user_client.post(
             f"/v1/files/uploads/{pending_upload.id}/complete",
             {
                 "parts": [
@@ -279,10 +257,10 @@ class TestFileUploadCompletion:
         assert "Expected 2 parts" in str(response.json())
 
     def test_complete_upload_missing_part_number(
-        self, authenticated_client, pending_upload, mock_s3_handler
+        self, user_client, pending_upload, mock_s3_handler
     ):
         """Test validation for missing part numbers."""
-        response = authenticated_client.post(
+        response = user_client.post(
             f"/v1/files/uploads/{pending_upload.id}/complete",
             {
                 "parts": [
@@ -296,12 +274,12 @@ class TestFileUploadCompletion:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "Missing or duplicate" in str(response.json())
 
-    def test_complete_upload_requires_ownership(self, api_client, pending_upload, mock_s3_handler):
+    def test_complete_upload_requires_ownership(self, client, pending_upload, mock_s3_handler):
         """Test that only the file owner can complete upload."""
         other_user = User.objects.create_user(email="other@example.com", password="pass123")
-        api_client.force_authenticate(user=other_user)
+        client.force_authenticate(user=other_user)
 
-        response = api_client.post(
+        response = client.post(
             f"/v1/files/uploads/{pending_upload.id}/complete",
             {
                 "parts": [
@@ -314,17 +292,17 @@ class TestFileUploadCompletion:
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_complete_upload_invalid_status(self, authenticated_client, user, mock_s3_handler):
+    def test_complete_upload_invalid_status(self, user_client, mock_s3_handler):
         """Test that completed uploads cannot be completed again."""
         completed_file = File.objects.create(
             file_name="test.mp4",
             file_size=10485760,
             file_content_type="video/mp4",
             upload_status=File.UploadStatus.COMPLETED,
-            created_by=user,
+            created_by=user_client.user,
         )
 
-        response = authenticated_client.post(
+        response = user_client.post(
             f"/v1/files/uploads/{completed_file.id}/complete",
             {
                 "parts": [
@@ -337,10 +315,10 @@ class TestFileUploadCompletion:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_complete_upload_invalid_part_structure(
-        self, authenticated_client, pending_upload, mock_s3_handler
+        self, user_client, pending_upload, mock_s3_handler
     ):
         """Test validation for part structure."""
-        response = authenticated_client.post(
+        response = user_client.post(
             f"/v1/files/uploads/{pending_upload.id}/complete",
             {
                 "parts": [
@@ -359,7 +337,7 @@ class TestFileUploadAbort:
     """Tests for DELETE /v1/files/uploads/{id}."""
 
     @pytest.fixture
-    def uploading_file(self, user):
+    def uploading_file(self, user_client):
         """Create an uploading file for testing."""
         return File.objects.create(
             file_name="test.mp4",
@@ -368,12 +346,12 @@ class TestFileUploadAbort:
             upload_status=File.UploadStatus.UPLOADING,
             upload_id="test-upload-id",
             total_parts=2,
-            created_by=user,
+            created_by=user_client.user,
         )
 
-    def test_abort_upload_success(self, authenticated_client, uploading_file, mock_s3_handler):
+    def test_abort_upload_success(self, user_client, uploading_file, mock_s3_handler):
         """Test successful upload abort."""
-        response = authenticated_client.delete(f"/v1/files/uploads/{uploading_file.id}")
+        response = user_client.delete(f"/v1/files/uploads/{uploading_file.id}")
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
@@ -385,16 +363,16 @@ class TestFileUploadAbort:
         # Verify S3 handler was called
         mock_s3_handler.abort_upload.assert_called_once_with(uploading_file, "test-upload-id")
 
-    def test_abort_upload_requires_ownership(self, api_client, uploading_file, mock_s3_handler):
+    def test_abort_upload_requires_ownership(self, client, uploading_file, mock_s3_handler):
         """Test that only file owner can abort upload."""
         other_user = User.objects.create_user(email="other@example.com", password="pass123")
-        api_client.force_authenticate(user=other_user)
+        client.force_authenticate(user=other_user)
 
-        response = api_client.delete(f"/v1/files/uploads/{uploading_file.id}")
+        response = client.delete(f"/v1/files/uploads/{uploading_file.id}")
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_abort_upload_without_upload_id(self, authenticated_client, user, mock_s3_handler):
+    def test_abort_upload_without_upload_id(self, user_client, mock_s3_handler):
         """Test aborting upload without upload_id still marks as aborted."""
         file_obj = File.objects.create(
             file_name="test.mp4",
@@ -403,10 +381,10 @@ class TestFileUploadAbort:
             upload_status=File.UploadStatus.PENDING,
             upload_id=None,  # No upload_id
             total_parts=2,
-            created_by=user,
+            created_by=user_client.user,
         )
 
-        response = authenticated_client.delete(f"/v1/files/uploads/{file_obj.id}")
+        response = user_client.delete(f"/v1/files/uploads/{file_obj.id}")
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
@@ -419,19 +397,19 @@ class TestFileCRUD:
     """Tests for file CRUD endpoints."""
 
     @pytest.fixture
-    def completed_file(self, user):
+    def completed_file(self, user_client):
         """Create a completed file for testing."""
         return File.objects.create(
             file_name="test.mp4",
             file_size=10485760,
             file_content_type="video/mp4",
             upload_status=File.UploadStatus.COMPLETED,
-            created_by=user,
+            created_by=user_client.user,
         )
 
-    def test_list_files(self, authenticated_client, user, completed_file):
+    def test_list_files(self, user_client, completed_file):
         """Test listing files."""
-        response = authenticated_client.get("/v1/files")
+        response = user_client.get("/v1/files")
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -440,33 +418,33 @@ class TestFileCRUD:
         assert len(data["results"]) == 1
         assert data["results"][0]["id"] == completed_file.id
 
-    def test_list_files_filter_by_status(self, authenticated_client, user):
+    def test_list_files_filter_by_status(self, user_client):
         """Test filtering files by status."""
         File.objects.create(
             file_name="completed.mp4",
             file_size=100,
             file_content_type="video/mp4",
             upload_status=File.UploadStatus.COMPLETED,
-            created_by=user,
+            created_by=user_client.user,
         )
         File.objects.create(
             file_name="uploading.mp4",
             file_size=100,
             file_content_type="video/mp4",
             upload_status=File.UploadStatus.UPLOADING,
-            created_by=user,
+            created_by=user_client.user,
         )
 
         # Default: only completed
-        response = authenticated_client.get("/v1/files")
+        response = user_client.get("/v1/files")
         assert len(response.json()["results"]) == 1
 
         # Filter by uploading
-        response = authenticated_client.get(f"/v1/files?status={File.UploadStatus.UPLOADING}")
+        response = user_client.get(f"/v1/files?status={File.UploadStatus.UPLOADING}")
         assert len(response.json()["results"]) == 1
         assert response.json()["results"][0]["upload_status"] == File.UploadStatus.UPLOADING
 
-    def test_list_files_only_own_files(self, authenticated_client, user):
+    def test_list_files_only_own_files(self, user_client):
         """Test that users only see their own files."""
         other_user = User.objects.create_user(email="other@example.com", password="pass123")
 
@@ -479,14 +457,14 @@ class TestFileCRUD:
             created_by=other_user,
         )
 
-        response = authenticated_client.get("/v1/files")
+        response = user_client.get("/v1/files")
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.json()["results"]) == 0
 
-    def test_retrieve_file(self, authenticated_client, completed_file):
+    def test_retrieve_file(self, user_client, completed_file):
         """Test retrieving a single file."""
-        response = authenticated_client.get(f"/v1/files/{completed_file.id}")
+        response = user_client.get(f"/v1/files/{completed_file.id}")
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -495,9 +473,9 @@ class TestFileCRUD:
         assert data["file_name"] == "test.mp4"
         assert data["upload_status"] == File.UploadStatus.COMPLETED
 
-    def test_update_file_metadata(self, authenticated_client, completed_file):
+    def test_update_file_metadata(self, user_client, completed_file):
         """Test updating file metadata."""
-        response = authenticated_client.patch(
+        response = user_client.patch(
             f"/v1/files/{completed_file.id}",
             {"name": "My Video", "description": "Test description"},
             format="json",
@@ -509,9 +487,9 @@ class TestFileCRUD:
         assert completed_file.name == "My Video"
         assert completed_file.description == "Test description"
 
-    def test_delete_file(self, authenticated_client, completed_file):
+    def test_delete_file(self, user_client, completed_file):
         """Test deleting a file."""
-        response = authenticated_client.delete(f"/v1/files/{completed_file.id}")
+        response = user_client.delete(f"/v1/files/{completed_file.id}")
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not File.objects.filter(id=completed_file.id).exists()
@@ -522,25 +500,25 @@ class TestSetParent:
     """Tests for POST /v1/files/{id}/set-parent."""
 
     @pytest.fixture
-    def standalone_file(self, user):
+    def standalone_file(self, user_client):
         """Create a standalone file without parent."""
         return File.objects.create(
             file_name="test.mp4",
             file_size=10485760,
             file_content_type="video/mp4",
             upload_status=File.UploadStatus.COMPLETED,
-            created_by=user,
+            created_by=user_client.user,
         )
 
-    def test_set_parent_success(self, authenticated_client, user, standalone_file):
+    def test_set_parent_success(self, user_client, standalone_file):
         """Test setting parent on standalone file."""
         user_ct = ContentType.objects.get_for_model(User)
 
-        response = authenticated_client.post(
+        response = user_client.post(
             f"/v1/files/{standalone_file.id}/set-parent",
             {
                 "parent_content_type": f"{user_ct.app_label}.{user_ct.model}",
-                "parent_object_id": user.id,
+                "parent_object_id": user_client.user.id,
             },
             format="json",
         )
@@ -549,11 +527,11 @@ class TestSetParent:
 
         standalone_file.refresh_from_db()
         assert standalone_file.parent_content_type_id == user_ct.id
-        assert standalone_file.parent_object_id == user.id
+        assert standalone_file.parent_object_id == user_client.user.id
 
-    def test_set_parent_invalid_content_type(self, authenticated_client, standalone_file):
+    def test_set_parent_invalid_content_type(self, user_client, standalone_file):
         """Test setting invalid content type."""
-        response = authenticated_client.post(
+        response = user_client.post(
             f"/v1/files/{standalone_file.id}/set-parent",
             {
                 "parent_content_type": "invalid.model",
@@ -564,14 +542,14 @@ class TestSetParent:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_set_parent_requires_ownership(self, api_client, standalone_file):
+    def test_set_parent_requires_ownership(self, client, standalone_file):
         """Test that only file owner can set parent."""
         other_user = User.objects.create_user(email="other@example.com", password="pass123")
-        api_client.force_authenticate(user=other_user)
+        client.force_authenticate(user=other_user)
 
         user_ct = ContentType.objects.get_for_model(User)
 
-        response = api_client.post(
+        response = client.post(
             f"/v1/files/{standalone_file.id}/set-parent",
             {
                 "parent_content_type": f"{user_ct.app_label}.{user_ct.model}",
