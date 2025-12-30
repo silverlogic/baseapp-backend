@@ -7,6 +7,7 @@ import baseapp_auth.rest_framework.urls.auth_mfa as auth_mfa_urls
 import baseapp_auth.rest_framework.urls.auth_mfa_jwt as auth_mfa_jwt_urls
 import baseapp_auth.rest_framework.urls.pre_auth as pre_auth_urls
 import baseapp_wagtail.urls as baseapp_wagtail_urls
+from baseapp.files.rest_framework.routers import files_router
 from baseapp_auth.rest_framework.routers.account import (
     account_router,
     users_router_nested,
@@ -30,6 +31,7 @@ v1_urlpatterns = [
     re_path(r"auth/mfa/jwt/", include(auth_mfa_jwt_urls)),
     re_path(r"auth/pre-auth/", include(pre_auth_urls)),
     re_path(r"payments/", include(payments_router.urls)),
+    re_path(r"", include(files_router.urls)),
 ]
 
 router = DefaultRouter(trailing_slash=False)

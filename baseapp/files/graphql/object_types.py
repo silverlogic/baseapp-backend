@@ -52,6 +52,7 @@ class FileObjectType(DjangoObjectType):
 
     # @classmethod
     # def get_node(cls, info, id):
+    # TO DO: check permissions
     #     if not info.context.user.is_authenticated:
     #         return None
 

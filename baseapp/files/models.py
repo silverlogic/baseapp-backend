@@ -72,6 +72,52 @@ class AbstractFile(TimeStampedModel, CommentableModel, ReactableModel, Reportabl
         blank=True,
     )
 
+    # Upload status tracking
+    class UploadStatus(models.TextChoices):
+        PENDING = "pending", _("Pending Upload")
+        UPLOADING = "uploading", _("Upload in Progress")
+        COMPLETED = "completed", _("Upload Completed")
+        FAILED = "failed", _("Upload Failed")
+        ABORTED = "aborted", _("Upload Aborted")
+
+    upload_status = models.CharField(
+        max_length=20,
+        choices=UploadStatus.choices,
+        default=UploadStatus.COMPLETED,
+        db_index=True,
+        help_text=_("Status of the file upload"),
+    )
+
+    # S3 multipart upload tracking
+    upload_id = models.CharField(
+        max_length=512,
+        null=True,
+        blank=True,
+        help_text=_("S3 multipart upload ID for in-progress uploads"),
+    )
+
+    # Metadata for multipart uploads
+    total_parts = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text=_("Total number of parts for multipart upload"),
+    )
+
+    uploaded_parts = models.JSONField(
+        null=True,
+        blank=True,
+        default=dict,
+        help_text=_("Tracking uploaded parts with ETags"),
+    )
+
+    # Upload expiration for cleanup
+    upload_expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text=_("Expiration time for pending uploads"),
+    )
+
     def save(self, *args, **kwargs):
         """
         Validate that files are enabled for the parent object before saving.
