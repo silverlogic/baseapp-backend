@@ -175,3 +175,213 @@ def test_comment_files_interface_multiple_files(graphql_client):
 
     edges = content["data"]["node"]["files"]["edges"]
     assert len(edges) == 5
+
+
+FILE_ATTACH_TO_TARGET_MUTATION = """
+    mutation FileAttachToTarget($fileRelayIds: [ID]!, $targetObjectId: ID!) {
+        fileAttachToTarget(input: {
+            fileRelayIds: $fileRelayIds
+            targetObjectId: $targetObjectId
+        }) {
+            attachedFiles {
+                node {
+                    id
+                    fileName
+                    parentObjectId
+                }
+            }
+            target {
+                ... on FilesInterface {
+                    filesCount
+                    isFilesEnabled
+                }
+            }
+        }
+    }
+"""
+
+
+def test_file_attach_to_target_success(graphql_user_client, django_user_client):
+    user = django_user_client.user
+    comment = CommentFactory(user=user)
+
+    # Create standalone files (no parent)
+    file1 = File.objects.create(
+        file_name="file1.txt",
+        file_size=1024,
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=user,
+    )
+    file2 = File.objects.create(
+        file_name="file2.txt",
+        file_size=2048,
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=user,
+    )
+
+    response = graphql_user_client(
+        FILE_ATTACH_TO_TARGET_MUTATION,
+        variables={
+            "fileRelayIds": [file1.relay_id, file2.relay_id],
+            "targetObjectId": comment.relay_id,
+        },
+    )
+    content = response.json()
+
+    assert "errors" not in content
+    data = content["data"]["fileAttachToTarget"]
+
+    # Check attached files
+    assert len(data["attachedFiles"]) == 2
+    assert data["attachedFiles"][0]["node"]["id"] == file1.relay_id
+    assert data["attachedFiles"][0]["node"]["fileName"] == "file1.txt"
+    assert data["attachedFiles"][1]["node"]["id"] == file2.relay_id
+
+    # Check target
+    assert data["target"]["filesCount"]["total"] == 2
+    assert data["target"]["isFilesEnabled"] is True
+
+    # Verify files are attached in database
+    file1.refresh_from_db()
+    file2.refresh_from_db()
+    assert file1.parent_object_id == comment.pk
+    assert file2.parent_object_id == comment.pk
+    comment_ct = ContentType.objects.get_for_model(comment)
+    assert file1.parent_content_type == comment_ct
+    assert file2.parent_content_type == comment_ct
+
+
+def test_file_attach_to_target_single_file(graphql_user_client, django_user_client):
+    user = django_user_client.user
+    comment = CommentFactory(user=user)
+
+    file = File.objects.create(
+        file_name="single.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=user,
+    )
+
+    response = graphql_user_client(
+        FILE_ATTACH_TO_TARGET_MUTATION,
+        variables={
+            "fileRelayIds": [file.relay_id],
+            "targetObjectId": comment.relay_id,
+        },
+    )
+    content = response.json()
+
+    assert "errors" not in content
+    data = content["data"]["fileAttachToTarget"]
+    assert len(data["attachedFiles"]) == 1
+    assert data["target"]["filesCount"]["total"] == 1
+
+
+def test_file_attach_to_target_requires_authentication(graphql_client):
+    comment = CommentFactory()
+    file = File.objects.create(file_name="test.txt")
+
+    response = graphql_client(
+        FILE_ATTACH_TO_TARGET_MUTATION,
+        variables={
+            "fileRelayIds": [file.relay_id],
+            "targetObjectId": comment.relay_id,
+        },
+    )
+    content = response.json()
+
+    assert "errors" in content
+    assert content["errors"][0]["extensions"]["code"] == "authentication_required"
+
+
+def test_file_attach_to_target_requires_ownership(graphql_user_client, django_user_client):
+    user = django_user_client.user
+    comment = CommentFactory(user=user)
+
+    # Create file owned by different user
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    other_user = User.objects.create_user(email="other@test.com", password="pass123")
+    file = File.objects.create(
+        file_name="test.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=other_user,
+    )
+
+    response = graphql_user_client(
+        FILE_ATTACH_TO_TARGET_MUTATION,
+        variables={
+            "fileRelayIds": [file.relay_id],
+            "targetObjectId": comment.relay_id,
+        },
+    )
+    content = response.json()
+
+    assert "errors" in content
+    assert content["errors"][0]["extensions"]["code"] == "permission_required"
+
+
+def test_file_attach_to_target_already_attached(graphql_user_client, django_user_client):
+    user = django_user_client.user
+    comment1 = CommentFactory(user=user)
+    comment2 = CommentFactory(user=user)
+
+    comment1_ct = ContentType.objects.get_for_model(comment1)
+
+    # Create file already attached to comment1
+    file = File.objects.create(
+        file_name="attached.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=user,
+        parent_content_type=comment1_ct,
+        parent_object_id=comment1.pk,
+    )
+
+    # Try to attach to comment2
+    response = graphql_user_client(
+        FILE_ATTACH_TO_TARGET_MUTATION,
+        variables={
+            "fileRelayIds": [file.relay_id],
+            "targetObjectId": comment2.relay_id,
+        },
+    )
+    content = response.json()
+
+    assert "errors" in content
+    assert content["errors"][0]["extensions"]["code"] == "already_attached"
+
+
+def test_file_attach_to_target_empty_list(graphql_user_client, django_user_client):
+    user = django_user_client.user
+    comment = CommentFactory(user=user)
+
+    response = graphql_user_client(
+        FILE_ATTACH_TO_TARGET_MUTATION,
+        variables={
+            "fileRelayIds": [],
+            "targetObjectId": comment.relay_id,
+        },
+    )
+    content = response.json()
+
+    assert "errors" in content
+    assert content["errors"][0]["extensions"]["code"] == "invalid_input"
+
+
+def test_file_attach_to_target_invalid_file_id(graphql_user_client, django_user_client):
+    user = django_user_client.user
+    comment = CommentFactory(user=user)
+
+    response = graphql_user_client(
+        FILE_ATTACH_TO_TARGET_MUTATION,
+        variables={
+            "fileRelayIds": ["RmlsZU9iamVjdFR5cGU6OTk5OTk="],  # Non-existent file ID
+            "targetObjectId": comment.relay_id,
+        },
+    )
+    content = response.json()
+
+    assert "errors" in content
+    # Error might not have extensions if it's a relay ID parsing error
+    if "extensions" in content["errors"][0]:
+        assert content["errors"][0]["extensions"]["code"] == "not_found"

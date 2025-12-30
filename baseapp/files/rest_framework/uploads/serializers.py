@@ -65,6 +65,7 @@ class UploadResponseSerializer(serializers.Serializer):
     """Response serializer for initiated upload."""
 
     id = serializers.IntegerField(source="file_obj.id")
+    relay_id = serializers.CharField(source="file_obj.relay_id", read_only=True)
     upload_id = serializers.CharField()
     presigned_urls = serializers.ListField()
     expires_in = serializers.IntegerField()

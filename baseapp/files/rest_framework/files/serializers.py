@@ -10,12 +10,14 @@ class FileSerializer(ModelSerializer):
     """Standard file serializer for CRUD operations."""
 
     url = serializers.SerializerMethodField()
+    relay_id = serializers.SerializerMethodField()
     created_by_name = serializers.CharField(source="created_by.get_full_name", read_only=True)
 
     class Meta:
         model = File
         fields = [
             "id",
+            "relay_id",
             "file_name",
             "file_size",
             "file_content_type",
@@ -32,6 +34,7 @@ class FileSerializer(ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "relay_id",
             "upload_status",
             "created_by",
             "created",
@@ -48,3 +51,7 @@ class FileSerializer(ModelSerializer):
                 return request.build_absolute_uri(url)
             return url
         return None
+
+    def get_relay_id(self, obj):
+        """Get GraphQL relay ID for the file."""
+        return obj.relay_id
