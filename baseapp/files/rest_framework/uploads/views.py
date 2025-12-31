@@ -4,6 +4,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from baseapp_core.rest_framework.decorators import action
+from baseapp_profiles.rest_framework import CurrentProfileMixin
 
 from ...services.upload_service import UploadService
 from .serializers import (
@@ -15,7 +16,7 @@ from .serializers import (
 File = swapper.load_model("baseapp_files", "File")
 
 
-class FileUploadViewSet(viewsets.GenericViewSet):
+class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
     """
     ViewSet for managing multipart file uploads.
 
@@ -23,6 +24,8 @@ class FileUploadViewSet(viewsets.GenericViewSet):
         POST /v1/files/uploads/ - Initiate upload
         POST /v1/files/uploads/{id}/complete - Complete upload
         DELETE /v1/files/uploads/{id} - Abort upload
+
+    Note: Part uploads for local storage use presigned URLs handled by PresignedUploadViewSet
     """
 
     queryset = File.objects.all()

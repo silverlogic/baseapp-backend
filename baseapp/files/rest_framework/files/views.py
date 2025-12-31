@@ -3,6 +3,7 @@ from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.response import Response
 
 from baseapp_core.rest_framework.decorators import action
+from baseapp_profiles.rest_framework import CurrentProfileMixin
 
 from ..uploads.permissions import IsOwnerOrReadOnly
 from ..uploads.serializers import SetParentSerializer
@@ -12,6 +13,7 @@ File = swapper.load_model("baseapp_files", "File")
 
 
 class FilesViewSet(
+    CurrentProfileMixin,
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
     mixins.DestroyModelMixin,

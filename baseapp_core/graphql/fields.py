@@ -3,11 +3,25 @@ from django.apps import apps
 from django.conf import settings
 from django.core.cache import InvalidCacheBackendError, caches
 from easy_thumbnails.files import get_thumbnailer
+from .object_types import DjangoObjectType
 
 try:
     cache = caches[settings.THUMBNAIL_CACHE]
 except InvalidCacheBackendError:
     cache = None
+
+
+class FileInterface(graphene.Interface):
+    url = graphene.String()
+
+    class Meta:
+        name = "FileInterface"
+
+
+class ThumbnailObjectType(graphene.ObjectType):                 
+    class Meta:
+        name = "Thumbnail"
+        interfaces = (FileInterface,)
 
 
 def get_file_object_type():
@@ -17,20 +31,16 @@ def get_file_object_type():
         File = swapper.load_model("baseapp_files", "File")
         FileObjectType = File.get_graphql_object_type()
     else:
-
         class FileObjectType(graphene.ObjectType):
-            url = graphene.String(required=True)
-            # contentType = graphene.String()
-            # bytes = graphene.Int()
-
             class Meta:
+                interfaces = (FileInterface,)
                 name = "File"
 
     return FileObjectType
 
 
 class ThumbnailField(graphene.Field):
-    def __init__(self, type=get_file_object_type, **kwargs):
+    def __init__(self, type=ThumbnailObjectType, **kwargs):
         kwargs.update(
             {
                 "args": {
@@ -43,7 +53,6 @@ class ThumbnailField(graphene.Field):
 
     def get_resolver(self, parent_resolver):
         resolver = self.resolver or parent_resolver
-        FileObjectType = get_file_object_type()
 
         def built_thumbnail(instance, info, width, height, **kwargs):
             instance = resolver(instance, info, **kwargs)
@@ -55,7 +64,7 @@ class ThumbnailField(graphene.Field):
                 cache_key = self._get_cache_key(instance, width, height)
                 value_from_cache = cache.get(cache_key)
                 if value_from_cache:
-                    return FileObjectType(url=value_from_cache)
+                    return ThumbnailObjectType(url=value_from_cache)
 
             thumbnailer = get_thumbnailer(instance)
             url = thumbnailer.get_thumbnail({"size": (width, height)}).url
@@ -64,7 +73,7 @@ class ThumbnailField(graphene.Field):
             if cache:
                 cache.set(cache_key, absolute_url, timeout=None)
 
-            return FileObjectType(url=absolute_url)
+            return ThumbnailObjectType(url=absolute_url)
 
         return built_thumbnail
 

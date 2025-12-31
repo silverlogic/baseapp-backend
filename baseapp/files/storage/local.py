@@ -4,6 +4,7 @@ import uuid
 from typing import Any, Dict, List
 
 from django.conf import settings
+from django.core import signing
 
 from baseapp_core.models import random_name_in
 
@@ -15,8 +16,8 @@ class LocalUploadHandler(BaseUploadHandler):
     Simplified local storage handler for dev/test.
 
     This doesn't implement true multipart upload - instead it provides
-    "presigned URLs" that are actually backend endpoints that accept
-    the file parts and store them locally.
+    "presigned URLs" that are actually backend endpoints with signed tokens
+    that accept the file parts and store them locally.
     """
 
     def supports_multipart(self) -> bool:
@@ -24,7 +25,7 @@ class LocalUploadHandler(BaseUploadHandler):
 
     def initiate_upload(self, file_obj, num_parts: int, part_size: int) -> Dict[str, Any]:
         """
-        Generate pseudo-presigned URLs pointing to backend endpoints.
+        Generate presigned URLs with signed tokens for secure uploads.
         """
 
         # Generate a simple upload token
@@ -34,16 +35,24 @@ class LocalUploadHandler(BaseUploadHandler):
         temp_dir = os.path.join(settings.MEDIA_ROOT, "temp_uploads", upload_id)
         os.makedirs(temp_dir, exist_ok=True)
 
-        # For local storage, we'll provide URLs that are actually simple identifiers
-        # The client will need to upload via the backend endpoint
+        # Get the base URL from settings or use default
+        base_url = getattr(settings, "BASE_URL", "http://localhost:8000")
+
+        # Generate presigned URLs with signed tokens
         presigned_urls = []
         for part_num in range(1, num_parts + 1):
-            # In local mode, we provide a simple part identifier
-            # The actual upload will go through a backend endpoint
+            # Create a signed token for this specific file and part
+            token_data = {
+                "file_id": file_obj.id,
+                "part_number": part_num,
+                "upload_id": upload_id,
+            }
+            token = signing.dumps(token_data)
+
             presigned_urls.append(
                 {
                     "part_number": part_num,
-                    "url": f"/api/v1/files/uploads/{file_obj.id}/upload-part/{part_num}",
+                    "url": f"{base_url}/v1/files/presigned-uploads/{file_obj.id}/upload-part/{part_num}?token={token}",
                     "method": "PUT",
                 }
             )
