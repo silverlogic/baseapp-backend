@@ -104,6 +104,10 @@ def test_user_can_list_rooms(graphql_user_client, django_user_client):
     ChatRoomParticipantFactory(profile=django_user_client.user.profile, room=user_room)
     ChatRoomParticipantFactory(profile=django_user_client.user.profile, room=friend_room)
 
+    # Add messages so the rooms are visible to the recipient
+    MessageFactory(room=user_room, profile=user_profie)
+    MessageFactory(room=friend_room, profile=friend_profile)
+
     response = graphql_user_client(
         USER_ROOMS_GRAPHQL,
         variables={},
@@ -231,6 +235,10 @@ def test_can_filter_by_room_title(django_client):
     ChatRoomParticipantFactory(room=room_4, profile=profile_1, has_archived_room=True)
     ChatRoomParticipantFactory(room=room_4, profile=profile_2)
 
+    # Add messages to 1-on-1 chats so they're visible to participants
+    MessageFactory(room=room_1, profile=profile_1)
+    MessageFactory(room=room_2, profile=profile_1)
+
     django_client.force_login(user_1)
     response = graphql_query(
         PROFILE_ROOMS_GRAPHQL,
@@ -293,7 +301,14 @@ def test_can_filter_unread_rooms_by_title(django_client):
     ChatRoomParticipantFactory(room=room_5, profile=profile_1)
     ChatRoomParticipantFactory(room=room_5, profile=profile_4)
 
-    UnreadMessageCount(room=room_1, profile=profile_1, marked_unread=True).save()
+    # Add message to room_1 so it's visible to profile_1 (who didn't create it)
+    MessageFactory(room=room_1, profile=profile_2)
+    # Mark room_1 as unread for profile_1
+    unread_count, _ = UnreadMessageCount.objects.get_or_create(
+        room=room_1, profile=profile_1, defaults={"count": 0}
+    )
+    unread_count.marked_unread = True
+    unread_count.save()
     MessageFactory(room=room_2, profile=profile_4)
     MessageFactory(room=room_3, profile=profile_3)
     MessageFactory(room=room_4, profile=profile_2)
@@ -348,6 +363,7 @@ def test_can_filter_archived_rooms_by_title(django_client):
     ChatRoomParticipantFactory(room=room_5, profile=profile_3)
 
     MessageFactory(room=room_2, profile=profile_4)
+    MessageFactory(room=room_4, profile=profile_4)
     MessageFactory(room=room_5, profile=profile_3)
 
     django_client.force_login(user_1)
@@ -391,10 +407,8 @@ def test_rooms_list_are_ordered_by_last_message_time(graphql_user_client, django
     user_3 = UserFactory()
 
     room = ChatRoomFactory(created_by=user)
-    room_2 = ChatRoomFactory(created_by=user_2, last_message_time=timezone.now())
-    room_3 = ChatRoomFactory(
-        created_by=user_3, last_message_time=timezone.now() - timedelta(hours=1)
-    )
+    room_2 = ChatRoomFactory(created_by=user_2)
+    room_3 = ChatRoomFactory(created_by=user_3)
 
     ChatRoomParticipantFactory(profile=user.profile, room=room)
     ChatRoomParticipantFactory(profile=django_user_client.user.profile, room=room)
@@ -402,6 +416,12 @@ def test_rooms_list_are_ordered_by_last_message_time(graphql_user_client, django
     ChatRoomParticipantFactory(profile=django_user_client.user.profile, room=room_2)
     ChatRoomParticipantFactory(profile=user_3.profile, room=room_3)
     ChatRoomParticipantFactory(profile=django_user_client.user.profile, room=room_3)
+
+    # Add messages in order: room_3 (oldest), room (middle), room_2 (newest)
+    # This creates the last_message_time ordering we want to test
+    MessageFactory(room=room_3, profile=user_3.profile)
+    MessageFactory(room=room, profile=user.profile)
+    MessageFactory(room=room_2, profile=user_2.profile)
 
     room_id = room.relay_id
     room_2_id = room_2.relay_id
@@ -496,6 +516,9 @@ def test_user_can_list_rooms_that_are_not_blocked(graphql_user_client, django_us
 
     ChatRoomParticipantFactory(profile=user_2.profile, room=room_2)
     ChatRoomParticipantFactory(profile=django_user_client.user.profile, room=room_2)
+
+    # Add message to room_2 so it's visible to django_user_client who didn't create it
+    MessageFactory(room=room_2, profile=user_2.profile)
 
     response = graphql_user_client(
         USER_ROOMS_GRAPHQL,
@@ -646,3 +669,106 @@ def test_filter_participants_by_name(django_client):
     participants = content["data"]["chatRoom"]["participants"]["edges"]
 
     assert len(participants) == 0
+
+
+def test_sender_sees_empty_1on1_chat_but_recipient_does_not(
+    graphql_user_client, django_user_client, django_client
+):
+    """
+    Test that:
+    - Sender sees empty 1-on-1 chat room in their chat list
+    - Recipient does NOT see empty 1-on-1 chat room until a message is sent
+    """
+    sender = django_user_client.user
+    recipient = UserFactory()
+
+    # Sender creates a 1-on-1 chat room but doesn't send a message
+    empty_room = ChatRoomFactory(
+        created_by=sender, created_by_profile=sender.profile, is_group=False
+    )
+    ChatRoomParticipantFactory(room=empty_room, profile=sender.profile)
+    ChatRoomParticipantFactory(room=empty_room, profile=recipient.profile)
+
+    # Sender should see the empty chat room
+    response = graphql_user_client(
+        PROFILE_ROOMS_GRAPHQL,
+        variables={"profileId": sender.profile.relay_id},
+    )
+
+    content = response.json()
+    assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 1
+
+    # Recipient should NOT see the empty chat room
+    django_client.force_login(recipient)
+    response = graphql_query(
+        PROFILE_ROOMS_GRAPHQL,
+        variables={"profileId": recipient.profile.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 0
+
+    # Now sender sends a message
+    MessageFactory(room=empty_room, profile=sender.profile)
+
+    # Recipient should NOW see the chat room with a message
+    response = graphql_query(
+        PROFILE_ROOMS_GRAPHQL,
+        variables={"profileId": recipient.profile.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 1
+
+
+def test_group_chats_visible_to_all_participants_even_when_empty(
+    graphql_user_client, django_user_client, django_client
+):
+    """
+    Test that group chats are visible to all participants even if empty
+    (filtering only applies to 1-on-1 chats)
+    """
+    creator = django_user_client.user
+    participant1 = UserFactory()
+    participant2 = UserFactory()
+
+    # Create an empty group chat
+    group_room = ChatRoomFactory(
+        created_by=creator, created_by_profile=creator.profile, is_group=True
+    )
+    ChatRoomParticipantFactory(room=group_room, profile=creator.profile)
+    ChatRoomParticipantFactory(room=group_room, profile=participant1.profile)
+    ChatRoomParticipantFactory(room=group_room, profile=participant2.profile)
+
+    # Creator should see it
+    response = graphql_user_client(
+        PROFILE_ROOMS_GRAPHQL,
+        variables={"profileId": creator.profile.relay_id},
+    )
+
+    content = response.json()
+    assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 1
+
+    # Participant 1 should see it even though they didn't create it
+    django_client.force_login(participant1)
+    response = graphql_query(
+        PROFILE_ROOMS_GRAPHQL,
+        variables={"profileId": participant1.profile.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 1
+
+    # Participant 2 should also see it
+    django_client.force_login(participant2)
+    response = graphql_query(
+        PROFILE_ROOMS_GRAPHQL,
+        variables={"profileId": participant2.profile.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 1
