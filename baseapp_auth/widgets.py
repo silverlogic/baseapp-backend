@@ -29,8 +29,14 @@ class GroupedPermissionWidget(CheckboxSelectMultiple):
     template_name = "admin/widgets/grouped_permission_widget.html"
 
     class Media:
-        js = ("baseapp_auth/js/grouped_permissions.js",)
-        css = {"all": ("baseapp_auth/css/grouped_permissions.css",)}
+        js = (
+            "baseapp_auth/js/grouped_permission_widget.js",
+        )
+        css = {
+            "all": (
+                "baseapp_auth/css/grouped_permission_widget.css",
+            )
+        }
 
     def get_context(self, name, value, attrs):
         context = super().get_context(name, value, attrs)
@@ -63,7 +69,6 @@ class GroupedPermissionWidget(CheckboxSelectMultiple):
             app_label = instance.content_type.app_label
             model = instance.content_type.name
             full_model = f"{app_label}.{model}"
-
 
             app_verbose, model_verbose = get_app_and_model_verbose_names(
                 instance.content_type
