@@ -1,0 +1,28 @@
+.permission-filter {
+  border-radius: 8px;
+}
+.grouped-permissions {
+  max-height: 400px;
+  overflow-y: overlay;
+  border: 1px solid #2F3544;
+  border-radius: 8px;
+}
+.permission-app {
+  border-bottom: 1px solid #2F3544;
+}
+.permission-app:last-child {
+  border-bottom: none;
+}
+.permission-toggle {
+  transition: transform 0.2s ease;
+  cursor: pointer;
+}
+details[open] > summary .permission-toggle {
+  transform: rotate(180deg);
+}
+.permission-model {
+  margin-left: 24px;
+}
+.permission-labels-list {
+  margin-left: 24px;
+}
