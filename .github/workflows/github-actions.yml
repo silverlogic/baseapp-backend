@@ -14,8 +14,16 @@ jobs:
           python-version: "3.11"
       - name: Install pip-audit
         run: python -m pip install --upgrade pip pip-audit
+      # Ignored vulnerabilities:
+
+      # Name                   Version ID             Fix Versions
+      # ---------------------- ------- -------------- ------------
+      # social-auth-app-django 5.4.3   CVE-2025-61783 5.6.0
+
+      # Newer versions of social-auth-app-django (> 5.4.3) don't support Django 4.2.x versions.
+      # Baseapp-backend currently support Django 4.2.x so we need to ignore this vulnerability for now.
       - name: Run pip-audit (testproject requirements)
-        run: pip-audit -r testproject/requirements.txt
+        run: pip-audit -r testproject/requirements.txt --ignore-vuln ["CVE-2025-61783"]
   tests:
     runs-on: ubuntu-latest
     strategy:
