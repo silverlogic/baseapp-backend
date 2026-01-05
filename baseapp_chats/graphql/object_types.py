@@ -2,7 +2,6 @@ import graphene
 import swapper
 from django.db.models import Case, When
 from django.utils.translation import gettext_lazy as _
-from graphene_django import DjangoConnectionField
 from graphene_django.filter import DjangoFilterConnectionField
 
 from baseapp_core.graphql import DjangoObjectType
@@ -13,7 +12,7 @@ from baseapp_core.graphql import (
     get_pk_from_relay_id,
 )
 
-from .filters import ChatRoomFilter
+from .filters import ChatRoomFilter, ChatRoomParticipantFilter
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
@@ -32,7 +31,7 @@ class BaseChatRoomParticipantObjectType:
         interfaces = (RelayNode,)
         model = ChatRoomParticipant
         fields = ("id", "has_archived_room", "profile", "role")
-        filter_fields = ("profile__target_content_type",)
+        filterset_class = ChatRoomParticipantFilter
 
 
 class ChatRoomParticipantObjectType(BaseChatRoomParticipantObjectType, DjangoObjectType):
@@ -147,7 +146,7 @@ class MessageObjectType(BaseMessageObjectType, DjangoObjectType):
 
 class BaseChatRoomObjectType:
     all_messages = DjangoFilterConnectionField(get_object_type_for_model(Message))
-    participants = DjangoConnectionField(get_object_type_for_model(ChatRoomParticipant))
+    participants = DjangoFilterConnectionField(get_object_type_for_model(ChatRoomParticipant))
     unread_messages = graphene.Field(
         get_object_type_for_model(UnreadMessageCount), profile_id=graphene.ID(required=False)
     )

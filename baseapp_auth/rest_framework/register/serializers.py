@@ -18,6 +18,7 @@ class RegisterSerializer(serializers.Serializer):
     referral_code = serializers.CharField(required=False, allow_blank=True)
 
     def validate_email(self, email):
+        email = email.lower()
         if User.objects.filter(email=email).exists():
             raise serializers.ValidationError(_("That email is already in use.  Choose another."))
         return email
