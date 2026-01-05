@@ -1,0 +1,6 @@
+{% load allauth %}
+<div class="alert alert-xs {% if attrs.level == "error" %}alert-danger{% elif attrs.level == "success" %}alert-success{% elif attrs.level == "warning" %}alert-warning{% else %}alert-info{% endif %}">
+    {% slot message %}
+    {% endslot %}
+</div>
+
