@@ -17,6 +17,7 @@ class VisibilityTypes(models.IntegerChoices):
 
 
 class ActivityLog(RelayModel):
+    id = models.UUIDField(primary_key=True, editable=False)
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()
     user = models.ForeignKey(get_user_model(), on_delete=models.DO_NOTHING)

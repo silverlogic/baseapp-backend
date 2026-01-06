@@ -45,8 +45,16 @@ INSTALLED_APPS += [
     "testproject.testapp",
     "testproject.comments",
     "testproject.profiles",
+    "testproject.reactions",
+    "testproject.content_feed",
+    "testproject.follows",
+    "testproject.blocks",
     "testproject.base",
     "testproject.e2e",
+    "testproject.ratings",
+    "testproject.reports",
+    "testproject.pages",
+    "testproject.organizations",
     *WAGTAIL_INSTALLED_INTERNAL_APPS,
     *WAGTAIL_INSTALLED_APPS,
     "baseapp_wagtail.tests",
@@ -151,6 +159,10 @@ CONSTANCE_CONFIG = OrderedDict(
             ("profiles.Profile", "The model to use for the Stripe customer entity."),
         ),
         (
+            "ENABLE_PUBLIC_ID_LOGIC",
+            (True, "Enable public ID logic."),
+        ),
+        (
             "ANONYMIZE_TASK_DELAY_DAYS",
             (19, "Delay in days before running anonymize user task"),
         ),
@@ -165,11 +177,38 @@ CONSTANCE_CONFIG = OrderedDict(
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET")
 
+# Profiles
+BASEAPP_PROFILES_PROFILE_MODEL = "profiles.Profile"
+BASEAPP_PROFILES_PROFILEUSERROLE_MODEL = "profiles.ProfileUserRole"
+
+# Reactions
+BASEAPP_REACTIONS_REACTION_MODEL = "reactions.Reaction"
+
 # Comments
 BASEAPP_COMMENTS_COMMENT_MODEL = "comments.Comment"
 
-# Profiles
-BASEAPP_PROFILES_PROFILE_MODEL = "profiles.Profile"
+# Content Feed
+BASEAPP_CONTENT_FEED_CONTENTPOST_MODEL = "content_feed.ContentPost"
+BASEAPP_CONTENT_FEED_CONTENTPOSTIMAGE_MODEL = "content_feed.ContentPostImage"
+
+# Follows
+BASEAPP_FOLLOWS_FOLLOW_MODEL = "follows.Follow"
+
+# Blocks
+BASEAPP_BLOCKS_BLOCK_MODEL = "blocks.Block"
+
+# Ratings
+BASEAPP_RATINGS_RATE_MODEL = "ratings.Rate"
+
+# Reports
+BASEAPP_REPORTS_REPORT_MODEL = "reports.Report"
+BASEAPP_REPORTS_REPORTTYPE_MODEL = "reports.ReportType"
+
+# Pages
+BASEAPP_PAGES_PAGE_MODEL = "pages.Page"
+
+# Organizations
+BASEAPP_ORGANIZATIONS_ORGANIZATION_MODEL = "organizations.Organization"
 
 # Notifications
 NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"
