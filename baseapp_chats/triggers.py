@@ -2,7 +2,7 @@ import pgtrigger
 
 
 class Func(pgtrigger.Func):
-    def render(self, meta, fields, columns, **kwargs) -> str:
+    def render(self, meta=None, fields=None, columns=None, **kwargs) -> str:
         return self.func.format(model=meta.model, meta=meta, fields=fields, columns=columns)
 
 

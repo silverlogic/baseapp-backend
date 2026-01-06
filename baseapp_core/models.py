@@ -154,12 +154,17 @@ class DocumentIdFunc(pgtrigger.Func):
     Reusable pgtrigger function for creating document ID triggers.
     """
 
-    def render(self, model: models.Model) -> str:
-        concrete_model = model._meta.concrete_model
+    def render(
+        self,
+        model: models.Model | None = None,
+        meta=None,
+        fields=None,
+        columns=None,
+        **kwargs,
+    ) -> str:
+        concrete_model = meta.concrete_model
         app_label = concrete_model._meta.app_config.label
         model_name = concrete_model._meta.model_name
-        fields = utils.AttrDict({field.name: field for field in model._meta.fields})
-        columns = utils.AttrDict({field.name: field.column for field in model._meta.fields})
         return self.func.format(
             model=model,
             app_label=app_label,
@@ -168,7 +173,7 @@ class DocumentIdFunc(pgtrigger.Func):
             columns=columns,
             document_id_table=DocumentId._meta.db_table,
             content_type_table=ContentType._meta.db_table,
-            pk=model._meta.pk.column,
+            pk=meta.pk.column,
         )
 
 
