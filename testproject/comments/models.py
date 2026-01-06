@@ -10,6 +10,5 @@ from baseapp_comments.models import AbstractComment
     exclude=["comments_count", "reactions_count", "modified"],
 )
 class Comment(AbstractComment):
-
     class Meta(AbstractComment.Meta):
         pass

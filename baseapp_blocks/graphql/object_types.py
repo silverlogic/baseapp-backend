@@ -1,20 +1,17 @@
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
-from graphene import relay
 from graphene_django import DjangoConnectionField
 
-from baseapp_core.graphql import (
-    DjangoObjectType,
-    get_object_type_for_model,
-    get_pk_from_relay_id,
-)
+from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import Node as RelayNode
+from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
 
 Block = swapper.load_model("baseapp_blocks", "Block")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
-class BlocksInterface(relay.Node):
+class BlocksInterface(RelayNode):
     blockers = DjangoConnectionField(get_object_type_for_model(Block))
     blocking = DjangoConnectionField(get_object_type_for_model(Block))
     blockers_count = graphene.Int()
@@ -61,7 +58,7 @@ class BaseBlockObjectType:
     class Meta:
         model = Block
         fields = "__all__"
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
 
     @classmethod
     def get_node(self, info, id):

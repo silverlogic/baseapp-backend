@@ -36,6 +36,12 @@ class ReportCreate(RelayMutation):
                 extensions={"code": "permission_required"},
             )
 
+        if info.context.user.current_profile.relay_id == target.relay_id:
+            raise GraphQLError(
+                str(_("You cannot report yourself")),
+                extensions={"code": "invalid_action"},
+            )
+
         content_type = ContentType.objects.get_for_model(target)
 
         report = Report.objects.create(

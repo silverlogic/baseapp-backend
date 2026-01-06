@@ -2,18 +2,17 @@ import graphene
 import swapper
 from django.db.models import Case, When
 from django.utils.translation import gettext_lazy as _
-from graphene import relay
-from graphene_django import DjangoConnectionField
 from graphene_django.filter import DjangoFilterConnectionField
 
+from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import (
-    DjangoObjectType,
     ThumbnailField,
     get_object_type_for_model,
     get_pk_from_relay_id,
 )
 
-from .filters import ChatRoomFilter
+from .filters import ChatRoomFilter, ChatRoomParticipantFilter
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
@@ -29,10 +28,10 @@ class BaseChatRoomParticipantObjectType:
     role = graphene.Field(ChatRoomParticipantRoleTypesEnum)
 
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         model = ChatRoomParticipant
         fields = ("id", "has_archived_room", "profile", "role")
-        filter_fields = ("profile__target_content_type",)
+        filterset_class = ChatRoomParticipantFilter
 
 
 class ChatRoomParticipantObjectType(BaseChatRoomParticipantObjectType, DjangoObjectType):
@@ -45,14 +44,14 @@ MessageTypeEnum = graphene.Enum.from_enum(Message.MessageType)
 
 
 class BaseMessageObjectType:
-    action_object = graphene.Field(relay.Node)
+    action_object = graphene.Field(RelayNode)
     verb = graphene.Field(VerbsEnum)
     message_type = graphene.Field(MessageTypeEnum)
     content = graphene.String(required=False, profile_id=graphene.ID(required=False))
     is_read = graphene.Boolean(profile_id=graphene.ID(required=False))
 
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         model = Message
         fields = (
             "id",
@@ -147,7 +146,7 @@ class MessageObjectType(BaseMessageObjectType, DjangoObjectType):
 
 class BaseChatRoomObjectType:
     all_messages = DjangoFilterConnectionField(get_object_type_for_model(Message))
-    participants = DjangoConnectionField(get_object_type_for_model(ChatRoomParticipant))
+    participants = DjangoFilterConnectionField(get_object_type_for_model(ChatRoomParticipant))
     unread_messages = graphene.Field(
         get_object_type_for_model(UnreadMessageCount), profile_id=graphene.ID(required=False)
     )
@@ -237,7 +236,7 @@ class BaseChatRoomObjectType:
         return unread_messages
 
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         model = ChatRoom
         fields = (
             "id",
@@ -259,7 +258,7 @@ class ChatRoomObjectType(BaseChatRoomObjectType, DjangoObjectType):
 
 class BaseUnreadMessageObjectType:
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         model = UnreadMessageCount
         fields = ("count", "marked_unread")
 
