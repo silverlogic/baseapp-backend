@@ -15,20 +15,110 @@
               integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
               crossorigin="anonymous">
         <style>
-            .navbar-custom {
-                background-color: rgb(249, 250, 251) !important;
+            :root {
+                --primary: #98D8F1;
+                --secondary: #009CD8;
             }
+            
+            body {
+                background-color: #f8f9fa;
+                color: rgb(69, 79, 91);
+            }
+            
+            [data-bs-theme="dark"] body,
+            .dark body {
+                background-color: #111827;
+                color: rgb(223, 227, 232);
+            }
+            
+            .navbar-custom {
+                background-color: #ffffff;
+                border-bottom: 1px solid #dee3ed;
+            }
+            
+            [data-bs-theme="dark"] .navbar-custom,
+            .dark .navbar-custom {
+                background-color: #1f2937;
+                border-bottom: 1px solid #374151;
+            }
+            
             .navbar-custom .container-fluid {
                 padding-left: 24px;
+            }
+            
+            input:not([type="checkbox"]):not([type="radio"]),
+            select,
+            textarea {
+                color: rgb(69, 79, 91) !important;
+                background-color: #ffffff !important;
+                border: 1px solid #dee3ed !important;
+            }
+            
+            [data-bs-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
+            [data-bs-theme="dark"] select,
+            [data-bs-theme="dark"] textarea,
+            .dark input:not([type="checkbox"]):not([type="radio"]),
+            .dark select,
+            .dark textarea {
+                color: rgb(223, 227, 232) !important;
+                background-color: #111827 !important;
+                border: 1px solid #c2c9d6 !important;
+            }
+            
+            select option {
+                background-color: #ffffff !important;
+                color: rgb(69, 79, 91) !important;
+            }
+            
+            [data-bs-theme="dark"] select option,
+            .dark select option {
+                background-color: #111827 !important;
+                color: rgb(223, 227, 232) !important;
+            }
+            
+            .btn-primary {
+                background-color: var(--primary);
+                border-color: var(--primary);
+                color: #000;
+            }
+            
+            .btn-primary:hover {
+                background-color: var(--secondary);
+                border-color: var(--secondary);
+                color: #fff;
+            }
+            
+            .card, .bg-white {
+                background-color: #ffffff !important;
+                border: 1px solid #dee3ed;
+            }
+            
+            [data-bs-theme="dark"] .card,
+            [data-bs-theme="dark"] .bg-white,
+            .dark .card,
+            .dark .bg-white {
+                background-color: #1f2937 !important;
+                border-color: #374151;
+                color: rgb(223, 227, 232);
+            }
+            
+            .bg-body-secondary {
+                background-color: #f8f9fa !important;
+            }
+            
+            [data-bs-theme="dark"] .bg-body-secondary,
+            .dark .bg-body-secondary {
+                background-color: #111827 !important;
             }
         </style>
     </head>
     <body class="min-vh-100 d-flex flex-shrink-0 flex-column">
-        <header data-bs-theme="dark">
+        <header>
             <nav class="navbar navbar-expand-lg navbar-custom">
                 <div class="container-fluid">
                     <a class="navbar-brand" href="{% url 'admin:index' %}">
-                        <img src="{% static 'images/logo-full-colored.svg' %}" alt="BaseApp" height="32">
+                        <img id="logo-light" src="{% static 'images/logo-full-colored.svg' %}" alt="BaseApp" height="32">
+                        <img id="logo-dark" src="{% static 'images/logo-full-mono.svg' %}" alt="BaseApp" height="32" style="display: none;">
                     </a>
                     <button class="navbar-toggler"
                             type="button"
@@ -44,7 +134,7 @@
                             {% if user.is_authenticated %}
                                 <a href="{% url 'account_logout' %}" class="btn btn-danger">{% translate "Sign Out" %}</a>
                             {% else %}
-                                <a href="{% url 'account_login' %}" class="btn btn-outline-light">{% translate "Sign In" %}</a>
+                                <a href="{% url 'account_login' %}" class="btn btn-primary">{% translate "Sign In" %}</a>
                             {% endif %}
                         </div>
                     </div>
@@ -60,6 +150,139 @@
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
                 integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
                 crossorigin="anonymous"></script>
+        <script>
+            // Sync theme with Unfold admin
+            (function() {
+                const html = document.documentElement;
+                const logoLight = document.getElementById('logo-light');
+                const logoDark = document.getElementById('logo-dark');
+                
+                function applyTheme(theme) {
+                    if (theme === 'dark') {
+                        html.setAttribute('data-bs-theme', 'dark');
+                        html.classList.add('dark');
+                        if (logoLight) logoLight.style.display = 'none';
+                        if (logoDark) logoDark.style.display = 'block';
+                    } else {
+                        html.setAttribute('data-bs-theme', 'light');
+                        html.classList.remove('dark');
+                        if (logoLight) logoLight.style.display = 'block';
+                        if (logoDark) logoDark.style.display = 'none';
+                    }
+                }
+                
+                function detectTheme() {
+                    // Check all possible localStorage keys that Unfold might use
+                    const possibleKeys = [
+                        'unfold:theme',
+                        'theme',
+                        'django-unfold-theme',
+                        'unfold-theme',
+                        'bs-theme',
+                        'bootstrap-theme'
+                    ];
+                    
+                    for (let key of possibleKeys) {
+                        const storedTheme = localStorage.getItem(key);
+                        if (storedTheme && (storedTheme === 'dark' || storedTheme === 'light')) {
+                            applyTheme(storedTheme);
+                            return;
+                        }
+                    }
+                    
+                    // Check if there's a data-bs-theme attribute already set (from admin)
+                    const existingTheme = html.getAttribute('data-bs-theme');
+                    if (existingTheme && existingTheme !== 'auto') {
+                        applyTheme(existingTheme);
+                        return;
+                    }
+                    
+                    // Check for data-bs-theme in admin window (if we're in same origin)
+                    try {
+                        if (window.opener && window.opener.document) {
+                            const openerTheme = window.opener.document.documentElement.getAttribute('data-bs-theme');
+                            if (openerTheme && openerTheme !== 'auto') {
+                                applyTheme(openerTheme);
+                                return;
+                            }
+                        }
+                    } catch (e) {
+                        // Cross-origin or other error, ignore
+                    }
+                    
+                    // Fallback to system preference
+                    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    applyTheme(prefersDark ? 'dark' : 'light');
+                }
+                
+                // Apply theme on load
+                detectTheme();
+                
+                // Listen for theme changes in localStorage (Unfold updates this)
+                window.addEventListener('storage', function(e) {
+                    if (e.key && (e.key.includes('theme') || e.key.includes('unfold'))) {
+                        detectTheme();
+                    }
+                });
+                
+                // Also check periodically in case localStorage is updated by same window
+                // This handles cases where Unfold updates localStorage in the same window
+                let lastTheme = null;
+                const checkInterval = setInterval(function() {
+                    const possibleKeys = [
+                        'unfold:theme',
+                        'theme',
+                        'django-unfold-theme',
+                        'unfold-theme',
+                        'bs-theme',
+                        'bootstrap-theme'
+                    ];
+                    
+                    let currentTheme = null;
+                    for (let key of possibleKeys) {
+                        const stored = localStorage.getItem(key);
+                        if (stored && (stored === 'dark' || stored === 'light')) {
+                            currentTheme = stored;
+                            break;
+                        }
+                    }
+                    
+                    if (currentTheme !== lastTheme) {
+                        lastTheme = currentTheme;
+                        if (currentTheme) {
+                            detectTheme();
+                        }
+                    }
+                }, 200);
+                
+                // Listen for system theme changes
+                if (window.matchMedia) {
+                    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+                        // Only apply if no explicit theme is set in localStorage
+                        const hasStoredTheme = [
+                            'unfold:theme',
+                            'theme',
+                            'django-unfold-theme',
+                            'unfold-theme',
+                            'bs-theme',
+                            'bootstrap-theme'
+                        ].some(key => {
+                            const stored = localStorage.getItem(key);
+                            return stored && (stored === 'dark' || stored === 'light');
+                        });
+                        
+                        if (!hasStoredTheme) {
+                            applyTheme(e.matches ? 'dark' : 'light');
+                        }
+                    });
+                }
+                
+                // Clean up interval when page unloads
+                window.addEventListener('beforeunload', function() {
+                    clearInterval(checkInterval);
+                });
+            })();
+        </script>
     </body>
 </html>
 
