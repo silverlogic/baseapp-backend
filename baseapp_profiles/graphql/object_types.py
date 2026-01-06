@@ -31,7 +31,18 @@ class BaseProfileUserRoleObjectType:
     class Meta:
         model = ProfileUserRole
         interfaces = [relay.Node]
-        fields = ["id", "pk", "user", "role", "status"]
+        fields = [
+            "id",
+            "pk",
+            "user",
+            "role",
+            "status",
+            "invited_email",
+            "invitation_token",
+            "invited_at",
+            "invitation_expires_at",
+            "responded_at",
+        ]
         filterset_class = MemberFilter
 
 

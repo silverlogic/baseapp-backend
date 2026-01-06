@@ -52,6 +52,7 @@ class ProfilesPermissionsBackend(BaseBackend):
         if (
             perm
             in [
+                f"{profile_user_role_app_label}.add_profileuserrole",
                 f"{profile_user_role_app_label}.change_profileuserrole",
                 f"{profile_user_role_app_label}.delete_profileuserrole",
             ]
