@@ -155,7 +155,6 @@ class DocumentIdFunc(pgtrigger.Func):
 
     def render(
         self,
-        model: models.Model | None = None,
         meta=None,
         fields=None,
         columns=None,
@@ -165,7 +164,7 @@ class DocumentIdFunc(pgtrigger.Func):
         app_label = concrete_model._meta.app_config.label
         model_name = concrete_model._meta.model_name
         return self.func.format(
-            model=model,
+            model=meta.model,
             app_label=app_label,
             model_name=model_name,
             fields=fields,
