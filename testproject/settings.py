@@ -8,9 +8,32 @@ from baseapp_wagtail.settings import (
     WAGTAIL_INSTALLED_INTERNAL_APPS,
     WAGTAIL_MIDDLEWARE,
 )
+from baseapp_auth.settings import (
+    ACCOUNT_ADAPTER,
+    ACCOUNT_AUTHENTICATION_METHOD,
+    ACCOUNT_EMAIL_VERIFICATION,
+    ACCOUNT_SIGNUP_FIELDS,
+    ACCOUNT_SIGNUP_PASSWORD_ENTER_TWICE,
+    ACCOUNT_USER_MODEL_USERNAME_FIELD,
+    ALLAUTH_ADMIN_LOCALE_SELECTOR_ENABLED,
+    ALLAUTH_ADMIN_SIGNUP_ENABLED,
+    ALLAUTH_ADMIN_SOCIAL_LOGIN_ENABLED,
+    ALLAUTH_HEADLESS_INSTALLED_APPS,
+    ALLAUTH_HEADLESS_MIDDLEWARE,
+    HEADLESS_JWT_ACCESS_TOKEN_EXPIRES_IN,
+    HEADLESS_JWT_AUTHORIZATION_HEADER_SCHEME,
+    HEADLESS_JWT_PRIVATE_KEY,
+    HEADLESS_JWT_REFRESH_TOKEN_EXPIRES_IN,
+    HEADLESS_JWT_ROTATE_REFRESH_TOKEN,
+    HEADLESS_JWT_STATEFUL_VALIDATION_ENABLED,
+    HEADLESS_TOKEN_STRATEGY,
+    JWT_CLAIM_SERIALIZER_CLASS,
+    SIMPLE_JWT,
+)
 
 # Application definition
 INSTALLED_APPS += [
+    *ALLAUTH_HEADLESS_INSTALLED_APPS,
     "channels",
     "graphene_django",
     "notifications",
@@ -56,6 +79,7 @@ INSTALLED_APPS += [
 
 MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")
 MIDDLEWARE += [
+    *ALLAUTH_HEADLESS_MIDDLEWARE,
     "baseapp_profiles.middleware.CurrentProfileMiddleware",
     "baseapp_core.middleware.HistoryMiddleware",
     *WAGTAIL_MIDDLEWARE,
@@ -104,6 +128,7 @@ CLOUDFLARE_VIDEO_AUTOMATIC_TRIM = True
 CLOUDFLARE_VIDEO_TRIM_DURATION_SECONDS = 10
 
 AUTHENTICATION_BACKENDS = [
+    "allauth.account.auth_backends.AuthenticationBackend",
     "django.contrib.auth.backends.ModelBackend",
     "baseapp_auth.permissions.UsersPermissionsBackend",
     "baseapp_profiles.permissions.ProfilesPermissionsBackend",
@@ -269,3 +294,16 @@ BRANCHIO_KEY = env("BRANCHIO_KEY", "N/A")
 
 # AUTOFIELD
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+
+SITE_ID = 1
+ACCOUNT_LOGOUT_REDIRECT_URL = "account_login"
+ACCOUNT_LOGIN_REDIRECT_URL = "admin:index"
+ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL = "account_change_password_done"
+
+HEADLESS_FRONTEND_URLS = {
+    "account_confirm_email": FRONT_CONFIRM_EMAIL_URL.replace("{id}", "{key}").replace(
+        "/{token}", ""
+    ),
+    "account_reset_password_from_key": FRONT_FORGOT_PASSWORD_URL.replace("{token}", "{key}"),
+    "account_signup": FRONT_URL + "/signup",
+}
