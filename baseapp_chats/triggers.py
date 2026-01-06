@@ -1,13 +1,9 @@
 import pgtrigger
-from django.db import models
-from pgtrigger import utils
 
 
 class Func(pgtrigger.Func):
-    def render(self, model: models.Model) -> str:
-        fields = utils.AttrDict({field.name: field for field in model._meta.fields})
-        columns = utils.AttrDict({field.name: field.column for field in model._meta.fields})
-        return self.func.format(model=model, meta=model._meta, fields=fields, columns=columns)
+    def render(self, meta, fields, columns, **kwargs) -> str:
+        return self.func.format(model=meta.model, meta=meta, fields=fields, columns=columns)
 
 
 def increment_unread_count_trigger(UnreadMessageCount, Message):
