@@ -5,7 +5,7 @@ This directory contains customized templates for django-allauth. All templates h
 ## Overview
 
 The templates in this directory override the default django-allauth templates to provide:
-- Modern Bootstrap 5.3.2 styling
+- Bootstrap 5.3.2 styling
 - Responsive design
 - Consistent branding with BaseApp logo
 - Improved error handling and validation display
@@ -27,10 +27,19 @@ allauth/
 │   ├── h1__entrance.html  # H1 heading for entrance pages
 │   └── panel.html         # Panel/card component
 └── account/
-    ├── login.html         # Login page
-    ├── logout.html        # Logout page
-    ├── password_change.html
-    └── password_change_done.html
+    ├── login.html                    # Login page
+    ├── logout.html                   # Logout page
+    ├── signup.html                   # User registration
+    ├── password_change.html          # Change password (authenticated)
+    ├── password_change_done.html     # Password change confirmation
+    ├── password_reset.html           # Request password reset
+    ├── password_reset_done.html      # Password reset email sent
+    ├── password_reset_from_key.html  # Reset password with token
+    ├── password_reset_from_key_done.html  # Password reset success
+    ├── email.html                    # Manage email addresses
+    ├── email_verification_sent.html # Email verification sent confirmation
+    ├── confirm_email.html            # Confirm email with token
+    └── verified_email_required.html  # Email verification required page
 ```
 
 ## Customizations by Template
@@ -42,7 +51,7 @@ allauth/
 **Major Changes**:
 1. **Bootstrap 5.3.2 Integration**
    - Added Bootstrap CSS/JS via CDN
-   - Added custom navbar styles (background: `rgb(249, 250, 251)`, 24px left padding)
+   - Added custom navbar styles
 
 2. **HTML Structure**
    - Added `{% load static %}` and `{% get_current_language %}`
@@ -251,10 +260,132 @@ allauth/
 
 ### `account/password_change_done.html`
 
-**Custom Template**:
+**Original**: [django-allauth password_change_done.html](https://github.com/pennersr/django-allauth/blob/main/allauth/templates/account/password_change_done.html)
+
+**Major Changes**:
 - Uses `{% element panel %}` with `body` and `actions` slots
 - Success alert using `{% element alert level="success" %}`
 - "Go to Admin" button linking to `admin:index`
+
+### `account/password_reset.html`
+
+**Original**: [django-allauth password_reset.html](https://github.com/pennersr/django-allauth/blob/main/allauth/templates/account/password_reset.html)
+
+**Major Changes**:
+1. **Layout**
+   - Extends `entrance.html` for consistent styling
+   - Uses `{% element panel %}` for informational message
+
+2. **Form Structure**
+   - Uses `unlabeled=True` for form fields (enables form-floating)
+   - Uses `prominent` tag for submit button
+   - Proper action URL definition: `{% url 'account_reset_password' as action_url %}`
+
+3. **User State Check**
+   - Shows alert if user is already authenticated
+   - Provides link back to login page
+
+### `account/password_reset_done.html`
+
+**Original**: [django-allauth password_reset_done.html](https://github.com/pennersr/django-allauth/blob/main/allauth/templates/account/password_reset_done.html)
+
+**Major Changes**:
+- Uses `{% element panel %}` with `body` and `actions` slots
+- Success alert using `{% element alert level="success" %}`
+- "Back to Sign In" button linking to `account_login`
+
+### `account/password_reset_from_key.html`
+
+**Original**: [django-allauth password_reset_from_key.html](https://github.com/pennersr/django-allauth/blob/main/allauth/templates/account/password_reset_from_key.html)
+
+**Major Changes**:
+1. **Token Validation**
+   - Shows error panel if token is invalid or expired
+   - Provides link to request new password reset
+
+2. **Form Structure**
+   - Uses `unlabeled=True` for form fields (enables form-floating)
+   - Uses `prominent` tag for submit button
+   - Handles both valid and invalid token states
+
+### `account/password_reset_from_key_done.html`
+
+**Original**: [django-allauth password_reset_from_key_done.html](https://github.com/pennersr/django-allauth/blob/main/allauth/templates/account/password_reset_from_key_done.html)
+
+**Major Changes**:
+- Uses `{% element panel %}` with `body` and `actions` slots
+- Success alert using `{% element alert level="success" %}`
+- "Sign In" button linking to `account_login`
+
+### `account/signup.html`
+
+**Original**: [django-allauth signup.html](https://github.com/pennersr/django-allauth/blob/main/allauth/templates/account/signup.html)
+
+**Major Changes**:
+1. **Form Structure**
+   - Uses `unlabeled=True` for form fields (enables form-floating)
+   - Uses `prominent` tag for submit button
+   - Proper action URL definition: `{% url 'account_signup' as action_url %}`
+
+2. **Navigation**
+   - Link to login page for existing users
+   - Follows same pattern as `login.html`
+
+**Note**: Signup is disabled by default via `AccountAdapter.is_open_for_signup()`, but template exists for when it's enabled.
+
+### `account/email.html`
+
+**Original**: [django-allauth email.html](https://github.com/pennersr/django-allauth/blob/main/allauth/templates/account/email.html)
+
+**Major Changes**:
+1. **Email List Display**
+   - Uses Bootstrap form-check for radio buttons
+   - Badges for email status: `bg-success` (Verified), `bg-warning` (Unverified), `bg-primary` (Primary)
+   - Proper radio button styling with `form-check-input` and `form-check-label`
+
+2. **Action Buttons**
+   - Primary action: "Make Primary" with `tags="primary"`
+   - Secondary action: "Re-send Verification" with `tags="secondary"`
+   - Danger action: "Remove" with `tags="danger"`
+
+3. **Add Email Form**
+   - Uses `unlabeled=True` for form fields (enables form-floating)
+   - Uses `prominent` tag for submit button
+   - Conditional display based on `can_add_email`
+
+### `account/email_verification_sent.html`
+
+**Original**: [django-allauth email_verification_sent.html](https://github.com/pennersr/django-allauth/blob/main/allauth/templates/account/email_verification_sent.html)
+
+**Major Changes**:
+- Uses `{% element panel %}` with `body` and `actions` slots
+- Info alert using `{% element alert level="info" %}`
+- "Manage Email Addresses" button linking to `account_email`
+
+### `account/confirm_email.html`
+
+**Original**: [django-allauth confirm_email.html](https://github.com/pennersr/django-allauth/blob/main/allauth/templates/account/confirm_email.html)
+
+**Major Changes**:
+1. **Confirmation State**
+   - Shows confirmation form if token is valid
+   - Shows error panel if token is invalid or expired
+
+2. **Layout**
+   - Uses `{% element panel %}` for both states
+   - Success/error alerts based on token validity
+   - "Confirm" button for valid tokens
+   - "Manage Email Addresses" button for invalid tokens
+
+### `account/verified_email_required.html`
+
+**Original**: [django-allauth verified_email_required.html](https://github.com/pennersr/django-allauth/blob/main/allauth/templates/account/verified_email_required.html)
+
+**Major Changes**:
+- Uses `{% element panel %}` with `body` and `actions` slots
+- Warning alert using `{% element alert level="warning" %}`
+- "Manage Email Addresses" button linking to `account_email`
+- Informational message about email verification requirement
 
 ## Bootstrap Version
 
@@ -271,7 +402,7 @@ When django-allauth releases updates:
 3. **Test thoroughly**: Ensure all authentication flows work correctly
 4. **Check for new blocks**: Look for new template blocks that may need customization
 
-## Key Design Decisions
+## Key Design Decisionsx
 
 1. **Bootstrap Integration**: Chose Bootstrap 5.3.2 for consistency with modern web standards
 2. **Form Floating Labels**: Enabled for better UX on entrance pages
@@ -283,10 +414,12 @@ When django-allauth releases updates:
 ## Files Not Customized
 
 The following django-allauth templates are **not** overridden and use defaults:
-- `account/signup.html` (if exists)
-- Email templates (in `account/email/`)
-- Social account templates
-- MFA templates (if used)
+- Email body templates (in `account/email/` - these are email message templates, not web pages)
+- Social account templates (`socialaccount/`)
+- MFA templates (if MFA is enabled)
+- Other specialized templates not commonly used
+
+**Note**: All main account management templates (`account/*.html`) have been customized with Bootstrap 5.3.2 styling.
 
 ## References
 

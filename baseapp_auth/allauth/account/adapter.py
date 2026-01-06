@@ -68,6 +68,7 @@ class AccountAdapter(DefaultAccountAdapter):
             # This handles sequences like "/admin/../sensitive-page" -> "/sensitive-page"
             parsed = urlparse(next_url)
             # Use posixpath.normpath to normalize the path (handles .. and .)
+            # Note: normpath removes trailing slashes, which is fine for security
             import posixpath
 
             normalized_path = posixpath.normpath(parsed.path)
