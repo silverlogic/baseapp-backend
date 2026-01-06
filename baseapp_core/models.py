@@ -10,7 +10,6 @@ from django.dispatch import receiver
 from django.utils.deconstruct import deconstructible
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
-from pgtrigger import utils
 
 
 class CaseInsensitiveCharField(models.CharField):
