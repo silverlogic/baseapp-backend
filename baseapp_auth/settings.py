@@ -1,5 +1,9 @@
 from baseapp_core.settings.env import env
 
+ALLAUTH_AUTHENTICATION_BACKENDS = [
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
+
 ALLAUTH_HEADLESS_INSTALLED_APPS = [
     "django.contrib.sites",
     "allauth",
