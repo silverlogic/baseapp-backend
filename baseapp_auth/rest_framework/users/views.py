@@ -20,6 +20,8 @@ User = get_user_model()
 
 from django.utils.translation import gettext_lazy as _
 
+from baseapp_core.rest_framework.mixins import PublicIdLookupMixin
+
 from .parsers import SafeJSONParser
 from .serializers import (
     ChangePasswordSerializer,
@@ -38,6 +40,7 @@ class UpdateSelfPermission(permissions.BasePermission):
 
 
 class UsersViewSet(
+    PublicIdLookupMixin,
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
     mixins.ListModelMixin,
