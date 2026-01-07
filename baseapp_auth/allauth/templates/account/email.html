@@ -1,0 +1,80 @@
+{% extends "allauth/layouts/entrance.html" %}
+{% load i18n allauth %}
+{% block head_title %}
+    {% trans "Email Addresses" %}
+{% endblock head_title %}
+{% block content %}
+    {% element h1 %}
+        {% trans "Email Addresses" %}
+    {% endelement %}
+    {% if emailaddresses %}
+        {% element panel %}
+            {% slot body %}
+                <p>{% trans "The following email addresses are associated with your account:" %}</p>
+                {% element form form=form method="post" action=action_url tags="email" %}
+                    {% slot body %}
+                        {% csrf_token %}
+                        {% for radio in emailaddress_radios %}
+                            {% with emailaddress=radio.emailaddress %}
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input"
+                                           type="radio"
+                                           name="email"
+                                           {% if emailaddress.primary or emailaddresses|length == 1 %}checked="checked"{% endif %}
+                                           value="{{ emailaddress.email }}"
+                                           id="email_radio_{{ forloop.counter }}">
+                                    <label class="form-check-label" for="email_radio_{{ forloop.counter }}">
+                                        {{ emailaddress.email }}
+                                        {% if emailaddress.verified %}
+                                            <span class="badge bg-success">{% trans "Verified" %}</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">{% trans "Unverified" %}</span>
+                                        {% endif %}
+                                        {% if emailaddress.primary %}
+                                            <span class="badge bg-primary">{% trans "Primary" %}</span>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                            {% endwith %}
+                        {% endfor %}
+                    {% endslot %}
+                    {% slot actions %}
+                        {% element button type="submit" name="action_primary" tags="primary" %}
+                            {% trans "Make Primary" %}
+                        {% endelement %}
+                        {% element button type="submit" name="action_send" tags="secondary" %}
+                            {% trans "Re-send Verification" %}
+                        {% endelement %}
+                        {% element button type="submit" name="action_remove" tags="danger" %}
+                            {% trans "Remove" %}
+                        {% endelement %}
+                    {% endslot %}
+                {% endelement %}
+            {% endslot %}
+        {% endelement %}
+    {% else %}
+        {% element alert %}
+            {% slot message %}
+                {% trans "You currently do not have any email address set up. You should really add an email address so you can receive notifications, reset your password, etc." %}
+            {% endslot %}
+        {% endelement %}
+    {% endif %}
+    {% if can_add_email %}
+        {% element h2 %}
+            {% trans "Add Email Address" %}
+        {% endelement %}
+        {% url 'account_email' as action_url %}
+        {% element form form=form method="post" action=action_url tags="entrance,add_email" %}
+            {% slot body %}
+                {% csrf_token %}
+                {% element fields form=form unlabeled=True %}
+                {% endelement %}
+            {% endslot %}
+            {% slot actions %}
+                {% element button name="action_add" type="submit" tags="prominent" %}
+                    {% trans "Add Email" %}
+                {% endelement %}
+            {% endslot %}
+        {% endelement %}
+    {% endif %}
+{% endblock content %}

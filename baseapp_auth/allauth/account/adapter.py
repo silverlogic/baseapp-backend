@@ -1,3 +1,4 @@
+import posixpath
 from urllib.parse import urlparse
 
 from allauth.account.adapter import DefaultAccountAdapter
@@ -42,6 +43,51 @@ class AccountAdapter(DefaultAccountAdapter):
         """
         return getattr(settings, "ALLAUTH_ADMIN_SIGNUP_ENABLED", False)
 
+    def _validate_and_normalize_admin_url(self, request, next_url):
+        """
+        Validate and normalize a 'next' URL parameter to ensure it's a safe admin URL.
+
+        This method performs security checks to prevent path traversal attacks and
+        ensures the URL points to a valid admin view. It normalizes the path using
+        posixpath.normpath to handle sequences like "/admin/../sensitive-page".
+
+        Args:
+            request: The HTTP request object.
+            next_url: The URL string to validate and normalize.
+
+        Returns:
+            str: The normalized admin path if valid, None otherwise.
+        """
+        # Normalize the path to prevent path traversal attacks
+        # This handles sequences like "/admin/../sensitive-page" -> "/sensitive-page"
+        parsed = urlparse(next_url)
+        # Use posixpath.normpath to normalize the path (handles .. and .)
+        # Note: normpath removes trailing slashes, which is fine for security
+        normalized_path = posixpath.normpath(parsed.path)
+        # Ensure normalized path still starts with /admin/ after normalization
+        if normalized_path.startswith("/admin/"):
+            # Reconstruct URL with normalized path
+            normalized_url = (
+                f"{parsed.scheme}://{parsed.netloc}{normalized_path}"
+                if parsed.scheme
+                else normalized_path
+            )
+            if url_has_allowed_host_and_scheme(
+                normalized_url,
+                allowed_hosts={request.get_host()},
+                require_https=request.is_secure(),
+            ):
+                # Validate that the normalized URL resolves to a valid admin view
+                try:
+                    resolved = resolve(normalized_path)
+                    # Ensure the resolved view belongs to the admin namespace
+                    if resolved.namespace == "admin":
+                        return normalized_path
+                except Resolver404:
+                    # Invalid URL, fall through to default redirect
+                    pass
+        return None
+
     def get_login_redirect_url(self, request):
         """
         Determine the redirect URL after successful login.
@@ -64,35 +110,9 @@ class AccountAdapter(DefaultAccountAdapter):
         """
         next_url = request.GET.get("next") or request.POST.get("next")
         if next_url:
-            # Normalize the path to prevent path traversal attacks
-            # This handles sequences like "/admin/../sensitive-page" -> "/sensitive-page"
-            parsed = urlparse(next_url)
-            # Use posixpath.normpath to normalize the path (handles .. and .)
-            import posixpath
-
-            normalized_path = posixpath.normpath(parsed.path)
-            # Ensure normalized path still starts with /admin/ after normalization
-            if normalized_path.startswith("/admin/"):
-                # Reconstruct URL with normalized path
-                normalized_url = (
-                    f"{parsed.scheme}://{parsed.netloc}{normalized_path}"
-                    if parsed.scheme
-                    else normalized_path
-                )
-                if url_has_allowed_host_and_scheme(
-                    normalized_url,
-                    allowed_hosts={request.get_host()},
-                    require_https=request.is_secure(),
-                ):
-                    # Validate that the normalized URL resolves to a valid admin view
-                    try:
-                        resolved = resolve(normalized_path)
-                        # Ensure the resolved view belongs to the admin namespace
-                        if resolved.namespace == "admin":
-                            return normalized_path
-                    except Resolver404:
-                        # Invalid URL, fall through to default redirect
-                        pass
+            validated_url = self._validate_and_normalize_admin_url(request, next_url)
+            if validated_url:
+                return validated_url
         # Use ACCOUNT_LOGIN_REDIRECT_URL if configured, otherwise default to admin:index
         redirect_url = getattr(settings, "ACCOUNT_LOGIN_REDIRECT_URL", "admin:index")
 
