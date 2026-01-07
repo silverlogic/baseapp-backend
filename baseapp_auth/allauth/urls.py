@@ -1,8 +1,9 @@
 """
-URL patterns for django-allauth admin redirects.
+URL patterns for django-allauth admin redirects and headless API.
 
 These URLs redirect Django admin authentication URLs to django-allauth views,
 providing a seamless integration between Django admin and allauth.
+Also includes headless API endpoints for API-based authentication flows.
 """
 
 from django.urls import include, path, re_path
@@ -28,4 +29,5 @@ urlpatterns = [
         RedirectView.as_view(pattern_name="admin:index", query_string=True, permanent=True),
     ),
     path("accounts/", include("allauth.urls")),
+    path("_allauth/", include("allauth.headless.urls")),
 ]
