@@ -1,9 +1,10 @@
 from collections import defaultdict
-from django.forms.widgets import CheckboxSelectMultiple
+
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import Permission
 from django.forms.models import ModelChoiceIteratorValue
-from django.apps import apps
+from django.forms.widgets import CheckboxSelectMultiple
 
 
 def get_app_and_model_verbose_names(content_type):
@@ -29,14 +30,8 @@ class GroupedPermissionWidget(CheckboxSelectMultiple):
     template_name = "admin/widgets/grouped_permission_widget.html"
 
     class Media:
-        js = (
-            "baseapp_auth/js/grouped_permission_widget.js",
-        )
-        css = {
-            "all": (
-                "baseapp_auth/css/grouped_permission_widget.css",
-            )
-        }
+        js = ("baseapp_auth/js/grouped_permission_widget.js",)
+        css = {"all": ("baseapp_auth/css/grouped_permission_widget.css",)}
 
     def get_context(self, name, value, attrs):
         context = super().get_context(name, value, attrs)
@@ -60,19 +55,15 @@ class GroupedPermissionWidget(CheckboxSelectMultiple):
 
             if not instance:
                 try:
-                    instance = Permission.objects.select_related(
-                        "content_type"
-                    ).get(pk=pk)
+                    instance = Permission.objects.select_related("content_type").get(pk=pk)
                 except Permission.DoesNotExist:
                     continue
 
             app_label = instance.content_type.app_label
-            model = instance.content_type.name
+            model = instance.content_type.model
             full_model = f"{app_label}.{model}"
 
-            app_verbose, model_verbose = get_app_and_model_verbose_names(
-                instance.content_type
-            )
+            app_verbose, model_verbose = get_app_and_model_verbose_names(instance.content_type)
 
             # FILTERS
             if app_label in hide_apps:
@@ -84,15 +75,14 @@ class GroupedPermissionWidget(CheckboxSelectMultiple):
             # CLEAN LABEL
             short_label = instance.name
 
-            grouped[app_verbose][model_verbose].append({
-                "value": pk,
-                "label": short_label,
-                "checked": str(pk) in value,
-            })
+            grouped[app_verbose][model_verbose].append(
+                {
+                    "value": pk,
+                    "label": short_label,
+                    "checked": str(pk) in value,
+                }
+            )
 
-        context["grouped_permissions"] = {
-            app: dict(models)
-            for app, models in grouped.items()
-        }
+        context["grouped_permissions"] = {app: dict(models) for app, models in grouped.items()}
 
         return context

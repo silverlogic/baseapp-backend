@@ -3,7 +3,7 @@
 }
 .grouped-permissions {
   max-height: 400px;
-  overflow-y: overlay;
+  overflow-y: auto;
   border: 1px solid #2F3544;
   border-radius: 8px;
 }

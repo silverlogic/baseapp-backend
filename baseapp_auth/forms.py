@@ -1,13 +1,12 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
+from django.contrib.auth.models import Group
 from django.utils.translation import gettext_lazy as _
 
 from baseapp_auth.password_validators import apply_password_validators
 
 from .fields import GroupedPermissionField
-from django.contrib.auth.models import Group
-
 
 User = get_user_model()
 

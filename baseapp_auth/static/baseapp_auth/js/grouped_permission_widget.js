@@ -25,7 +25,19 @@
         // Model > permissions
         modelToggle.addEventListener("change", () => {
           permissions.forEach(cb => cb.checked = modelToggle.checked);
+
+          // UPDATE APP-LEVEL CHECKBOX
+          const appBlock = modelBlock.closest(".permission-app");
+          if (!appBlock) return;
+
+          const appToggle = appBlock.querySelector(".select-all-app");
+          const allPermissions = appBlock.querySelectorAll(".permission-checkbox");
+
+          if (appToggle) {
+            updateParent(appToggle, allPermissions);
+          }
         });
+
     
         // Permissions > model
         permissions.forEach(cb => {
