@@ -3,7 +3,7 @@ from django.apps import apps
 from django.conf import settings
 from django.core.cache import InvalidCacheBackendError, caches
 from easy_thumbnails.files import get_thumbnailer
-from .object_types import DjangoObjectType
+from easy_thumbnails.engine import NoSourceGenerator
 
 try:
     cache = caches[settings.THUMBNAIL_CACHE]
@@ -40,7 +40,7 @@ def get_file_object_type():
 
 
 class ThumbnailField(graphene.Field):
-    def __init__(self, type=ThumbnailObjectType, **kwargs):
+    def __init__(self, type=graphene.String, **kwargs):
         kwargs.update(
             {
                 "args": {
@@ -64,16 +64,19 @@ class ThumbnailField(graphene.Field):
                 cache_key = self._get_cache_key(instance, width, height)
                 value_from_cache = cache.get(cache_key)
                 if value_from_cache:
-                    return ThumbnailObjectType(url=value_from_cache)
+                    return value_from_cache
 
             thumbnailer = get_thumbnailer(instance)
-            url = thumbnailer.get_thumbnail({"size": (width, height)}).url
-            absolute_url = info.context.build_absolute_uri(url)
+            try:
+                url = thumbnailer.get_thumbnail({"size": (width, height)}).url
+                absolute_url = info.context.build_absolute_uri(url)
+            except NoSourceGenerator:
+                absolute_url = None
 
             if cache:
                 cache.set(cache_key, absolute_url, timeout=None)
 
-            return ThumbnailObjectType(url=absolute_url)
+            return absolute_url
 
         return built_thumbnail
 

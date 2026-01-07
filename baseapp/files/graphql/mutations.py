@@ -6,11 +6,18 @@ from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from graphql_relay.connection.arrayconnection import offset_to_cursor
 
-from baseapp_core.graphql import RelayMutation, get_obj_from_relay_id, login_required
+from baseapp_core.graphql import (
+    RelayMutation,
+    get_obj_from_relay_id,
+    get_pk_from_relay_id,
+    login_required,
+)
 
 from .interfaces import FilesInterface
 
 File = swapper.load_model("baseapp_files", "File")
+app_label = File._meta.app_label
+file_model_name = File._meta.model_name
 FileObjectType = File.get_graphql_object_type()
 
 
@@ -130,5 +137,39 @@ class FileAttachToTarget(RelayMutation):
         return FileAttachToTarget(attached_files=attached_files, target=target)
 
 
+class FileDelete(RelayMutation):
+    deleted_id = graphene.ID()
+    parent = graphene.Field(FilesInterface)
+
+    class Input:
+        id = graphene.ID(required=True)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        relay_id = input.get("id")
+        pk = get_pk_from_relay_id(relay_id)
+
+        error_exception = GraphQLError(
+            str(_("You don't have permission to perform this action")),
+            extensions={"code": "permission_required"},
+        )
+
+        try:
+            obj = File.objects.get(pk=pk)
+        except File.DoesNotExist:
+            raise error_exception
+
+        if not info.context.user.has_perm(f"{app_label}.delete_{file_model_name}", obj):
+            raise error_exception
+
+        parent = obj.parent
+
+        obj.delete()
+
+        return FileDelete(deleted_id=relay_id, parent=parent)
+
+
 class FilesMutations(object):
     file_attach_to_target = FileAttachToTarget.Field()
+    file_delete = FileDelete.Field()

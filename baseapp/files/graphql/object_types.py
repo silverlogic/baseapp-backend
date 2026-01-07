@@ -5,7 +5,7 @@ from django.apps import apps
 from graphene import relay
 
 from baseapp_auth.graphql.permissions import PermissionsInterface
-from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import DjangoObjectType, ThumbnailField, FileInterface
 
 File = swapper.load_model("baseapp_files", "File")
 
@@ -21,6 +21,7 @@ class FileFilter(django_filters.FilterSet):
 file_interfaces = (
     relay.Node,
     PermissionsInterface,
+    FileInterface
 )
 
 if apps.is_installed("baseapp_comments"):
@@ -34,21 +35,14 @@ if apps.is_installed("baseapp_reactions"):
     file_interfaces += (ReactionsInterface,)
 
 
-class FileObjectType(DjangoObjectType):
+class AbstractFileObjectType:
     parent = graphene.Field(relay.Node)
-    url = graphene.String()
+    thumbnail = ThumbnailField()
 
     class Meta:
         interfaces = file_interfaces
         model = File
         filterset_class = FileFilter
-
-    def resolve_url(self, info, **kwargs):
-        if not self.file:
-            if hasattr(self, "url"):
-                return self.url
-            return None
-        return info.context.build_absolute_uri(self.file.url)
 
     # @classmethod
     # def get_node(cls, info, id):
@@ -61,3 +55,19 @@ class FileObjectType(DjangoObjectType):
     #         return queryset.get(id=id, recipient=info.context.user)
     #     except cls._meta.model.DoesNotExist:
     #         return None
+
+    def resolve_url(self, info, **kwargs):
+        if not self.file:
+            if hasattr(self, "url"):
+                return self.url
+            return None
+        return info.context.build_absolute_uri(self.file.url)
+
+    def resolve_thumbnail(self, *args, **kwargs):
+        return self.file
+
+
+class FileObjectType(AbstractFileObjectType, DjangoObjectType):
+    class Meta(AbstractFileObjectType.Meta):
+        pass
+

@@ -385,3 +385,158 @@ def test_file_attach_to_target_invalid_file_id(graphql_user_client, django_user_
     # Error might not have extensions if it's a relay ID parsing error
     if "extensions" in content["errors"][0]:
         assert content["errors"][0]["extensions"]["code"] == "not_found"
+
+
+FILE_DELETE_MUTATION = """
+    mutation FileDeleteMutation($input: FileDeleteInput!) {
+        fileDelete(input: $input) {
+            deletedId
+            parent {
+                ... on FilesInterface {
+                    filesCount
+                }
+            }
+            errors {
+                field
+                messages
+            }
+        }
+    }
+"""
+
+
+def test_anon_cant_delete_file(graphql_client, django_user_client):
+    user = django_user_client.user
+    file = File.objects.create(
+        file_name="test.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=user,
+    )
+
+    response = graphql_client(
+        FILE_DELETE_MUTATION,
+        variables={"input": {"id": file.relay_id}},
+    )
+    content = response.json()
+    assert content["errors"][0]["message"] == "authentication required"
+    assert File.objects.count() == 1
+
+
+def test_user_cant_delete_any_file(graphql_user_client, django_user_client):
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    other_user = User.objects.create_user(email="other@test.com", password="pass123")
+
+    file = File.objects.create(
+        file_name="test.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=other_user,
+    )
+
+    response = graphql_user_client(
+        FILE_DELETE_MUTATION,
+        variables={"input": {"id": file.relay_id}},
+    )
+    content = response.json()
+    assert content["errors"][0]["extensions"]["code"] == "permission_required"
+    assert File.objects.count() == 1
+
+
+def test_owner_can_delete_file(django_user_client, graphql_user_client):
+    user = django_user_client.user
+    file = File.objects.create(
+        file_name="test.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=user,
+    )
+
+    response = graphql_user_client(
+        FILE_DELETE_MUTATION,
+        variables={"input": {"id": file.relay_id}},
+    )
+    content = response.json()
+    assert content["data"]["fileDelete"]["deletedId"] == file.relay_id
+    assert File.objects.count() == 0
+
+
+def test_superuser_can_delete_file(django_user_client, graphql_user_client):
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    other_user = User.objects.create_user(email="other@test.com", password="pass123")
+
+    django_user_client.user.is_superuser = True
+    django_user_client.user.save()
+
+    file = File.objects.create(
+        file_name="test.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=other_user,
+    )
+
+    response = graphql_user_client(
+        FILE_DELETE_MUTATION,
+        variables={"input": {"id": file.relay_id}},
+    )
+    content = response.json()
+    assert content["data"]["fileDelete"]["deletedId"] == file.relay_id
+    assert File.objects.count() == 0
+
+
+def test_user_with_permission_can_delete_file(django_user_client, graphql_user_client):
+    from django.contrib.auth import get_user_model
+    from django.contrib.auth.models import Permission
+
+    User = get_user_model()
+    other_user = User.objects.create_user(email="other@test.com", password="pass123")
+
+    app_label = File._meta.app_label
+    perm = Permission.objects.get(content_type__app_label=app_label, codename="delete_file")
+    django_user_client.user.user_permissions.add(perm)
+
+    file = File.objects.create(
+        file_name="test.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=other_user,
+    )
+
+    response = graphql_user_client(
+        FILE_DELETE_MUTATION,
+        variables={"input": {"id": file.relay_id}},
+    )
+    content = response.json()
+    assert content["data"]["fileDelete"]["deletedId"] == file.relay_id
+    assert File.objects.count() == 0
+
+
+def test_update_files_count_after_delete_file(django_user_client, graphql_user_client):
+    user = django_user_client.user
+    comment = CommentFactory(user=user)
+    comment_content_type = ContentType.objects.get_for_model(comment)
+
+    file = File.objects.create(
+        file_name="test.txt",
+        file_content_type="text/plain",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=user,
+        parent_content_type=comment_content_type,
+        parent_object_id=comment.pk,
+    )
+
+    # Refresh to get updated files_count
+    comment.refresh_from_db()
+    assert comment.files_count["total"] == 1
+    assert comment.files_count["text/plain"] == 1
+
+    response = graphql_user_client(
+        FILE_DELETE_MUTATION,
+        variables={"input": {"id": file.relay_id}},
+    )
+    content = response.json()
+
+    assert content["data"]["fileDelete"]["parent"]["filesCount"]["total"] == 0
+    assert File.objects.count() == 0
+
+    comment.refresh_from_db()
+    assert comment.files_count["total"] == 0
