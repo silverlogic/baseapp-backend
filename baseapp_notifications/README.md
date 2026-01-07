@@ -68,12 +68,12 @@ CELERY_TASK_ROUTES = {
 4 - Make sure that your main `User`'s `DjangoObjectType` implements interface `NotificationsInterface`:
 
 ```python
-from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import DjangoObjectType, Node as RelayNode
 from baseapp_notifications.graphql.object_types import NotificationsInterface
 
 class UserNode(DjangoObjectType):
     class Meta:
-        interfaces = (relay.Node, NotificationsInterface)
+        interfaces = (RelayNode, NotificationsInterface)
 ```
 
 5 - Then you can expose notification's mutations and subscriptions:
@@ -268,7 +268,7 @@ mutation {
     recipient { notificationsUnreadCount }
   }
 
-  notificationsMarkAsRead(input: { notificationIds: ["Tm90aWZpY2F0aW9uOjE=", "Tm90aWZpY2F0aW9uOjI="], read: true }) {
+  notificationsMarkAsRead(input: { notificationIds: ["b3b6c8e2-8f2a-4e3a-9c1d-2f7e6a1b2c3d", "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"], read: true }) {
     recipient { notificationsUnreadCount }
   }
 }

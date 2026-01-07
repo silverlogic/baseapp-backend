@@ -319,6 +319,7 @@ def test_user_profile_owner_can_remove_profile_member(django_user_client, graphq
     profile_user_role = ProfileUserRoleFactory(
         profile=profile, user=user_2, role=ProfileUserRole.ProfileRoles.MANAGER
     )
+    profile_user_role_relay_id = profile_user_role.relay_id
 
     response = graphql_user_client(
         PROFILE_MEMBER_REMOVE_GRAPHQL,
@@ -326,7 +327,7 @@ def test_user_profile_owner_can_remove_profile_member(django_user_client, graphq
     )
     content = response.json()
 
-    assert content["data"]["profileRemoveMember"]["deletedId"] == profile_user_role.relay_id
+    assert content["data"]["profileRemoveMember"]["deletedId"] == profile_user_role_relay_id
     assert not ProfileUserRole.objects.filter(id=profile_user_role.id).exists()
 
 
@@ -345,13 +346,14 @@ def test_user_with_permission_can_remove_profile_member(django_user_client, grap
     profile_user_role = ProfileUserRoleFactory(
         profile=profile, user=user_3, role=ProfileUserRole.ProfileRoles.MANAGER
     )
+    profile_user_role_relay_id = profile_user_role.relay_id
 
     response = graphql_user_client(
         PROFILE_MEMBER_REMOVE_GRAPHQL,
         variables={"input": {"userId": user_3.relay_id, "profileId": profile.relay_id}},
     )
     content = response.json()
-    assert content["data"]["profileRemoveMember"]["deletedId"] == profile_user_role.relay_id
+    assert content["data"]["profileRemoveMember"]["deletedId"] == profile_user_role_relay_id
     assert not ProfileUserRole.objects.filter(id=profile_user_role.id).exists()
 
 

@@ -88,6 +88,25 @@ class TestUsersRetrieve(ApiMixin):
         profile_actual = set(r.data["profile"].keys())
         assert profile_expected == profile_actual
 
+    @pytest.mark.skipif(
+        not hasattr(User, "public_id"),
+        reason="User model does not expose public_id; skip until DocumentIdMixin is enabled",
+    )
+    def test_id_returns_public_id(self, user_client):
+        """Ensure the serialized `id` is the public_id when available."""
+        from django.contrib.contenttypes.models import ContentType
+
+        from baseapp_core.models import DocumentId
+
+        user = UserFactory()
+
+        content_type = ContentType.objects.get_for_model(user)
+        mapping = DocumentId.objects.filter(content_type=content_type, object_id=user.pk).first()
+        r = user_client.get(self.reverse(kwargs={"pk": user.pk}))
+        h.responseOk(r)
+        assert user.pk != r.data["id"]
+        assert str(mapping.public_id) == r.data["id"]
+
 
 class TestUsersUpdate(ApiMixin):
     view_name = "users-detail"
@@ -112,6 +131,17 @@ class TestUsersUpdate(ApiMixin):
         user_client.patch(self.reverse(kwargs={"pk": user_client.user.id}), data)
         user_client.user.refresh_from_db()
         assert user_client.user.email != "test@email.co"
+
+    @pytest.mark.skipif(
+        not hasattr(User, "public_id"),
+        reason="User model does not expose public_id; skip until DocumentIdMixin is enabled",
+    )
+    def test_can_update_public_fields_using_public_id(self, user_client):
+        data = {"preferred_language": "pt"}
+        r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.public_id}), data)
+        h.responseOk(r)
+        user_client.user.refresh_from_db()
+        assert user_client.user.preferred_language == "pt"
 
     @skip_if_no_referrals
     def test_can_update_referred_by_code_on_the_same_day_user_registered(self, user_client):

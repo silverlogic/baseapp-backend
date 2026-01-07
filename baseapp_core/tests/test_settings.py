@@ -2,7 +2,6 @@ from baseapp_core.settings.env import env
 
 
 class TestEnv:
-
     def test_return_default(self):
         assert env("TEST", default="default") == "default"
         assert env("TEST", "default") == "default"

@@ -13,11 +13,12 @@ Add `baseapp_chats` to your project's `INSTALLED_APPS`
 Make sure your Profile's GraphQL Object Types extends `ChatRoomsInterface` interface:
 
 ```python
+from baseapp_core.graphql import Node as RelayNode
 from baseapp_chats.graphql.interfaces import ChatRoomsInterface
 
 class ProfileObjectType(DjangoObjectType):
     class Meta:
-        interfaces = (relay.Node, ChatRoomsInterface)
+        interfaces = (RelayNode, ChatRoomsInterface)
 ```
 
 This is not necessary if you are using the `baseapp-profile` as it is without a custom ProfileObjectType implementation.
