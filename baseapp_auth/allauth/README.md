@@ -148,9 +148,23 @@ Email verification can be configured via `ACCOUNT_EMAIL_VERIFICATION`:
 - `"optional"` - Users can log in without verifying, but verification is available
 - `"mandatory"` - Users must verify their email before logging in
 
+**Important**: When `ACCOUNT_EMAIL_VERIFICATION = "mandatory"`, users with unverified emails cannot obtain access tokens via the login endpoint. The allauth authentication backend automatically enforces this restriction.
+
 When enabled, use the headless endpoints:
 - `POST /_allauth/email/verification/send/` - Send verification email
 - `POST /_allauth/email/verification/confirm/` - Confirm with token
+
+### Enabling Email Verification
+
+To require email verification, set in `settings/base.py`:
+
+```python
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"  # Require verification before login
+# or
+ACCOUNT_EMAIL_VERIFICATION = "optional"   # Allow login without verification
+```
+
+No code changes are required - this is controlled entirely via settings.
 
 ## Password Reset Flow
 
@@ -166,6 +180,52 @@ When enabled, use the headless endpoints:
 2. Server sends email with token
 3. Client sends `POST /_allauth/password/reset/confirm/` with token and new password
 4. Server confirms password reset
+5. User can log in with new password using `POST /_allauth/login/`
+6. Old password no longer works (automatically invalidated by Django)
+
+### Password Reset API Usage
+
+**Request Password Reset:**
+```bash
+POST /_allauth/password/reset/
+Content-Type: application/json
+
+{
+  "email": "user@example.com"
+}
+```
+
+**Response** (always returns success, even if email doesn't exist - security best practice):
+```json
+{
+  "status": 200,
+  "message": "Password reset email sent"
+}
+```
+
+**Confirm Password Reset:**
+```bash
+POST /_allauth/password/reset/confirm/
+Content-Type: application/json
+
+{
+  "key": "reset-token-from-email",
+  "password": "new-secure-password"
+}
+```
+
+**Response** (success):
+```json
+{
+  "status": 200,
+  "message": "Password reset successful"
+}
+```
+
+**Error Responses:**
+- Invalid or expired token: Returns 400 with error message
+- Unknown user: Returns generic error (does not leak email existence)
+- All errors are machine-readable JSON format
 
 ## Template Customization
 

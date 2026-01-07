@@ -110,6 +110,25 @@
             .dark .bg-body-secondary {
                 background-color: #111827 !important;
             }
+
+            /* Logo visibility based on theme */
+            #logo-light {
+                display: inline-block;
+            }
+
+            #logo-dark {
+                display: none;
+            }
+
+            [data-bs-theme="dark"] #logo-light,
+            .dark #logo-light {
+                display: none;
+            }
+
+            [data-bs-theme="dark"] #logo-dark,
+            .dark #logo-dark {
+                display: inline-block;
+            }
         </style>
     </head>
     <body class="min-vh-100 d-flex flex-shrink-0 flex-column">
@@ -118,7 +137,7 @@
                 <div class="container-fluid">
                     <a class="navbar-brand" href="{% url 'admin:index' %}">
                         <img id="logo-light" src="{% static 'images/logo-full-colored.svg' %}" alt="BaseApp" height="32">
-                        <img id="logo-dark" src="{% static 'images/logo-full-mono.svg' %}" alt="BaseApp" height="32" style="display: none;">
+                        <img id="logo-dark" src="{% static 'images/logo-full-mono.svg' %}" alt="BaseApp" height="32">
                     </a>
                     <button class="navbar-toggler"
                             type="button"
@@ -154,20 +173,14 @@
             // Sync theme with Unfold admin
             (function() {
                 const html = document.documentElement;
-                const logoLight = document.getElementById('logo-light');
-                const logoDark = document.getElementById('logo-dark');
                 
                 function applyTheme(theme) {
                     if (theme === 'dark') {
                         html.setAttribute('data-bs-theme', 'dark');
                         html.classList.add('dark');
-                        if (logoLight) logoLight.style.display = 'none';
-                        if (logoDark) logoDark.style.display = 'block';
                     } else {
                         html.setAttribute('data-bs-theme', 'light');
                         html.classList.remove('dark');
-                        if (logoLight) logoLight.style.display = 'block';
-                        if (logoDark) logoDark.style.display = 'none';
                     }
                 }
                 
@@ -197,19 +210,6 @@
                         return;
                     }
                     
-                    // Check for data-bs-theme in admin window (if we're in same origin)
-                    try {
-                        if (window.opener && window.opener.document) {
-                            const openerTheme = window.opener.document.documentElement.getAttribute('data-bs-theme');
-                            if (openerTheme && openerTheme !== 'auto') {
-                                applyTheme(openerTheme);
-                                return;
-                            }
-                        }
-                    } catch (e) {
-                        // Cross-origin or other error, ignore
-                    }
-                    
                     // Fallback to system preference
                     const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
                     applyTheme(prefersDark ? 'dark' : 'light');
@@ -217,13 +217,6 @@
                 
                 // Apply theme on load
                 detectTheme();
-                
-                // Listen for theme changes in localStorage (Unfold updates this)
-                window.addEventListener('storage', function(e) {
-                    if (e.key && (e.key.includes('theme') || e.key.includes('unfold'))) {
-                        detectTheme();
-                    }
-                });
                 
                 // Also check periodically in case localStorage is updated by same window
                 // This handles cases where Unfold updates localStorage in the same window
@@ -253,7 +246,7 @@
                             detectTheme();
                         }
                     }
-                }, 200);
+                }, 1000);
                 
                 // Listen for system theme changes
                 if (window.matchMedia) {

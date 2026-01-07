@@ -15,14 +15,18 @@
                     {% blocktrans with confirmation.email_address.email as email %}Please confirm that <a href="mailto:{{ email }}">{{ email }}</a> is an email address for user {{ user_display }}.{% endblocktrans %}
                 </p>
             {% endslot %}
+            {% slot actions %}
+                {% url 'account_confirm_email' confirmation.key as action_url %}
+                {% element form method="post" action=action_url tags="inline" %}
+                    {% slot body %}
+                        {% csrf_token %}
+                        {% element button type="submit" tags="primary,prominent" %}
+                            {% trans "Confirm" %}
+                        {% endelement %}
+                    {% endslot %}
+                {% endelement %}
+            {% endslot %}
         {% endelement %}
-        {% url 'account_confirm_email' confirmation.key as action_url %}
-        <form method="post" action="{{ action_url }}" class="mt-3">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-lg btn-primary w-100">
-                <span>{% trans "Confirm" %}</span>
-            </button>
-        </form>
     {% else %}
         {% element panel %}
             {% slot body %}
