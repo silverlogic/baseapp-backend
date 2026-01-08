@@ -21,7 +21,6 @@ __all__ = [
 ]
 
 v1_urlpatterns = [
-    re_path(r"_allauth/", include("allauth.headless.urls")),
     path(r"", include("baseapp_url_shortening.urls")),
     re_path(r"", include(account_router.urls)),
     re_path(r"", include(users_router_nested.urls)),

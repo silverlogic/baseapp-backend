@@ -9,6 +9,7 @@ from baseapp_wagtail.settings import (
     WAGTAIL_MIDDLEWARE,
 )
 from baseapp_auth.settings import (
+    ALLAUTH_AUTHENTICATION_BACKENDS,
     ACCOUNT_ADAPTER,
     ACCOUNT_AUTHENTICATION_METHOD,
     ACCOUNT_EMAIL_VERIFICATION,
@@ -128,7 +129,7 @@ CLOUDFLARE_VIDEO_AUTOMATIC_TRIM = True
 CLOUDFLARE_VIDEO_TRIM_DURATION_SECONDS = 10
 
 AUTHENTICATION_BACKENDS = [
-    "allauth.account.auth_backends.AuthenticationBackend",
+    *ALLAUTH_AUTHENTICATION_BACKENDS,
     "django.contrib.auth.backends.ModelBackend",
     "baseapp_auth.permissions.UsersPermissionsBackend",
     "baseapp_profiles.permissions.ProfilesPermissionsBackend",
@@ -295,6 +296,7 @@ BRANCHIO_KEY = env("BRANCHIO_KEY", "N/A")
 # AUTOFIELD
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
+# AllAuth
 SITE_ID = 1
 ACCOUNT_LOGOUT_REDIRECT_URL = "account_login"
 ACCOUNT_LOGIN_REDIRECT_URL = "admin:index"
