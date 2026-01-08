@@ -34,7 +34,6 @@ from baseapp_auth.settings import (
 
 # Application definition
 INSTALLED_APPS += [
-    *ALLAUTH_HEADLESS_INSTALLED_APPS,
     "channels",
     "graphene_django",
     "notifications",
@@ -80,7 +79,6 @@ INSTALLED_APPS += [
 
 MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")
 MIDDLEWARE += [
-    *ALLAUTH_HEADLESS_MIDDLEWARE,
     "baseapp_profiles.middleware.CurrentProfileMiddleware",
     "baseapp_core.middleware.HistoryMiddleware",
     *WAGTAIL_MIDDLEWARE,
@@ -129,7 +127,6 @@ CLOUDFLARE_VIDEO_AUTOMATIC_TRIM = True
 CLOUDFLARE_VIDEO_TRIM_DURATION_SECONDS = 10
 
 AUTHENTICATION_BACKENDS = [
-    *ALLAUTH_AUTHENTICATION_BACKENDS,
     "django.contrib.auth.backends.ModelBackend",
     "baseapp_auth.permissions.UsersPermissionsBackend",
     "baseapp_profiles.permissions.ProfilesPermissionsBackend",
@@ -309,3 +306,7 @@ HEADLESS_FRONTEND_URLS = {
     "account_reset_password_from_key": FRONT_FORGOT_PASSWORD_URL.replace("{token}", "{key}"),
     "account_signup": FRONT_URL + "/signup",
 }
+
+INSTALLED_APPS = ALLAUTH_HEADLESS_INSTALLED_APPS + INSTALLED_APPS
+MIDDLEWARE = ALLAUTH_HEADLESS_MIDDLEWARE + MIDDLEWARE
+AUTHENTICATION_BACKENDS = ALLAUTH_AUTHENTICATION_BACKENDS + AUTHENTICATION_BACKENDS
