@@ -18,82 +18,97 @@ Add `django-allauth[headless]` to your project dependencies. If using `baseapp-b
 django-allauth[headless] == 65.13.0
 ```
 
-### 2. Configure INSTALLED_APPS
+### 2. Configure Settings
 
-Add the following allauth apps to your `INSTALLED_APPS` in `settings/base.py`:
-
-```python
-INSTALLED_APPS = [
-    # ... other apps ...
-    "baseapp_auth",  # Required
-    "allauth",
-    "allauth.account",
-    "allauth.headless",  # For headless API endpoints
-    # ... rest of apps ...
-]
-```
-
-### 3. Configure Authentication Backends
-
-Add the allauth authentication backend to `AUTHENTICATION_BACKENDS`:
+Import all allauth configuration from `baseapp_auth.settings` in your `settings/base.py`:
 
 ```python
-AUTHENTICATION_BACKENDS = [
-    "allauth.account.auth_backends.AuthenticationBackend",
-    "django.contrib.auth.backends.ModelBackend",
-    # ... other backends ...
-]
+from baseapp_auth.settings import (
+    ACCOUNT_ADAPTER,
+    ACCOUNT_AUTHENTICATION_METHOD,
+    ACCOUNT_EMAIL_VERIFICATION,
+    ACCOUNT_SIGNUP_FIELDS,
+    ACCOUNT_SIGNUP_PASSWORD_ENTER_TWICE,
+    ACCOUNT_USER_MODEL_USERNAME_FIELD,
+    ALLAUTH_ADMIN_LOCALE_SELECTOR_ENABLED,
+    ALLAUTH_ADMIN_SIGNUP_ENABLED,
+    ALLAUTH_ADMIN_SOCIAL_LOGIN_ENABLED,
+    ALLAUTH_AUTHENTICATION_BACKENDS,
+    ALLAUTH_HEADLESS_INSTALLED_APPS,
+    ALLAUTH_HEADLESS_MIDDLEWARE,
+    HEADLESS_JWT_ACCESS_TOKEN_EXPIRES_IN,
+    HEADLESS_JWT_AUTHORIZATION_HEADER_SCHEME,
+    HEADLESS_JWT_PRIVATE_KEY,
+    HEADLESS_JWT_REFRESH_TOKEN_EXPIRES_IN,
+    HEADLESS_JWT_ROTATE_REFRESH_TOKEN,
+    HEADLESS_JWT_STATEFUL_VALIDATION_ENABLED,
+    HEADLESS_TOKEN_STRATEGY,
+    JWT_CLAIM_SERIALIZER_CLASS,
+    SIMPLE_JWT,
+)
+
+INSTALLED_APPS = ALLAUTH_HEADLESS_INSTALLED_APPS + INSTALLED_APPS
+MIDDLEWARE = ALLAUTH_HEADLESS_MIDDLEWARE + MIDDLEWARE
+AUTHENTICATION_BACKENDS = ALLAUTH_AUTHENTICATION_BACKENDS + AUTHENTICATION_BACKENDS
 ```
 
-### 4. Add URL Patterns
+This will automatically configure all allauth settings including:
+
+- Required apps: `django.contrib.sites`, `allauth`, `allauth.account`, `allauth.headless`, `rest_framework_simplejwt.token_blacklist`
+- Required middleware: `allauth.account.middleware.AccountMiddleware`
+- Required authentication backend: `allauth.account.auth_backends.AuthenticationBackend`
+- Account settings: authentication method, email verification, signup configuration
+- Headless JWT settings: token strategies, expiration times, rotation policies
+- Custom adapter settings: signup, social login, and locale selector configuration
+
+**Note:** You can override any of these settings by redefining them after the imports. For example:
+
+```python
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+HEADLESS_JWT_ACCESS_TOKEN_EXPIRES_IN = 600
+```
+
+### 3. Add URL Patterns
 
 In your main `urls.py` (typically `apps/urls.py`), import and include the allauth URL patterns:
 
 ```python
-from baseapp_auth.allauth.urls import urlpatterns as allauth_urlpatterns
+from django.urls import include, re_path
+import baseapp_auth.allauth.urls as baseapp_auth_allauth_urls
 
 urlpatterns = [
-    *allauth_urlpatterns,
+    re_path(r"^admin/", admin.site.urls),
     # ... other URL patterns ...
+    re_path(r"", include(baseapp_auth_allauth_urls)),
 ]
 ```
 
+**Note:** The order of URL patterns matters. The allauth URLs should be placed **after** the Django admin URL pattern (`re_path(r"^admin/", admin.site.urls)`) but can be placed before or after other app URLs depending on your routing needs.
+
 This will add:
+
 - `/accounts/` - Web authentication endpoints (for Django admin)
 - `/_allauth/` - Headless API endpoints (JSON responses)
 - Admin redirects: `/admin/login/`, `/admin/logout/`, `/admin/password_change/`
 
-### 5. Configure Allauth Settings
+### 4. Configure Additional Allauth Settings
 
 Add the following settings to your `settings/base.py`:
 
 ```python
-# Allauth Account Settings
-ACCOUNT_AUTHENTICATION_METHOD = "email"
-ACCOUNT_SIGNUP_PASSWORD_ENTER_TWICE = True
+SITE_ID = 1
 ACCOUNT_LOGOUT_REDIRECT_URL = "account_login"
 ACCOUNT_LOGIN_REDIRECT_URL = "admin:index"
 ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL = "account_change_password_done"
-ACCOUNT_EMAIL_VERIFICATION = "none"  # Set to "mandatory" or "optional" to enable email verification
-ACCOUNT_ADAPTER = "baseapp_auth.allauth.account.adapter.AccountAdapter"
 
-# Custom adapter settings
-ALLAUTH_ADMIN_SIGNUP_ENABLED = False  # Disables public signup
-ALLAUTH_ADMIN_SOCIAL_LOGIN_ENABLED = False
-ALLAUTH_ADMIN_LOCALE_SELECTOR_ENABLED = False
-```
-
-### 6. Configure Headless Frontend URLs (Optional)
-
-If you're using headless API endpoints and need to redirect users to your frontend, configure `HEADLESS_FRONTEND_URLS`:
-
-```python
 HEADLESS_FRONTEND_URLS = {
     "account_confirm_email": "https://yourfrontend.com/confirm-email/{key}",
     "account_reset_password_from_key": "https://yourfrontend.com/forgot-password/{key}",
     "account_signup": "https://yourfrontend.com/signup",
 }
 ```
+
+**Note:** Most allauth settings are already configured by importing from `baseapp_auth.settings`. The settings above are project-specific customizations for redirect URLs and frontend URLs.
 
 ## Available Endpoints
 
@@ -151,6 +166,7 @@ Email verification can be configured via `ACCOUNT_EMAIL_VERIFICATION`:
 **Important**: When `ACCOUNT_EMAIL_VERIFICATION = "mandatory"`, users with unverified emails cannot obtain access tokens via the login endpoint. The allauth authentication backend automatically enforces this restriction.
 
 When enabled, use the headless endpoints:
+
 - `POST /_allauth/email/verification/send/` - Send verification email
 - `POST /_allauth/email/verification/confirm/` - Confirm with token
 
@@ -169,6 +185,7 @@ No code changes are required - this is controlled entirely via settings.
 ## Password Reset Flow
 
 ### Web Flow
+
 1. User visits `/accounts/password/reset/`
 2. Submits email address
 3. Receives email with reset link
@@ -176,6 +193,7 @@ No code changes are required - this is controlled entirely via settings.
 5. Sets new password
 
 ### Headless API Flow
+
 1. Client sends `POST /_allauth/password/reset/` with email
 2. Server sends email with token
 3. Client sends `POST /_allauth/password/reset/confirm/` with token and new password
@@ -186,6 +204,7 @@ No code changes are required - this is controlled entirely via settings.
 ### Password Reset API Usage
 
 **Request Password Reset:**
+
 ```bash
 POST /_allauth/password/reset/
 Content-Type: application/json
@@ -196,6 +215,7 @@ Content-Type: application/json
 ```
 
 **Response** (always returns success, even if email doesn't exist - security best practice):
+
 ```json
 {
   "status": 200,
@@ -204,6 +224,7 @@ Content-Type: application/json
 ```
 
 **Confirm Password Reset:**
+
 ```bash
 POST /_allauth/password/reset/confirm/
 Content-Type: application/json
@@ -215,6 +236,7 @@ Content-Type: application/json
 ```
 
 **Response** (success):
+
 ```json
 {
   "status": 200,
@@ -223,6 +245,7 @@ Content-Type: application/json
 ```
 
 **Error Responses:**
+
 - Invalid or expired token: Returns 400 with error message
 - Unknown user: Returns generic error (does not leak email existence)
 - All errors are machine-readable JSON format
@@ -230,6 +253,7 @@ Content-Type: application/json
 ## Template Customization
 
 All allauth templates have been customized with Bootstrap 5.3.2 styling. Templates are located in:
+
 - `baseapp_auth/allauth/templates/`
 
 See `baseapp_auth/allauth/templates/README.md` for details on template customizations.
@@ -239,14 +263,12 @@ See `baseapp_auth/allauth/templates/README.md` for details on template customiza
 If you're migrating from a previous version of BaseApp:
 
 1. **Install `django-allauth[headless]`** - The `[headless]` extra is required for API endpoints
-2. **Add `allauth.headless` to INSTALLED_APPS** - This enables the `/_allauth/` endpoints
-3. **Update URL configuration** - Use `*allauth_urlpatterns` from `baseapp_auth.allauth.urls`
-4. **Configure `ACCOUNT_ADAPTER`** - Set to use the custom adapter
-5. **Set `AUTHENTICATION_BACKENDS`** - Include `allauth.account.auth_backends.AuthenticationBackend`
+2. **Import allauth configuration constants** - Use `ALLAUTH_HEADLESS_INSTALLED_APPS`, `ALLAUTH_HEADLESS_MIDDLEWARE`, and `ALLAUTH_AUTHENTICATION_BACKENDS` from `baseapp_auth.settings`
+3. **Update URL configuration** - Import and include `baseapp_auth.allauth.urls` as shown in the installation guide
+4. **Configure additional settings** - Set `SITE_ID`, redirect URLs, and `HEADLESS_FRONTEND_URLS` as needed
 
 ## References
 
 - [Django Allauth Documentation](https://docs.allauth.org/)
 - [Django Allauth Headless Mode](https://docs.allauth.org/en/dev/headless/installation.html)
 - [Django Allauth GitHub](https://github.com/pennersr/django-allauth)
-
