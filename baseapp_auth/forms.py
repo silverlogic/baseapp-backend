@@ -1,9 +1,12 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
+from django.contrib.auth.models import Group
 from django.utils.translation import gettext_lazy as _
 
 from baseapp_auth.password_validators import apply_password_validators
+
+from .fields import GroupedPermissionField
 
 User = get_user_model()
 
@@ -52,6 +55,7 @@ class UserChangeForm(forms.ModelForm):
             "this user's password, but you can <a href='../password/'>change the password.</a>"
         ),
     )
+    user_permissions = GroupedPermissionField(required=False)
 
     class Meta:
         model = User
@@ -68,3 +72,11 @@ class UserChangeForm(forms.ModelForm):
         # This is done here, rather than on the field, because the
         # field does not have access to the initial value
         return self.initial["password"]
+
+
+class GroupAdminForm(forms.ModelForm):
+    permissions = GroupedPermissionField(required=False)
+
+    class Meta:
+        model = Group
+        fields = "__all__"
