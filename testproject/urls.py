@@ -7,6 +7,7 @@ import baseapp_auth.rest_framework.urls.auth_mfa as auth_mfa_urls
 import baseapp_auth.rest_framework.urls.auth_mfa_jwt as auth_mfa_jwt_urls
 import baseapp_auth.rest_framework.urls.pre_auth as pre_auth_urls
 import baseapp_wagtail.urls as baseapp_wagtail_urls
+import baseapp_auth.allauth.urls as baseapp_auth_allauth_urls
 from baseapp_auth.rest_framework.routers.account import (
     account_router,
     users_router_nested,
@@ -39,6 +40,7 @@ urlpatterns = [
     path("graphql", GraphQLView.as_view(graphiql=True)),
     path("admin/", admin.site.urls),
     path("v1/", include((v1_urlpatterns, "v1"), namespace="v1")),
+    path("", include(baseapp_auth_allauth_urls)),
     path("", include(baseapp_wagtail_urls)),
     path("", include(router.urls)),
 ]
