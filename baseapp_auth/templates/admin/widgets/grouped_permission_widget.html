@@ -13,21 +13,19 @@
       <summary
         class="flex items-center justify-between cursor-default list-none"
       >
-        <!-- Left: checkbox + label (NO collapse) -->
         <div
           class="flex items-center gap-2 font-semibold"
           onclick="event.stopPropagation()"
+          onkeypress="event.stopPropagation()"
         >
           <input
             type="checkbox"
             class="select-all-app"
+            aria-label="Select all {{ app_label }} permissions"
           >
           <span>{{ app_label|capfirst }}</span>
         </div>
-
-        <!-- Right: arrow ONLY (collapse control) -->
-
-        <span class="material-symbols-outlined permission-toggle text-gray-500 hover:text-gray-800">
+        <span class="material-symbols-outlined permission-toggle text-gray-500 hover:text-gray-800" aria-hidden="true">
             expand_more
         </span>
       </summary>
@@ -40,10 +38,12 @@
               <div
                 class="flex items-center gap-2 text-sm font-medium"
                 onclick="event.stopPropagation()"
+                onkeypress="event.stopPropagation()"
               >
                 <input
                   type="checkbox"
                   class="select-all-model"
+                  aria-label="Select all {{ model_name }} permissions"
                 >
                 <span>{{ model_name|capfirst }}</span>
               </div>

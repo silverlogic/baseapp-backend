@@ -43,21 +43,11 @@ class GroupedPermissionWidget(CheckboxSelectMultiple):
         hide_models = set(getattr(settings, "PERMISSIONS_HIDE_MODELS", []))
 
         for option_value, option_label in self.choices:
-            if option_value is None:
+            instance = self._resolve_permission_instance(option_value)
+            if not instance:
                 continue
 
-            if isinstance(option_value, ModelChoiceIteratorValue):
-                pk = option_value.value
-                instance = option_value.instance
-            else:
-                pk = option_value
-                instance = None
-
-            if not instance:
-                try:
-                    instance = Permission.objects.select_related("content_type").get(pk=pk)
-                except Permission.DoesNotExist:
-                    continue
+            pk = instance.pk
 
             app_label = instance.content_type.app_label
             model = instance.content_type.model
@@ -65,11 +55,7 @@ class GroupedPermissionWidget(CheckboxSelectMultiple):
 
             app_verbose, model_verbose = get_app_and_model_verbose_names(instance.content_type)
 
-            # FILTERS
-            if app_label in hide_apps:
-                continue
-
-            if full_model in hide_models:
+            if self._is_hidden(app_label, full_model, hide_apps, hide_models):
                 continue
 
             # CLEAN LABEL
@@ -86,3 +72,18 @@ class GroupedPermissionWidget(CheckboxSelectMultiple):
         context["grouped_permissions"] = {app: dict(models) for app, models in grouped.items()}
 
         return context
+
+    def _resolve_permission_instance(self, option_value):
+        if option_value is None:
+            return None
+
+        if isinstance(option_value, ModelChoiceIteratorValue):
+            return option_value.instance
+
+        try:
+            return Permission.objects.select_related("content_type").get(pk=option_value)
+        except Permission.DoesNotExist:
+            return None
+
+    def _is_hidden(self, app_label, full_model, hide_apps, hide_models):
+        return app_label in hide_apps or full_model in hide_models
