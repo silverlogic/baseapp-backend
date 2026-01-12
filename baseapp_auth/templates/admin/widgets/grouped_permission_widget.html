@@ -10,24 +10,28 @@
   <div class="grouped-permissions space-y-6">
     {% for app_label, models in grouped_permissions.items %}
     <details class="permission-app rounded-xl p-4" open>
-      <summary
-        class="flex items-center justify-between cursor-default list-none"
-      >
-        <div
-          class="flex items-center gap-2 font-semibold"
-          onclick="event.stopPropagation()"
-          onkeypress="event.stopPropagation()"
-        >
+      <summary class="flex items-center justify-between font-semibold cursor-pointer list-none">
+
+        <!-- Left side: checkbox + label (does NOT toggle collapse) -->
+        <label class="flex items-center gap-2">
           <input
             type="checkbox"
             class="select-all-app"
             aria-label="Select all {{ app_label }} permissions"
+            onclick="event.stopPropagation()"
+            onkeydown="event.stopPropagation()"
           >
           <span>{{ app_label|capfirst }}</span>
-        </div>
-        <span class="material-symbols-outlined permission-toggle text-gray-500 hover:text-gray-800" aria-hidden="true">
-            expand_more
+        </label>
+    
+        <!-- Right side: arrow (purely visual indicator) -->
+        <span
+          class="material-symbols-outlined permission-toggle text-gray-500 transition-transform"
+          aria-hidden="true"
+        >
+          expand_more
         </span>
+    
       </summary>
       <div class="mt-4 space-y-4">
         {% for model_name, permissions in models.items %}
