@@ -28,6 +28,6 @@ channels==4.0.0
 channels_redis==4.0.0
 
 django-notifications-hq @ git+https://github.com/openwisp/django-notifications.git@f4918c2409a734ec1aa9798d86c3a729b505f753
-django-push-notifications[WP,APNS_ASYNC,FCM]==3.3.0
+django-push-notifications[wp,apns-async,fcm]==3.3.0
 
 -e ./[auth,referrals,graphql,pages,payments,notifications,urlshortening,messagetemplates,wagtail,socialauth,pdf]

@@ -14,11 +14,14 @@ def get_app_and_model_verbose_names(content_type):
     Always safe:
     - Falls back to app_label / model name if resolution fails
     """
-    app_config = apps.get_app_config(content_type.app_label)
-    app_verbose = getattr(app_config, "verbose_name", content_type.app_label)
-
     try:
-        model_class = app_config.get_model(content_type.model)
+        app_config = apps.get_app_config(content_type.app_label)
+        app_verbose = app_config.verbose_name
+    except LookupError:
+        app_config = None
+        app_verbose = content_type.app_label
+    try:
+        model_class = apps.get_model(content_type.model)
         model_verbose = model_class._meta.verbose_name
     except LookupError:
         model_verbose = content_type.model

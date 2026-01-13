@@ -1,4 +1,3 @@
-# tests/test_group_admin_form.py
 import pytest
 
 from baseapp_auth.fields import GroupedPermissionField
