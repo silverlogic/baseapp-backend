@@ -1,4 +1,3 @@
-# fields.py
 from django.contrib.auth.models import Permission
 from django.forms import ModelMultipleChoiceField
 
@@ -6,6 +5,8 @@ from .widgets import GroupedPermissionWidget
 
 
 class GroupedPermissionField(ModelMultipleChoiceField):
+    """A ModelMultipleChoiceField for selecting Permissions with a grouped widget."""
+
     widget = GroupedPermissionWidget
 
     def __init__(self, *args, **kwargs):

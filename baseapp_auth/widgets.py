@@ -1,35 +1,22 @@
 from collections import defaultdict
 
-from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import Permission
 from django.forms.models import ModelChoiceIteratorValue
 from django.forms.widgets import CheckboxSelectMultiple
 
-
-def get_app_and_model_verbose_names(content_type):
-    """
-    Returns a tuple: (app_verbose_name, model_verbose_name)
-
-    Always safe:
-    - Falls back to app_label / model name if resolution fails
-    """
-    try:
-        app_config = apps.get_app_config(content_type.app_label)
-        app_verbose = app_config.verbose_name
-    except LookupError:
-        app_config = None
-        app_verbose = content_type.app_label
-    try:
-        model_class = apps.get_model(content_type.app_label, content_type.model)
-        model_verbose = model_class._meta.verbose_name
-    except LookupError:
-        model_verbose = content_type.model
-
-    return app_verbose, model_verbose
+from .utils.app_and_model_verbose_names import get_app_and_model_verbose_names
 
 
 class GroupedPermissionWidget(CheckboxSelectMultiple):
+    """
+    A widget that displays permissions grouped by app and model.
+    Permissions can be hidden based on settings.
+    Settings:
+        PERMISSIONS_HIDE_APPS: List of app labels to hide all permissions from.
+        PERMISSIONS_HIDE_MODELS: List of "app_label.model" strings to hide specific model permissions.
+    """
+
     template_name = "admin/widgets/grouped_permission_widget.html"
 
     class Media:
@@ -61,7 +48,7 @@ class GroupedPermissionWidget(CheckboxSelectMultiple):
             if self._is_hidden(app_label, full_model, hide_apps, hide_models):
                 continue
 
-            # CLEAN LABEL
+            # Use the permission's human-readable name as the label
             short_label = instance.name
 
             grouped[app_verbose][model_verbose].append(
@@ -77,6 +64,7 @@ class GroupedPermissionWidget(CheckboxSelectMultiple):
         return context
 
     def _resolve_permission_instance(self, option_value):
+        """Resolve the Permission instance from the option value."""
         if option_value is None:
             return None
 
@@ -89,4 +77,5 @@ class GroupedPermissionWidget(CheckboxSelectMultiple):
             return None
 
     def _is_hidden(self, app_label, full_model, hide_apps, hide_models):
+        """Determine if a permission should be hidden based on app and model."""
         return app_label in hide_apps or full_model in hide_models
