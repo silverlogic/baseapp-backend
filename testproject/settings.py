@@ -55,6 +55,7 @@ INSTALLED_APPS += [
     "testproject.reports",
     "testproject.pages",
     "testproject.organizations",
+    "testproject.chats",
     *WAGTAIL_INSTALLED_INTERNAL_APPS,
     *WAGTAIL_INSTALLED_APPS,
     "baseapp_wagtail.tests",
@@ -209,6 +210,13 @@ BASEAPP_PAGES_PAGE_MODEL = "pages.Page"
 
 # Organizations
 BASEAPP_ORGANIZATIONS_ORGANIZATION_MODEL = "organizations.Organization"
+
+# Chats
+BASEAPP_CHATS_CHATROOM_MODEL = "chats.ChatRoom"
+BASEAPP_CHATS_CHATROOMPARTICIPANT_MODEL = "chats.ChatRoomParticipant"
+BASEAPP_CHATS_UNREADMESSAGECOUNT_MODEL = "chats.UnreadMessageCount"
+BASEAPP_CHATS_MESSAGE_MODEL = "chats.Message"
+BASEAPP_CHATS_MESSAGESTATUS_MODEL = "chats.MessageStatus"
 
 # Notifications
 NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"
