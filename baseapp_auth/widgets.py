@@ -21,7 +21,7 @@ def get_app_and_model_verbose_names(content_type):
         app_config = None
         app_verbose = content_type.app_label
     try:
-        model_class = apps.get_model(content_type.model)
+        model_class = apps.get_model(content_type.app_label, content_type.model)
         model_verbose = model_class._meta.verbose_name
     except LookupError:
         model_verbose = content_type.model
