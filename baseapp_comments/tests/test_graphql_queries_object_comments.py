@@ -240,7 +240,7 @@ def test_comments_query_is_partially_optimized(django_user_client, graphql_clien
     content = response.json()
 
     assert content["data"]["node"]["commentsCount"]["replies"] == 5
-    assert queries.count == 4
+    assert queries.count == 2
 
     ### Queries Optimized ###
 
@@ -274,7 +274,7 @@ def test_comments_query_is_partially_optimized_with_public_id(
     content = response.json()
 
     assert content["data"]["node"]["commentsCount"]["replies"] == 5
-    assert queries.count == 12
+    assert queries.count == 8
 
     # Optimized queries.
 

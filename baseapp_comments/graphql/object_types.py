@@ -57,7 +57,7 @@ class CommentsInterface(RelayNode):
 
         if isinstance(root, Comment) and (root.target_object_id or root.in_reply_to_id):
             qs = Comment.objects_visible.filter(in_reply_to_id=root.id)
-            return qs
+            return safe_optimize(qs, info, evaluate=False)
 
         target_content_type = ContentType.objects.get_for_model(root)
         return safe_optimize(
