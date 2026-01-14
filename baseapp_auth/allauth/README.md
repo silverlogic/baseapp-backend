@@ -30,10 +30,23 @@ from baseapp_auth.settings import (
     ALLAUTH_HEADLESS_MIDDLEWARE,
 )
 
-INSTALLED_APPS = ALLAUTH_HEADLESS_INSTALLED_APPS + INSTALLED_APPS
-MIDDLEWARE = ALLAUTH_HEADLESS_MIDDLEWARE + MIDDLEWARE
-AUTHENTICATION_BACKENDS = ALLAUTH_AUTHENTICATION_BACKENDS + AUTHENTICATION_BACKENDS
+INSTALLED_APPS = [
+    *ALLAUTH_HEADLESS_INSTALLED_APPS,
+    # ... your other apps ...
+]
+
+MIDDLEWARE = [
+    *ALLAUTH_HEADLESS_MIDDLEWARE,
+    # ... your other middleware ...
+]
+
+AUTHENTICATION_BACKENDS = [
+    *ALLAUTH_AUTHENTICATION_BACKENDS,  # Allauth backends first
+    # ... your other backends ...
+]
 ```
+
+**Note:** The order of `AUTHENTICATION_BACKENDS` matters. Django checks backends in order, and the first one that successfully authenticates a user wins. Allauth backends should be placed first to ensure email verification and other allauth-specific authentication rules are properly enforced (e.g., when `ACCOUNT_EMAIL_VERIFICATION = "mandatory"`).
 
 This will automatically configure all allauth settings including:
 

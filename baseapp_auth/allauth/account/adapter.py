@@ -42,12 +42,10 @@ class AccountAdapter(DefaultAccountAdapter):
         Returns:
             bool: True if signup is allowed for this request type.
         """
-        if request:
-            resolver_match = getattr(request, "resolver_match", None)
-            if resolver_match:
-                namespace = getattr(resolver_match, "namespace", "")
-                if "headless" in namespace:
-                    return True
+        if request and (resolver_match := getattr(request, "resolver_match", None)):
+            namespace = getattr(resolver_match, "namespace", "")
+            if "headless" in namespace:
+                return True
 
         return getattr(settings, "ALLAUTH_ADMIN_SIGNUP_ENABLED", False)
 

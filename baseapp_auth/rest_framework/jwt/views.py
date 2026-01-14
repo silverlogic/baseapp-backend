@@ -15,9 +15,9 @@ from ..login.helpers import redirect_if_user_has_expired_password
 class JWTAuthViewSet(TokenObtainPairView, TokenRefreshView, GenericViewSet):
     """
     DEPRECATED: Use allauth.headless endpoints instead.
-    
-    - /v1/_allauth/app/v1/auth/login
-    - /v1/_allauth/app/v1/auth/token/refresh
+
+    - /_allauth/app/v1/auth/login
+    - /_allauth/app/v1/auth/token/refresh
     """
 
     def get_serializer_class(self) -> Serializer:
@@ -33,7 +33,7 @@ class JWTAuthViewSet(TokenObtainPairView, TokenRefreshView, GenericViewSet):
     def login(self, request, *args, **kwargs):
         warnings.warn(
             "The /v1/auth/jwt/login endpoint is deprecated. "
-            "Use /v1/_allauth/app/v1/auth/login instead.",
+            "Use /_allauth/app/v1/auth/login instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -43,7 +43,7 @@ class JWTAuthViewSet(TokenObtainPairView, TokenRefreshView, GenericViewSet):
     def refresh(self, request, *args, **kwargs):
         warnings.warn(
             "The /v1/auth/jwt/refresh endpoint is deprecated. "
-            "Use /v1/_allauth/app/v1/auth/token/refresh instead.",
+            "Use /_allauth/app/v1/auth/token/refresh instead.",
             DeprecationWarning,
             stacklevel=2,
         )

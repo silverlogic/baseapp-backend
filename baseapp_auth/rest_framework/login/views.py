@@ -16,14 +16,14 @@ class BaseAuthViewSet(viewsets.GenericViewSet):
 
 class AuthTokenViewSet(BaseAuthViewSet):
     """
-    DEPRECATED: Use /v1/_allauth/app/v1/auth/login for headless clients.
+    DEPRECATED: Use /_allauth/app/v1/auth/login for headless clients.
     """
 
     @redirect_if_user_has_expired_password
     def create(self, request, *args, **kwargs):
         warnings.warn(
             "The /v1/auth/authtoken/login endpoint is deprecated for headless clients. "
-            "Use /v1/_allauth/app/v1/auth/login instead.",
+            "Use /_allauth/app/v1/auth/login instead.",
             DeprecationWarning,
             stacklevel=2,
         )

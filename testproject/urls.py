@@ -1,13 +1,13 @@
 from django.contrib import admin
 from django.urls import include, path, re_path
 
+import baseapp_auth.allauth.urls as baseapp_auth_allauth_urls
 import baseapp_auth.rest_framework.urls.auth_authtoken as auth_authtoken_urls
 import baseapp_auth.rest_framework.urls.auth_jwt as auth_jwt_urls
 import baseapp_auth.rest_framework.urls.auth_mfa as auth_mfa_urls
 import baseapp_auth.rest_framework.urls.auth_mfa_jwt as auth_mfa_jwt_urls
 import baseapp_auth.rest_framework.urls.pre_auth as pre_auth_urls
 import baseapp_wagtail.urls as baseapp_wagtail_urls
-import baseapp_auth.allauth.urls as baseapp_auth_allauth_urls
 from baseapp_auth.rest_framework.routers.account import (
     account_router,
     users_router_nested,

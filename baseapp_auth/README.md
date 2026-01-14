@@ -28,19 +28,19 @@ The package provides headless authentication endpoints using django-allauth's of
 
 **Official AllAuth Headless Endpoints (Recommended):**
 
-- `POST /v1/_allauth/app/v1/auth/signup` - User registration (signup)
-- `POST /v1/_allauth/app/v1/auth/login` - User login
-- `DELETE /v1/_allauth/app/v1/auth/session` - User logout
-- `POST /v1/_allauth/app/v1/auth/token/refresh` - Token refresh
-- `POST /v1/_allauth/app/v1/auth/password/request` - Request password reset
+- `POST /_allauth/app/v1/auth/signup` - User registration (signup)
+- `POST /_allauth/app/v1/auth/login` - User login
+- `DELETE /_allauth/app/v1/auth/session` - User logout
+- `POST /_allauth/app/v1/auth/token/refresh` - Token refresh
+- `POST /_allauth/app/v1/auth/password/request` - Request password reset
 
 **⚠️ Legacy Custom Endpoints (Deprecated):**
 
 The following custom endpoints are deprecated and will be removed in a future version:
 
-- `POST /v1/register` - Use `/v1/_allauth/app/v1/auth/signup` instead
-- `POST /v1/auth/jwt/login` - Use `/v1/_allauth/app/v1/auth/login` instead
-- `POST /v1/auth/jwt/refresh` - Use `/v1/_allauth/app/v1/auth/token/refresh` instead
+- `POST /v1/register` - Use `/_allauth/app/v1/auth/signup` instead
+- `POST /v1/auth/jwt/login` - Use `/_allauth/app/v1/auth/login` instead
+- `POST /v1/auth/jwt/refresh` - Use `/_allauth/app/v1/auth/token/refresh` instead
 
 **OAuth2 Flow:**
 
@@ -142,7 +142,7 @@ Authenticated requests use JWT access tokens:
 Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-When access token expires, exchange refresh token for new tokens via `/v1/_allauth/app/v1/auth/token/refresh`.
+When access token expires, exchange refresh token for new tokens via `/_allauth/app/v1/auth/token/refresh`.
 
 Protect DRF endpoints:
 
