@@ -14,8 +14,14 @@
   border-bottom: none;
 }
 .permission-toggle {
-  transition: transform 0.2s ease;
-  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+.material-symbols-outlined + .icon-fallback {
+  display: none;
+}
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined", sans-serif;
 }
 details[open] > summary .permission-toggle {
   transform: rotate(180deg);
@@ -25,4 +31,7 @@ details[open] > summary .permission-toggle {
 }
 .permission-labels-list {
   margin-left: 24px;
+}
+.is-hidden {
+  display: none !important;
 }

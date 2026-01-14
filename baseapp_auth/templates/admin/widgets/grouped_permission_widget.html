@@ -10,9 +10,7 @@
   <div class="grouped-permissions space-y-6">
     {% for app_label, models in grouped_permissions.items %}
     <details class="permission-app rounded-xl p-4" open>
-      <summary class="flex items-center justify-between font-semibold cursor-pointer list-none">
-
-        <!-- Left side: checkbox + label (does NOT toggle collapse) -->
+      <summary class="flex items-center justify-between font-semibold list-none">
         <label class="flex items-center gap-2">
           <input
             type="checkbox"
@@ -23,15 +21,17 @@
           >
           <span>{{ app_label|capfirst }}</span>
         </label>
-    
-        <!-- Right side: arrow (purely visual indicator) -->
         <span
-          class="material-symbols-outlined permission-toggle text-gray-500 transition-transform"
+          class="permission-toggle text-gray-500 transition-transform cursor-pointer"
           aria-hidden="true"
         >
-          expand_more
+          <span class="material-symbols-outlined icon-font">
+            expand_more
+          </span>
+          <span class="icon-fallback">
+            ▼
+          </span>
         </span>
-    
       </summary>
       <div class="mt-4 space-y-4">
         {% for model_name, permissions in models.items %}
@@ -39,20 +39,26 @@
             <summary
               class="flex items-center justify-between cursor-default list-none"
             >
-              <div
-                class="flex items-center gap-2 text-sm font-medium"
-                onclick="event.stopPropagation()"
-                onkeypress="event.stopPropagation()"
-              >
+              <label class="flex items-center gap-2 text-sm font-medium">
                 <input
                   type="checkbox"
                   class="select-all-model"
                   aria-label="Select all {{ model_name }} permissions"
+                  onclick="event.stopPropagation()"
+                  onkeypress="event.stopPropagation()"
                 >
                 <span>{{ model_name|capfirst }}</span>
-              </div>
-              <span class="material-symbols-outlined permission-toggle text-gray-500 hover:text-gray-800">
+              </label>
+              <span
+                class="permission-toggle text-gray-500 transition-transform cursor-pointer"
+                aria-hidden="true"
+              >
+                <span class="material-symbols-outlined icon-font">
                   expand_more
+                </span>
+                <span class="icon-fallback">
+                  ▼
+                </span>
               </span>
             </summary>
             <ul class="ml-6 mt-2 space-y-1 permission-labels-list">

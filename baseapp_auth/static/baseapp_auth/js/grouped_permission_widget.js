@@ -16,18 +16,18 @@
     parent.indeterminate = !all && some;
   }
 
-  function initModelLevel() {
+  function initSelectAllControls() {
+    /* ---------- MODEL LEVEL ---------- */
     document.querySelectorAll(".permission-model").forEach(modelBlock => {
       const modelToggle = modelBlock.querySelector(".select-all-model");
       const permissions = modelBlock.querySelectorAll(".permission-checkbox");
 
       if (!modelToggle) return;
 
-      // Model > permissions
       modelToggle.addEventListener("change", () => {
         permissions.forEach(cb => cb.checked = modelToggle.checked);
 
-        // Model > app
+        // Update app after model change
         const appBlock = modelBlock.closest(".permission-app");
         if (!appBlock) return;
 
@@ -39,19 +39,10 @@
         }
       });
 
-      // Permissions > model
-      permissions.forEach(cb => {
-        cb.addEventListener("change", () => {
-          updateParent(modelToggle, permissions);
-        });
-      });
-
-      // Initial state
       updateParent(modelToggle, permissions);
     });
-  }
 
-  function initAppLevel() {
+    /* ---------- APP LEVEL ---------- */
     document.querySelectorAll(".permission-app").forEach(appBlock => {
       const appToggle = appBlock.querySelector(".select-all-app");
       const modelBlocks = appBlock.querySelectorAll(".permission-model");
@@ -59,7 +50,6 @@
 
       if (!appToggle) return;
 
-      // App > models + permissions
       appToggle.addEventListener("change", () => {
         allPermissions.forEach(cb => cb.checked = appToggle.checked);
 
@@ -73,52 +63,79 @@
         });
       });
 
-      // Permissions > app
-      allPermissions.forEach(cb => {
-        cb.addEventListener("change", () => {
-          updateParent(appToggle, allPermissions);
-        });
-      });
-
-      // Initial state
       updateParent(appToggle, allPermissions);
+    });
+  }
+
+  function initPermissionDelegation() {
+    document.addEventListener("change", event => {
+      const checkbox = event.target;
+      if (!checkbox.classList.contains("permission-checkbox")) return;
+
+      const modelBlock = checkbox.closest(".permission-model");
+      const appBlock = checkbox.closest(".permission-app");
+
+      if (modelBlock) {
+        const modelToggle = modelBlock.querySelector(".select-all-model");
+        const perms = modelBlock.querySelectorAll(".permission-checkbox");
+        if (modelToggle) {
+          updateParent(modelToggle, perms);
+        }
+      }
+
+      if (appBlock) {
+        const appToggle = appBlock.querySelector(".select-all-app");
+        const allPermissions = appBlock.querySelectorAll(".permission-checkbox");
+        if (appToggle) {
+          updateParent(appToggle, allPermissions);
+        }
+      }
     });
   }
 
   function initFiltering() {
     const filterInput = document.querySelector(".permission-filter");
     if (!filterInput) return;
-
+  
     filterInput.addEventListener("input", () => {
       const query = filterInput.value.toLowerCase();
-
+  
+      // Filter individual permissions
       document.querySelectorAll(".permission-label").forEach(label => {
         const text = label.textContent.toLowerCase();
-        label.closest("li").style.display =
-          text.includes(query) ? "" : "none";
+        const li = label.closest("li");
+  
+        if (!li) return;
+  
+        li.classList.toggle(
+          "is-hidden",
+          !text.includes(query)
+        );
       });
-
+  
       // Hide empty models
       document.querySelectorAll(".permission-model").forEach(model => {
-        const visible = model.querySelectorAll(
-          'li:not([style*="display: none"])'
-        ).length > 0;
-        model.style.display = visible ? "" : "none";
+        const hasVisiblePerms =
+          model.querySelectorAll("li:not(.is-hidden)").length > 0;
+  
+        model.classList.toggle("is-hidden", !hasVisiblePerms);
       });
-
+  
       // Hide empty apps
       document.querySelectorAll(".permission-app").forEach(app => {
-        const visible = app.querySelectorAll(
-          '.permission-model:not([style*="display: none"])'
-        ).length > 0;
-        app.style.display = visible ? "" : "none";
+        const hasVisibleModels =
+          app.querySelectorAll(
+            ".permission-model:not(.is-hidden)"
+          ).length > 0;
+  
+        app.classList.toggle("is-hidden", !hasVisibleModels);
       });
     });
-  }
+  }  
 
   document.addEventListener("DOMContentLoaded", () => {
-    initModelLevel();
-    initAppLevel();
+    initSelectAllControls();
+    initPermissionDelegation();
     initFiltering();
   });
 
