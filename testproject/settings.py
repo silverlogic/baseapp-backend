@@ -16,7 +16,7 @@ from baseapp_wagtail.settings import (
 )
 
 # Application definition
-INSTALLED_APPS = [
+INSTALLED_APPS += [
     *ALLAUTH_HEADLESS_INSTALLED_APPS,
     "channels",
     "graphene_django",
@@ -62,7 +62,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")
-MIDDLEWARE = [
+MIDDLEWARE += [
     *ALLAUTH_HEADLESS_MIDDLEWARE,
     "baseapp_profiles.middleware.CurrentProfileMiddleware",
     "baseapp_core.middleware.HistoryMiddleware",
