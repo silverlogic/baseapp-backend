@@ -17,7 +17,7 @@ class TestAllauthHeadlessSignup:
     def signup_data(self):
         return {
             "email": "newuser@example.com",
-            "password": "securepassword123",
+            "password": "securepassword123",  # NOSONAR
         }
 
     def test_signup_creates_user_and_returns_tokens(self, client, signup_data):
@@ -26,7 +26,7 @@ class TestAllauthHeadlessSignup:
 
         assert User.objects.filter(email=signup_data["email"]).exists()
         user = User.objects.get(email=signup_data["email"])
-        assert user.check_password(signup_data["password"])
+        assert user.check_password(signup_data["password"])  # NOSONAR
 
         response_data = r.json()
         assert "meta" in response_data
@@ -43,7 +43,7 @@ class TestAllauthHeadlessSignup:
         assert "errors" in response_data
 
     def test_signup_with_weak_password_returns_error(self, client, signup_data):
-        signup_data["password"] = "123"
+        signup_data["password"] = "123"  # NOSONAR
         r = client.post(self.endpoint_path, signup_data)
         assert r.status_code == 400
 
@@ -65,12 +65,12 @@ class TestAllauthHeadlessLogin:
     def login_data(self):
         return {
             "email": "testuser@example.com",
-            "password": "testpassword123",
+            "password": "testpassword123",  # NOSONAR
         }
 
     @pytest.fixture
     def existing_user(self, login_data):
-        return UserFactory(email=login_data["email"], password=login_data["password"])
+        return UserFactory(email=login_data["email"], password=login_data["password"])  # NOSONAR
 
     def test_login_with_valid_credentials_returns_tokens(self, client, login_data, existing_user):
         r = client.post(self.endpoint_path, login_data)
@@ -96,7 +96,7 @@ class TestAllauthHeadlessLogin:
         assert "errors" in response_data
 
     def test_login_with_invalid_password_returns_error(self, client, login_data, existing_user):
-        login_data["password"] = "wrongpassword"
+        login_data["password"] = "wrongpassword"  # NOSONAR
         r = client.post(self.endpoint_path, login_data)
         assert r.status_code == 400
 
@@ -110,12 +110,12 @@ class TestAllauthHeadlessLogout:
 
     @pytest.fixture
     def authenticated_client_with_tokens(self):
-        user = UserFactory(email="testuser@example.com", password="testpass123")
+        user = UserFactory(email="testuser@example.com", password="testpass123")  # NOSONAR
         client = APIClient()
 
         login_response = client.post(
             self.login_endpoint,
-            {"email": user.email, "password": "testpass123"},
+            {"email": user.email, "password": "testpass123"},  # NOSONAR
         )
 
         tokens = login_response.json()["meta"]
@@ -141,12 +141,12 @@ class TestAllauthHeadlessTokenRefresh:
 
     @pytest.fixture
     def refresh_token(self):
-        user = UserFactory(email="testuser@example.com", password="testpass123")
+        user = UserFactory(email="testuser@example.com", password="testpass123")  # NOSONAR
         client = APIClient()
 
         login_response = client.post(
             self.login_endpoint,
-            {"email": user.email, "password": "testpass123"},
+            {"email": user.email, "password": "testpass123"},  # NOSONAR
         )
 
         return login_response.json()["meta"]["refresh_token"]
@@ -163,7 +163,7 @@ class TestAllauthHeadlessPasswordReset:
 
     @pytest.fixture
     def existing_user(self):
-        return UserFactory(email="testuser@example.com", password="oldpassword123")
+        return UserFactory(email="testuser@example.com", password="oldpassword123")  # NOSONAR
 
     def test_password_reset_request_returns_success(self, client, existing_user):
         r = client.post(self.reset_endpoint, {"email": existing_user.email})
@@ -176,12 +176,12 @@ class TestAllauthHeadlessProtectedEndpoints:
 
     @pytest.fixture
     def access_token_and_user(self):
-        user = UserFactory(email="testuser@example.com", password="testpass123")
+        user = UserFactory(email="testuser@example.com", password="testpass123")  # NOSONAR
         client = APIClient()
 
         login_response = client.post(
             self.login_endpoint,
-            {"email": user.email, "password": "testpass123"},
+            {"email": user.email, "password": "testpass123"},  # NOSONAR
         )
 
         return login_response.json()["meta"]["access_token"], user
