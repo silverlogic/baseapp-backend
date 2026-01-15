@@ -15,10 +15,11 @@ class ChatRoomFilter(django_filters.FilterSet):
     archived = django_filters.BooleanFilter(method="filter_archived")
 
     order_by = django_filters.OrderingFilter(fields=(("created", "created"),))
+    is_group = django_filters.BooleanFilter()
 
     class Meta:
         model = ChatRoom
-        fields = ["q", "order_by"]
+        fields = ["q", "order_by", "profile_id", "unread_messages", "archived", "is_group"]
 
     def filter_q(self, queryset, name, value):
         if not value:
