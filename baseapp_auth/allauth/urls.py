@@ -9,7 +9,7 @@ Also includes headless API endpoints for API-based authentication flows.
 from django.urls import include, path, re_path
 from django.views.generic.base import RedirectView
 
-urlpatterns = [
+allauth_admin_urls = [
     re_path(
         r"^admin/login/",
         RedirectView.as_view(pattern_name="account_login", query_string=True, permanent=False),
@@ -29,5 +29,10 @@ urlpatterns = [
         RedirectView.as_view(pattern_name="admin:index", query_string=True, permanent=True),
     ),
     path("accounts/", include("allauth.urls")),
+]
+
+allauth_headless_urls = [
     path("_allauth/", include("allauth.headless.urls")),
 ]
+
+urlpatterns = allauth_admin_urls + allauth_headless_urls

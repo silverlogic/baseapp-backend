@@ -50,7 +50,7 @@ class TestLoginBase(ApiMixin):
         h.responseUnauthorized(r)
 
     def check_when_password_doesnt_match(self, client, data):
-        UserFactory(email=data["email"], password="not password")
+        UserFactory(email=data["email"], password="not password")  # NOSONAR
         r = self.send_login_request(client, data)
         h.responseUnauthorized(r)
 
