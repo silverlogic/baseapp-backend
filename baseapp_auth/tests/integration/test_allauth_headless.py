@@ -11,7 +11,7 @@ pytestmark = pytest.mark.django_db
 
 
 class TestAllauthHeadlessSignup:
-    endpoint_path = "/_allauth/app/v1/auth/signup"
+    endpoint_path = "/v1/_allauth/app/v1/auth/signup"
 
     @pytest.fixture
     def signup_data(self):
@@ -59,7 +59,7 @@ class TestAllauthHeadlessSignup:
 
 
 class TestAllauthHeadlessLogin:
-    endpoint_path = "/_allauth/app/v1/auth/login"
+    endpoint_path = "/v1/_allauth/app/v1/auth/login"
 
     @pytest.fixture
     def login_data(self):
@@ -105,8 +105,8 @@ class TestAllauthHeadlessLogin:
 
 
 class TestAllauthHeadlessLogout:
-    endpoint_path = "/_allauth/app/v1/auth/session"
-    login_endpoint = "/_allauth/app/v1/auth/login"
+    endpoint_path = "/v1/_allauth/app/v1/auth/session"
+    login_endpoint = "/v1/_allauth/app/v1/auth/login"
 
     @pytest.fixture
     def authenticated_client_with_tokens(self):
@@ -137,7 +137,7 @@ class TestAllauthHeadlessLogout:
 
 
 class TestAllauthHeadlessTokenRefresh:
-    login_endpoint = "/_allauth/app/v1/auth/login"
+    login_endpoint = "/v1/_allauth/app/v1/auth/login"
 
     @pytest.fixture
     def refresh_token(self):
@@ -159,7 +159,7 @@ class TestAllauthHeadlessTokenRefresh:
 
 
 class TestAllauthHeadlessPasswordReset:
-    reset_endpoint = "/_allauth/app/v1/auth/password/request"
+    reset_endpoint = "/v1/_allauth/app/v1/auth/password/request"
 
     @pytest.fixture
     def existing_user(self):
@@ -171,7 +171,7 @@ class TestAllauthHeadlessPasswordReset:
 
 
 class TestAllauthHeadlessProtectedEndpoints:
-    login_endpoint = "/_allauth/app/v1/auth/login"
+    login_endpoint = "/v1/_allauth/app/v1/auth/login"
     protected_endpoint = "/v1/users/me"
 
     @pytest.fixture

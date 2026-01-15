@@ -112,7 +112,7 @@ class AccountAdapter(DefaultAccountAdapter):
                 return validated_url
         redirect_url = getattr(settings, "ACCOUNT_LOGIN_REDIRECT_URL", "admin:index")
 
-        if redirect_url.startswith(("http://", "https://", "/")):
+        if redirect_url.startswith(("http://", "https://", "/")):  # NOSONAR
             return redirect_url
         return reverse(redirect_url)
 
@@ -136,7 +136,7 @@ class AccountAdapter(DefaultAccountAdapter):
             settings, "ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL", "account_change_password_done"
         )
 
-        if redirect_url.startswith(("http://", "https://", "/")):
+        if redirect_url.startswith(("http://", "https://", "/")):  # NOSONAR
             return redirect_url
         try:
             return reverse(redirect_url)

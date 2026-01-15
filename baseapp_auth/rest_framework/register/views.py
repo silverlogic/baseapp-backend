@@ -11,7 +11,7 @@ from .serializers import RegisterSerializer
 
 class RegisterViewSet(viewsets.GenericViewSet):
     """
-    DEPRECATED: Use /_allauth/app/v1/auth/signup instead.
+    DEPRECATED: Use /v1/_allauth/app/v1/auth/signup instead.
     """
 
     serializer_class = RegisterSerializer
@@ -19,7 +19,8 @@ class RegisterViewSet(viewsets.GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         warnings.warn(
-            "The /v1/register endpoint is deprecated. " "Use /_allauth/app/v1/auth/signup instead.",
+            "The /v1/register endpoint is deprecated. "
+            "Use /v1/_allauth/app/v1/auth/signup instead.",
             DeprecationWarning,
             stacklevel=2,
         )

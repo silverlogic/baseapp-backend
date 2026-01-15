@@ -123,7 +123,7 @@ class TestAccountAdapterGetLoginRedirectUrl:
 
     def test_rejects_url_with_different_host(self, adapter, request_factory):
         """Test that URLs with different hosts are rejected."""
-        request = request_factory.get("/", {"next": "http://evil.com/admin/"})
+        request = request_factory.get("/", {"next": "http://evil.com/admin/"})  # NOSONAR
         request.get_host = MagicMock(return_value="example.com")
         request.is_secure = MagicMock(return_value=False)
 
@@ -170,7 +170,7 @@ class TestAccountAdapterGetLoginRedirectUrl:
 
     def test_requires_https_when_request_is_secure(self, adapter, request_factory):
         """Test that HTTPS is required when request is secure."""
-        request = request_factory.get("/", {"next": "http://example.com/admin/"})
+        request = request_factory.get("/", {"next": "http://example.com/admin/"})  # NOSONAR
         request.get_host = MagicMock(return_value="example.com")
         request.is_secure = MagicMock(return_value=True)
 

@@ -69,23 +69,32 @@ HEADLESS_JWT_ACCESS_TOKEN_EXPIRES_IN = 600
 In your main `urls.py` (typically `apps/urls.py`), import and include the allauth URL patterns:
 
 ```python
-from django.urls import include, re_path
-import baseapp_auth.allauth.urls as baseapp_auth_allauth_urls
+from django.urls import include, path, re_path
+from baseapp_auth.allauth.urls import (
+    allauth_admin_urls,
+    allauth_headless_urls,
+)
+
+v1_urlpatterns = [
+    # ... other v1 API endpoints ...
+    re_path(r"", include(allauth_headless_urls)),
+]
 
 urlpatterns = [
     re_path(r"^admin/", admin.site.urls),
+    path("v1/", include((v1_urlpatterns, "v1"), namespace="v1")),
+    path("", include(allauth_admin_urls)),
     # ... other URL patterns ...
-    re_path(r"", include(baseapp_auth_allauth_urls)),
 ]
 ```
 
-**Note:** The order of URL patterns matters. The allauth URLs should be placed **after** the Django admin URL pattern (`re_path(r"^admin/", admin.site.urls)`) but can be placed before or after other app URLs depending on your routing needs.
+**Note:** The order of URL patterns matters. The allauth admin URLs should be placed **after** the Django admin URL pattern (`re_path(r"^admin/", admin.site.urls)`) but can be placed before or after other app URLs depending on your routing needs.
 
 This will add:
 
-- `/accounts/` - Web authentication endpoints (for Django admin)
-- `/_allauth/` - Headless API endpoints (JSON responses)
-- Admin redirects: `/admin/login/`, `/admin/logout/`, `/admin/password_change/`
+- `/accounts/` - Web authentication endpoints (for Django admin) - at root level
+- `/v1/_allauth/` - Headless API endpoints (JSON responses) - under v1 namespace
+- Admin redirects: `/admin/login/`, `/admin/logout/`, `/admin/password_change/` - at root level
 
 ### 4. Configure Additional Allauth Settings
 
@@ -122,16 +131,16 @@ These endpoints are primarily used for Django admin authentication:
 
 ### Headless API Endpoints (JSON)
 
-These endpoints return JSON and are designed for API clients:
+These endpoints return JSON and are designed for API clients. When included in the v1 namespace, they are available at `/v1/_allauth/`:
 
-- `POST /_allauth/login/` - Login via API
-- `POST /_allauth/logout/` - Logout via API
-- `POST /_allauth/signup/` - Register via API
-- `POST /_allauth/password/reset/` - Request password reset
-- `POST /_allauth/password/reset/confirm/` - Confirm password reset with token
-- `POST /_allauth/password/change/` - Change password (authenticated)
-- `POST /_allauth/email/verification/send/` - Send verification email
-- `POST /_allauth/email/verification/confirm/` - Confirm email verification
+- `POST /v1/_allauth/login/` - Login via API
+- `POST /v1/_allauth/logout/` - Logout via API
+- `POST /v1/_allauth/signup/` - Register via API
+- `POST /v1/_allauth/password/reset/` - Request password reset
+- `POST /v1/_allauth/password/reset/confirm/` - Confirm password reset with token
+- `POST /v1/_allauth/password/change/` - Change password (authenticated)
+- `POST /v1/_allauth/email/verification/send/` - Send verification email
+- `POST /v1/_allauth/email/verification/confirm/` - Confirm email verification
 
 ### Admin Redirects
 
@@ -163,8 +172,8 @@ Email verification can be configured via `ACCOUNT_EMAIL_VERIFICATION`:
 
 When enabled, use the headless endpoints:
 
-- `POST /_allauth/email/verification/send/` - Send verification email
-- `POST /_allauth/email/verification/confirm/` - Confirm with token
+- `POST /v1/_allauth/email/verification/send/` - Send verification email
+- `POST /v1/_allauth/email/verification/confirm/` - Confirm with token
 
 ### Enabling Email Verification
 
@@ -190,11 +199,11 @@ No code changes are required - this is controlled entirely via settings.
 
 ### Headless API Flow
 
-1. Client sends `POST /_allauth/password/reset/` with email
+1. Client sends `POST /v1/_allauth/password/reset/` with email
 2. Server sends email with token
-3. Client sends `POST /_allauth/password/reset/confirm/` with token and new password
+3. Client sends `POST /v1/_allauth/password/reset/confirm/` with token and new password
 4. Server confirms password reset
-5. User can log in with new password using `POST /_allauth/login/`
+5. User can log in with new password using `POST /v1/_allauth/login/`
 6. Old password no longer works (automatically invalidated by Django)
 
 ### Password Reset API Usage
@@ -202,7 +211,7 @@ No code changes are required - this is controlled entirely via settings.
 **Request Password Reset:**
 
 ```bash
-POST /_allauth/password/reset/
+POST /v1/_allauth/password/reset/
 Content-Type: application/json
 
 {
@@ -222,7 +231,7 @@ Content-Type: application/json
 **Confirm Password Reset:**
 
 ```bash
-POST /_allauth/password/reset/confirm/
+POST /v1/_allauth/password/reset/confirm/
 Content-Type: application/json
 
 {
@@ -260,7 +269,7 @@ If you're migrating from a previous version of BaseApp:
 
 1. **Install `django-allauth[headless]`** - The `[headless]` extra is required for API endpoints
 2. **Import allauth configuration constants** - Use `ALLAUTH_HEADLESS_INSTALLED_APPS`, `ALLAUTH_HEADLESS_MIDDLEWARE`, and `ALLAUTH_AUTHENTICATION_BACKENDS` from `baseapp_auth.settings`
-3. **Update URL configuration** - Import and include `baseapp_auth.allauth.urls` as shown in the installation guide
+3. **Update URL configuration** - Import `allauth_admin_urls` and `allauth_headless_urls` separately. Place `allauth_headless_urls` in your v1 API patterns and `allauth_admin_urls` at root level as shown in the installation guide
 4. **Configure additional settings** - Set `SITE_ID`, redirect URLs, and `HEADLESS_FRONTEND_URLS` as needed
 
 ## References
