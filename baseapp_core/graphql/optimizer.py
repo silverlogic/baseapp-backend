@@ -1,4 +1,4 @@
-from typing import Any, Literal, Optional
+from typing import Any, Generator, Literal, Optional
 
 from django.db.models import QuerySet
 from graphql.language.ast import (
@@ -186,7 +186,9 @@ class ConnectionFieldNodeExtractor:
             path = path.prev
         return list(reversed(names))
 
-    def _iter_matching_fields(self, selections: list[SelectionNode], name: str) -> list[FieldNode]:
+    def _iter_matching_fields(
+        self, selections: list[SelectionNode], name: str
+    ) -> Generator[FieldNode, None, None]:
         """Iterate through selections to find fields matching the given name."""
         for sel in selections:
             if isinstance(sel, FieldNode) and sel.name.value == name:

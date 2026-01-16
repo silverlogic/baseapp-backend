@@ -276,7 +276,7 @@ def test_anon_cant_see_comments(graphql_client):
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=False)
-def test_comments_query_is_partially_optimizedss(django_user_client, graphql_client_with_queries):
+def test_comments_query_is_partially_optimized(django_user_client, graphql_client_with_queries):
     first_comment = CommentFactory()
     target = CommentFactory(
         user=django_user_client.user, body="test body", in_reply_to=first_comment
