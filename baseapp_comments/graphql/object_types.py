@@ -67,10 +67,6 @@ class CommentsInterface(RelayNode):
             evaluate_with_prefetch_hack(qs)
             return qs
 
-        # Create a info proxy for optimizing from a connection resolver
-        queryset_field_nodes = ConnectionFieldNodeExtractor(info).get_sliced_field_nodes()
-        info_proxy = ResolveInfoProxy(info, queryset_field_nodes=queryset_field_nodes)
-
         if root.__class__ == Comment:
             # When the root is a comment, we need to trick the optimizer to properly walk the AST.
             # The ast walker doesn't work properly with nested elements (comments -> comments).
