@@ -152,6 +152,8 @@ class BaseChatRoomObjectType:
     )
     image = ThumbnailField(required=False)
     is_archived = graphene.Boolean(profile_id=graphene.ID(required=False))
+    other_participant = graphene.Field(get_object_type_for_model(ChatRoomParticipant))
+    is_sole_admin = graphene.Boolean()
 
     @classmethod
     def get_node(cls, info, id):
@@ -235,6 +237,46 @@ class BaseChatRoomObjectType:
 
         return unread_messages
 
+    def resolve_other_participant(self, info, **kwargs):
+        if self.is_group:
+            return None
+        
+        current_profile = (
+            info.context.user.current_profile
+            if hasattr(info.context.user, "current_profile")
+            else (info.context.user.profile if hasattr(info.context.user, "profile") else None)
+        )
+        
+        if not current_profile:
+            return None
+
+        other_participant = self.participants.exclude(profile_id=current_profile.pk).first()
+        
+        return other_participant
+
+    def resolve_is_sole_admin(self, info, **kwargs):
+        if not self.is_group:
+            return False
+      
+        current_profile = (
+            info.context.user.current_profile
+            if hasattr(info.context.user, "current_profile")
+            else (info.context.user.profile if hasattr(info.context.user, "profile") else None)
+        )
+        
+        if not current_profile:
+            return False
+
+        current_participant = self.participants.filter(profile_id=current_profile.pk).first()
+        if not current_participant or current_participant.role != ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN:
+            return False
+        
+        admin_count = self.participants.filter(
+            role=ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN
+        ).count()
+        
+        return admin_count == 1
+
     class Meta:
         interfaces = (RelayNode,)
         model = ChatRoom
@@ -247,6 +289,8 @@ class BaseChatRoomObjectType:
             "title",
             "image",
             "is_group",
+            "other_participant",
+            "is_sole_admin",
         )
         filterset_class = ChatRoomFilter
 
