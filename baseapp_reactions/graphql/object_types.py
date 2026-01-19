@@ -3,14 +3,11 @@ import graphene_django_optimizer as gql_optimizer
 import swapper
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
-from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
 
-from baseapp_core.graphql import (
-    DjangoObjectType,
-    get_object_type_for_model,
-    get_pk_from_relay_id,
-)
+from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import Node as RelayNode
+from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
@@ -29,7 +26,7 @@ def create_object_type_from_enum(name, enum):
 ReactionsCount = create_object_type_from_enum("ReactionsCount", Reaction.ReactionTypes)
 
 
-class ReactionsInterface(relay.Node):
+class ReactionsInterface(RelayNode):
     reactions_count = graphene.Field(ReactionsCount)
     reactions = DjangoFilterConnectionField(get_object_type_for_model(Reaction))
     is_reactions_enabled = graphene.Boolean(required=True)
@@ -72,11 +69,11 @@ class ReactionsInterface(relay.Node):
 
 
 class BaseReactionObjectType:
-    target = graphene.Field(relay.Node)
+    target = graphene.Field(RelayNode)
     reaction_type = graphene.Field(ReactionTypesEnum)
 
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         model = Reaction
         fields = (
             "id",

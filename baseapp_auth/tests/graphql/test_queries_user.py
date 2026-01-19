@@ -1,4 +1,5 @@
 import pytest
+from constance.test import override_config
 from django.contrib.auth.models import Permission
 
 from baseapp_core.tests.factories import UserFactory
@@ -69,15 +70,12 @@ QUERY_USERS_LIST = """
 """
 
 
-def test_anon_can_query_user_by_pk(graphql_client):
+def test_anon_cannot_query_user_by_pk(graphql_client):
     user = UserFactory()
     response = graphql_client(QUERY, variables={"id": user.pk})
     content = response.json()
 
-    assert content["data"]["user"]["id"] == user.relay_id
-    assert content["data"]["user"]["pk"] == user.pk
-    assert content["data"]["user"]["isAuthenticated"] is False
-    assert content["data"]["user"]["email"] is None
+    assert content["errors"][0]["message"] == "User is not compatible with the PK strategy"
 
 
 def test_user_can_query_user_by_relay_id(django_user_client, graphql_user_client):
@@ -141,6 +139,7 @@ def test_overcomplex_queries_are_not_executed(graphql_client_with_queries):
     assert queries.count == 0
 
 
+@override_config(ENABLE_PUBLIC_ID_LOGIC=False)
 def test_anon_can_query_users_list_with_optimized_query(graphql_client_with_queries):
     UserFactory.create_batch(10)
     response, queries = graphql_client_with_queries(QUERY_USERS_LIST)
@@ -153,3 +152,20 @@ def test_anon_can_query_users_list_with_optimized_query(graphql_client_with_quer
     # SELECT "users_user"."id", "users_user"."profile_id", "users_user"."first_name", "users_user"."last_name", ("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AS "password_expiry_date", (("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AT TIME ZONE UTC)::date <= 2025-02-28 AS "is_password_expired", "profiles_profile"."id", "profiles_profile"."name" FROM "users_user" LEFT OUTER JOIN "profiles_profile" ON ("users_user"."profile_id" = "profiles_profile"."id") WHERE "users_user"."is_active"
     # SELECT COUNT(*) AS "__count" FROM "users_user" WHERE "users_user"."is_active"
     # SELECT "users_user"."id", "users_user"."profile_id", "users_user"."first_name", "users_user"."last_name", ("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AS "password_expiry_date", (("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AT TIME ZONE UTC)::date <= 2025-02-28 AS "is_password_expired", "profiles_profile"."id", "profiles_profile"."name" FROM "users_user" LEFT OUTER JOIN "profiles_profile" ON ("users_user"."profile_id" = "profiles_profile"."id") WHERE "users_user"."is_active" LIMIT 10
+
+
+@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+def test_anon_can_query_users_list_with_optimized_query_with_public_id(graphql_client_with_queries):
+    UserFactory.create_batch(10)
+    response, queries = graphql_client_with_queries(QUERY_USERS_LIST)
+    content = response.json()
+
+    assert queries.count == 5
+    assert len(content["data"]["users"]["edges"]) == 10
+
+    # With optimizer queries are expected to be 5 and retrieving just the queried fields:
+    # SELECT "users_user"."id", "users_user"."profile_id", "users_user"."first_name", "users_user"."last_name", ("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AS "password_expiry_date", (("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AT TIME ZONE UTC)::date <= 2025-02-28 AS "is_password_expired" FROM "users_user" WHERE "users_user"."is_active"
+    # SELECT "profiles_profile"."id","profiles_profile"."name",(SELECT U0."public_id" FROM "baseapp_core_publicidmapping" U0 WHERE (U0."content_type_id" = 1591 AND U0."object_id" = ("profiles_profile"."id"))) AS "mapped_public_id" FROM "profiles_profile" WHERE "profiles_profile"."id" IN (1970,1971,1972,1973,1974,1975,1976,1977,1978,1979)
+    # SELECT COUNT(*) AS "__count" FROM "users_user" WHERE "users_user"."is_active"
+    # SELECT "users_user"."id", "users_user"."profile_id", "users_user"."first_name", "users_user"."last_name", ("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AS "password_expiry_date", (("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AT TIME ZONE UTC)::date <= 2025-02-28 AS "is_password_expired" FROM "users_user" WHERE "users_user"."is_active" LIMIT 10
+    # SELECT "profiles_profile"."id","profiles_profile"."name",(SELECT U0."public_id" FROM "baseapp_core_publicidmapping" U0 WHERE (U0."content_type_id" = 1591 AND U0."object_id" = ("profiles_profile"."id"))) AS "mapped_public_id" FROM "profiles_profile" WHERE "profiles_profile"."id" IN (1970,1971,1972,1973,1974,1975,1976,1977,1978,1979)
