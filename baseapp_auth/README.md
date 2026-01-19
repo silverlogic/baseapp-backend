@@ -111,17 +111,21 @@ HEADLESS_FRONTEND_URLS = {
 }
 ```
 
-Generate and configure JWT private key:
+Generate and configure JWT private and public keys:
 
 ```bash
 openssl genpkey -algorithm RSA -out private_key.pem -pkeyopt rsa_keygen_bits:2048
+openssl rsa -pubout -in private_key.pem -out public_key.pem
+
 cat private_key.pem
+cat public_key.pem
 ```
 
 Add to `.env`:
 
 ```bash
 HEADLESS_JWT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBg...\n-----END PRIVATE KEY-----"
+HEADLESS_JWT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhki...\n-----END PUBLIC KEY-----"
 ```
 
 **Important**: A valid private key is required. The headless endpoints will fail with a 500 error if the key is missing or invalid.
@@ -144,7 +148,24 @@ Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
 
 When access token expires, exchange refresh token for new tokens via `/v1/_allauth/app/v1/auth/token/refresh`.
 
-Protect DRF endpoints:
+**Configure REST Framework:**
+
+The template includes `JWTTokenAuthentication` in `REST_FRAMEWORK` by default. If setting up from scratch, add it to your `settings/base.py`:
+
+```python
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "allauth.headless.contrib.rest_framework.authentication.JWTTokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+        # Add other authentication classes as needed
+    ),
+    # ... other REST_FRAMEWORK settings
+}
+```
+
+**Protect DRF endpoints:**
+
+For individual views, you can specify authentication classes:
 
 ```python
 from allauth.headless.contrib.rest_framework.authentication import JWTTokenAuthentication
@@ -156,9 +177,33 @@ class YourAPIView(APIView):
     permission_classes = [IsAuthenticated]
 ```
 
+Or rely on the default authentication classes configured in `REST_FRAMEWORK`.
+
 See [django-allauth documentation](https://docs.allauth.org/en/dev/headless/) for more details.
 
 ### GraphQL
+
+#### WebSocket Consumer
+
+The `GRAPHQL_WS_CONSUMER` setting is automatically available (imported from `baseapp_auth.settings`). It defaults to `baseapp_core.graphql.consumers.GraphqlWsJWTAuthenticatedConsumer` (simplejwt).
+
+When using allauth headless JWT authentication with GraphQL WebSockets, override the setting in your `settings/base.py`:
+
+```python
+GRAPHQL_WS_CONSUMER = "baseapp_auth.graphql.consumers.GraphqlWsAllAuthJWTAuthenticatedConsumer"
+```
+
+#### JWT Authentication Middleware
+
+The `GRAPHQL_JWT_AUTHENTICATION_MIDDLEWARE` setting is automatically available (imported from `baseapp_auth.settings`). It defaults to `baseapp_core.graphql.middlewares.JWTAuthentication` (simplejwt).
+
+When using allauth headless JWT authentication with GraphQL HTTP queries, override the setting in your `settings/base.py`:
+
+```python
+GRAPHQL_JWT_AUTHENTICATION_MIDDLEWARE = "baseapp_auth.graphql.middlewares.AllauthJWTTokenAuthentication"
+```
+
+This setting is used in the `GRAPHENE["MIDDLEWARE"]` configuration.
 
 #### PermissionsInterface
 
@@ -225,7 +270,9 @@ SIMPLE_JWT = {
 }
 JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
 ```
+
 We override some settings from the Simple JWT library by default to make some baseapp features work properly. They look like the following:
+
 ```py
 SIMPLE_JWT = {
     "TOKEN_OBTAIN_SERIALIZER": "baseapp_auth.rest_framework.jwt.serializers.BaseJwtLoginSerializer",
@@ -234,6 +281,7 @@ SIMPLE_JWT = {
 
 JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
 ```
+
 However, any setting defined on the project will take precedence over the default ones.
 
 There is a constance config for password expiration interval:
