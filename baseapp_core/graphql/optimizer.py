@@ -14,20 +14,17 @@ from query_optimizer.typing import GQLInfo
 from query_optimizer.utils import mark_optimized
 
 
-class ResolveInfoProxy:
+class NestedConnectionInfoProxy:
     """
-    Proxy for GraphQL resolve info to enable optimization of nested querysets.
+    Proxy for GraphQL resolve info, used to optimize queries with nested objects
+    (e.g., comments -> comments).
 
-    The optimizer was designed to work only with querysets loaded from the root
-    GraphQL query. This proxy allows optimizing other querysets by making them
-    appear as if they were part of the root query.
+    The query optimizer is built to walk the AST tree starting from the root query type.
+    When resolving nested objects, this proxy sets `parent_type` to the root query type,
+    so the AST walker can correctly traverse and optimize the tree as if it were the root.
 
-    The proxy overrides `parent_type` and allows custom `field_nodes` to be
-    provided. The original AST walker uses `info.parent_type` to recursively
-    traverse the AST, which only works from the root query. By artificially
-    setting `parent_type` to the root query type, we can traverse the AST
-    from any level. Pass the `field_nodes` that correspond to the query you
-    want to optimize.
+    Use this proxy when you want to optimize nested resolvers within a query. Pass the
+    corresponding `field_nodes` for the section of the query you want to optimize.
     """
 
     __slots__ = (
@@ -51,7 +48,8 @@ class ResolveInfoProxy:
         Args:
             info: The original GraphQL resolve info object.
             queryset_field_nodes: Optional list of field nodes to use in the optimizer compilation.
-            connection_field_nodes: Optional list of field nodes to use in the filter info compiler.
+            connection_field_nodes: Optional list of field nodes to use in the filter info
+                compiler.
         """
         self._info = info
         self._parent_type = info.schema.query_type
@@ -61,10 +59,10 @@ class ResolveInfoProxy:
 
     def get_info_proxy(
         self, use_mode: Literal["queryset", "filter_info"] = "queryset"
-    ) -> "ResolveInfoProxy":
+    ) -> "NestedConnectionInfoProxy":
         queryset_nodes = getattr(self, "_queryset_field_nodes", None)
         connection_nodes = getattr(self, "_connection_field_nodes", None)
-        new_proxy = ResolveInfoProxy(
+        new_proxy = NestedConnectionInfoProxy(
             self._info,
             queryset_field_nodes=queryset_nodes,
             connection_field_nodes=connection_nodes,
@@ -95,16 +93,15 @@ class ResolveInfoProxy:
 
 class GraphQLASTWalkerPatchMixin:
     """
-    Mixin that patches GraphQLASTWalker to support ResolveInfoProxy.
+    Mixin that patches GraphQLASTWalker to support NestedConnectionInfoProxy.
 
-    Modifies the `run` method to use the `parent_type` defined in the
-    ResolveInfoProxy object, enabling AST traversal from non-root query
-    levels.
+    Modifies the `run` method to use the `parent_type` defined in the NestedConnectionInfoProxy
+    object, enabling AST traversal from non-root query levels.
     """
 
     def run(self) -> Any:
         selections = self.info.field_nodes
-        if isinstance(self.info, ResolveInfoProxy):
+        if isinstance(self.info, NestedConnectionInfoProxy):
             field_type = self.info.original_parent_type
         else:
             field_type = self.info.parent_type
@@ -113,7 +110,7 @@ class GraphQLASTWalkerPatchMixin:
 
 class OptimizationCompilerPatch(GraphQLASTWalkerPatchMixin, OptimizationCompiler):
     """
-    Patched optimization compiler with ResolveInfoProxy support.
+    Patched optimization compiler with NestedConnectionInfoProxy support.
 
     The original OptimizationCompiler class uses swappable_by_subclassing,
     which will be automatically overridden by this class when loaded at
@@ -122,22 +119,22 @@ class OptimizationCompilerPatch(GraphQLASTWalkerPatchMixin, OptimizationCompiler
     """
 
     def run(self) -> Any:
-        if isinstance(self.info, ResolveInfoProxy):
+        if isinstance(self.info, NestedConnectionInfoProxy):
             self.info = self.info.get_info_proxy("queryset")
         return super().run()
 
 
 class FilterInfoCompilerPatch(GraphQLASTWalkerPatchMixin, FilterInfoCompiler):
     """
-    Patched filter info compiler with ResolveInfoProxy support.
+    Patched filter info compiler with NestedConnectionInfoProxy support.
 
-    The original FilterInfoCompiler class uses swappable_by_subclassing,
-    which will be automatically overridden by this class when loaded at
-    runtime. This enables filter optimization from connection resolvers.
+    The original FilterInfoCompiler class uses swappable_by_subclassing, which will be
+    automatically overridden by this class when loaded at runtime. This enables filter
+    optimization from connection resolvers.
     """
 
     def run(self) -> Any:
-        if isinstance(self.info, ResolveInfoProxy):
+        if isinstance(self.info, NestedConnectionInfoProxy):
             self.info = self.info.get_info_proxy("filter_info")
         return super().run()
 
@@ -168,7 +165,8 @@ class ConnectionFieldNodeExtractor:
     When resolving the OUTER `comments` connection:
         - `info.field_nodes` refers to: `comments { edges { node { ... } } }`
         - The queryset represents Comment objects at: `edges -> node`
-        - To optimize the nested `comments` queryset, we need field nodes from: `edges -> node -> comments`
+        - To optimize the nested `comments` queryset, we need field nodes from:
+            `edges -> node -> comments`
 
     This class extracts the nested field nodes under `edges.node` that match the connection
     field's response name, enabling proper query optimization for nested queries of the same
@@ -209,10 +207,10 @@ class ConnectionFieldNodeExtractor:
         """
         Extract FieldNode(s) under edges->node that match the connection field's response name.
 
-        For nested queries where the root is the same object type as the list (e.g., comments -> comments),
-        this returns the FieldNode(s) under `edges->node` that correspond to the same response name
-        as the connection field. This enables proper optimization of nested querysets from within
-        connection resolvers.
+        For nested queries where the root is the same object type as the list
+        (e.g., comments -> comments), this returns the FieldNode(s) under `edges->node` that
+        correspond to the same response name as the connection field. This enables proper
+        optimization of nested querysets from within connection resolvers.
 
         If no matching field is found, returns all FieldNodes within the node as fallback.
         """
@@ -252,8 +250,16 @@ class ConnectionFieldNodeExtractor:
 
 def skip_ast_walker(qs: QuerySet) -> QuerySet:
     """
-    Since comments can be nested (optimization doesn't work properly when comments -> comments),
-    we need to mark the .node() as optimized so the system skips the AST walker.
+    Mark a queryset as optimized to explicitly bypass the query_optimizer AST walker.
+
+    This function should be used when optimization should be skipped entirely, for example:
+      - When returning an empty queryset, such as with `model_class.objects.none()`.
+      - In the context of nested connections of the same type in Graphene
+        (e.g., comments -> comments), where query_optimizer AST-based optimization
+        is incompatible or produces incorrect results.
+
+    By marking the queryset as optimized, the query_optimizer will not traverse its AST or
+    attempt to apply further optimizations to it.
     """
     mark_optimized(qs)
     return qs

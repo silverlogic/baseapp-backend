@@ -18,12 +18,12 @@ from baseapp_core.graphql.optimizer import (
     ConnectionFieldNodeExtractor,
     FilterInfoCompilerPatch,
     GraphQLASTWalkerPatchMixin,
+    NestedConnectionInfoProxy,
     OptimizationCompilerPatch,
-    ResolveInfoProxy,
 )
 
 
-class TestResolveInfoProxy:
+class TestNestedConnectionInfoProxy:
     @pytest.fixture
     def mock_info(self):
         info = MagicMock(spec=GQLInfo)
@@ -38,7 +38,7 @@ class TestResolveInfoProxy:
         return [field_node]
 
     def test_init_without_field_nodes(self, mock_info):
-        proxy = ResolveInfoProxy(mock_info)
+        proxy = NestedConnectionInfoProxy(mock_info)
 
         assert proxy._info == mock_info
         assert proxy._parent_type == mock_info.schema.query_type
@@ -47,7 +47,7 @@ class TestResolveInfoProxy:
         assert proxy._use_mode == "queryset"
 
     def test_init_with_queryset_field_nodes(self, mock_info, mock_field_nodes):
-        proxy = ResolveInfoProxy(mock_info, queryset_field_nodes=mock_field_nodes)
+        proxy = NestedConnectionInfoProxy(mock_info, queryset_field_nodes=mock_field_nodes)
 
         assert proxy._info == mock_info
         assert proxy._parent_type == mock_info.schema.query_type
@@ -55,7 +55,7 @@ class TestResolveInfoProxy:
         assert proxy._connection_field_nodes is None
 
     def test_init_with_connection_field_nodes(self, mock_info, mock_field_nodes):
-        proxy = ResolveInfoProxy(mock_info, connection_field_nodes=mock_field_nodes)
+        proxy = NestedConnectionInfoProxy(mock_info, connection_field_nodes=mock_field_nodes)
 
         assert proxy._info == mock_info
         assert proxy._parent_type == mock_info.schema.query_type
@@ -63,23 +63,23 @@ class TestResolveInfoProxy:
         assert proxy._connection_field_nodes == mock_field_nodes
 
     def test_parent_type_property(self, mock_info):
-        proxy = ResolveInfoProxy(mock_info)
+        proxy = NestedConnectionInfoProxy(mock_info)
         assert proxy.parent_type == mock_info.schema.query_type
 
     def test_original_parent_type_property(self, mock_info):
-        proxy = ResolveInfoProxy(mock_info)
+        proxy = NestedConnectionInfoProxy(mock_info)
         assert proxy.original_parent_type == mock_info.parent_type
 
     def test_field_nodes_property_without_custom_nodes(self, mock_info):
-        proxy = ResolveInfoProxy(mock_info)
+        proxy = NestedConnectionInfoProxy(mock_info)
         assert proxy.field_nodes == mock_info.field_nodes
 
     def test_field_nodes_property_with_queryset_nodes(self, mock_info, mock_field_nodes):
-        proxy = ResolveInfoProxy(mock_info, queryset_field_nodes=mock_field_nodes)
+        proxy = NestedConnectionInfoProxy(mock_info, queryset_field_nodes=mock_field_nodes)
         assert proxy.field_nodes == mock_field_nodes
 
     def test_field_nodes_property_with_connection_nodes(self, mock_info, mock_field_nodes):
-        proxy = ResolveInfoProxy(
+        proxy = NestedConnectionInfoProxy(
             mock_info, connection_field_nodes=mock_field_nodes, use_mode="filter_info"
         )
         assert proxy.field_nodes == mock_field_nodes
@@ -87,7 +87,7 @@ class TestResolveInfoProxy:
     def test_get_info_proxy(self, mock_info, mock_field_nodes):
         queryset_nodes = [MagicMock(spec=FieldNode)]
         connection_nodes = [MagicMock(spec=FieldNode)]
-        proxy = ResolveInfoProxy(
+        proxy = NestedConnectionInfoProxy(
             mock_info,
             queryset_field_nodes=queryset_nodes,
             connection_field_nodes=connection_nodes,
@@ -106,7 +106,7 @@ class TestResolveInfoProxy:
 
     def test_getattr_delegates_to_info(self, mock_info):
         mock_info.some_attribute = "test_value"
-        proxy = ResolveInfoProxy(mock_info)
+        proxy = NestedConnectionInfoProxy(mock_info)
 
         assert proxy.some_attribute == "test_value"
 
@@ -121,7 +121,7 @@ class TestGraphQLASTWalkerPatchMixin:
 
     @pytest.fixture
     def mock_proxy_info(self, mock_info):
-        return ResolveInfoProxy(mock_info)
+        return NestedConnectionInfoProxy(mock_info)
 
     @pytest.fixture
     def walker_with_regular_info(self, mock_info):
@@ -180,7 +180,7 @@ class TestOptimizationCompilerPatch:
 
     def test_run_with_proxy_switches_to_queryset_mode(self, mock_info):
         queryset_nodes = [MagicMock(spec=FieldNode)]
-        proxy = ResolveInfoProxy(
+        proxy = NestedConnectionInfoProxy(
             mock_info, queryset_field_nodes=queryset_nodes, use_mode="filter_info"
         )
         compiler = OptimizationCompilerPatch(proxy, max_complexity=None)
@@ -209,7 +209,7 @@ class TestFilterInfoCompilerPatch:
 
     def test_run_with_proxy_switches_to_filter_info_mode(self, mock_info):
         connection_nodes = [MagicMock(spec=FieldNode)]
-        proxy = ResolveInfoProxy(
+        proxy = NestedConnectionInfoProxy(
             mock_info, connection_field_nodes=connection_nodes, use_mode="queryset"
         )
         compiler = FilterInfoCompilerPatch(proxy)

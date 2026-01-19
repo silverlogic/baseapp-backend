@@ -8,13 +8,13 @@ from query_optimizer import DjangoConnectionField, optimize
 from query_optimizer.prefetch_hack import evaluate_with_prefetch_hack
 
 from baseapp_auth.graphql import PermissionsInterface
-from baseapp_core.graphql import ConnectionFieldNodeExtractor, DjangoObjectType
-from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import (
-    ResolveInfoProxy,
-    get_object_type_for_model,
-    skip_ast_walker,
+    ConnectionFieldNodeExtractor,
+    DjangoObjectType,
+    NestedConnectionInfoProxy,
 )
+from baseapp_core.graphql import Node as RelayNode
+from baseapp_core.graphql import get_object_type_for_model, skip_ast_walker
 from baseapp_reactions.graphql.object_types import ReactionsInterface
 
 from ..models import CommentStatus, default_comments_count
@@ -71,7 +71,7 @@ class CommentsInterface(RelayNode):
             # When the root is a comment, we need to trick the optimizer to properly walk the AST.
             # The ast walker doesn't work properly with nested elements (comments -> comments).
             queryset_field_nodes = ConnectionFieldNodeExtractor(info).get_sliced_field_nodes()
-            info_proxy = ResolveInfoProxy(info, queryset_field_nodes=queryset_field_nodes)
+            info_proxy = NestedConnectionInfoProxy(info, queryset_field_nodes=queryset_field_nodes)
         else:
             info_proxy = info
 

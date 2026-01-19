@@ -12,7 +12,7 @@ from .mutations import DeleteNode, RelayMutation  # noqa
 from .object_types import DjangoObjectType, DjangoObjectTypeWithPkField  # noqa
 from .optimizer import (  # noqa
     ConnectionFieldNodeExtractor,
-    ResolveInfoProxy,
+    NestedConnectionInfoProxy,
     skip_ast_walker,
 )
 from .relay import Node  # noqa
