@@ -46,11 +46,12 @@ class Comment(models.Model, ReactableModel):
 Also make sure your GraphQL object types extends `ReactionsInterface` interface:
 
 ```python
+from baseapp_core.graphql import Node as RelayNode
 from baseapp_reactions.graphql.object_types import ReactionsInterface
 
 class CommentNode(DjangoObjectType):
     class Meta:
-        interfaces = (relay.Node, ReactionsInterface)
+        interfaces = (RelayNode, ReactionsInterface)
 ```
 
 Expose `ReactionsMutations` and `ReactionsQueries` in your GraphQL/graphene endpoint, like:
