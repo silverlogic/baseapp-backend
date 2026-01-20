@@ -250,9 +250,10 @@ class BaseChatRoomObjectType:
         if not current_profile:
             return None
 
-        other_participant = self.participants.exclude(profile_id=current_profile.pk).first()
+        if not self.participants.filter(profile_id=current_profile.pk).exists():
+            return None
 
-        return other_participant
+        return self.participants.exclude(profile_id=current_profile.pk).first()
 
     def resolve_is_sole_admin(self, info, **kwargs):
         if not self.is_group:
