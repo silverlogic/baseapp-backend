@@ -240,41 +240,44 @@ class BaseChatRoomObjectType:
     def resolve_other_participant(self, info, **kwargs):
         if self.is_group:
             return None
-        
+
         current_profile = (
             info.context.user.current_profile
             if hasattr(info.context.user, "current_profile")
             else (info.context.user.profile if hasattr(info.context.user, "profile") else None)
         )
-        
+
         if not current_profile:
             return None
 
         other_participant = self.participants.exclude(profile_id=current_profile.pk).first()
-        
+
         return other_participant
 
     def resolve_is_sole_admin(self, info, **kwargs):
         if not self.is_group:
             return False
-      
+
         current_profile = (
             info.context.user.current_profile
             if hasattr(info.context.user, "current_profile")
             else (info.context.user.profile if hasattr(info.context.user, "profile") else None)
         )
-        
+
         if not current_profile:
             return False
 
         current_participant = self.participants.filter(profile_id=current_profile.pk).first()
-        if not current_participant or current_participant.role != ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN:
+        if (
+            not current_participant
+            or current_participant.role != ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN
+        ):
             return False
-        
+
         admin_count = self.participants.filter(
             role=ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN
         ).count()
-        
+
         return admin_count == 1
 
     class Meta:
