@@ -60,14 +60,16 @@ class CommentsInterface(RelayNode):
         if not CAN_ANONYMOUS_VIEW_COMMENTS and not info.context.user.is_authenticated:
             return skip_ast_walker(Comment.objects.none())
 
-        if isinstance(root, Comment) and (root.target_object_id or root.in_reply_to_id):
+        is_root_a_comment = isinstance(root, Comment)
+
+        if is_root_a_comment and (root.target_object_id or root.in_reply_to_id):
             qs = root.comments.filter(status=CommentStatus.PUBLISHED)
             # The root.comments were already optimized. But because of the new filter, we need to
             # re-evaluate the queryset so it can be properly paginated.
             evaluate_with_prefetch_hack(qs)
             return qs
 
-        if root.__class__ == Comment:
+        if is_root_a_comment:
             # When the root is a comment, we need to trick the optimizer to properly walk the AST.
             # The ast walker doesn't work properly with nested elements (comments -> comments).
             queryset_field_nodes = ConnectionFieldNodeExtractor(info).get_sliced_field_nodes()
