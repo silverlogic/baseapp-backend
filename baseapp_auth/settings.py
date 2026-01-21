@@ -17,7 +17,7 @@ ALLAUTH_HEADLESS_MIDDLEWARE = [
 ]
 
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
-ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*", "first_name*", "last_name*"]
 ACCOUNT_AUTHENTICATION_METHOD = "email"
 ACCOUNT_SIGNUP_PASSWORD_ENTER_TWICE = True
 ACCOUNT_EMAIL_VERIFICATION = "none"
