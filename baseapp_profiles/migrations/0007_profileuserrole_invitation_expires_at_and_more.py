@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
             name="invitation_expires_at",
             field=models.DateTimeField(
                 blank=True,
-                help_text="When the invitation expires (15 days from invited_at)",
+                help_text="When the invitation expires",
                 null=True,
                 verbose_name="invitation expires at",
             ),
@@ -70,7 +70,14 @@ class Migration(migrations.Migration):
             model_name="profileuserrole",
             name="status",
             field=models.IntegerField(
-                choices=[(1, "active"), (2, "pending"), (3, "inactive"), (4, "declined")], default=2
+                choices=[
+                    (1, "active"),
+                    (2, "pending"),
+                    (3, "inactive"),
+                    (4, "declined"),
+                    (5, "expired"),
+                ],
+                default=2,
             ),
         ),
         migrations.AlterField(

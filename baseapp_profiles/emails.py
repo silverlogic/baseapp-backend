@@ -8,6 +8,7 @@ from django.utils import timezone
 from baseapp_core.deep_links import get_deep_link
 from baseapp_core.exceptions import DeepLinkFetchError
 
+from .constants import INVITATION_EXPIRATION_DAYS
 from .models import ProfileUserRole
 
 
@@ -28,7 +29,7 @@ def create_invitation(profile, inviter, invited_email, role=ProfileUserRole.Prof
         role=role,
         status=ProfileUserRole.ProfileRoleStatus.PENDING,
         invited_at=timezone.now(),
-        invitation_expires_at=timezone.now() + timedelta(days=15),
+        invitation_expires_at=timezone.now() + timedelta(days=INVITATION_EXPIRATION_DAYS),
     )
 
     invitation.generate_invitation_token()

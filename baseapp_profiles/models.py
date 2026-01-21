@@ -208,6 +208,7 @@ class AbstractProfileUserRole(RelayModel, models.Model):
         PENDING = 2, _("pending")
         INACTIVE = 3, _("inactive")
         DECLINED = 4, _("declined")
+        EXPIRED = 5, _("expired")
 
         @property
         def description(self):
@@ -256,7 +257,7 @@ class AbstractProfileUserRole(RelayModel, models.Model):
         null=True,
         blank=True,
         verbose_name=_("invitation expires at"),
-        help_text=_("When the invitation expires (15 days from invited_at)"),
+        help_text=_("When the invitation expires"),
     )
     responded_at = models.DateTimeField(
         null=True,
@@ -268,6 +269,13 @@ class AbstractProfileUserRole(RelayModel, models.Model):
     class Meta:
         abstract = True
         unique_together = [("user", "profile")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["profile", "invited_email"],
+                name="unique_profile_invited_email",
+                condition=models.Q(invited_email__isnull=False),
+            ),
+        ]
 
     def is_invitation_expired(self):
         from django.utils import timezone
