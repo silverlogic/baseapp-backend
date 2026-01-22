@@ -2,8 +2,8 @@ import pgtrigger
 
 
 class Func(pgtrigger.Func):
-    def render(self, meta=None, fields=None, columns=None, **kwargs) -> str:
-        return self.func.format(model=meta.model, meta=meta, fields=fields, columns=columns)
+    def render(self, model=None, fields=None, columns=None, **kwargs) -> str:
+        return self.func.format(model=model, meta=model._meta, fields=fields, columns=columns)
 
 
 def increment_unread_count_trigger(UnreadMessageCount, Message):

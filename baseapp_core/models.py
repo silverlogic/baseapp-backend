@@ -155,23 +155,19 @@ class DocumentIdFunc(pgtrigger.Func):
 
     def render(
         self,
-        meta=None,
-        fields=None,
-        columns=None,
+        model=None,
         **kwargs,
     ) -> str:
-        concrete_model = meta.concrete_model
+        concrete_model = model._meta.concrete_model
         app_label = concrete_model._meta.app_config.label
         model_name = concrete_model._meta.model_name
         return self.func.format(
-            model=meta.model,
+            model=model,
             app_label=app_label,
             model_name=model_name,
-            fields=fields,
-            columns=columns,
             document_id_table=DocumentId._meta.db_table,
             content_type_table=ContentType._meta.db_table,
-            pk=meta.pk.column,
+            pk=model._meta.pk.column,
         )
 
 
