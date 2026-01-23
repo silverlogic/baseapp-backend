@@ -31,7 +31,7 @@ The package provides headless authentication endpoints using django-allauth's of
 - `POST /v1/_allauth/app/v1/auth/signup` - User registration (signup)
 - `POST /v1/_allauth/app/v1/auth/login` - User login
 - `DELETE /v1/_allauth/app/v1/auth/session` - User logout
-- `POST /v1/_allauth/app/v1/auth/token/refresh` - Token refresh
+- `POST /v1/_allauth/app/v1/tokens/refresh` - Token refresh
 - `POST /v1/_allauth/app/v1/auth/password/request` - Request password reset
 
 **⚠️ Legacy Custom Endpoints (Deprecated):**
@@ -40,7 +40,7 @@ The following custom endpoints are deprecated and will be removed in a future ve
 
 - `POST /v1/register` - Use `/v1/_allauth/app/v1/auth/signup` instead
 - `POST /v1/auth/jwt/login` - Use `/v1/_allauth/app/v1/auth/login` instead
-- `POST /v1/auth/jwt/refresh` - Use `/v1/_allauth/app/v1/auth/token/refresh` instead
+- `POST /v1/auth/jwt/refresh` - Use `/v1/_allauth/app/v1/tokens/refresh` instead
 
 **OAuth2 Flow:**
 
@@ -67,7 +67,6 @@ from baseapp_auth.settings import (
     ACCOUNT_EMAIL_VERIFICATION,
     ACCOUNT_SIGNUP_FIELDS,
     ACCOUNT_SIGNUP_FORM_CLASS,
-    ACCOUNT_SIGNUP_PASSWORD_ENTER_TWICE,
     ACCOUNT_USER_MODEL_USERNAME_FIELD,
     ALLAUTH_ADMIN_LOCALE_SELECTOR_ENABLED,
     ALLAUTH_ADMIN_SIGNUP_ENABLED,
@@ -147,7 +146,7 @@ Authenticated requests use JWT access tokens:
 Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-When access token expires, exchange refresh token for new tokens via `/v1/_allauth/app/v1/auth/token/refresh`.
+When access token expires, exchange refresh token for new tokens via `/v1/_allauth/app/v1/tokens/refresh`.
 
 **Configure REST Framework:**
 

@@ -1,7 +1,7 @@
 from django import forms
 
 
-class CustomSignupForm(forms.Form):
+class CustomAllauthSignupForm(forms.Form):
     first_name = forms.CharField(max_length=100, required=True)
     last_name = forms.CharField(max_length=100, required=True)
 

@@ -17,7 +17,7 @@ class JWTAuthViewSet(TokenObtainPairView, TokenRefreshView, GenericViewSet):
     DEPRECATED: Use allauth.headless endpoints instead.
 
     - /v1/_allauth/app/v1/auth/login
-    - /v1/_allauth/app/v1/auth/token/refresh
+    - /v1/_allauth/app/v1/tokens/refresh
     """
 
     def get_serializer_class(self) -> Serializer:
@@ -43,7 +43,7 @@ class JWTAuthViewSet(TokenObtainPairView, TokenRefreshView, GenericViewSet):
     def refresh(self, request, *args, **kwargs):
         warnings.warn(
             "The /v1/auth/jwt/refresh endpoint is deprecated. "
-            "Use /v1/_allauth/app/v1/auth/token/refresh instead.",
+            "Use /v1/_allauth/app/v1/tokens/refresh instead.",
             DeprecationWarning,
             stacklevel=2,
         )

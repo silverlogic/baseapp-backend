@@ -292,13 +292,6 @@ if SOCIAL_AUTH_LINKEDIN_OAUTH2_KEY and SOCIAL_AUTH_LINKEDIN_OAUTH2_SECRET:
 if SOCIAL_AUTH_GOOGLE_OAUTH2_KEY and SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET:
     AUTHENTICATION_BACKENDS.append("social_core.backends.google.GoogleOAuth2")
 
-# JWT Authentication
-SIMPLE_JWT = {
-    # It will work instead of the default serializer(TokenObtainPairSerializer).
-    "TOKEN_OBTAIN_SERIALIZER": "testproject.users.rest_framework.jwt.serializers.MyTokenObtainPairSerializer",
-    # ...
-}
-JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
 
 # Sites
 FRONT_CONFIRM_EMAIL_URL = FRONT_URL + "/confirm-email/{id}/{token}"
@@ -338,4 +331,19 @@ HEADLESS_FRONTEND_URLS = {
     ),
     "account_reset_password_from_key": FRONT_FORGOT_PASSWORD_URL.replace("{token}", "{key}"),
     "account_signup": FRONT_URL + "/signup",
+}
+
+# Rest Framework
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "allauth.headless.contrib.rest_framework.authentication.JWTTokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+        "baseapp_api_key.rest_framework.authentication.APIKeyAuthentication",
+    ),
+    "DEFAULT_PAGINATION_CLASS": "baseapp_core.rest_framework.pagination.DefaultPageNumberPagination",
+    "PAGE_SIZE": 30,
+    "DEFAULT_VERSIONING_CLASS": "rest_framework.versioning.NamespaceVersioning",
+    "ORDERING_PARAM": "order_by",
+    "SEARCH_PARAM": "q",
+    "TEST_REQUEST_DEFAULT_FORMAT": "json",
 }

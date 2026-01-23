@@ -17,10 +17,9 @@ ALLAUTH_HEADLESS_MIDDLEWARE = [
 ]
 
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
-ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*", "first_name*", "last_name*"]
-ACCOUNT_SIGNUP_FORM_CLASS = "baseapp_auth.allauth.account.forms.CustomSignupForm"
+ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+ACCOUNT_SIGNUP_FORM_CLASS = "baseapp_auth.allauth.account.forms.CustomAllauthSignupForm"
 ACCOUNT_AUTHENTICATION_METHOD = "email"
-ACCOUNT_SIGNUP_PASSWORD_ENTER_TWICE = True
 ACCOUNT_EMAIL_VERIFICATION = "none"
 ACCOUNT_ADAPTER = "baseapp_auth.allauth.account.adapter.AccountAdapter"
 
@@ -44,7 +43,7 @@ SIMPLE_JWT = {
     "TOKEN_REFRESH_SERIALIZER": "baseapp_auth.rest_framework.jwt.serializers.BaseJwtRefreshSerializer",
     "ALGORITHM": HEADLESS_JWT_ALGORITHM,
     "VERIFYING_KEY": HEADLESS_JWT_PUBLIC_KEY,
-    "SIGNING_KEY": None,
+    "SIGNING_KEY": HEADLESS_JWT_PRIVATE_KEY,
     "AUTH_HEADER_TYPES": (HEADLESS_JWT_AUTHORIZATION_HEADER_SCHEME,),
     "UPDATE_LAST_LOGIN": True,
     "USER_ID_CLAIM": "sub",
