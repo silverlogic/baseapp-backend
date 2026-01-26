@@ -166,6 +166,22 @@ class BaseChatRoomObjectType:
         except cls._meta.model.DoesNotExist:
             return None
 
+    @staticmethod
+    def get_other_participant(room, info):
+        current_profile = (
+            info.context.user.current_profile
+            if hasattr(info.context.user, "current_profile")
+            else (info.context.user.profile if hasattr(info.context.user, "profile") else None)
+        )
+
+        if not current_profile:
+            return None
+
+        if not room.participants.filter(profile_id=current_profile.pk).exists():
+            return None
+
+        return room.participants.exclude(profile_id=current_profile.pk).first()
+
     def resolve_all_messages(self, info, **kwargs):
         if self.is_group:
             profile = (
@@ -241,19 +257,7 @@ class BaseChatRoomObjectType:
         if self.is_group:
             return None
 
-        current_profile = (
-            info.context.user.current_profile
-            if hasattr(info.context.user, "current_profile")
-            else (info.context.user.profile if hasattr(info.context.user, "profile") else None)
-        )
-
-        if not current_profile:
-            return None
-
-        if not self.participants.filter(profile_id=current_profile.pk).exists():
-            return None
-
-        return self.participants.exclude(profile_id=current_profile.pk).first()
+        return BaseChatRoomObjectType.get_other_participant(self, info)
 
     def resolve_is_sole_admin(self, info, **kwargs):
         if not self.is_group:
@@ -280,6 +284,22 @@ class BaseChatRoomObjectType:
         ).count()
 
         return admin_count == 1
+
+    def resolve_title(self, info, **kwargs):
+        if self.is_group:
+            return self.title
+
+        other_participant = BaseChatRoomObjectType.get_other_participant(self, info)
+        if other_participant and other_participant.profile:
+            return other_participant.profile.name
+
+    def resolve_image(self, info, **kwargs):
+        if self.is_group:
+            return self.image
+
+        other_participant = BaseChatRoomObjectType.get_other_participant(self, info)
+        if other_participant and other_participant.profile:
+            return other_participant.profile.image
 
     class Meta:
         interfaces = (RelayNode,)
