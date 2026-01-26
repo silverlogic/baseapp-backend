@@ -1,7 +1,13 @@
 from math import floor
+from typing import Any, Dict
 
+from allauth.headless.tokens.strategies.jwt import (
+    JWTTokenStrategy as AllAuthJWTTokenStrategy,
+)
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.http import HttpRequest
+from django.utils.module_loading import import_string
 from django.utils.timezone import timedelta
 
 from baseapp_core.tokens import TokenGenerator
@@ -103,3 +109,34 @@ class ChangeExpiredPasswordTokenGenerator(TokenGenerator):
         raise ImproperlyConfigured(
             "BA_AUTH_CHANGE_EXPIRED_PASSWORD_TOKEN_EXPIRATION_TIME_DELTA must be a timedelta"
         )
+
+
+class AllAuthUserProfileJWTTokenStrategy(AllAuthJWTTokenStrategy):
+    """
+    AllAuth JWT token strategy that adds user profile data to the response meta field.
+
+    Extends the default response with user data from JWT_CLAIM_SERIALIZER_CLASS,
+    making profile information available in login/signup responses.
+    """
+
+    def create_access_token_payload(self, request: HttpRequest) -> Dict[str, Any] | None:
+        payload = super().create_access_token_payload(request)
+        if payload is None:
+            return None
+
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return payload
+
+        claim_serializer_class_path = getattr(settings, "JWT_CLAIM_SERIALIZER_CLASS", None)
+        if not claim_serializer_class_path:
+            return payload
+
+        try:
+            claim_serializer_class = import_string(claim_serializer_class_path)
+            user_data = claim_serializer_class(user).data
+            payload.update(user_data)
+        except Exception:
+            pass
+
+        return payload
