@@ -9,8 +9,8 @@ from baseapp_blocks.tests.factories import BlockFactory
 from baseapp_core.graphql.testing.fixtures import graphql_query
 from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.tests.factories import ProfileFactory
-from ..models import ChatRoomParticipant
 
+from ..models import ChatRoomParticipant
 from .factories import ChatRoomFactory, ChatRoomParticipantFactory, MessageFactory
 
 pytestmark = pytest.mark.django_db
