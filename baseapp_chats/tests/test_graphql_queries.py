@@ -10,6 +10,7 @@ from baseapp_core.graphql.testing.fixtures import graphql_query
 from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.tests.factories import ProfileFactory
 
+from ..models import ChatRoomParticipant
 from .factories import ChatRoomFactory, ChatRoomParticipantFactory, MessageFactory
 
 pytestmark = pytest.mark.django_db
@@ -89,6 +90,50 @@ ROOM_PARTICIPANTS_GRAPHQL = """
         }
     }
 """
+
+ROOM_TITLE_GRAPHQL = """
+        query GetRoom($roomId: ID!) {
+            chatRoom(id: $roomId) {
+                id
+                title
+            }
+        }
+    """
+
+ROOM_TITLE_AND_IMAGE_GRAPHQL = """
+        query GetRoom($roomId: ID!) {
+            chatRoom(id: $roomId) {
+                id
+                image(width: 100, height: 100) {
+                    url
+                }
+            }
+        }
+    """
+
+ROOM_OTHER_PARTICIPANT_GRAPHQL = """
+        query GetRoom($roomId: ID!) {
+            chatRoom(id: $roomId) {
+                id
+                isGroup
+                otherParticipant {
+                    id
+                    profile {
+                        name
+                    }
+                }
+            }
+        }
+    """
+
+ROOM_IS_SOLE_ADMIN_GRAPHQL = """
+        query GetRoom($roomId: ID!) {
+            chatRoom(id: $roomId) {
+                id
+                isSoleAdmin
+            }
+        }
+    """
 
 
 def test_user_can_list_rooms(graphql_user_client, django_user_client):
@@ -772,3 +817,473 @@ def test_group_chats_visible_to_all_participants_even_when_empty(
 
     content = response.json()
     assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 1
+
+
+def test_resolve_title_for_1on1_chat_returns_other_participant_name(django_client):
+    """
+    Test that resolve_title returns the other participant's profile name for 1-on-1 chats
+    """
+    user1 = UserFactory()
+    user2 = UserFactory()
+    user2.profile.name = "Batman"
+    user2.profile.save()
+
+    room = ChatRoomFactory(created_by=user1, is_group=False)
+    ChatRoomParticipantFactory(room=room, profile=user1.profile)
+    ChatRoomParticipantFactory(room=room, profile=user2.profile)
+
+    django_client.force_login(user1)
+    response = graphql_query(
+        ROOM_TITLE_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert content["data"]["chatRoom"]["title"] == "Batman"
+
+
+def test_resolve_title_for_group_chat_returns_group_title(django_client):
+    """
+    Test that resolve_title returns the group title for group chats
+    """
+    user1 = UserFactory()
+    user2 = UserFactory()
+
+    room = ChatRoomFactory(created_by=user1, is_group=True, title="Justice League")
+    ChatRoomParticipantFactory(room=room, profile=user1.profile)
+    ChatRoomParticipantFactory(room=room, profile=user2.profile)
+
+    django_client.force_login(user1)
+    response = graphql_query(
+        ROOM_TITLE_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert content["data"]["chatRoom"]["title"] == "Justice League"
+
+
+def test_resolve_title_returns_none_when_other_participant_has_no_profile(django_client):
+    """
+    Test that resolve_title returns None when other participant exists but has no profile
+    """
+    user1 = UserFactory()
+    user2 = UserFactory()
+
+    room = ChatRoomFactory(created_by=user1, is_group=False)
+    ChatRoomParticipantFactory(room=room, profile=user1.profile)
+    participant2 = ChatRoomParticipantFactory(room=room, profile=user2.profile)
+
+    # Remove the profile reference to simulate a participant without a profile
+    participant2.profile = None
+    participant2.save()
+
+    django_client.force_login(user1)
+    response = graphql_query(
+        ROOM_TITLE_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert content["data"]["chatRoom"]["title"] is None
+
+
+def test_resolve_image_for_1on1_chat_returns_other_participant_image(
+    django_client, image_djangofile
+):
+    """
+    Test that resolve_image returns the other participant's profile image for 1-on-1 chats
+    """
+    user1 = UserFactory()
+    user2 = UserFactory()
+    user2.profile.image = image_djangofile
+    user2.profile.save()
+
+    room = ChatRoomFactory(created_by=user1, is_group=False)
+    ChatRoomParticipantFactory(room=room, profile=user1.profile)
+    ChatRoomParticipantFactory(room=room, profile=user2.profile)
+
+    django_client.force_login(user1)
+    response = graphql_query(
+        ROOM_TITLE_AND_IMAGE_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert content["data"]["chatRoom"]["image"] is not None
+    assert content["data"]["chatRoom"]["image"]["url"] is not None
+    assert "100x100" in content["data"]["chatRoom"]["image"]["url"]
+
+
+def test_resolve_image_for_group_chat_returns_group_image(django_client, image_djangofile):
+    """
+    Test that resolve_image returns the group image for group chats
+    """
+    user1 = UserFactory()
+    user2 = UserFactory()
+
+    room = ChatRoomFactory(created_by=user1, is_group=True, image=image_djangofile)
+    ChatRoomParticipantFactory(room=room, profile=user1.profile)
+    ChatRoomParticipantFactory(room=room, profile=user2.profile)
+
+    django_client.force_login(user1)
+    response = graphql_query(
+        ROOM_TITLE_AND_IMAGE_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert content["data"]["chatRoom"]["image"] is not None
+    assert content["data"]["chatRoom"]["image"]["url"] is not None
+    assert "100x100" in content["data"]["chatRoom"]["image"]["url"]
+
+
+def test_resolve_image_returns_none_when_other_participant_has_no_image(django_client):
+    """
+    Test that resolve_image returns None when other participant has no profile image
+    """
+    user1 = UserFactory()
+    user2 = UserFactory()
+    # user2.profile.image is None by default
+
+    room = ChatRoomFactory(created_by=user1, is_group=False)
+    ChatRoomParticipantFactory(room=room, profile=user1.profile)
+    ChatRoomParticipantFactory(room=room, profile=user2.profile)
+
+    django_client.force_login(user1)
+    response = graphql_query(
+        ROOM_TITLE_AND_IMAGE_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert content["data"]["chatRoom"]["image"] is None
+
+
+def test_resolve_image_returns_none_when_other_participant_has_no_profile(django_client):
+    """
+    Test that resolve_image returns None when other participant exists but has no profile
+    """
+    user1 = UserFactory()
+    user2 = UserFactory()
+
+    room = ChatRoomFactory(created_by=user1, is_group=False)
+    ChatRoomParticipantFactory(room=room, profile=user1.profile)
+    participant2 = ChatRoomParticipantFactory(room=room, profile=user2.profile)
+
+    # Remove the profile reference to simulate a participant without a profile
+    participant2.profile = None
+    participant2.save()
+
+    django_client.force_login(user1)
+    response = graphql_query(
+        ROOM_TITLE_AND_IMAGE_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert content["data"]["chatRoom"]["image"] is None
+
+
+def test_resolve_other_participant_for_1on1_chat_returns_other_participant(django_client):
+    """
+    Test that resolve_other_participant returns the other participant for 1-on-1 chats
+    """
+    user1 = UserFactory()
+    user2 = UserFactory()
+    user2.profile.name = "Robin"
+    user2.profile.save()
+
+    room = ChatRoomFactory(created_by=user1, is_group=False)
+    ChatRoomParticipantFactory(room=room, profile=user1.profile)
+    participant2 = ChatRoomParticipantFactory(room=room, profile=user2.profile)
+
+    django_client.force_login(user1)
+    response = graphql_query(
+        ROOM_OTHER_PARTICIPANT_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert content["data"]["chatRoom"]["otherParticipant"] is not None
+    assert content["data"]["chatRoom"]["otherParticipant"]["id"] == participant2.relay_id
+    assert content["data"]["chatRoom"]["otherParticipant"]["profile"]["name"] == "Robin"
+
+
+def test_resolve_other_participant_for_group_chat_returns_none(django_client):
+    """
+    Test that resolve_other_participant returns None for group chats
+    """
+    user1 = UserFactory()
+    user2 = UserFactory()
+    user3 = UserFactory()
+
+    room = ChatRoomFactory(created_by=user1, is_group=True, title="Batcave")
+    ChatRoomParticipantFactory(room=room, profile=user1.profile)
+    ChatRoomParticipantFactory(room=room, profile=user2.profile)
+    ChatRoomParticipantFactory(room=room, profile=user3.profile)
+
+    django_client.force_login(user1)
+    response = graphql_query(
+        ROOM_OTHER_PARTICIPANT_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert content["data"]["chatRoom"]["isGroup"] is True
+    assert content["data"]["chatRoom"]["otherParticipant"] is None
+
+
+def test_resolve_other_participant_returns_none_when_user_not_participant(django_client):
+    """
+    Test that resolve_other_participant returns None when current user is not a participant
+    """
+    user1 = UserFactory()
+    user2 = UserFactory()
+    user3 = UserFactory()  # Not a participant
+
+    room = ChatRoomFactory(created_by=user1, is_group=False)
+    ChatRoomParticipantFactory(room=room, profile=user1.profile)
+    ChatRoomParticipantFactory(room=room, profile=user2.profile)
+
+    django_client.force_login(user3)
+    response = graphql_query(
+        ROOM_OTHER_PARTICIPANT_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    # User3 doesn't have permission to view the room
+    assert content["data"]["chatRoom"] is None
+
+
+def test_resolve_other_participant_excludes_current_user(django_client):
+    """
+    Test that resolve_other_participant properly excludes the current user's profile
+    """
+    user1 = UserFactory()
+    user1.profile.name = "Alfred"
+    user1.profile.save()
+
+    user2 = UserFactory()
+    user2.profile.name = "Bruce Wayne"
+    user2.profile.save()
+
+    room = ChatRoomFactory(created_by=user1, is_group=False)
+    ChatRoomParticipantFactory(room=room, profile=user1.profile)
+    ChatRoomParticipantFactory(room=room, profile=user2.profile)
+
+    # Login as user1
+    django_client.force_login(user1)
+    response = graphql_query(
+        ROOM_OTHER_PARTICIPANT_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert content["data"]["chatRoom"]["otherParticipant"]["profile"]["name"] == "Bruce Wayne"
+
+    # Login as user2
+    django_client.force_login(user2)
+    response = graphql_query(
+        ROOM_OTHER_PARTICIPANT_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert content["data"]["chatRoom"]["otherParticipant"]["profile"]["name"] == "Alfred"
+
+
+def test_resolve_is_sole_admin_returns_false_for_1on1_chat(django_client):
+    """
+    Test that resolve_is_sole_admin returns False for 1-on-1 chats
+    """
+    user1 = UserFactory()
+    user2 = UserFactory()
+
+    room = ChatRoomFactory(created_by=user1, is_group=False)
+    ChatRoomParticipantFactory(
+        room=room, profile=user1.profile, role=ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN
+    )
+    ChatRoomParticipantFactory(room=room, profile=user2.profile)
+
+    django_client.force_login(user1)
+    response = graphql_query(
+        ROOM_IS_SOLE_ADMIN_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert content["data"]["chatRoom"]["isSoleAdmin"] is False
+
+
+def test_resolve_is_sole_admin_returns_true_when_user_is_only_admin(django_client):
+    """
+    Test that resolve_is_sole_admin returns True when current user is the only admin
+    """
+    user1 = UserFactory()
+    user2 = UserFactory()
+    user3 = UserFactory()
+
+    room = ChatRoomFactory(created_by=user1, is_group=True, title="Wayne Manor")
+    ChatRoomParticipantFactory(
+        room=room, profile=user1.profile, role=ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN
+    )
+    ChatRoomParticipantFactory(
+        room=room, profile=user2.profile, role=ChatRoomParticipant.ChatRoomParticipantRoles.MEMBER
+    )
+    ChatRoomParticipantFactory(
+        room=room, profile=user3.profile, role=ChatRoomParticipant.ChatRoomParticipantRoles.MEMBER
+    )
+
+    django_client.force_login(user1)
+    response = graphql_query(
+        ROOM_IS_SOLE_ADMIN_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert content["data"]["chatRoom"]["isSoleAdmin"] is True
+
+
+def test_resolve_is_sole_admin_returns_false_when_multiple_admins(django_client):
+    """
+    Test that resolve_is_sole_admin returns False when there are multiple admins
+    """
+    user1 = UserFactory()
+    user2 = UserFactory()
+    user3 = UserFactory()
+
+    room = ChatRoomFactory(created_by=user1, is_group=True, title="Justice League")
+    ChatRoomParticipantFactory(
+        room=room, profile=user1.profile, role=ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN
+    )
+    ChatRoomParticipantFactory(
+        room=room, profile=user2.profile, role=ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN
+    )
+    ChatRoomParticipantFactory(
+        room=room, profile=user3.profile, role=ChatRoomParticipant.ChatRoomParticipantRoles.MEMBER
+    )
+
+    django_client.force_login(user1)
+    response = graphql_query(
+        ROOM_IS_SOLE_ADMIN_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert content["data"]["chatRoom"]["isSoleAdmin"] is False
+
+
+def test_resolve_is_sole_admin_returns_false_when_user_is_not_admin(django_client):
+    """
+    Test that resolve_is_sole_admin returns False when current user is not an admin
+    """
+    user1 = UserFactory()
+    user2 = UserFactory()
+
+    room = ChatRoomFactory(created_by=user1, is_group=True, title="Arkham Asylum")
+    ChatRoomParticipantFactory(
+        room=room, profile=user1.profile, role=ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN
+    )
+    ChatRoomParticipantFactory(
+        room=room, profile=user2.profile, role=ChatRoomParticipant.ChatRoomParticipantRoles.MEMBER
+    )
+
+    # Login as user2 who is a member, not admin
+    django_client.force_login(user2)
+    response = graphql_query(
+        ROOM_IS_SOLE_ADMIN_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert content["data"]["chatRoom"]["isSoleAdmin"] is False
+
+
+def test_resolve_is_sole_admin_returns_false_when_user_not_participant(django_client):
+    """
+    Test that resolve_is_sole_admin returns False when current user is not a participant
+    """
+    user1 = UserFactory()
+    user2 = UserFactory()
+    user3 = UserFactory()  # Not a participant
+
+    room = ChatRoomFactory(created_by=user1, is_group=True, title="Secret Hideout")
+    ChatRoomParticipantFactory(
+        room=room, profile=user1.profile, role=ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN
+    )
+    ChatRoomParticipantFactory(
+        room=room, profile=user2.profile, role=ChatRoomParticipant.ChatRoomParticipantRoles.MEMBER
+    )
+
+    django_client.force_login(user3)
+    response = graphql_query(
+        ROOM_IS_SOLE_ADMIN_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    # User3 doesn't have permission to view the room
+    assert content["data"]["chatRoom"] is None
+
+
+def test_resolve_is_sole_admin_when_admin_leaves_and_another_becomes_sole_admin(django_client):
+    """
+    Test that resolve_is_sole_admin correctly reflects when one admin leaves
+    """
+    user1 = UserFactory()
+    user2 = UserFactory()
+    user3 = UserFactory()
+
+    room = ChatRoomFactory(created_by=user1, is_group=True, title="Batcave HQ")
+    participant1 = ChatRoomParticipantFactory(
+        room=room, profile=user1.profile, role=ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN
+    )
+    ChatRoomParticipantFactory(
+        room=room, profile=user2.profile, role=ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN
+    )
+    ChatRoomParticipantFactory(
+        room=room, profile=user3.profile, role=ChatRoomParticipant.ChatRoomParticipantRoles.MEMBER
+    )
+
+    # With 2 admins, user2 is not the sole admin
+    django_client.force_login(user2)
+    response = graphql_query(
+        ROOM_IS_SOLE_ADMIN_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert content["data"]["chatRoom"]["isSoleAdmin"] is False
+
+    # User1 leaves (or is removed)
+    participant1.delete()
+
+    # Now user2 is the sole admin
+    response = graphql_query(
+        ROOM_IS_SOLE_ADMIN_GRAPHQL,
+        variables={"roomId": room.relay_id},
+        client=django_client,
+    )
+
+    content = response.json()
+    assert content["data"]["chatRoom"]["isSoleAdmin"] is True
