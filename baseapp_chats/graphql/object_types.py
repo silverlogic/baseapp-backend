@@ -177,9 +177,6 @@ class BaseChatRoomObjectType:
         if not current_profile:
             return None
 
-        if not room.participants.filter(profile_id=current_profile.pk).exists():
-            return None
-
         return room.participants.exclude(profile_id=current_profile.pk).first()
 
     def resolve_all_messages(self, info, **kwargs):
