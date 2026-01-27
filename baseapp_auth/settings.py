@@ -10,6 +10,8 @@ ALLAUTH_HEADLESS_INSTALLED_APPS = [
     "allauth.account",
     "allauth.headless",
     "rest_framework_simplejwt.token_blacklist",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
 ]
 
 ALLAUTH_HEADLESS_MIDDLEWARE = [
@@ -28,6 +30,7 @@ ALLAUTH_ADMIN_SOCIAL_LOGIN_ENABLED = False
 ALLAUTH_ADMIN_LOCALE_SELECTOR_ENABLED = False
 
 HEADLESS_TOKEN_STRATEGY = "baseapp_auth.tokens.AllAuthUserProfileJWTTokenStrategy"
+HEADLESS_SERVE_SPECIFICATION = env("HEADLESS_SERVE_SPECIFICATION", default=False, required=False)
 
 HEADLESS_JWT_PRIVATE_KEY = env("HEADLESS_JWT_PRIVATE_KEY")
 HEADLESS_JWT_PUBLIC_KEY = env("HEADLESS_JWT_PUBLIC_KEY")
@@ -50,6 +53,25 @@ SIMPLE_JWT = {
 }
 
 JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
+
+# Social Account Configuration
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
+SOCIALACCOUNT_EMAIL_REQUIRED = True
+SOCIALACCOUNT_QUERY_EMAIL = True
+
+# Google Provider Configuration
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+        # For AllAuth Headless with provider/token endpoint,
+        # we don't use PKCE as we're sending id_token directly
+        "OAUTH_PKCE_ENABLED": False,
+        # Enable token verification
+        "VERIFIED_EMAIL": True,
+    }
+}
 
 GRAPHQL_WS_CONSUMER = "baseapp_core.graphql.consumers.GraphqlWsJWTAuthenticatedConsumer"
 
