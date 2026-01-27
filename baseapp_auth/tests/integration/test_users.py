@@ -423,7 +423,7 @@ class TestUsersChangePassword(ApiMixin):
         assert user.check_password(data["new_password"])
 
     def test_current_password_must_match(self, client, data):
-        user = UserFactory(password="not current password")
+        user = UserFactory(password="not current password")  # NOSONAR
         client.force_authenticate(user)
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
