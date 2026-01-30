@@ -1,6 +1,12 @@
 from celery.schedules import crontab
 from django.utils.translation import gettext_lazy as _
 
+from baseapp_auth.settings import *  # noqa
+from baseapp_auth.settings import (
+    ALLAUTH_AUTHENTICATION_BACKENDS,
+    ALLAUTH_HEADLESS_INSTALLED_APPS,
+    ALLAUTH_HEADLESS_MIDDLEWARE,
+)
 from baseapp_core.tests.settings import *  # noqa
 from baseapp_wagtail.settings import *  # noqa
 from baseapp_wagtail.settings import (
@@ -11,6 +17,7 @@ from baseapp_wagtail.settings import (
 
 # Application definition
 INSTALLED_APPS += [
+    *ALLAUTH_HEADLESS_INSTALLED_APPS,
     "channels",
     "graphene_django",
     "notifications",
@@ -65,6 +72,7 @@ INSTALLED_APPS += [
 
 MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")
 MIDDLEWARE += [
+    *ALLAUTH_HEADLESS_MIDDLEWARE,
     "baseapp_profiles.middleware.CurrentProfileMiddleware",
     "baseapp_core.middleware.HistoryMiddleware",
     *WAGTAIL_MIDDLEWARE,
@@ -113,6 +121,7 @@ CLOUDFLARE_VIDEO_AUTOMATIC_TRIM = True
 CLOUDFLARE_VIDEO_TRIM_DURATION_SECONDS = 10
 
 AUTHENTICATION_BACKENDS = [
+    *ALLAUTH_AUTHENTICATION_BACKENDS,
     "django.contrib.auth.backends.ModelBackend",
     "baseapp_auth.permissions.UsersPermissionsBackend",
     "baseapp_profiles.permissions.ProfilesPermissionsBackend",
@@ -283,13 +292,6 @@ if SOCIAL_AUTH_LINKEDIN_OAUTH2_KEY and SOCIAL_AUTH_LINKEDIN_OAUTH2_SECRET:
 if SOCIAL_AUTH_GOOGLE_OAUTH2_KEY and SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET:
     AUTHENTICATION_BACKENDS.append("social_core.backends.google.GoogleOAuth2")
 
-# JWT Authentication
-SIMPLE_JWT = {
-    # It will work instead of the default serializer(TokenObtainPairSerializer).
-    "TOKEN_OBTAIN_SERIALIZER": "testproject.users.rest_framework.jwt.serializers.MyTokenObtainPairSerializer",
-    # ...
-}
-JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
 
 # Sites
 FRONT_CONFIRM_EMAIL_URL = FRONT_URL + "/confirm-email/{id}/{token}"
@@ -316,3 +318,32 @@ BRANCHIO_KEY = env("BRANCHIO_KEY", "N/A")
 
 # AUTOFIELD
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+
+# AllAuth
+SITE_ID = 1
+ACCOUNT_LOGOUT_REDIRECT_URL = "account_login"
+ACCOUNT_LOGIN_REDIRECT_URL = "admin:index"
+ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL = "account_change_password_done"
+
+HEADLESS_FRONTEND_URLS = {
+    "account_confirm_email": FRONT_CONFIRM_EMAIL_URL.replace("{id}", "{key}").replace(
+        "/{token}", ""
+    ),
+    "account_reset_password_from_key": FRONT_FORGOT_PASSWORD_URL.replace("{token}", "{key}"),
+    "account_signup": FRONT_URL + "/signup",
+}
+
+# Rest Framework
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "allauth.headless.contrib.rest_framework.authentication.JWTTokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+        "baseapp_api_key.rest_framework.authentication.APIKeyAuthentication",
+    ),
+    "DEFAULT_PAGINATION_CLASS": "baseapp_core.rest_framework.pagination.DefaultPageNumberPagination",
+    "PAGE_SIZE": 30,
+    "DEFAULT_VERSIONING_CLASS": "rest_framework.versioning.NamespaceVersioning",
+    "ORDERING_PARAM": "order_by",
+    "SEARCH_PARAM": "q",
+    "TEST_REQUEST_DEFAULT_FORMAT": "json",
+}

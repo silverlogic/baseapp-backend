@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
@@ -17,7 +18,8 @@ class CustomClaimRefreshToken(RefreshToken):
     def access_token(self) -> AccessToken:
         access = super().access_token
 
-        user = User.objects.get(id=access["user_id"])
+        user_id_claim = getattr(settings, "SIMPLE_JWT", {}).get("USER_ID_CLAIM", "user_id")
+        user = User.objects.get(id=access[user_id_claim])
         user_data = self.claim_serializer_class(user).data
 
         for key, value in user_data.items():
