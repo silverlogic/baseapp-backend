@@ -51,6 +51,14 @@ SIMPLE_JWT = {
 
 JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
 
-GRAPHQL_WS_CONSUMER = "baseapp_core.graphql.consumers.GraphqlWsJWTAuthenticatedConsumer"
+# List of Django app labels for which permissions should be hidden/ignored.
+# Expected format: a list of strings, each string being an app label as used in INSTALLED_APPS.
+# Example:
+#     PERMISSIONS_HIDE_APPS = ["auth", "contenttypes"]
+PERMISSIONS_HIDE_APPS = []
 
-GRAPHQL_JWT_AUTHENTICATION_MIDDLEWARE = "baseapp_core.graphql.middlewares.JWTAuthentication"
+# List of fully qualified model names for which permissions should be hidden/ignored.
+# Expected format: a list of strings in the form "<app_label>.<model_name>" (lowercase model name).
+# Example:
+#     PERMISSIONS_HIDE_MODELS = ["auth.permission", "contenttypes.contenttype"]
+PERMISSIONS_HIDE_MODELS = []
