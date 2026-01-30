@@ -9,7 +9,6 @@ ALLAUTH_HEADLESS_INSTALLED_APPS = [
     "allauth",
     "allauth.account",
     "allauth.headless",
-    "rest_framework_simplejwt.token_blacklist",
 ]
 
 ALLAUTH_HEADLESS_MIDDLEWARE = [
@@ -50,6 +49,10 @@ SIMPLE_JWT = {
 }
 
 JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
+
+ALLAUTH_CORS_HEADERS = [
+    "X-Session-Token",
+]
 
 # List of Django app labels for which permissions should be hidden/ignored.
 # Expected format: a list of strings, each string being an app label as used in INSTALLED_APPS.
