@@ -16,6 +16,7 @@ from baseapp_chats.graphql.subscriptions import (
 )
 from baseapp_chats.utils import (
     CONTENT_LINKED_PROFILE_ACTOR,
+    CONTENT_LINKED_PROFILE_TARGET,
     send_message,
     send_new_chat_message_notification,
 )
@@ -385,6 +386,103 @@ class ChatRoomUpdate(RelayMutation):
             ),
             removed_participants=removed_participants,
             added_participants=created_participants,
+        )
+
+
+class ChatRoomToggleAdmin(RelayMutation):
+    participant = graphene.Field(ChatRoomParticipantObjectType._meta.connection.Edge)
+
+    class Input:
+        target_participant_id = graphene.ID(required=True)
+        profile_id = graphene.ID(required=True)
+        room_id = graphene.ID(required=True)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(
+        cls,
+        root,
+        info,
+        target_participant_id,
+        profile_id,
+        room_id,
+    ):
+        room = get_obj_from_relay_id(info, room_id)
+        profile = get_obj_from_relay_id(info, profile_id)
+
+        if not info.context.user.has_perm(
+            "baseapp_chats.modify_chatroom",
+            {
+                "profile": profile,
+                "room": room,
+            },
+        ):
+            return ChatRoomToggleAdmin(
+                errors=[
+                    ErrorType(
+                        field="room_id",
+                        messages=[_("You don't have permission to update this room")],
+                    )
+                ]
+            )
+
+        target_participant_pk = get_pk_from_relay_id(target_participant_id)
+
+        target_participant = ChatRoomParticipant.objects.filter(
+            pk=target_participant_pk,
+            room=room,
+        ).first()
+        if not target_participant:
+            return ChatRoomToggleAdmin(
+                errors=[
+                    ErrorType(
+                        field="target_participant_id",
+                        messages=[_("The target participant is not part of the room")],
+                    )
+                ]
+            )
+
+        participant_is_admin = target_participant.role == ChatRoomParticipantRoles.ADMIN
+
+        with transaction.atomic():
+            if not participant_is_admin:
+                target_participant.role = ChatRoomParticipantRoles.ADMIN
+                target_participant.save(update_fields=["role"])
+            elif participant_is_admin:
+                # Ensure at least one admin remains
+                admin_count = ChatRoomParticipant.objects.filter(
+                    room=room, role=ChatRoomParticipantRoles.ADMIN
+                ).count()
+                if admin_count <= 1:
+                    return ChatRoomToggleAdmin(
+                        errors=[
+                            ErrorType(
+                                field="target_participant_id",
+                                messages=[
+                                    _("Cannot remove admin role; at least one admin required.")
+                                ],
+                            )
+                        ]
+                    )
+                target_participant.role = ChatRoomParticipantRoles.MEMBER
+                target_participant.save(update_fields=["role"])
+
+        if not participant_is_admin:
+            send_message(
+                room=room,
+                profile=None,
+                user=None,
+                message_type=Message.MessageType.SYSTEM_GENERATED,
+                content=CONTENT_LINKED_PROFILE_TARGET + " now an admin",
+                content_linked_profile_actor=profile,
+                content_linked_profile_target=target_participant.profile,
+                extra_data={"include_verb": True},
+            )
+
+        return ChatRoomToggleAdmin(
+            participant=ChatRoomParticipantObjectType._meta.connection.Edge(
+                node=target_participant,
+            ),
         )
 
 
@@ -800,3 +898,4 @@ class ChatsMutations(object):
     chat_room_read_messages = ChatRoomReadMessages.Field()
     chat_room_unread = ChatRoomUnread.Field()
     chat_room_archive = ChatRoomArchive.Field()
+    chat_room_toggle_admin = ChatRoomToggleAdmin.Field()
