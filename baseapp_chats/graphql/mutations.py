@@ -6,6 +6,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from graphene_django.types import ErrorType
+from graphene_file_upload.scalars import Upload
 from rest_framework import serializers
 
 from baseapp_chats.graphql.subscriptions import (
@@ -206,6 +207,7 @@ class ChatRoomUpdate(RelayMutation):
         room_id = graphene.ID(required=True)
         profile_id = graphene.ID(required=True)
         title = graphene.String(required=False)
+        image = Upload(required=False)
         delete_image = graphene.Boolean(default_value=False)
         add_participants = graphene.List(graphene.ID, default_value=[])
         remove_participants = graphene.List(graphene.ID, default_value=[])
@@ -261,7 +263,7 @@ class ChatRoomUpdate(RelayMutation):
         )
 
         title = input.get("title", None)
-        image = info.context.FILES.get("image", None)
+        image = info.context.FILES.get("image", None) or input.get("image", None)
 
         if not room or not getattr(room, "is_group", False):
             return ChatRoomUpdate(

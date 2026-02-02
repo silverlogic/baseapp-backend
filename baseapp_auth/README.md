@@ -55,7 +55,7 @@ The implementation follows OAuth2-style token flow:
 
 - Access tokens are short-lived (default: 5 minutes) and used for API authentication
 - Refresh tokens are long-lived (default: 1 day) and used to obtain new access tokens
-- Tokens are blacklisted on logout (stateful validation enabled)
+- Tokens are invalidated on logout via session deletion (stateful validation enabled)
 - When refresh tokens are rotated, old tokens are invalidated
 
 **Configuration:**

@@ -74,5 +74,18 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 GRAPHQL_WS_CONSUMER = "baseapp_core.graphql.consumers.GraphqlWsJWTAuthenticatedConsumer"
+ALLAUTH_CORS_HEADERS = [
+    "X-Session-Token",
+]
 
-GRAPHQL_JWT_AUTHENTICATION_MIDDLEWARE = "baseapp_core.graphql.middlewares.JWTAuthentication"
+# List of Django app labels for which permissions should be hidden/ignored.
+# Expected format: a list of strings, each string being an app label as used in INSTALLED_APPS.
+# Example:
+#     PERMISSIONS_HIDE_APPS = ["auth", "contenttypes"]
+PERMISSIONS_HIDE_APPS = []
+
+# List of fully qualified model names for which permissions should be hidden/ignored.
+# Expected format: a list of strings in the form "<app_label>.<model_name>" (lowercase model name).
+# Example:
+#     PERMISSIONS_HIDE_MODELS = ["auth.permission", "contenttypes.contenttype"]
+PERMISSIONS_HIDE_MODELS = []

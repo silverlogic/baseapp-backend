@@ -50,7 +50,7 @@ AUTHENTICATION_BACKENDS = [
 
 This will automatically configure all allauth settings including:
 
-- Required apps: `django.contrib.sites`, `allauth`, `allauth.account`, `allauth.headless`, `rest_framework_simplejwt.token_blacklist`
+- Required apps: `django.contrib.sites`, `allauth`, `allauth.account`, `allauth.headless`
 - Required middleware: `allauth.account.middleware.AccountMiddleware`
 - Required authentication backend: `allauth.account.auth_backends.AuthenticationBackend`
 - Account settings: authentication method, email verification, signup configuration

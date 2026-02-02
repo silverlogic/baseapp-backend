@@ -4,14 +4,15 @@ from allauth.headless.contrib.rest_framework.authentication import (
 
 
 class AllauthJWTTokenAuthentication(JWTTokenAuthentication):
-    authenticated = False
-
     def resolve(self, next, root, info, **kwargs):
-        if not self.authenticated:
-            auth = self.authenticate(info.context)
+        context = info.context
+
+        if not getattr(context, "_allauth_jwt_checked", False):
+            auth = self.authenticate(context)
             if auth:
-                user = auth[0]
+                user, _ = auth
                 if user and user.is_authenticated:
-                    info.context.user = user
-            self.authenticated = True
+                    context.user = user
+            context._allauth_jwt_checked = True
+
         return next(root, info, **kwargs)
