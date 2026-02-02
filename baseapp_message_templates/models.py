@@ -1,6 +1,7 @@
 from typing import List
 
-from ckeditor.fields import RichTextField
+from django_prose_editor.fields import ProseEditorField
+
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
@@ -36,14 +37,18 @@ class EmailTemplate(TimeStampedModel):
     subject = models.CharField(
         max_length=255, blank=True, null=True, help_text="Email subject line"
     )
-    html_content = RichTextField(
+    html_content = ProseEditorField(
         blank=True,
         help_text="Text that will be inputted into Template html version",
         null=True,
+        extensions=settings.PROSE_EDITOR_EXTENSIONS,
+        sanitize=settings.PROSE_EDITOR_SANITIZE,
     )
-    plain_text_content = RichTextField(
+    plain_text_content = ProseEditorField(
         blank=True,
         help_text="Text that will be inputted into Template plain text version",
+        extensions=settings.PROSE_EDITOR_EXTENSIONS,
+        sanitize=settings.PROSE_EDITOR_SANITIZE,
     )
 
     class Meta:

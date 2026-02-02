@@ -15,6 +15,7 @@ class EmailTemplateAdmin(admin.ModelAdmin):
     list_display = ("id", "name")
     inlines = [AttachmentsInline]
     readonly_fields = ("raw_html",)
+    change_form_template = "admin/baseapp_message_templates/emailtemplate/change_form.html"
     fieldsets = (
         (
             None,
