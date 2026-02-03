@@ -8,6 +8,7 @@ from django.db import migrations, models
 
 from baseapp_message_templates.utils import random_name_in
 
+
 class Migration(migrations.Migration):
     initial = True
 
