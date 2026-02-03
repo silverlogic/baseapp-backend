@@ -60,15 +60,52 @@ Docs:
 - https://django-prose-editor.readthedocs.io/en/latest/configuration.html
 - https://django-prose-editor.readthedocs.io/en/stable/sanitization.html
 
-### Images
+### Images (Prose ImageDialog)
 
 CKEditor includes a built-in image dialog. Prose does **not** ship an image
-extension in its default extension list, so there is no built-in image modal.
-If you need an image dialog with width/height/alt/etc, create a custom
-extension/preset and add the corresponding sanitization rules. See:
+dialog by default, so this package includes a small custom image extension
+(`ImageDialog`) that adds an image button to the toolbar.
+
+**How to use it**
+
+1. Ensure Prose is the selected editor:
+   ```py
+   MESSAGE_TEMPLATES_EDITOR = "prose"
+   ```
+2. Make sure the extension is enabled:
+   ```py
+   PROSE_EDITOR_EXTENSIONS = {
+       # ...
+       "ImageDialog": True,
+   }
+   ```
+3. Make sure the custom extension JS is registered:
+   ```py
+   DJANGO_PROSE_EDITOR_EXTENSIONS = [
+       {
+           "js": ["baseapp_message_templates/prose/image_dialog.js"],
+           "extensions": {
+                "ImageDialog": html_tags(
+                    tags=["img"]: [
+                        "src",
+                        "alt",
+                        # ...
+                    ]
+                )
+            },
+       },
+   ]
+   ```
+
+**Sanitization**
+
+The `ImageDialog` extension also adds a sanitization allowlist for common
+`<img>` attributes. If you need extra attributes, update the allowlist in
+`DJANGO_PROSE_EDITOR_EXTENSIONS`.
 
 - https://django-prose-editor.readthedocs.io/en/latest/configuration.html
 - https://django-prose-editor.readthedocs.io/en/latest/custom_extensions.html
+
 
 ## Configure template settings
 
