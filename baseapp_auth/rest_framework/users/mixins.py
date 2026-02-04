@@ -1,4 +1,5 @@
 from django.contrib.auth.models import Permission
+from django.utils.translation import gettext_lazy as _
 from rest_framework import response
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -34,13 +35,13 @@ class PermissionsActionMixin:
 
         try:
             perms = [normalize_permission(p, instance) for p in raw_perms]
-        except Exception:
-            raise ValidationError({"perm": "Invalid permission format."})
+        except (AttributeError, TypeError) as err:
+            raise ValidationError({"perm": _("Invalid permission format.")}) from err
 
         for perm in perms:
             if "." not in perm:
                 raise ValidationError(
-                    {"perm": "Invalid permission format. Expected app_label.codename."}
+                    {"perm": _("Invalid permission format. Expected app_label.codename.")}
                 )
 
         if perms:

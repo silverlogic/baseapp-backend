@@ -125,35 +125,28 @@ class UsersViewSet(
         user = request.user
 
         if request.method == "GET":
-            raw_perms = request.query_params.getlist("perm")
+            perm = request.query_params.get("perm")
         else:
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
+            perm = serializer.validated_data["perm"]
 
-            raw = serializer.validated_data.get("perm", [])
-            raw_perms = raw if isinstance(raw, list) else [raw]
+        if perm:
+            try:
+                perm = normalize_permission(perm, user.__class__)
+            except (AttributeError, TypeError) as err:
+                raise ValidationError({"perm": _("Invalid permission format.")}) from err
 
-        try:
-            perms = [normalize_permission(p, user.__class__) for p in raw_perms]
-        except Exception:
-            raise ValidationError({"perm": "Invalid permission format."})
-
-        for perm in perms:
             if "." not in perm:
                 raise ValidationError(
-                    {"perm": "Invalid permission format. Expected app_label.codename."}
+                    {"perm": _("Invalid permission format. Expected app_label.codename.")}
                 )
 
-        if perms:
-            permissions_map = {perm: user.has_perm(perm) for perm in sorted(perms)}
+            return response.Response({"permissions": {perm: user.has_perm(perm)}})
 
-            return response.Response({"permissions": permissions_map})
-
-        raw_all_perms = user.get_all_permissions()
-
+        raw_perms = user.get_all_permissions()
         permissions_map = {
-            normalize_permission(perm, user.__class__): user.has_perm(perm)
-            for perm in sorted(raw_all_perms)
+            normalize_permission(p, user.__class__): user.has_perm(p) for p in sorted(raw_perms)
         }
 
         return response.Response({"permissions": permissions_map})
