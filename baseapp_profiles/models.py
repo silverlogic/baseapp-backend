@@ -222,6 +222,7 @@ class AbstractProfileUserRole(RelayModel, models.Model):
         null=True,
         blank=True,
     )
+    email = models.EmailField(_("email"), null=True, blank=True)
     profile = models.ForeignKey(
         swapper.get_model_name("baseapp_profiles", "Profile"),
         related_name="members",
@@ -230,7 +231,7 @@ class AbstractProfileUserRole(RelayModel, models.Model):
     )
     role = models.IntegerField(choices=ProfileRoles.choices, default=ProfileRoles.MANAGER)
     status = models.IntegerField(
-        choices=ProfileRoleStatus.choices, default=ProfileRoleStatus.PENDING
+        choices=ProfileRoleStatus.choices, default=ProfileRoleStatus.INACTIVE
     )
 
     invited_email = models.EmailField(

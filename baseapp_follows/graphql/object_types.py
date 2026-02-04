@@ -1,9 +1,9 @@
 import django_filters
 import graphene_django_optimizer as gql_optimizer
 import swapper
-from graphene import relay
 
 from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import Node as RelayNode
 
 Follow = swapper.load_model("baseapp_follows", "Follow")
 
@@ -18,7 +18,7 @@ class BaseFollowObjectType:
     class Meta:
         model = Follow
         fields = "__all__"
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         filterset_class = FollowsFilter
 
 

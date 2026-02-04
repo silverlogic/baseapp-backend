@@ -2,15 +2,12 @@ import graphene
 import swapper
 from django.apps import apps
 from django.db.models import Q
-from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
 
 from baseapp_auth.graphql import PermissionsInterface
-from baseapp_core.graphql import (
-    DjangoObjectType,
-    ThumbnailField,
-    get_object_type_for_model,
-)
+from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import Node as RelayNode
+from baseapp_core.graphql import ThumbnailField, get_object_type_for_model
 from baseapp_pages.meta import AbstractMetadataObjectType
 
 from .filters import MemberFilter, ProfileFilter
@@ -40,13 +37,15 @@ class BaseProfileUserRoleObjectType:
 
     class Meta:
         model = ProfileUserRole
-        interfaces = [relay.Node]
+        interfaces = [RelayNode]
         fields = [
             "id",
             "pk",
             "user",
             "role",
             "status",
+            "created",
+            "modified",
             "invited_email",
             "invited_at",
             "invitation_expires_at",
@@ -84,11 +83,11 @@ class ProfileUserRoleObjectType(DjangoObjectType, BaseProfileUserRoleObjectType)
         model = ProfileUserRole
 
 
-class ProfileInterface(relay.Node):
+class ProfileInterface(RelayNode):
     profile = graphene.Field(get_object_type_for_model(Profile))
 
 
-class ProfilesInterface(relay.Node):
+class ProfilesInterface(RelayNode):
     profiles = DjangoFilterConnectionField(lambda: ProfileObjectType)
 
     def resolve_profiles(self, info, **kwargs):
@@ -117,7 +116,7 @@ class ProfileMetadata(AbstractMetadataObjectType):
         return self.instance.image
 
 
-interfaces = [relay.Node, PermissionsInterface]
+interfaces = [RelayNode, PermissionsInterface]
 inheritances = tuple()
 
 if apps.is_installed("baseapp_pages"):
