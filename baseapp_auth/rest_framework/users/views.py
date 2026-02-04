@@ -12,11 +12,11 @@ from rest_framework import (
     status,
     viewsets,
 )
-from rest_framework_nested.viewsets import NestedViewSetMixin
 from rest_framework.exceptions import ValidationError
+from rest_framework_nested.viewsets import NestedViewSetMixin
 
-from baseapp_core.rest_framework.decorators import action
 from baseapp_auth.utils.normalize_permission import normalize_permission
+from baseapp_core.rest_framework.decorators import action
 
 User = get_user_model()
 
@@ -24,6 +24,7 @@ from django.utils.translation import gettext_lazy as _
 
 from baseapp_core.rest_framework.mixins import PublicIdLookupMixin
 
+from .mixins import PermissionsActionMixin
 from .parsers import SafeJSONParser
 from .serializers import (
     ChangePasswordSerializer,
@@ -31,7 +32,6 @@ from .serializers import (
     UserPermissionSerializer,
     UserSerializer,
 )
-from .mixins import PermissionsActionMixin
 
 
 class UpdateSelfPermission(permissions.BasePermission):
@@ -115,7 +115,12 @@ class UsersViewSet(
             user.anonymize_and_delete()
         return response.Response(data={}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["get", "post"], serializer_class=UserPermissionSerializer, url_path="me/permissions")
+    @action(
+        detail=False,
+        methods=["get", "post"],
+        serializer_class=UserPermissionSerializer,
+        url_path="me/permissions",
+    )
     def permissions_me(self, request):
         user = request.user
 
@@ -129,30 +134,20 @@ class UsersViewSet(
             raw_perms = raw if isinstance(raw, list) else [raw]
 
         try:
-            perms = [
-                normalize_permission(p, user.__class__)
-                for p in raw_perms
-            ]
+            perms = [normalize_permission(p, user.__class__) for p in raw_perms]
         except Exception:
-            raise ValidationError({
-                "perm": "Invalid permission format."
-            })
+            raise ValidationError({"perm": "Invalid permission format."})
 
         for perm in perms:
             if "." not in perm:
-                raise ValidationError({
-                    "perm": "Invalid permission format. Expected app_label.codename."
-                })
+                raise ValidationError(
+                    {"perm": "Invalid permission format. Expected app_label.codename."}
+                )
 
         if perms:
-            permissions_map = {
-                perm: user.has_perm(perm)
-                for perm in sorted(perms)
-            }
+            permissions_map = {perm: user.has_perm(perm) for perm in sorted(perms)}
 
-            return response.Response({
-                "permissions": permissions_map
-            })
+            return response.Response({"permissions": permissions_map})
 
         raw_all_perms = user.get_all_permissions()
 
@@ -161,9 +156,7 @@ class UsersViewSet(
             for perm in sorted(raw_all_perms)
         }
 
-        return response.Response({
-            "permissions": permissions_map
-        })
+        return response.Response({"permissions": permissions_map})
 
 
 class PermissionsViewSet(

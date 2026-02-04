@@ -1,7 +1,8 @@
-from rest_framework.decorators import action
-from rest_framework import response
-from rest_framework.exceptions import ValidationError
 from django.contrib.auth.models import Permission
+from rest_framework import response
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+
 from baseapp_auth.utils.normalize_permission import normalize_permission
 
 
@@ -32,43 +33,25 @@ class PermissionsActionMixin:
         raw_perms = request.query_params.getlist(self.permission_query_param)
 
         try:
-            perms = [
-                normalize_permission(p, instance)
-                for p in raw_perms
-            ]
+            perms = [normalize_permission(p, instance) for p in raw_perms]
         except Exception:
-            raise ValidationError({
-                "perm": "Invalid permission format."
-            })
+            raise ValidationError({"perm": "Invalid permission format."})
 
         for perm in perms:
             if "." not in perm:
-                raise ValidationError({
-                    "perm": "Invalid permission format. Expected app_label.codename."
-                })
+                raise ValidationError(
+                    {"perm": "Invalid permission format. Expected app_label.codename."}
+                )
 
         if perms:
-            results = {
-                perm: user.has_perm(perm, instance)
-                for perm in perms
-            }
+            results = {perm: user.has_perm(perm, instance) for perm in perms}
 
-            return response.Response({
-                "permissions": results
-            })
+            return response.Response({"permissions": results})
 
         perms_qs = self.get_model_permissions_queryset(instance)
 
-        perm_keys = {
-            normalize_permission(p.codename, instance)
-            for p in perms_qs
-        }
+        perm_keys = {normalize_permission(p.codename, instance) for p in perms_qs}
 
-        permissions_map = {
-            perm: user.has_perm(perm, instance)
-            for perm in perm_keys
-        }
+        permissions_map = {perm: user.has_perm(perm, instance) for perm in perm_keys}
 
-        return response.Response({
-            "permissions": permissions_map
-        })
+        return response.Response({"permissions": permissions_map})
