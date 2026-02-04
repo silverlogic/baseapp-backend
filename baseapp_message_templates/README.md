@@ -86,11 +86,15 @@ dialog by default, so this package includes a small custom image extension
            "js": ["baseapp_message_templates/prose/image_dialog.js"],
            "extensions": {
                 "ImageDialog": html_tags(
-                    tags=["img"]: [
-                        "src",
-                        "alt",
-                        # ...
-                    ]
+                    tags=["img"],
+                    attributes={
+                        "img": [
+                            "src",
+                            "alt",
+                            "title",
+                            # ...
+                        ]
+                    }
                 )
             },
        },
