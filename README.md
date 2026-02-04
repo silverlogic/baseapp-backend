@@ -106,7 +106,7 @@ Functionality for API keys
 
 ## How to develop
 
-Each module of baseapp-backend has a demo project in `testproject/` directory, which can be run as a standalone Django app to test. Then in baseapp-backend directory:
+Each module of baseapp-backend is being tested inside the `testproject/` directory, which can be run as a standalone Django app to test. Then in baseapp-backend directory:
 
 ```bash
 # Bring up docker containers
@@ -138,7 +138,6 @@ Run testproject inside the backend docker container:
 pip3 install -r testproject/requirements.txt
 
 # Change folder to your app's testproject:
-cd baseapp
 python manage.py runserver 0.0.0.0:8000
 ```
 

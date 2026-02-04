@@ -114,14 +114,14 @@ This will add the following fields to your model:
 - `comments` list of comments attached to this object
 
 ```python
-from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import DjangoObjectType, Node as RelayNode
 from baseapp_comments.graphql import CommentsInterface
 
 
 class MyModelObjectType(DjangoObjectType):
     class Meta:
         model = MyModel
-        interfaces = (relay.Node, CommentsInterface)
+        interfaces = (RelayNode, CommentsInterface)
 
 ```
 

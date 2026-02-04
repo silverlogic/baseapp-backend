@@ -1,15 +1,15 @@
 import swapper
-from graphene import relay
 
 from baseapp_auth.graphql.permissions import PermissionsInterface
 from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import Node as RelayNode
 
 Organization = swapper.load_model("baseapp_organizations", "Organization")
 
 
 class AbstractOrganizationObjectType(object):
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         model = Organization
         fields = (
             "pk",
@@ -26,7 +26,7 @@ class AbstractOrganizationObjectType(object):
 
 class OrganizationObjectType(AbstractOrganizationObjectType, DjangoObjectType):
     class Meta:
-        interfaces = (relay.Node, PermissionsInterface)
+        interfaces = (RelayNode, PermissionsInterface)
         model = Organization
         fields = (
             "pk",

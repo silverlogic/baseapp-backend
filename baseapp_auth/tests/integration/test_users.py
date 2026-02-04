@@ -1,6 +1,10 @@
 from datetime import timedelta
+from unittest.mock import patch
 
 import pytest
+import swapper
+from constance import config
+from constance.test import override_config
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -8,9 +12,16 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
 import baseapp_auth.tests.helpers as h
+from baseapp_auth.rest_framework.users.tasks import anonymize_and_delete_user_task
 from baseapp_auth.tests.factories import PasswordValidationFactory
 from baseapp_auth.tests.mixins import ApiMixin
 from baseapp_auth.utils.referral_utils import get_user_referral_model
+from baseapp_chats.tests.factories import (
+    ChatRoomFactory,
+    ChatRoomParticipantFactory,
+    MessageFactory,
+)
+from baseapp_comments.tests.factories import CommentFactory
 from baseapp_referrals.utils import get_referral_code
 
 User = get_user_model()
@@ -20,6 +31,11 @@ pytestmark = [pytest.mark.django_db, pytest.mark.referrals]
 
 skip_if_no_referrals = pytest.mark.skipif(
     "baseapp_referrals" not in settings.INSTALLED_APPS, reason="No referrals app"
+)
+
+skip_if_no_organizations = pytest.mark.skipif(
+    "baseapp_organizations" not in settings.INSTALLED_APPS,
+    reason="No organizations app",
 )
 
 UserReferral = get_user_referral_model()
@@ -72,6 +88,25 @@ class TestUsersRetrieve(ApiMixin):
         profile_actual = set(r.data["profile"].keys())
         assert profile_expected == profile_actual
 
+    @pytest.mark.skipif(
+        not hasattr(User, "public_id"),
+        reason="User model does not expose public_id; skip until DocumentIdMixin is enabled",
+    )
+    def test_id_returns_public_id(self, user_client):
+        """Ensure the serialized `id` is the public_id when available."""
+        from django.contrib.contenttypes.models import ContentType
+
+        from baseapp_core.models import DocumentId
+
+        user = UserFactory()
+
+        content_type = ContentType.objects.get_for_model(user)
+        mapping = DocumentId.objects.filter(content_type=content_type, object_id=user.pk).first()
+        r = user_client.get(self.reverse(kwargs={"pk": user.pk}))
+        h.responseOk(r)
+        assert user.pk != r.data["id"]
+        assert str(mapping.public_id) == r.data["id"]
+
 
 class TestUsersUpdate(ApiMixin):
     view_name = "users-detail"
@@ -96,6 +131,17 @@ class TestUsersUpdate(ApiMixin):
         user_client.patch(self.reverse(kwargs={"pk": user_client.user.id}), data)
         user_client.user.refresh_from_db()
         assert user_client.user.email != "test@email.co"
+
+    @pytest.mark.skipif(
+        not hasattr(User, "public_id"),
+        reason="User model does not expose public_id; skip until DocumentIdMixin is enabled",
+    )
+    def test_can_update_public_fields_using_public_id(self, user_client):
+        data = {"preferred_language": "pt"}
+        r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.public_id}), data)
+        h.responseOk(r)
+        user_client.user.refresh_from_db()
+        assert user_client.user.preferred_language == "pt"
 
     @skip_if_no_referrals
     def test_can_update_referred_by_code_on_the_same_day_user_registered(self, user_client):
@@ -204,7 +250,7 @@ class TestUsersDeleteAccount(ApiMixin):
         user_client.user.save()
         user_id = user_client.user.id
         r = user_client.delete(self.reverse())
-        h.responseNoContent(r)
+        h.responseOk(r)
         assert User.objects.filter(id=user_id).exists() is False
 
     def test_admin_can_only_deactivate_account(self, user_client):
@@ -212,8 +258,143 @@ class TestUsersDeleteAccount(ApiMixin):
         user_client.user.save()
         user_id = user_client.user.id
         r = user_client.delete(self.reverse())
-        h.responseNoContent(r)
+        h.responseOk(r)
         assert User.objects.filter(id=user_id, is_active=False).exists() is True
+
+    def test_anonymize_and_delete_is_triggered(self, user_client):
+        user_client.user.is_superuser = False
+        user_client.user.save()
+        user_id = user_client.user.id
+
+        with patch(
+            "baseapp_auth.rest_framework.users.tasks.anonymize_and_delete_user_task.apply_async"
+        ) as mock_apply_async:
+            r = user_client.delete(self.reverse())
+            h.responseOk(r)
+            mock_apply_async.assert_called_once_with(
+                args=[user_id], eta=mock_apply_async.call_args[1]["eta"]
+            )
+
+    @skip_if_no_organizations
+    def test_owner_of_organization_cannot_delete_account(self, user_client):
+        from baseapp_organizations.tests.factories import OrganizationFactory
+        from baseapp_profiles.tests.factories import ProfileFactory
+
+        user = user_client.user
+        user.is_superuser = False
+        user.is_active = True
+        user.save()
+
+        profile = ProfileFactory(owner=user)
+        OrganizationFactory(profile=profile)
+
+        r = user_client.delete(self.reverse())
+
+        h.responseBadRequest(r)
+        assert (
+            r.data["detail"]
+            == "Account cannot be deleted because you're the owner of an organization. Transfer ownership or delete the organization first."
+        )
+        user.refresh_from_db()
+        assert user.is_active is True
+
+    @override_config(SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS=True)
+    def test_anonymize_and_delete_user_task_sends_success_email_to_superusers(self, outbox):
+        user = UserFactory()
+        user_id = user.id
+        superuser = UserFactory(is_superuser=True, email="superuser@example.com")
+        anonymize_and_delete_user_task(user_id)
+        assert len(outbox) == 2
+        assert outbox[0].to == [user.email]
+        assert any("successfully" in m.subject.lower() for m in outbox)
+        assert any(user.email in m.to for m in outbox)
+        assert any(superuser.email in m.to for m in outbox)
+
+    @override_config(SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS=False)
+    def test_anonymize_and_delete_user_task_sends_success_email_not_to_superusers(self, outbox):
+        user = UserFactory()
+        user_id = user.id
+        superuser = UserFactory(is_superuser=True, email="superuser@example.com")
+        anonymize_and_delete_user_task(user_id)
+        assert len(outbox) == 1
+        assert outbox[0].to == [user.email]
+        assert any("successfully" in m.subject.lower() for m in outbox)
+        assert any(user.email in m.to for m in outbox)
+        assert not any(superuser.email in m.to for m in outbox)
+
+    def test_anonymize_and_delete_user_task_sends_error_email(self, outbox):
+        user = UserFactory()
+        user_id = user.id
+
+        with patch(
+            "baseapp_auth.rest_framework.users.tasks.anonymize_activitylog",
+            side_effect=Exception("fail"),
+        ):
+            anonymize_and_delete_user_task(user_id)
+
+        assert len(outbox) == 1
+        assert any("error" in m.subject.lower() for m in outbox)
+        assert any(user.email in m.to for m in outbox)
+
+    def test_send_anonymize_user_success_email_with_superusers(self, outbox):
+
+        config.SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS = True
+        user = UserFactory()
+        user_id = user.id
+        superuser = UserFactory(is_superuser=True, email="superuser@example.com")
+        with patch(
+            "baseapp_auth.rest_framework.users.tasks.anonymize_activitylog",
+        ):
+            anonymize_and_delete_user_task(user_id)
+
+        assert len(outbox) == 2
+        assert any("successfully" in m.subject.lower() for m in outbox)
+        assert any(user.email in m.to for m in outbox)
+        assert any(superuser.email in m.to for m in outbox)
+
+    def test_send_anonymize_user_error_email_with_superusers(self, outbox):
+
+        config.SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS = True
+        user = UserFactory()
+        user_id = user.id
+        superuser = UserFactory(is_superuser=True, email="superuser@example.com")
+        with patch(
+            "baseapp_auth.rest_framework.users.tasks.anonymize_activitylog",
+            side_effect=Exception("fail"),
+        ):
+            anonymize_and_delete_user_task(user_id)
+
+        assert len(outbox) == 2
+        assert any("error" in m.subject.lower() for m in outbox)
+        assert any(user.email in m.to for m in outbox)
+        assert any(superuser.email in m.to for m in outbox)
+
+    def test_anonymize_and_delete_user_task_anonymizes_user_comments(self):
+        Comment = swapper.load_model("baseapp_comments", "Comment")
+
+        user = UserFactory()
+        user_id = user.pk
+        CommentFactory.create_batch(2, user=user)
+        assert Comment.objects_visible.filter(user_id=user_id).count() == 2
+
+        anonymize_and_delete_user_task(user_id)
+        assert Comment.objects_visible.filter(user_id=user_id).count() == 0
+        assert User.objects.all().count() == 0
+
+    def test_anonymize_and_delete_user_task_anonymizes_user_messages(self):
+        Message = swapper.load_model("baseapp_chats", "Message")
+
+        user = UserFactory()
+        user_id = user.pk
+        room = ChatRoomFactory()
+        participants_count = 2
+        ChatRoomParticipantFactory.create_batch(participants_count, room=room)
+        MessageFactory.create_batch(2, user=user, room=room)
+        assert Message.objects.filter(user_id=user_id).count() == 2
+
+        anonymize_and_delete_user_task(user_id)
+        assert Message.objects.filter(user_id=user_id).count() == 0
+        assert User.objects.all().count() == 3
 
 
 class TestUsersChangePassword(ApiMixin):

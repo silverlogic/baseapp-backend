@@ -148,7 +148,7 @@ class TestLoginJwt(TestLoginBase):
         authenticator = JWTAuthentication()
         validated_token = authenticator.get_validated_token(r.data["access"])
 
-        assert validated_token["id"] == user.id
+        assert validated_token["id"] == str(user.public_id)
         assert validated_token["email"] == user.email
         assert validated_token["profile"]["name"] == user.first_name + " " + user.last_name
 

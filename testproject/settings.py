@@ -45,8 +45,17 @@ INSTALLED_APPS += [
     "testproject.testapp",
     "testproject.comments",
     "testproject.profiles",
+    "testproject.reactions",
+    "testproject.content_feed",
+    "testproject.follows",
+    "testproject.blocks",
     "testproject.base",
     "testproject.e2e",
+    "testproject.ratings",
+    "testproject.reports",
+    "testproject.pages",
+    "testproject.organizations",
+    "testproject.chats",
     *WAGTAIL_INSTALLED_INTERNAL_APPS,
     *WAGTAIL_INSTALLED_APPS,
     "baseapp_wagtail.tests",
@@ -150,6 +159,18 @@ CONSTANCE_CONFIG = OrderedDict(
             "STRIPE_CUSTOMER_ENTITY_MODEL",
             ("profiles.Profile", "The model to use for the Stripe customer entity."),
         ),
+        (
+            "ENABLE_PUBLIC_ID_LOGIC",
+            (True, "Enable public ID logic."),
+        ),
+        (
+            "ANONYMIZE_TASK_DELAY_DAYS",
+            (19, "Delay in days before running anonymize user task"),
+        ),
+        (
+            "SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS",
+            (False, "Whether to send anonymize/delete user notification emails to superusers"),
+        ),
     ]
 )
 
@@ -157,11 +178,45 @@ CONSTANCE_CONFIG = OrderedDict(
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET")
 
+# Profiles
+BASEAPP_PROFILES_PROFILE_MODEL = "profiles.Profile"
+BASEAPP_PROFILES_PROFILEUSERROLE_MODEL = "profiles.ProfileUserRole"
+
+# Reactions
+BASEAPP_REACTIONS_REACTION_MODEL = "reactions.Reaction"
+
 # Comments
 BASEAPP_COMMENTS_COMMENT_MODEL = "comments.Comment"
 
-# Profiles
-BASEAPP_PROFILES_PROFILE_MODEL = "profiles.Profile"
+# Content Feed
+BASEAPP_CONTENT_FEED_CONTENTPOST_MODEL = "content_feed.ContentPost"
+BASEAPP_CONTENT_FEED_CONTENTPOSTIMAGE_MODEL = "content_feed.ContentPostImage"
+
+# Follows
+BASEAPP_FOLLOWS_FOLLOW_MODEL = "follows.Follow"
+
+# Blocks
+BASEAPP_BLOCKS_BLOCK_MODEL = "blocks.Block"
+
+# Ratings
+BASEAPP_RATINGS_RATE_MODEL = "ratings.Rate"
+
+# Reports
+BASEAPP_REPORTS_REPORT_MODEL = "reports.Report"
+BASEAPP_REPORTS_REPORTTYPE_MODEL = "reports.ReportType"
+
+# Pages
+BASEAPP_PAGES_PAGE_MODEL = "pages.Page"
+
+# Organizations
+BASEAPP_ORGANIZATIONS_ORGANIZATION_MODEL = "organizations.Organization"
+
+# Chats
+BASEAPP_CHATS_CHATROOM_MODEL = "chats.ChatRoom"
+BASEAPP_CHATS_CHATROOMPARTICIPANT_MODEL = "chats.ChatRoomParticipant"
+BASEAPP_CHATS_UNREADMESSAGECOUNT_MODEL = "chats.UnreadMessageCount"
+BASEAPP_CHATS_MESSAGE_MODEL = "chats.Message"
+BASEAPP_CHATS_MESSAGESTATUS_MODEL = "chats.MessageStatus"
 
 # Notifications
 NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"
@@ -169,8 +224,8 @@ BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False
 BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS = False
 
 # API Key
-BA_API_KEY_REQUEST_HEADER = env("BA_API_KEY_REQUEST_HEADER")
-BA_API_KEY_ENCRYPTION_KEY = env("BA_API_KEY_ENCRYPTION_KEY")
+BA_API_KEY_REQUEST_HEADER = env("BA_API_KEY_REQUEST_HEADER", default="HTTP_API_KEY")
+BA_API_KEY_ENCRYPTION_KEY = env("BA_API_KEY_ENCRYPTION_KEY", default=None)
 
 # Graphene query optimizer
 GRAPHQL_QUERY_OPTIMIZER = {
@@ -258,3 +313,6 @@ PHONENUMBER_DB_FORMAT = "E164"
 
 # BRANCH.IO
 BRANCHIO_KEY = env("BRANCHIO_KEY", "N/A")
+
+# AUTOFIELD
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"

@@ -2,11 +2,12 @@ import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
 from django.contrib.contenttypes.models import ContentType
-from graphene import relay
 from graphene.types.generic import GenericScalar
 from graphene_django.filter import DjangoFilterConnectionField
 
-from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
+from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import Node as RelayNode
+from baseapp_core.graphql import get_object_type_for_model
 
 from .filters import ReportTypeFilter
 
@@ -16,7 +17,7 @@ ReportType = swapper.load_model("baseapp_reports", "ReportType")
 
 class BaseReportTypeObjectType:
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         model = ReportType
         fields = (
             "id",
@@ -36,7 +37,7 @@ class ReportTypeObjectType(
         pass
 
 
-class ReportsInterface(relay.Node):
+class ReportsInterface(RelayNode):
     reports_count = GenericScalar()
     reports = DjangoFilterConnectionField(get_object_type_for_model(Report))
     my_reports = graphene.Field(get_object_type_for_model(Report), required=False)
@@ -59,10 +60,10 @@ class ReportsInterface(relay.Node):
 
 
 class BaseReportObjectType:
-    target = graphene.Field(relay.Node)
+    target = graphene.Field(RelayNode)
 
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         model = Report
         fields = (
             "id",
@@ -83,6 +84,10 @@ class BaseReportObjectType:
         if not info.context.user.has_perm("baseapp_reports.view_report", node):
             return None
         return node
+
+    @classmethod
+    def get_queryset(cls, queryset, info):
+        return super().get_queryset(queryset, info)
 
 
 class ReportObjectType(

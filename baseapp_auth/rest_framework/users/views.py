@@ -1,3 +1,5 @@
+import swapper
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.shortcuts import get_object_or_404
@@ -18,6 +20,8 @@ User = get_user_model()
 
 from django.utils.translation import gettext_lazy as _
 
+from baseapp_core.rest_framework.mixins import PublicIdLookupMixin
+
 from .parsers import SafeJSONParser
 from .serializers import (
     ChangePasswordSerializer,
@@ -36,6 +40,7 @@ class UpdateSelfPermission(permissions.BasePermission):
 
 
 class UsersViewSet(
+    PublicIdLookupMixin,
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
     mixins.ListModelMixin,
@@ -81,13 +86,30 @@ class UsersViewSet(
         permission_classes=[permissions.IsAuthenticated],
     )
     def delete_account(self, request):
+        """
+        TODO: When implementing full account deletion (not just anonymization), ensure all related data
+        (e.g., profile pages, notifications, etc.) are thoroughly reviewed and deleted to avoid missing any user information.
+        """
         user = request.user
-        if user.is_superuser:
-            user.is_active = False
-            user.save()
-        else:
-            user.delete()
-        return response.Response(data={}, status=status.HTTP_204_NO_CONTENT)
+
+        if apps.is_installed("baseapp_organizations"):
+            Organization = swapper.load_model("baseapp_organizations", "Organization")
+            if Organization.objects.filter(profile__owner_id=user.id).exists():
+                return response.Response(
+                    data={
+                        "detail": _(
+                            "Account cannot be deleted because you're the owner of an organization. Transfer ownership or delete the organization first."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        user.is_active = False
+        user.save()
+
+        if not user.is_superuser:
+            user.anonymize_and_delete()
+        return response.Response(data={}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["get", "post"], serializer_class=UserPermissionSerializer)
     def permissions(self, request):
