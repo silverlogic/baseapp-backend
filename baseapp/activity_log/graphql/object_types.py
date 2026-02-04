@@ -2,12 +2,13 @@ import graphene
 import swapper
 from django.apps import apps
 from django.contrib.auth import get_user_model
-from graphene import relay
 from graphene.types.generic import GenericScalar
 from graphene_django.filter import DjangoFilterConnectionField
 from pghistory.models import MiddlewareEvents
 
-from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
+from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import Node as RelayNode
+from baseapp_core.graphql import get_object_type_for_model
 
 from ..models import ActivityLog, VisibilityTypes
 from .filters import ActivityLogFilter, MiddlewareEventFilter
@@ -18,14 +19,14 @@ VisibilityTypesEnum = graphene.Enum.from_enum(VisibilityTypes)
 
 
 class NodeLogEventObjectType(DjangoObjectType):
-    obj = graphene.Field(relay.Node, description="The object of the event.")
+    obj = graphene.Field(RelayNode, description="The object of the event.")
     label = graphene.String(description="The event label.")
     data = GenericScalar(description="The raw data of the event.")
     diff = GenericScalar(description="The diff between the previous event of the same label.")
     created_at = graphene.DateTime(description="When the event was created.")
 
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         model = MiddlewareEvents
         name = "NodeLogEvent"
         fields = (
@@ -89,7 +90,7 @@ class BaseActivityLogObjectType:
         return queryset
 
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         model = ActivityLog
         fields = (
             "id",
@@ -107,6 +108,24 @@ class BaseActivityLogObjectType:
 
     def resolve_events(self, info, **kwargs):
         return MiddlewareEvents.objects.filter(pgh_context_id=self.pk)
+
+    def resolve_user(self, info, **kwargs):
+        user_id = getattr(self, "user_id", None)
+        if user_id is not None:
+            try:
+                return User.objects.get(pk=user_id)
+            except User.DoesNotExist:
+                return None
+        return getattr(self, "user", None)
+
+    def resolve_profile(self, info, **kwargs):
+        profile_id = getattr(self, "profile_id", None)
+        if profile_id is not None:
+            try:
+                return Profile.objects.get(pk=profile_id)
+            except Profile.DoesNotExist:
+                return None
+        return getattr(self, "profile", None)
 
 
 class ActivityLogObjectType(BaseActivityLogObjectType, DjangoObjectType):

@@ -310,7 +310,58 @@ def test_user_without_permission_cant_update_role(django_user_client, graphql_us
     profile.refresh_from_db()
 
 
-def test_user_without_permission_cant_add_profile_user_role(
+def test_user_profile_owner_can_remove_profile_member(django_user_client, graphql_user_client):
+    perm = Permission.objects.get(
+        content_type__app_label=ProfileUserRole._meta.app_label, codename="delete_profileuserrole"
+    )
+
+    user = django_user_client.user
+    user_2 = UserFactory()
+
+    user.user_permissions.add(perm)
+    profile = ProfileFactory(owner=user)
+    profile_user_role = ProfileUserRoleFactory(
+        profile=profile, user=user_2, role=ProfileUserRole.ProfileRoles.MANAGER
+    )
+    profile_user_role_relay_id = profile_user_role.relay_id
+
+    response = graphql_user_client(
+        PROFILE_MEMBER_REMOVE_GRAPHQL,
+        variables={"input": {"userId": user_2.relay_id, "profileId": profile.relay_id}},
+    )
+    content = response.json()
+
+    assert content["data"]["profileRemoveMember"]["deletedId"] == profile_user_role_relay_id
+    assert not ProfileUserRole.objects.filter(id=profile_user_role.id).exists()
+
+
+def test_user_with_permission_can_remove_profile_member(django_user_client, graphql_user_client):
+    perm = Permission.objects.get(
+        content_type__app_label=ProfileUserRole._meta.app_label, codename="delete_profileuserrole"
+    )
+
+    user = django_user_client.user
+    user.user_permissions.add(perm)
+    user_2 = UserFactory()
+    user_3 = UserFactory()
+
+    profile = ProfileFactory(owner=user_2)
+    ProfileUserRoleFactory(profile=profile, user=user, role=ProfileUserRole.ProfileRoles.ADMIN)
+    profile_user_role = ProfileUserRoleFactory(
+        profile=profile, user=user_3, role=ProfileUserRole.ProfileRoles.MANAGER
+    )
+    profile_user_role_relay_id = profile_user_role.relay_id
+
+    response = graphql_user_client(
+        PROFILE_MEMBER_REMOVE_GRAPHQL,
+        variables={"input": {"userId": user_3.relay_id, "profileId": profile.relay_id}},
+    )
+    content = response.json()
+    assert content["data"]["profileRemoveMember"]["deletedId"] == profile_user_role_relay_id
+    assert not ProfileUserRole.objects.filter(id=profile_user_role.id).exists()
+
+
+def test_user_without_permission_cant_remove_profile_member(
     django_user_client, graphql_user_client
 ):
     perm = Permission.objects.get(

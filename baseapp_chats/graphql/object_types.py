@@ -1,18 +1,18 @@
 import graphene
 import swapper
 from django.db.models import Case, When
-from graphene import relay
-from graphene_django import DjangoConnectionField
+from django.utils.translation import gettext_lazy as _
 from graphene_django.filter import DjangoFilterConnectionField
 
+from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import (
-    DjangoObjectType,
     ThumbnailField,
     get_object_type_for_model,
     get_pk_from_relay_id,
 )
 
-from .filters import ChatRoomFilter
+from .filters import ChatRoomFilter, ChatRoomParticipantFilter
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
@@ -28,10 +28,10 @@ class BaseChatRoomParticipantObjectType:
     role = graphene.Field(ChatRoomParticipantRoleTypesEnum)
 
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         model = ChatRoomParticipant
         fields = ("id", "has_archived_room", "profile", "role")
-        filter_fields = ("profile__target_content_type",)
+        filterset_class = ChatRoomParticipantFilter
 
 
 class ChatRoomParticipantObjectType(BaseChatRoomParticipantObjectType, DjangoObjectType):
@@ -44,14 +44,14 @@ MessageTypeEnum = graphene.Enum.from_enum(Message.MessageType)
 
 
 class BaseMessageObjectType:
-    action_object = graphene.Field(relay.Node)
+    action_object = graphene.Field(RelayNode)
     verb = graphene.Field(VerbsEnum)
     message_type = graphene.Field(MessageTypeEnum)
     content = graphene.String(required=False, profile_id=graphene.ID(required=False))
     is_read = graphene.Boolean(profile_id=graphene.ID(required=False))
 
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         model = Message
         fields = (
             "id",
@@ -100,7 +100,7 @@ class BaseMessageObjectType:
     @staticmethod
     def get_replaced_profile_name(profile, profile_pk, replacement_text):
         if not profile:
-            return None
+            return _("Profile Not Found")
         elif profile.id == profile_pk:
             return replacement_text
         else:
@@ -146,12 +146,14 @@ class MessageObjectType(BaseMessageObjectType, DjangoObjectType):
 
 class BaseChatRoomObjectType:
     all_messages = DjangoFilterConnectionField(get_object_type_for_model(Message))
-    participants = DjangoConnectionField(get_object_type_for_model(ChatRoomParticipant))
+    participants = DjangoFilterConnectionField(get_object_type_for_model(ChatRoomParticipant))
     unread_messages = graphene.Field(
         get_object_type_for_model(UnreadMessageCount), profile_id=graphene.ID(required=False)
     )
     image = ThumbnailField(required=False)
     is_archived = graphene.Boolean(profile_id=graphene.ID(required=False))
+    other_participant = graphene.Field(get_object_type_for_model(ChatRoomParticipant))
+    is_sole_admin = graphene.Boolean()
 
     @classmethod
     def get_node(cls, info, id):
@@ -163,6 +165,19 @@ class BaseChatRoomObjectType:
 
         except cls._meta.model.DoesNotExist:
             return None
+
+    @staticmethod
+    def get_other_participant(room, info):
+        current_profile = (
+            info.context.user.current_profile
+            if hasattr(info.context.user, "current_profile")
+            else (info.context.user.profile if hasattr(info.context.user, "profile") else None)
+        )
+
+        if not current_profile:
+            return None
+
+        return room.participants.exclude(profile_id=current_profile.pk).first()
 
     def resolve_all_messages(self, info, **kwargs):
         if self.is_group:
@@ -235,8 +250,56 @@ class BaseChatRoomObjectType:
 
         return unread_messages
 
+    def resolve_other_participant(self, info, **kwargs):
+        if self.is_group:
+            return None
+
+        return BaseChatRoomObjectType.get_other_participant(self, info)
+
+    def resolve_is_sole_admin(self, info, **kwargs):
+        if not self.is_group:
+            return False
+
+        current_profile = (
+            info.context.user.current_profile
+            if hasattr(info.context.user, "current_profile")
+            else (info.context.user.profile if hasattr(info.context.user, "profile") else None)
+        )
+
+        if not current_profile:
+            return False
+
+        current_participant = self.participants.filter(profile_id=current_profile.pk).first()
+        if (
+            not current_participant
+            or current_participant.role != ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN
+        ):
+            return False
+
+        admin_count = self.participants.filter(
+            role=ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN
+        ).count()
+
+        return admin_count == 1
+
+    def resolve_title(self, info, **kwargs):
+        if self.is_group:
+            return self.title
+
+        other_participant = BaseChatRoomObjectType.get_other_participant(self, info)
+        if other_participant and other_participant.profile:
+            return other_participant.profile.name
+
+    def resolve_image(self, info, **kwargs):
+        if self.is_group:
+            return self.image
+
+        other_participant = BaseChatRoomObjectType.get_other_participant(self, info)
+        if other_participant and other_participant.profile:
+            return other_participant.profile.image
+
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         model = ChatRoom
         fields = (
             "id",
@@ -247,6 +310,8 @@ class BaseChatRoomObjectType:
             "title",
             "image",
             "is_group",
+            "other_participant",
+            "is_sole_admin",
         )
         filterset_class = ChatRoomFilter
 
@@ -258,7 +323,7 @@ class ChatRoomObjectType(BaseChatRoomObjectType, DjangoObjectType):
 
 class BaseUnreadMessageObjectType:
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         model = UnreadMessageCount
         fields = ("count", "marked_unread")
 

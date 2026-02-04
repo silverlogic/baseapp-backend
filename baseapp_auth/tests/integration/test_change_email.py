@@ -50,6 +50,12 @@ class TestChangeEmailRequest(ApiMixin):
         user_client.user.refresh_from_db()
         assert user_client.user.new_email == data["new_email"]
 
+    def test_sets_user_new_email_with_lowercase(self, user_client, data, deep_link_mock_success):
+        r = user_client.post(self.reverse(), {"new_email": data["new_email"].upper()})
+        h.responseOk(r)
+        user_client.user.refresh_from_db()
+        assert user_client.user.new_email == data["new_email"]
+
     def test_sends_an_email_to_users_current_email(
         self, user_client, data, outbox, deep_link_mock_success
     ):

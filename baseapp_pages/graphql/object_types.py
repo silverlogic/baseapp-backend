@@ -4,12 +4,13 @@ import swapper
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.utils.translation import get_language
-from graphene import relay
 from query_optimizer import optimize
 
 from baseapp_auth.graphql import PermissionsInterface
 from baseapp_comments.graphql.object_types import CommentsInterface
-from baseapp_core.graphql import DjangoObjectType, LanguagesEnum, ThumbnailField
+from baseapp_core.graphql import DjangoObjectType, LanguagesEnum
+from baseapp_core.graphql import Node as RelayNode
+from baseapp_core.graphql import ThumbnailField
 from baseapp_pages.models import AbstractPage, Metadata, URLPath
 
 from ..meta import AbstractMetadataObjectType
@@ -19,7 +20,7 @@ page_app_label = Page._meta.app_label
 PageStatusEnum = graphene.Enum.from_enum(Page.PageStatus)
 
 
-class PageInterface(relay.Node):
+class PageInterface(RelayNode):
     url_path = graphene.Field(lambda: URLPathNode)
     url_paths = graphene.List(lambda: URLPathNode)
     metadata = graphene.Field(lambda: MetadataObjectType)
@@ -46,7 +47,7 @@ class URLPathNode(DjangoObjectType):
     language = graphene.Field(LanguagesEnum)
 
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         model = URLPath
         fields = (
             "id",
@@ -87,7 +88,7 @@ class BasePageObjectType:
     body = graphene.String()
 
     class Meta:
-        interfaces = (relay.Node, PageInterface, PermissionsInterface, CommentsInterface)
+        interfaces = (RelayNode, PageInterface, PermissionsInterface, CommentsInterface)
         model = Page
         fields = ("pk", "user", "title", "body", "status", "created", "modified")
         filterset_class = PageFilter
