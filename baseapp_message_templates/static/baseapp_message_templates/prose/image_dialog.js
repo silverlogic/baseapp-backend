@@ -9,7 +9,6 @@ const fallbackPromptAttrs = (editor) => {
   const attrs = {
     src,
     alt: window.prompt("Alt text", current.alt || "") || "",
-    title: window.prompt("Title", current.title || "") || "",
     width: window.prompt("Width", current.width || "") || "",
     height: window.prompt("Height", current.height || "") || "",
     border: window.prompt("Border", current.border || "") || "",
