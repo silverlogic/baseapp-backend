@@ -40,14 +40,14 @@ class EmailTemplate(TimeStampedModel):
         blank=True,
         help_text="Text that will be inputted into Template html version",
         null=True,
-        extensions=settings.PROSE_EDITOR_EXTENSIONS,
-        sanitize=settings.PROSE_EDITOR_SANITIZE,
+        extensions=getattr(settings, "PROSE_EDITOR_EXTENSIONS", None),
+        sanitize=getattr(settings, "PROSE_EDITOR_SANITIZE", False),
     )
     plain_text_content = ProseEditorField(
         blank=True,
         help_text="Text that will be inputted into Template plain text version",
-        extensions=settings.PROSE_EDITOR_EXTENSIONS,
-        sanitize=settings.PROSE_EDITOR_SANITIZE,
+        extensions=getattr(settings, "PROSE_EDITOR_EXTENSIONS", None),
+        sanitize=getattr(settings, "PROSE_EDITOR_SANITIZE", False),
     )
 
     class Meta:
