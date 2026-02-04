@@ -1,10 +1,9 @@
 from typing import List
 
-from django_prose_editor.fields import ProseEditorField
-
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
+from django_prose_editor.fields import ProseEditorField
 from model_utils.models import TimeStampedModel
 
 from .custom_templates import get_full_copy_template
