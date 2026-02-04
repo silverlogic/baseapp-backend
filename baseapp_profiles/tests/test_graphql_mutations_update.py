@@ -63,6 +63,14 @@ mutation ProfileUserRoleUpdateMutation($input: ProfileUserRoleUpdateInput!) {
 }
 """
 
+PROFILE_USER_ROLE_DELETE_GRAPHQL = """
+mutation ProfileUserRoleDeleteMutation($input: ProfileUserRoleDeleteInput!) {
+    profileUserRoleDelete(input: $input) {
+        deletedId
+    }
+}
+"""
+
 
 def test_anon_cant_update_profile(graphql_client):
     profile = ProfileFactory()
@@ -326,12 +334,12 @@ def test_user_profile_owner_can_remove_profile_member(django_user_client, graphq
     profile_user_role_relay_id = profile_user_role.relay_id
 
     response = graphql_user_client(
-        PROFILE_MEMBER_REMOVE_GRAPHQL,
+        PROFILE_USER_ROLE_DELETE_GRAPHQL,
         variables={"input": {"userId": user_2.relay_id, "profileId": profile.relay_id}},
     )
     content = response.json()
 
-    assert content["data"]["profileRemoveMember"]["deletedId"] == profile_user_role_relay_id
+    assert content["data"]["profileUserRoleDelete"]["deletedId"] == profile_user_role_relay_id
     assert not ProfileUserRole.objects.filter(id=profile_user_role.id).exists()
 
 
@@ -353,11 +361,11 @@ def test_user_with_permission_can_remove_profile_member(django_user_client, grap
     profile_user_role_relay_id = profile_user_role.relay_id
 
     response = graphql_user_client(
-        PROFILE_MEMBER_REMOVE_GRAPHQL,
+        PROFILE_USER_ROLE_DELETE_GRAPHQL,
         variables={"input": {"userId": user_3.relay_id, "profileId": profile.relay_id}},
     )
     content = response.json()
-    assert content["data"]["profileRemoveMember"]["deletedId"] == profile_user_role_relay_id
+    assert content["data"]["profileUserRoleDelete"]["deletedId"] == profile_user_role_relay_id
     assert not ProfileUserRole.objects.filter(id=profile_user_role.id).exists()
 
 
