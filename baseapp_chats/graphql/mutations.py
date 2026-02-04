@@ -410,6 +410,18 @@ class ChatRoomToggleAdmin(RelayMutation):
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 
+        if profile is not None and not info.context.user.has_perm(
+            f"{profile_app_label}.use_profile", profile
+        ):
+            return ChatRoomToggleAdmin(
+                errors=[
+                    ErrorType(
+                        field="profile_id",
+                        messages=[_("You don't have permission to use this profile")],
+                    )
+                ]
+            )
+
         if not info.context.user.has_perm(
             "baseapp_chats.modify_chatroom",
             {
@@ -449,18 +461,19 @@ class ChatRoomToggleAdmin(RelayMutation):
                 target_participant.role = ChatRoomParticipantRoles.ADMIN
                 target_participant.save(update_fields=["role"])
             elif participant_is_admin:
-                # Ensure at least one admin remains
-                admin_count = ChatRoomParticipant.objects.filter(
-                    room=room, role=ChatRoomParticipantRoles.ADMIN
-                ).count()
+                # Ensure at least one admin remains, in a concurrent-safe way
+                admin_count = (
+                    ChatRoomParticipant.objects.select_for_update()
+                    .filter(room=room, role=ChatRoomParticipantRoles.ADMIN)
+                    .count()
+                )
+                # TODO: Define if user can remove their own admin role
                 if admin_count <= 1:
                     return ChatRoomToggleAdmin(
                         errors=[
                             ErrorType(
                                 field="target_participant_id",
-                                messages=[
-                                    _("Cannot remove admin role; at least one admin required.")
-                                ],
+                                messages=[_("The room must have at least one admin")],
                             )
                         ]
                     )

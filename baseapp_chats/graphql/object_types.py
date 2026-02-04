@@ -118,15 +118,15 @@ class BaseMessageObjectType:
         if root.message_type == Message.MessageType.USER_MESSAGE:
             return root.content
 
-        # include_verb = root.extra_data.get("include_verb", False)
-        exra_data = root.extra_data or {}
-        include_verb = exra_data.get("include_verb", False)
+        extra_data = root.extra_data or {}
+        include_verb = extra_data.get("include_verb", False)
 
         linked_capital_name = BaseMessageObjectType.get_replaced_profile_name(
             root.content_linked_profile_actor, profile_pk, "You", include_verb=include_verb
         )
+        replacement = "You" if include_verb else "you"
         linked_small_name = BaseMessageObjectType.get_replaced_profile_name(
-            root.content_linked_profile_target, profile_pk, "you", include_verb=include_verb
+            root.content_linked_profile_target, profile_pk, replacement, include_verb=include_verb
         )
         return root.content.format(
             content_linked_profile_actor=linked_capital_name,

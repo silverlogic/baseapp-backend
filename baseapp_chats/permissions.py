@@ -41,11 +41,11 @@ class ChatsPermissionsBackend(BaseBackend):
     def can_modify_chatroom(self, user_obj, obj):
         if isinstance(obj, dict):
             room = obj["room"]
-            is_leaving_chatroom = obj["is_leaving_chatroom"]
-            add_participants = obj["add_participants"]
-            current_profile = obj["profile"]
-            modify_image = obj["modify_image"]
-            modify_title = obj["modify_title"]
+            is_leaving_chatroom = obj.get("is_leaving_chatroom", False)
+            add_participants = obj.get("add_participants", None)
+            current_profile = obj.get("profile", None)
+            modify_image = obj.get("modify_image", False)
+            modify_title = obj.get("modify_title", False)
 
             if not getattr(room, "is_group", False):
                 return False
