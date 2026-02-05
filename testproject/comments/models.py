@@ -1,15 +1,11 @@
-import pghistory
-
-from baseapp_comments.models import AbstractComment
+from baseapp_comments.models import AbstractComment, AbstractCommentStats  # noqa
 
 
-@pghistory.track(
-    pghistory.InsertEvent(),
-    pghistory.UpdateEvent(),
-    pghistory.DeleteEvent(),
-    exclude=["comments_count", "reactions_count", "modified"],
-)
 class Comment(AbstractComment):
-
     class Meta(AbstractComment.Meta):
+        pass
+
+
+class CommentStats(AbstractCommentStats):
+    class Meta(AbstractCommentStats.Meta):
         pass

@@ -1,5 +1,6 @@
 import pgtrigger
 import swapper
+import pghistory
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -7,8 +8,8 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
-from baseapp_core.documents.models import DocumentId
 from baseapp_core.graphql import RelayModel
+from baseapp_core.swapper import init_swapped_models
 from baseapp_reactions.models import ReactableModel
 from baseapp_reports.models import ReportableModel
 
@@ -139,6 +140,7 @@ class AbstractComment(
         ]
         verbose_name = _("comment")
         verbose_name_plural = _("comments")
+        swappable = swapper.swappable_setting("baseapp_comments", "Comment")
 
     def __str__(self):
         return "Comment #%s by %s" % (self.id, self.user_id)
@@ -150,32 +152,9 @@ class AbstractComment(
         return CommentObjectType
 
 
-class Comment(AbstractComment):
-    class Meta(AbstractComment.Meta):
-        abstract = False
-        swappable = swapper.swappable_setting("baseapp_comments", "Comment")
-
-
-SwappedComment = swapper.load_model(
-    "baseapp_comments", "Comment", required=False, require_ready=False
-)
-
-
-class CommentableModel(AbstractCommentableModel):
-    comments = GenericRelation(
-        SwappedComment,
-        verbose_name=_("comments"),
-        content_type_field="target_content_type",
-        object_id_field="target_object_id",
-    )
-
-    class Meta:
-        abstract = True
-
-
-class CommentStats(TimeStampedModel):
+class AbstractCommentStats(TimeStampedModel):
     target = models.OneToOneField(
-        DocumentId,
+        swapper.get_model_name("baseapp_comments", "Comment"),
         on_delete=models.CASCADE,
         related_name="comment_stats",
         primary_key=True,
@@ -185,7 +164,34 @@ class CommentStats(TimeStampedModel):
     is_comments_enabled = models.BooleanField(default=True)
 
     class Meta:
-        db_table = "baseapp_comments_commentstats"
+        abstract = True
 
     def __str__(self):
         return f"CommentStats for {self.target}"
+
+
+class CommentableModel(AbstractCommentableModel):
+    comments = GenericRelation(
+        swapper.get_model_name("baseapp_comments", "Comment"),
+        verbose_name=_("comments"),
+        content_type_field="target_content_type",
+        object_id_field="target_object_id",
+    )
+
+    class Meta:
+        abstract = True
+
+
+Comment, CommentStats = init_swapped_models([
+    ("baseapp_comments", "Comment"),
+    ("baseapp_comments", "CommentStats"),
+])
+
+
+if Comment and not Comment._meta.abstract:
+    pghistory.track(
+        pghistory.InsertEvent(),
+        pghistory.UpdateEvent(),
+        pghistory.DeleteEvent(),
+        exclude=["comments_count", "reactions_count", "modified"],
+    )(Comment)
