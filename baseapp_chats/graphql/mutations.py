@@ -410,9 +410,7 @@ class ChatRoomToggleAdmin(RelayMutation):
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 
-        if profile is not None and not info.context.user.has_perm(
-            f"{profile_app_label}.use_profile", profile
-        ):
+        if not info.context.user.has_perm(f"{profile_app_label}.use_profile", profile):
             return ChatRoomToggleAdmin(
                 errors=[
                     ErrorType(

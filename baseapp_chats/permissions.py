@@ -47,7 +47,7 @@ class ChatsPermissionsBackend(BaseBackend):
             modify_image = obj.get("modify_image", False)
             modify_title = obj.get("modify_title", False)
 
-            if not getattr(room, "is_group", False):
+            if not getattr(room, "is_group", False) or not current_profile:
                 return False
 
             chat_room_participant = ChatRoomParticipant.objects.filter(

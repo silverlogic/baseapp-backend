@@ -1563,14 +1563,20 @@ def test_member_user_cant_add_participants(django_user_client, graphql_user_clie
     )
 
 
-def test_chat_room_toggle_admin_success(django_user_client, graphql_user_client):
+@pytest.mark.parametrize(
+    "role_before, role_after",
+    [(ChatRoomParticipantRoles.MEMBER, "ADMIN"), (ChatRoomParticipantRoles.ADMIN, "MEMBER")],
+)
+def test_chat_room_toggle_admin_success(
+    role_before, role_after, django_user_client, graphql_user_client
+):
     friend = ProfileFactory()
 
     room = ChatRoomFactory(created_by=django_user_client.user, is_group=True)
     ChatRoomParticipantFactory(
         profile=django_user_client.user.profile, room=room, role=ChatRoomParticipantRoles.ADMIN
     )
-    friend_participant = ChatRoomParticipantFactory(profile=friend, room=room)
+    friend_participant = ChatRoomParticipantFactory(profile=friend, room=room, role=role_before)
 
     response = graphql_user_client(
         TOGGLE_ADMIN_GRAPHQL,
@@ -1583,7 +1589,7 @@ def test_chat_room_toggle_admin_success(django_user_client, graphql_user_client)
         },
     )
     content = response.json()
-    assert content["data"]["chatRoomToggleAdmin"]["participant"]["node"]["role"] == "ADMIN"
+    assert content["data"]["chatRoomToggleAdmin"]["participant"]["node"]["role"] == role_after
 
 
 def test_chat_room_toggle_admin_no_permission(django_user_client, graphql_user_client):
