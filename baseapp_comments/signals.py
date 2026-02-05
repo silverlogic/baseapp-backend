@@ -8,8 +8,8 @@ from baseapp_comments.notifications import (
     send_comment_created_notification,
     send_reply_created_notification,
 )
-from baseapp_core.documents.models import DocumentId
 from baseapp_core.events.hooks import hook_manager
+from baseapp_core.models import DocumentId
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
 
@@ -99,8 +99,8 @@ post_delete.connect(update_comments_count, sender=Comment, dispatch_uid="update_
 
 
 def on_comment_deleted(sender, instance, **kwargs):
-    from baseapp_core.documents.models import DocumentId
     from baseapp_core.events.hooks import hook_manager
+    from baseapp_core.models import DocumentId
 
     if instance.target:
         target_doc = DocumentId.get_or_create_for_object(instance.target)

@@ -380,7 +380,7 @@ When a model instance is created, ensure a `DocumentId` exists:
 # baseapp_yourpackage/signals.py
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from baseapp_core.documents.models import DocumentId
+from baseapp_core.models import DocumentId
 from .models import YourModel
 
 @receiver(post_save, sender=YourModel)
@@ -496,7 +496,7 @@ class DocumentId(TimeStampedModel):
 
 ```python
 # baseapp_comments/hooks.py
-from baseapp_core.documents.models import DocumentId
+from baseapp_core.models import DocumentId
 from baseapp_core.events.decorators import register_hook
 from .models import CommentStats, default_comments_count
 
@@ -582,7 +582,7 @@ graph LR
 ```python
 # baseapp_comments/services.py
 from django.apps import apps
-from baseapp_core.documents.models import DocumentId
+from baseapp_core.models import DocumentId
 from baseapp_core.services.registry import ServiceProvider
 from .models import CommentStats
 
@@ -856,7 +856,7 @@ class ReactionsPlugin(BaseAppPlugin):
 
 ```python
 from django.db import models
-from baseapp_core.documents.models import DocumentId
+from baseapp_core.models import DocumentId
 
 def default_reactions_count():
     return {"like": 0, "love": 0, "laugh": 0, "angry": 0}
@@ -884,7 +884,7 @@ class Reaction(models.Model):
 ### 5. `hooks.py`
 
 ```python
-from baseapp_core.documents.models import DocumentId
+from baseapp_core.models import DocumentId
 from baseapp_core.events.decorators import register_hook
 from .models import ReactionStats, default_reactions_count
 
@@ -904,7 +904,7 @@ def handle_document_created(document_id: int, **kwargs):
 
 ```python
 from django.apps import apps
-from baseapp_core.documents.models import DocumentId
+from baseapp_core.models import DocumentId
 from baseapp_core.services.registry import ServiceProvider
 from .models import ReactionStats
 

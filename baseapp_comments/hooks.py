@@ -1,5 +1,5 @@
-from baseapp_core.documents.models import DocumentId
 from baseapp_core.events.decorators import register_hook
+from baseapp_core.models import DocumentId
 
 from .models import CommentStats, default_comments_count
 

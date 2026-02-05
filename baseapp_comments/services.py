@@ -1,6 +1,6 @@
 from django.apps import apps
 
-from baseapp_core.documents.models import DocumentId
+from baseapp_core.models import DocumentId
 from baseapp_core.services.registry import ServiceProvider
 
 from .models import CommentStats

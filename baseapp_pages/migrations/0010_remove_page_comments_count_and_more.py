@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("baseapp_pages", "0009_metadata_insert_public_id_mapping_and_more"),
+        ("baseapp_pages", "0009_metadata_insert_document_id_and_more"),
     ]
 
     operations = [

@@ -2,7 +2,7 @@
 import swapper
 from django.db.models.signals import post_save
 
-from baseapp_core.documents.models import DocumentId
+from baseapp_core.models import DocumentId
 
 Page = swapper.load_model("baseapp_pages", "Page")
 

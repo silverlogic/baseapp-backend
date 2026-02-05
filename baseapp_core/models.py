@@ -11,8 +11,8 @@ from django.utils.deconstruct import deconstructible
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
-from baseapp_core.documents.models import *  # noqa
 from baseapp_core.hashids.models import *  # noqa
+from baseapp_core.models import *  # noqa
 
 
 class CaseInsensitiveCharField(models.CharField):

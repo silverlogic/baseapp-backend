@@ -1,6 +1,6 @@
+import pghistory
 import pgtrigger
 import swapper
-import pghistory
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -182,10 +182,12 @@ class CommentableModel(AbstractCommentableModel):
         abstract = True
 
 
-Comment, CommentStats = init_swapped_models([
-    ("baseapp_comments", "Comment"),
-    ("baseapp_comments", "CommentStats"),
-])
+Comment, CommentStats = init_swapped_models(
+    [
+        ("baseapp_comments", "Comment"),
+        ("baseapp_comments", "CommentStats"),
+    ]
+)
 
 
 if Comment and not Comment._meta.abstract:

@@ -1,7 +1,6 @@
 import pgtrigger
+import swapper
 from django.db import migrations
-
-from baseapp_core.swappable import get_apps_model
 
 
 def _get_report_type_uris(ReportType):
@@ -13,13 +12,13 @@ def _get_report_type_uris(ReportType):
 
 
 def create_default_report_types_and_transfer_values(apps, schema_editor):
-    ReportType = get_apps_model(apps, "baseapp_reports", "ReportType")
-    Report = get_apps_model(apps, "baseapp_reports", "Report")
-    ContentType = apps.get_model("contenttypes", "ContentType")
+    ReportType = swapper.load_model("baseapp_reports", "ReportType")
+    Report = swapper.load_model("baseapp_reports", "Report")
+    ContentType = swapper.load_model("contenttypes", "ContentType")
 
-    Comment = get_apps_model(apps, "baseapp_comments", "Comment")
-    Page = get_apps_model(apps, "baseapp_pages", "Page")
-    Profile = get_apps_model(apps, "baseapp_profiles", "Profile")
+    Comment = swapper.load_model("baseapp_comments", "Comment")
+    Page = swapper.load_model("baseapp_pages", "Page")
+    Profile = swapper.load_model("baseapp_profiles", "Profile")
     comment_content_type = ContentType.objects.get_for_model(Comment)
     page_content_type = ContentType.objects.get_for_model(Page)
     profile_content_type = ContentType.objects.get_for_model(Profile)
@@ -103,8 +102,8 @@ def create_default_report_types_and_transfer_values(apps, schema_editor):
 
 
 def reverse_create_default_report_types(apps, schema_editor):
-    ReportType = get_apps_model(apps, "baseapp_reports", "ReportType")
-    Report = get_apps_model(apps, "baseapp_reports", "Report")
+    ReportType = swapper.load_model("baseapp_reports", "ReportType")
+    Report = swapper.load_model("baseapp_reports", "Report")
 
     report_type_uris = _get_report_type_uris(ReportType)
 
