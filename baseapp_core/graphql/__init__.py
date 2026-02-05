@@ -10,8 +10,12 @@ from .middlewares import (  # noqa
 )
 from .models import RelayModel  # noqa
 from .mutations import DeleteNode, RelayMutation  # noqa
-from .object_types import DjangoObjectType  # noqa
-from .optimizer import optimize_without_evaluation, safe_optimize  # noqa
+from .object_types import DjangoObjectType, DjangoObjectTypeWithPkField  # noqa
+from .optimizer import (  # noqa
+    ConnectionFieldNodeExtractor,
+    NestedConnectionInfoProxy,
+    skip_ast_walker,
+)
 from .relay import Node  # noqa
 from .serializer_mutation import SerializerMutation  # noqa
 from .translation import LanguagesEnum  # noqa

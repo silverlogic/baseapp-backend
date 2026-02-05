@@ -2,9 +2,11 @@ from typing import Any, Optional, Type
 
 from constance import config
 
-from baseapp_core.hashids.models import LegacyWithPkMixin, PublicIdMixin
+from baseapp_core.hashids.models import LegacyWithPkMixin
 from baseapp_core.hashids.strategies.bundle import HashidsStrategyBundle
-from baseapp_core.hashids.utils import has_autoincrement_pk, is_uuid4
+from baseapp_core.hashids.utils import is_uuid4
+from baseapp_core.models import DocumentIdMixin
+from baseapp_core.utils import has_autoincrement_pk
 
 
 def _is_public_id_logic_enabled() -> bool:
@@ -14,10 +16,10 @@ def _is_public_id_logic_enabled() -> bool:
 def _is_model_public_id_compatible(model_cls: type) -> bool:
     """
     These are the constraints for a model to be compatible with the public ID feature.
-    - It must extend PublicIdMixin.
+    - It must extend DocumentIdMixin.
     - It must have an auto-incrementing primary key.
     """
-    return issubclass(model_cls, PublicIdMixin) and has_autoincrement_pk(model_cls)
+    return issubclass(model_cls, DocumentIdMixin) and has_autoincrement_pk(model_cls)
 
 
 def _is_model_pk_compatible(model_cls: type) -> bool:
@@ -147,3 +149,7 @@ def drf_get_pk_from_public_id_using_strategy(value: Any, expected_model: Optiona
         strategy = get_legacy_strategy()
 
     return strategy.drf_resolver.resolve_public_id_to_pk(value, expected_model=expected_model)
+
+
+def should_use_public_id(model_cls: type) -> bool:
+    return _is_model_public_id_compatible(model_cls) and _is_public_id_logic_enabled()

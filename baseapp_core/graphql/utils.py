@@ -15,6 +15,8 @@ from graphene_django import views as _views
 from graphene_django.debug.sql import tracking as _tracking
 from graphene_django.registry import get_global_registry
 
+from .decorators import graphql_schema_required
+
 
 def get_pk_from_relay_id(relay_id):
     from baseapp_core.hashids.strategies import (
@@ -32,6 +34,7 @@ def get_obj_from_relay_id(info: graphene.ResolveInfo, relay_id, get_node=False):
     return graphql_get_instance_from_global_id_using_strategy(info, relay_id, get_node)
 
 
+@graphql_schema_required
 def get_obj_relay_id(obj):
     from baseapp_core.hashids.strategies import graphql_to_global_id_using_strategy
 
