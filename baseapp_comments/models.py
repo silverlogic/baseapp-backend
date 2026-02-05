@@ -9,6 +9,7 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql import RelayModel
+from baseapp_core.pghelpers import pghistory_register_default_track
 from baseapp_core.swapper import init_swapped_models
 from baseapp_reactions.models import ReactableModel
 from baseapp_reports.models import ReportableModel
@@ -190,10 +191,10 @@ Comment, CommentStats = init_swapped_models(
 )
 
 
-if Comment and not Comment._meta.abstract:
-    pghistory.track(
-        pghistory.InsertEvent(),
-        pghistory.UpdateEvent(),
-        pghistory.DeleteEvent(),
-        exclude=["comments_count", "reactions_count", "modified"],
-    )(Comment)
+pghistory_register_default_track(
+    Comment,
+    pghistory.InsertEvent(),
+    pghistory.UpdateEvent(),
+    pghistory.DeleteEvent(),
+    exclude=["comments_count", "reactions_count", "modified"],
+)
