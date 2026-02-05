@@ -106,7 +106,7 @@ const openImageDialog = (editor) => {
       return "";
     }
     const trimmed = value.trim();
-    if (/^\\d+$/.test(trimmed)) {
+    if (/^\d+$/.test(trimmed)) {
       return `${trimmed}px`;
     }
     return trimmed;
@@ -116,7 +116,7 @@ const openImageDialog = (editor) => {
     if (!value) {
       return null;
     }
-    const match = value.match(/^(\\d+)\\s*[xX]\\s*(\\d+)$/);
+    const match = value.match(/^(\d+)\s*[xX]\s*(\d+)$/);
     if (!match) {
       return null;
     }
