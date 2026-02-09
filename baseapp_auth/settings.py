@@ -21,6 +21,7 @@ ACCOUNT_SIGNUP_FORM_CLASS = "baseapp_auth.allauth.account.forms.CustomAllauthSig
 ACCOUNT_AUTHENTICATION_METHOD = "email"
 ACCOUNT_EMAIL_VERIFICATION = "none"
 ACCOUNT_ADAPTER = "baseapp_auth.allauth.account.adapter.AccountAdapter"
+ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
 
 ALLAUTH_ADMIN_SIGNUP_ENABLED = False
 ALLAUTH_ADMIN_SOCIAL_LOGIN_ENABLED = False
