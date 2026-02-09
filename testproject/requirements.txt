@@ -6,6 +6,7 @@ easy_thumbnails==2.10.1
 rest-social-auth==8.4.0
 
 # test
+setuptools>=70.0.0
 freezegun==1.2.1
 pytest==7.4.2
 pytest-cov==4.1.0
