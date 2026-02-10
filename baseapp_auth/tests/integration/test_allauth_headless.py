@@ -93,7 +93,7 @@ class TestAllauthHeadlessLogin(ApiMixin):
 
     def test_login_with_valid_credentials_returns_tokens(self, client, login_data, existing_user):
         r = client.post(self.reverse(), login_data)
-        h.allauthResponseOk(r)
+        assert r.status_code == 200
 
         response_data = r.json()
 
@@ -111,7 +111,7 @@ class TestAllauthHeadlessLogin(ApiMixin):
     def test_login_with_invalid_email_returns_error(self, client, login_data):
         login_data["email"] = "nonexistent@example.com"
         r = client.post(self.reverse(), login_data)
-        h.allauthResponseBadRequest(r)
+        assert r.status_code == 400
 
         response_data = r.json()
         assert "errors" in response_data
@@ -119,7 +119,7 @@ class TestAllauthHeadlessLogin(ApiMixin):
     def test_login_with_invalid_password_returns_error(self, client, login_data, existing_user):
         login_data["password"] = "wrongpassword"  # NOSONAR
         r = client.post(self.reverse(), login_data)
-        h.allauthResponseBadRequest(r)
+        assert r.status_code == 400
 
         response_data = r.json()
         assert "errors" in response_data
@@ -127,7 +127,7 @@ class TestAllauthHeadlessLogin(ApiMixin):
     def test_login_with_missing_email_returns_error(self, client, login_data):
         del login_data["email"]
         r = client.post(self.reverse(), login_data)
-        h.allauthResponseBadRequest(r)
+        assert r.status_code == 400
 
         response_data = r.json()
         assert "errors" in response_data
@@ -135,7 +135,7 @@ class TestAllauthHeadlessLogin(ApiMixin):
     def test_login_with_missing_password_returns_error(self, client, login_data):
         del login_data["password"]
         r = client.post(self.reverse(), login_data)
-        h.allauthResponseBadRequest(r)
+        assert r.status_code == 400
 
         response_data = r.json()
         assert "errors" in response_data
@@ -168,14 +168,14 @@ class TestAllauthHeadlessLogout(ApiMixin):
         client, _, _, _ = authenticated_client_with_tokens
 
         r = client.delete(self.reverse())
-        h.allauthResponseUnauthorized(r)
+        assert r.status_code == 401
 
         r = client.get(self.protected_endpoint)
-        h.responseUnauthorized(r)
+        assert r.status_code == 401
 
     def test_logout_without_authentication_returns_error(self, client):
         r = client.delete(self.reverse())
-        h.allauthResponseUnauthorized(r)
+        assert r.status_code == 401
 
 
 class TestAllauthHeadlessTokenRefresh(ApiMixin):
@@ -197,7 +197,7 @@ class TestAllauthHeadlessTokenRefresh(ApiMixin):
 
     def test_refresh_with_valid_token_returns_new_tokens(self, client, refresh_token):
         r = client.post(self.reverse(), {"refresh_token": refresh_token})
-        h.allauthResponseOk(r)
+        assert r.status_code == 200
 
         response_data = r.json()
         data = response_data.get("data")
@@ -211,14 +211,14 @@ class TestAllauthHeadlessTokenRefresh(ApiMixin):
 
     def test_refresh_with_invalid_token_returns_error(self, client):
         r = client.post(self.reverse(), {"refresh_token": "invalid_token"})
-        h.allauthResponseBadRequest(r)
+        assert r.status_code == 400
 
         response_data = r.json()
         assert response_data.get("status") == 400
 
     def test_refresh_with_missing_token_returns_error(self, client):
         r = client.post(self.reverse(), {})
-        h.allauthResponseBadRequest(r)
+        assert r.status_code == 400
 
         response_data = r.json()
         assert response_data.get("status") == 400
@@ -271,7 +271,7 @@ class TestAllauthHeadlessProtectedEndpoints(ApiMixin):
     def test_protected_endpoint_with_valid_token_returns_user_data(self, authenticated_client):
         client, user = authenticated_client
         r = client.get(self.protected_endpoint)
-        h.responseOk(r)
+        assert r.status_code == 200
 
         response_data = r.json()
         assert "email" in response_data
@@ -280,20 +280,20 @@ class TestAllauthHeadlessProtectedEndpoints(ApiMixin):
     def test_protected_endpoint_rejects_invalid_token(self, client):
         client.credentials(HTTP_AUTHORIZATION="Bearer invalid_token")
         r = client.get(self.protected_endpoint)
-        h.responseUnauthorized(r)
+        assert r.status_code == 401
 
     def test_protected_endpoint_rejects_missing_token(self, client):
         r = client.get(self.protected_endpoint)
-        h.responseUnauthorized(r)
+        assert r.status_code == 401
 
     def test_protected_endpoint_rejects_malformed_authorization_header(self, client):
         client.credentials(HTTP_AUTHORIZATION="InvalidFormat token123")
         r = client.get(self.protected_endpoint)
-        h.responseUnauthorized(r)
+        assert r.status_code == 401
 
     def test_protected_endpoint_rejects_expired_token(self, client):
         client.credentials(
             HTTP_AUTHORIZATION="Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNjAwMDAwMDAwLCJqdGkiOiJ0ZXN0In0.invalid"
         )
         r = client.get(self.protected_endpoint)
-        h.responseUnauthorized(r)
+        assert r.status_code == 401
