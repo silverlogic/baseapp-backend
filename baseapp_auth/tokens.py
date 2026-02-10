@@ -128,9 +128,7 @@ class AllAuthUserProfileJWTTokenStrategy(AllAuthJWTTokenStrategy):
         if not user or not user.is_authenticated:
             return payload
 
-        user_serializer_class_path = getattr(
-            settings, "HEADLESS_JWT_USER_SERIALIZER_CLASS", None
-        )
+        user_serializer_class_path = getattr(settings, "HEADLESS_JWT_USER_SERIALIZER_CLASS", None)
         if not user_serializer_class_path:
             return payload
 
