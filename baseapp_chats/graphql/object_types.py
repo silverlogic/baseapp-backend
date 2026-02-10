@@ -98,13 +98,13 @@ class BaseMessageObjectType:
             return None
 
     @staticmethod
-    def get_replaced_profile_name(profile, profile_pk, replacement_text):
+    def get_replaced_profile_name(profile, profile_pk, replacement_text, include_verb=False):
         if not profile:
             return _("Profile Not Found")
         elif profile.id == profile_pk:
-            return replacement_text
+            return replacement_text if not include_verb else replacement_text + " are"
         else:
-            return profile.name
+            return profile.name if not include_verb else profile.name + " is"
 
     @staticmethod
     def resolve_content(root, info, profile_id=None, **kwargs):
@@ -118,11 +118,15 @@ class BaseMessageObjectType:
         if root.message_type == Message.MessageType.USER_MESSAGE:
             return root.content
 
+        extra_data = root.extra_data or {}
+        include_verb = extra_data.get("include_verb", False)
+
         linked_capital_name = BaseMessageObjectType.get_replaced_profile_name(
-            root.content_linked_profile_actor, profile_pk, "You"
+            root.content_linked_profile_actor, profile_pk, "You", include_verb=include_verb
         )
+        replacement = "You" if include_verb else "you"
         linked_small_name = BaseMessageObjectType.get_replaced_profile_name(
-            root.content_linked_profile_target, profile_pk, "you"
+            root.content_linked_profile_target, profile_pk, replacement, include_verb=include_verb
         )
         return root.content.format(
             content_linked_profile_actor=linked_capital_name,
