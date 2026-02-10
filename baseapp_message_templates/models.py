@@ -1,9 +1,9 @@
 from typing import List
 
-from ckeditor.fields import RichTextField
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
+from django_prose_editor.fields import ProseEditorField
 from model_utils.models import TimeStampedModel
 
 from .custom_templates import get_full_copy_template
@@ -36,14 +36,18 @@ class EmailTemplate(TimeStampedModel):
     subject = models.CharField(
         max_length=255, blank=True, null=True, help_text="Email subject line"
     )
-    html_content = RichTextField(
+    html_content = ProseEditorField(
         blank=True,
         help_text="Text that will be inputted into Template html version",
         null=True,
+        extensions=getattr(settings, "PROSE_EDITOR_EXTENSIONS", None),
+        sanitize=getattr(settings, "PROSE_EDITOR_SANITIZE", False),
     )
-    plain_text_content = RichTextField(
+    plain_text_content = ProseEditorField(
         blank=True,
         help_text="Text that will be inputted into Template plain text version",
+        extensions=getattr(settings, "PROSE_EDITOR_EXTENSIONS", None),
+        sanitize=getattr(settings, "PROSE_EDITOR_SANITIZE", False),
     )
 
     class Meta:
