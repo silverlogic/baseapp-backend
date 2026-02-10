@@ -123,7 +123,7 @@ class TestAccountAdapterGetLoginRedirectUrl:
 
     def test_rejects_url_with_different_host(self, adapter, request_factory):
         """Test that URLs with different hosts are rejected."""
-        request = request_factory.get("/", {"next": "http://evil.com/admin/"})
+        request = request_factory.get("/", {"next": "http://evil.com/admin/"})  # NOSONAR
         request.get_host = MagicMock(return_value="example.com")
         request.is_secure = MagicMock(return_value=False)
 
@@ -170,7 +170,7 @@ class TestAccountAdapterGetLoginRedirectUrl:
 
     def test_requires_https_when_request_is_secure(self, adapter, request_factory):
         """Test that HTTPS is required when request is secure."""
-        request = request_factory.get("/", {"next": "http://example.com/admin/"})
+        request = request_factory.get("/", {"next": "http://example.com/admin/"})  # NOSONAR
         request.get_host = MagicMock(return_value="example.com")
         request.is_secure = MagicMock(return_value=True)
 
@@ -205,7 +205,9 @@ class TestAccountAdapterGetPasswordChangeRedirectUrl:
             # If URL doesn't exist, adapter should fall back to admin:index
             assert url == reverse("admin:index")
 
-    @override_settings(ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL="account_change_password_done")
+    @override_settings(
+        ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL="account_change_password_done"
+    )  # NOSONAR
     def test_uses_account_password_change_redirect_url_setting(self, adapter, request_factory):
         """Test that ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL setting is used."""
         request = request_factory.get("/")
@@ -218,21 +220,21 @@ class TestAccountAdapterGetPasswordChangeRedirectUrl:
             # If URL doesn't exist, adapter should fall back to admin:index
             assert url == reverse("admin:index")
 
-    @override_settings(ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL="/custom-password-done/")
+    @override_settings(ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL="/custom-password-done/")  # NOSONAR
     def test_uses_full_url_from_setting(self, adapter, request_factory):
         """Test that full URLs from ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL are returned directly."""
         request = request_factory.get("/")
         url = adapter.get_password_change_redirect_url(request)
         assert url == "/custom-password-done/"
 
-    @override_settings(ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL="https://external.com/done")
+    @override_settings(ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL="https://external.com/done")  # NOSONAR
     def test_uses_external_url_from_setting(self, adapter, request_factory):
         """Test that external URLs from ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL are returned directly."""
         request = request_factory.get("/")
         url = adapter.get_password_change_redirect_url(request)
         assert url == "https://external.com/done"
 
-    @override_settings(ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL="admin:index")
+    @override_settings(ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL="admin:index")  # NOSONAR
     def test_uses_url_name_from_setting(self, adapter, request_factory):
         """Test that URL names from ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL are reversed."""
         request = request_factory.get("/")
