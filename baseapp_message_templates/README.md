@@ -7,6 +7,110 @@ This app provides the integration of custom e-mail and sms template configuratio
 
 Install the package with `pip install baseapp-backend[messagetemplates]`.
 
+## Choose the editor (Prose or CKEditor)
+
+By default the admin uses **django-prose-editor**. You can switch to **CKEditor**
+by setting a Django setting and adding the app.
+
+```py
+# settings.py
+MESSAGE_TEMPLATES_EDITOR = "prose"  # or "ckeditor"
+
+# Only required if you choose CKEditor:
+INSTALLED_APPS += ["ckeditor"]
+```
+
+### Prose editor requirements (admin)
+
+`django-prose-editor` uses importmaps for its JavaScript. Ensure your Django
+templates include the importmap context processor:
+
+```py
+"context_processors": [
+    "django.template.context_processors.debug",
+    "django.template.context_processors.request",
+    "django.contrib.auth.context_processors.auth",
+    "django.contrib.messages.context_processors.messages",
+    "js_asset.context_processors.importmap",
+],
+```
+
+This package already renders `{{ importmap }}` on the EmailTemplate admin
+change form. If you override that template, keep the `{{ importmap }}` block.
+
+### Sanitization (recommended)
+
+Prose sanitization is generated from your enabled extensions and runs on save.
+That means HTML tags/attributes not covered by your extensions can be stripped.
+Configure these in settings:
+
+```py
+PROSE_EDITOR_EXTENSIONS = {
+    "Bold": True,
+    "Italic": True,
+    "BulletList": True,
+    "ListItem": True,
+    "Link": {"protocols": ["http", "https", "mailto"]},
+    # ...
+}
+PROSE_EDITOR_SANITIZE = True
+```
+
+Docs:
+- https://django-prose-editor.readthedocs.io/en/latest/configuration.html
+- https://django-prose-editor.readthedocs.io/en/stable/sanitization.html
+
+### Images (Prose ImageDialog)
+
+CKEditor includes a built-in image dialog. Prose does **not** ship an image
+dialog by default, so this package includes a small custom image extension
+(`ImageDialog`) that adds an image button to the toolbar.
+
+**How to use it**
+
+1. Ensure Prose is the selected editor:
+   ```py
+   MESSAGE_TEMPLATES_EDITOR = "prose"
+   ```
+2. Make sure the extension is enabled:
+   ```py
+   PROSE_EDITOR_EXTENSIONS = {
+       # ...
+       "ImageDialog": True,
+   }
+   ```
+3. Make sure the custom extension JS is registered:
+   ```py
+   DJANGO_PROSE_EDITOR_EXTENSIONS = [
+       {
+           "js": ["baseapp_message_templates/prose/image_dialog.js"],
+           "extensions": {
+                "ImageDialog": html_tags(
+                    tags=["img"],
+                    attributes={
+                        "img": [
+                            "src",
+                            "alt",
+                            "title",
+                            # ...
+                        ]
+                    }
+                )
+            },
+       },
+   ]
+   ```
+
+**Sanitization**
+
+The `ImageDialog` extension also adds a sanitization allowlist for common
+`<img>` attributes. If you need extra attributes, update the allowlist in
+`DJANGO_PROSE_EDITOR_EXTENSIONS`.
+
+- https://django-prose-editor.readthedocs.io/en/latest/configuration.html
+- https://django-prose-editor.readthedocs.io/en/latest/custom_extensions.html
+
+
 ## Configure template settings
 
 ```py
@@ -33,6 +137,7 @@ TEMPLATES  =  [
 				"django.template.context_processors.request",
 				"django.contrib.auth.context_processors.auth",
 				"django.contrib.messages.context_processors.messages",
+				"js_asset.context_processors.importmap",
 			],
 			"libraries": {
 				"filter": "baseapp_message_templates.filters",
@@ -181,7 +286,9 @@ If you aren't using SendGrid and instead wish to provide your custom HTML conten
 
 ### Adding HTML content via Django Admin
 
-When adding HTML content to a template through the Django Admin, the "source" option must be selected in the text field.
+When adding HTML content to a template through the Django Admin, the "source"
+option must be selected in the text field (CKEditor only). With Prose, the
+`HTML` extension enables editing raw HTML.
 
 ![enter image description here](https://i.ibb.co/3yCBRy3/Screen-Shot-2023-06-12-at-12-48-17-PM.png)
 
