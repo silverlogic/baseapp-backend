@@ -3,17 +3,7 @@ import json
 
 from django.conf import settings
 
-from baseapp_core.tests.helpers import (  # noqa: F401
-    responseBadRequest,
-    responseCreated,
-    responseEquals,
-    responseForbidden,
-    responseMethodNotAllowed,
-    responseNoContent,
-    responseNotFound,
-    responseOk,
-    responseUnauthorized,
-)
+from baseapp_core.tests.helpers import *  # noqa: F403, F401, S2208
 
 
 def get_json(data):

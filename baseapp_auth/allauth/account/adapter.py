@@ -10,37 +10,43 @@ from django.utils.http import url_has_allowed_host_and_scheme
 
 class AccountAdapter(DefaultAccountAdapter):
     """
-    Custom account adapter for django-allauth that configures authentication behavior.
+    Custom account adapter for django-allauth.
 
-    This adapter:
-    - Disables public user signup (registration is handled through other means)
-    - Redirects users to the Django admin after login and password changes
-    - Allows redirect to admin URLs when specified via the 'next' parameter
+    Signup behavior:
+    - Headless API signup: Always enabled (controlled independently)
+    - Admin/form-based signup: Controlled by ALLAUTH_ADMIN_SIGNUP_ENABLED
 
-    The signup is disabled because user registration should be managed through
-    administrative processes or specific registration endpoints, not through
-    the public allauth signup flow.
+    Login/redirect behavior:
+    - Redirects to Django admin after login
+    - Validates 'next' parameter to only allow admin URLs
+    - Redirects to admin after password changes
 
-    Configuration:
-    - ALLAUTH_ADMIN_SIGNUP_ENABLED: Controls whether signup is enabled (default: False)
-    - ACCOUNT_LOGIN_REDIRECT_URL: Default redirect URL after login (default: "admin:index")
-    - ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL: Redirect URL after password change (default: "account_change_password_done")
+    Settings:
+    - ALLAUTH_ADMIN_SIGNUP_ENABLED: Enable/disable admin signup (default: False)
+    - ACCOUNT_LOGIN_REDIRECT_URL: Default login redirect (default: "admin:index")
+    - ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL: Password change redirect
     """
 
     def is_open_for_signup(self, request):
         """
-        Determine if signup is open based on configuration.
+        Determine if signup is open based on the request type.
 
-        Checks the ALLAUTH_ADMIN_SIGNUP_ENABLED setting to determine if signup
-        should be enabled. If not set, defaults to False to disable signup.
+        - Headless API requests: Always allowed (returns True)
+        - Admin/form-based requests: Controlled by ALLAUTH_ADMIN_SIGNUP_ENABLED
+
+        This allows headless signup to work independently from admin signup.
 
         Args:
             request: The HTTP request object.
 
         Returns:
-            bool: True if signup is enabled (via ALLAUTH_ADMIN_SIGNUP_ENABLED),
-                  False otherwise.
+            bool: True if signup is allowed for this request type.
         """
+        if request and (resolver_match := getattr(request, "resolver_match", None)):
+            namespace = getattr(resolver_match, "namespace", "")
+            if "headless" in namespace:
+                return True
+
         return getattr(settings, "ALLAUTH_ADMIN_SIGNUP_ENABLED", False)
 
     def _validate_and_normalize_admin_url(self, request, next_url):
@@ -58,15 +64,9 @@ class AccountAdapter(DefaultAccountAdapter):
         Returns:
             str: The normalized admin path if valid, None otherwise.
         """
-        # Normalize the path to prevent path traversal attacks
-        # This handles sequences like "/admin/../sensitive-page" -> "/sensitive-page"
         parsed = urlparse(next_url)
-        # Use posixpath.normpath to normalize the path (handles .. and .)
-        # Note: normpath removes trailing slashes, which is fine for security
         normalized_path = posixpath.normpath(parsed.path)
-        # Ensure normalized path still starts with /admin/ after normalization
         if normalized_path.startswith("/admin/"):
-            # Reconstruct URL with normalized path
             normalized_url = (
                 f"{parsed.scheme}://{parsed.netloc}{normalized_path}"
                 if parsed.scheme
@@ -77,14 +77,11 @@ class AccountAdapter(DefaultAccountAdapter):
                 allowed_hosts={request.get_host()},
                 require_https=request.is_secure(),
             ):
-                # Validate that the normalized URL resolves to a valid admin view
                 try:
                     resolved = resolve(normalized_path)
-                    # Ensure the resolved view belongs to the admin namespace
                     if resolved.namespace == "admin":
                         return normalized_path
                 except Resolver404:
-                    # Invalid URL, fall through to default redirect
                     pass
         return None
 
@@ -113,12 +110,9 @@ class AccountAdapter(DefaultAccountAdapter):
             validated_url = self._validate_and_normalize_admin_url(request, next_url)
             if validated_url:
                 return validated_url
-        # Use ACCOUNT_LOGIN_REDIRECT_URL if configured, otherwise default to admin:index
         redirect_url = getattr(settings, "ACCOUNT_LOGIN_REDIRECT_URL", "admin:index")
 
-        # If it's already a full URL or starts with /, return it directly
-        # Otherwise, treat it as a URL name and reverse it
-        if redirect_url.startswith(("http://", "https://", "/")):
+        if redirect_url.startswith(("http://", "https://", "/")):  # NOSONAR
             return redirect_url
         return reverse(redirect_url)
 
@@ -142,13 +136,9 @@ class AccountAdapter(DefaultAccountAdapter):
             settings, "ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL", "account_change_password_done"
         )
 
-        # If it's already a full URL or starts with /, return it directly
-        # Otherwise, treat it as a URL name and reverse it
-        if redirect_url.startswith(("http://", "https://", "/")):
+        if redirect_url.startswith(("http://", "https://", "/")):  # NOSONAR
             return redirect_url
         try:
             return reverse(redirect_url)
         except Exception:
-            # If URL name doesn't exist, fall back to a safe default
-            # This can happen if allauth URLs aren't fully configured
             return reverse("admin:index")

@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 import baseapp_wagtail.urls as baseapp_wagtail_urls
+from baseapp_auth.allauth.urls import allauth_admin_urls, allauth_headless_urls
 from baseapp_core.graphql import GraphQLView
 from baseapp_core.plugins import plugin_registry
 from baseapp_core.rest_framework.routers import DefaultRouter
@@ -13,6 +14,7 @@ __all__ = [
 
 v1_urlpatterns = [
     *plugin_registry.get_all_v1_urlpatterns(),
+    path("", include(allauth_headless_urls)),
 ]
 
 router = DefaultRouter(trailing_slash=False)
@@ -22,6 +24,7 @@ urlpatterns = [
     path("graphql", GraphQLView.as_view(graphiql=True)),
     path("admin/", admin.site.urls),
     path("v1/", include((v1_urlpatterns, "v1"), namespace="v1")),
+    path("", include(allauth_admin_urls)),
     path("", include(baseapp_wagtail_urls)),
     path("", include(router.urls)),
     *plugin_registry.get_all_urlpatterns(),
