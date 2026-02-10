@@ -54,6 +54,7 @@ urlpatterns = [
 ```
 
 Our `GraphQLView` is a subclass of `graphene_django.views.GraphQLView` with some additional features:
+
 - Sentry integration, it will name the transaction with the query name instead of just `/graphql`, making it easy to find queries on Sentry.
 
 ## Enable websockets
@@ -70,31 +71,44 @@ ASGI_APPLICATION = "apps.asgi.application"
 ```
 
 In your `asgi.py` make sure to have something like:
-    
+
 ```python
 from django.core.asgi import get_asgi_application
 from django.urls import re_path
+from django.utils.module_loading import import_string
+from django.conf import settings
 
 from channels.routing import ProtocolTypeRouter, URLRouter
 
 django_asgi_app = get_asgi_application()
 
-# we need to load all applications before we can import from the apps
-
-from baseapp_core.graphql.consumers import GraphqlWsJWTAuthenticatedConsumer 
-
-# OR if not using JWT:
-# from baseapp_core.graphql.consumers import GraphqlWsAuthenticatedConsumer
-
-
 application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
         "websocket": URLRouter([
-            re_path(r"graphql", GraphqlWsJWTAuthenticatedConsumer.as_asgi())
+            re_path(
+                r"graphql",
+                import_string(settings.GRAPHQL_WS_CONSUMER).as_asgi()
+            )
         ]),
     }
 )
+```
+
+The GraphQL WebSocket consumer is configured via the `GRAPHQL_WS_CONSUMER` setting (defaults to `baseapp_core.graphql.consumers.GraphqlWsJWTAuthenticatedConsumer`).
+
+**For allauth headless JWT**, override the setting in your `settings/base.py`:
+
+```python
+GRAPHQL_WS_CONSUMER = "baseapp_auth.graphql.consumers.GraphqlWsAllAuthJWTAuthenticatedConsumer"
+```
+
+**For simplejwt** (default), no change needed.
+
+**For token-based auth** (non-JWT), override with:
+
+```python
+GRAPHQL_WS_CONSUMER = "baseapp_core.graphql.consumers.GraphqlWsAuthenticatedConsumer"
 ```
 
 **Make sure** to check that when running `runserver` if you see the following message, this will confirm you are using ASGI:
@@ -119,10 +133,12 @@ class UserNode(DjangoObjectType):
 ```
 
 ObjectTypes that inherit from `DjangoObjectType` will have the following fields:
+
 - `id` - Relay global id, base64 of `{ObjectType}:{pk}`
 - `pk` - Same as your model's primary key
 
 All connections with this ObjectType will inherit `CountedConnection`, which will add the following fields to the connection type:
+
 - `totalCount` - Total number of objects in the database for this query
 - `edgesCount` - Number of objects in this page
 
@@ -164,6 +180,7 @@ class UserMutations:
 ```
 
 By inherinting `RelayMutation` your mutation will have the following fields:
+
 - `clientMutationId` - Relay client mutation id
 - `errors` - List of errors, if any
 - `_debug` - Debug information, only available if `DEBUG=True`
@@ -182,9 +199,9 @@ class User(RelayModel):
 ```
 
 This will add the following methods and properties to your model:
+
 - `relay_id` - Relay global ID property, base64 of `{ObjectType}:{pk}`
 - `get_graphql_object_type` - Class method that, return the model's `DjangoObjectType` class
-
 
 So you can access the relay id of your model like:
 
@@ -211,16 +228,16 @@ This will make it possible to retrieve objects by both `relay_id` and your model
 
 ```graphql
 query {
-    byRelayId: user(id: "VXNlcjox") {
-        id
-        pk
-        username
-    }
-    byPk: user(id: "1") {
-        id
-        pk
-        username
-    }
+  byRelayId: user(id: "VXNlcjox") {
+    id
+    pk
+    username
+  }
+  byPk: user(id: "1") {
+    id
+    pk
+    username
+  }
 }
 ```
 
@@ -243,9 +260,9 @@ This will make it possible to delete any object that the user has permission to 
 
 ```graphql
 mutation {
-    deleteNode(id: "VXNlcjox") {
-        deletedID @deleteRecord
-    }
+  deleteNode(id: "VXNlcjox") {
+    deletedID @deleteRecord
+  }
 }
 ```
 
@@ -259,7 +276,7 @@ from baseapp_core.graphql import get_obj_relay_id
 user = User.objects.get(pk=1)
 get_obj_relay_id(user)
 ```
-    
+
 ### get_obj_from_relay_id
 
 Get a model instance from a relay id, e.g.:
@@ -297,11 +314,11 @@ Then we can query by specific size, like:
 
 ```graphql
 query {
-    user(id: "1") {
-        selfie(width: 100, height: 100) {
-            url
-        }
+  user(id: "1") {
+    selfie(width: 100, height: 100) {
+      url
     }
+  }
 }
 ```
 
@@ -342,7 +359,6 @@ class UserObjectType(DjangoObjectType):
         model = User
 ```
 
-
 ## Testing
 
 Make sure to add to your app's `confitest.py`:
@@ -357,22 +373,24 @@ Then you can use the following fixtures:
 ### graphql_client
 
 Args:
+
 - `query`: (string) - GraphQL query to run
 - `operation_name`: (string) - If the query is a mutation or named query, you must supply the operation_name. For annon queries ("{ ... }"), should be None (default).
 - `input_data`: (dict) - If provided, the $input variable in GraphQL will be set to this value. If both `input_data` and `variables`, are provided, the `input` field in the `variables` dict will be overwritten with this value.
 - `variables`: (dict) - If provided, the "variables" field in GraphQL will be set to this value.
-- `headers`: (dict) - If provided, the headers in POST request to GRAPHQL_URL will be set to this value. Keys should be prepended with "HTTP_" (e.g. to specify the "Authorization" HTTP header, use "HTTP_AUTHORIZATION" as the key).
+- `headers`: (dict) - If provided, the headers in POST request to GRAPHQL*URL will be set to this value. Keys should be prepended with "HTTP*" (e.g. to specify the "Authorization" HTTP header, use "HTTP_AUTHORIZATION" as the key).
 - `client`: (django.test.Client) - Test client. Defaults to django.test.Client.
 - `graphql_url`: (string) - URL to graphql endpoint. Defaults to "/graphql".
 
 Returns:
+
 - `Response` object from client
 
 ### graphql_user_client
 
 To make request as a user.
 
-Args are the same as `graphql_client`, but will inject `django_user_client` as the `client` argument. 
+Args are the same as `graphql_client`, but will inject `django_user_client` as the `client` argument.
 
 ## Testing Websockets
 
@@ -389,6 +407,7 @@ For testing websockets we have the following fixtures:
 ### graphql_ws_user_client
 
 Args:
+
 - `consumer_attrs`: `GraphqlWsConsumer` attributes dict. Optional.
 - `communicator_kwds`: Extra keyword arguments for the Channels `channels.testing.WebsocketCommunicator`. Optional.
 

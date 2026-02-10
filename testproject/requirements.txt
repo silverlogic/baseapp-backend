@@ -5,13 +5,16 @@ drf-nested-routers==0.93.5
 easy_thumbnails==2.10.1
 rest-social-auth==8.4.0
 
+# allauth
+django-allauth[headless]==65.13.0
+
 # test
 freezegun==1.2.1
 pytest==7.4.2
 pytest-cov==4.1.0
 pytest-django==4.5.2
 pytest-asyncio==0.21.1
-pytest-celery==1.2.0
+pytest-celery==1.2.1
 
 responses==0.25.3
 urllib3==2.6.3
