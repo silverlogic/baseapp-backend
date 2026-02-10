@@ -33,7 +33,7 @@ class TestAllAuthUserProfileJWTTokenStrategy:
 
         assert result == {"foo": "bar"}
 
-    @override_settings(JWT_CLAIM_SERIALIZER_CLASS=None)
+    @override_settings(HEADLESS_JWT_USER_SERIALIZER_CLASS=None)
     def test_returns_payload_when_no_claim_serializer_configured(self):
         strategy = AllAuthUserProfileJWTTokenStrategy()
         request = HttpRequest()
@@ -48,7 +48,7 @@ class TestAllAuthUserProfileJWTTokenStrategy:
         assert result == {"foo": "bar"}
 
     @override_settings(
-        JWT_CLAIM_SERIALIZER_CLASS="baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
+        HEADLESS_JWT_USER_SERIALIZER_CLASS="baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
     )
     def test_merges_user_data_into_payload(self):
         strategy = AllAuthUserProfileJWTTokenStrategy()
@@ -75,7 +75,7 @@ class TestAllAuthUserProfileJWTTokenStrategy:
         assert result == {**base_payload, **user_data}
         serializer_cls.assert_called_once_with(user)
 
-    @override_settings(JWT_CLAIM_SERIALIZER_CLASS="invalid.path.Serializer")
+    @override_settings(HEADLESS_JWT_USER_SERIALIZER_CLASS="invalid.path.Serializer")
     def test_serializer_errors_are_swallowed(self):
         strategy = AllAuthUserProfileJWTTokenStrategy()
         request = HttpRequest()

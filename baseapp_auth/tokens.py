@@ -115,7 +115,7 @@ class AllAuthUserProfileJWTTokenStrategy(AllAuthJWTTokenStrategy):
     """
     AllAuth JWT token strategy that adds user profile data to the response meta field.
 
-    Extends the default response with user data from JWT_CLAIM_SERIALIZER_CLASS,
+    Extends the default response with user data from HEADLESS_JWT_USER_SERIALIZER_CLASS,
     making profile information available in login/signup responses.
     """
 
@@ -128,13 +128,15 @@ class AllAuthUserProfileJWTTokenStrategy(AllAuthJWTTokenStrategy):
         if not user or not user.is_authenticated:
             return payload
 
-        claim_serializer_class_path = getattr(settings, "JWT_CLAIM_SERIALIZER_CLASS", None)
-        if not claim_serializer_class_path:
+        user_serializer_class_path = getattr(
+            settings, "HEADLESS_JWT_USER_SERIALIZER_CLASS", None
+        )
+        if not user_serializer_class_path:
             return payload
 
         try:
-            claim_serializer_class = import_string(claim_serializer_class_path)
-            user_data = claim_serializer_class(user).data
+            user_serializer_class = import_string(user_serializer_class_path)
+            user_data = user_serializer_class(user).data
             payload.update(user_data)
         except Exception:
             pass

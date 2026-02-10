@@ -3,8 +3,11 @@ from django import forms
 
 class CustomAllauthSignupForm(forms.Form):
     """
-    Custom allauth signup form that adds first and last name to the user.
+    Django allauth signup hook for collecting extra user fields.
     """
+
+    # allauth expects a plain Django Form implementing `signup(request, user)`
+    # See: https://docs.allauth.org/en/latest/account/configuration.html
 
     first_name = forms.CharField(max_length=100, required=True)
     last_name = forms.CharField(max_length=100, required=True)

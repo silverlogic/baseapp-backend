@@ -165,7 +165,7 @@ class TestAllauthHeadlessLogout(ApiMixin):
         client.credentials()
 
     def test_logout_invalidates_access_token(self, authenticated_client_with_tokens):
-        client, access_token, refresh_token, user = authenticated_client_with_tokens
+        client, _, _, _ = authenticated_client_with_tokens
 
         r = client.delete(self.reverse())
         h.allauthResponseUnauthorized(r)
