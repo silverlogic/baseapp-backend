@@ -1,8 +1,8 @@
 import graphene
 from django.utils.translation import gettext_lazy as _
 
-from baseapp_core.graphql import Node as RelayNode
 from baseapp_auth.utils.normalize_permission import normalize_permission
+from baseapp_core.graphql import Node as RelayNode
 
 
 class PermissionsInterface(RelayNode):
