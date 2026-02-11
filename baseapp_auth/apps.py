@@ -1,6 +1,10 @@
 from django.apps import AppConfig
 
-from .settings import JWT_CLAIM_SERIALIZER_CLASS, SIMPLE_JWT
+from .settings import (
+    HEADLESS_JWT_USER_SERIALIZER_CLASS,
+    JWT_CLAIM_SERIALIZER_CLASS,
+    SIMPLE_JWT,
+)
 
 
 class PackageConfig(AppConfig):
@@ -20,4 +24,7 @@ class PackageConfig(AppConfig):
         }
         settings.JWT_CLAIM_SERIALIZER_CLASS = getattr(
             settings, "JWT_CLAIM_SERIALIZER_CLASS", JWT_CLAIM_SERIALIZER_CLASS
+        )
+        settings.HEADLESS_JWT_USER_SERIALIZER_CLASS = getattr(
+            settings, "HEADLESS_JWT_USER_SERIALIZER_CLASS", HEADLESS_JWT_USER_SERIALIZER_CLASS
         )
