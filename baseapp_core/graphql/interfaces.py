@@ -1,70 +1,57 @@
-from typing import Any, List, Optional
+"""
+Runtime GraphQL capability registry. Capabilities are registered in
+AppConfig.ready(); no entry points. Consumers opt in by name when
+defining GraphQL object types.
+"""
 
-from stevedore import extension
-from stevedore.exception import NoMatches
+from typing import Any, Callable, List, Optional, Union
+
+from graphene import Interface
+
+# Lazy/callable that returns an interface class
+CapabilityValue = Union[Interface, Callable[[], Any]]
 
 
-class BaseAppInterfaceRegistry:
-    NAMESPACE = "baseapp.interfaces"
+class GraphQLSharedInterfaceRegistry:
+    """
+    Runtime-only registry. Providers register in ready() via register().
+    Consumers call get_interface(name) or get_interfaces(names, default_interfaces).
+    No schema mutation by side effect; consumers assemble interfaces explicitly.
+    """
 
-    def __init__(self):
-        self._manager: Optional[extension.ExtensionManager] = None
-        self._initialized = False
+    def __init__(self) -> None:
+        self._registry: dict[str, CapabilityValue] = {}
 
-    def _get_manager(self) -> extension.ExtensionManager:
-        if self._manager is None:
-            try:
-                self._manager = extension.ExtensionManager(
-                    namespace=self.NAMESPACE,
-                    invoke_on_load=True,
-                )
-            except NoMatches:
-                self._manager = extension.ExtensionManager(
-                    namespace=self.NAMESPACE,
-                    invoke_on_load=True,
-                    verify_requirements=False,
-                )
-        return self._manager
-
-    def load_from_installed_apps(self):
-        if self._initialized:
-            return
-        self._initialized = True
-
-    def get_all_interfaces(self) -> List[Any]:
-        if not self._initialized:
-            self.load_from_installed_apps()
-
-        manager = self._get_manager()
-        return [ext.obj for ext in manager if ext.obj]
+    def register(self, name: str, interface: CapabilityValue) -> None:
+        """Register a GraphQL capability by name. Call from AppConfig.ready()."""
+        self._registry[name] = interface
 
     def get_interface(self, name: str) -> Optional[Any]:
-        if not self._initialized:
-            self.load_from_installed_apps()
-
-        try:
-            manager = self._get_manager()
-            for ext in manager:
-                if ext.name == name:
-                    return ext.obj
-        except Exception:
-            pass
-        return None
+        """Resolve and return the interface for name, or None if not registered."""
+        value = self._registry.get(name)
+        if value is None:
+            return None
+        if callable(value) and not isinstance(value, Interface):
+            return value()
+        return value
 
     def get_interfaces(
-        self, interface_names: List[str], default_interfaces: List[Any] = None
+        self,
+        interface_names: List[str],
+        default_interfaces: Optional[List[Any]] = None,
     ) -> tuple:
+        """
+        Return (default_interfaces + interfaces for the given names).
+        Missing names are skipped; no error. Consumers opt in explicitly.
+        """
         if default_interfaces is None:
             default_interfaces = []
-
-        interfaces = list(default_interfaces)
-
+        result = list(default_interfaces)
         for name in interface_names:
-            interface = self.get_interface(name)
-            if interface:
-                interfaces.append(interface)
+            iface = self.get_interface(name)
+            if iface is not None:
+                result.append(iface)
+        return tuple(result)
 
-        return tuple(interfaces)
 
-
-interface_registry = BaseAppInterfaceRegistry()
+graphql_shared_interface_registry = GraphQLSharedInterfaceRegistry()

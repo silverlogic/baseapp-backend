@@ -10,11 +10,6 @@ from baseapp_wagtail.settings import (
     WAGTAIL_MIDDLEWARE,
 )
 
-plugin_settings = plugin_registry.get_all_django_settings()
-for key, value in plugin_settings.items():
-    if key not in globals():
-        globals()[key] = value
-
 # Application definition
 INSTALLED_APPS += [
     "channels",
@@ -52,7 +47,6 @@ INSTALLED_APPS += [
     "baseapp_api_key",
     *WAGTAIL_INSTALLED_APPS,
     *WAGTAIL_INSTALLED_INTERNAL_APPS,
-    *plugin_registry.get_all_installed_apps(),
     "testproject.testapp",
     "testproject.comments",
     "testproject.profiles",
@@ -70,17 +64,21 @@ INSTALLED_APPS += [
     "baseapp_wagtail.tests",
 ]
 
+plugin_registry.load_from_installed_apps()
+
+INSTALLED_APPS += plugin_registry.get("INSTALLED_APPS")
+
 MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")
 MIDDLEWARE += [
+    # Slotted: use get("MIDDLEWARE", "slot_name") for explicit order; if plugin disabled, [].
     "baseapp_profiles.middleware.CurrentProfileMiddleware",
     "baseapp_core.middleware.HistoryMiddleware",
     *WAGTAIL_MIDDLEWARE,
-    *plugin_registry.get_all_middleware(),
 ]
 
 GRAPHENE["MIDDLEWARE"] = (
+    # Slotted: use get("GRAPHENE__MIDDLEWARE", "slot_name") for explicit order; if plugin disabled, [].
     "baseapp_profiles.graphql.middleware.CurrentProfileMiddleware",
-    *plugin_registry.get_all_graphql_middleware(),
 ) + GRAPHENE["MIDDLEWARE"]
 
 ROOT_URLCONF = "testproject.urls"
@@ -122,10 +120,11 @@ CLOUDFLARE_VIDEO_AUTOMATIC_TRIM = True
 CLOUDFLARE_VIDEO_TRIM_DURATION_SECONDS = 10
 
 AUTHENTICATION_BACKENDS = [
+    # Slotted: use get("AUTHENTICATION_BACKENDS", "slot_name") for explicit order; if plugin disabled, [].
     "django.contrib.auth.backends.ModelBackend",
     "baseapp_auth.permissions.UsersPermissionsBackend",
     "baseapp_profiles.permissions.ProfilesPermissionsBackend",
-    "baseapp_comments.permissions.CommentsPermissionsBackend",
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_comments"),
     "baseapp.activity_log.permissions.ActivityLogPermissionsBackend",
     "baseapp_reactions.permissions.ReactionsPermissionsBackend",
     "baseapp_reports.permissions.ReportsPermissionsBackend",
@@ -135,7 +134,6 @@ AUTHENTICATION_BACKENDS = [
     "baseapp_pages.permissions.PagesPermissionsBackend",
     "baseapp_organizations.permissions.OrganizationsPermissionsBackend",
     "baseapp_chats.permissions.ChatsPermissionsBackend",
-    *plugin_registry.get_all_auth_backends(),
 ]
 
 ADMIN_TIME_ZONE = "UTC"
@@ -328,3 +326,9 @@ BRANCHIO_KEY = env("BRANCHIO_KEY", "N/A")
 
 # AUTOFIELD
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+
+# Register the extra settings from the BaseApp apps
+plugin_settings = plugin_registry.get_all_django_extra_settings()
+for key, value in plugin_settings.items():
+    if key not in globals():
+        globals()[key] = value

@@ -2,16 +2,22 @@ import swapper
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db.models.signals import post_delete, post_save
+from django.dispatch import Signal
 
 from baseapp_comments.graphql.subscriptions import OnCommentChange
 from baseapp_comments.notifications import (
     send_comment_created_notification,
     send_reply_created_notification,
 )
-from baseapp_core.events.hooks import hook_manager
 from baseapp_core.models import DocumentId
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
+
+# Kwargs: comment_id (int), target_document_id (int)
+comment_created = Signal()
+
+# Kwargs: comment_id (int), target_document_id (int)
+comment_deleted = Signal()
 
 
 def on_comment_saved_graphql_subscription(sender, instance, created, **kwargs):
@@ -87,8 +93,8 @@ def update_comments_count(sender, instance, created=False, **kwargs):
             stats.save(update_fields=["comments_count"])
 
             if created:
-                hook_manager.emit(
-                    "comment_created",
+                comment_created.send(
+                    sender=Comment,
                     comment_id=instance.id,
                     target_document_id=target_doc.id,
                 )
@@ -99,14 +105,11 @@ post_delete.connect(update_comments_count, sender=Comment, dispatch_uid="update_
 
 
 def on_comment_deleted(sender, instance, **kwargs):
-    from baseapp_core.events.hooks import hook_manager
-    from baseapp_core.models import DocumentId
-
     if instance.target:
         target_doc = DocumentId.get_or_create_for_object(instance.target)
         if target_doc:
-            hook_manager.emit(
-                "comment_deleted",
+            comment_deleted.send(
+                sender=Comment,
                 comment_id=instance.id,
                 target_document_id=target_doc.id,
             )

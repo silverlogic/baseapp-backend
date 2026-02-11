@@ -12,14 +12,15 @@ class CommentsPlugin(BaseAppPlugin):
 
     def get_settings(self) -> PackageSettings:
         return PackageSettings(
-            installed_apps=[
-                "baseapp_comments",
-            ],
-            middleware=[],
-            authentication_backends=[
-                "baseapp_comments.permissions.CommentsPermissionsBackend",
-            ],
-            env_vars={
+            INSTALLED_APPS=[],
+            AUTHENTICATION_BACKENDS={
+                "baseapp_comments": [
+                    "baseapp_comments.permissions.CommentsPermissionsBackend",
+                ],
+            },
+            django_extra_settings={
+                "BASEAPP_COMMENTS_CAN_ANONYMOUS_VIEW_COMMENTS": True,
+                "BASEAPP_COMMENTS_ENABLE_GRAPHQL_SUBSCRIPTIONS": True,
                 "BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS": {
                     "default": True,
                     "required": False,
@@ -32,10 +33,6 @@ class CommentsPlugin(BaseAppPlugin):
                     "type": int,
                     "description": "Maximum pinned comments per thread",
                 },
-            },
-            django_settings={
-                "BASEAPP_COMMENTS_CAN_ANONYMOUS_VIEW_COMMENTS": True,
-                "BASEAPP_COMMENTS_ENABLE_GRAPHQL_SUBSCRIPTIONS": True,
             },
             required_packages=[
                 "baseapp_core",

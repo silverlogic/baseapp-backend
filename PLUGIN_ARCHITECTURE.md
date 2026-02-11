@@ -7,23 +7,43 @@
 3. [Plugin Settings](#plugin-settings)
 4. [Database Coupling via DocumentId](#database-coupling-via-documentid)
 5. [Communication Patterns](#communication-patterns)
-   - [Hooks (Event-Driven Communication)](#hooks-event-driven-communication)
+   - [Django Signals (Event-Driven Communication)](#django-signals-event-driven-communication)
    - [Services (Data/Functionality Provision)](#services-datafunctionality-provision)
-   - [GraphQL Interfaces (Schema Extension)](#graphql-interfaces-schema-extension)
-6. [Complete Example](#complete-example)
+   - [GraphQL Capabilities (Schema Extension)](#graphql-capabilities-schema-extension)
+6. [Runtime Extension Contract: BaseAppConfig](#runtime-extension-contract-baseappconfig)
+7. [Complete Example](#complete-example)
+8. [Backward Compatibility and Rebase](#backward-compatibility-and-rebase)
 
 ---
 
 ## Overview
 
-BaseApp uses a **plugin-based architecture** powered by [Stevedore](https://docs.openstack.org/stevedore/latest/) to enable loose coupling between packages. This allows packages to be easily added or removed from the system without breaking dependencies or requiring manual code changes.
+BaseApp uses a **plugin-based architecture** to enable loose coupling between packages. Plugins are discovered via setuptools entry points **for static configuration only**. Runtime behavior (services, GraphQL, event handling) is **explicit and opt-in**, and all runtime wiring happens in `AppConfig.ready()`.
+
+**Rebasing from an older setup?** Backward compatibility is not guaranteed. See [PLUGIN_ARCHITECTURE_BACKWARDS_COMPATIBILITY.md](PLUGIN_ARCHITECTURE_BACKWARDS_COMPATIBILITY.md) for what breaks and how to adapt (database, settings, signals, registries, GraphQL, admin).
 
 ### Key Principles
 
-- **Zero Direct Coupling**: Packages don't import from each other
-- **Automatic Discovery**: Plugins are discovered via setuptools entry points
-- **Database Decoupling**: Packages use `DocumentId` as a communication layer
-- **Three Communication Patterns**: Hooks, Services, and GraphQL Interfaces
+- **Zero Direct Coupling**: Packages don't import from each other for runtime behavior.
+- **Plugin Discovery**: Plugins are discovered via setuptools entry point `baseapp.plugins` (for settings aggregation).
+- **Runtime Wiring in ready()**: Services and GraphQL capabilities are registered in `AppConfig.ready()`; no entry points for hooks, services, or interfaces.
+- **Django-Native**: Cross-package events use **Django signals**; receivers are connected in `ready()`.
+- **Database Decoupling**: Packages use `DocumentId` as a communication layer.
+
+### What Stays
+
+- Plugin registry (Stevedore for `baseapp.plugins` only)
+- Plugin settings aggregation
+- `PackageSettings`
+- `required_packages` / `optional_packages`
+- `DocumentId` pattern
+- Plugin discovery via packaging (entry points for **plugins only**)
+
+### What Changed (from the previous architecture)
+
+- **Hooks** → replaced by **Django signals**
+- **Services** → runtime registration via `AppConfig.ready()` (no `baseapp.services` entry points)
+- **GraphQL Interfaces** → runtime registration via `AppConfig.ready()` as **GraphQL capabilities** (no `baseapp.interfaces` entry points)
 
 ### Architecture Flow
 
@@ -32,40 +52,35 @@ graph TB
     subgraph "Django Startup"
         AC[AppConfig.ready]
     end
-    
+
     subgraph "BaseApp Core"
         PR[PluginRegistry]
-        HR[HookManager]
-        SR[ServiceRegistry]
-        IR[InterfaceRegistry]
+        FSR[SharedServiceRegistry runtime]
+        GFIR[GraphQLSharedInterfaceRegistry runtime]
     end
-    
-    subgraph "Stevedore"
-        EM[ExtensionManager]
-        HM[HookManager]
-        NEM[NamedExtensionManager]
+
+    subgraph "Stevedore (plugins only)"
+        EM[ExtensionManager baseapp.plugins]
     end
-    
+
     subgraph "Plugin Package"
         SP[setup.py]
         PP[plugin.py]
-        EP[Entry Points]
+        EP[Entry Points baseapp.plugins]
     end
-    
+
     AC -->|load_from_installed_apps| PR
     PR -->|uses| EM
     EM -->|discovers| EP
     EP -->|defined in| SP
     SP -->|registers| PP
-    
-    PR -->|aggregates| HR
-    PR -->|aggregates| SR
-    PR -->|aggregates| IR
-    
+
+    AC -->|each app ready| FSR
+    AC -->|each app ready| GFIR
+
     style PR fill:#2196F3,stroke:#1565C0,stroke-width:2px,color:#fff
-    style HR fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
-    style SR fill:#FF9800,stroke:#E65100,stroke-width:2px,color:#fff
-    style IR fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px,color:#fff
+    style FSR fill:#FF9800,stroke:#E65100,stroke-width:2px,color:#fff
+    style GFIR fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px,color:#fff
 ```
 
 ---
@@ -79,14 +94,14 @@ Create a new package following this structure:
 ```
 baseapp_yourpackage/
     __init__.py
-    apps.py
-    plugin.py          # Plugin definition
-    setup.py           # Entry points registration
+    apps.py          # Use BaseAppConfig + mixins; register in ready()
+    plugin.py        # Plugin definition (settings only)
+    setup.py         # Entry points: baseapp.plugins only
     models.py
-    hooks.py           # Optional: event handlers
-    services.py        # Optional: service providers
+    signals.py       # Optional: connect to Django signals
+    services.py      # Optional: service provider classes
     graphql/
-        interfaces.py  # Optional: GraphQL interfaces
+        interfaces.py  # Optional: capability getters
         object_types.py
         queries.py
         mutations.py
@@ -94,7 +109,7 @@ baseapp_yourpackage/
 
 ### Step 2: Create `setup.py`
 
-The `setup.py` file is **critical** - it registers your plugin and all its entry points with Stevedore:
+Only **plugin registration** uses entry points. Do **not** register hooks, services, or GraphQL interfaces here.
 
 ```python
 from setuptools import find_packages, setup
@@ -104,21 +119,8 @@ setup(
     version="1.0",
     packages=find_packages(),
     entry_points={
-        # Plugin registration (required)
         "baseapp.plugins": [
             "baseapp_yourpackage = baseapp_yourpackage.plugin:YourPackagePlugin",
-        ],
-        # Hooks (optional - for event handlers)
-        "baseapp.hooks": [
-            "document_created.yourpackage = baseapp_yourpackage.hooks:handle_document_created",
-        ],
-        # Services (optional - for data/functionality provision)
-        "baseapp.services": [
-            "your_service = baseapp_yourpackage.services:YourService",
-        ],
-        # GraphQL Interfaces (optional - for schema extension)
-        "baseapp.interfaces": [
-            "yourpackage = baseapp_yourpackage.graphql.interfaces:get_your_interface",
         ],
     },
     zip_safe=False,
@@ -127,7 +129,7 @@ setup(
 
 ### Step 3: Create `plugin.py`
 
-The plugin class defines all package settings and configuration:
+The plugin class defines **static** package settings and configuration (no runtime behavior). Use Django-style aliases (e.g. `INSTALLED_APPS`) or field names; slotted fields use a **dict of slot name → list**.
 
 ```python
 from baseapp_core.plugins.base import BaseAppPlugin, PackageSettings
@@ -144,54 +146,32 @@ class YourPackagePlugin(BaseAppPlugin):
 
     def get_settings(self) -> PackageSettings:
         return PackageSettings(
-            installed_apps=[
-                "baseapp_yourpackage",
-            ],
-            middleware=[],
-            authentication_backends=[
-                "baseapp_yourpackage.permissions.YourPackagePermissionsBackend",
-            ],
-            graphql_middleware=[],
-            env_vars={
-                "BASEAPP_YOURPACKAGE_ENABLE_FEATURE": {
-                    "default": True,
-                    "required": False,
-                    "type": bool,
-                    "description": "Enable feature X",
-                },
+            INSTALLED_APPS=["baseapp_yourpackage"],
+            MIDDLEWARE={"default": ["baseapp_yourpackage.middleware.YourMiddleware"]},
+            AUTHENTICATION_BACKENDS={
+                "baseapp_yourpackage": [
+                    "baseapp_yourpackage.permissions.YourPackagePermissionsBackend",
+                ],
             },
-            django_settings={
+            GRAPHENE__MIDDLEWARE={"default": ["baseapp_yourpackage.graphql.middleware.YourMiddleware"]},
+            django_extra_settings={
                 "BASEAPP_YOURPACKAGE_SETTING": "value",
             },
-            celery_beat_schedules={},
-            celery_task_routes={},
-            constance_config={},
-            urlpatterns=[],
-            graphql_queries=[
-                "baseapp_yourpackage.graphql.queries.YourPackageQueries",
-            ],
-            graphql_mutations=[
-                "baseapp_yourpackage.graphql.mutations.YourPackageMutations",
-            ],
+            required_packages=["baseapp_core"],
+            optional_packages=["baseapp_notifications"],
+            graphql_queries=["baseapp_yourpackage.graphql.queries.YourPackageQueries"],
+            graphql_mutations=["baseapp_yourpackage.graphql.mutations.YourPackageMutations"],
             graphql_subscriptions=[],
-            required_packages=[
-                "baseapp_core",
-            ],
-            optional_packages=[
-                "baseapp_notifications",
-            ],
         )
 ```
 
 ### Step 4: Register in `requirements.txt`
 
-**Important**: For Stevedore to discover your plugin's entry points, the package must be installed via `pip`. Add it to your project's `requirements.txt`:
+For Stevedore to discover your plugin, the package must be installed via pip. Add it to your project's `requirements.txt`:
 
 ```txt
 -e ./baseapp_yourpackage
 ```
-
-The `-e` flag installs the package in editable mode, allowing setuptools to read the `setup.py` file and register entry points.
 
 ### Step 5: Add to `INSTALLED_APPS`
 
@@ -204,110 +184,182 @@ INSTALLED_APPS = [
 ]
 ```
 
-### Plugin Discovery Flow
-
-```mermaid
-sequenceDiagram
-    participant Dev as Developer
-    participant Req as requirements.txt
-    participant Pip as pip install
-    participant Setup as setup.py
-    participant Stevedore as Stevedore
-    participant Django as Django AppConfig
-    participant Registry as PluginRegistry
-    
-    Dev->>Req: Add -e ./baseapp_yourpackage
-    Dev->>Pip: pip install -r requirements.txt
-    Pip->>Setup: Reads setup.py
-    Setup->>Stevedore: Registers entry points
-    Django->>Registry: load_from_installed_apps()
-    Registry->>Stevedore: ExtensionManager(namespace='baseapp.plugins')
-    Stevedore->>Registry: Returns discovered plugins
-    Registry->>Registry: Validates & caches plugins
-```
-
 ---
 
 ## Plugin Settings
 
-The `PackageSettings` dataclass allows plugins to control various Django and BaseApp configurations. Here's what each setting does:
+The `PackageSettings` model (Pydantic) defines what each plugin contributes. Only plugins whose app is in `INSTALLED_APPS` are loaded; if an app is disabled, none of its contributions are included.
 
-### List Settings (Aggregated)
+### PackageSettings fields (overview)
 
-These settings are collected from all plugins and combined into lists:
+| Category | Field (alias) | Type | Description |
+|----------|---------------|------|-------------|
+| List | `installed_apps` (`INSTALLED_APPS`) | `List[str]` | Apps to add; aggregated from all plugins. |
+| Slotted | `authentication_backends` (`AUTHENTICATION_BACKENDS`) | `Dict[str, List[str]]` | Slot name → list of backend paths. |
+| Slotted | `middleware` (`MIDDLEWARE`) | `Dict[str, List[str]]` | Slot name → list of middleware paths. |
+| Slotted | `graphene_middleware` (`GRAPHENE__MIDDLEWARE`) | `Dict[str, List[str]]` | Slot name → list for `GRAPHENE["MIDDLEWARE"]`. |
+| Dict | `django_extra_settings` | `Dict[str, Any]` | Merged into Django settings (and env-style docs). |
+| Dict | `celery_beat_schedules`, `celery_task_routes`, `constance_config` | `Dict` | Merged; last plugin wins on key conflict. |
+| List | `urlpatterns`, `graphql_queries`, `graphql_mutations`, `graphql_subscriptions` | `List` | Aggregated. |
+| Deps | `required_packages`, `optional_packages` | `List[str]` | Validation only. |
 
-| Setting | Description | Used In |
-|---------|-------------|---------|
-| `installed_apps` | Django apps to add to `INSTALLED_APPS` | `settings.py` |
-| `middleware` | Middleware classes to add | `settings.py` |
-| `authentication_backends` | Auth backends to add | `settings.py` |
-| `graphql_middleware` | GraphQL middleware classes | `graphql.py` |
-| `urlpatterns` | URL patterns to include | `urls.py` |
-| `graphql_queries` | GraphQL query classes (strings or classes) | `graphql.py` |
-| `graphql_mutations` | GraphQL mutation classes (strings or classes) | `graphql.py` |
-| `graphql_subscriptions` | GraphQL subscription classes (strings or classes) | `graphql.py` |
+**Slotted fields** use a dict: keys are slot names (e.g. `"auth"`, `"profile"`, `"baseapp_comments"`), values are lists of paths. The project chooses order by calling `get(key, slot)` for each slot in the desired order.
 
-### Dictionary Settings (Merged)
+### Registry API: `plugin_registry.get(key)` and `get(key, slot)`
 
-These settings are merged from all plugins (later plugins override earlier ones):
+In your project `settings.py`, use **`get(key)`** for aggregated lists and **`get(key, slot)`** when order matters.
 
-| Setting | Description | Used In |
-|---------|-------------|---------|
-| `django_settings` | Django settings key-value pairs | `settings.py` |
-| `celery_beat_schedules` | Celery Beat schedule definitions | `settings.py` |
-| `celery_task_routes` | Celery task routing | `settings.py` |
-| `constance_config` | Constance configuration | `settings.py` |
-| `env_vars` | Environment variable documentation | Documentation |
+- **`plugin_registry.get("INSTALLED_APPS")`** — aggregated list from all enabled plugins. Disabled app → not included.
+- **`plugin_registry.get("MIDDLEWARE")`** — all middleware from all plugins (flat). Use when order does not matter.
+- **`plugin_registry.get("MIDDLEWARE", "baseapp_auth")`** — only entries under slot `"auth"`. Use to fix order: e.g. `*plugin_registry.get("MIDDLEWARE", "auth")`, then `*plugin_registry.get("MIDDLEWARE", "profile")`. Missing slot or disabled plugin → `[]`.
+- **`plugin_registry.get("GRAPHENE__MIDDLEWARE", "baseapp_profiles")`** — slot for Graphene middleware (maps to `GRAPHENE["MIDDLEWARE"]`).
 
-### Dependency Settings
+**Supported keys:** `INSTALLED_APPS`, `MIDDLEWARE`, `AUTHENTICATION_BACKENDS`, `GRAPHENE__MIDDLEWARE`, `urlpatterns`, `graphql_queries`, `graphql_mutations`, `graphql_subscriptions`.
 
-| Setting | Description |
-|---------|-------------|
-| `required_packages` | Packages that must be in `INSTALLED_APPS` |
-| `optional_packages` | Packages that may be in `INSTALLED_APPS` |
+**Example in settings.py:**
 
-### Settings Aggregation Flow
+```python
+INSTALLED_APPS += [
+    # ...
+    *plugin_registry.get("INSTALLED_APPS"),
+    "testproject.testapp",
+]
 
-```mermaid
-graph LR
-    subgraph "Plugins"
-        P1[Plugin 1]
-        P2[Plugin 2]
-        P3[Plugin 3]
-    end
-    
-    subgraph "PluginRegistry"
-        PR[get_all_* methods]
-    end
-    
-    subgraph "Settings Aggregation"
-        LA[List Aggregation]
-        DM[Dict Merging]
-    end
-    
-    subgraph "Django Settings"
-        DS[settings.py]
-        URL[urls.py]
-        GQ[graphql.py]
-    end
-    
-    P1 -->|PackageSettings| PR
-    P2 -->|PackageSettings| PR
-    P3 -->|PackageSettings| PR
-    
-    PR -->|get_all_installed_apps| LA
-    PR -->|get_all_middleware| LA
-    PR -->|get_all_django_settings| DM
-    
-    LA --> DS
-    DM --> DS
-    LA --> URL
-    LA --> GQ
-    
-    style PR fill:#2196F3,stroke:#1565C0,stroke-width:2px,color:#fff
-    style LA fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
-    style DM fill:#FF9800,stroke:#E65100,stroke-width:2px,color:#fff
+MIDDLEWARE += [
+    "baseapp_profiles.middleware.CurrentProfileMiddleware",
+    "baseapp_core.middleware.HistoryMiddleware",
+    *WAGTAIL_MIDDLEWARE,
+    *plugin_registry.get("MIDDLEWARE", "baseapp_auth"),
+    *plugin_registry.get("MIDDLEWARE", "baseapp_profiles"),
+]
+
+GRAPHENE["MIDDLEWARE"] = (
+    "baseapp_profiles.graphql.middleware.CurrentProfileMiddleware",
+    *plugin_registry.get("GRAPHENE__MIDDLEWARE", "baseapp_profiles"),
+) + GRAPHENE["MIDDLEWARE"]
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_auth"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_profiles"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_comments"),
+    # ...
+]
 ```
+
+### URL patterns (`urlpatterns` and `v1_urlpatterns`)
+
+Plugins contribute URL patterns via **callbacks** (callables) so the registry can resolve them without importing views at import time. Each callback receives `include`, `path`, and `re_path` and returns a **list** of `path()` / `re_path()` instances (and thus `URLResolver` from `include()`).
+
+| Contribution   | Registry getter                     | Typical use in project |
+|----------------|-------------------------------------|-------------------------|
+| `urlpatterns`  | `plugin_registry.get_all_urlpatterns()`   | Root-level URL includes (e.g. auth, admin-related). |
+| `v1_urlpatterns` | `plugin_registry.get_all_v1_urlpatterns()` | Patterns under the `/v1/` API namespace. |
+
+**Plugin side (callback mode):** In `plugin.py`, set `urlpatterns` and/or `v1_urlpatterns` to a function with signature `(include, path, re_path) -> List[path | re_path]`. Return a list of URL pattern instances; the registry flattens all plugins’ lists.
+
+```python
+# plugin.py
+def get_settings(self) -> PackageSettings:
+    def v1_urlpatterns(include, path, re_path):
+        return [
+            re_path(r"auth/authtoken/", include("baseapp_auth.rest_framework.urls.auth_authtoken")),
+            re_path(r"auth/jwt/", include("baseapp_auth.rest_framework.urls.auth_jwt")),
+            # ...
+        ]
+    return PackageSettings(
+        v1_urlpatterns=v1_urlpatterns,
+        # ...
+    )
+```
+
+**Project side:** In the project’s `urls.py`, use the registry getters so all enabled plugins’ URLs are included. Do not import or include plugin URL modules directly.
+
+```python
+# urls.py
+from baseapp_core.plugins import plugin_registry
+
+v1_urlpatterns = [
+    path(r"", include("baseapp_url_shortening.urls")),
+    *plugin_registry.get_all_v1_urlpatterns(),
+]
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path("v1/", include((v1_urlpatterns, "v1"), namespace="v1")),
+    *plugin_registry.get_all_urlpatterns(),
+]
+```
+
+Only plugins whose app is in `INSTALLED_APPS` contribute; if a plugin is disabled, its URL patterns are omitted.
+
+### GraphQL schema (root `graphql.py`)
+
+The project’s **root GraphQL schema** (e.g. `testproject/graphql.py`) must **not** import Query, Mutation, or Subscription mixins from BaseApp packages. All plugin-contributed schema is aggregated via the registry.
+
+- **Use only:** `plugin_registry.get_all_graphql_queries()`, `plugin_registry.get_all_graphql_mutations()`, `plugin_registry.get_all_graphql_subscriptions()`.
+- **Project-specific mixins** (e.g. `UsersQueries` from the project’s own app) may be inherited explicitly alongside the registry results.
+- **Plugins** contribute `graphql_queries`, `graphql_mutations`, `graphql_subscriptions` in `plugin.py` as lists of class paths (or class references); the registry resolves and aggregates them. Only plugins whose app is in `INSTALLED_APPS` contribute.
+
+**Root graphql.py pattern:**
+
+```python
+# graphql.py — no baseapp_* app imports for schema mixins
+import graphene
+from baseapp_core.graphql import DeleteNode, Node as RelayNode
+from baseapp_core.plugins import plugin_registry
+from graphene.relay.node import NodeField as RelayNodeField
+from graphene_django.debug import DjangoDebug
+
+from myproject.users.graphql.queries import UsersQueries  # project-specific only
+
+queries = plugin_registry.get_all_graphql_queries()
+mutations = plugin_registry.get_all_graphql_mutations()
+subscriptions = plugin_registry.get_all_graphql_subscriptions()
+
+class Query(graphene.ObjectType, UsersQueries, *queries):
+    node = RelayNodeField(RelayNode)
+    debug = graphene.Field(DjangoDebug, name="_debug")
+
+class Mutation(graphene.ObjectType, *mutations):
+    delete_node = DeleteNode.Field()
+
+class Subscription(graphene.ObjectType, *subscriptions):
+    pass
+
+schema = graphene.Schema(query=Query, mutation=Mutation, subscription=Subscription)
+```
+
+If a BaseApp package’s queries/mutations/subscriptions are not in the schema, ensure that package has a plugin and contributes `graphql_queries` / `graphql_mutations` / `graphql_subscriptions` in its `plugin.py`.
+
+**Dict settings** (merged, not via `get`): use `plugin_registry.get_all_django_extra_settings()` and apply to `globals()` or `settings`, and `get_all_constance_config()` for Constance.
+
+### Example plugin: slotted contributions (baseapp_comments)
+
+```python
+# baseapp_comments/plugin.py
+return PackageSettings(
+    INSTALLED_APPS=["baseapp_comments"],
+    AUTHENTICATION_BACKENDS={
+        "baseapp_comments": [
+            "baseapp_comments.permissions.CommentsPermissionsBackend",
+        ],
+    },
+    django_extra_settings={
+        "BASEAPP_COMMENTS_CAN_ANONYMOUS_VIEW_COMMENTS": True,
+        "BASEAPP_COMMENTS_ENABLE_GRAPHQL_SUBSCRIPTIONS": True,
+        # env-style docs can live here too
+        "BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS": {"default": True, "type": bool, "description": "..."},
+    },
+    required_packages=["baseapp_core"],
+    optional_packages=["baseapp_notifications"],
+    graphql_queries=["baseapp_comments.graphql.queries.CommentsQueries"],
+    graphql_mutations=["baseapp_comments.graphql.mutations.CommentsMutations"],
+    graphql_subscriptions=["baseapp_comments.graphql.subscriptions.CommentsSubscriptions"],
+)
+```
+
+Convenience methods `get_all_installed_apps()`, `get_all_middleware()`, `get_all_auth_backends()`, `get_all_graphene_middleware()`, `get_all_django_extra_settings()`, etc. remain and delegate to `get()` or the merge helpers where applicable.
 
 ---
 
@@ -339,9 +391,9 @@ erDiagram
     
     DOCUMENTID {
         bigint id PK
+        uuid public_id
         int content_type_id FK
         bigint object_id
-        datetime last_activity_at
     }
     
     COMMENT {
@@ -360,41 +412,46 @@ erDiagram
 ### DocumentId Model
 
 ```python
-# baseapp_core/documents/models.py
+# baseapp_core/models.py
 class DocumentId(TimeStampedModel):
-    id = models.BigAutoField(primary_key=True)
+    """
+    Centralized document registry for all entities in the system.
+    Part of the DocumentId pattern for plugin architecture.
+    """
+    public_id = models.UUIDField(default=uuid.uuid4, editable=False)
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveBigIntegerField()
     content_object = GenericForeignKey("content_type", "object_id")
-    last_activity_at = models.DateTimeField(null=True, blank=True, auto_now=True)
-    
+
     class Meta:
         unique_together = ("content_type", "object_id")
+        indexes = [models.Index(fields=["public_id"])]
 ```
 
-### Creating DocumentId for Your Models (TODO: review. We can use pgtrigger here)
+Helpers: `DocumentId.get_or_create_for_object(obj)`, `get_public_id_from_object(obj)`, `get_object_by_public_id(public_id)`.
 
-When a model instance is created, ensure a `DocumentId` exists:
+### Creating DocumentId for Your Models
+
+**Preferred: use `DocumentIdMixin` and pgtrigger.** Models that need a document ID should inherit from `baseapp_core.models.DocumentIdMixin`. On `class_prepared`, the core adds pgtrigger-based `insert_document_id` / `delete_document_id` triggers, so a `DocumentId` row is created or removed automatically when the row is inserted or deleted. No Python signal is required for that.
 
 ```python
-# baseapp_yourpackage/signals.py
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-from baseapp_core.models import DocumentId
-from .models import YourModel
-
-@receiver(post_save, sender=YourModel)
-def create_document_id(sender, instance, created, **kwargs):
-    if created:
-        DocumentId.get_or_create_for_object(instance)
+# baseapp_core/graphql/models.py (RelayModel uses it)
+class RelayModel(DocumentIdMixin, models.Model):
+    ...
 ```
+
+**Python path:** When you need the `DocumentId` from Python (e.g. to create or link auxiliary rows), use `DocumentId.get_or_create_for_object(instance)`. If the row is created there, the `document_created` signal is sent so other apps can react (e.g. create their stats row).
+
+**Fallback (no mixin):** If a model does not use `DocumentIdMixin`, you can ensure a `DocumentId` exists via a `post_save` signal calling `DocumentId.get_or_create_for_object(instance)` when `created` is True.
 
 ### Creating Auxiliary Tables
 
-Packages create their own tables that reference `DocumentId`:
+Packages create their own tables that reference `DocumentId` (not the other package’s model). That keeps coupling at the central table only.
 
 ```python
-# baseapp_comments/models.py
+# baseapp_comments/models.py (pattern; actual implementation may use swapper)
+from baseapp_core.models import DocumentId
+
 class CommentStats(models.Model):
     target = models.OneToOneField(
         DocumentId,
@@ -406,132 +463,79 @@ class CommentStats(models.Model):
     is_comments_enabled = models.BooleanField(default=True)
 ```
 
+Comments then reference the commentable via `DocumentId` (e.g. `target_content_type` / `target_object_id` or a `target_id` pointing to `DocumentId`), so any model that has a `DocumentId` can be commentable without a direct FK from your package to theirs.
+
 ### Benefits
 
-- **Zero Direct Coupling**: Packages don't modify each other's models
-- **Easy Removal**: Remove a package = remove its tables, no foreign key issues
-- **Flexible Relationships**: Any model can have comments, reactions, etc.
-- **Centralized Identity**: One ID system for all entities
+- **Zero Direct Coupling**: Packages don't modify each other's models.
+- **Easy Removal**: Remove a package = remove its tables; no FKs from other packages into yours.
+- **Flexible Relationships**: Any model with a `DocumentId` can have comments, reactions, etc.
+- **Centralized Identity**: One ID system (`DocumentId` + `public_id`) for all entities.
 
 ---
 
 ## Communication Patterns
 
-BaseApp provides three communication patterns for packages to interact without direct coupling:
+BaseApp provides three communication patterns:
 
-1. **Hooks**: Event-driven communication (Pub/Sub)
-2. **Services**: Data/functionality provision (Service Registry)
-3. **GraphQL Interfaces**: Schema extension (Interface Registry)
+1. **Django Signals**: Event-driven communication (replaces the old hooks).
+2. **Services**: Data/functionality provision via a **runtime** registry (no entry points).
+3. **GraphQL Capabilities**: Named interfaces registered at runtime; consumers opt in by name.
 
 ### Decision Matrix
 
 | Need | Pattern | Use When |
 |------|---------|----------|
-| React to events | **Hooks** | Multiple packages need to respond to the same event |
+| React to events | **Django signals** | Multiple packages need to respond to the same event |
 | Provide/consume data | **Services** | Package needs to expose functionality to others |
-| Extend GraphQL schema | **Interfaces** | Package needs to add fields/types to GraphQL |
+| Extend GraphQL schema | **GraphQL capabilities** | Package needs to add fields/types to GraphQL |
 
 ---
 
-## Hooks (Event-Driven Communication)
+## Django Signals (Event-Driven Communication)
 
 ### Overview
 
-Hooks enable **event-driven communication** between packages. When an event occurs, all registered handlers are automatically called.
+Cross-package events use **Django signals**. Signals are defined in shared or core modules; receivers are connected in `AppConfig.ready()`.
 
-### When to Use
+### Properties
 
-- Multiple packages need to react to the same event
-- You want to decouple event producers from consumers
-- Replacing Django signals for inter-package communication
+- **Runtime-only**: No entry points; no Stevedore for events.
+- **Order-independent**: Receivers can be connected in any `ready()` order.
+- **Zero coupling**: Producers send signals; consumers connect in their app. No producer knowledge of consumers.
+- **Django-native**: Debuggable and well-understood.
 
-### Architecture
+### Core Signal: document_created
 
-```mermaid
-graph TB
-    subgraph "Event Producer"
-        DI[DocumentId.save]
-    end
-    
-    subgraph "HookManager"
-        HM[hook_manager.emit]
-    end
-    
-    subgraph "Event Handlers"
-        CH[Comments Handler]
-        RH[Reactions Handler]
-        NH[Notifications Handler]
-    end
-    
-    DI -->|document_created| HM
-    HM -->|notifies| CH
-    HM -->|notifies| RH
-    HM -->|notifies| NH
-    
-    CH -->|creates| CS[CommentStats]
-    RH -->|creates| RS[ReactionStats]
-    NH -->|sends| NOT[Notification]
-    
-    style HM fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
-    style CH fill:#E91E63,stroke:#AD1457,stroke-width:2px,color:#fff
-    style RH fill:#E91E63,stroke:#AD1457,stroke-width:2px,color:#fff
-    style NH fill:#E91E63,stroke:#AD1457,stroke-width:2px,color:#fff
-```
+When a new `DocumentId` row is created (e.g. via `DocumentId.get_or_create_for_object()` or `DocumentId` `post_save`), the signal `baseapp_core.signals.document_created` is sent with `document_id=<pk>`.
 
-### Step 1: Emit an Event
+**Connect in your app's ready():**
 
 ```python
-# baseapp_core/documents/models.py
-from baseapp_core.events.hooks import hook_manager
+# myapp/apps.py
+from baseapp_core.signals import document_created
 
-class DocumentId(TimeStampedModel):
-    def save(self, *args, **kwargs):
-        is_new = self.pk is None
-        super().save(*args, **kwargs)
-        if is_new:
-            hook_manager.emit("document_created", document_id=self.id)
+def _on_document_created(sender, document_id, **kwargs):
+    # Create stats for the new document, etc.
+    ...
+
+class PackageConfig(BaseAppConfig, ...):
+    def ready(self):
+        super().ready()
+        document_created.connect(_on_document_created, dispatch_uid="my_app_on_document_created")
 ```
 
-### Step 2: Register a Handler
+### Defining Your Own Signals
+
+Define signals in your app (e.g. in `signals.py` or a dedicated module) and send them from your code. Other apps connect in their `ready()`.
 
 ```python
-# baseapp_comments/hooks.py
-from baseapp_core.models import DocumentId
-from baseapp_core.events.decorators import register_hook
-from .models import CommentStats, default_comments_count
+# myapp/signals.py
+from django.dispatch import Signal
 
-@register_hook("document_created")
-def handle_document_created(document_id: int, **kwargs):
-    try:
-        doc = DocumentId.objects.get(id=document_id)
-        CommentStats.objects.get_or_create(
-            target=doc,
-            defaults={"comments_count": default_comments_count()}
-        )
-    except DocumentId.DoesNotExist:
-        pass
+comment_created = Signal()  # kwargs: comment_id, target_document_id
+comment_deleted = Signal()  # kwargs: comment_id, target_document_id
 ```
-
-### Step 3: Register Entry Point
-
-```python
-# baseapp_comments/setup.py
-setup(
-    # ...
-    entry_points={
-        "baseapp.hooks": [
-            "document_created.comments = baseapp_comments.hooks:handle_document_created",
-        ],
-    },
-)
-```
-
-### Benefits
-
-- **Zero Conditional Checks**: No `if apps.is_installed()` needed
-- **Automatic Discovery**: Handlers discovered via entry points
-- **Multiple Handlers**: Multiple packages can react to the same event
-- **Error Isolation**: One handler failure doesn't break others
 
 ---
 
@@ -539,43 +543,13 @@ setup(
 
 ### Overview
 
-Services allow packages to **provide data or functionality** that other packages can consume without direct imports.
+Services ("shared services") are registered **at runtime** in `AppConfig.ready()`. No entry points are used. The runtime registry is `shared_service_registry`; consumers resolve services via `shared_service_registry.get_service(name)`.
 
-### When to Use
+### Pattern
 
-- Package needs to expose data (e.g., counts, stats)
-- Package provides functionality others need
-- You want to avoid direct imports between packages
-
-### Architecture
-
-```mermaid
-graph LR
-    subgraph "Consumer Package"
-        PO[PageObjectType]
-    end
-    
-    subgraph "ServiceRegistry"
-        SR[service_registry.get_service]
-    end
-    
-    subgraph "Service Provider"
-        CS[CommentsCountService]
-    end
-    
-    subgraph "Data Source"
-        CST[CommentStats]
-    end
-    
-    PO -->|requests| SR
-    SR -->|returns| CS
-    CS -->|queries| CST
-    CST -->|returns data| CS
-    CS -->|returns data| PO
-    
-    style SR fill:#FF9800,stroke:#E65100,stroke-width:2px,color:#fff
-    style CS fill:#E91E63,stroke:#AD1457,stroke-width:2px,color:#fff
-```
+- **Provider**: Implements `ServiceProvider` (`.service_name`, `.is_available()`) and registers in `register_shared_services()`.
+- **Consumer**: Calls `shared_service_registry.get_service("service_name")` and handles `None` (missing or unavailable).
+- **No direct imports** between apps for runtime behavior.
 
 ### Step 1: Create a Service
 
@@ -584,6 +558,7 @@ graph LR
 from django.apps import apps
 from baseapp_core.models import DocumentId
 from baseapp_core.services.registry import ServiceProvider
+
 from .models import CommentStats
 
 class CommentsCountService(ServiceProvider):
@@ -595,161 +570,91 @@ class CommentsCountService(ServiceProvider):
         return apps.is_installed("baseapp_comments")
 
     def get_count(self, document_id: int) -> dict:
-        try:
-            doc = DocumentId.objects.get(id=document_id)
-            stats = CommentStats.objects.get(target=doc)
-            return stats.comments_count
-        except (DocumentId.DoesNotExist, CommentStats.DoesNotExist):
-            return {"total": 0, "main": 0, "replies": 0, "pinned": 0, "reported": 0}
-
+        ...
     def is_enabled(self, document_id: int) -> bool:
-        try:
-            doc = DocumentId.objects.get(id=document_id)
-            stats = CommentStats.objects.get(target=doc)
-            return stats.is_comments_enabled
-        except (DocumentId.DoesNotExist, CommentStats.DoesNotExist):
-            return False
+        ...
 ```
 
-### Step 2: Register Entry Point
+### Step 2: Register in AppConfig.ready()
+
+Use the `ServicesContributor` mixin and override `register_shared_services()`:
 
 ```python
-# baseapp_comments/setup.py
-setup(
-    # ...
-    entry_points={
-        "baseapp.services": [
-            "comments_count = baseapp_comments.services:CommentsCountService",
-        ],
-    },
-)
+# baseapp_comments/apps.py
+from baseapp_core.app_config import BaseAppConfig, ServicesContributor
+
+class PackageConfig(BaseAppConfig, ServicesContributor, ...):
+    def register_shared_services(self, registry):
+        from .services import CommentsCountService
+        registry.register("comments_count", CommentsCountService())
 ```
 
 ### Step 3: Consume the Service
 
 ```python
-# baseapp_pages/graphql/object_types.py
-from baseapp_core.services.registry import service_registry
+# consumer/graphql/object_types.py
+from baseapp_core.services import shared_service_registry
 
-class PageObjectType(DjangoObjectType):
-    comments_count = graphene.JSONString()
-    
-    def resolve_comments_count(self, info):
-        service = service_registry.get_service("comments_count")
-        if service:
-            return service.get_count(self.document_id)
-        return None
+# In a resolver:
+service = shared_service_registry.get_service("comments_count")
+if service:
+    return service.get_count(document_id)
+return None
 ```
-
-### Benefits
-
-- **Loose Coupling**: Consumer doesn't import provider
-- **Graceful Degradation**: Returns `None` if service unavailable
-- **Type Safety**: Service interface is well-defined
-- **Testability**: Easy to mock services in tests
 
 ---
 
-## GraphQL Interfaces (Schema Extension)
+## GraphQL Capabilities (Schema Extension)
 
 ### Overview
 
-GraphQL Interfaces allow packages to **extend the GraphQL schema** by providing interfaces that other types can implement.
+GraphQL "shared interfaces" are **named, reusable** Graphene interfaces. Providers register them in `AppConfig.ready()` with `graphql_shared_interface_registry`; consumers **explicitly opt in by name** when defining their GraphQL object types. To keep things **pluggable**, consumers must **not** import interface classes from other packages — they request interfaces by **name** via the registry. Missing names are skipped; no error.
 
-### When to Use
+### Pattern
 
-- Package needs to add fields to existing GraphQL types
-- You want to extend types without modifying their definitions
-- Multiple packages can contribute to the same type
-
-### Architecture
-
-```mermaid
-graph TB
-    subgraph "Interface Provider"
-        CI[CommentsInterface]
-    end
-    
-    subgraph "InterfaceRegistry"
-        IR[interface_registry.get_interfaces]
-    end
-    
-    subgraph "Type Consumer"
-        PO[PageObjectType]
-    end
-    
-    subgraph "GraphQL Schema"
-        GS[Generated Schema]
-    end
-    
-    CI -->|registered| IR
-    PO -->|requests| IR
-    IR -->|returns| PO
-    PO -->|implements| GS
-    
-    style IR fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px,color:#fff
-    style CI fill:#E91E63,stroke:#AD1457,stroke-width:2px,color:#fff
-```
+- **Provider**: Registers a capability (e.g. `"comments"`, `"permissions"` → interface class or callable) in `register_graphql_shared_interfaces()`.
+- **Consumer**: Calls `graphql_shared_interface_registry.get_interfaces(["comments", "permissions"], default_interfaces)` and uses the result as `Meta.interfaces`. Only the **core** package and the current package’s own interfaces should appear in `default_interfaces`; optional/pluggable interfaces are requested by name so that if the provider app is not installed, they are simply omitted.
+- **Missing capabilities**: Skipped gracefully; no error.
 
 ### Step 1: Create an Interface
 
 ```python
 # baseapp_comments/graphql/object_types.py
-import graphene
-from baseapp_core.services.registry import service_registry
-
-class CommentsInterface(graphene.Interface):
-    comments_count = graphene.JSONString()
-    is_comments_enabled = graphene.Boolean()
-    
-    @classmethod
-    def resolve_comments_count(cls, instance, info):
-        service = service_registry.get_service("comments_count")
-        if service:
-            return service.get_count(instance.document_id)
-        return None
-    
-    @classmethod
-    def resolve_is_comments_enabled(cls, instance, info):
-        service = service_registry.get_service("comments_count")
-        if service:
-            return service.is_enabled(instance.document_id)
-        return False
+class CommentsInterface(RelayNode):
+    comments_count = graphene.Field(CommentsCount, required=True)  # or custom type
+    is_comments_enabled = graphene.Boolean(required=True)
+    # ... resolvers using shared_service_registry.get_service("comments_count")
 ```
 
-### Step 2: Create Interface Getter
+### Step 2: Register in AppConfig.ready()
+
+Use the `GraphQLContributor` mixin and override `register_graphql_shared_interfaces()`:
 
 ```python
-# baseapp_comments/graphql/interfaces.py
-def get_comments_interface():
-    from .object_types import CommentsInterface
-    return CommentsInterface
+# baseapp_comments/apps.py
+from baseapp_core.app_config import BaseAppConfig, GraphQLContributor
+from baseapp_core.graphql import graphql_shared_interface_registry
+
+class PackageConfig(BaseAppConfig, GraphQLContributor, ...):
+    def register_graphql_shared_interfaces(self):
+        from .graphql.object_types import CommentsInterface
+        graphql_shared_interface_registry.register("comments", CommentsInterface)
 ```
 
-### Step 3: Register Entry Point
+You can register the interface class directly or a callable that returns it (e.g. for lazy loading).
 
-```python
-# baseapp_comments/setup.py
-setup(
-    # ...
-    entry_points={
-        "baseapp.interfaces": [
-            "comments = baseapp_comments.graphql.interfaces:get_comments_interface",
-        ],
-    },
-)
-```
+### Step 3: Consumer Opts In by Name (no cross-package imports)
 
-### Step 4: Use in Consumer Types
+Consumers must **not** import interface classes from other BaseApp packages. Request pluggable interfaces by **name** so the registry can resolve them at runtime; if the provider is not installed, that interface is omitted.
 
 ```python
 # baseapp_pages/graphql/object_types.py
-from baseapp_core.graphql import interface_registry, RelayNode
+from baseapp_core.graphql import graphql_shared_interface_registry, RelayNode
 
 def _get_page_interfaces():
-    return interface_registry.get_interfaces(
-        ["comments"],  # Requested interfaces
-        [RelayNode, PageInterface, PermissionsInterface]  # Default interfaces
+    return graphql_shared_interface_registry.get_interfaces(
+        ["comments", "permissions"],  # Pluggable: by name only; no import of baseapp_auth / baseapp_comments
+        [RelayNode, PageInterface],    # Default interfaces (core + this package only)
     )
 
 class PageObjectType(DjangoObjectType):
@@ -758,279 +663,59 @@ class PageObjectType(DjangoObjectType):
         model = Page
 ```
 
-### Benefits
+---
 
-- **Schema Composition**: Types automatically get interfaces from installed packages
-- **No Manual Wiring**: Interfaces discovered automatically
-- **Selective Inclusion**: Choose which interfaces to include
-- **Graceful Degradation**: Missing interfaces don't break the system
+## Runtime Extension Contract: BaseAppConfig
+
+`baseapp_core` defines `BaseAppConfig` and two optional mixins. All runtime extensibility goes through this contract.
+
+### BaseAppConfig
+
+- Subclasses `django.apps.AppConfig`.
+- In `ready()`, calls `register_shared_services()` if the app uses `ServicesContributor`, and `register_graphql_shared_interfaces()` if it uses `GraphQLContributor`.
+- Subclasses should call `super().ready()` and then perform their own setup (e.g. connecting signals, importing signals module).
+
+### ServicesContributor
+
+- Mixin: implement `register_shared_services()` and call `shared_service_registry.register(name, instance)` for each service.
+
+### GraphQLContributor
+
+- Mixin: implement `register_graphql_shared_interfaces()` and call `graphql_shared_interface_registry.register(name, interface_or_callable)` for each capability.
+
+Apps with no services or GraphQL capabilities may omit the mixins or leave the methods empty.
 
 ---
 
 ## Complete Example
 
-Let's create a complete example: a `baseapp_reactions` package that provides reactions functionality.
+A minimal plugin that provides settings and exposes a shared service and a GraphQL shared interface:
 
-### 1. Package Structure
+1. **setup.py**: Only `baseapp.plugins` entry point.
+2. **plugin.py**: `BaseAppPlugin` with `get_settings()`.
+3. **apps.py**: `BaseAppConfig`, `ServicesContributor`, `GraphQLContributor`; in `ready()` call `super().ready()` and optionally connect to `document_created` or import signals; in `register_shared_services()` and `register_graphql_shared_interfaces()` register the service and capability.
+4. **signals.py**: Define and send any app-specific signals (e.g. `comment_created`, `comment_deleted`); optionally connect to `document_created` in `ready()`.
+5. **services.py**: Service class implementing `ServiceProvider`.
+6. **graphql/object_types.py**: Interface with resolvers using `shared_service_registry.get_service(...)`.
+7. **graphql/interfaces.py**: Optional getter that returns the interface class (or register the class directly in apps).
 
-```
-baseapp_reactions/
-    __init__.py
-    apps.py
-    plugin.py
-    setup.py
-    models.py
-    hooks.py
-    services.py
-    graphql/
-        __init__.py
-        interfaces.py
-        object_types.py
-```
-
-### 2. `setup.py`
-
-```python
-from setuptools import find_packages, setup
-
-setup(
-    name="baseapp_reactions",
-    version="1.0",
-    packages=find_packages(),
-    entry_points={
-        "baseapp.plugins": [
-            "baseapp_reactions = baseapp_reactions.plugin:ReactionsPlugin",
-        ],
-        "baseapp.hooks": [
-            "document_created.reactions = baseapp_reactions.hooks:handle_document_created",
-        ],
-        "baseapp.services": [
-            "reactions_count = baseapp_reactions.services:ReactionsCountService",
-        ],
-        "baseapp.interfaces": [
-            "reactions = baseapp_reactions.graphql.interfaces:get_reactions_interface",
-        ],
-    },
-    zip_safe=False,
-)
-```
-
-### 3. `plugin.py`
-
-```python
-from baseapp_core.plugins.base import BaseAppPlugin, PackageSettings
-
-class ReactionsPlugin(BaseAppPlugin):
-    @property
-    def name(self) -> str:
-        return "baseapp_reactions"
-
-    @property
-    def package_name(self) -> str:
-        return "baseapp_reactions"
-
-    def get_settings(self) -> PackageSettings:
-        return PackageSettings(
-            installed_apps=["baseapp_reactions"],
-            middleware=[],
-            authentication_backends=[
-                "baseapp_reactions.permissions.ReactionsPermissionsBackend",
-            ],
-            env_vars={
-                "BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS": {
-                    "default": True,
-                    "required": False,
-                    "type": bool,
-                    "description": "Enable notifications for reactions",
-                },
-            },
-            django_settings={
-                "BASEAPP_REACTIONS_MAX_REACTIONS_PER_DOCUMENT": 10,
-            },
-            required_packages=["baseapp_core"],
-            optional_packages=["baseapp_notifications"],
-        )
-```
-
-### 4. `models.py`
-
-```python
-from django.db import models
-from baseapp_core.models import DocumentId
-
-def default_reactions_count():
-    return {"like": 0, "love": 0, "laugh": 0, "angry": 0}
-
-class ReactionStats(models.Model):
-    target = models.OneToOneField(
-        DocumentId,
-        on_delete=models.CASCADE,
-        primary_key=True,
-        related_name="reaction_stats",
-    )
-    reactions_count = models.JSONField(default=default_reactions_count)
-    is_reactions_enabled = models.BooleanField(default=True)
-
-class Reaction(models.Model):
-    target = models.ForeignKey(DocumentId, on_delete=models.CASCADE, related_name="reactions")
-    user = models.ForeignKey("users.User", on_delete=models.CASCADE)
-    reaction_type = models.CharField(max_length=20)
-    created = models.DateTimeField(auto_now_add=True)
-    
-    class Meta:
-        unique_together = ("target", "user")
-```
-
-### 5. `hooks.py`
-
-```python
-from baseapp_core.models import DocumentId
-from baseapp_core.events.decorators import register_hook
-from .models import ReactionStats, default_reactions_count
-
-@register_hook("document_created")
-def handle_document_created(document_id: int, **kwargs):
-    try:
-        doc = DocumentId.objects.get(id=document_id)
-        ReactionStats.objects.get_or_create(
-            target=doc,
-            defaults={"reactions_count": default_reactions_count()}
-        )
-    except DocumentId.DoesNotExist:
-        pass
-```
-
-### 6. `services.py`
-
-```python
-from django.apps import apps
-from baseapp_core.models import DocumentId
-from baseapp_core.services.registry import ServiceProvider
-from .models import ReactionStats
-
-class ReactionsCountService(ServiceProvider):
-    @property
-    def service_name(self) -> str:
-        return "reactions_count"
-
-    def is_available(self) -> bool:
-        return apps.is_installed("baseapp_reactions")
-
-    def get_count(self, document_id: int) -> dict:
-        try:
-            doc = DocumentId.objects.get(id=document_id)
-            stats = ReactionStats.objects.get(target=doc)
-            return stats.reactions_count
-        except (DocumentId.DoesNotExist, ReactionStats.DoesNotExist):
-            return {"like": 0, "love": 0, "laugh": 0, "angry": 0}
-```
-
-### 7. `graphql/interfaces.py`
-
-```python
-def get_reactions_interface():
-    from .object_types import ReactionsInterface
-    return ReactionsInterface
-```
-
-### 8. `graphql/object_types.py`
-
-```python
-import graphene
-from baseapp_core.services.registry import service_registry
-
-class ReactionsInterface(graphene.Interface):
-    reactions_count = graphene.JSONString()
-    is_reactions_enabled = graphene.Boolean()
-    
-    @classmethod
-    def resolve_reactions_count(cls, instance, info):
-        service = service_registry.get_service("reactions_count")
-        if service:
-            return service.get_count(instance.document_id)
-        return None
-    
-    @classmethod
-    def resolve_is_reactions_enabled(cls, instance, info):
-        service = service_registry.get_service("reactions_count")
-        if service:
-            return service.is_enabled(instance.document_id)
-        return False
-```
-
-### 9. Add to `requirements.txt`
-
-```txt
--e ./baseapp_reactions
-```
-
-### 10. Add to `INSTALLED_APPS`
-
-```python
-INSTALLED_APPS = [
-    # ...
-    "baseapp_reactions",
-]
-```
-
-### Complete Flow Diagram ([Marmiad Playground](https://mermaidchart.com/play?utm_source=mermaid_live_editor&utm_medium=share#pako:eNqFVE2PmzAQ_SvIvZIIEggfhz10iRQO27Wgp4UevDAmboKNjImaRvnv5SMhpElVn-a955l59oBPKBM5IB8VklRb7fvXlGvtqpvPgUgRJtmOFKAFQBlnigmeomFTt2Kc1KCaal4df9xYjJNq3xSM32jg-RA8NIigYLWS5O_Sa5ysuZJHDQvGVT0pHys4QC4kJGOkBazOxAHk__sFPwkvhBZyBcVjVxwluLd-sTU91iZKNkLs3ghvL0RODUVJDPLAMniSFUZJ10tS8iD_2-SrKMuGs-zBXxAmgciaErgK86m3997b3TWtr66mbPjtZqd-7iPG2mz20g5ggPgergc4Xv0lZ5xEJ-LoGbt5ysZP2TCaOgrCocD7xVF0V-8C43t4X6FWxz10EmX7vf8FTGpTOpU2o-RSG7ypFF8lSqkF5lQKR2kJNrWR3v5ILEe-kg3oqARZkg6iU5eUIrWFElLkt2FO5K4b7LnNqQj_EKK8pknRFFvkU7KvW9RUOVEQMNJ-G7ct7chAvoqGK-SbZl8C-Sf0q0WuM_cWrm0uDc9xDctY6uiI_JnpzK2FazhL07Vcz3VW1llHv_u2xtyzbdcyV0vPWXkrw1zoCHKmhHwbXof-kTj_AeTzPbE))
-
-```mermaid
-graph TB
-    subgraph "Package Definition"
-        SP[setup.py]
-        PP[plugin.py]
-    end
-    
-    subgraph "Registration"
-        EP[Entry Points]
-        Stevedore[Stevedore Discovery]
-    end
-    
-    subgraph "Django Integration"
-        PR[PluginRegistry]
-        HR[HookManager]
-        SR[ServiceRegistry]
-        IR[InterfaceRegistry]
-    end
-    
-    subgraph "Communication"
-        DI[DocumentId]
-        HO[Hooks]
-        SE[Services]
-        IN[Interfaces]
-    end
-    
-    SP --> EP
-    PP --> EP
-    EP --> Stevedore
-    Stevedore --> PR
-    Stevedore --> HR
-    Stevedore --> SR
-    Stevedore --> IR
-    
-    DI --> HO
-    PR --> HR
-    PR --> SR
-    PR --> IR
-    
-    style PR fill:#2196F3,stroke:#1565C0,stroke-width:2px,color:#fff
-    style HR fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
-    style SR fill:#FF9800,stroke:#E65100,stroke-width:2px,color:#fff
-    style IR fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px,color:#fff
-```
+Consumers: resolve services via `shared_service_registry.get_service(...)` and opt in to capabilities via `graphql_shared_interface_registry.get_interfaces([...], default_interfaces)`.
 
 ---
 
 ## Summary
 
-The BaseApp plugin architecture provides:
+- **Plugin registry**: Entry point `baseapp.plugins` only. Settings are **`PackageSettings`** (Pydantic) with Django-style aliases and **slotted** fields (`MIDDLEWARE`, `AUTHENTICATION_BACKENDS`, `GRAPHENE__MIDDLEWARE`) as `Dict[slot_name, List[str]]`.
+- **Registry API**: Use **`plugin_registry.get("INSTALLED_APPS")`**, **`plugin_registry.get("MIDDLEWARE", "auth")`**, etc. Disabled app → no contribution. Use `get_all_django_extra_settings()` and `get_all_constance_config()` for merged dicts.
+- **URLs**: Use **`plugin_registry.get_all_urlpatterns()`** and **`plugin_registry.get_all_v1_urlpatterns()`** in the project’s `urls.py`; plugins contribute via callbacks in `plugin.py`. No direct baseapp URL includes in the project.
+- **GraphQL schema**: Root `graphql.py` must **not** import Query/Mutation/Subscription mixins from BaseApp packages. Use **`plugin_registry.get_all_graphql_queries()`**, **`get_all_graphql_mutations()`**, **`get_all_graphql_subscriptions()`**; add project-specific mixins only. Plugins contribute `graphql_queries` / `graphql_mutations` / `graphql_subscriptions` in `plugin.py`.
+- **GraphQL shared interfaces**: Runtime registry **`graphql_shared_interface_registry`**; register in `ready()` via `GraphQLContributor.register_graphql_shared_interfaces()`. Consumers opt in **by name** with `graphql_shared_interface_registry.get_interfaces(names, default_interfaces)` — no cross-package interface imports for pluggability.
+- **Events**: Django signals; connect in `AppConfig.ready()`.
+- **Services**: Runtime registry `shared_service_registry`; register in `ready()` via `ServicesContributor.register_shared_services()`; consume via `shared_service_registry.get_service(name)`.
+- **Single integration point**: Each app’s `AppConfig` (and its `ready()`) is where runtime behavior is registered and wired.
 
-- ✅ **Zero Direct Coupling**: Packages communicate via well-defined patterns
-- ✅ **Automatic Discovery**: Stevedore handles plugin registration
-- ✅ **Database Decoupling**: DocumentId enables flexible relationships
-- ✅ **Three Communication Patterns**: Hooks, Services, and Interfaces
-- ✅ **Easy Package Management**: Add/remove packages by editing `INSTALLED_APPS`
+---
 
-By following this architecture, you can build a modular, maintainable Django application where packages can be easily added, removed, or replaced without breaking the system.
+## Backward Compatibility and Rebase
 
+We do **not** guarantee backward compatibility when moving to this architecture. For a detailed rebase plan — what breaks (database, settings, signals, registries, GraphQL, admin) and how to adapt — see **[PLUGIN_ARCHITECTURE_BACKWARDS_COMPATIBILITY.md](PLUGIN_ARCHITECTURE_BACKWARDS_COMPATIBILITY.md)**.

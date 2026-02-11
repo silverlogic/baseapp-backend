@@ -1,27 +1,63 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Any, Callable, ClassVar, Dict, List, Union
+
+from django.urls import include, path, re_path
+from pydantic import BaseModel, ConfigDict, Field
+
+# For settings where order matters (e.g. MIDDLEWARE), plugins contribute a dict of slot_name -> list.
+SlottedList = Dict[str, List[str]]
 
 
-@dataclass
-class PackageSettings:
-    installed_apps: List[str] = field(default_factory=list)
-    middleware: List[str] = field(default_factory=list)
-    authentication_backends: List[str] = field(default_factory=list)
-    graphql_middleware: List[str] = field(default_factory=list)
-    env_vars: Dict[str, Dict[str, Any]] = field(default_factory=dict)
-    django_settings: Dict[str, Any] = field(default_factory=dict)
-    celery_beat_schedules: Dict[str, Any] = field(default_factory=dict)
-    celery_task_routes: Dict[str, Any] = field(default_factory=dict)
-    constance_config: Dict[str, tuple] = field(default_factory=dict)
+class PackageSettings(BaseModel):
+    """
+    Plugin-contributed settings. Keys match Django setting names via alias.
 
-    urlpatterns: List[Any] = field(default_factory=list)
-    graphql_queries: List[Any] = field(default_factory=list)
-    graphql_mutations: List[Any] = field(default_factory=list)
-    graphql_subscriptions: List[Any] = field(default_factory=list)
+    - List fields (INSTALLED_APPS): flat list per plugin, merged.
+    - Slotted fields: dict of slot_name -> list; use get(key, slot) in settings.
+    - Dict fields (django_extra_settings, etc.): merged; last plugin wins on key conflict.
+    """
 
-    required_packages: List[str] = field(default_factory=list)
-    optional_packages: List[str] = field(default_factory=list)
+    model_config = ConfigDict(populate_by_name=True)
+
+    # Keys that support get(key, slot) for ordered retrieval. Add here when adding new slotted fields.
+    SLOTTED_KEYS: ClassVar[frozenset[str]] = frozenset(
+        {
+            "MIDDLEWARE",
+            "AUTHENTICATION_BACKENDS",
+            "GRAPHENE__MIDDLEWARE",
+        }
+    )
+
+    # --- Django list settings (aggregated) ---
+    installed_apps: List[str] = Field(default_factory=list, alias="INSTALLED_APPS")
+
+    # --- Slotted list settings (order matters; use get(key, slot) in settings) ---
+    authentication_backends: SlottedList = Field(
+        default_factory=dict, alias="AUTHENTICATION_BACKENDS"
+    )
+    middleware: SlottedList = Field(default_factory=dict, alias="MIDDLEWARE")
+    graphene_middleware: SlottedList = Field(default_factory=dict, alias="GRAPHENE__MIDDLEWARE")
+
+    # --- Dict settings (merged) ---
+    django_extra_settings: Dict[str, Any] = Field(default_factory=dict)
+    celery_beat_schedules: Dict[str, Any] = Field(default_factory=dict)
+    celery_task_routes: Dict[str, Any] = Field(default_factory=dict)
+    constance_config: Dict[str, tuple] = Field(default_factory=dict)
+
+    # --- GraphQL / URL (list, no slots by default) ---
+    urlpatterns: Callable[[include, path, re_path], List[Union[path, re_path]]] = Field(
+        default_factory=lambda: []
+    )
+    v1_urlpatterns: Callable[[include, path, re_path], List[Union[path, re_path]]] = Field(
+        default_factory=lambda: []
+    )
+    graphql_queries: List[Any] = Field(default_factory=list)
+    graphql_mutations: List[Any] = Field(default_factory=list)
+    graphql_subscriptions: List[Any] = Field(default_factory=list)
+
+    # --- Plugin deps ---
+    required_packages: List[str] = Field(default_factory=list)
+    optional_packages: List[str] = Field(default_factory=list)
 
 
 class BaseAppPlugin(ABC):

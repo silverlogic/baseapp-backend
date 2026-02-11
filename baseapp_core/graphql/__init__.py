@@ -2,7 +2,7 @@ from .connections import CountedConnection  # noqa
 from .decorators import login_required, user_passes_test  # noqa
 from .errors import Errors, ErrorType  # noqa
 from .fields import File, ThumbnailField  # noqa
-from .interfaces import interface_registry  # noqa
+from .interfaces import graphql_shared_interface_registry  # noqa
 from .middlewares import (  # noqa
     JWTAuthentication,
     LogExceptionMiddleware,

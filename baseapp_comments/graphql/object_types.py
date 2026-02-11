@@ -15,6 +15,8 @@ from baseapp_core.graphql import (
 )
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model, skip_ast_walker
+from baseapp_core.models import DocumentId
+from baseapp_core.services import shared_service_registry
 from baseapp_reactions.graphql.object_types import ReactionsInterface
 
 from ..models import CommentStatus, default_comments_count
@@ -86,6 +88,26 @@ class CommentsInterface(RelayNode):
             ),
             info_proxy,
         )
+
+    @classmethod
+    def resolve_comments_count(cls, root, info, **kwargs):
+        """Resolve from service when instance is not a Comment (e.g. Page)."""
+        doc = DocumentId.get_or_create_for_object(root) if root and root.pk else None
+        if not doc:
+            return default_comments_count()
+        if service := shared_service_registry.get_service("comments_count"):
+            return service.get_count(doc.pk)
+        return default_comments_count()
+
+    @classmethod
+    def resolve_is_comments_enabled(cls, root, info, **kwargs):
+        """Resolve from service when instance is not a Comment (e.g. Page)."""
+        doc = DocumentId.get_or_create_for_object(root) if root and root.pk else None
+        if not doc:
+            return True
+        if service := shared_service_registry.get_service("comments_count"):
+            return service.is_enabled(doc.pk)
+        return True
 
 
 comment_interfaces = (

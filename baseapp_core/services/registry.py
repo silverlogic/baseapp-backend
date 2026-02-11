@@ -1,68 +1,48 @@
-from typing import Optional, Protocol, runtime_checkable
+"""
+Runtime shared service registry. Shared services are registered in AppConfig.ready();
+no entry points. Consumers resolve shared services lazily via get_service().
+"""
 
-from stevedore import named
-from stevedore.exception import NoMatches
+from typing import Optional, Protocol, runtime_checkable
 
 
 @runtime_checkable
 class ServiceProvider(Protocol):
+    """Protocol for objects that provide a named service."""
+
     @property
-    def service_name(self) -> str:
-        pass
+    def service_name(self) -> str: ...  # noqa: E704
 
-    def is_available(self) -> bool:
-        pass
+    def is_available(self) -> bool: ...  # noqa: E704
 
 
-class BaseAppServiceRegistry:
-    NAMESPACE = "baseapp.services"
+class SharedServiceRegistry:
+    """
+    Runtime-only registry. Providers register in ready() via register().
+    Missing shared services are handled gracefully (get_service returns None).
+    """
 
-    def __init__(self):
-        self._manager: Optional[named.NamedExtensionManager] = None
-        self._initialized = False
+    def __init__(self) -> None:
+        self._registry: dict[str, ServiceProvider] = {}
 
-    def _get_manager(self) -> named.NamedExtensionManager:
-        if self._manager is None:
-            try:
-                self._manager = named.NamedExtensionManager(
-                    namespace=self.NAMESPACE,
-                    invoke_on_load=True,
-                )
-            except NoMatches:
-                self._manager = named.NamedExtensionManager(
-                    namespace=self.NAMESPACE,
-                    invoke_on_load=True,
-                    verify_requirements=False,
-                )
-        return self._manager
-
-    def load_from_installed_apps(self):
-        if self._initialized:
-            return
-        self._initialized = True
+    def register(self, service_name: str, provider: ServiceProvider) -> None:
+        """Register a shared service. Call from AppConfig.ready() (e.g. in register_shared_services())."""
+        if not isinstance(provider, ServiceProvider):
+            raise TypeError(f"Provider must implement ServiceProvider protocol: {type(provider)}")
+        self._registry[service_name] = provider
 
     def get_service(self, service_name: str) -> Optional[ServiceProvider]:
-        if not self._initialized:
-            self.load_from_installed_apps()
-
-        manager = self._get_manager()
-
-        if service_name not in manager:
+        """Return the provider for service_name, or None if missing/unavailable."""
+        provider = self._registry.get(service_name)
+        if provider is None:
             return None
-
-        service = manager[service_name].obj
-
-        if not isinstance(service, ServiceProvider):
+        if not provider.is_available():
             return None
-
-        if not service.is_available():
-            return None
-
-        return service
+        return provider
 
     def has_service(self, service_name: str) -> bool:
-        service = self.get_service(service_name)
-        return service is not None
+        """Return True if a registered, available service exists for service_name."""
+        return self.get_service(service_name) is not None
 
 
-service_registry = BaseAppServiceRegistry()
+shared_service_registry = SharedServiceRegistry()

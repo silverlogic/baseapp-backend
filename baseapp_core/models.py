@@ -121,6 +121,23 @@ class DocumentId(TimeStampedModel):
         except cls.DoesNotExist:
             return None
 
+    @classmethod
+    def get_or_create_for_object(cls, obj):
+        """
+        Return the DocumentId for the given object, creating it if it does not exist.
+
+        When a new row is created, the document_created signal is sent (via post_save).
+        """
+        if not obj or not obj.pk:
+            return None
+        ct = ContentType.objects.get_for_model(obj)
+        doc, _ = cls.objects.get_or_create(
+            content_type=ct,
+            object_id=obj.pk,
+            defaults={"public_id": uuid.uuid4()},
+        )
+        return doc
+
 
 class DocumentIdMixin:
     """

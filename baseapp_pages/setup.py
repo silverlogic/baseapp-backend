@@ -8,9 +8,6 @@ setup(
         "baseapp.plugins": [
             "baseapp_pages = baseapp_pages.plugin:PagesPlugin",
         ],
-        "baseapp.interfaces": [
-            "pages = baseapp_pages.graphql.interfaces:get_pages_interface",
-        ],
     },
     zip_safe=False,
 )

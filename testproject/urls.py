@@ -1,21 +1,11 @@
 from django.contrib import admin
-from django.urls import include, path, re_path
+from django.urls import include, path
 
-import baseapp_auth.rest_framework.urls.auth_authtoken as auth_authtoken_urls
-import baseapp_auth.rest_framework.urls.auth_jwt as auth_jwt_urls
-import baseapp_auth.rest_framework.urls.auth_mfa as auth_mfa_urls
-import baseapp_auth.rest_framework.urls.auth_mfa_jwt as auth_mfa_jwt_urls
-import baseapp_auth.rest_framework.urls.pre_auth as pre_auth_urls
 import baseapp_wagtail.urls as baseapp_wagtail_urls
-from baseapp_auth.rest_framework.routers.account import (
-    account_router,
-    users_router_nested,
-)
 from baseapp_core.graphql import GraphQLView
 from baseapp_core.plugins import plugin_registry
 from baseapp_core.rest_framework.routers import DefaultRouter
 from baseapp_e2e.rest_framework.views import E2EViewSet
-from baseapp_payments.router import payments_router
 
 __all__ = [
     "urlpatterns",
@@ -23,14 +13,7 @@ __all__ = [
 
 v1_urlpatterns = [
     path(r"", include("baseapp_url_shortening.urls")),
-    re_path(r"", include(account_router.urls)),
-    re_path(r"", include(users_router_nested.urls)),
-    re_path(r"auth/authtoken/", include(auth_authtoken_urls)),
-    re_path(r"auth/jwt/", include(auth_jwt_urls)),
-    re_path(r"auth/mfa/", include(auth_mfa_urls)),
-    re_path(r"auth/mfa/jwt/", include(auth_mfa_jwt_urls)),
-    re_path(r"auth/pre-auth/", include(pre_auth_urls)),
-    re_path(r"payments/", include(payments_router.urls)),
+    *plugin_registry.get_all_v1_urlpatterns(),
 ]
 
 router = DefaultRouter(trailing_slash=False)
