@@ -214,16 +214,6 @@ class AbstractProfileUserRole(RelayModel, models.Model):
         def description(self):
             return self.label
 
-    class InvitationDeliveryStatus(models.TextChoices):
-        NOT_SENT = "NOT_SENT", _("not sent")
-        SENDING = "SENDING", _("sending")
-        SENT = "SENT", _("sent")
-        FAILED = "FAILED", _("failed")
-
-        @property
-        def description(self):
-            return self.label
-
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="profile_members",
@@ -277,31 +267,6 @@ class AbstractProfileUserRole(RelayModel, models.Model):
         help_text=_("When the user accepted or declined"),
     )
 
-    invitation_last_sent_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        verbose_name=_("invitation last sent at"),
-        help_text=_("When the invitation email was last sent/attempted"),
-    )
-    invitation_send_attempts = models.IntegerField(
-        default=0,
-        verbose_name=_("invitation send attempts"),
-        help_text=_("Number of times invitation email send was attempted"),
-    )
-    invitation_delivery_status = models.CharField(
-        max_length=20,
-        choices=InvitationDeliveryStatus.choices,
-        default=InvitationDeliveryStatus.NOT_SENT,
-        verbose_name=_("invitation delivery status"),
-        help_text=_("Current delivery status of invitation email"),
-    )
-    invitation_last_send_error = models.TextField(
-        null=True,
-        blank=True,
-        verbose_name=_("invitation last send error"),
-        help_text=_("Error message from last failed send attempt"),
-    )
-
     class Meta:
         abstract = True
         unique_together = [("user", "profile")]
@@ -326,26 +291,6 @@ class AbstractProfileUserRole(RelayModel, models.Model):
         token = get_random_string(length=64)
         self.invitation_token = token
         return token
-
-    def is_within_send_cooldown(self):
-        from django.utils import timezone
-
-        from baseapp_profiles.constants import INVITATION_RESEND_COOLDOWN_MINUTES
-
-        if not self.invitation_last_sent_at:
-            return False
-        cooldown_threshold = timezone.now() - timezone.timedelta(
-            minutes=INVITATION_RESEND_COOLDOWN_MINUTES
-        )
-        return self.invitation_last_sent_at > cooldown_threshold
-
-    def can_resend_invitation(self):
-        if self.invitation_delivery_status == self.InvitationDeliveryStatus.SENDING:
-            return False, "send_in_progress"
-        if self.invitation_delivery_status == self.InvitationDeliveryStatus.SENT:
-            if self.is_within_send_cooldown():
-                return False, "rate_limited"
-        return True, None
 
     def __str__(self):
         return f"{self.user} as {self.role} in {self.profile}"
