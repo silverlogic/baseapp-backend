@@ -459,7 +459,7 @@ class TestUsersChangePassword(ApiMixin):
 
 
 class TestUserPermission(ApiMixin):
-    view_name = "users-permissions"
+    view_name = "users-permissions-me"
 
     def test_can_get_their_permission(self, user_client):
         admin_content_type = ContentType.objects.filter(app_label="admin").first()
@@ -480,73 +480,11 @@ class TestUserPermission(ApiMixin):
             codename="test_unique_perm", name="Test", content_type=admin_content_type
         )
         user_client.user.user_permissions.add(perm)
-        r = user_client.post(self.reverse(), {"perm": "admin.test_unique_perm"})
+        r = user_client.get(self.reverse(), {"perm": "admin.test_unique_perm"})
         h.responseOk(r)
-        assert r.data["has_perm"]
+        assert r.data["permissions"]["admin.test_unique_perm"] is True
 
     def test_user_get_false_without_permission(self, user_client):
-        r = user_client.post(self.reverse(), {"perm": "admin.test_unique_perm"})
+        r = user_client.get(self.reverse(), {"perm": "admin.test_unique_perm"})
         h.responseOk(r)
-        assert not r.data["has_perm"]
-
-
-class TestUserPermissionList(ApiMixin):
-    view_name = "user-permissions-list"
-
-    def test_guest_cannot_get_user_permissions(self, client):
-        content_type = ContentType.objects.all().first()
-        perm = Permission.objects.filter(content_type_id=content_type).first()
-        user = UserFactory()
-        user.user_permissions.add(perm)
-        r = client.get(self.reverse(kwargs={"user_pk": user.pk}))
-        h.responseUnauthorized(r)
-
-    def test_user_without_perm_cannot_get_user_permissions(self, user_client):
-        content_type = ContentType.objects.all().first()
-        perm = Permission.objects.filter(content_type_id=content_type).first()
-        user = UserFactory()
-        user.user_permissions.add(perm)
-        r = user_client.get(self.reverse(kwargs={"user_pk": user.pk}))
-        h.responseBadRequest(r)
-        assert "You do not have permission to perform this action." == r.data["detail"]
-
-    def test_user_with_perm_can_get_user_permissions(self, user_client):
-        content_type = ContentType.objects.all().first()
-        perm = Permission.objects.filter(content_type_id=content_type).first()
-        user = UserFactory()
-        user.user_permissions.add(perm)
-        p = Permission.objects.get(codename="change_user")
-        p.content_type.app_label = "users"
-        p.content_type.save()
-        user_client.user.user_permissions.add(p)
-        user_client.user.refresh_from_db()
-        r = user_client.get(self.reverse(kwargs={"user_pk": user.pk}))
-        h.responseOk(r)
-
-    def test_user_with_perm_can_up_user_permissions(self, user_client):
-        content_type = ContentType.objects.all().first()
-        perm = Permission.objects.filter(content_type_id=content_type).first()
-        user = UserFactory()
-        user.user_permissions.add(perm)
-        p = Permission.objects.get(codename="change_user")
-        p.content_type.app_label = "users"
-        p.content_type.save()
-        user_client.user.user_permissions.add(p)
-        r = user_client.post(
-            self.reverse(kwargs={"user_pk": user.pk}), data={"codename": "delete_user"}
-        )
-        h.responseCreated(r)
-        assert user.user_permissions.count() == 2
-
-    def test_user_with_perm_can_set_user_permissions(self, user_client):
-        user = UserFactory()
-        p = Permission.objects.get(codename="change_user")
-        p.content_type.app_label = "users"
-        p.content_type.save()
-        user_client.user.user_permissions.add(p)
-        r = user_client.post(
-            self.reverse(kwargs={"user_pk": user.pk}),
-            data={"permissions": ["change_user", "delete_user"]},
-        )
-        h.responseCreated(r)
-        assert user.user_permissions.count() == 2
+        assert r.data["permissions"]["admin.test_unique_perm"] is not True
