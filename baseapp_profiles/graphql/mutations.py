@@ -93,6 +93,21 @@ def _reset_invitation_for_send(invitation, role=None, user=None) -> None:
         invitation.user = user
 
 
+def _enqueue_invitation_email(invitation, inviter):
+    from baseapp_profiles.tasks import send_invitation_email_task
+
+    invitation.invitation_delivery_status = ProfileUserRole.InvitationDeliveryStatus.NOT_SENT
+    invitation.invitation_last_send_error = None
+    invitation.save(update_fields=["invitation_delivery_status", "invitation_last_send_error"])
+
+    transaction.on_commit(
+        lambda: send_invitation_email_task.apply_async(
+            args=[invitation.id, inviter.id],
+            countdown=1,
+        )
+    )
+
+
 class BaseProfileSerializer(serializers.ModelSerializer):
     owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
     name = serializers.CharField(required=False)
@@ -426,8 +441,6 @@ class ProfileSendInvitation(RelayMutation):
     def mutate_and_get_payload(cls, root, info, **input):
         from django.contrib.auth import get_user_model
 
-        from baseapp_profiles.emails import send_invitation_email
-
         profile_id = input.get("profile_id")
         email = input.get("email")
         role = input.get("role")
@@ -446,13 +459,11 @@ class ProfileSendInvitation(RelayMutation):
         normalized_email = email.lower()
         User = get_user_model()
 
-        # Lookup invited user if they exist
         try:
             invited_user = User.objects.get(email__iexact=normalized_email)
         except User.DoesNotExist:
             invited_user = None
 
-        # Use transaction with select_for_update to prevent race conditions
         with transaction.atomic():
             existing_role = (
                 ProfileUserRole.objects.select_for_update()
@@ -468,31 +479,40 @@ class ProfileSendInvitation(RelayMutation):
                     )
 
                 if existing_role.status == ProfileUserRole.ProfileRoleStatus.PENDING:
-                    if not existing_role.is_invitation_expired():
-                        raise GraphQLError(
-                            str(_("An invitation has already been sent to this email")),
-                            extensions={"code": "duplicate_invitation"},
-                        )
-                    # Expired PENDING invitation: update in place
-                    existing_role.status = ProfileUserRole.ProfileRoleStatus.EXPIRED
+                    if existing_role.is_invitation_expired():
+                        existing_role.status = ProfileUserRole.ProfileRoleStatus.EXPIRED
+                    else:
+                        can_resend, error_code = existing_role.can_resend_invitation()
+                        if not can_resend:
+                            raise GraphQLError(
+                                str(
+                                    _(
+                                        "Cannot resend invitation: {}"
+                                    ).format(
+                                        "send in progress"
+                                        if error_code == "send_in_progress"
+                                        else "rate limited"
+                                    )
+                                ),
+                                extensions={"code": error_code},
+                            )
 
-                # DECLINED, INACTIVE, or EXPIRED: reuse existing row
                 if existing_role.status in [
                     ProfileUserRole.ProfileRoleStatus.DECLINED,
                     ProfileUserRole.ProfileRoleStatus.INACTIVE,
                     ProfileUserRole.ProfileRoleStatus.EXPIRED,
+                    ProfileUserRole.ProfileRoleStatus.PENDING,
                 ]:
                     _reset_invitation_for_send(existing_role, role=role, user=invited_user)
                     existing_role.save()
+                    _enqueue_invitation_email(existing_role, info.context.user)
                     invitation = existing_role
                 else:
-                    # Should not reach here, but safety fallback
                     raise GraphQLError(
                         str(_("Cannot send invitation in current state")),
                         extensions={"code": "invalid_status"},
                     )
             else:
-                # No existing role: create new invitation
                 try:
                     invitation = ProfileUserRole.objects.create(
                         profile=profile,
@@ -507,15 +527,12 @@ class ProfileSendInvitation(RelayMutation):
                     )
                     invitation.generate_invitation_token()
                     invitation.save()
+                    _enqueue_invitation_email(invitation, info.context.user)
                 except IntegrityError:
-                    # Race condition: another request created the row first.
-                    # Re-fetch and return duplicate_invitation error.
                     raise GraphQLError(
                         str(_("An invitation has already been sent to this email")),
                         extensions={"code": "duplicate_invitation"},
                     )
-
-        send_invitation_email(invitation, info.context.user)
 
         return ProfileSendInvitation(profile_user_role=invitation)
 
@@ -604,33 +621,52 @@ class ProfileResendInvitation(RelayMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        from baseapp_profiles.emails import send_invitation_email
-
         invitation_id = input.get("invitation_id")
 
-        invitation = _get_invitation_by_id(invitation_id)
-
-        if not info.context.user.has_perm(
-            f"{profile_user_role_app_label}.add_profileuserrole", invitation.profile
-        ):
-            raise GraphQLError(
-                str(_("You don't have permission to perform this action")),
-                extensions={"code": "permission_required"},
+        with transaction.atomic():
+            invitation = ProfileUserRole.objects.select_for_update().get(
+                pk=get_pk_from_relay_id(invitation_id)
             )
 
-        if invitation.status not in [
-            ProfileUserRole.ProfileRoleStatus.EXPIRED,
-            ProfileUserRole.ProfileRoleStatus.PENDING,
-        ]:
-            raise GraphQLError(
-                str(_("Can only resend expired or pending invitations")),
-                extensions={"code": "invalid_status"},
-            )
+            if not invitation:
+                raise GraphQLError(
+                    str(_("Invitation not found")),
+                    extensions={"code": "not_found"},
+                )
 
-        _reset_invitation_for_send(invitation)
-        invitation.save()
+            if not info.context.user.has_perm(
+                f"{profile_user_role_app_label}.add_profileuserrole", invitation.profile
+            ):
+                raise GraphQLError(
+                    str(_("You don't have permission to perform this action")),
+                    extensions={"code": "permission_required"},
+                )
 
-        send_invitation_email(invitation, info.context.user)
+            if invitation.status not in [
+                ProfileUserRole.ProfileRoleStatus.EXPIRED,
+                ProfileUserRole.ProfileRoleStatus.PENDING,
+            ]:
+                raise GraphQLError(
+                    str(_("Can only resend expired or pending invitations")),
+                    extensions={"code": "invalid_status"},
+                )
+
+            can_resend, error_code = invitation.can_resend_invitation()
+            if not can_resend:
+                raise GraphQLError(
+                    str(
+                        _("Cannot resend invitation: {}").format(
+                            "send in progress"
+                            if error_code == "send_in_progress"
+                            else "rate limited"
+                        )
+                    ),
+                    extensions={"code": error_code},
+                )
+
+            _reset_invitation_for_send(invitation)
+            invitation.save()
+            _enqueue_invitation_email(invitation, info.context.user)
 
         return ProfileResendInvitation(profile_user_role=invitation)
 
