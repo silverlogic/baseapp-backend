@@ -2,6 +2,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
+import swapper
 from django.test import Client
 from django.utils import timezone
 
@@ -9,8 +10,9 @@ from baseapp_core.graphql.testing.fixtures import graphql_query
 from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.constants import INVITATION_EXPIRATION_DAYS
 from baseapp_profiles.emails import create_invitation
-from baseapp_profiles.models import ProfileUserRole
 from baseapp_profiles.tests.factories import ProfileFactory
+
+ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
 
 @pytest.mark.django_db
