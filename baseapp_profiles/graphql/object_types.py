@@ -25,6 +25,7 @@ def can_view_profile_members(user, profile):
 
 ProfileRoleTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoles)
 ProfileRoleStatusTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoleStatus)
+InvitationDeliveryStatusEnum = graphene.Enum.from_enum(ProfileUserRole.InvitationDeliveryStatus)
 
 
 class BaseProfileUserRoleObjectType:
@@ -34,6 +35,10 @@ class BaseProfileUserRoleObjectType:
     invited_at = graphene.DateTime()
     invitation_expires_at = graphene.DateTime()
     responded_at = graphene.DateTime()
+    invitation_delivery_status = graphene.Field(InvitationDeliveryStatusEnum)
+    invitation_last_sent_at = graphene.DateTime()
+    invitation_send_attempts = graphene.Int()
+    invitation_last_send_error = graphene.String()
 
     class Meta:
         model = ProfileUserRole
@@ -50,6 +55,10 @@ class BaseProfileUserRoleObjectType:
             "invited_at",
             "invitation_expires_at",
             "responded_at",
+            "invitation_delivery_status",
+            "invitation_last_sent_at",
+            "invitation_send_attempts",
+            "invitation_last_send_error",
         ]
         filterset_class = MemberFilter
 
@@ -76,6 +85,26 @@ class BaseProfileUserRoleObjectType:
         if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
             return None
         return self.responded_at
+
+    def resolve_invitation_delivery_status(self, info):
+        if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
+            return None
+        return self.invitation_delivery_status
+
+    def resolve_invitation_last_sent_at(self, info):
+        if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
+            return None
+        return self.invitation_last_sent_at
+
+    def resolve_invitation_send_attempts(self, info):
+        if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
+            return None
+        return self.invitation_send_attempts
+
+    def resolve_invitation_last_send_error(self, info):
+        if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
+            return None
+        return self.invitation_last_send_error
 
 
 class ProfileUserRoleObjectType(DjangoObjectType, BaseProfileUserRoleObjectType):

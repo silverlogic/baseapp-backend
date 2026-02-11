@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+import swapper
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
@@ -9,7 +10,8 @@ from baseapp_core.deep_links import get_deep_link
 from baseapp_core.exceptions import DeepLinkFetchError
 
 from .constants import INVITATION_EXPIRATION_DAYS
-from .models import ProfileUserRole
+
+ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
 
 def create_invitation(profile, inviter, invited_email, role=ProfileUserRole.ProfileRoles.MANAGER):

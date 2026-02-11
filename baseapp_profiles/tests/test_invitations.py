@@ -93,9 +93,9 @@ class TestInvitations:
 
 @pytest.mark.django_db
 class TestInvitationMutations:
-    @patch("baseapp_profiles.emails.send_invitation_email")
+    @patch("baseapp_profiles.graphql.mutations._enqueue_invitation_email")
     def test_send_profile_invitation_mutation(
-        self, mock_send_email, django_user_client, graphql_user_client
+        self, mock_enqueue, django_user_client, graphql_user_client
     ):
         profile = ProfileFactory(owner=django_user_client.user)
 
@@ -132,7 +132,7 @@ class TestInvitationMutations:
             == "newmember@test.com"
         )
         assert content["data"]["profileSendInvitation"]["profileUserRole"]["status"] == "PENDING"
-        assert mock_send_email.called
+        assert mock_enqueue.called
 
     def test_accept_profile_invitation_mutation(self, django_user_client, graphql_user_client):
         owner = UserFactory()
@@ -200,6 +200,9 @@ class TestInvitationMutations:
         assert invitation.responded_at is not None
 
     def test_cancel_profile_invitation_mutation(self, django_user_client, graphql_user_client):
+        import swapper
+
+        ActualProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
         profile = ProfileFactory(owner=django_user_client.user)
 
         invitation = create_invitation(
@@ -221,7 +224,7 @@ class TestInvitationMutations:
 
         assert content["data"]["profileCancelInvitation"]["success"] is True
 
-        assert not ProfileUserRole.objects.filter(pk=invitation.pk).exists()
+        assert not ActualProfileUserRole.objects.filter(pk=invitation.pk).exists()
 
     def test_expired_invitation_sets_expired_status(self, django_user_client, graphql_user_client):
         owner = UserFactory()
@@ -259,9 +262,9 @@ class TestInvitationMutations:
         invitation.refresh_from_db()
         assert invitation.status == ProfileUserRole.ProfileRoleStatus.PENDING
 
-    @patch("baseapp_profiles.emails.send_invitation_email")
+    @patch("baseapp_profiles.graphql.mutations._enqueue_invitation_email")
     def test_resend_expired_invitation_mutation(
-        self, mock_send_email, django_user_client, graphql_user_client
+        self, mock_enqueue, django_user_client, graphql_user_client
     ):
         profile = ProfileFactory(owner=django_user_client.user)
 
@@ -291,16 +294,16 @@ class TestInvitationMutations:
         content = response.json()
 
         assert content["data"]["profileResendInvitation"]["profileUserRole"]["status"] == "PENDING"
-        assert mock_send_email.called
+        assert mock_enqueue.called
 
         invitation.refresh_from_db()
         assert invitation.status == ProfileUserRole.ProfileRoleStatus.PENDING
         assert invitation.invitation_token != old_token
         assert invitation.invitation_expires_at > timezone.now()
 
-    @patch("baseapp_profiles.emails.send_invitation_email")
+    @patch("baseapp_profiles.graphql.mutations._enqueue_invitation_email")
     def test_resend_pending_invitation_mutation(
-        self, mock_send_email, django_user_client, graphql_user_client
+        self, mock_enqueue, django_user_client, graphql_user_client
     ):
         profile = ProfileFactory(owner=django_user_client.user)
 
@@ -326,7 +329,7 @@ class TestInvitationMutations:
         content = response.json()
 
         assert content["data"]["profileResendInvitation"]["profileUserRole"]["status"] == "PENDING"
-        assert mock_send_email.called
+        assert mock_enqueue.called
 
         invitation.refresh_from_db()
         assert invitation.invitation_token != old_token
@@ -449,10 +452,13 @@ class TestInvitationMutations:
     def test_accept_null_user_matching_email_binds_user(
         self, django_user_client, graphql_user_client
     ):
+        import swapper
+
+        ActualProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
 
-        invitation = ProfileUserRole.objects.create(
+        invitation = ActualProfileUserRole.objects.create(
             profile=profile,
             user=None,
             invited_email=django_user_client.user.email,
@@ -490,10 +496,13 @@ class TestInvitationMutations:
     def test_decline_null_user_matching_email_binds_user(
         self, django_user_client, graphql_user_client
     ):
+        import swapper
+
+        ActualProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
 
-        invitation = ProfileUserRole.objects.create(
+        invitation = ActualProfileUserRole.objects.create(
             profile=profile,
             user=None,
             invited_email=django_user_client.user.email,
@@ -529,10 +538,13 @@ class TestInvitationMutations:
 
 @pytest.mark.django_db
 class TestInvitationStateMachine:
-    @patch("baseapp_profiles.emails.send_invitation_email")
+    @patch("baseapp_profiles.graphql.mutations._enqueue_invitation_email")
     def test_send_invitation_reuses_declined_row(
-        self, mock_send_email, django_user_client, graphql_user_client
+        self, mock_enqueue, django_user_client, graphql_user_client
     ):
+        import swapper
+
+        ActualProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
         profile = ProfileFactory(owner=django_user_client.user)
         email = "declined@test.com"
 
@@ -563,17 +575,22 @@ class TestInvitationStateMachine:
 
         assert "data" in content
         assert content["data"]["profileSendInvitation"]["profileUserRole"]["status"] == "PENDING"
-        assert ProfileUserRole.objects.filter(profile=profile, invited_email=email).count() == 1
+        assert (
+            ActualProfileUserRole.objects.filter(profile=profile, invited_email=email).count() == 1
+        )
 
         invitation.refresh_from_db()
         assert invitation.pk == original_pk
         assert invitation.status == ProfileUserRole.ProfileRoleStatus.PENDING
         assert invitation.responded_at is None
 
-    @patch("baseapp_profiles.emails.send_invitation_email")
+    @patch("baseapp_profiles.graphql.mutations._enqueue_invitation_email")
     def test_send_invitation_reuses_inactive_row(
-        self, mock_send_email, django_user_client, graphql_user_client
+        self, mock_enqueue, django_user_client, graphql_user_client
     ):
+        import swapper
+
+        ActualProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
         profile = ProfileFactory(owner=django_user_client.user)
         email = "inactive@test.com"
 
@@ -600,16 +617,21 @@ class TestInvitationStateMachine:
         content = response.json()
 
         assert content["data"]["profileSendInvitation"]["profileUserRole"]["status"] == "PENDING"
-        assert ProfileUserRole.objects.filter(profile=profile, invited_email=email).count() == 1
+        assert (
+            ActualProfileUserRole.objects.filter(profile=profile, invited_email=email).count() == 1
+        )
 
         invitation.refresh_from_db()
         assert invitation.pk == original_pk
         assert invitation.role == ProfileUserRole.ProfileRoles.ADMIN
 
-    @patch("baseapp_profiles.emails.send_invitation_email")
+    @patch("baseapp_profiles.graphql.mutations._enqueue_invitation_email")
     def test_send_invitation_reuses_expired_row(
-        self, mock_send_email, django_user_client, graphql_user_client
+        self, mock_enqueue, django_user_client, graphql_user_client
     ):
+        import swapper
+
+        ActualProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
         profile = ProfileFactory(owner=django_user_client.user)
         email = "expired@test.com"
 
@@ -638,7 +660,9 @@ class TestInvitationStateMachine:
         content = response.json()
 
         assert content["data"]["profileSendInvitation"]["profileUserRole"]["status"] == "PENDING"
-        assert ProfileUserRole.objects.filter(profile=profile, invited_email=email).count() == 1
+        assert (
+            ActualProfileUserRole.objects.filter(profile=profile, invited_email=email).count() == 1
+        )
 
         invitation.refresh_from_db()
         assert invitation.pk == original_pk
@@ -651,7 +675,12 @@ class TestInvitationStateMachine:
         profile = ProfileFactory(owner=django_user_client.user)
         email = "pending@test.com"
 
-        create_invitation(profile=profile, inviter=django_user_client.user, invited_email=email)
+        invitation = create_invitation(
+            profile=profile, inviter=django_user_client.user, invited_email=email
+        )
+        invitation.invitation_delivery_status = ProfileUserRole.InvitationDeliveryStatus.SENT
+        invitation.invitation_last_sent_at = timezone.now()
+        invitation.save()
 
         mutation = """
             mutation SendInvitation($input: ProfileSendInvitationInput!) {
@@ -669,7 +698,7 @@ class TestInvitationStateMachine:
         content = response.json()
 
         assert "errors" in content
-        assert content["errors"][0]["extensions"]["code"] == "duplicate_invitation"
+        assert content["errors"][0]["extensions"]["code"] == "rate_limited"
 
     def test_send_invitation_blocks_active_member(self, django_user_client, graphql_user_client):
         profile = ProfileFactory(owner=django_user_client.user)
@@ -699,10 +728,13 @@ class TestInvitationStateMachine:
         assert "errors" in content
         assert content["errors"][0]["extensions"]["code"] == "already_member"
 
-    @patch("baseapp_profiles.emails.send_invitation_email")
+    @patch("baseapp_profiles.graphql.mutations._enqueue_invitation_email")
     def test_send_invitation_handles_expired_pending(
-        self, mock_send_email, django_user_client, graphql_user_client
+        self, mock_enqueue, django_user_client, graphql_user_client
     ):
+        import swapper
+
+        ActualProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
         profile = ProfileFactory(owner=django_user_client.user)
         email = "expiredpending@test.com"
 
@@ -729,7 +761,9 @@ class TestInvitationStateMachine:
         content = response.json()
 
         assert content["data"]["profileSendInvitation"]["profileUserRole"]["status"] == "PENDING"
-        assert ProfileUserRole.objects.filter(profile=profile, invited_email=email).count() == 1
+        assert (
+            ActualProfileUserRole.objects.filter(profile=profile, invited_email=email).count() == 1
+        )
         invitation.refresh_from_db()
         assert invitation.pk == original_pk
         assert invitation.invitation_expires_at > timezone.now()
@@ -809,15 +843,17 @@ class TestInvitationStateMachine:
 
     def test_unique_constraint_prevents_duplicate_invited_email(self):
         from django.db import IntegrityError
+        import swapper
 
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
         email = "duplicate@test.com"
+        ActualProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
         create_invitation(profile=profile, inviter=owner, invited_email=email)
 
         with pytest.raises(IntegrityError):
-            ProfileUserRole.objects.create(
+            ActualProfileUserRole.objects.create(
                 profile=profile,
                 invited_email=email,
                 role=ProfileUserRole.ProfileRoles.MANAGER,
