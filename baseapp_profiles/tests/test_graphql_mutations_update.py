@@ -35,9 +35,21 @@ PROFILE_UPDATE_GRAPHQL = """
     }
 """
 
-PROFILE_ROLE_UPDATE_GRAPHQL = """
-mutation ProfileRoleUpdateMutation($input: RoleUpdateInput!) {
-    profileRoleUpdate(input: $input) {
+PROFILE_USER_ROLE_CREATE_GRAPHQL = """
+mutation ProfileUserRoleCreateMutation($input: ProfileUserRoleCreateInput!) {
+    profileUserRoleCreate(input: $input) {
+        profileUserRoles {
+            id
+            role
+            status
+        }
+    }
+}
+"""
+
+PROFILE_USER_ROLE_UPDATE_GRAPHQL = """
+mutation ProfileUserRoleUpdateMutation($input: ProfileUserRoleUpdateInput!) {
+    profileUserRoleUpdate(input: $input) {
         profileUserRole {
             id
             role
@@ -51,9 +63,9 @@ mutation ProfileRoleUpdateMutation($input: RoleUpdateInput!) {
 }
 """
 
-PROFILE_MEMBER_REMOVE_GRAPHQL = """
-mutation ProfileRemoveMemberMutation($input: ProfileRemoveMemberInput!) {
-    profileRemoveMember(input: $input) {
+PROFILE_USER_ROLE_DELETE_GRAPHQL = """
+mutation ProfileUserRoleDeleteMutation($input: ProfileUserRoleDeleteInput!) {
+    profileUserRoleDelete(input: $input) {
         deletedId
     }
 }
@@ -242,14 +254,14 @@ def test_user_profile_owner_can_update_role(django_user_client, graphql_user_cli
     ProfileUserRoleFactory(profile=profile, user=user_2, role=ProfileUserRole.ProfileRoles.MANAGER)
 
     response = graphql_user_client(
-        PROFILE_ROLE_UPDATE_GRAPHQL,
+        PROFILE_USER_ROLE_UPDATE_GRAPHQL,
         variables={
             "input": {"userId": user_2.relay_id, "profileId": profile.relay_id, "roleType": "ADMIN"}
         },
     )
     content = response.json()
 
-    assert content["data"]["profileRoleUpdate"]["profileUserRole"]["role"] == "ADMIN"
+    assert content["data"]["profileUserRoleUpdate"]["profileUserRole"]["role"] == "ADMIN"
     profile.refresh_from_db()
 
 
@@ -269,14 +281,14 @@ def test_user_with_permission_can_update_role(django_user_client, graphql_user_c
     ProfileUserRoleFactory(profile=profile, user=user_3, role=ProfileUserRole.ProfileRoles.MANAGER)
 
     response = graphql_user_client(
-        PROFILE_ROLE_UPDATE_GRAPHQL,
+        PROFILE_USER_ROLE_UPDATE_GRAPHQL,
         variables={
             "input": {"userId": user_3.relay_id, "profileId": profile.relay_id, "roleType": "ADMIN"}
         },
     )
     content = response.json()
 
-    assert content["data"]["profileRoleUpdate"]["profileUserRole"]["role"] == "ADMIN"
+    assert content["data"]["profileUserRoleUpdate"]["profileUserRole"]["role"] == "ADMIN"
     profile.refresh_from_db()
 
 
@@ -296,7 +308,7 @@ def test_user_without_permission_cant_update_role(django_user_client, graphql_us
     ProfileUserRoleFactory(profile=profile, user=user_3, role=ProfileUserRole.ProfileRoles.MANAGER)
 
     response = graphql_user_client(
-        PROFILE_ROLE_UPDATE_GRAPHQL,
+        PROFILE_USER_ROLE_UPDATE_GRAPHQL,
         variables={
             "input": {"userId": user_3.relay_id, "profileId": profile.relay_id, "roleType": "ADMIN"}
         },
@@ -322,12 +334,12 @@ def test_user_profile_owner_can_remove_profile_member(django_user_client, graphq
     profile_user_role_relay_id = profile_user_role.relay_id
 
     response = graphql_user_client(
-        PROFILE_MEMBER_REMOVE_GRAPHQL,
+        PROFILE_USER_ROLE_DELETE_GRAPHQL,
         variables={"input": {"userId": user_2.relay_id, "profileId": profile.relay_id}},
     )
     content = response.json()
 
-    assert content["data"]["profileRemoveMember"]["deletedId"] == profile_user_role_relay_id
+    assert content["data"]["profileUserRoleDelete"]["deletedId"] == profile_user_role_relay_id
     assert not ProfileUserRole.objects.filter(id=profile_user_role.id).exists()
 
 
@@ -349,31 +361,60 @@ def test_user_with_permission_can_remove_profile_member(django_user_client, grap
     profile_user_role_relay_id = profile_user_role.relay_id
 
     response = graphql_user_client(
-        PROFILE_MEMBER_REMOVE_GRAPHQL,
+        PROFILE_USER_ROLE_DELETE_GRAPHQL,
         variables={"input": {"userId": user_3.relay_id, "profileId": profile.relay_id}},
     )
     content = response.json()
-    assert content["data"]["profileRemoveMember"]["deletedId"] == profile_user_role_relay_id
+    assert content["data"]["profileUserRoleDelete"]["deletedId"] == profile_user_role_relay_id
     assert not ProfileUserRole.objects.filter(id=profile_user_role.id).exists()
 
 
 def test_user_without_permission_cant_remove_profile_member(
     django_user_client, graphql_user_client
 ):
-    user = django_user_client.user
-    user_2 = UserFactory()
-    user_3 = UserFactory()
-
-    profile = ProfileFactory(owner=user_2)
-    ProfileUserRoleFactory(profile=profile, user=user, role=ProfileUserRole.ProfileRoles.MANAGER)
-    profile_user_role = ProfileUserRoleFactory(
-        profile=profile, user=user_3, role=ProfileUserRole.ProfileRoles.MANAGER
+    perm = Permission.objects.get(
+        content_type__app_label=ProfileUserRole._meta.app_label, codename="add_profileuserrole"
     )
+
+    user = django_user_client.user
+    user.user_permissions.add(perm)
+    user_2 = UserFactory()
+    profile = ProfileFactory(owner=user_2)
 
     response = graphql_user_client(
-        PROFILE_MEMBER_REMOVE_GRAPHQL,
-        variables={"input": {"userId": user_3.relay_id, "profileId": profile.relay_id}},
+        PROFILE_USER_ROLE_CREATE_GRAPHQL,
+        variables={
+            "input": {
+                "usersIds": [user_2.relay_id],
+                "profileId": profile.relay_id,
+                "roleType": "ADMIN",
+            }
+        },
     )
     content = response.json()
-    assert content["errors"][0]["extensions"]["code"] == "permission_required"
-    assert ProfileUserRole.objects.filter(id=profile_user_role.id).exists()
+    assert content["errors"][0]["message"] == "You don't have permission to perform this action"
+    profile.refresh_from_db()
+
+
+def test_user_with_permission_can_add_profile_user_role(django_user_client, graphql_user_client):
+    perm = Permission.objects.get(
+        content_type__app_label=ProfileUserRole._meta.app_label, codename="add_profileuserrole"
+    )
+
+    user = django_user_client.user
+    user.user_permissions.add(perm)
+    user_2 = UserFactory()
+    profile = ProfileFactory(owner=user_2)
+    response = graphql_user_client(
+        PROFILE_USER_ROLE_CREATE_GRAPHQL,
+        variables={
+            "input": {
+                "usersIds": [user_2.relay_id],
+                "profileId": user.profile.relay_id,
+                "roleType": "ADMIN",
+            }
+        },
+    )
+    content = response.json()
+    assert content["data"]["profileUserRoleCreate"]["profileUserRoles"][0]["role"] == "ADMIN"
+    profile.refresh_from_db()
