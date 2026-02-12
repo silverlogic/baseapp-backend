@@ -5,7 +5,7 @@ This package provides django-allauth integration for BaseApp projects, including
 ## Requirements
 
 - `baseapp_auth` must be installed in your project
-- `django-allauth[headless]` version 65.13.0 or higher
+- `django-allauth[headless]` version 65.14.0 or higher
 
 ## Installation
 
@@ -15,7 +15,7 @@ Add `django-allauth[headless]` to your project dependencies. If using `baseapp-b
 
 ```python
 # setup.cfg or requirements.txt
-django-allauth[headless] == 65.13.0
+django-allauth[headless] == 65.14.0
 ```
 
 ### 2. Configure Settings

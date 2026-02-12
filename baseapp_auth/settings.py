@@ -9,6 +9,8 @@ ALLAUTH_HEADLESS_INSTALLED_APPS = [
     "allauth",
     "allauth.account",
     "allauth.headless",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
 ]
 
 ALLAUTH_HEADLESS_MIDDLEWARE = [
@@ -56,6 +58,27 @@ SIMPLE_JWT = {
 }
 
 JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
+
+# Social Account Configuration
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
+SOCIALACCOUNT_EMAIL_REQUIRED = True
+SOCIALACCOUNT_QUERY_EMAIL = True
+
+# Google Provider Configuration
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+        # For AllAuth Headless with provider/token endpoint,
+        # we don't use PKCE as we're sending id_token directly
+        "OAUTH_PKCE_ENABLED": False,
+        # Enable token verification
+        "VERIFIED_EMAIL": True,
+    }
+}
+
+GRAPHQL_WS_CONSUMER = "baseapp_core.graphql.consumers.GraphqlWsJWTAuthenticatedConsumer"
 
 # List of Django app labels for which permissions should be hidden/ignored.
 # Expected format: a list of strings, each string being an app label as used in INSTALLED_APPS.
