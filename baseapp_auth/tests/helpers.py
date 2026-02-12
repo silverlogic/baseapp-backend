@@ -1,9 +1,7 @@
 import importlib
 import json
 
-import pytest
 from django.conf import settings
-from rest_framework import status
 
 from baseapp_core.tests.helpers import *  # noqa: F403, F401, S2208
 
