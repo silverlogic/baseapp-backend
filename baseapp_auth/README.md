@@ -312,6 +312,93 @@ CELERY_BEAT_SCHEDULE = {
 }
 ```
 
+## Social Authentication with Google
+
+### Configuration
+
+Google OAuth is configured in `settings.py` with the following settings:
+
+```python
+# Social Account Configuration
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
+SOCIALACCOUNT_EMAIL_REQUIRED = True
+SOCIALACCOUNT_QUERY_EMAIL = True
+
+# Google Provider Configuration
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+        # For AllAuth Headless with provider/token endpoint,
+        # we don't use PKCE as we're sending id_token directly
+        "OAUTH_PKCE_ENABLED": False,
+        # Enable token verification
+        "VERIFIED_EMAIL": True,
+    }
+}
+```
+
+### Key Settings Explained
+
+- **SOCIALACCOUNT_AUTO_SIGNUP**: Automatically creates user account on first Google login
+- **SOCIALACCOUNT_EMAIL_VERIFICATION**: Set to "none" - email is already verified by Google
+- **SOCIALACCOUNT_EMAIL_REQUIRED**: Google must provide email in OAuth response
+- **SOCIALACCOUNT_QUERY_EMAIL**: Request email scope from Google
+- **OAUTH_PKCE_ENABLED**: Disabled because AllAuth headless sends id_token directly instead of using authorization code flow
+- **VERIFIED_EMAIL**: Skip additional email verification since Google already verified it
+
+### Google OAuth Provider Setup
+
+Before using Google OAuth, you need to:
+
+1. Create a Google OAuth application in [Google Cloud Console](https://console.cloud.google.com/)
+2. Get Client ID and Client Secret
+3. Add the Google social application in Django admin:
+   - Go to `Admin > Social Applications > Add Social Application`
+   - Provider: Google
+   - Name: Google
+   - Client ID: `<your-client-id>`
+   - Secret key: `<your-client-secret>`
+   - Sites: Select your site
+
+### Frontend Integration
+
+On the frontend, use the Google OAuth id_token with the AllAuth endpoint:
+
+```http
+POST /_allauth/app/v1/auth/signup HTTP/1.1
+
+{
+  "provider": "google",
+  "id_token": "<google-id-token>"
+}
+```
+
+Or for login (if user already exists):
+
+```http
+POST /_allauth/app/v1/auth/login HTTP/1.1
+
+{
+  "provider": "google",
+  "id_token": "<google-id-token>"
+}
+```
+
+After successful signup/login, the response includes access and refresh tokens:
+
+```json
+{
+  "meta": {
+    "access_token": "<jwt-access-token>",
+    "refresh_token": "<jwt-refresh-token>",
+    "isEmailVerified": true,
+    "sessionToken": "<session-token>"
+  }
+}
+```
+
 ## How to delevop
 
 General development instructions can be found in [main README](..#testing)
