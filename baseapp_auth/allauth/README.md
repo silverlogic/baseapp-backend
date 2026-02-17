@@ -5,18 +5,28 @@ This package provides django-allauth integration for BaseApp projects, including
 ## Requirements
 
 - `baseapp_auth` must be installed in your project
-- `django-allauth[headless]` version 65.14.0 or higher
+- `django-allauth[headless,headless-spec]` version 65.14.0 or higher
 
 ## Installation
 
 ### 1. Install Dependencies
 
-Add `django-allauth[headless]` to your project dependencies. If using `baseapp-backend` package:
+Add `django-allauth[headless,headless-spec]` to your project dependencies. If using `baseapp-backend` package:
 
 ```python
 # setup.cfg or requirements.txt
-django-allauth[headless] == 65.14.0
+django-allauth[headless,headless-spec] == 65.14.0
 ```
+
+### Why `headless-spec` is required
+
+The `headless` extra enables the headless API endpoints. The additional `headless-spec` extra provides the headless specification components used by AllAuth's headless social-account flows.
+
+In this project, Google OAuth login/signup uses:
+
+- `POST /v1/_allauth/app/v1/auth/provider/token`
+
+That provider-token flow depends on the headless social-account stack, so we keep `headless-spec` installed together with `headless` to ensure the Google OAuth integration works consistently.
 
 ### 2. Configure Settings
 
@@ -267,7 +277,7 @@ See `baseapp_auth/allauth/templates/README.md` for details on template customiza
 
 If you're migrating from a previous version of BaseApp:
 
-1. **Install `django-allauth[headless]`** - The `[headless]` extra is required for API endpoints
+1. **Install `django-allauth[headless,headless-spec]`** - The `[headless]` extra enables headless API endpoints and `[headless-spec]` supports the provider-token social auth specification used by Google OAuth
 2. **Import allauth configuration constants** - Use `ALLAUTH_HEADLESS_INSTALLED_APPS`, `ALLAUTH_HEADLESS_MIDDLEWARE`, and `ALLAUTH_AUTHENTICATION_BACKENDS` from `baseapp_auth.settings`
 3. **Update URL configuration** - Import `allauth_admin_urls` and `allauth_headless_urls` separately. Place `allauth_headless_urls` in your v1 API patterns and `allauth_admin_urls` at root level as shown in the installation guide
 4. **Configure additional settings** - Set `SITE_ID`, redirect URLs, and `HEADLESS_FRONTEND_URLS` as needed

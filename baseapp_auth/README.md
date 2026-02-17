@@ -24,6 +24,11 @@ In the `rest_framework/` directory you can find a implementation of account-rela
 
 **⚠️ IMPORTANT: We now use the official `allauth.headless` module for headless authentication.**
 
+**Dependency note:** Install `django-allauth[headless,headless-spec]`.
+
+- `headless` enables the headless API endpoints
+- `headless-spec` provides the headless social-account specification used by provider token auth flows (for example, Google OAuth via `POST /v1/_allauth/app/v1/auth/provider/token`)
+
 The package provides headless authentication endpoints using django-allauth's official headless module (`allauth.headless`). These endpoints use OAuth2-style JWT tokens (access and refresh tokens) and are designed for frontend applications.
 
 **Official AllAuth Headless Endpoints (Recommended):**
@@ -361,13 +366,16 @@ Before using Google OAuth, you need to:
    - Client ID: `<your-client-id>`
    - Secret key: `<your-client-secret>`
    - Sites: Select your site
+4. After adding `allauth.socialaccount` and the Google provider to `INSTALLED_APPS`, run database migrations so the social account tables are created:
+   ```bash
+   python manage.py migrate
 
 ### Frontend Integration
 
 On the frontend, use the Google OAuth id_token with the AllAuth endpoint:
 
 ```http
-POST /_allauth/app/v1/auth/signup HTTP/1.1
+POST /v1/_allauth/app/v1/auth/signup HTTP/1.1
 
 {
   "provider": "google",
@@ -378,7 +386,7 @@ POST /_allauth/app/v1/auth/signup HTTP/1.1
 Or for login (if user already exists):
 
 ```http
-POST /_allauth/app/v1/auth/login HTTP/1.1
+POST /v1/_allauth/app/v1/auth/login HTTP/1.1
 
 {
   "provider": "google",
@@ -399,7 +407,7 @@ After successful signup/login, the response includes access and refresh tokens:
 }
 ```
 
-## How to delevop
+## How to develop
 
 General development instructions can be found in [main README](..#testing)
 

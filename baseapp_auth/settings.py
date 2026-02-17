@@ -78,8 +78,6 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
-GRAPHQL_WS_CONSUMER = "baseapp_core.graphql.consumers.GraphqlWsJWTAuthenticatedConsumer"
-
 # List of Django app labels for which permissions should be hidden/ignored.
 # Expected format: a list of strings, each string being an app label as used in INSTALLED_APPS.
 # Example:

@@ -97,6 +97,6 @@ E2E = {
 }
 ```
 
-## How to delevop
+## How to develop
 
 General development instructions can be found in [main README](..#testing)
