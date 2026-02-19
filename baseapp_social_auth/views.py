@@ -66,13 +66,13 @@ class SocialAuthViewSet(SocialTokenOnlyAuthView, viewsets.GenericViewSet):
         self.do_login(request.backend, user)
         data = resp_data.data
         data["is_new"] = user.is_new
-        
+
         # Add JWT tokens from pipeline if they were generated
         if hasattr(request.backend.strategy, "jwt_token"):
             data["token"] = request.backend.strategy.jwt_token
         if hasattr(request.backend.strategy, "jwt_refresh"):
             data["refresh"] = request.backend.strategy.jwt_refresh
-        
+
         return Response(data)
 
     def get_object(self):
