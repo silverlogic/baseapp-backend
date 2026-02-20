@@ -16,7 +16,7 @@ from baseapp_core.graphql import (
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model, skip_ast_walker
 from baseapp_core.models import DocumentId
-from baseapp_core.services import shared_service_registry
+from baseapp_core.plugins import shared_service_registry
 from baseapp_reactions.graphql.object_types import ReactionsInterface
 
 from ..models import CommentStatus, default_comments_count

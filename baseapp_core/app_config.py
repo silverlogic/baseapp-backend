@@ -12,8 +12,10 @@ from typing import TYPE_CHECKING
 from django.apps import AppConfig
 
 if TYPE_CHECKING:
-    from baseapp_core.graphql.interfaces import GraphQLSharedInterfaceRegistry
-    from baseapp_core.services.registry import SharedServiceRegistry
+    from baseapp_core.plugins import (
+        GraphQLSharedInterfaceRegistry,
+        SharedServiceRegistry,
+    )
 
 
 class ServicesContributor:
@@ -66,8 +68,10 @@ class BaseAppConfig(AppConfig):
 
     def ready(self) -> None:
         """Run runtime registration: services and GraphQL capabilities."""
-        from baseapp_core.graphql.interfaces import graphql_shared_interface_registry
-        from baseapp_core.services.registry import shared_service_registry
+        from baseapp_core.plugins import (
+            graphql_shared_interface_registry,
+            shared_service_registry,
+        )
 
         if isinstance(self, ServicesContributor):
             self.register_shared_services(shared_service_registry)

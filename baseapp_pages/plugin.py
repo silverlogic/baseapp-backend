@@ -12,13 +12,6 @@ class PagesPlugin(BaseAppPlugin):
 
     def get_settings(self) -> PackageSettings:
         return PackageSettings(
-            installed_apps=[
-                "baseapp_pages",
-            ],
-            middleware=[],
-            authentication_backends=[],
-            env_vars={},
-            django_settings={},
             required_packages=[
                 "baseapp_core",
             ],

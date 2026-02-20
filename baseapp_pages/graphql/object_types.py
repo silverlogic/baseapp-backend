@@ -9,7 +9,8 @@ from query_optimizer import optimize
 from baseapp_auth.graphql import PermissionsInterface
 from baseapp_core.graphql import DjangoObjectType, LanguagesEnum
 from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.graphql import ThumbnailField, graphql_shared_interface_registry
+from baseapp_core.graphql import ThumbnailField
+from baseapp_core.plugins import graphql_shared_interface_registry
 from baseapp_pages.models import AbstractPage, Metadata, URLPath
 
 from ..meta import AbstractMetadataObjectType

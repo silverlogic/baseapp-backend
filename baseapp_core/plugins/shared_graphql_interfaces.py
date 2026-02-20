@@ -4,6 +4,7 @@ AppConfig.ready(); no entry points. Consumers opt in by name when
 defining GraphQL object types.
 """
 
+import inspect
 from typing import Any, Callable, List, Optional, Union
 
 from graphene import Interface
@@ -31,8 +32,13 @@ class GraphQLSharedInterfaceRegistry:
         value = self._registry.get(name)
         if value is None:
             return None
-        if callable(value) and not isinstance(value, Interface):
+        # If it's a class that is a subclass of Interface, return it directly
+        if inspect.isclass(value) and issubclass(value, Interface):
+            return value
+        # If it's callable (function/lambda) but not a class, call it
+        if callable(value):
             return value()
+        # Otherwise return as-is
         return value
 
     def get_interfaces(

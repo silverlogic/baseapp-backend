@@ -1,12 +1,12 @@
 from django.apps import apps
 
 from baseapp_core.models import DocumentId
-from baseapp_core.services.registry import ServiceProvider
+from baseapp_core.plugins import SharedServiceProvider
 
 from .models import CommentStats
 
 
-class CommentsCountService(ServiceProvider):
+class CommentsCountService(SharedServiceProvider):
     @property
     def service_name(self) -> str:
         return "comments_count"

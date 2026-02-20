@@ -31,5 +31,3 @@ django-notifications-hq @ git+https://github.com/openwisp/django-notifications.g
 django-push-notifications[wp,apns-async,fcm]==3.3.0
 
 -e ./[auth,referrals,graphql,pages,payments,notifications,urlshortening,messagetemplates,wagtail,socialauth,pdf]
--e ./baseapp_comments
--e ./baseapp_auth

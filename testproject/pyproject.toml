@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "testproject"
+version = "0.1.0"
+description = "Test project for baseapp-backend"
+requires-python = ">=3.8"
+
+[project.optional-dependencies]
+dev = []
+
+[tool.setuptools]
+packages = {find = {}}
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.md"]
+
+[project.entry-points."baseapp.plugins"]
+testproject_plugin_test_app = "testproject.plugin_test_app.plugin:TestPlugin"

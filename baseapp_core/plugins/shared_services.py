@@ -7,7 +7,7 @@ from typing import Optional, Protocol, runtime_checkable
 
 
 @runtime_checkable
-class ServiceProvider(Protocol):
+class SharedServiceProvider(Protocol):
     """Protocol for objects that provide a named service."""
 
     @property
@@ -23,15 +23,17 @@ class SharedServiceRegistry:
     """
 
     def __init__(self) -> None:
-        self._registry: dict[str, ServiceProvider] = {}
+        self._registry: dict[str, SharedServiceProvider] = {}
 
-    def register(self, service_name: str, provider: ServiceProvider) -> None:
+    def register(self, service_name: str, provider: SharedServiceProvider) -> None:
         """Register a shared service. Call from AppConfig.ready() (e.g. in register_shared_services())."""
-        if not isinstance(provider, ServiceProvider):
-            raise TypeError(f"Provider must implement ServiceProvider protocol: {type(provider)}")
+        if not isinstance(provider, SharedServiceProvider):
+            raise TypeError(
+                f"Provider must implement SharedServiceProvider protocol: {type(provider)}"
+            )
         self._registry[service_name] = provider
 
-    def get_service(self, service_name: str) -> Optional[ServiceProvider]:
+    def get_service(self, service_name: str) -> Optional[SharedServiceProvider]:
         """Return the provider for service_name, or None if missing/unavailable."""
         provider = self._registry.get(service_name)
         if provider is None:
