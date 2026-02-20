@@ -1,8 +1,4 @@
-from baseapp_core.app_config import (
-    BaseAppConfig,
-    GraphQLContributor,
-    ServicesContributor,
-)
+from baseapp_core.plugins import BaseAppConfig, GraphQLContributor, ServicesContributor
 
 
 class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):

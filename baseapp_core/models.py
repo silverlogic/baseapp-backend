@@ -128,6 +128,7 @@ class DocumentId(TimeStampedModel):
 
         When a new row is created, the document_created signal is sent (via post_save).
         """
+        # TODO: Cover with unit tests.
         if not obj or not obj.pk:
             return None
         ct = ContentType.objects.get_for_model(obj)

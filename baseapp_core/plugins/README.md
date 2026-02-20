@@ -405,7 +405,7 @@ class CommentsCountService(SharedServiceProvider):
 **Register in apps.py:**
 
 ```python
-from baseapp_core.app_config import BaseAppConfig, ServicesContributor
+from baseapp_core.plugins import BaseAppConfig, ServicesContributor
 
 class PackageConfig(BaseAppConfig, ServicesContributor):
     def register_shared_services(self, registry):
@@ -431,7 +431,7 @@ if service:
 
 ```python
 # baseapp_comments/apps.py
-from baseapp_core.app_config import BaseAppConfig, GraphQLContributor
+from baseapp_core.plugins import BaseAppConfig, GraphQLContributor
 from baseapp_core.plugins import graphql_shared_interface_registry
 
 class PackageConfig(BaseAppConfig, GraphQLContributor):
