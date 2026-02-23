@@ -1,5 +1,4 @@
 import baseapp_core
-
 from baseapp_core.plugins.app_config import (
     BaseAppConfig,
     GraphQLContributor,
