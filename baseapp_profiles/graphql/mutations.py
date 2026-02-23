@@ -1,3 +1,4 @@
+import logging
 import string
 from datetime import timedelta
 
@@ -9,6 +10,8 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from rest_framework import serializers
+
+logger = logging.getLogger(__name__)
 
 from baseapp_core.graphql import (
     RelayMutation,
@@ -415,6 +418,7 @@ class ProfileDelete(RelayMutation):
 
 class ProfileSendInvitation(RelayMutation):
     profile_user_role = graphene.Field(get_object_type_for_model(ProfileUserRole))
+    email_sent = graphene.Boolean()
 
     class Input:
         profile_id = graphene.ID(required=True)
@@ -446,13 +450,11 @@ class ProfileSendInvitation(RelayMutation):
         normalized_email = email.lower()
         User = get_user_model()
 
-        # Lookup invited user if they exist
         try:
             invited_user = User.objects.get(email__iexact=normalized_email)
         except User.DoesNotExist:
             invited_user = None
 
-        # Use transaction with select_for_update to prevent race conditions
         with transaction.atomic():
             existing_role = (
                 ProfileUserRole.objects.select_for_update()
@@ -473,10 +475,8 @@ class ProfileSendInvitation(RelayMutation):
                             str(_("An invitation has already been sent to this email")),
                             extensions={"code": "duplicate_invitation"},
                         )
-                    # Expired PENDING invitation: update in place
                     existing_role.status = ProfileUserRole.ProfileRoleStatus.EXPIRED
 
-                # DECLINED, INACTIVE, or EXPIRED: reuse existing row
                 if existing_role.status in [
                     ProfileUserRole.ProfileRoleStatus.DECLINED,
                     ProfileUserRole.ProfileRoleStatus.INACTIVE,
@@ -486,13 +486,11 @@ class ProfileSendInvitation(RelayMutation):
                     existing_role.save()
                     invitation = existing_role
                 else:
-                    # Should not reach here, but safety fallback
                     raise GraphQLError(
                         str(_("Cannot send invitation in current state")),
                         extensions={"code": "invalid_status"},
                     )
             else:
-                # No existing role: create new invitation
                 try:
                     invitation = ProfileUserRole.objects.create(
                         profile=profile,
@@ -508,16 +506,19 @@ class ProfileSendInvitation(RelayMutation):
                     invitation.generate_invitation_token()
                     invitation.save()
                 except IntegrityError:
-                    # Race condition: another request created the row first.
-                    # Re-fetch and return duplicate_invitation error.
                     raise GraphQLError(
                         str(_("An invitation has already been sent to this email")),
                         extensions={"code": "duplicate_invitation"},
                     )
 
-        send_invitation_email(invitation, info.context.user)
+        email_sent = True
+        try:
+            send_invitation_email(invitation, info.context.user)
+        except Exception:
+            logger.exception("Failed to send invitation email to %s", normalized_email)
+            email_sent = False
 
-        return ProfileSendInvitation(profile_user_role=invitation)
+        return ProfileSendInvitation(profile_user_role=invitation, email_sent=email_sent)
 
 
 class ProfileAcceptInvitation(RelayMutation):
@@ -597,6 +598,7 @@ class ProfileCancelInvitation(RelayMutation):
 
 class ProfileResendInvitation(RelayMutation):
     profile_user_role = graphene.Field(get_object_type_for_model(ProfileUserRole))
+    email_sent = graphene.Boolean()
 
     class Input:
         invitation_id = graphene.ID(required=True)
@@ -630,9 +632,14 @@ class ProfileResendInvitation(RelayMutation):
         _reset_invitation_for_send(invitation)
         invitation.save()
 
-        send_invitation_email(invitation, info.context.user)
+        email_sent = True
+        try:
+            send_invitation_email(invitation, info.context.user)
+        except Exception:
+            logger.exception("Failed to resend invitation email to %s", invitation.invited_email)
+            email_sent = False
 
-        return ProfileResendInvitation(profile_user_role=invitation)
+        return ProfileResendInvitation(profile_user_role=invitation, email_sent=email_sent)
 
 
 class ProfilesMutations(object):
