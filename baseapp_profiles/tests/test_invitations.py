@@ -104,6 +104,7 @@ class TestInvitationMutations:
         mutation = """
             mutation SendInvitation($input: ProfileSendInvitationInput!) {
                 profileSendInvitation(input: $input) {
+                    emailSent
                     profileUserRole {
                         id
                         invitedEmail
@@ -129,6 +130,7 @@ class TestInvitationMutations:
             print(f"GraphQL Errors: {content['errors']}")
 
         assert "data" in content
+        assert content["data"]["profileSendInvitation"]["emailSent"] is True
         assert (
             content["data"]["profileSendInvitation"]["profileUserRole"]["invitedEmail"]
             == "newmember@test.com"
@@ -279,6 +281,7 @@ class TestInvitationMutations:
         mutation = """
             mutation ResendInvitation($input: ProfileResendInvitationInput!) {
                 profileResendInvitation(input: $input) {
+                    emailSent
                     profileUserRole {
                         id
                         status
@@ -292,6 +295,7 @@ class TestInvitationMutations:
         response = graphql_user_client(mutation, variables=variables)
         content = response.json()
 
+        assert content["data"]["profileResendInvitation"]["emailSent"] is True
         assert content["data"]["profileResendInvitation"]["profileUserRole"]["status"] == "PENDING"
         assert mock_send_email.called
 
@@ -314,6 +318,7 @@ class TestInvitationMutations:
         mutation = """
             mutation ResendInvitation($input: ProfileResendInvitationInput!) {
                 profileResendInvitation(input: $input) {
+                    emailSent
                     profileUserRole {
                         id
                         status
@@ -327,6 +332,7 @@ class TestInvitationMutations:
         response = graphql_user_client(mutation, variables=variables)
         content = response.json()
 
+        assert content["data"]["profileResendInvitation"]["emailSent"] is True
         assert content["data"]["profileResendInvitation"]["profileUserRole"]["status"] == "PENDING"
         assert mock_send_email.called
 
@@ -390,6 +396,85 @@ class TestInvitationMutations:
 
         assert "errors" in content
         assert content["errors"][0]["extensions"]["code"] == "invalid_status"
+
+    @patch(
+        "baseapp_profiles.emails.send_invitation_email",
+        side_effect=Exception("SMTP connection refused"),
+    )
+    def test_send_invitation_succeeds_even_if_email_fails(
+        self, mock_send_email, django_user_client, graphql_user_client
+    ):
+        profile = ProfileFactory(owner=django_user_client.user)
+
+        mutation = """
+            mutation SendInvitation($input: ProfileSendInvitationInput!) {
+                profileSendInvitation(input: $input) {
+                    emailSent
+                    profileUserRole {
+                        id
+                        invitedEmail
+                        status
+                    }
+                }
+            }
+        """
+
+        variables = {
+            "input": {
+                "profileId": profile.relay_id,
+                "email": "newmember@test.com",
+                "role": "MANAGER",
+            }
+        }
+
+        response = graphql_user_client(mutation, variables=variables)
+        content = response.json()
+
+        assert "errors" not in content
+        assert content["data"]["profileSendInvitation"]["emailSent"] is False
+        assert (
+            content["data"]["profileSendInvitation"]["profileUserRole"]["invitedEmail"]
+            == "newmember@test.com"
+        )
+        assert content["data"]["profileSendInvitation"]["profileUserRole"]["status"] == "PENDING"
+
+        assert ProfileUserRole.objects.filter(
+            profile=profile, invited_email="newmember@test.com"
+        ).exists()
+
+    @patch(
+        "baseapp_profiles.emails.send_invitation_email",
+        side_effect=Exception("SMTP connection refused"),
+    )
+    def test_resend_invitation_succeeds_even_if_email_fails(
+        self, mock_send_email, django_user_client, graphql_user_client
+    ):
+        profile = ProfileFactory(owner=django_user_client.user)
+
+        invitation = create_invitation(
+            profile=profile, inviter=django_user_client.user, invited_email="test@test.com"
+        )
+
+        mutation = """
+            mutation ResendInvitation($input: ProfileResendInvitationInput!) {
+                profileResendInvitation(input: $input) {
+                    emailSent
+                    profileUserRole {
+                        id
+                        status
+                    }
+                }
+            }
+        """
+
+        variables = {"input": {"invitationId": invitation.relay_id}}
+
+        response = graphql_user_client(mutation, variables=variables)
+        content = response.json()
+
+        assert "errors" not in content
+        assert content["data"]["profileResendInvitation"]["emailSent"] is False
+        assert content["data"]["profileResendInvitation"]["profileUserRole"]["status"] == "PENDING"
 
     def test_accept_null_user_wrong_email_returns_wrong_user(
         self, django_user_client, graphql_user_client
