@@ -10,7 +10,7 @@ from baseapp_core.graphql import (
     ThumbnailField,
     get_object_type_for_model,
     get_pk_from_relay_id,
-    get_obj_relay_id
+    get_obj_relay_id,
 )
 
 from .filters import ChatRoomFilter, ChatRoomParticipantFilter
@@ -303,9 +303,9 @@ class BaseChatRoomObjectType:
         other_participant = BaseChatRoomObjectType.get_other_participant(self, info)
         if other_participant and other_participant.profile:
             return other_participant.profile.image
-        
+
     def resolve_participant_ids(self, info, **kwargs):
-        
+
         profiles = Profile.objects.filter(
             id__in=self.participants.values_list("profile_id", flat=True)
         )
