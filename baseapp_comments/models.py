@@ -153,6 +153,8 @@ class AbstractComment(
         return CommentObjectType
 
 
+# TODO: Think in a better name for this model. It's not about stats.
+# Maybe CommentTarget or CommentHub or something else.
 class AbstractCommentStats(TimeStampedModel):
     target = models.OneToOneField(
         swapper.get_model_name("baseapp_comments", "Comment"),

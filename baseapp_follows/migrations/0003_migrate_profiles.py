@@ -1,11 +1,13 @@
 import swapper
 from django.db import migrations
 
+from baseapp_core.swapper import get_apps_model
+
 
 class Migration(migrations.Migration):
     def forwards_func(apps, _):
-        Profile = swapper.load_model("baseapp_profiles", "Profile")
-        Follow = swapper.load_model("baseapp_follows", "Follow")
+        Profile = get_apps_model(apps, "baseapp_profiles", "Profile")
+        Follow = get_apps_model(apps, "baseapp_follows", "Follow")
 
         if not swapper.is_swapped("baseapp_follows", "Follow"):
             for follow in Follow.objects.filter(
@@ -27,7 +29,7 @@ class Migration(migrations.Migration):
                 follow.save(update_fields=["new_actor", "new_target", "user_id"])
 
     def reverse_func(apps, _):
-        Follow = swapper.load_model("baseapp_follows", "Follow")
+        Follow = get_apps_model(apps, "baseapp_follows", "Follow")
 
         if not swapper.is_swapped("baseapp_follows", "Follow"):
             for follow in Follow.objects.filter(

@@ -89,6 +89,10 @@ class CommentsInterface(RelayNode):
             info_proxy,
         )
 
+    # TODO: I'm worried about N+1 skyrocketing with this DocumentId.get_or_create_for_object here...
+    # I believe if we have access to the doc.pk here somehow, we could also be able to optimize
+    # comments_count and is_comments_enabled, maybe with an annotate/subquery
+
     @classmethod
     def resolve_comments_count(cls, root, info, **kwargs):
         """Resolve from service when instance is not a Comment (e.g. Page)."""
