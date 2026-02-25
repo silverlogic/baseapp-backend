@@ -116,3 +116,8 @@ recursive-include baseapp_pdf/templates *
 
 include baseapp_api_key/README.md
 recursive-include baseapp_api_key/templates *
+
+include baseapp_message_templates/README.md
+recursive-include baseapp_message_templates/templates *
+recursive-include baseapp_message_templates/static *
+recursive-include baseapp_message_templates/locale *

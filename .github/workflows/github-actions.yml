@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.12"]
-        django-version: ["4.2.15", "5.2.1"]
+        django-version: ["4.2", "5.2"]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,20 +53,20 @@ jobs:
           docker compose exec backend pytest --cov=./ --cov-report=xml --cov-branch --cov-append baseapp_drf_view_action_permissions --ds=baseapp_drf_view_action_permissions.tests.settings
 
       - name: Install pip-audit
-        if: steps.requirements_installation.outcome == 'success' && matrix.django-version == '5.2.1'
+        if: steps.requirements_installation.outcome == 'success' && startsWith(matrix.django-version, '5.2')
         run: docker compose exec backend pip install --upgrade pip pip-audit
       # Ignored vulnerabilities:
 
       # Name                   Version ID             Fix Versions
       # ---------------------- ------- -------------- ------------
-      # social-auth-app-django 5.4.3   CVE-2025-61783 5.6.0
-      # the reason for ignoring this vulnerability relates to https://github.com/silverlogic/baseapp-backend/pull/308
+      # social-auth-app-django 5.4.3   CVE-2025-61783 5.6.0 => the reason for ignoring this vulnerability relates to https://github.com/silverlogic/baseapp-backend/pull/308
+      # protobuf               6.33.4  CVE-2026-0994  => # there is no fix version available yet
       - name: Run pip-audit (installed dependencies)
-        if: steps.requirements_installation.outcome == 'success' && matrix.django-version == '5.2.1'
-        run: docker compose exec backend pip-audit --skip-editable --ignore-vuln CVE-2025-61783
+        if: steps.requirements_installation.outcome == 'success' && startsWith(matrix.django-version, '5.2')
+        run: docker compose exec backend pip-audit --skip-editable --ignore-vuln CVE-2025-61783 --ignore-vuln CVE-2026-0994
       
       - name: upload coverage report
-        if: matrix.python-version == '3.12' && matrix.django-version == '5.2.1'
+        if: matrix.python-version == '3.12' && startsWith(matrix.django-version, '5.2')
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report

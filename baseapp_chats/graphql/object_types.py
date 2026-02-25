@@ -98,13 +98,13 @@ class BaseMessageObjectType:
             return None
 
     @staticmethod
-    def get_replaced_profile_name(profile, profile_pk, replacement_text):
+    def get_replaced_profile_name(profile, profile_pk, replacement_text, include_verb=False):
         if not profile:
             return _("Profile Not Found")
         elif profile.id == profile_pk:
-            return replacement_text
+            return replacement_text if not include_verb else replacement_text + " are"
         else:
-            return profile.name
+            return profile.name if not include_verb else profile.name + " is"
 
     @staticmethod
     def resolve_content(root, info, profile_id=None, **kwargs):
@@ -118,11 +118,15 @@ class BaseMessageObjectType:
         if root.message_type == Message.MessageType.USER_MESSAGE:
             return root.content
 
+        extra_data = root.extra_data or {}
+        include_verb = extra_data.get("include_verb", False)
+
         linked_capital_name = BaseMessageObjectType.get_replaced_profile_name(
-            root.content_linked_profile_actor, profile_pk, "You"
+            root.content_linked_profile_actor, profile_pk, "You", include_verb=include_verb
         )
+        replacement = "You" if include_verb else "you"
         linked_small_name = BaseMessageObjectType.get_replaced_profile_name(
-            root.content_linked_profile_target, profile_pk, "you"
+            root.content_linked_profile_target, profile_pk, replacement, include_verb=include_verb
         )
         return root.content.format(
             content_linked_profile_actor=linked_capital_name,
@@ -152,6 +156,8 @@ class BaseChatRoomObjectType:
     )
     image = ThumbnailField(required=False)
     is_archived = graphene.Boolean(profile_id=graphene.ID(required=False))
+    other_participant = graphene.Field(get_object_type_for_model(ChatRoomParticipant))
+    is_sole_admin = graphene.Boolean()
 
     @classmethod
     def get_node(cls, info, id):
@@ -163,6 +169,19 @@ class BaseChatRoomObjectType:
 
         except cls._meta.model.DoesNotExist:
             return None
+
+    @staticmethod
+    def get_other_participant(room, info):
+        current_profile = (
+            info.context.user.current_profile
+            if hasattr(info.context.user, "current_profile")
+            else (info.context.user.profile if hasattr(info.context.user, "profile") else None)
+        )
+
+        if not current_profile:
+            return None
+
+        return room.participants.exclude(profile_id=current_profile.pk).first()
 
     def resolve_all_messages(self, info, **kwargs):
         if self.is_group:
@@ -235,6 +254,54 @@ class BaseChatRoomObjectType:
 
         return unread_messages
 
+    def resolve_other_participant(self, info, **kwargs):
+        if self.is_group:
+            return None
+
+        return BaseChatRoomObjectType.get_other_participant(self, info)
+
+    def resolve_is_sole_admin(self, info, **kwargs):
+        if not self.is_group:
+            return False
+
+        current_profile = (
+            info.context.user.current_profile
+            if hasattr(info.context.user, "current_profile")
+            else (info.context.user.profile if hasattr(info.context.user, "profile") else None)
+        )
+
+        if not current_profile:
+            return False
+
+        current_participant = self.participants.filter(profile_id=current_profile.pk).first()
+        if (
+            not current_participant
+            or current_participant.role != ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN
+        ):
+            return False
+
+        admin_count = self.participants.filter(
+            role=ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN
+        ).count()
+
+        return admin_count == 1
+
+    def resolve_title(self, info, **kwargs):
+        if self.is_group:
+            return self.title
+
+        other_participant = BaseChatRoomObjectType.get_other_participant(self, info)
+        if other_participant and other_participant.profile:
+            return other_participant.profile.name
+
+    def resolve_image(self, info, **kwargs):
+        if self.is_group:
+            return self.image
+
+        other_participant = BaseChatRoomObjectType.get_other_participant(self, info)
+        if other_participant and other_participant.profile:
+            return other_participant.profile.image
+
     class Meta:
         interfaces = (RelayNode,)
         model = ChatRoom
@@ -247,6 +314,8 @@ class BaseChatRoomObjectType:
             "title",
             "image",
             "is_group",
+            "other_participant",
+            "is_sole_admin",
         )
         filterset_class = ChatRoomFilter
 
