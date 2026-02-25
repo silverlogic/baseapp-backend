@@ -1,10 +1,10 @@
-import pytest
-from django.contrib.auth import get_user_model
-from django.contrib.sites.models import Site
 from unittest.mock import patch
 
+import pytest
 from allauth.socialaccount.models import SocialApp
 from allauth.socialaccount.providers.google.views import OAuth2Error
+from django.contrib.auth import get_user_model
+from django.contrib.sites.models import Site
 
 import baseapp_auth.tests.helpers as h
 from baseapp_auth.tests.mixins import ApiMixin
@@ -319,7 +319,9 @@ class TestAllauthHeadlessGoogleOAuth(ApiMixin):
             client_id=google_client_id,
             secret="google-secret",  # NOSONAR
         )
-        site, _ = Site.objects.get_or_create(id=1, defaults={"domain": "testserver", "name": "testserver"})
+        site, _ = Site.objects.get_or_create(
+            id=1, defaults={"domain": "testserver", "name": "testserver"}
+        )
         social_app.sites.add(site)
         return social_app
 
