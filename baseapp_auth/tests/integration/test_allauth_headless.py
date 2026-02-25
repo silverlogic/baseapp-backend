@@ -1,5 +1,11 @@
+from unittest.mock import patch
+
 import pytest
+from allauth.socialaccount.models import SocialApp
+from allauth.socialaccount.providers.google.views import OAuth2Error
 from django.contrib.auth import get_user_model
+from django.contrib.sites.models import Site
+from django.test import override_settings
 
 import baseapp_auth.tests.helpers as h
 from baseapp_auth.tests.mixins import ApiMixin
@@ -297,3 +303,186 @@ class TestAllauthHeadlessProtectedEndpoints(ApiMixin):
         )
         r = client.get(self.protected_endpoint)
         assert r.status_code == 401
+
+
+class TestAllauthHeadlessGoogleOAuth(ApiMixin):
+    view_name = "headless:app:socialaccount:provider_token"
+
+    @pytest.fixture
+    def google_client_id(self):
+        return "google-client-id"
+
+    @pytest.fixture
+    def google_social_app(self, google_client_id):
+        social_app = SocialApp.objects.create(
+            provider="google",
+            name="Google",
+            client_id=google_client_id,
+            secret="google-secret",  # NOSONAR
+        )
+        site, _ = Site.objects.get_or_create(
+            id=1, defaults={"domain": "testserver", "name": "testserver"}
+        )
+        social_app.sites.add(site)
+        return social_app
+
+    @pytest.fixture
+    def provider_payload(self, google_client_id):
+        return {
+            "provider": "google",
+            "process": "login",
+            "token": {
+                "client_id": google_client_id,
+                "id_token": "valid-google-id-token",
+            },
+        }
+
+    @staticmethod
+    def _google_identity(email):
+        return {
+            "sub": "google-user-id-123",
+            "email": email,
+            "email_verified": True,
+            "given_name": "Google",
+            "family_name": "User",
+            "name": "Google User",
+        }
+
+    @patch("allauth.socialaccount.providers.google.views._verify_and_decode")
+    def test_google_login_creates_user_and_returns_tokens(
+        self,
+        mock_verify_and_decode,
+        client,
+        google_social_app,
+        provider_payload,
+    ):
+        mock_verify_and_decode.return_value = self._google_identity("google.new@example.com")
+
+        r = client.post(self.reverse(), provider_payload)
+        assert r.status_code == 200
+
+        response_data = r.json()
+        meta = response_data.get("meta")
+        assert meta is not None
+        assert "access_token" in meta
+        assert "refresh_token" in meta
+        assert meta.get("is_authenticated")
+
+        data = response_data.get("data")
+        assert data is not None
+        assert data.get("user", {}).get("email") == "google.new@example.com"
+        assert User.objects.filter(email="google.new@example.com").exists()
+
+    @patch("allauth.socialaccount.providers.google.views._verify_and_decode")
+    def test_google_login_existing_user_without_linked_social_returns_401_no_duplicate(
+        self,
+        mock_verify_and_decode,
+        client,
+        google_social_app,
+        provider_payload,
+    ):
+        """With SOCIALACCOUNT_EMAIL_AUTHENTICATION disabled, existing local user gets 401."""
+        existing_user = UserFactory(email="google.existing@example.com")
+        mock_verify_and_decode.return_value = self._google_identity(existing_user.email)
+
+        r = client.post(self.reverse(), provider_payload)
+        assert r.status_code == 401
+
+        # No duplicate user created; still exactly one user with this email
+        assert User.objects.filter(email=existing_user.email).count() == 1
+
+    @override_settings(
+        SOCIALACCOUNT_PROVIDERS={
+            "google": {
+                "SCOPE": ["profile", "email"],
+                "AUTH_PARAMS": {"access_type": "online"},
+                "OAUTH_PKCE_ENABLED": False,
+                "VERIFIED_EMAIL": True,
+                "EMAIL_AUTHENTICATION": True,
+            }
+        }
+    )
+    @patch("allauth.socialaccount.providers.google.views._verify_and_decode")
+    def test_google_login_existing_user_returns_tokens_without_duplicate_user(
+        self,
+        mock_verify_and_decode,
+        client,
+        google_social_app,
+        provider_payload,
+    ):
+        """With EMAIL_AUTHENTICATION enabled, existing local user gets tokens and no duplicate."""
+        existing_user = UserFactory(email="google.existing@example.com")
+        mock_verify_and_decode.return_value = self._google_identity(existing_user.email)
+
+        r = client.post(self.reverse(), provider_payload)
+        assert r.status_code == 200
+
+        response_data = r.json()
+        meta = response_data.get("meta")
+        assert meta is not None
+        assert "access_token" in meta
+        assert "refresh_token" in meta
+        assert meta.get("is_authenticated")
+
+        assert User.objects.filter(email=existing_user.email).count() == 1
+
+    @patch("allauth.socialaccount.providers.google.views._verify_and_decode")
+    def test_google_login_with_invalid_token_returns_error(
+        self,
+        mock_verify_and_decode,
+        client,
+        google_social_app,
+        provider_payload,
+    ):
+        mock_verify_and_decode.side_effect = OAuth2Error("invalid token")
+
+        r = client.post(self.reverse(), provider_payload)
+        assert r.status_code == 400
+
+        response_data = r.json()
+        assert response_data.get("status") == 400
+        assert "errors" in response_data
+        assert any(error.get("param") == "token" for error in response_data["errors"])
+
+    def test_google_login_with_client_id_mismatch_returns_error(
+        self,
+        client,
+        google_social_app,
+        provider_payload,
+    ):
+        provider_payload["token"]["client_id"] = "different-client-id"
+
+        r = client.post(self.reverse(), provider_payload)
+        assert r.status_code == 400
+
+        response_data = r.json()
+        assert response_data.get("status") == 400
+        assert "errors" in response_data
+        assert any(error.get("param") == "token" for error in response_data["errors"])
+
+    def test_google_login_with_missing_provider_returns_error(self, client, provider_payload):
+        del provider_payload["provider"]
+
+        r = client.post(self.reverse(), provider_payload)
+        assert r.status_code == 400
+
+        response_data = r.json()
+        assert response_data.get("status") == 400
+        assert "errors" in response_data
+        assert any(error.get("param") == "provider" for error in response_data["errors"])
+
+    def test_google_login_with_invalid_token_payload_shape_returns_error(
+        self,
+        client,
+        google_social_app,
+        provider_payload,
+    ):
+        provider_payload["token"] = "invalid-token-shape"
+
+        r = client.post(self.reverse(), provider_payload)
+        assert r.status_code == 400
+
+        response_data = r.json()
+        assert response_data.get("status") == 400
+        assert "errors" in response_data
+        assert any(error.get("param") == "token" for error in response_data["errors"])

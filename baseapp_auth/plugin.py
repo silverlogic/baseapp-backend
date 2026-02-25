@@ -31,6 +31,8 @@ class AuthPlugin(BaseAppPlugin):
                 "allauth",
                 "allauth.account",
                 "allauth.headless",
+                "allauth.socialaccount",
+                "allauth.socialaccount.providers.google",
             ],
             MIDDLEWARE={
                 "baseapp_auth": ["allauth.account.middleware.AccountMiddleware"],
