@@ -7,10 +7,10 @@ from django.utils.translation import get_language
 from query_optimizer import optimize
 
 from baseapp_auth.graphql import PermissionsInterface
-from baseapp_comments.graphql.object_types import CommentsInterface
 from baseapp_core.graphql import DjangoObjectType, LanguagesEnum
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import ThumbnailField
+from baseapp_core.plugins import graphql_shared_interface_registry
 from baseapp_pages.models import AbstractPage, Metadata, URLPath
 
 from ..meta import AbstractMetadataObjectType
@@ -81,6 +81,12 @@ class PageFilter(django_filters.FilterSet):
         fields = ["status"]
 
 
+def _get_page_interfaces():
+    return graphql_shared_interface_registry.get_interfaces(
+        ["comments"], [RelayNode, PageInterface, PermissionsInterface]
+    )
+
+
 class BasePageObjectType:
     metadata = graphene.Field(lambda: MetadataObjectType)
     status = graphene.Field(PageStatusEnum)
@@ -88,7 +94,7 @@ class BasePageObjectType:
     body = graphene.String()
 
     class Meta:
-        interfaces = (RelayNode, PageInterface, PermissionsInterface, CommentsInterface)
+        interfaces = _get_page_interfaces()
         model = Page
         fields = ("pk", "user", "title", "body", "status", "created", "modified")
         filterset_class = PageFilter

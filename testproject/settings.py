@@ -1,6 +1,7 @@
 from celery.schedules import crontab
 from django.utils.translation import gettext_lazy as _
 
+from baseapp_core.plugins import plugin_registry
 from baseapp_core.tests.settings import *  # noqa
 from baseapp_wagtail.settings import *  # noqa
 from baseapp_wagtail.settings import (
@@ -40,9 +41,14 @@ INSTALLED_APPS += [
     "baseapp_e2e",
     "baseapp_social_auth",
     "baseapp_social_auth.cache",
-    "testproject.users",
     "baseapp.content_feed",
+    "baseapp_pdf",
+    "baseapp_api_key",
+    *WAGTAIL_INSTALLED_APPS,
+    *WAGTAIL_INSTALLED_INTERNAL_APPS,
+    "testproject.users",
     "testproject.testapp",
+    "testproject.plugin_test_app",
     "testproject.comments",
     "testproject.profiles",
     "testproject.reactions",
@@ -56,21 +62,23 @@ INSTALLED_APPS += [
     "testproject.pages",
     "testproject.organizations",
     "testproject.chats",
-    *WAGTAIL_INSTALLED_INTERNAL_APPS,
-    *WAGTAIL_INSTALLED_APPS,
     "baseapp_wagtail.tests",
-    "baseapp_pdf",
-    "baseapp_api_key",
 ]
+
+plugin_registry.load_from_installed_apps()
+
+INSTALLED_APPS += plugin_registry.get("INSTALLED_APPS")
 
 MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")
 MIDDLEWARE += [
+    # Slotted: use get("MIDDLEWARE", "slot_name") for explicit order; if plugin disabled, [].
     "baseapp_profiles.middleware.CurrentProfileMiddleware",
     "baseapp_core.middleware.HistoryMiddleware",
     *WAGTAIL_MIDDLEWARE,
 ]
 
 GRAPHENE["MIDDLEWARE"] = (
+    # Slotted: use get("GRAPHENE__MIDDLEWARE", "slot_name") for explicit order; if plugin disabled, [].
     "baseapp_profiles.graphql.middleware.CurrentProfileMiddleware",
 ) + GRAPHENE["MIDDLEWARE"]
 
@@ -113,10 +121,11 @@ CLOUDFLARE_VIDEO_AUTOMATIC_TRIM = True
 CLOUDFLARE_VIDEO_TRIM_DURATION_SECONDS = 10
 
 AUTHENTICATION_BACKENDS = [
+    # Slotted: use get("AUTHENTICATION_BACKENDS", "slot_name") for explicit order; if plugin disabled, [].
     "django.contrib.auth.backends.ModelBackend",
     "baseapp_auth.permissions.UsersPermissionsBackend",
     "baseapp_profiles.permissions.ProfilesPermissionsBackend",
-    "baseapp_comments.permissions.CommentsPermissionsBackend",
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_comments"),
     "baseapp.activity_log.permissions.ActivityLogPermissionsBackend",
     "baseapp_reactions.permissions.ReactionsPermissionsBackend",
     "baseapp_reports.permissions.ReportsPermissionsBackend",
@@ -172,6 +181,7 @@ CONSTANCE_CONFIG = OrderedDict(
             (False, "Whether to send anonymize/delete user notification emails to superusers"),
         ),
     ]
+    + plugin_registry.get_all_constance_config(),
 )
 
 # Stripe
@@ -187,6 +197,7 @@ BASEAPP_REACTIONS_REACTION_MODEL = "reactions.Reaction"
 
 # Comments
 BASEAPP_COMMENTS_COMMENT_MODEL = "comments.Comment"
+BASEAPP_COMMENTS_COMMENTSTATS_MODEL = "comments.CommentStats"
 
 # Content Feed
 BASEAPP_CONTENT_FEED_CONTENTPOST_MODEL = "content_feed.ContentPost"
@@ -316,3 +327,9 @@ BRANCHIO_KEY = env("BRANCHIO_KEY", "N/A")
 
 # AUTOFIELD
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+
+# Register the extra settings from the BaseApp apps
+plugin_settings = plugin_registry.get_all_django_extra_settings()
+for key, value in plugin_settings.items():
+    if key not in globals():
+        globals()[key] = value

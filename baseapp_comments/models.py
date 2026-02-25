@@ -1,3 +1,4 @@
+import pghistory
 import pgtrigger
 import swapper
 from django.conf import settings
@@ -8,6 +9,8 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql import RelayModel
+from baseapp_core.pghelpers import pghistory_register_default_track
+from baseapp_core.swapper import init_swapped_models
 from baseapp_reactions.models import ReactableModel
 from baseapp_reports.models import ReportableModel
 
@@ -138,6 +141,7 @@ class AbstractComment(
         ]
         verbose_name = _("comment")
         verbose_name_plural = _("comments")
+        swappable = swapper.swappable_setting("baseapp_comments", "Comment")
 
     def __str__(self):
         return "Comment #%s by %s" % (self.id, self.user_id)
@@ -149,20 +153,29 @@ class AbstractComment(
         return CommentObjectType
 
 
-class Comment(AbstractComment):
-    class Meta(AbstractComment.Meta):
-        abstract = False
-        swappable = swapper.swappable_setting("baseapp_comments", "Comment")
+# TODO: Think in a better name for this model. It's not about stats.
+# Maybe CommentTarget or CommentHub or something else.
+class AbstractCommentStats(TimeStampedModel):
+    target = models.OneToOneField(
+        swapper.get_model_name("baseapp_comments", "Comment"),
+        on_delete=models.CASCADE,
+        related_name="comment_stats",
+        primary_key=True,
+        db_index=True,
+    )
+    comments_count = models.JSONField(default=default_comments_count, editable=False)
+    is_comments_enabled = models.BooleanField(default=True)
 
+    class Meta:
+        abstract = True
 
-SwappedComment = swapper.load_model(
-    "baseapp_comments", "Comment", required=False, require_ready=False
-)
+    def __str__(self):
+        return f"CommentStats for {self.target}"
 
 
 class CommentableModel(AbstractCommentableModel):
     comments = GenericRelation(
-        SwappedComment,
+        swapper.get_model_name("baseapp_comments", "Comment"),
         verbose_name=_("comments"),
         content_type_field="target_content_type",
         object_id_field="target_object_id",
@@ -170,3 +183,20 @@ class CommentableModel(AbstractCommentableModel):
 
     class Meta:
         abstract = True
+
+
+Comment, CommentStats = init_swapped_models(
+    [
+        ("baseapp_comments", "Comment"),
+        ("baseapp_comments", "CommentStats"),
+    ]
+)
+
+
+pghistory_register_default_track(
+    Comment,
+    pghistory.InsertEvent(),
+    pghistory.UpdateEvent(),
+    pghistory.DeleteEvent(),
+    exclude=["comments_count", "reactions_count", "modified"],
+)
