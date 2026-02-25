@@ -6,7 +6,7 @@ easy_thumbnails==2.10.1
 rest-social-auth==8.4.0
 
 # allauth
-django-allauth[headless]==65.13.0
+django-allauth[headless]==65.14.0
 
 # test
 freezegun==1.2.1
