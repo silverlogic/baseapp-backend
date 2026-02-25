@@ -75,6 +75,8 @@ SOCIALACCOUNT_PROVIDERS = {
         "OAUTH_PKCE_ENABLED": False,
         # Enable token verification
         "VERIFIED_EMAIL": True,
+        # When enabled, allows login when Google email matches an existing local user (no linked social account)
+        "EMAIL_AUTHENTICATION": False,
     }
 }
 

@@ -5,6 +5,7 @@ from allauth.socialaccount.models import SocialApp
 from allauth.socialaccount.providers.google.views import OAuth2Error
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
+from django.test import override_settings
 
 import baseapp_auth.tests.helpers as h
 from baseapp_auth.tests.mixins import ApiMixin
@@ -373,6 +374,35 @@ class TestAllauthHeadlessGoogleOAuth(ApiMixin):
         assert User.objects.filter(email="google.new@example.com").exists()
 
     @patch("allauth.socialaccount.providers.google.views._verify_and_decode")
+    def test_google_login_existing_user_without_linked_social_returns_401_no_duplicate(
+        self,
+        mock_verify_and_decode,
+        client,
+        google_social_app,
+        provider_payload,
+    ):
+        """With SOCIALACCOUNT_EMAIL_AUTHENTICATION disabled, existing local user gets 401."""
+        existing_user = UserFactory(email="google.existing@example.com")
+        mock_verify_and_decode.return_value = self._google_identity(existing_user.email)
+
+        r = client.post(self.reverse(), provider_payload)
+        assert r.status_code == 401
+
+        # No duplicate user created; still exactly one user with this email
+        assert User.objects.filter(email=existing_user.email).count() == 1
+
+    @override_settings(
+        SOCIALACCOUNT_PROVIDERS={
+            "google": {
+                "SCOPE": ["profile", "email"],
+                "AUTH_PARAMS": {"access_type": "online"},
+                "OAUTH_PKCE_ENABLED": False,
+                "VERIFIED_EMAIL": True,
+                "EMAIL_AUTHENTICATION": True,
+            }
+        }
+    )
+    @patch("allauth.socialaccount.providers.google.views._verify_and_decode")
     def test_google_login_existing_user_returns_tokens_without_duplicate_user(
         self,
         mock_verify_and_decode,
@@ -380,6 +410,7 @@ class TestAllauthHeadlessGoogleOAuth(ApiMixin):
         google_social_app,
         provider_payload,
     ):
+        """With EMAIL_AUTHENTICATION enabled, existing local user gets tokens and no duplicate."""
         existing_user = UserFactory(email="google.existing@example.com")
         mock_verify_and_decode.return_value = self._google_identity(existing_user.email)
 
@@ -391,6 +422,7 @@ class TestAllauthHeadlessGoogleOAuth(ApiMixin):
         assert meta is not None
         assert "access_token" in meta
         assert "refresh_token" in meta
+        assert meta.get("is_authenticated")
 
         assert User.objects.filter(email=existing_user.email).count() == 1
 
