@@ -291,6 +291,21 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
         )
         assert result.pk == dummy_instance.pk
 
+    def test_returns_none_when_pk_strategy_get_node_returns_none(self):
+        dummy_instance = DummyLegacyWithPkModelFactory()
+        mock_info = MagicMock()
+        mock_only_type = MagicMock()
+        mock_only_type._meta.name = "DummyLegacyWithPkModel"
+        mock_only_type._meta.interfaces = [Node]
+        mock_only_type.get_node = MagicMock(return_value=None)
+        mock_info.schema.get_type = MagicMock(return_value=MagicMock(graphene_type=mock_only_type))
+
+        result = graphql_get_node_from_global_id_using_strategy(
+            mock_info, str(dummy_instance.pk), mock_only_type
+        )
+
+        assert result is None
+
 
 @pytest.mark.django_db
 class TestHashidsStrategyIntegrationScenarios:
