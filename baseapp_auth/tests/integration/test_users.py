@@ -488,3 +488,28 @@ class TestUserPermission(ApiMixin):
         r = user_client.get(self.reverse(), {"perm": "admin.test_unique_perm"})
         h.responseOk(r)
         assert r.data["permissions"]["admin.test_unique_perm"] is not True
+
+
+class TestUserPermissionList(ApiMixin):
+    view_name = "user-permissions-list"
+
+    def test_guest_cannot_get_user_permissions(self, client):
+        content_type = ContentType.objects.all().first()
+        perm = Permission.objects.filter(content_type_id=content_type).first()
+        user = UserFactory()
+        user.user_permissions.add(perm)
+        r = client.get(self.reverse(kwargs={"user_pk": user.pk}))
+        h.responseUnauthorized(r)
+
+    def test_user_with_perm_can_get_user_permissions(self, user_client):
+        content_type = ContentType.objects.all().first()
+        perm = Permission.objects.filter(content_type_id=content_type).first()
+        user = UserFactory()
+        user.user_permissions.add(perm)
+        p = Permission.objects.get(codename="change_user")
+        p.content_type.app_label = "users"
+        p.content_type.save()
+        user_client.user.user_permissions.add(p)
+        user_client.user.refresh_from_db()
+        r = user_client.get(self.reverse(kwargs={"user_pk": user.pk}))
+        h.responseOk(r)
