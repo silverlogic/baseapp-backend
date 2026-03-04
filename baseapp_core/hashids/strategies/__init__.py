@@ -104,6 +104,8 @@ def graphql_get_node_from_global_id_using_strategy(info, global_id, only_type=No
             node = public_id_strategy.graphql_resolver.get_node_from_global_id(
                 info, global_id, only_type
             )
+            if node is None:
+                return None
             if _is_model_public_id_compatible(node.__class__):
                 return node
             raise Exception(f"{node.__class__} is not compatible with the Public ID strategy")
@@ -114,6 +116,8 @@ def graphql_get_node_from_global_id_using_strategy(info, global_id, only_type=No
         pk_strategy = get_pk_strategy()
         try:
             node = pk_strategy.graphql_resolver.get_node_from_global_id(info, global_id, only_type)
+            if node is None:
+                return None
             if _is_model_pk_compatible(node.__class__):
                 return node
             raise Exception(f"{node.__class__.__name__} is not compatible with the PK strategy")

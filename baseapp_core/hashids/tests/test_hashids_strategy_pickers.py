@@ -220,6 +220,22 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
         assert result.pk == dummy_instance.pk
         assert result.public_id == dummy_instance.public_id
 
+    def test_returns_none_when_public_id_strategy_get_node_returns_none(self):
+        dummy_instance = DummyPublicIdModelFactory()
+        test_uuid = dummy_instance.public_id
+        graphene_type_mock = MagicMock()
+        graphene_type_mock._meta.name = "DummyPublicIdModel"
+        graphene_type_mock._meta.interfaces = [Node]
+        graphene_type_mock.get_node = MagicMock(return_value=None)
+        mock_info = MagicMock()
+        mock_info.schema.get_type = MagicMock(
+            return_value=MagicMock(graphene_type=graphene_type_mock)
+        )
+
+        result = graphql_get_node_from_global_id_using_strategy(mock_info, str(test_uuid))
+
+        assert result is None
+
     def test_returns_none_and_falls_back_to_legacy_for_nonexistent_uuid4(self):
         test_uuid = str(uuid.uuid4())  # Non-existent UUID4
         mock_info = MagicMock()
@@ -274,6 +290,21 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
             mock_info, str(dummy_instance.pk), mock_only_type
         )
         assert result.pk == dummy_instance.pk
+
+    def test_returns_none_when_pk_strategy_get_node_returns_none(self):
+        dummy_instance = DummyLegacyWithPkModelFactory()
+        mock_info = MagicMock()
+        mock_only_type = MagicMock()
+        mock_only_type._meta.name = "DummyLegacyWithPkModel"
+        mock_only_type._meta.interfaces = [Node]
+        mock_only_type.get_node = MagicMock(return_value=None)
+        mock_info.schema.get_type = MagicMock(return_value=MagicMock(graphene_type=mock_only_type))
+
+        result = graphql_get_node_from_global_id_using_strategy(
+            mock_info, str(dummy_instance.pk), mock_only_type
+        )
+
+        assert result is None
 
 
 @pytest.mark.django_db
