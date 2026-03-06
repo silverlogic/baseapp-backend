@@ -31,3 +31,5 @@ django-notifications-hq @ git+https://github.com/openwisp/django-notifications.g
 django-push-notifications[wp,apns-async,fcm]==3.3.0
 
 -e ./[auth,referrals,graphql,pages,payments,notifications,urlshortening,messagetemplates,wagtail,socialauth,pdf]
+
+django-channels-graphql-ws @ git+https://github.com/silverlogic/DjangoChannelsGraphqlWs.git@16f77f8105bcbb28a12020d42a984573247c2579
