@@ -5,3 +5,4 @@ select = B,C,E,F,W,T4,B9
 exclude =
     __pycache__
     venv
+    .venv
