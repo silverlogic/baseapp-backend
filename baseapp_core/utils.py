@@ -1,5 +1,12 @@
 from django.contrib.contenttypes.models import ContentType
+from django.db import models
 from rest_framework import serializers
+
+
+def has_autoincrement_pk(model_cls: type) -> bool:
+    return isinstance(
+        model_cls._meta.pk, (int, models.AutoField, models.BigAutoField, models.SmallAutoField)
+    )
 
 
 def get_content_type_by_natural_key(value):

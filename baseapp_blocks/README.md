@@ -27,11 +27,12 @@ class User(models.Model, BlockableModel):
 Also make sure your GraphQL object types extends `BlocksInterface` interface:
 
 ```python
+from baseapp_core.graphql import Node as RelayNode
 from baseapp_blocks.graphql.object_types import BlocksInterface
 
 class UserNode(DjangoObjectType):
     class Meta:
-        interfaces = (relay.Node, BlocksInterface)
+        interfaces = (RelayNode, BlocksInterface)
 ```
 
 Expose `BlocksMutations` in your GraphQL/graphene endpoint, like:

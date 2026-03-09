@@ -46,11 +46,12 @@ class Comment(models.Model, RatableModel):
 Also make sure your GraphQL object types extends `RatingsInterface` interface:
 
 ```python
+from baseapp_core.graphql import Node as RelayNode
 from baseapp_ratings.graphql.object_types import RatingsInterface
 
 class CommentNode(DjangoObjectType):
     class Meta:
-        interfaces = (relay.Node, RatingsInterface)
+        interfaces = (RelayNode, RatingsInterface)
 ```
 
 Expose `RatingsMutations` and `RatingsQueries` in your GraphQL/graphene endpoint, like:

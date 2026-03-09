@@ -16,7 +16,6 @@ app_label = Organization._meta.app_label
 
 
 class BaseOrganizationSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Organization
         fields = ()

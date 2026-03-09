@@ -16,7 +16,7 @@ pytestmark = pytest.mark.django_db(transaction=True)
 
 
 @pytest.mark.asyncio
-async def test_user_recieves_news_message_subscription_event(
+async def test_user_recieves_news_message_subscription_event___2(
     django_user_client, graphql_ws_user_client
 ):
     room = await database_sync_to_async(ChatRoomFactory)(created_by=django_user_client.user)
@@ -28,6 +28,12 @@ async def test_user_recieves_news_message_subscription_event(
 
     # Establish & initialize WebSocket GraphQL connection.
     client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
+
+    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
+    room_relay_id = await database_sync_to_async(lambda: room.relay_id)()
+    client_profile_id = await database_sync_to_async(
+        lambda: django_user_client.user.profile.relay_id
+    )()
 
     # Subscribe to GraphQL subscription.
     sub_id = await client.send(
@@ -48,8 +54,8 @@ async def test_user_recieves_news_message_subscription_event(
                 """
             ),
             "variables": {
-                "roomId": room.relay_id,
-                "profileId": django_user_client.user.profile.relay_id,
+                "roomId": room_relay_id,
+                "profileId": client_profile_id,
             },
             "operationName": "op_name",
         },
@@ -90,6 +96,12 @@ async def test_build_absolute_uri_on_graphql_subscription(
     # Establish & initialize WebSocket GraphQL connection.
     client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
 
+    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
+    room_relay_id = await database_sync_to_async(lambda: room.relay_id)()
+    client_profile_id = await database_sync_to_async(
+        lambda: django_user_client.user.profile.relay_id
+    )()
+
     # Subscribe to GraphQL subscription.
     sub_id = await client.send(
         msg_type="subscribe",
@@ -112,8 +124,8 @@ async def test_build_absolute_uri_on_graphql_subscription(
                 """
             ),
             "variables": {
-                "roomId": room.relay_id,
-                "profileId": django_user_client.user.profile.relay_id,
+                "roomId": room_relay_id,
+                "profileId": client_profile_id,
             },
             "operationName": "op_name",
         },
@@ -152,6 +164,11 @@ async def test_user_recieves_message_count_update(django_user_client, graphql_ws
     # Establish & initialize WebSocket GraphQL connection.
     client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
 
+    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
+    client_profile_id = await database_sync_to_async(
+        lambda: django_user_client.user.profile.relay_id
+    )()
+
     # Subscribe to GraphQL subscription.
     sub_id = await client.send(
         msg_type="subscribe",
@@ -169,7 +186,7 @@ async def test_user_recieves_message_count_update(django_user_client, graphql_ws
                 }
                 """
             ),
-            "variables": {"profileId": django_user_client.user.profile.relay_id},
+            "variables": {"profileId": client_profile_id},
             "operationName": "op_name",
         },
     )
@@ -207,6 +224,11 @@ async def test_current_profile_ws_context(django_user_client, graphql_ws_user_cl
     # It's also responsible for triggering the `on_connect` method in the consumer. Which will then inject the current profile into the graphql scope.
     client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
 
+    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
+    client_profile_id = await database_sync_to_async(
+        lambda: django_user_client.user.profile.relay_id
+    )()
+
     # Subscribe to GraphQL subscription.
     sub_id = await client.send(
         msg_type="subscribe",
@@ -235,7 +257,7 @@ async def test_current_profile_ws_context(django_user_client, graphql_ws_user_cl
                 }
                 """
             ),
-            "variables": {"profileId": django_user_client.user.profile.relay_id},
+            "variables": {"profileId": client_profile_id},
             "operationName": "op_name",
         },
     )

@@ -17,7 +17,6 @@ VIEW_QUERY = """
                     edges {
                         node {
                             id
-                            pk
                         }
                     }
                 }

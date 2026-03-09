@@ -1,6 +1,15 @@
+import pgtrigger
 from django.db import migrations
 
 from baseapp_core.swappable import get_apps_model
+
+
+def _get_report_type_uris(ReportType):
+    concrete_report_type = ReportType._meta.concrete_model
+    report_type_uri = (
+        f"{concrete_report_type._meta.app_label}.{concrete_report_type._meta.object_name}"
+    )
+    return [f"{report_type_uri}:insert_document_id", f"{report_type_uri}:delete_document_id"]
 
 
 def create_default_report_types_and_transfer_values(apps, schema_editor):
@@ -51,51 +60,60 @@ def create_default_report_types_and_transfer_values(apps, schema_editor):
     ]
 
     adult_content_type = ""
-    for type in base_report_types:
-        rt = ReportType(key=type["key"], label=type["label"])
-        rt.save()
-        rt.content_types.set(type["content_types"])
-        if type["key"] == "adult_content":
-            adult_content_type = rt
 
-    adult_content_subtypes_types = [
-        {
-            "key": "pornography",
-            "label": "Pornography",
-            "content_types": [page_content_type, profile_content_type],
-        },
-        {
-            "key": "childAbuse",
-            "label": "Child abuse",
-            "content_types": [page_content_type, profile_content_type],
-        },
-        {
-            "key": "prostituition",
-            "label": "Prostituition",
-            "content_types": [page_content_type, profile_content_type],
-        },
-    ]
+    report_type_uris = _get_report_type_uris(ReportType)
 
-    for subtype in adult_content_subtypes_types:
-        rt = ReportType(key=subtype["key"], label=subtype["label"], parent_type=adult_content_type)
-        rt.save()
-        rt.content_types.set(subtype["content_types"])
+    with pgtrigger.ignore(*report_type_uris):
+        for type in base_report_types:
+            rt = ReportType(key=type["key"], label=type["label"])
+            rt.save()
+            rt.content_types.set(type["content_types"])
+            if type["key"] == "adult_content":
+                adult_content_type = rt
 
-    for report in Report.objects.all():
-        report_type = ReportType.objects.filter(key=report.report_type).first()
-        report.report_type_fk = report_type
-        report.save(update_fields=["report_type_fk"])
+        adult_content_subtypes_types = [
+            {
+                "key": "pornography",
+                "label": "Pornography",
+                "content_types": [page_content_type, profile_content_type],
+            },
+            {
+                "key": "childAbuse",
+                "label": "Child abuse",
+                "content_types": [page_content_type, profile_content_type],
+            },
+            {
+                "key": "prostituition",
+                "label": "Prostituition",
+                "content_types": [page_content_type, profile_content_type],
+            },
+        ]
+
+        for subtype in adult_content_subtypes_types:
+            rt = ReportType(
+                key=subtype["key"], label=subtype["label"], parent_type=adult_content_type
+            )
+            rt.save()
+            rt.content_types.set(subtype["content_types"])
+
+        for report in Report.objects.all():
+            report_type = ReportType.objects.filter(key=report.report_type).first()
+            report.report_type_fk = report_type
+            report.save(update_fields=["report_type_fk"])
 
 
 def reverse_create_default_report_types(apps, schema_editor):
     ReportType = get_apps_model(apps, "baseapp_reports", "ReportType")
     Report = get_apps_model(apps, "baseapp_reports", "Report")
 
-    ReportType.objects.all().delete()
+    report_type_uris = _get_report_type_uris(ReportType)
 
-    for report in Report.objects.all():
-        report.report_type_fk = None
-        report.save(update_fields=["report_type_fk"])
+    with pgtrigger.ignore(*report_type_uris):
+        ReportType.objects.all().delete()
+
+        for report in Report.objects.all():
+            report.report_type_fk = None
+            report.save(update_fields=["report_type_fk"])
 
 
 class Migration(migrations.Migration):

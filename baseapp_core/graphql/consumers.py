@@ -58,10 +58,10 @@ class GraphqlWsAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
         if user and user.is_active:
             self.scope["user"] = token.user
             if "Current-Profile" in payload:
-                pk = get_pk_from_relay_id(payload["Current-Profile"])
+                pk = await database_sync_to_async(get_pk_from_relay_id)(payload["Current-Profile"])
                 if pk:
                     profile = await database_sync_to_async(Profile.objects.filter(pk=pk).first)()
-                    if profile and database_sync_to_async(user.has_perm)(
+                    if profile and await database_sync_to_async(user.has_perm)(
                         f"{profile._meta.app_label}.use_profile", profile
                     ):
                         token.user.current_profile = profile
@@ -115,7 +115,7 @@ class GraphqlWsJWTAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
 
         if user and user.is_active:
             if "Current-Profile" in payload:
-                pk = get_pk_from_relay_id(payload["Current-Profile"])
+                pk = await database_sync_to_async(get_pk_from_relay_id)(payload["Current-Profile"])
                 if pk:
                     profile = await database_sync_to_async(Profile.objects.filter(pk=pk).first)()
                     if profile and await database_sync_to_async(user.has_perm)(

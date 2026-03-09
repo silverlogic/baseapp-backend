@@ -50,11 +50,14 @@ async def test_user_recieves_new_notification_subscription_event(
         recipient=django_user_client.user
     )
 
+    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
+    notification_relay_id = await database_sync_to_async(lambda: notification.relay_id)()
+
     # Check that subscription message were sent.
     resp = await client.receive(assert_id=sub_id, assert_type="next")
     assert (
         resp["data"]["onNotificationChange"]["createdNotification"]["node"]["id"]
-        == notification.relay_id
+        == notification_relay_id
     )
 
     # Disconnect and wait the application to finish gracefully.
@@ -95,6 +98,9 @@ async def test_user_recieves_updated_notification_subscription_event(
         recipient=django_user_client.user
     )
 
+    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
+    notification_relay_id = await database_sync_to_async(lambda: notification.relay_id)()
+
     # Establish & initialize WebSocket GraphQL connection.
     client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
 
@@ -114,7 +120,7 @@ async def test_user_recieves_updated_notification_subscription_event(
     # Check that subscription message were sent.
     resp = await client.receive(assert_id=sub_id, assert_type="next")
     assert (
-        resp["data"]["onNotificationChange"]["updatedNotification"]["id"] == notification.relay_id
+        resp["data"]["onNotificationChange"]["updatedNotification"]["id"] == notification_relay_id
     )
     assert resp["data"]["onNotificationChange"]["updatedNotification"]["unread"] is False
 
@@ -129,7 +135,9 @@ async def test_user_recieves_deleted_notification_subscription_event(
     notification = await database_sync_to_async(NotificationFactory)(
         recipient=django_user_client.user
     )
-    relay_id = notification.relay_id
+
+    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
+    relay_id = await database_sync_to_async(lambda: notification.relay_id)()
 
     # Establish & initialize WebSocket GraphQL connection.
     client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})

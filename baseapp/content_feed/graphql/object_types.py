@@ -1,5 +1,4 @@
 import swapper
-from graphene import relay
 from graphene_django.filter import DjangoFilterConnectionField
 
 from baseapp.content_feed.graphql.filters import (
@@ -7,6 +6,7 @@ from baseapp.content_feed.graphql.filters import (
     ContentPostImageFilter,
 )
 from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql.fields import ThumbnailField
 from baseapp_reactions.graphql.object_types import ReactionsInterface
 
@@ -23,7 +23,7 @@ class ContentPostImageObjectType(DjangoObjectType):
     image = ThumbnailField(required=False)
 
     class Meta:
-        interfaces = (relay.Node,)
+        interfaces = (RelayNode,)
         model = ContentPostImage
         fields = ("pk", "post", "image")
         filterset_class = ContentPostImageFilter
@@ -34,7 +34,7 @@ class ContentPostObjectType(DjangoObjectType):
 
     class Meta:
         interfaces = (
-            relay.Node,
+            RelayNode,
             ReactionsInterface,
         )
         model = ContentPost

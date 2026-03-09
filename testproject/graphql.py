@@ -1,5 +1,4 @@
 import graphene
-from graphene import relay
 from graphene.relay.node import NodeField as RelayNodeField
 from graphene_django.debug import DjangoDebug
 
@@ -14,6 +13,7 @@ from baseapp_comments.graphql.mutations import CommentsMutations
 from baseapp_comments.graphql.queries import CommentsQueries
 from baseapp_comments.graphql.subscriptions import CommentsSubscriptions
 from baseapp_core.graphql import DeleteNode
+from baseapp_core.graphql import Node as RelayNode
 from baseapp_follows.graphql.mutations import FollowsMutations
 from baseapp_notifications.graphql.mutations import NotificationsMutations
 from baseapp_notifications.graphql.subscriptions import NotificationsSubscription
@@ -46,7 +46,7 @@ class Query(
     ContentFeedQueries,
     ReportsQueries,
 ):
-    node = RelayNodeField(relay.Node)
+    node = RelayNodeField(RelayNode)
     debug = graphene.Field(DjangoDebug, name="_debug")
 
 

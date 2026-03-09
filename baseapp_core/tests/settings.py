@@ -204,6 +204,10 @@ CONSTANCE_CONFIG = OrderedDict(
             "EMAIL_VERIFICATION_REQUIRED",
             (False, "Require email verification for new users."),
         ),
+        (
+            "SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS",
+            (False, "Send anonymize emails to superusers"),
+        ),
     ]
 )
 
