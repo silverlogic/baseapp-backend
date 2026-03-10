@@ -32,4 +32,4 @@ django-push-notifications[wp,apns-async,fcm]==3.3.0
 
 -e ./[auth,referrals,graphql,pages,payments,notifications,urlshortening,messagetemplates,wagtail,socialauth,pdf]
 
-baseapp-django-channels-graphql-ws @ git+https://github.com/silverlogic/DjangoChannelsGraphqlWs.git@69550414243b4731767c2511d82e6e1ee30449ad
+baseapp-django-channels-graphql-ws @ git+https://github.com/silverlogic/DjangoChannelsGraphqlWs.git@fac7ff94971ed8de25ab26a3711074351a6def7a
