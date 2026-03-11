@@ -13,7 +13,7 @@ jobs:
     if: contains(github.event.release.tag_name, inputs.project)
     strategy:
       matrix:
-        python-version: ["3.8"]
+        python-version: ["3.11"]
 
     permissions:
       id-token: write
@@ -25,9 +25,14 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@6ee6290f1cbc4156c0bdd66691b2c144ef8df19a # v7.4.0
+        with:
+          enable-cache: true
+
       - name: Build distribution
         working-directory: .
-        run: python3 setup.py sdist
+        run: uv build
 
       - name: Publish distribution 📦 to PyPI
         uses: pypa/gh-action-pypi-publish@v1.13.0
