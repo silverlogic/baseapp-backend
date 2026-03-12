@@ -25,13 +25,13 @@ class SharedServiceRegistry:
     def __init__(self) -> None:
         self._registry: dict[str, SharedServiceProvider] = {}
 
-    def register(self, service_name: str, provider: SharedServiceProvider) -> None:
+    def register(self, provider: SharedServiceProvider) -> None:
         """Register a shared service. Call from AppConfig.ready() (e.g. in register_shared_services())."""
         if not isinstance(provider, SharedServiceProvider):
             raise TypeError(
                 f"Provider must implement SharedServiceProvider protocol: {type(provider)}"
             )
-        self._registry[service_name] = provider
+        self._registry[provider.service_name] = provider
 
     def get_service(self, service_name: str) -> Optional[SharedServiceProvider]:
         """Return the provider for service_name, or None if missing/unavailable."""

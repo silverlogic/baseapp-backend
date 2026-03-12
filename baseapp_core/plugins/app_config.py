@@ -13,6 +13,7 @@ from django.apps import AppConfig
 
 if TYPE_CHECKING:
     from .shared_graphql_interfaces import GraphQLSharedInterfaceRegistry
+    from .shared_serializers import SharedSerializerRegistry
     from .shared_services import SharedServiceRegistry
 
 
@@ -57,6 +58,24 @@ class GraphQLContributor:
         pass
 
 
+class SerializersContributor:
+    """
+    Mixin for AppConfig: register shared serializers at runtime in ready().
+
+    Override register_shared_serializers() and call the shared serializer registry
+    for each named serializer your app provides.
+    """
+
+    def register_shared_serializers(self, registry: "SharedSerializerRegistry") -> None:
+        """
+        Register this app's shared serializers with the runtime registry.
+
+        Override in your app and call shared_serializer_registry.register(name, serializer)
+        for each shared serializer you provide.
+        """
+        pass
+
+
 class BaseAppConfig(AppConfig):
     """
     Base app config for plugin apps. Use with ServicesContributor and/or
@@ -65,10 +84,16 @@ class BaseAppConfig(AppConfig):
     """
 
     def ready(self) -> None:
-        """Run runtime registration: services and GraphQL capabilities."""
-        from . import graphql_shared_interface_registry, shared_service_registry
+        """Run runtime registration: services, serializers, and GraphQL capabilities."""
+        from . import (
+            graphql_shared_interface_registry,
+            shared_serializer_registry,
+            shared_service_registry,
+        )
 
         if isinstance(self, ServicesContributor):
             self.register_shared_services(shared_service_registry)
+        if isinstance(self, SerializersContributor):
+            self.register_shared_serializers(shared_serializer_registry)
         if isinstance(self, GraphQLContributor):
             self.register_graphql_shared_interfaces(graphql_shared_interface_registry)

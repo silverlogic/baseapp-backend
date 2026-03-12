@@ -24,6 +24,7 @@ def anonymize_and_delete_user_task(user_id):
             anonymize_activitylog(user)
 
             if apps.is_installed("baseapp_chats"):
+                # TODO (plugin-arch): This should be a service/signal handler in baseapp_chats.
                 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
                 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
                 participant_qs = ChatRoomParticipant.objects.filter(profile__user=user)

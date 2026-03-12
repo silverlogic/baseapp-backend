@@ -15,7 +15,7 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
     def register_shared_services(self, registry):
         from .services import CommentsCountService
 
-        registry.register("comments_count", CommentsCountService())
+        registry.register(CommentsCountService())
 
     def register_graphql_shared_interfaces(self, registry):
         from .graphql.interfaces import get_comments_shared_interface

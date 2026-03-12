@@ -27,7 +27,7 @@ class GraphQLSharedInterfaceRegistry:
         """Register a GraphQL capability by name. Call from AppConfig.ready()."""
         self._registry[name] = interface
 
-    def get_interface(self, name: str) -> Optional[Any]:
+    def get_interface(self, name: str) -> Interface | list[Interface]:
         """Resolve and return the interface for name, or None if not registered."""
         value = self._registry.get(name)
         if value is None:
@@ -56,7 +56,10 @@ class GraphQLSharedInterfaceRegistry:
         for name in interface_names:
             iface = self.get_interface(name)
             if iface is not None:
-                result.append(iface)
+                if isinstance(iface, list):
+                    result.extend(iface)
+                else:
+                    result.append(iface)
         return tuple(result)
 
 

@@ -1,18 +1,19 @@
 import random
 import string
 
+import pghistory
 import swapper
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql.models import RelayModel
-from baseapp_core.models import random_name_in
+from baseapp_core.models import DocumentId, DocumentIdMixin, random_name_in
+from baseapp_core.pghelpers import pghistory_register_default_track
+from baseapp_core.swapper import init_swapped_models
 from baseapp_profiles.managers import ProfileManager
 
 inheritances = [TimeStampedModel]
@@ -42,6 +43,7 @@ if apps.is_installed("baseapp_pages"):
 
     inheritances.append(PageMixin)
 
+inheritances.append(DocumentIdMixin)
 inheritances.append(RelayModel)
 
 
@@ -62,21 +64,6 @@ class AbstractProfile(*inheritances):
         _("banner image"), upload_to=random_name_in("profile_banner_images"), blank=True, null=True
     )
     biography = models.TextField(_("biography"), blank=True, null=True)
-
-    target_content_type = models.ForeignKey(
-        ContentType,
-        verbose_name=_("target content type"),
-        blank=True,
-        null=True,
-        related_name="profiles",
-        on_delete=models.CASCADE,
-    )
-    target_object_id = models.PositiveIntegerField(
-        blank=True, null=True, verbose_name=_("target object id")
-    )
-    target = GenericForeignKey("target_content_type", "target_object_id")
-    target.short_description = _("target")  # because GenericForeignKey doens't have verbose_name
-
     status = models.IntegerField(choices=ProfileStatus.choices, default=ProfileStatus.PUBLIC)
 
     owner = models.ForeignKey(
@@ -86,15 +73,26 @@ class AbstractProfile(*inheritances):
         verbose_name=_("owner"),
         db_constraint=False,
     )
+    target = models.ForeignKey(  # TODO (profile): Should it be a oneToOne field.
+        "baseapp_core.DocumentId",
+        on_delete=models.SET_NULL,  # TODO (profile): Review if that's the intended behavior.
+        related_name="profiles",
+        verbose_name=_("target object"),
+        help_text=_(
+            "The object that this profile is associated with. The object is identified by its DocumentId."
+        ),
+        null=True,
+        blank=True,
+    )
 
     objects = ProfileManager()
 
     class Meta:
         abstract = True
-        unique_together = [("target_content_type", "target_object_id")]
         permissions = [
             ("use_profile", _("can use profile")),
         ]
+        swappable = swapper.swappable_setting("baseapp_profiles", "Profile")
 
     def __str__(self):
         return self.name or str(self.pk)
@@ -189,11 +187,6 @@ class ProfilableModel(models.Model):
         abstract = True
 
 
-class Profile(AbstractProfile):
-    class Meta(AbstractProfile.Meta):
-        swappable = swapper.swappable_setting("baseapp_profiles", "Profile")
-
-
 class AbstractProfileUserRole(RelayModel, models.Model):
     class ProfileRoles(models.IntegerChoices):
         ADMIN = 1, _("admin")
@@ -232,6 +225,7 @@ class AbstractProfileUserRole(RelayModel, models.Model):
     class Meta:
         abstract = True
         unique_together = [("user", "profile")]
+        swappable = swapper.swappable_setting("baseapp_profiles", "ProfileUserRole")
 
     def __str__(self):
         return f"{self.user} as {self.role} in {self.profile}"
@@ -243,21 +237,34 @@ class AbstractProfileUserRole(RelayModel, models.Model):
         return ProfileUserRoleObjectType
 
 
-class ProfileUserRole(AbstractProfileUserRole):
-    class Meta(AbstractProfileUserRole.Meta):
-        swappable = swapper.swappable_setting("baseapp_profiles", "ProfileUserRole")
-
-
 def update_or_create_profile(instance, owner, profile_name):
+    # TODO (profile): Review myabe the instance type before doing the rest.
     Profile = swapper.load_model("baseapp_profiles", "Profile")
-    target_content_type = ContentType.objects.get_for_model(instance)
+
+    target_document = DocumentId.get_or_create_for_object(instance)
 
     profile, created = Profile.objects.update_or_create(
         owner=owner,
-        target_content_type=target_content_type,
-        target_object_id=instance.pk,
+        target=target_document,
         defaults={"name": profile_name},
     )
-    if created:
+    if created and hasattr(instance, "profile"):
+        # TODO (profile): Review if that's how we always connect instances to profiles.
         instance.profile = profile
         instance.save(update_fields=["profile"])
+
+
+Profile, ProfileUserRole = init_swapped_models(
+    [
+        ("baseapp_profiles", "Profile"),
+        ("baseapp_profiles", "ProfileUserRole"),
+    ]
+)
+
+
+pghistory_register_default_track(
+    Profile,
+    pghistory.InsertEvent(),
+    pghistory.UpdateEvent(),
+    pghistory.DeleteEvent(),
+)

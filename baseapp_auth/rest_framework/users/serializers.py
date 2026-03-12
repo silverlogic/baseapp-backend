@@ -1,6 +1,5 @@
 from datetime import timedelta
 
-import swapper
 from constance import config
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -9,49 +8,23 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
+from baseapp_auth.password_validators import apply_password_validators
 from baseapp_auth.utils.referral_utils import get_user_referral_model, use_referrals
-from baseapp_core.graphql import get_obj_relay_id
-from baseapp_core.rest_framework.fields import ThumbnailImageField
+from baseapp_core.rest_framework.fields import SharedSerializerField
 from baseapp_core.rest_framework.serializers import ModelSerializer
 from baseapp_referrals.utils import get_referral_code, get_user_from_referral_code
 
 from .fields import AvatarField
 
 User = get_user_model()
-Profile = swapper.load_model("baseapp_profiles", "Profile")
-
-from baseapp_auth.password_validators import apply_password_validators
-
-
-class JWTProfileSerializer(serializers.ModelSerializer):
-    """
-    Serializes minimal profile data that will be attached to the JWT token as claim
-    """
-
-    id = serializers.SerializerMethodField()
-    url_path = serializers.SerializerMethodField()
-    image = ThumbnailImageField(required=False, sizes={"small": (100, 100)})
-
-    class Meta:
-        model = Profile
-        fields = ("id", "name", "image", "url_path")
-
-    def get_id(self, profile):
-        return get_obj_relay_id(profile)
-
-    def get_url_path(self, profile):
-        path_obj = getattr(profile, "url_path", None)
-        return getattr(path_obj, "path", None)
-
-    def to_representation(self, profile):
-        data = super().to_representation(profile)
-        if data["image"] is not None:
-            data["image"] = data["image"]["small"]
-        return data
 
 
 class UserBaseSerializer(ModelSerializer):
-    profile = JWTProfileSerializer(read_only=True)
+    profile = SharedSerializerField(
+        serializer_name="profiles.jwt_profile",
+        default_representation=None,
+        read_only=True,
+    )
     avatar = AvatarField(required=False, allow_null=True, write_only=True)
     email_verification_required = serializers.SerializerMethodField()
     referral_code = serializers.SerializerMethodField()
@@ -123,12 +96,14 @@ class UserSerializer(UserBaseSerializer):
             get_user_referral_model().objects.create(referrer=self.referrer, referee=instance)
 
         if "avatar" in validated_data:
-            avatar = validated_data.pop("avatar")
-            if avatar:
-                instance.profile.image = avatar
-            else:
-                instance.profile.image = None
-            instance.profile.save(update_fields=["image"])
+            # TODO (profile): consider using a service to update the avatar and then update where avatar is used.
+            if profile := getattr(instance, "profile", None):
+                avatar = validated_data.pop("avatar")
+                if avatar:
+                    profile.image = avatar
+                else:
+                    profile.image = None
+                profile.save(update_fields=["image"])
 
         return super().update(instance, validated_data)
 

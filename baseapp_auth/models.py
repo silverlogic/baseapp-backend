@@ -62,7 +62,7 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_pr
         help_text="Has the user confirmed they want an email change?",
     )
 
-    # Profile
+    # Details
     first_name = models.CharField(max_length=100, blank=True)
     last_name = models.CharField(max_length=100, blank=True)
     phone_number = PhoneNumberField(blank=True, null=True, unique=True)
@@ -115,7 +115,9 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_pr
     @property
     def avatar(self):
         # TODO: deprecate
-        return self.profile.image if self.profile_id else None
+        if profile := getattr(self, "profile", None):
+            return profile.image
+        return None
 
     @property
     def password_expired(self) -> bool:

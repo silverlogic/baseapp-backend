@@ -1,4 +1,5 @@
 import graphene
+from django.apps import apps
 from graphene_django.filter import DjangoFilterConnectionField
 
 from ..models import ActivityLog
@@ -45,6 +46,8 @@ class ProfileActivityLog:
     )
 
     def resolve_activity_logs(self, info, **kwargs):
+        if not apps.is_installed("baseapp_profiles"):
+            return ActivityLog.objects.none()
         if not info.context.user.has_perm("activity_log.list_profile_activitylog", self):
             return ActivityLog.objects.none()
         return ActivityLog.objects.filter(profile_id=self.pk)
