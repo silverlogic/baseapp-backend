@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.11", "3.12"]
         django-version: ["4.2", "5.2"]
     steps:
       - uses: actions/checkout@v4
@@ -24,37 +24,37 @@ jobs:
 
       - name: flake8
         id: flake8
-        run: docker compose exec backend flake8 ./ --show-source --statistics --count
+        run: docker compose exec backend uv run --python ${{ matrix.python-version }} flake8 ./ --show-source --statistics --count
 
       - name: isort
         id: isort
         if: steps.flake8.outcome == 'success'
-        run: docker compose exec backend isort --check ./
+        run: docker compose exec backend uv run --python ${{ matrix.python-version }} isort --check ./
 
       - name: black
         id: black
         if: steps.isort.outcome == 'success'
-        run: docker compose exec backend black --check ./
+        run: docker compose exec backend uv run --python ${{ matrix.python-version }} black --check ./
 
       - name: Install tests requirements with Django ${{ matrix.django-version }}
         if: steps.black.outcome == 'success'
         id: requirements_installation
         run: |
-          docker compose exec backend pip install "Django~=${{ matrix.django-version }}"
+          docker compose exec backend uv pip install --python ${{ matrix.python-version }} "Django~=${{ matrix.django-version }}"
 
       - name: pytest
         if: steps.requirements_installation.outcome == 'success'
         run: |
-          docker compose exec backend pytest --cov=./ --cov-report=xml --cov-branch .
+          docker compose exec backend uv run --python ${{ matrix.python-version }} pytest --cov=./ --cov-report=xml --cov-branch .
       
       - name: pytest drf_view_action_permissions
         if: steps.requirements_installation.outcome == 'success'
         run: |
-          docker compose exec backend pytest --cov=./ --cov-report=xml --cov-branch --cov-append baseapp_drf_view_action_permissions --ds=baseapp_drf_view_action_permissions.tests.settings
+          docker compose exec backend uv run --python ${{ matrix.python-version }} pytest --cov=./ --cov-report=xml --cov-branch --cov-append baseapp_drf_view_action_permissions --ds=baseapp_drf_view_action_permissions.tests.settings
 
       - name: Install pip-audit
         if: steps.requirements_installation.outcome == 'success' && startsWith(matrix.django-version, '5.2')
-        run: docker compose exec backend pip install --upgrade pip pip-audit
+        run: docker compose exec backend uv tool install --python ${{ matrix.python-version }} pip-audit
       # Ignored vulnerabilities:
 
       # Name                   Version ID             Fix Versions
@@ -66,7 +66,7 @@ jobs:
         run: docker compose exec backend pip-audit --skip-editable --ignore-vuln CVE-2025-61783 --ignore-vuln CVE-2026-0994
       
       - name: upload coverage report
-        if: matrix.python-version == '3.12' && startsWith(matrix.django-version, '5.2')
+        if: matrix.python-version == '3.11' && startsWith(matrix.django-version, '5.2')
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
