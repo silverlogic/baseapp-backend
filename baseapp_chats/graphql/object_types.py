@@ -8,6 +8,7 @@ from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import (
     ThumbnailField,
+    get_obj_relay_id,
     get_object_type_for_model,
     get_pk_from_relay_id,
 )
@@ -158,6 +159,7 @@ class BaseChatRoomObjectType:
     is_archived = graphene.Boolean(profile_id=graphene.ID(required=False))
     other_participant = graphene.Field(get_object_type_for_model(ChatRoomParticipant))
     is_sole_admin = graphene.Boolean()
+    participant_ids = graphene.List(graphene.ID)
 
     @classmethod
     def get_node(cls, info, id):
@@ -302,6 +304,13 @@ class BaseChatRoomObjectType:
         if other_participant and other_participant.profile:
             return other_participant.profile.image
 
+    def resolve_participant_ids(self, info, **kwargs):
+
+        profiles = Profile.objects.filter(
+            id__in=self.participants.values_list("profile_id", flat=True)
+        )
+        return [get_obj_relay_id(profile) for profile in profiles]
+
     class Meta:
         interfaces = (RelayNode,)
         model = ChatRoom
@@ -316,6 +325,7 @@ class BaseChatRoomObjectType:
             "is_group",
             "other_participant",
             "is_sole_admin",
+            "participant_ids",
         )
         filterset_class = ChatRoomFilter
 
