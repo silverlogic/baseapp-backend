@@ -100,7 +100,7 @@ dev = [
     "freezegun==1.2.1",
     "responses==0.25.3",
     "factory-boy==3.2.1",
-    "black==24.4.0",
+    "black==26.3.1",
     "flake8==7.0.0",
     "isort==5.13.2",
     "channels-redis==4.0.0",
@@ -117,7 +117,7 @@ dev = [
 ]
 testproject = [
     "baseapp-backend[auth,graphql,messagetemplates,notifications,pages,payments,pdf,referrals,socialauth,urlshortening,wagtail]",
-    "black==24.4.0",
+    "black==26.3.1",
     "channels==4.0.0",
     "channels-redis==4.0.0",
     "django-notifications-hq",
