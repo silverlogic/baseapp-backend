@@ -207,6 +207,8 @@ class AbstractProfileUserRole(RelayModel, models.Model):
         ACTIVE = 1, _("active")
         PENDING = 2, _("pending")
         INACTIVE = 3, _("inactive")
+        DECLINED = 4, _("declined")
+        EXPIRED = 5, _("expired")
 
         @property
         def description(self):
@@ -217,7 +219,10 @@ class AbstractProfileUserRole(RelayModel, models.Model):
         related_name="profile_members",
         on_delete=models.CASCADE,
         verbose_name=_("user"),
+        null=True,
+        blank=True,
     )
+    email = models.EmailField(_("email"), null=True, blank=True)
     profile = models.ForeignKey(
         swapper.get_model_name("baseapp_profiles", "Profile"),
         related_name="members",
@@ -226,12 +231,66 @@ class AbstractProfileUserRole(RelayModel, models.Model):
     )
     role = models.IntegerField(choices=ProfileRoles.choices, default=ProfileRoles.MANAGER)
     status = models.IntegerField(
-        choices=ProfileRoleStatus.choices, default=ProfileRoleStatus.PENDING
+        choices=ProfileRoleStatus.choices, default=ProfileRoleStatus.INACTIVE
+    )
+
+    invited_email = models.EmailField(
+        null=True,
+        blank=True,
+        verbose_name=_("invited email"),
+        help_text=_("Email address invitation was sent to (for pending invitations)"),
+    )
+    invitation_token = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        unique=True,
+        verbose_name=_("invitation token"),
+        help_text=_("Unique token for accepting invitation"),
+    )
+    invited_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("invited at"),
+        help_text=_("When the invitation was sent"),
+    )
+    invitation_expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("invitation expires at"),
+        help_text=_("When the invitation expires"),
+    )
+    responded_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("responded at"),
+        help_text=_("When the user accepted or declined"),
     )
 
     class Meta:
         abstract = True
         unique_together = [("user", "profile")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["profile", "invited_email"],
+                name="unique_profile_invited_email",
+                condition=models.Q(invited_email__isnull=False),
+            ),
+        ]
+
+    def is_invitation_expired(self):
+        from django.utils import timezone
+
+        if not self.invitation_expires_at:
+            return False
+        return timezone.now() > self.invitation_expires_at
+
+    def generate_invitation_token(self):
+        from django.utils.crypto import get_random_string
+
+        token = get_random_string(length=64)
+        self.invitation_token = token
+        return token
 
     def __str__(self):
         return f"{self.user} as {self.role} in {self.profile}"

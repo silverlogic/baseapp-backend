@@ -17,6 +17,12 @@ ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 profile_app_label = Profile._meta.app_label
 
 
+def can_view_profile_members(user, profile):
+    if not user.is_authenticated:
+        return False
+    return user.has_perm(f"{profile_app_label}.view_profile_members", profile)
+
+
 ProfileRoleTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoles)
 ProfileRoleStatusTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoleStatus)
 
@@ -24,12 +30,52 @@ ProfileRoleStatusTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRole
 class BaseProfileUserRoleObjectType:
     role = graphene.Field(ProfileRoleTypesEnum)
     status = graphene.Field(ProfileRoleStatusTypesEnum)
+    invited_email = graphene.String()
+    invited_at = graphene.DateTime()
+    invitation_expires_at = graphene.DateTime()
+    responded_at = graphene.DateTime()
 
     class Meta:
         model = ProfileUserRole
         interfaces = [RelayNode]
-        fields = ["id", "pk", "user", "role", "created", "modified", "status"]
+        fields = [
+            "id",
+            "pk",
+            "user",
+            "role",
+            "status",
+            "created",
+            "modified",
+            "invited_email",
+            "invited_at",
+            "invitation_expires_at",
+            "responded_at",
+        ]
         filterset_class = MemberFilter
+
+    @classmethod
+    def _can_view_invitation_fields(cls, info, instance):
+        return can_view_profile_members(info.context.user, instance.profile)
+
+    def resolve_invited_email(self, info):
+        if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
+            return None
+        return self.invited_email
+
+    def resolve_invited_at(self, info):
+        if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
+            return None
+        return self.invited_at
+
+    def resolve_invitation_expires_at(self, info):
+        if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
+            return None
+        return self.invitation_expires_at
+
+    def resolve_responded_at(self, info):
+        if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
+            return None
+        return self.responded_at
 
 
 class ProfileUserRoleObjectType(DjangoObjectType, BaseProfileUserRoleObjectType):
@@ -147,7 +193,7 @@ class BaseProfileObjectType(*inheritances, object):
 
     @classmethod
     def resolve_members(cls, instance, info, **kwargs):
-        if not info.context.user.has_perm(f"{profile_app_label}.view_profile_members", instance):
+        if not can_view_profile_members(info.context.user, instance):
             return instance.members.none()
 
         return instance.members.all()
