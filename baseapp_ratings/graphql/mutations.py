@@ -1,5 +1,6 @@
 import graphene
 import swapper
+from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
@@ -16,7 +17,6 @@ from baseapp_core.graphql import (
 from .object_types import RatingsInterface
 
 RateModel = swapper.load_model("baseapp_ratings", "Rate")
-Profile = swapper.load_model("baseapp_profiles", "Profile")
 RatingObjectType = RateModel.get_graphql_object_type()
 
 
@@ -32,6 +32,7 @@ class RateCreate(RelayMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
+        has_profiles = apps.is_installed("baseapp_profiles")
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
         target_content_type = ContentType.objects.get_for_model(target)
 
@@ -41,16 +42,21 @@ class RateCreate(RelayMutation):
                 extensions={"code": "permission_required"},
             )
 
-        profile_pk = get_pk_from_relay_id(input.get("profile_id"))
-        if profile_pk:
-            profile = Profile.objects.get_if_member(info.context.user, pk=profile_pk)
-            if not info.context.user.has_perm("baseapp_ratings.add_rate_with_profile", profile):
-                raise GraphQLError(
-                    str(_("You don't have permission to perform this action")),
-                    extensions={"code": "permission_required"},
-                )
-        else:
-            profile = info.context.user.current_profile
+        profile = None
+        if has_profiles:
+            Profile = swapper.load_model("baseapp_profiles", "Profile")
+            profile_pk = (
+                get_pk_from_relay_id(input.get("profile_id")) if input.get("profile_id") else None
+            )
+            if profile_pk:
+                profile = Profile.objects.get_if_member(info.context.user, pk=profile_pk)
+                if not info.context.user.has_perm("baseapp_ratings.add_rate_with_profile", profile):
+                    raise GraphQLError(
+                        str(_("You don't have permission to perform this action")),
+                        extensions={"code": "permission_required"},
+                    )
+            else:
+                profile = info.context.user.current_profile
 
         if getattr(settings, "BASEAPP_MAX_RATING_VALUE", False):
             if input["value"] > settings.BASEAPP_MAX_RATING_VALUE:
@@ -63,13 +69,16 @@ class RateCreate(RelayMutation):
                     extensions={"code": "max_rating_value"},
                 )
 
-        rate = RateModel.objects.create(
+        rate_create_kwargs = dict(
             user=info.context.user,
-            profile=profile,
             target_object_id=target.pk,
             target_content_type=target_content_type,
             value=input["value"],
         )
+        if has_profiles:
+            rate_create_kwargs["profile"] = profile
+
+        rate = RateModel.objects.create(**rate_create_kwargs)
 
         target.refresh_from_db()
 

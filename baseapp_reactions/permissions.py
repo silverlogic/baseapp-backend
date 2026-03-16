@@ -9,7 +9,7 @@ class ReactionsPermissionsBackend(BaseBackend):
     def has_perm(self, user_obj, perm, obj=None):
         if apps.is_installed("baseapp_profiles"):
             return self._has_perm_with_profiles(user_obj, perm, obj)
-        return self._has_perm_without_profiles(user_obj, perm, obj)
+        return self._has_perm_with_user(user_obj, perm, obj)
 
     def _has_perm_with_profiles(self, user_obj, perm, obj=None):
         Profile = swapper.load_model("baseapp_profiles", "Profile")
@@ -40,7 +40,7 @@ class ReactionsPermissionsBackend(BaseBackend):
 
         return False
 
-    def _has_perm_without_profiles(self, user_obj, perm, obj=None):
+    def _has_perm_with_user(self, user_obj, perm, obj=None):
         if perm == "baseapp_reactions.add_reaction":
             return user_obj.is_authenticated and getattr(obj, "is_reactions_enabled", False)
 

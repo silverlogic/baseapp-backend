@@ -21,8 +21,9 @@ class ReactionToggle(RelayMutation):
 
     class Input:
         target_object_id = graphene.ID(required=True)
-        profile_object_id = graphene.ID(required=False)
         reaction_type = graphene.Field(ReactionTypesEnum, required=True)
+        if apps.is_installed("baseapp_profiles"):
+            profile_object_id = graphene.ID(required=False)
 
     @classmethod
     @login_required
@@ -30,7 +31,6 @@ class ReactionToggle(RelayMutation):
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
         target_content_type = ContentType.objects.get_for_model(target)
         reaction_type = input["reaction_type"]
-        profile = None
         activity_name = "baseapp_reactions.add_reaction"
 
         if not info.context.user.has_perm(activity_name, target):
@@ -45,10 +45,9 @@ class ReactionToggle(RelayMutation):
             set_public_activity(verb=activity_name)
 
         if apps.is_installed("baseapp_profiles"):
+            profile = info.context.user.current_profile
             if input.get("profile_object_id"):
                 profile = get_obj_from_relay_id(info, input.get("profile_object_id"))
-
-            profile = profile or info.context.user.current_profile
 
             if not info.context.user.has_perm(
                 "baseapp_reactions.add_reaction_with_profile", profile

@@ -26,11 +26,11 @@ def apply_if_installed(
     Args:
         app_name: The name of the app to check if it is installed.
         response: The value or callable to apply if the app is installed.
+        fallback_response: Value or callable used when app is not installed and
+            fallback_match_response_type is False or type cannot be inferred.
         fallback_match_response_type: If True, when app is not installed return
             a value matching the type of response (e.g. list -> []); otherwise
             use fallback_response.
-        fallback_response: Value or callable used when app is not installed and
-            fallback_match_response_type is False or type cannot be inferred.
         execute_callable: Whether to execute the callable if it is provided.
         callable_args: Arguments to pass to the callable when executing it.
         callable_kwargs: Keyword arguments to pass to the callable when executing it.

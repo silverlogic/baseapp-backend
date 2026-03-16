@@ -34,7 +34,7 @@ class ReactionsInterface(RelayNode):
     my_reaction = graphene.Field(
         get_object_type_for_model(Reaction),
         required=False,
-        profile_id=graphene.ID(required=False),
+        **apply_if_installed("baseapp_profiles", {"profile_id": graphene.ID(required=False)}),
     )
 
     def resolve_reactions(self, info, **kwargs):
@@ -59,7 +59,7 @@ class ReactionsInterface(RelayNode):
 
         if apps.is_installed("baseapp_profiles"):
             return self._resolve_my_reaction_with_profiles(info, profile_id=profile_id)
-        return self._resolve_my_reaction_without_profiles(info)
+        return self._resolve_my_reaction_with_current_user(info)
 
     def _resolve_my_reaction_with_profiles(self, info, profile_id=None):
         Profile = swapper.load_model("baseapp_profiles", "Profile")
@@ -79,7 +79,7 @@ class ReactionsInterface(RelayNode):
             profile_id=profile.pk,
         ).first()
 
-    def _resolve_my_reaction_without_profiles(self, info):
+    def _resolve_my_reaction_with_current_user(self, info):
         return Reaction.objects.filter(
             target_content_type=ContentType.objects.get_for_model(self),
             target_object_id=self.pk,
