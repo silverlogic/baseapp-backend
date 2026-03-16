@@ -1,6 +1,7 @@
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
+from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from graphene_django.filter import DjangoFilterConnectionField
@@ -8,9 +9,9 @@ from graphene_django.filter import DjangoFilterConnectionField
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
+from baseapp_core.plugins import apply_if_installed
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
-Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 ReactionTypesEnum = graphene.Enum.from_enum(Reaction.ReactionTypes)
 
@@ -53,19 +54,37 @@ class ReactionsInterface(RelayNode):
         ).order_by("-created")
 
     def resolve_my_reaction(self, info, profile_id=None, **kwargs):
-        if info.context.user.is_authenticated:
-            if profile_id:
-                pk = get_pk_from_relay_id(profile_id)
-                profile = Profile.objects.get_if_member(pk=pk, user=info.context.user)
-            else:
-                profile = info.context.user.current_profile
-            if not profile:
-                return None
-            return Reaction.objects.filter(
-                target_content_type=ContentType.objects.get_for_model(self),
-                target_object_id=self.pk,
-                profile_id=profile.pk,
-            ).first()
+        if not info.context.user.is_authenticated:
+            return None
+
+        if apps.is_installed("baseapp_profiles"):
+            return self._resolve_my_reaction_with_profiles(info, profile_id=profile_id)
+        return self._resolve_my_reaction_without_profiles(info)
+
+    def _resolve_my_reaction_with_profiles(self, info, profile_id=None):
+        Profile = swapper.load_model("baseapp_profiles", "Profile")
+
+        if profile_id:
+            pk = get_pk_from_relay_id(profile_id)
+            profile = Profile.objects.get_if_member(pk=pk, user=info.context.user)
+        else:
+            profile = info.context.user.current_profile
+
+        if not profile:
+            return None
+
+        return Reaction.objects.filter(
+            target_content_type=ContentType.objects.get_for_model(self),
+            target_object_id=self.pk,
+            profile_id=profile.pk,
+        ).first()
+
+    def _resolve_my_reaction_without_profiles(self, info):
+        return Reaction.objects.filter(
+            target_content_type=ContentType.objects.get_for_model(self),
+            target_object_id=self.pk,
+            user_id=info.context.user.id,
+        ).first()
 
 
 class BaseReactionObjectType:
@@ -78,6 +97,7 @@ class BaseReactionObjectType:
         fields = (
             "id",
             "user",
+            *apply_if_installed("baseapp_profiles", ["profile"]),
             "reaction_type",
             "created",
             "modified",

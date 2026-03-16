@@ -46,8 +46,8 @@ if apps.is_installed("baseapp_profiles"):
 
 
 class ActivityLogPermissionsBackend(
-    [*activity_log_permissions_classes, BaseActivityLogPermissionsBackend]
+    ProfileActivityLogPermissionsBackend, BaseActivityLogPermissionsBackend
 ):
-    PUBLIC_PERMISSIONS = {
-        *BaseActivityLogPermissionsBackend.PUBLIC_PERMISSIONS * activity_log_public_permissions
-    }
+    PUBLIC_PERMISSIONS = (
+        BaseActivityLogPermissionsBackend.PUBLIC_PERMISSIONS | activity_log_public_permissions
+    )

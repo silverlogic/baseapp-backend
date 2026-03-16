@@ -53,7 +53,7 @@ if getattr(settings, "BASEAPP_COMMENTS_ENABLE_GRAPHQL_SUBSCRIPTIONS", True):
 
 
 def update_comments_count(sender, instance, created=False, **kwargs):
-    from .models import CommentStats, default_comments_count
+    default_comments_count = sender._meta.get_field("comments_count").get_default
 
     if instance.in_reply_to_id:
         qs = sender.objects_visible.filter(in_reply_to_id=instance.in_reply_to_id)
@@ -65,39 +65,25 @@ def update_comments_count(sender, instance, created=False, **kwargs):
         counts["main"] = counts["total"]
 
         parent = instance.in_reply_to
-        if parent.target:
-            parent_doc = DocumentId.get_or_create_for_object(parent.target)
-            if parent_doc:
-                stats, _ = CommentStats.objects.get_or_create(target=parent_doc)
-                stats.comments_count = counts
-                stats.save(update_fields=["comments_count"])
+        parent.comments_count = counts
+        parent.save(update_fields=["comments_count"])
 
     target = instance.target
-    if target:
-        target_doc = DocumentId.get_or_create_for_object(target)
-        if target_doc:
-            counts = default_comments_count()
+    if target and hasattr(target, "comments_count"):
+        counts = default_comments_count()
 
-            target_content_type = ContentType.objects.get_for_model(target)
-            qs = sender.objects_visible.filter(
-                target_content_type=target_content_type, target_object_id=target.pk
-            )
+        target_content_type = ContentType.objects.get_for_model(target)
+        qs = sender.objects_visible.filter(
+            target_content_type=target_content_type, target_object_id=target.pk
+        )
 
-            counts["total"] = qs.count()
-            counts["replies"] = qs.filter(in_reply_to__isnull=False).count()
-            counts["pinned"] = qs.filter(in_reply_to__isnull=True, is_pinned=True).count()
-            counts["main"] = counts["total"] - counts["replies"]
+        counts["total"] = qs.count()
+        counts["replies"] = qs.filter(in_reply_to__isnull=False).count()
+        counts["pinned"] = qs.filter(in_reply_to__isnull=True, is_pinned=True).count()
+        counts["main"] = counts["total"] - counts["replies"]
 
-            stats, _ = CommentStats.objects.get_or_create(target=target_doc)
-            stats.comments_count = counts
-            stats.save(update_fields=["comments_count"])
-
-            if created:
-                comment_created.send(
-                    sender=Comment,
-                    comment_id=instance.id,
-                    target_document_id=target_doc.id,
-                )
+        target.comments_count = counts
+        target.save(update_fields=["comments_count"])
 
 
 post_save.connect(update_comments_count, sender=Comment, dispatch_uid="update_comments_count")

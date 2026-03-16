@@ -12,9 +12,7 @@ class PagesPlugin(BaseAppPlugin):
 
     def get_settings(self) -> PackageSettings:
         return PackageSettings(
-            required_packages=[
-                "baseapp_core",
-            ],
+            required_packages=[],
             optional_packages=[
                 "baseapp_comments",
             ],

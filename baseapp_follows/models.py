@@ -5,9 +5,10 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql.models import RelayModel
+from baseapp_core.models import DocumentIdMixin
 
 
-class AbstractBaseFollow(TimeStampedModel, RelayModel):
+class AbstractBaseFollow(TimeStampedModel, DocumentIdMixin, RelayModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name=_("user"),

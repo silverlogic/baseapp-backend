@@ -6,7 +6,7 @@ from graphql.error import GraphQLError
 from rest_framework import serializers
 
 from baseapp_core.graphql import SerializerMutation, login_required
-from baseapp_core.plugins import shared_service_registry
+from baseapp_core.plugins import shared_services
 
 Organization = swapper.load_model("baseapp_organizations", "Organization")
 app_label = Organization._meta.app_label
@@ -34,9 +34,7 @@ class OrganizationCreate(SerializerMutation):
         lambda: Organization.get_graphql_object_type()._meta.connection.Edge
     )
     profile = graphene.Field(
-        lambda: shared_service_registry.get_service(
-            "profiles.graphql"
-        ).get_profile_connection_edge()
+        lambda: shared_services.get("profiles.graphql").get_profile_connection_edge()
     )
 
     class Meta:
@@ -68,7 +66,7 @@ class OrganizationCreate(SerializerMutation):
 
         obj = serializer.save()
 
-        if service := shared_service_registry.get_service("profiles.graphql"):
+        if service := shared_services.get("profiles.graphql"):
             try:
                 profile_edge = service.create_profile_from_mutation(
                     info,

@@ -44,23 +44,33 @@ class ReactionToggle(RelayMutation):
 
             set_public_activity(verb=activity_name)
 
-        if input.get("profile_object_id"):
-            profile = get_obj_from_relay_id(info, input.get("profile_object_id"))
+        if apps.is_installed("baseapp_profiles"):
+            if input.get("profile_object_id"):
+                profile = get_obj_from_relay_id(info, input.get("profile_object_id"))
 
-        profile = profile or info.context.user.current_profile
+            profile = profile or info.context.user.current_profile
 
-        if not info.context.user.has_perm("baseapp_reactions.add_reaction_with_profile", profile):
-            raise GraphQLError(
-                str(_("You don't have permission to perform this action")),
-                extensions={"code": "permission_required"},
+            if not info.context.user.has_perm(
+                "baseapp_reactions.add_reaction_with_profile", profile
+            ):
+                raise GraphQLError(
+                    str(_("You don't have permission to perform this action")),
+                    extensions={"code": "permission_required"},
+                )
+
+            reaction, created = Reaction.objects.get_or_create(
+                profile=profile,
+                target_object_id=target.pk,
+                target_content_type=target_content_type,
+                defaults={"reaction_type": reaction_type, "user": info.context.user},
             )
-
-        reaction, created = Reaction.objects.get_or_create(
-            profile=profile,
-            target_object_id=target.pk,
-            target_content_type=target_content_type,
-            defaults={"reaction_type": reaction_type, "user": info.context.user},
-        )
+        else:
+            reaction, created = Reaction.objects.get_or_create(
+                user=info.context.user,
+                target_object_id=target.pk,
+                target_content_type=target_content_type,
+                defaults={"reaction_type": reaction_type},
+            )
         if not created:
             if reaction.reaction_type == reaction_type:
                 if not info.context.user.has_perm("baseapp_reactions.delete_reaction", reaction):

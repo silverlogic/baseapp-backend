@@ -5,6 +5,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from baseapp_core.graphql import RelayModel
+from baseapp_core.models import DocumentIdMixin
 
 
 class VisibilityTypes(models.IntegerChoices):
@@ -20,15 +21,18 @@ class VisibilityTypes(models.IntegerChoices):
 inheritances = []
 
 if apps.is_installed("baseapp_profiles"):
-    Profile = swapper.load_model("baseapp_profiles", "Profile")
+    ProfileModel = swapper.get_model_name("baseapp_profiles", "Profile")
 
-    class ProfileMixin:
-        profile = models.ForeignKey(Profile, on_delete=models.DO_NOTHING)
+    class ProfileMixin(models.Model):
+        profile = models.ForeignKey(ProfileModel, on_delete=models.DO_NOTHING)
+
+        class Meta:
+            abstract = True
 
     inheritances.append(ProfileMixin)
 
 
-class ActivityLog([*inheritances, RelayModel]):
+class ActivityLog(*inheritances, DocumentIdMixin, RelayModel):
     id = models.UUIDField(primary_key=True, editable=False)
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()

@@ -33,7 +33,7 @@ class SharedServiceRegistry:
             )
         self._registry[provider.service_name] = provider
 
-    def get_service(self, service_name: str) -> Optional[SharedServiceProvider]:
+    def get(self, service_name: str) -> Optional[SharedServiceProvider]:
         """Return the provider for service_name, or None if missing/unavailable."""
         provider = self._registry.get(service_name)
         if provider is None:
@@ -44,7 +44,7 @@ class SharedServiceRegistry:
 
     def has_service(self, service_name: str) -> bool:
         """Return True if a registered, available service exists for service_name."""
-        return self.get_service(service_name) is not None
+        return self.get(service_name) is not None
 
 
-shared_service_registry = SharedServiceRegistry()
+shared_services = SharedServiceRegistry()

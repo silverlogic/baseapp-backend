@@ -4,12 +4,12 @@ from model_utils import FieldTracker
 
 from baseapp_auth.models import AbstractUser
 from baseapp_core.graphql.models import RelayModel
-from baseapp_profiles.models import ProfilableModel
+from baseapp_core.models import DocumentIdMixin
 from baseapp_profiles.signals import update_user_profile
 from baseapp_ratings.models import RatableModel
 
 
-class User(AbstractUser, RelayModel, RatableModel, ProfilableModel):
+class User(AbstractUser, DocumentIdMixin, RelayModel, RatableModel):
     # FieldTracker doesn't work with abstract model classes
     tracker = FieldTracker(fields=["is_superuser", "password"])
 

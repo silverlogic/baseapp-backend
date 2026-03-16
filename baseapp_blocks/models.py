@@ -2,14 +2,27 @@ import swapper
 from django.db import models
 
 from baseapp_blocks.base import AbstractBaseBlock
+from baseapp_core.plugins import apply_if_installed
 
 
 class Block(AbstractBaseBlock):
     class Meta:
         indexes = [
-            models.Index(fields=["target", "actor"]),
+            models.Index(
+                fields=apply_if_installed(
+                    "baseapp_profiles",
+                    ["target", "actor"],
+                    ["target", "user"],
+                )
+            ),
         ]
-        unique_together = [("actor", "target")]
+        unique_together = [
+            apply_if_installed(
+                "baseapp_profiles",
+                ("actor", "target"),
+                ("user", "target"),
+            )
+        ]
 
         swappable = swapper.swappable_setting("baseapp_blocks", "Block")
 

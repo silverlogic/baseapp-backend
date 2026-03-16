@@ -28,9 +28,8 @@ def use_relay_model():
 
 def use_profile_model():
     if apps.is_installed("baseapp_profiles"):
-        from baseapp_profiles.models import ProfilableModel
 
-        class UserProfilableModel(ProfilableModel):
+        class UserProfilableModel(models.Model):
             profile = models.OneToOneField(
                 swapper.get_model_name("baseapp_profiles", "Profile"),
                 related_name="%(class)s",
@@ -47,7 +46,12 @@ def use_profile_model():
     return object
 
 
-class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_profile_model()):
+class AbstractUser(
+    use_profile_model(),
+    use_relay_model(),
+    PermissionsMixin,
+    AbstractBaseUser,
+):
     email = CaseInsensitiveEmailField(unique=True, db_index=True)
     is_email_verified = models.BooleanField(default=False)
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)

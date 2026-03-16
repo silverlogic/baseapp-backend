@@ -40,6 +40,8 @@ dependencies = [
     "django-ipware>=7.0.1",
     "python-ipware>=3.0.0",
     "requests>=2.32.3",
+    "stevedore>=5.7.0",
+    "pydantic>=2.12.5",
 ]
 
 [project.optional-dependencies]
@@ -180,6 +182,11 @@ baseapp_auth = ["*.j2", "*.html", "*.png"]
 baseapp_referrals = ["*.j2", "*.html", "*.png"]
 baseapp_pdf = ["*.j2", "*.html", "*.png"]
 baseapp_api_key = ["*.j2", "*.html"]
+
+[project.entry-points."baseapp.plugins"]
+baseapp_auth = "baseapp_auth.plugin:AuthPlugin"
+baseapp_comments = "baseapp_comments.plugin:CommentsPlugin"
+baseapp_pages = "baseapp_pages.plugin:PagesPlugin"	
 
 [tool.black]
 line-length = 100

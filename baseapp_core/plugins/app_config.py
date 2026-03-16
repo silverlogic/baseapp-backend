@@ -30,7 +30,7 @@ class ServicesContributor:
         """
         Register this app's shared services with the runtime service registry.
 
-        Override in your app and call shared_service_registry.register(name, instance)
+        Override in your app and call shared_services.register(name, instance)
         for each shared service you provide.
         """
         pass
@@ -51,7 +51,7 @@ class GraphQLContributor:
         """
         Register this app's GraphQL shared interfaces with the runtime registry.
 
-        Override in your app and call graphql_shared_interface_registry.register(name, interface)
+        Override in your app and call graphql_shared_interfaces.register(name, interface)
         for each shared interface you provide. Shared interfaces are app-agnostic; consumers
         opt in by name.
         """
@@ -86,14 +86,14 @@ class BaseAppConfig(AppConfig):
     def ready(self) -> None:
         """Run runtime registration: services, serializers, and GraphQL capabilities."""
         from . import (
-            graphql_shared_interface_registry,
+            graphql_shared_interfaces,
             shared_serializer_registry,
-            shared_service_registry,
+            shared_services,
         )
 
         if isinstance(self, ServicesContributor):
-            self.register_shared_services(shared_service_registry)
+            self.register_shared_services(shared_services)
         if isinstance(self, SerializersContributor):
             self.register_shared_serializers(shared_serializer_registry)
         if isinstance(self, GraphQLContributor):
-            self.register_graphql_shared_interfaces(graphql_shared_interface_registry)
+            self.register_graphql_shared_interfaces(graphql_shared_interfaces)

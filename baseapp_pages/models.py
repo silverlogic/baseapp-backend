@@ -1,5 +1,6 @@
 import pghistory
 import swapper
+from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -12,10 +13,10 @@ from model_utils.models import TimeStampedModel
 from translated_fields import TranslatedField
 
 from baseapp_core.graphql.models import RelayModel
-from baseapp_core.models import random_name_in
+from baseapp_core.models import DocumentIdMixin, random_name_in
 
 
-class URLPath(TimeStampedModel, RelayModel):
+class URLPath(DocumentIdMixin, RelayModel, TimeStampedModel):
     path = models.CharField(max_length=500, unique=True)
     language = models.CharField(max_length=10, choices=settings.LANGUAGES, null=True, blank=True)
     is_active = models.BooleanField(default=False)
@@ -53,7 +54,7 @@ class URLPath(TimeStampedModel, RelayModel):
     pghistory.UpdateEvent(),
     pghistory.DeleteEvent(),
 )
-class Metadata(TimeStampedModel, RelayModel):
+class Metadata(TimeStampedModel, DocumentIdMixin, RelayModel):
     target_content_type = models.ForeignKey(
         ContentType,
         blank=True,
@@ -104,7 +105,15 @@ class PageMixin(models.Model):
         ).first()
 
 
-class AbstractPage(PageMixin, TimeStampedModel, RelayModel):
+inheritances = []
+
+if apps.is_installed("baseapp_comments"):
+    from baseapp_comments.models import CommentableModel
+
+    inheritances.append(CommentableModel)
+
+
+class AbstractPage(*inheritances, PageMixin, DocumentIdMixin, RelayModel, TimeStampedModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="pages",

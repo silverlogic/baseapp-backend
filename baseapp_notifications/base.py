@@ -5,9 +5,10 @@ from model_utils.models import TimeStampedModel
 from notifications.base.models import AbstractNotification as BaseAbstractNotification
 
 from baseapp_core.graphql.models import RelayModel
+from baseapp_core.models import DocumentIdMixin
 
 
-class AbstractNotification(BaseAbstractNotification, RelayModel):
+class AbstractNotification(BaseAbstractNotification, DocumentIdMixin, RelayModel):
     class Meta(BaseAbstractNotification.Meta):
         abstract = True
 
@@ -34,7 +35,7 @@ class AbstractNotification(BaseAbstractNotification, RelayModel):
         )
 
 
-class AbstractNotificationSetting(TimeStampedModel, RelayModel):
+class AbstractNotificationSetting(TimeStampedModel, DocumentIdMixin, RelayModel):
     class Meta:
         abstract = True
 

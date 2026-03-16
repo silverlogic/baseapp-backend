@@ -1,13 +1,20 @@
 import swapper
+from django.apps import apps
 from django.contrib.auth.backends import BaseBackend
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
-Profile = swapper.load_model("baseapp_profiles", "Profile")
-profile_app_label = Profile._meta.app_label
 
 
 class ReactionsPermissionsBackend(BaseBackend):
     def has_perm(self, user_obj, perm, obj=None):
+        if apps.is_installed("baseapp_profiles"):
+            return self._has_perm_with_profiles(user_obj, perm, obj)
+        return self._has_perm_without_profiles(user_obj, perm, obj)
+
+    def _has_perm_with_profiles(self, user_obj, perm, obj=None):
+        Profile = swapper.load_model("baseapp_profiles", "Profile")
+        use_profile_perm = f"{Profile._meta.app_label}.use_profile"
+
         if perm == "baseapp_reactions.add_reaction":
             return user_obj.is_authenticated and getattr(obj, "is_reactions_enabled", False)
 
@@ -29,4 +36,25 @@ class ReactionsPermissionsBackend(BaseBackend):
                     return user_obj.has_perm(perm)
 
         if perm == "baseapp_reactions.add_reaction_with_profile" and obj:
-            return user_obj.has_perm(f"{profile_app_label}.use_profile", obj)
+            return user_obj.has_perm(use_profile_perm, obj)
+
+        return False
+
+    def _has_perm_without_profiles(self, user_obj, perm, obj=None):
+        if perm == "baseapp_reactions.add_reaction":
+            return user_obj.is_authenticated and getattr(obj, "is_reactions_enabled", False)
+
+        if perm == "baseapp_reactions.view_reaction":
+            return True
+
+        if perm in ["baseapp_reactions.change_reaction", "baseapp_reactions.delete_reaction"]:
+            if isinstance(obj, Reaction):
+                if obj.target and not getattr(obj.target, "is_reactions_enabled", True):
+                    return False
+
+                if user_obj.is_authenticated:
+                    if obj.user_id == user_obj.id:
+                        return True
+                    return user_obj.has_perm(perm)
+
+        return False

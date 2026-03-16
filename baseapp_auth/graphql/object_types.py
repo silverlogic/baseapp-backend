@@ -6,7 +6,7 @@ from query_optimizer import optimize
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import ThumbnailField
-from baseapp_core.plugins import graphql_shared_interface_registry
+from baseapp_core.plugins import graphql_shared_interfaces
 
 from .filters import UsersFilter
 from .permissions import PermissionsInterface
@@ -83,7 +83,7 @@ class AbstractUserObjectType(*inheritances, object):
             "last_login",
             "profiles",
         )
-        interfaces = graphql_shared_interface_registry.get_interfaces(
+        interfaces = graphql_shared_interfaces.get_interfaces(
             ["profile", "profiles_list"], interfaces
         )
         filterset_class = UsersFilter

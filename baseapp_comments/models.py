@@ -1,6 +1,7 @@
 import pghistory
 import pgtrigger
 import swapper
+from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -9,7 +10,9 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql import RelayModel
+from baseapp_core.models import DocumentIdMixin
 from baseapp_core.pghelpers import pghistory_register_default_track
+from baseapp_core.plugins import apply_if_installed
 from baseapp_core.swapper import init_swapped_models
 from baseapp_reactions.models import ReactableModel
 from baseapp_reports.models import ReportableModel
@@ -49,21 +52,38 @@ class NonDeletedComments(models.Manager):
         return super(NonDeletedComments, self).get_queryset().exclude(status=CommentStatus.DELETED)
 
 
+comment_inheritances = []
+
+if apps.is_installed("baseapp_profiles"):
+
+    class ProfileMixin(models.Model):
+        profile = models.ForeignKey(
+            swapper.get_model_name("baseapp_profiles", "Profile"),
+            verbose_name=_("profile"),
+            related_name="comments",
+            on_delete=models.SET_NULL,
+            null=True,
+            blank=True,
+        )
+
+        class Meta:
+            abstract = True
+
+    comment_inheritances.append(ProfileMixin)
+
+
 class AbstractComment(
-    TimeStampedModel, AbstractCommentableModel, ReactableModel, ReportableModel, RelayModel
+    *comment_inheritances,
+    AbstractCommentableModel,
+    ReactableModel,
+    ReportableModel,
+    DocumentIdMixin,
+    RelayModel,
+    TimeStampedModel,
 ):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name=_("user"),
-        related_name="comments",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-    )
-
-    profile = models.ForeignKey(
-        swapper.get_model_name("baseapp_profiles", "Profile"),
-        verbose_name=_("profile"),
         related_name="comments",
         on_delete=models.SET_NULL,
         null=True,
@@ -137,11 +157,13 @@ class AbstractComment(
             ("pin_comment", _("can pin comments")),
             ("report_comment", _("can report comments")),
             ("view_all_comments", _("can view all comments")),
-            ("add_comment_with_profile", _("can add comments with profile")),
+            *apply_if_installed(
+                "baseapp_profiles",
+                [("add_comment_with_profile", _("can add comments with profile"))],
+            ),
         ]
         verbose_name = _("comment")
         verbose_name_plural = _("comments")
-        swappable = swapper.swappable_setting("baseapp_comments", "Comment")
 
     def __str__(self):
         return "Comment #%s by %s" % (self.id, self.user_id)
@@ -153,42 +175,9 @@ class AbstractComment(
         return CommentObjectType
 
 
-# TODO: Think in a better name for this model. It's not about stats.
-# Maybe CommentTarget or CommentHub or something else.
-class AbstractCommentStats(TimeStampedModel):
-    target = models.OneToOneField(
-        swapper.get_model_name("baseapp_comments", "Comment"),
-        on_delete=models.CASCADE,
-        related_name="comment_stats",
-        primary_key=True,
-        db_index=True,
-    )
-    comments_count = models.JSONField(default=default_comments_count, editable=False)
-    is_comments_enabled = models.BooleanField(default=True)
-
-    class Meta:
-        abstract = True
-
-    def __str__(self):
-        return f"CommentStats for {self.target}"
-
-
-class CommentableModel(AbstractCommentableModel):
-    comments = GenericRelation(
-        swapper.get_model_name("baseapp_comments", "Comment"),
-        verbose_name=_("comments"),
-        content_type_field="target_content_type",
-        object_id_field="target_object_id",
-    )
-
-    class Meta:
-        abstract = True
-
-
-Comment, CommentStats = init_swapped_models(
+Comment = init_swapped_models(
     [
         ("baseapp_comments", "Comment"),
-        ("baseapp_comments", "CommentStats"),
     ]
 )
 
@@ -200,3 +189,15 @@ pghistory_register_default_track(
     pghistory.DeleteEvent(),
     exclude=["comments_count", "reactions_count", "modified"],
 )
+
+
+class CommentableModel(AbstractCommentableModel):
+    comments = GenericRelation(
+        Comment,
+        verbose_name=_("comments"),
+        content_type_field="target_content_type",
+        object_id_field="target_object_id",
+    )
+
+    class Meta:
+        abstract = True

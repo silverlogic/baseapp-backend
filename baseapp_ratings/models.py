@@ -7,9 +7,10 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql import RelayModel
+from baseapp_core.models import DocumentIdMixin
 
 
-class AbstractBaseRate(TimeStampedModel, RelayModel):
+class AbstractBaseRate(TimeStampedModel, DocumentIdMixin, RelayModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="ratings",

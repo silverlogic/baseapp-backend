@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from django.apps.registry import Apps
 
 
-def init_swapped_models(models: list[tuple[str, str]]) -> list[Type[Model]]:
+def init_swapped_models(models: list[tuple[str, str]]) -> list[Type[Model]] | Type[Model]:
     """
     Initialize swapped models from a list of app_label and model_name tuples.
     This initilization was made to be used inside models.py files, when the app ready methods are not called yet.
@@ -17,6 +17,8 @@ def init_swapped_models(models: list[tuple[str, str]]) -> list[Type[Model]]:
         swapped_models.append(
             swapper.load_model(app_label, model_name, required=True, require_ready=False)
         )
+    if len(swapped_models) == 1:
+        return swapped_models[0]
     return swapped_models
 
 

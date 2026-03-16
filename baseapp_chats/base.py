@@ -9,10 +9,10 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql.models import RelayModel
-from baseapp_core.models import random_name_in
+from baseapp_core.models import DocumentIdMixin, random_name_in
 
 
-class AbstractBaseChatRoom(TimeStampedModel, RelayModel):
+class AbstractBaseChatRoom(TimeStampedModel, DocumentIdMixin, RelayModel):
     title = models.CharField(max_length=255, blank=True, null=True)
     image = models.ImageField(
         _("image"), upload_to=random_name_in("chat_room_images"), blank=True, null=True
@@ -57,7 +57,7 @@ class AbstractBaseChatRoom(TimeStampedModel, RelayModel):
         return ChatRoomObjectType
 
 
-class AbstractBaseMessage(TimeStampedModel, RelayModel):
+class AbstractBaseMessage(TimeStampedModel, DocumentIdMixin, RelayModel):
     class Verbs(models.IntegerChoices):
         SENT_MESSAGE = 100, _("sent a message")
 
@@ -186,7 +186,7 @@ class AbstractBaseMessage(TimeStampedModel, RelayModel):
                     )
 
 
-class AbstractChatRoomParticipant(TimeStampedModel, RelayModel):
+class AbstractChatRoomParticipant(TimeStampedModel, DocumentIdMixin, RelayModel):
     class ChatRoomParticipantRoles(models.IntegerChoices):
         MEMBER = 1, _("member")
         ADMIN = 2, _("admin")
@@ -223,7 +223,7 @@ class AbstractChatRoomParticipant(TimeStampedModel, RelayModel):
         return ChatRoomParticipantObjectType
 
 
-class AbstractUnreadMessageCount(RelayModel):
+class AbstractUnreadMessageCount(DocumentIdMixin, RelayModel):
     room = models.ForeignKey(
         swapper.get_model_name("baseapp_chats", "ChatRoom"),
         related_name="unread_messages",
@@ -241,7 +241,7 @@ class AbstractUnreadMessageCount(RelayModel):
         unique_together = ["room_id", "profile_id"]
 
 
-class AbstractMessageStatus(RelayModel):
+class AbstractMessageStatus(DocumentIdMixin, RelayModel):
     message = models.ForeignKey(
         swapper.get_model_name("baseapp_chats", "Message"),
         on_delete=models.CASCADE,

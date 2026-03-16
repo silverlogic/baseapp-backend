@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import graphene
 import swapper
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
-
-from baseapp_core.models import DocumentId
-from baseapp_profiles.graphql.mutations import ProfileCreateSerializer
 
 from .base_service import BaseProfilesService
 
@@ -26,8 +24,12 @@ class GraphQLProfileService(BaseProfilesService):
     def create_profile_from_mutation(
         self, info: graphene.ResolveInfo, target_instance: models.Model, data: dict
     ) -> graphene.Connection.Edge:
+        from baseapp_profiles.graphql.mutations import ProfileCreateSerializer
+
+        content_type = ContentType.objects.get_for_model(target_instance._meta.model)
         profile_data = {
-            "target": DocumentId.get_or_create_for_object(target_instance),
+            "target_content_type": content_type.id,
+            "target_object_id": target_instance.id,
             **data,
         }
         profile_serializer = ProfileCreateSerializer(

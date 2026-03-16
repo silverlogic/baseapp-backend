@@ -63,4 +63,4 @@ class GraphQLSharedInterfaceRegistry:
         return tuple(result)
 
 
-graphql_shared_interface_registry = GraphQLSharedInterfaceRegistry()
+graphql_shared_interfaces = GraphQLSharedInterfaceRegistry()
