@@ -96,9 +96,9 @@ class UserSerializer(UserBaseSerializer):
             get_user_referral_model().objects.create(referrer=self.referrer, referee=instance)
 
         if "avatar" in validated_data:
+            avatar = validated_data.pop("avatar")
             # TODO (profile): consider using a service to update the avatar and then update where avatar is used.
             if profile := getattr(instance, "profile", None):
-                avatar = validated_data.pop("avatar")
                 if avatar:
                     profile.image = avatar
                 else:

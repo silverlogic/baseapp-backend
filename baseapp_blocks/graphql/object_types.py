@@ -42,10 +42,13 @@ class BlocksInterface(RelayNode):
             return False
 
         if apps.is_installed("baseapp_profiles"):
-            return self._resolve_is_blocked_by_me_with_profiles(info, profile_id=profile_id)
-        return self._resolve_is_blocked_by_me_without_profiles(info)
+            return BlocksInterface._resolve_is_blocked_by_me_with_profiles(
+                self, info, profile_id=profile_id
+            )
+        return BlocksInterface._resolve_is_blocked_by_me_without_profiles(self, info)
 
-    def _resolve_is_blocked_by_me_with_profiles(self, info, profile_id=None) -> bool:
+    @staticmethod
+    def _resolve_is_blocked_by_me_with_profiles(root, info, profile_id=None) -> bool:
         Profile = swapper.load_model("baseapp_profiles", "Profile")
 
         if profile_id:
@@ -58,14 +61,15 @@ class BlocksInterface(RelayNode):
             bool(actor)
             and Block.objects.filter(
                 actor_id=actor.id,
-                target_id=self.id,
+                target_id=root.id,
             ).exists()
         )
 
-    def _resolve_is_blocked_by_me_without_profiles(self, info) -> bool:
+    @staticmethod
+    def _resolve_is_blocked_by_me_without_profiles(root, info) -> bool:
         return Block.objects.filter(
             user_id=info.context.user.id,
-            target_id=self.id,
+            target_id=root.id,
         ).exists()
 
 

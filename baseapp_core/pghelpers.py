@@ -1,6 +1,7 @@
 from typing import Any, Callable, Type
 
 import pghistory
+import pghistory.core as pgh_core
 from django.db.models import Model
 
 # Registry to store pghistory track configurations
@@ -88,5 +89,14 @@ def apply_pghistory_tracks() -> None:
     Decorator overrides take precedence over default tracks.
     """
     for model_cls, (args, kwargs, _) in _pghistory_registry.items():
-        if not model_cls._meta.abstract:
-            pghistory.track(*args, **kwargs)(model_cls)
+        if model_cls._meta.abstract:
+            continue
+
+        existing = pgh_core.event_models(
+            tracks_model=model_cls,
+            include_missing_pgh_obj=True,
+        )
+        if existing:
+            continue
+
+        pghistory.track(*args, **kwargs)(model_cls)

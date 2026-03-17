@@ -3,6 +3,8 @@ from django.contrib.auth.backends import BaseBackend
 
 from baseapp_core.plugins import apply_if_installed
 
+PERM_LIST_PROFILE_ROLE = "activity_log.list_profile_activitylog"
+
 
 class ActivityLogPermissionsBackend(BaseBackend):
     # Permission constants
@@ -13,7 +15,7 @@ class ActivityLogPermissionsBackend(BaseBackend):
     PERM_VIEW_NODE_DATA = "activity_log.view_nodelogevent-data"
     PERM_VIEW_NODE_DIFF = "activity_log.view_nodelogevent-diff"
     if apps.is_installed("baseapp_profiles"):
-        PERM_LIST_PROFILE = "activity_log.list_profile_activitylog"
+        PERM_LIST_PROFILE = PERM_LIST_PROFILE_ROLE
 
     # Permissions that are always granted
     PUBLIC_PERMISSIONS = {
@@ -23,8 +25,7 @@ class ActivityLogPermissionsBackend(BaseBackend):
         PERM_VIEW_NODE_DIFF,
         *apply_if_installed(
             "baseapp_profiles",
-            lambda: [ActivityLogPermissionsBackend.PERM_LIST_PROFILE],
-            [],
+            [PERM_LIST_PROFILE_ROLE],
         ),
     }
 
@@ -40,3 +41,5 @@ class ActivityLogPermissionsBackend(BaseBackend):
             self.PERM_VIEW_NODE_DIFF,
         }:
             return bool(user_obj.is_superuser)
+
+        return False
