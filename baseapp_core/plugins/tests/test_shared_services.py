@@ -33,7 +33,7 @@ class TestSharedServiceRegistry:
         registry = SharedServiceRegistry()
         provider = MockSharedServiceProvider("test_service")
 
-        registry.register("test_service", provider)
+        registry.register(provider)
         assert "test_service" in registry._registry
         assert registry._registry["test_service"] == provider
 
@@ -41,12 +41,12 @@ class TestSharedServiceRegistry:
         registry = SharedServiceRegistry()
 
         with pytest.raises(TypeError, match="Provider must implement SharedServiceProvider"):
-            registry.register("test_service", "not_a_provider")
+            registry.register("not_a_provider")
 
     def test_get_service_returns_provider_when_available(self):
         registry = SharedServiceRegistry()
         provider = MockSharedServiceProvider("test_service", available=True)
-        registry.register("test_service", provider)
+        registry.register(provider)
 
         result = registry.get("test_service")
         assert result == provider
@@ -54,7 +54,7 @@ class TestSharedServiceRegistry:
     def test_get_service_returns_none_when_unavailable(self):
         registry = SharedServiceRegistry()
         provider = MockSharedServiceProvider("test_service", available=False)
-        registry.register("test_service", provider)
+        registry.register(provider)
 
         result = registry.get("test_service")
         assert result is None
@@ -68,14 +68,14 @@ class TestSharedServiceRegistry:
     def test_has_service_returns_true_when_available(self):
         registry = SharedServiceRegistry()
         provider = MockSharedServiceProvider("test_service", available=True)
-        registry.register("test_service", provider)
+        registry.register(provider)
 
         assert registry.has_service("test_service") is True
 
     def test_has_service_returns_false_when_unavailable(self):
         registry = SharedServiceRegistry()
         provider = MockSharedServiceProvider("test_service", available=False)
-        registry.register("test_service", provider)
+        registry.register(provider)
 
         assert registry.has_service("test_service") is False
 
@@ -89,8 +89,8 @@ class TestSharedServiceRegistry:
         provider1 = MockSharedServiceProvider("service1")
         provider2 = MockSharedServiceProvider("service2")
 
-        registry.register("service1", provider1)
-        registry.register("service2", provider2)
+        registry.register(provider1)
+        registry.register(provider2)
 
         assert registry.has_service("service1") is True
         assert registry.has_service("service2") is True
@@ -103,10 +103,10 @@ class TestSharedServiceRegistry:
         provider1 = MockSharedServiceProvider("test_service")
         provider2 = MockSharedServiceProvider("test_service")
 
-        registry.register("test_service", provider1)
+        registry.register(provider1)
         assert registry.get("test_service") == provider1
 
-        registry.register("test_service", provider2)
+        registry.register(provider2)
         assert registry.get("test_service") == provider2
 
     def test_service_provider_protocol(self):

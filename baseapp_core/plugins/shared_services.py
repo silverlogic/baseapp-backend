@@ -5,6 +5,8 @@ no entry points. Consumers resolve shared services lazily via get_service().
 
 from typing import Optional, Protocol, runtime_checkable
 
+from .readiness import require_django_ready
+
 
 @runtime_checkable
 class SharedServiceProvider(Protocol):
@@ -33,6 +35,7 @@ class SharedServiceRegistry:
             )
         self._registry[provider.service_name] = provider
 
+    @require_django_ready
     def get(self, service_name: str) -> Optional[SharedServiceProvider]:
         """Return the provider for service_name, or None if missing/unavailable."""
         provider = self._registry.get(service_name)
@@ -42,6 +45,7 @@ class SharedServiceRegistry:
             return None
         return provider
 
+    @require_django_ready
     def has_service(self, service_name: str) -> bool:
         """Return True if a registered, available service exists for service_name."""
         return self.get(service_name) is not None

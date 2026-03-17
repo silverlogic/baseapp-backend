@@ -382,30 +382,7 @@ dev = [
     { name = "pytest-django" },
     { name = "responses" },
     { name = "rest-social-auth" },
-    { name = "urllib3" },
-]
-testproject = [
-    { name = "baseapp-backend", extra = ["auth", "graphql", "messagetemplates", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "urlshortening", "wagtail"] },
-    { name = "black" },
-    { name = "channels" },
-    { name = "channels-redis" },
-    { name = "django-notifications-hq" },
-    { name = "django-push-notifications", extra = ["apns-async", "fcm", "wp"] },
-    { name = "djangorestframework" },
-    { name = "djangorestframework-simplejwt", extra = ["crypto"] },
-    { name = "drf-nested-routers" },
-    { name = "easy-thumbnails" },
-    { name = "factory-boy" },
-    { name = "flake8" },
-    { name = "freezegun" },
-    { name = "isort" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-celery" },
-    { name = "pytest-cov" },
-    { name = "pytest-django" },
-    { name = "responses" },
-    { name = "rest-social-auth" },
+    { name = "testproject" },
     { name = "urllib3" },
 ]
 
@@ -494,30 +471,7 @@ dev = [
     { name = "pytest-django", specifier = "==4.5.2" },
     { name = "responses", specifier = "==0.25.3" },
     { name = "rest-social-auth", specifier = "==9.0.0" },
-    { name = "urllib3", specifier = "==2.6.3" },
-]
-testproject = [
-    { name = "baseapp-backend", extras = ["auth", "graphql", "messagetemplates", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "urlshortening", "wagtail"], editable = "." },
-    { name = "black", specifier = "==24.4.0" },
-    { name = "channels", specifier = "==4.0.0" },
-    { name = "channels-redis", specifier = "==4.0.0" },
-    { name = "django-notifications-hq", git = "https://github.com/openwisp/django-notifications.git?rev=f4918c2409a734ec1aa9798d86c3a729b505f753" },
-    { name = "django-push-notifications", extras = ["apns-async", "fcm", "wp"], specifier = "==3.3.0" },
-    { name = "djangorestframework", specifier = "==3.16.1" },
-    { name = "djangorestframework-simplejwt", extras = ["crypto"], specifier = "==5.5.1" },
-    { name = "drf-nested-routers", specifier = "==0.93.5" },
-    { name = "easy-thumbnails", specifier = "==2.10.1" },
-    { name = "factory-boy", specifier = "==3.2.1" },
-    { name = "flake8", specifier = "==7.0.0" },
-    { name = "freezegun", specifier = "==1.2.1" },
-    { name = "isort", specifier = "==5.13.2" },
-    { name = "pytest", specifier = "==7.4.2" },
-    { name = "pytest-asyncio", specifier = "==0.21.1" },
-    { name = "pytest-celery", specifier = "==1.2.1" },
-    { name = "pytest-cov", specifier = "==4.1.0" },
-    { name = "pytest-django", specifier = "==4.5.2" },
-    { name = "responses", specifier = "==0.25.3" },
-    { name = "rest-social-auth", specifier = "==9.0.0" },
+    { name = "testproject", editable = "testproject" },
     { name = "urllib3", specifier = "==2.6.3" },
 ]
 
@@ -3831,6 +3785,14 @@ sdist = { url = "https://files.pythonhosted.org/packages/47/c6/ee486fd809e357697
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d7/c1/eb8f9debc45d3b7918a32ab756658a0904732f75e555402972246b0b8e71/tenacity-9.1.4-py3-none-any.whl", hash = "sha256:6095a360c919085f28c6527de529e76a06ad89b23659fa881ae0649b867a9d55", size = 28926, upload-time = "2026-02-07T10:45:32.24Z" },
 ]
+
+[[package]]
+name = "testproject"
+version = "0.1.0"
+source = { editable = "testproject" }
+
+[package.metadata]
+provides-extras = ["dev"]
 
 [[package]]
 name = "text-unidecode"

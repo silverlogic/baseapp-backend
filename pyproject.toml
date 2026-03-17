@@ -116,35 +116,13 @@ dev = [
     "django-notifications-hq",
     "django-push-notifications[apns-async,fcm,wp]==3.3.0",
     "baseapp-backend[auth,graphql,messagetemplates,notifications,pages,payments,pdf,referrals,socialauth,urlshortening,wagtail]",
-]
-testproject = [
-    "baseapp-backend[auth,graphql,messagetemplates,notifications,pages,payments,pdf,referrals,socialauth,urlshortening,wagtail]",
-    "black==24.4.0",
-    "channels==4.0.0",
-    "channels-redis==4.0.0",
-    "django-notifications-hq",
-    "django-push-notifications[apns-async,fcm,wp]==3.3.0",
-    "djangorestframework==3.16.1",
-    "djangorestframework-simplejwt[crypto]==5.5.1",
-    "drf-nested-routers==0.93.5",
-    "easy-thumbnails==2.10.1",
-    "factory-boy==3.2.1",
-    "flake8==7.0.0",
-    "freezegun==1.2.1",
-    "isort==5.13.2",
-    "pytest==7.4.2",
-    "pytest-asyncio==0.21.1",
-    "pytest-celery==1.2.1",
-    "pytest-cov==4.1.0",
-    "pytest-django==4.5.2",
-    "responses==0.25.3",
-    "rest-social-auth==9.0.0",
-    "urllib3==2.6.3",
+    "testproject",
 ]
 
 [tool.uv.sources]
 django-notifications-hq = { git = "https://github.com/openwisp/django-notifications.git", rev = "f4918c2409a734ec1aa9798d86c3a729b505f753" }
 baseapp-backend = { workspace = true }
+testproject = { path = "testproject", editable = true }
 
 [tool.setuptools_scm]
 fallback_version = "0.0.0.dev"

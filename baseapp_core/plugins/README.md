@@ -130,8 +130,12 @@ class YourPackagePlugin(BaseAppPlugin):
             django_extra_settings={
                 "BASEAPP_YOURPACKAGE_SETTING": "value",
             },
-            required_packages=["baseapp_core"],
-            optional_packages=["baseapp_notifications"],
+            required_packages=[
+                {"baseapp_core": "Core shared models and plugin infrastructure"},
+            ],
+            optional_packages=[
+                {"baseapp_notifications": "Optional notifications integration"},
+            ],
             graphql_queries=["baseapp_yourpackage.graphql.queries.YourPackageQueries"],
             graphql_mutations=["baseapp_yourpackage.graphql.mutations.YourPackageMutations"],
             graphql_subscriptions=[],
@@ -172,7 +176,7 @@ The `PackageSettings` model defines what each plugin contributes. Only plugins w
 | Dict | `django_extra_settings` | `Dict[str, Any]` | Merged into Django settings |
 | Dict | `celery_beat_schedules`, `celery_task_routes`, `constance_config` | `Dict` | Merged; last plugin wins on conflict |
 | List | `urlpatterns`, `graphql_queries`, `graphql_mutations`, `graphql_subscriptions` | `List` | Aggregated |
-| Deps | `required_packages`, `optional_packages` | `List[str]` | Validation only |
+| Deps | `required_packages`, `optional_packages` | `List[str \| Dict[str, str]]` | Validation only. Dict format is `{package_name: description}` |
 
 **Slotted fields** use a dict: keys are slot names (e.g. `"auth"`, `"profile"`), values are lists. Use `get(key, slot)` to control order.
 

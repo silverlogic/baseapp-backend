@@ -8,6 +8,8 @@ from typing import Any, Callable
 
 from rest_framework import serializers
 
+from .readiness import require_django_ready
+
 SerializerValue = type[serializers.BaseSerializer] | Callable[[], type[serializers.BaseSerializer]]
 
 
@@ -23,6 +25,7 @@ class SharedSerializerRegistry:
         """Register a serializer by name. Call from AppConfig.ready()."""
         self._registry[name] = serializer
 
+    @require_django_ready
     def get_serializer(self, name: str) -> type[serializers.BaseSerializer] | None:
         """Resolve and return the serializer class for name, or None if not registered."""
         value = self._registry.get(name)
@@ -34,6 +37,7 @@ class SharedSerializerRegistry:
             return value()
         return value
 
+    @require_django_ready
     def serialize(
         self,
         name: str,
