@@ -1,8 +1,10 @@
 from django.apps import apps
 from django.contrib.auth.backends import BaseBackend
 
+from baseapp_core.plugins import apply_if_installed
 
-class BaseActivityLogPermissionsBackend(BaseBackend):
+
+class ActivityLogPermissionsBackend(BaseBackend):
     # Permission constants
     PERM_LIST_ANY_VISIBILITY = "activity_log.list_activitylog_any_visibility"
     PERM_LIST_USER = "activity_log.list_user_activitylog"
@@ -10,6 +12,8 @@ class BaseActivityLogPermissionsBackend(BaseBackend):
     PERM_VIEW = "activity_log.view_activitylog"
     PERM_VIEW_NODE_DATA = "activity_log.view_nodelogevent-data"
     PERM_VIEW_NODE_DIFF = "activity_log.view_nodelogevent-diff"
+    if apps.is_installed("baseapp_profiles"):
+        PERM_LIST_PROFILE = "activity_log.list_profile_activitylog"
 
     # Permissions that are always granted
     PUBLIC_PERMISSIONS = {
@@ -17,6 +21,11 @@ class BaseActivityLogPermissionsBackend(BaseBackend):
         PERM_LIST_NODE,
         PERM_VIEW,
         PERM_VIEW_NODE_DIFF,
+        *apply_if_installed(
+            "baseapp_profiles",
+            lambda: [ActivityLogPermissionsBackend.PERM_LIST_PROFILE],
+            [],
+        ),
     }
 
     def has_perm(self, user_obj, perm, obj=None):
@@ -31,23 +40,3 @@ class BaseActivityLogPermissionsBackend(BaseBackend):
             self.PERM_VIEW_NODE_DIFF,
         }:
             return bool(user_obj.is_superuser)
-
-
-activity_log_permissions_classes = []
-activity_log_public_permissions = set()
-
-if apps.is_installed("baseapp_profiles"):
-
-    class ProfileActivityLogPermissionsBackend(BaseActivityLogPermissionsBackend):
-        PERM_LIST_PROFILE = "activity_log.list_profile_activitylog"
-
-    activity_log_permissions_classes.append(ProfileActivityLogPermissionsBackend)
-    activity_log_public_permissions.add(ProfileActivityLogPermissionsBackend.PERM_LIST_PROFILE)
-
-
-class ActivityLogPermissionsBackend(
-    ProfileActivityLogPermissionsBackend, BaseActivityLogPermissionsBackend
-):
-    PUBLIC_PERMISSIONS = (
-        BaseActivityLogPermissionsBackend.PUBLIC_PERMISSIONS | activity_log_public_permissions
-    )

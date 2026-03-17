@@ -53,15 +53,18 @@ class ReactionsInterface(RelayNode):
             target_object_id=self.pk,
         ).order_by("-created")
 
-    def resolve_my_reaction(self, info, profile_id=None, **kwargs):
+    def resolve_my_reaction(root, info, profile_id=None, **kwargs):
         if not info.context.user.is_authenticated:
             return None
 
         if apps.is_installed("baseapp_profiles"):
-            return self._resolve_my_reaction_with_profiles(info, profile_id=profile_id)
-        return self._resolve_my_reaction_with_current_user(info)
+            return ReactionsInterface._resolve_my_reaction_with_profiles(
+                root, info, profile_id=profile_id
+            )
+        return ReactionsInterface._resolve_my_reaction_with_current_user(root, info)
 
-    def _resolve_my_reaction_with_profiles(self, info, profile_id=None):
+    @staticmethod
+    def _resolve_my_reaction_with_profiles(root, info, profile_id=None):
         Profile = swapper.load_model("baseapp_profiles", "Profile")
 
         if profile_id:
@@ -74,15 +77,16 @@ class ReactionsInterface(RelayNode):
             return None
 
         return Reaction.objects.filter(
-            target_content_type=ContentType.objects.get_for_model(self),
-            target_object_id=self.pk,
+            target_content_type=ContentType.objects.get_for_model(root),
+            target_object_id=root.pk,
             profile_id=profile.pk,
         ).first()
 
-    def _resolve_my_reaction_with_current_user(self, info):
+    @staticmethod
+    def _resolve_my_reaction_with_current_user(root, info):
         return Reaction.objects.filter(
-            target_content_type=ContentType.objects.get_for_model(self),
-            target_object_id=self.pk,
+            target_content_type=ContentType.objects.get_for_model(root),
+            target_object_id=root.pk,
             user_id=info.context.user.id,
         ).first()
 

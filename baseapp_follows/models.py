@@ -80,6 +80,14 @@ class AbstractBaseFollow(*inheritances, TimeStampedModel, DocumentIdMixin, Relay
     target_is_following_back = models.BooleanField(default=False)
 
     class Meta:
+        unique_together = [
+            apply_if_installed(
+                "baseapp_profiles",
+                ("actor", "target"),
+                ("user", "target"),
+            )
+        ]
+        swappable = swapper.swappable_setting("baseapp_follows", "Follow")
         abstract = True
 
     def _reciprocal_filter(self) -> dict:
@@ -149,16 +157,8 @@ class AbstractBaseFollow(*inheritances, TimeStampedModel, DocumentIdMixin, Relay
 
 
 class Follow(AbstractBaseFollow):
-    class Meta:
-        unique_together = [
-            apply_if_installed(
-                "baseapp_profiles",
-                ("actor", "target"),
-                ("user", "target"),
-            )
-        ]
-
-        swappable = swapper.swappable_setting("baseapp_follows", "Follow")
+    class Meta(AbstractBaseFollow.Meta):
+        pass
 
 
 class FollowableModel(models.Model):

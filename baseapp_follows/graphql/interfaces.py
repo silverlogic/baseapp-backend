@@ -35,17 +35,21 @@ class FollowsInterface(RelayNode):
         if not info.context.user.is_authenticated:
             return False
         if apps.is_installed("baseapp_profiles"):
-            return self._resolve_is_followed_by_me_with_profiles(info, profile_id=profile_id)
-        return self._resolve_is_followed_by_me_with_current_user(info)
+            return FollowsInterface._resolve_is_followed_by_me_with_profiles(
+                self, info, profile_id=profile_id
+            )
+        return FollowsInterface._resolve_is_followed_by_me_with_current_user(self, info)
 
-    def _resolve_is_followed_by_me_with_profiles(self, info, profile_id=None):
+    @staticmethod
+    def _resolve_is_followed_by_me_with_profiles(root, info, profile_id=None):
         Profile = swapper.load_model("baseapp_profiles", "Profile")
         if profile_id:
             pk = get_pk_from_relay_id(profile_id)
             actor = Profile.objects.get_if_member(pk=pk, user=info.context.user)
         else:
             actor = info.context.user.current_profile
-        return bool(actor) and Follow.objects.filter(actor_id=actor.id, target_id=self.id).exists()
+        return bool(actor) and Follow.objects.filter(actor_id=actor.id, target_id=root.id).exists()
 
-    def _resolve_is_followed_by_me_with_current_user(self, info):
-        return Follow.objects.filter(user_id=info.context.user.id, target_id=self.id).exists()
+    @staticmethod
+    def _resolve_is_followed_by_me_with_current_user(root, info):
+        return Follow.objects.filter(user_id=info.context.user.id, target_id=root.id).exists()

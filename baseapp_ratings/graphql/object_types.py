@@ -44,10 +44,13 @@ class RatingsInterface(RelayNode):
 
         has_profiles = apps.is_installed("baseapp_profiles")
         if has_profiles:
-            return self._resolve_my_rating_with_profiles(info, profile_id=profile_id)
-        return self._resolve_my_rating_with_current_user(info)
+            return RatingsInterface._resolve_my_rating_with_profiles(
+                self, info, profile_id=profile_id
+            )
+        return RatingsInterface._resolve_my_rating_with_current_user(self, info)
 
-    def _resolve_my_rating_with_profiles(self, info, profile_id=None):
+    @staticmethod
+    def _resolve_my_rating_with_profiles(root, info, profile_id=None):
         Profile = swapper.load_model("baseapp_profiles", "Profile")
 
         if profile_id:
@@ -60,16 +63,17 @@ class RatingsInterface(RelayNode):
             return None
 
         return RateModel.objects.filter(
-            target_content_type=ContentType.objects.get_for_model(self),
-            target_object_id=self.pk,
+            target_content_type=ContentType.objects.get_for_model(root),
+            target_object_id=root.pk,
             user=info.context.user,
             profile=profile,
         ).first()
 
-    def _resolve_my_rating_with_current_user(self, info):
+    @staticmethod
+    def _resolve_my_rating_with_current_user(root, info):
         return RateModel.objects.filter(
-            target_content_type=ContentType.objects.get_for_model(self),
-            target_object_id=self.pk,
+            target_content_type=ContentType.objects.get_for_model(root),
+            target_object_id=root.pk,
             user=info.context.user,
         ).first()
 
