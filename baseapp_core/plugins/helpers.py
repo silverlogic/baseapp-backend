@@ -54,10 +54,8 @@ def apply_if_installed(
 
 def _fallback_by_response_type(response: Any) -> Any:
     """Return a type-matched fallback value based on the type of response."""
-    if isinstance(response, tuple):
-        return tuple([])
-    if isinstance(response, set):
-        return set()
+    if isinstance(response, bool):
+        return False
     if isinstance(response, list):
         return []
     if isinstance(response, dict):
@@ -66,8 +64,6 @@ def _fallback_by_response_type(response: Any) -> Any:
         return ""
     if isinstance(response, numbers.Number):
         return None
-    if isinstance(response, bool):
-        return False
     if isinstance(response, (set, frozenset, tuple)):
         return type(response)()
     return None

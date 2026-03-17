@@ -1,6 +1,7 @@
 import graphene
 import swapper
 from django import forms
+from django.apps import apps
 from django.db import transaction
 from graphene_django.forms.mutation import _set_errors_flag_to_context
 from graphene_django.types import ErrorType
@@ -11,12 +12,9 @@ from baseapp_core.graphql import RelayMutation, login_required
 ContentPost = swapper.load_model(
     "baseapp_content_feed", "ContentPost", required=False, require_ready=False
 )
-app_label = ContentPost._meta.app_label
 ContentPostImage = swapper.load_model("baseapp_content_feed", "ContentPostImage")
 
 ContentPostObjectType = ContentPost.get_graphql_object_type()
-
-ContentPostImageType = ContentPostImage.get_graphql_object_type()
 
 
 class ContentPostForm(forms.ModelForm):
@@ -46,7 +44,8 @@ class ContentPostCreate(RelayMutation):
             with transaction.atomic():
                 instance = form.save(commit=False)
                 instance.user = info.context.user
-                instance.profile = info.context.user.current_profile
+                if apps.is_installed("baseapp_profiles") and hasattr(instance, "profile"):
+                    instance.profile = info.context.user.current_profile
                 instance.save()
 
                 created_images_list = []

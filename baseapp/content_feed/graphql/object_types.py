@@ -8,6 +8,7 @@ from baseapp.content_feed.graphql.filters import (
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql.fields import ThumbnailField
+from baseapp_core.plugins import apply_if_installed
 from baseapp_reactions.graphql.object_types import ReactionsInterface
 
 ContentPost = swapper.load_model(
@@ -41,7 +42,7 @@ class ContentPostObjectType(DjangoObjectType):
         fields = (
             "pk",
             "user",
-            "profile",
+            *apply_if_installed("baseapp_profiles", ["profile"]),
             "content",
             "images",
             "created",

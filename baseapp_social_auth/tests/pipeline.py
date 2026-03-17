@@ -68,8 +68,9 @@ def set_avatar(is_new, backend, user, response, *args, **kwargs):
         response = requests.get(image_url, params=image_params)
         image = BytesIO(response.content)
         user.refresh_from_db()
-        user.profile.image = ImageFile(image, name="pic.jpg")
-        user.profile.save(update_fields=["image"])
+        if profile := getattr(user, "profile", None):
+            profile.image = ImageFile(image, name="pic.jpg")
+            profile.save(update_fields=["image"])
 
 
 def set_is_new(is_new, user, *args, **kwargs):
