@@ -2,7 +2,7 @@ from graphene import Interface, ObjectType, String
 
 from baseapp_core.plugins import (
     GraphQLSharedInterfaceRegistry,
-    graphql_shared_interface_registry,
+    graphql_shared_interfaces,
 )
 
 
@@ -137,19 +137,19 @@ class TestGraphQLSharedInterfaceRegistry:
 
 
 class TestGraphQLSharedInterfaceRegistrySingleton:
-    """Test suite for the graphql_shared_interface_registry singleton."""
+    """Test suite for the graphql_shared_interfaces singleton."""
 
     def test_singleton_instance(self):
-        """Test that graphql_shared_interface_registry is a singleton instance."""
-        assert isinstance(graphql_shared_interface_registry, GraphQLSharedInterfaceRegistry)
+        """Test that graphql_shared_interfaces is a singleton instance."""
+        assert isinstance(graphql_shared_interfaces, GraphQLSharedInterfaceRegistry)
 
     def test_singleton_persistence(self):
         """Test that the singleton persists across imports."""
         from baseapp_core.plugins.shared_graphql_interfaces import (
-            graphql_shared_interface_registry as registry1,
+            graphql_shared_interfaces as registry1,
         )
         from baseapp_core.plugins.shared_graphql_interfaces import (
-            graphql_shared_interface_registry as registry2,
+            graphql_shared_interfaces as registry2,
         )
 
         assert registry1 is registry2

@@ -4,18 +4,16 @@ import typing
 import channels_graphql_ws
 import swapper
 from channels.db import database_sync_to_async
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from graphene_django.settings import graphene_settings
 
 from baseapp_api_key.models import APIKey, BaseAPIKey
 from baseapp_core.graphql import get_pk_from_relay_id
+from baseapp_core.graphql.consumers import threadpool_for_sync_resolvers
 
 python_version = sys.version_info
-
-Profile = swapper.load_model("baseapp_profiles", "Profile")
-
-from baseapp_core.graphql.consumers import threadpool_for_sync_resolvers
 
 
 class BaseGraphqlWsAPIKeyAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
@@ -54,11 +52,11 @@ class BaseGraphqlWsAPIKeyAuthenticatedConsumer(channels_graphql_ws.GraphqlWsCons
 
         if user and user.is_active:
             self.scope["user"] = user
-            if "Current-Profile" in payload:
-                pk = get_pk_from_relay_id(payload["Current-Profile"])
-                if pk:
+            if apps.is_installed("baseapp_profiles") and "Current-Profile" in payload:
+                Profile = swapper.load_model("baseapp_profiles", "Profile")
+                if pk := get_pk_from_relay_id(payload["Current-Profile"]):
                     profile = await database_sync_to_async(Profile.objects.filter(pk=pk).first)()
-                    if profile and database_sync_to_async(user.has_perm)(
+                    if profile and await database_sync_to_async(user.has_perm)(
                         f"{profile._meta.app_label}.use_profile", profile
                     ):
                         user.current_profile = profile

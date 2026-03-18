@@ -2,10 +2,11 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 from baseapp_core.graphql.models import RelayModel
+from baseapp_core.models import DocumentIdMixin
 from baseapp_drf_view_action_permissions.mixin import PermissionModelMixin
 
 
-class DRFUser(AbstractUser, PermissionModelMixin, RelayModel):
+class DRFUser(AbstractUser, PermissionModelMixin, DocumentIdMixin, RelayModel):
     pass
 
 

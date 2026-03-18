@@ -1,6 +1,7 @@
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
+from django.apps import apps
 from graphene_django import DjangoConnectionField
 
 from baseapp_core.graphql import DjangoObjectType
@@ -8,7 +9,6 @@ from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
 
 Block = swapper.load_model("baseapp_blocks", "Block")
-Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
 class BlocksInterface(RelayNode):
@@ -40,18 +40,37 @@ class BlocksInterface(RelayNode):
     def resolve_is_blocked_by_me(self, info, profile_id=None, **kwargs):
         if not info.context.user.is_authenticated:
             return False
+
+        if apps.is_installed("baseapp_profiles"):
+            return BlocksInterface._resolve_is_blocked_by_me_with_profiles(
+                self, info, profile_id=profile_id
+            )
+        return BlocksInterface._resolve_is_blocked_by_me_without_profiles(self, info)
+
+    @staticmethod
+    def _resolve_is_blocked_by_me_with_profiles(root, info, profile_id=None) -> bool:
+        Profile = swapper.load_model("baseapp_profiles", "Profile")
+
         if profile_id:
             pk = get_pk_from_relay_id(profile_id)
-            profile = Profile.objects.get_if_member(pk=pk, user=info.context.user)
+            actor = Profile.objects.get_if_member(pk=pk, user=info.context.user)
         else:
-            profile = info.context.user.current_profile
+            actor = info.context.user.current_profile
+
         return (
-            profile
+            bool(actor)
             and Block.objects.filter(
-                actor_id=profile.id,
-                target_id=self.id,
+                actor_id=actor.id,
+                target_id=root.id,
             ).exists()
         )
+
+    @staticmethod
+    def _resolve_is_blocked_by_me_without_profiles(root, info) -> bool:
+        return Block.objects.filter(
+            user_id=info.context.user.id,
+            target_id=root.id,
+        ).exists()
 
 
 class BaseBlockObjectType:

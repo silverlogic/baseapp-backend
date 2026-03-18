@@ -6,6 +6,7 @@ from django.db import models
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql import RelayModel
+from baseapp_core.models import DocumentIdMixin
 
 
 def default_reports_count():
@@ -23,7 +24,7 @@ def default_reports_count_full():
     return d
 
 
-class AbstractBaseReportType(RelayModel, TimeStampedModel):
+class AbstractBaseReportType(DocumentIdMixin, RelayModel, TimeStampedModel):
     key = models.CharField(max_length=255, unique=True)
     label = models.CharField(max_length=255)
     content_types = models.ManyToManyField(
@@ -57,7 +58,7 @@ class ReportType(AbstractBaseReportType):
         return ReportTypeObjectType
 
 
-class AbstractBaseReport(RelayModel, TimeStampedModel):
+class AbstractBaseReport(DocumentIdMixin, RelayModel, TimeStampedModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="reports",

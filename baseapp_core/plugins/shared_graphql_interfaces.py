@@ -9,6 +9,8 @@ from typing import Any, Callable, List, Optional, Union
 
 from graphene import Interface
 
+from .readiness import require_django_ready
+
 # Lazy/callable that returns an interface class
 CapabilityValue = Union[Interface, Callable[[], Any]]
 
@@ -27,7 +29,8 @@ class GraphQLSharedInterfaceRegistry:
         """Register a GraphQL capability by name. Call from AppConfig.ready()."""
         self._registry[name] = interface
 
-    def get_interface(self, name: str) -> Optional[Any]:
+    @require_django_ready
+    def get_interface(self, name: str) -> Interface | list[Interface]:
         """Resolve and return the interface for name, or None if not registered."""
         value = self._registry.get(name)
         if value is None:
@@ -41,6 +44,7 @@ class GraphQLSharedInterfaceRegistry:
         # Otherwise return as-is
         return value
 
+    @require_django_ready
     def get_interfaces(
         self,
         interface_names: List[str],
@@ -56,8 +60,11 @@ class GraphQLSharedInterfaceRegistry:
         for name in interface_names:
             iface = self.get_interface(name)
             if iface is not None:
-                result.append(iface)
+                if isinstance(iface, list):
+                    result.extend(iface)
+                else:
+                    result.append(iface)
         return tuple(result)
 
 
-graphql_shared_interface_registry = GraphQLSharedInterfaceRegistry()
+graphql_shared_interfaces = GraphQLSharedInterfaceRegistry()

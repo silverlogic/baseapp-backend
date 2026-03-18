@@ -6,6 +6,7 @@ from query_optimizer import optimize
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import ThumbnailField
+from baseapp_core.plugins import graphql_shared_interfaces
 
 from .filters import UsersFilter
 from .permissions import PermissionsInterface
@@ -31,15 +32,6 @@ if apps.is_installed("baseapp_ratings"):
     from baseapp_ratings.graphql.object_types import RatingsInterface
 
     interfaces += (RatingsInterface,)
-
-
-if apps.is_installed("baseapp_profiles"):
-    from baseapp_profiles.graphql.object_types import (
-        ProfileInterface,
-        ProfilesInterface,
-    )
-
-    interfaces += (ProfilesInterface, ProfileInterface)
 
 
 if apps.is_installed("baseapp.activity_log"):
@@ -91,11 +83,15 @@ class AbstractUserObjectType(*inheritances, object):
             "last_login",
             "profiles",
         )
-        interfaces = interfaces
+        interfaces = graphql_shared_interfaces.get_interfaces(
+            ["profile", "profiles_list"], interfaces
+        )
         filterset_class = UsersFilter
 
     def resolve_avatar(self, *args, **kwargs):
-        return self.profile.image
+        if profile := getattr(self, "profile", None):
+            return profile.image
+        return None
 
     def resolve_metadata(self, *args, **kwargs):
         return MetadataObjectType(
@@ -106,7 +102,9 @@ class AbstractUserObjectType(*inheritances, object):
         return info.context.user.is_authenticated and self.pk == info.context.user.pk
 
     def resolve_full_name(self, *args, **kwargs):
-        return self.profile.name
+        if profile := getattr(self, "profile", None):
+            return profile.name
+        return self.get_full_name()
 
     def resolve_email(self, info):
         return view_user_private_field(self, info, "email")

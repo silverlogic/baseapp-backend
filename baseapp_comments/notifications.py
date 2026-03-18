@@ -12,19 +12,19 @@ User = get_user_model()
 @shared_task
 def send_reply_created_notification(comment_pk):
     comment = Comment.objects.get(pk=comment_pk)
-
+    sender = getattr(comment, "profile", None) or comment.user
     send_notification(
         add_to_history=True,
         send_push=True,
         send_email=True,
-        sender=comment.profile or comment.user,
+        sender=sender,
         recipient=comment.in_reply_to.user,
         verb="COMMENTS.COMMENT_REPLY_CREATED",
         action_object=comment,
         target=comment.in_reply_to,
         level="info",
         description=_("{user} replied to your comment.").format(
-            user=str(comment.profile or comment.user),
+            user=str(sender),
         ),
         extra={},
     )
@@ -34,19 +34,19 @@ def send_reply_created_notification(comment_pk):
 def send_comment_created_notification(comment_pk, recipient_id):
     comment = Comment.objects.get(pk=comment_pk)
     recipient = User.objects.get(pk=recipient_id)
-
+    sender = getattr(comment, "profile", None) or comment.user
     send_notification(
         add_to_history=True,
         send_push=True,
         send_email=True,
-        sender=comment.profile or comment.user,
+        sender=sender,
         recipient=recipient,
         verb="COMMENTS.COMMENT_CREATED",
         action_object=comment,
         target=comment.target,
         level="info",
         description=_("{user} left a new comment.").format(
-            user=str(comment.profile or comment.user),
+            user=str(sender),
         ),
         extra={},
     )

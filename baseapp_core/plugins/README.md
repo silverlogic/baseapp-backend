@@ -130,8 +130,12 @@ class YourPackagePlugin(BaseAppPlugin):
             django_extra_settings={
                 "BASEAPP_YOURPACKAGE_SETTING": "value",
             },
-            required_packages=["baseapp_core"],
-            optional_packages=["baseapp_notifications"],
+            required_packages=[
+                {"baseapp_core": "Core shared models and plugin infrastructure"},
+            ],
+            optional_packages=[
+                {"baseapp_notifications": "Optional notifications integration"},
+            ],
             graphql_queries=["baseapp_yourpackage.graphql.queries.YourPackageQueries"],
             graphql_mutations=["baseapp_yourpackage.graphql.mutations.YourPackageMutations"],
             graphql_subscriptions=[],
@@ -172,7 +176,7 @@ The `PackageSettings` model defines what each plugin contributes. Only plugins w
 | Dict | `django_extra_settings` | `Dict[str, Any]` | Merged into Django settings |
 | Dict | `celery_beat_schedules`, `celery_task_routes`, `constance_config` | `Dict` | Merged; last plugin wins on conflict |
 | List | `urlpatterns`, `graphql_queries`, `graphql_mutations`, `graphql_subscriptions` | `List` | Aggregated |
-| Deps | `required_packages`, `optional_packages` | `List[str]` | Validation only |
+| Deps | `required_packages`, `optional_packages` | `List[str \| Dict[str, str]]` | Validation only. Dict format is `{package_name: description}` |
 
 **Slotted fields** use a dict: keys are slot names (e.g. `"auth"`, `"profile"`), values are lists. Use `get(key, slot)` to control order.
 
@@ -416,9 +420,9 @@ class PackageConfig(BaseAppConfig, ServicesContributor):
 **Consumer:**
 
 ```python
-from baseapp_core.plugins import shared_service_registry
+from baseapp_core.plugins import shared_services
 
-service = shared_service_registry.get_service("comments_count")
+service = shared_services.get("comments_count")
 if service:
     return service.get_count(document_id)
 ```
@@ -432,21 +436,21 @@ if service:
 ```python
 # baseapp_comments/apps.py
 from baseapp_core.plugins import BaseAppConfig, GraphQLContributor
-from baseapp_core.plugins import graphql_shared_interface_registry
+from baseapp_core.plugins import graphql_shared_interfaces
 
 class PackageConfig(BaseAppConfig, GraphQLContributor):
     def register_graphql_shared_interfaces(self):
         from .graphql.object_types import CommentsInterface
-        graphql_shared_interface_registry.register("comments", CommentsInterface)
+        graphql_shared_interfaces.register("comments", CommentsInterface)
 ```
 
 **Consumer (no cross-package imports):**
 
 ```python
-from baseapp_core.plugins import graphql_shared_interface_registry
+from baseapp_core.plugins import graphql_shared_interfaces
 
 def _get_page_interfaces():
-    return graphql_shared_interface_registry.get_interfaces(
+    return graphql_shared_interfaces.get_interfaces(
         ["comments", "permissions"],  # By name only; no import
         [RelayNode, PageInterface],    # Default interfaces
     )
@@ -477,7 +481,7 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
         registry.register("service_name", ServiceInstance())
 
     def register_graphql_shared_interfaces(self):
-        graphql_shared_interface_registry.register("interface_name", InterfaceClass)
+        graphql_shared_interfaces.register("interface_name", InterfaceClass)
 ```
 
 ---
@@ -545,7 +549,7 @@ INSTALLED_APPS += [
 - [ ] **Imports**: Remove cross-package runtime imports; use DocumentId/services instead
 - [ ] **URLs**: Replace hardcoded BaseApp includes with `plugin_registry.get_all_urlpatterns()`
 - [ ] **GraphQL**: Remove BaseApp Query/Mutation/Subscription imports; use registry getters
-- [ ] **GraphQL interfaces**: Replace direct interface imports with `graphql_shared_interface_registry.get_interfaces([...], default_interfaces)` by name
+- [ ] **GraphQL interfaces**: Replace direct interface imports with `graphql_shared_interfaces.get_interfaces([...], default_interfaces)` by name
 - [ ] **Swapper**: Keep settings correct; ensure auxiliary models match new schema (DocumentId-based)
 - [ ] **Entry points**: Move from `setup.py` to root `setup.cfg`
 
@@ -557,7 +561,7 @@ INSTALLED_APPS += [
 - **Registry API**: `plugin_registry.get("INSTALLED_APPS")`, `plugin_registry.get("MIDDLEWARE", "slot")`
 - **URLs**: `plugin_registry.get_all_urlpatterns()`, `get_all_v1_urlpatterns()`
 - **GraphQL**: `plugin_registry.get_all_graphql_queries()`, `get_all_graphql_mutations()`, `get_all_graphql_subscriptions()`
-- **GraphQL interfaces**: `graphql_shared_interface_registry.get_interfaces([...], default_interfaces)` by name
-- **Services**: `shared_service_registry.get_service("name")`
+- **GraphQL interfaces**: `graphql_shared_interfaces.get_interfaces([...], default_interfaces)` by name
+- **Services**: `shared_services.get("name")`
 - **Signals**: Connect in `AppConfig.ready()`
 - **DocumentId**: Use `DocumentIdMixin` or `DocumentId.get_or_create_for_object(obj)`

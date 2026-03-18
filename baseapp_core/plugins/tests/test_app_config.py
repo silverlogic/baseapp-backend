@@ -26,7 +26,7 @@ class TestServicesContributor:
         contributor = ServicesContributor()
         contributor.register_shared_services(registry)
         # No exception; registry unchanged
-        assert registry.get_service("any") is None
+        assert registry.get("any") is None
 
 
 class TestGraphQLContributor:
@@ -65,7 +65,7 @@ class TestBaseAppConfig:
     """Test suite for BaseAppConfig ready() integration."""
 
     def test_ready_calls_register_shared_services_when_services_contributor(self):
-        """ready() calls register_shared_services with shared_service_registry when config is ServicesContributor."""
+        """ready() calls register_shared_services with shared_services when config is ServicesContributor."""
         config = RecordingAppConfig("baseapp_core", baseapp_core)
         config.ready()
         services_calls = [r for r in config.recorded if r[0] == "register_shared_services"]

@@ -1,5 +1,6 @@
 import graphene
 import swapper
+from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
@@ -36,7 +37,15 @@ class ReportCreate(RelayMutation):
                 extensions={"code": "permission_required"},
             )
 
-        if info.context.user.current_profile.relay_id == target.relay_id:
+        if apps.is_installed("baseapp_profiles"):
+            current_profile = getattr(info.context.user, "current_profile", None)
+            is_self_report = bool(current_profile and current_profile.relay_id == target.relay_id)
+        else:
+            is_self_report = getattr(target, "user_id", None) == info.context.user.id or (
+                getattr(target, "pk", None) == info.context.user.id
+            )
+
+        if is_self_report:
             raise GraphQLError(
                 str(_("You cannot report yourself")),
                 extensions={"code": "invalid_action"},

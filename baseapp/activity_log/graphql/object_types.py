@@ -14,7 +14,6 @@ from ..models import ActivityLog, VisibilityTypes
 from .filters import ActivityLogFilter, MiddlewareEventFilter
 
 User = get_user_model()
-Profile = swapper.load_model("baseapp_profiles", "Profile")
 VisibilityTypesEnum = graphene.Enum.from_enum(VisibilityTypes)
 
 
@@ -62,11 +61,30 @@ class NodeLogEventObjectType(DjangoObjectType):
         return self.pgh_label
 
 
+interfaces = []
+
+if apps.is_installed("baseapp_profiles"):
+    Profile = swapper.load_model("baseapp_profiles", "Profile")
+
+    class ActivityLogWithProfileInterface(graphene.Interface):
+        profile = graphene.Field(get_object_type_for_model(Profile))
+
+        def resolve_profile(self, info, **kwargs):
+            profile_id = getattr(self, "profile_id", None)
+            if profile_id is not None:
+                try:
+                    return Profile.objects.get(pk=profile_id)
+                except Profile.DoesNotExist:
+                    return None
+            return getattr(self, "profile", None)
+
+    interfaces.append(ActivityLogWithProfileInterface)
+
+
 class BaseActivityLogObjectType:
     metadata = GenericScalar()
     events = DjangoFilterConnectionField(lambda: NodeLogEventObjectType)
     user = graphene.Field(get_object_type_for_model(User))
-    profile = graphene.Field(get_object_type_for_model(Profile))
     visibility = graphene.Field(VisibilityTypesEnum)
     verb = graphene.String()
     ip_address = graphene.String()
@@ -90,7 +108,7 @@ class BaseActivityLogObjectType:
         return queryset
 
     class Meta:
-        interfaces = (RelayNode,)
+        interfaces = (RelayNode, *interfaces)
         model = ActivityLog
         fields = (
             "id",
@@ -117,15 +135,6 @@ class BaseActivityLogObjectType:
             except User.DoesNotExist:
                 return None
         return getattr(self, "user", None)
-
-    def resolve_profile(self, info, **kwargs):
-        profile_id = getattr(self, "profile_id", None)
-        if profile_id is not None:
-            try:
-                return Profile.objects.get(pk=profile_id)
-            except Profile.DoesNotExist:
-                return None
-        return getattr(self, "profile", None)
 
 
 class ActivityLogObjectType(BaseActivityLogObjectType, DjangoObjectType):

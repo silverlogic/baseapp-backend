@@ -1,7 +1,7 @@
 import pytest
 from django.test import override_settings
 
-from baseapp_core.plugins.base import BaseAppPlugin, PackageSettings
+from baseapp_core.plugins.base import BaseAppPlugin, PackageDependency, PackageSettings
 
 
 class TestPackageSettings:
@@ -15,6 +15,23 @@ class TestPackageSettings:
         assert settings.middleware == {}
         assert settings.required_packages == []
         assert settings.optional_packages == []
+
+    def test_package_settings_required_packages_accept_strings(self):
+        settings = PackageSettings(required_packages=["baseapp_core"])
+        assert settings.required_packages == [PackageDependency(package="baseapp_core")]
+
+    def test_package_settings_required_packages_accept_dict_mapping(self):
+        settings = PackageSettings(
+            required_packages=[
+                {"baseapp_core": "Shared core models and signals"},
+            ]
+        )
+        assert settings.required_packages == [
+            PackageDependency(
+                package="baseapp_core",
+                description="Shared core models and signals",
+            )
+        ]
 
     def test_package_settings_installed_apps(self):
         settings = PackageSettings(installed_apps=["test_app"])
@@ -94,6 +111,18 @@ class TestBaseAppPlugin:
         errors = plugin.validate()
         assert len(errors) > 0
         assert "missing_package" in errors[0]
+
+    @override_settings(INSTALLED_APPS=["django.contrib.contenttypes"])
+    def test_plugin_validate_errors_includes_dependency_description_when_present(self):
+        plugin = MockPlugin(
+            "test_plugin",
+            "test_package",
+            required_packages=[{"missing_package": "Enable advanced permissions"}],
+        )
+        errors = plugin.validate()
+        assert len(errors) > 0
+        assert "missing_package" in errors[0]
+        assert "Enable advanced permissions" in errors[0]
 
     def test_plugin_ready_default_implementation(self):
         """Test that ready() has a default no-op implementation."""

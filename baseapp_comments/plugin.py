@@ -21,18 +21,8 @@ class CommentsPlugin(BaseAppPlugin):
             django_extra_settings={
                 "BASEAPP_COMMENTS_CAN_ANONYMOUS_VIEW_COMMENTS": True,
                 "BASEAPP_COMMENTS_ENABLE_GRAPHQL_SUBSCRIPTIONS": True,
-                "BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS": {
-                    "default": True,
-                    "required": False,
-                    "type": bool,
-                    "description": "Enable notifications for comments",
-                },
-                "BASEAPP_COMMENTS_MAX_PINS_PER_THREAD": {
-                    "default": None,
-                    "required": False,
-                    "type": int,
-                    "description": "Maximum pinned comments per thread",
-                },
+                "BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS": True,
+                "BASEAPP_COMMENTS_MAX_PINS_PER_THREAD": None,
             },
             required_packages=[
                 "baseapp_core",

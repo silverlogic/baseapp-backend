@@ -97,6 +97,7 @@ class UsersViewSet(
         user = request.user
 
         if apps.is_installed("baseapp_organizations"):
+            # TODO (plugin-arch): This should be a service/signal handler in baseapp_organizations.
             Organization = swapper.load_model("baseapp_organizations", "Organization")
             if Organization.objects.filter(profile__owner_id=user.id).exists():
                 return response.Response(

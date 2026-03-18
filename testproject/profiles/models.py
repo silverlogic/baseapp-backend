@@ -1,13 +1,6 @@
-import pghistory
-
 from baseapp_profiles.models import AbstractProfile, AbstractProfileUserRole
 
 
-@pghistory.track(
-    pghistory.InsertEvent(),
-    pghistory.UpdateEvent(),
-    pghistory.DeleteEvent(),
-)
 class Profile(AbstractProfile):
     class Meta(AbstractProfile.Meta):
         pass
@@ -29,4 +22,5 @@ class ProfileUserRole(AbstractProfileUserRole):
                 return self.label
     """
 
-    pass
+    class Meta(AbstractProfileUserRole.Meta):
+        pass

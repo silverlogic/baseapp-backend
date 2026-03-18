@@ -5,18 +5,29 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql.models import RelayModel
+from baseapp_core.models import DocumentIdMixin
 
-inheritances = [TimeStampedModel]
+inheritances = []
 
 if apps.is_installed("baseapp_profiles"):
-    from baseapp_profiles.models import ProfilableModel
+
+    class ProfilableModel(models.Model):
+        profile = models.OneToOneField(
+            swapper.get_model_name("baseapp_profiles", "Profile"),
+            related_name="%(class)s",
+            on_delete=models.PROTECT,
+            verbose_name=_("profile"),
+            null=True,
+            blank=True,
+        )
+
+        class Meta:
+            abstract = True
 
     inheritances.append(ProfilableModel)
 
-inheritances.append(RelayModel)
 
-
-class AbstractOrganization(*inheritances):
+class AbstractOrganization(*inheritances, DocumentIdMixin, RelayModel, TimeStampedModel):
     name = models.CharField(
         _("name"),
         max_length=255,

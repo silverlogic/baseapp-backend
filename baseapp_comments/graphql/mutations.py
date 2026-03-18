@@ -34,8 +34,10 @@ class CommentCreate(RelayMutation):
     class Input:
         target_object_id = graphene.ID(required=True)
         in_reply_to_id = graphene.ID(required=False)
-        profile_id = graphene.ID(required=False)
         body = graphene.String(required=True)
+
+        if apps.is_installed("baseapp_profiles"):
+            profile_id = graphene.ID(required=False)
 
     @classmethod
     @login_required
@@ -57,20 +59,21 @@ class CommentCreate(RelayMutation):
 
         comment = Comment(user=info.context.user, target=target, body=input.get("body"))
 
-        if input.get("profile_id") or info.context.user.current_profile:
-            comment.profile = (
-                get_obj_from_relay_id(info, input.get("profile_id"))
-                if input.get("profile_id")
-                else info.context.user.current_profile
-            )
-
-            if not info.context.user.has_perm(
-                f"{app_label}.add_comment_with_profile", comment.profile
-            ):
-                raise GraphQLError(
-                    str(_("You don't have permission to perform this action")),
-                    extensions={"code": "permission_required"},
+        if apps.is_installed("baseapp_profiles"):
+            if input.get("profile_id") or info.context.user.current_profile:
+                comment.profile = (
+                    get_obj_from_relay_id(info, input.get("profile_id"))
+                    if input.get("profile_id")
+                    else info.context.user.current_profile
                 )
+
+                if not info.context.user.has_perm(
+                    f"{app_label}.add_comment_with_profile", comment.profile
+                ):
+                    raise GraphQLError(
+                        str(_("You don't have permission to perform this action")),
+                        extensions={"code": "permission_required"},
+                    )
 
         if input.get("in_reply_to_id"):
             comment.in_reply_to = get_obj_from_relay_id(info, input.get("in_reply_to_id"))
@@ -87,7 +90,7 @@ class CommentCreate(RelayMutation):
 
             # Need to refresh to update comments_count
             target.refresh_from_db()
-            if comment.profile:
+            if hasattr(comment, "profile") and comment.profile:
                 comment.profile.refresh_from_db()
             if comment.in_reply_to:
                 comment.in_reply_to.refresh_from_db()

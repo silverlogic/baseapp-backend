@@ -1,4 +1,5 @@
 import swapper
+from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -8,6 +9,8 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql import RelayModel
+from baseapp_core.models import DocumentIdMixin
+from baseapp_core.plugins import apply_if_installed
 
 
 def default_reactions_count():
@@ -21,7 +24,27 @@ def default_reactions_count():
     return d
 
 
-class AbstractBaseReaction(TimeStampedModel, RelayModel):
+inheritances = []
+
+if apps.is_installed("baseapp_profiles"):
+
+    class ProfileMixin(models.Model):
+        profile = models.ForeignKey(
+            swapper.get_model_name("baseapp_profiles", "Profile"),
+            verbose_name=_("profile"),
+            related_name="reactions",
+            on_delete=models.CASCADE,
+            null=True,
+            blank=True,
+        )
+
+        class Meta:
+            abstract = True
+
+    inheritances.append(ProfileMixin)
+
+
+class AbstractBaseReaction(*inheritances, TimeStampedModel, DocumentIdMixin, RelayModel):
     class ReactionTypes(models.IntegerChoices):
         LIKE = 1, _("like")
         DISLIKE = -1, _("dislike")
@@ -34,15 +57,6 @@ class AbstractBaseReaction(TimeStampedModel, RelayModel):
         settings.AUTH_USER_MODEL,
         related_name="reactions",
         on_delete=models.CASCADE,
-    )
-
-    profile = models.ForeignKey(
-        swapper.get_model_name("baseapp_profiles", "Profile"),
-        verbose_name=_("profile"),
-        related_name="reactions",
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
     )
 
     reaction_type = models.IntegerField(choices=ReactionTypes.choices, default=ReactionTypes.LIKE)
@@ -62,7 +76,13 @@ class AbstractBaseReaction(TimeStampedModel, RelayModel):
         indexes = [
             models.Index(fields=["target_content_type", "target_object_id"]),
         ]
-        unique_together = [["profile", "target_content_type", "target_object_id"]]
+        unique_together = [
+            apply_if_installed(
+                "baseapp_profiles",
+                ["profile", "target_content_type", "target_object_id"],
+                ["user", "target_content_type", "target_object_id"],
+            )
+        ]
 
     def __str__(self):
         return "Reaction (%s) #%s by %s" % (

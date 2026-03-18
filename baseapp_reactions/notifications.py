@@ -20,18 +20,20 @@ def send_reaction_created_notification(reaction_pk, recipient_id):
         logging.info("Reaction or recipient not found. Reaction: %s, Recipient: %s")
         return
 
+    sender = getattr(reaction, "profile", None) or reaction.user
+
     send_notification(
         add_to_history=True,
         send_push=True,
         send_email=True,
-        sender=reaction.profile or reaction.user,
+        sender=sender,
         recipient=recipient,
         verb="REACTIONS.REACTION_CREATED",
         action_object=reaction,
         target=reaction.target,
         level="info",
         description=_("{user} reacted to your post.").format(
-            user=str(reaction.profile or reaction.user),
+            user=str(sender),
         ),
         extra={},
     )

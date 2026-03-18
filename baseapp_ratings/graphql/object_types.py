@@ -1,15 +1,16 @@
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
+from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
 from graphene_django import DjangoConnectionField
 
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
+from baseapp_core.plugins import apply_if_installed
 
 RateModel = swapper.load_model("baseapp_ratings", "Rate")
-Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
 class RatingsInterface(RelayNode):
@@ -21,7 +22,7 @@ class RatingsInterface(RelayNode):
     my_rating = graphene.Field(
         get_object_type_for_model(RateModel),
         required=False,
-        profile_id=graphene.ID(required=False),
+        **apply_if_installed("baseapp_profiles", {"profile_id": graphene.ID(required=False)}),
     )
 
     def resolve_ratings(self, info, **kwargs):
@@ -37,21 +38,44 @@ class RatingsInterface(RelayNode):
             target_object_id=self.pk,
         ).order_by("-created")
 
-    def resolve_my_rating(self, info, profile_id, **kwargs):
-        if info.context.user.is_authenticated:
-            if profile_id:
-                pk = get_pk_from_relay_id(profile_id)
-                profile = Profile.objects.get_if_member(pk=pk, user=info.context.user)
-            else:
-                profile = info.context.user.current_profile
-            if not profile:
-                return None
-            return RateModel.objects.filter(
-                target_content_type=ContentType.objects.get_for_model(self),
-                target_object_id=self.pk,
-                user=info.context.user,
-                profile=info.context.user.current_profile,
-            ).first()
+    def resolve_my_rating(self, info, profile_id=None, **kwargs):
+        if not info.context.user.is_authenticated:
+            return None
+
+        has_profiles = apps.is_installed("baseapp_profiles")
+        if has_profiles:
+            return RatingsInterface._resolve_my_rating_with_profiles(
+                self, info, profile_id=profile_id
+            )
+        return RatingsInterface._resolve_my_rating_with_current_user(self, info)
+
+    @staticmethod
+    def _resolve_my_rating_with_profiles(root, info, profile_id=None):
+        Profile = swapper.load_model("baseapp_profiles", "Profile")
+
+        if profile_id:
+            pk = get_pk_from_relay_id(profile_id)
+            profile = Profile.objects.get_if_member(pk=pk, user=info.context.user)
+        else:
+            profile = info.context.user.current_profile
+
+        if not profile:
+            return None
+
+        return RateModel.objects.filter(
+            target_content_type=ContentType.objects.get_for_model(root),
+            target_object_id=root.pk,
+            user=info.context.user,
+            profile=profile,
+        ).first()
+
+    @staticmethod
+    def _resolve_my_rating_with_current_user(root, info):
+        return RateModel.objects.filter(
+            target_content_type=ContentType.objects.get_for_model(root),
+            target_object_id=root.pk,
+            user=info.context.user,
+        ).first()
 
 
 class BaseRatingObjectType:
@@ -63,7 +87,7 @@ class BaseRatingObjectType:
         fields = (
             "id",
             "user",
-            "profile",
+            *apply_if_installed("baseapp_profiles", ["profile"]),
             "created",
             "modified",
             "target",

@@ -1,4 +1,5 @@
 import swapper
+from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -7,21 +8,33 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql import RelayModel
+from baseapp_core.models import DocumentIdMixin
+
+inheritances = []
+
+if apps.is_installed("baseapp_profiles"):
+
+    class ProfileMixin(models.Model):
+        profile = models.ForeignKey(
+            swapper.get_model_name("baseapp_profiles", "Profile"),
+            verbose_name=_("profile"),
+            related_name="ratings",
+            on_delete=models.CASCADE,
+            null=True,
+            blank=True,
+        )
+
+        class Meta:
+            abstract = True
+
+    inheritances.append(ProfileMixin)
 
 
-class AbstractBaseRate(TimeStampedModel, RelayModel):
+class AbstractBaseRate(*inheritances, TimeStampedModel, DocumentIdMixin, RelayModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="ratings",
         on_delete=models.CASCADE,
-    )
-    profile = models.ForeignKey(
-        swapper.get_model_name("baseapp_profiles", "Profile"),
-        verbose_name=_("profile"),
-        related_name="ratings",
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
     )
 
     target_content_type = models.ForeignKey(
