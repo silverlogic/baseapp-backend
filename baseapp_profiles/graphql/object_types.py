@@ -8,7 +8,7 @@ from baseapp_auth.graphql import PermissionsInterface
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import ThumbnailField, get_object_type_for_model
-from baseapp_pages.meta import AbstractMetadataObjectType
+from baseapp_core.plugins import graphql_shared_interfaces
 
 from .filters import MemberFilter, ProfileFilter
 
@@ -52,31 +52,8 @@ class ProfilesInterface(RelayNode):
         return Profile.objects.none()
 
 
-class ProfileMetadata(AbstractMetadataObjectType):
-    @property
-    def meta_title(self):
-        return self.instance.name
-
-    @property
-    def meta_description(self):
-        return None
-
-    @property
-    def meta_og_type(self):
-        return "profile"
-
-    @property
-    def meta_og_image(self):
-        return self.instance.image
-
-
-interfaces = [RelayNode, PermissionsInterface]
+interfaces = []
 inheritances = tuple()
-
-if apps.is_installed("baseapp_pages"):
-    from baseapp_pages.graphql import PageInterface
-
-    interfaces.append(PageInterface)
 
 
 if apps.is_installed("baseapp_follows"):
@@ -117,7 +94,12 @@ class BaseProfileObjectType(*inheritances, object):
     )
 
     class Meta:
-        interfaces = interfaces
+        interfaces = graphql_shared_interfaces.get(
+            RelayNode,
+            PermissionsInterface,
+            *interfaces,
+            "PageInterface",
+        )
         model = Profile
         fields = "__all__"
         filterset_class = ProfileFilter
@@ -143,6 +125,28 @@ class BaseProfileObjectType(*inheritances, object):
 
     @classmethod
     def resolve_metadata(cls, instance, info):
+        if not apps.is_installed("baseapp_pages"):
+            return None
+
+        from baseapp_pages.graphql.object_types import AbstractMetadataObjectType
+
+        class ProfileMetadata(AbstractMetadataObjectType):
+            @property
+            def meta_title(self):
+                return self.instance.name
+
+            @property
+            def meta_description(self):
+                return None
+
+            @property
+            def meta_og_type(self):
+                return "profile"
+
+            @property
+            def meta_og_image(self):
+                return self.instance.image
+
         return ProfileMetadata(instance, info)
 
     @classmethod

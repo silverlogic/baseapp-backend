@@ -163,8 +163,8 @@ baseapp_api_key = ["*.j2", "*.html"]
 
 [project.entry-points."baseapp.plugins"]
 baseapp_auth = "baseapp_auth.plugin:AuthPlugin"
-baseapp_comments = "baseapp_comments.plugin:CommentsPlugin"
 baseapp_pages = "baseapp_pages.plugin:PagesPlugin"
+baseapp_comments = "baseapp_comments.plugin:CommentsPlugin"
 baseapp_payments = "baseapp_payments.plugin:PaymentsPlugin"
 
 [tool.black]

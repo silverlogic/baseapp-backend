@@ -39,5 +39,5 @@ class PackageConfig(
             get_profiles_list_interface,
         )
 
-        registry.register("profile", get_profile_interface)
-        registry.register("profiles_list", get_profiles_list_interface)
+        registry.register("ProfileInterface", get_profile_interface)
+        registry.register("ProfilesInterface", get_profiles_list_interface)

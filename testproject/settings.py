@@ -124,6 +124,7 @@ AUTHENTICATION_BACKENDS = [
     # Slotted: use get("AUTHENTICATION_BACKENDS", "slot_name") for explicit order; if plugin disabled, [].
     "django.contrib.auth.backends.ModelBackend",
     "baseapp_auth.permissions.UsersPermissionsBackend",
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_pages"),
     "baseapp_profiles.permissions.ProfilesPermissionsBackend",
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_comments"),
     "baseapp.activity_log.permissions.ActivityLogPermissionsBackend",
@@ -132,7 +133,6 @@ AUTHENTICATION_BACKENDS = [
     "baseapp_ratings.permissions.RatingsPermissionsBackend",
     "baseapp_follows.permissions.FollowsPermissionsBackend",
     "baseapp_blocks.permissions.BlocksPermissionsBackend",
-    "baseapp_pages.permissions.PagesPermissionsBackend",
     "baseapp_organizations.permissions.OrganizationsPermissionsBackend",
     "baseapp_chats.permissions.ChatsPermissionsBackend",
 ]

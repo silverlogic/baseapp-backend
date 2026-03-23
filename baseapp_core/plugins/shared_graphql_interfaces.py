@@ -5,7 +5,7 @@ defining GraphQL object types.
 """
 
 import inspect
-from typing import Any, Callable, List, Optional, Union
+from typing import Any, Callable, Union
 
 from graphene import Interface
 
@@ -45,20 +45,22 @@ class GraphQLSharedInterfaceRegistry:
         return value
 
     @require_django_ready
-    def get_interfaces(
-        self,
-        interface_names: List[str],
-        default_interfaces: Optional[List[Any]] = None,
-    ) -> tuple:
+    def get(self, *interfaces: str | Interface) -> tuple:
         """
         Return (default_interfaces + interfaces for the given names).
         Missing names are skipped; no error. Consumers opt in explicitly.
         """
-        if default_interfaces is None:
-            default_interfaces = []
-        result = list(default_interfaces)
-        for name in interface_names:
-            iface = self.get_interface(name)
+        result = []
+        for iface_name_or_class in interfaces:
+            if isinstance(iface_name_or_class, str):
+                iface = self.get_interface(iface_name_or_class)
+            elif issubclass(iface_name_or_class, Interface):
+                iface = iface_name_or_class
+            else:
+                raise TypeError(
+                    f"Invalid interface type: {iface_name_or_class} of type {type(iface_name_or_class)}"
+                )
+
             if iface is not None:
                 if isinstance(iface, list):
                     result.extend(iface)

@@ -12,6 +12,11 @@ class PagesPlugin(BaseAppPlugin):
 
     def get_settings(self) -> PackageSettings:
         return PackageSettings(
+            AUTHENTICATION_BACKENDS={
+                "baseapp_pages": [
+                    "baseapp_pages.permissions.PagesPermissionsBackend",
+                ],
+            },
             required_packages=[],
             optional_packages=[
                 "baseapp_comments",

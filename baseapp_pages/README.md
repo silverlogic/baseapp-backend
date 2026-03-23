@@ -83,13 +83,13 @@ ObjectTypes that implements `PageInterface` is required to implement a resolve f
 ```python
 from django.utils.translation import get_language
 from baseapp_core.graphql import DjangoObjectType, Node as RelayNode
-from baseapp_pages.graphql import PageInterface, MetadataObjectType
+from baseapp_core.plugins import graphql_shared_interfaces
 
 
 class MyModelObjectType(DjangoObjectType):
     class Meta:
         model = MyModel
-        interfaces = (RelayNode, PageInterface)
+        interfaces = graphql_shared_interfaces.get(RelayNode, "PageInterface")
 
     @classmethod
     def resolve_metadata(cls, instance, info, **kwargs):
