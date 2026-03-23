@@ -1,9 +1,7 @@
 import pytest
 import swapper
 from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.models import ContentType
 
-from baseapp_core.models import DocumentId
 from baseapp_follows.models import FollowStats, get_document_id_for_object
 from baseapp_profiles.tests.factories import ProfileFactory
 
@@ -78,4 +76,6 @@ def test_target_is_following_back():
     assert stats2.following_count == 0  # profile2 no longer follows profile1
     assert stats2.followers_count == 1  # profile2 still has profile1 as a follower
     assert stats1.followers_count == 0  # profile1 has no followers anymore
-    assert original.target_is_following_back is False  # profile2 no longer follows back profile1
+    assert (
+        original.target_is_following_back is False
+    )  # profile2 no longer follows back profile1
