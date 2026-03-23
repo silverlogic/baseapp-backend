@@ -1,7 +1,7 @@
 import swapper
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
-from django.db import models
+from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
@@ -10,7 +10,11 @@ from baseapp_core.models import DocumentId
 
 
 def get_document_id_for_object(obj):
-    """Get or create a DocumentId for the given model instance."""
+    """Get the DocumentId for the given model instance.
+
+    Assumes the object's model uses DocumentIdMixin, which auto-creates
+    DocumentId rows via pgtrigger on insert.
+    """
     ct = ContentType.objects.get_for_model(obj)
     return DocumentId.objects.get(content_type=ct, object_id=obj.pk)
 
@@ -118,14 +122,16 @@ class AbstractBaseFollow(TimeStampedModel, RelayModel):
             reciprocal_follow.save(update_fields=["target_is_following_back"])
 
     def update_followers_count(self, target_doc_id):
-        stats, _ = FollowStats.objects.get_or_create(target=target_doc_id)
-        stats.followers_count = self.__class__.objects.filter(target=target_doc_id).count()
-        stats.save(update_fields=["followers_count"])
+        with transaction.atomic():
+            stats, _ = FollowStats.objects.select_for_update().get_or_create(target=target_doc_id)
+            stats.followers_count = self.__class__.objects.filter(target=target_doc_id).count()
+            stats.save(update_fields=["followers_count"])
 
     def update_following_count(self, actor_doc_id):
-        stats, _ = FollowStats.objects.get_or_create(target=actor_doc_id)
-        stats.following_count = self.__class__.objects.filter(actor=actor_doc_id).count()
-        stats.save(update_fields=["following_count"])
+        with transaction.atomic():
+            stats, _ = FollowStats.objects.select_for_update().get_or_create(target=actor_doc_id)
+            stats.following_count = self.__class__.objects.filter(actor=actor_doc_id).count()
+            stats.save(update_fields=["following_count"])
 
     @classmethod
     def get_graphql_object_type(cls):

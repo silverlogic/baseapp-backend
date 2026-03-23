@@ -5,6 +5,7 @@ from graphql.error import GraphQLError
 from graphql_relay import offset_to_cursor
 
 from baseapp_core.graphql import RelayMutation, get_obj_from_relay_id, login_required
+from baseapp_core.models import DocumentId
 
 from ..models import get_document_id_for_object
 from .interfaces import FollowsInterface
@@ -44,8 +45,14 @@ class FollowToggle(RelayMutation):
             )
 
         # Convert to DocumentIds
-        actor_doc = get_document_id_for_object(actor_obj)
-        target_doc = get_document_id_for_object(target_obj)
+        try:
+            actor_doc = get_document_id_for_object(actor_obj)
+            target_doc = get_document_id_for_object(target_obj)
+        except DocumentId.DoesNotExist:
+            raise GraphQLError(
+                str(_("The provided object is not followable")),
+                extensions={"code": "invalid_target"},
+            )
 
         follow, created = Follow.objects.get_or_create(
             actor=actor_doc,

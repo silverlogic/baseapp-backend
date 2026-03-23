@@ -29,19 +29,11 @@ class Migration(migrations.Migration):
         ),
         pgtrigger.migrations.RemoveTrigger(
             model_name="message",
-            name="create_message_status",
-        ),
-        pgtrigger.migrations.RemoveTrigger(
-            model_name="message",
             name="insert_document_id",
         ),
         pgtrigger.migrations.RemoveTrigger(
             model_name="message",
             name="delete_document_id",
-        ),
-        pgtrigger.migrations.RemoveTrigger(
-            model_name="messagestatus",
-            name="increment_unread_count",
         ),
         pgtrigger.migrations.RemoveTrigger(
             model_name="messagestatus",
