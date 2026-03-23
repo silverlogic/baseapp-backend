@@ -72,14 +72,14 @@ INSTALLED_APPS += plugin_registry.get("INSTALLED_APPS")
 MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")
 MIDDLEWARE += [
     # Slotted: use get("MIDDLEWARE", "slot_name") for explicit order; if plugin disabled, [].
-    "baseapp_profiles.middleware.CurrentProfileMiddleware",
+    *plugin_registry.get("MIDDLEWARE", "baseapp_profiles"),
     "baseapp_core.middleware.HistoryMiddleware",
     *WAGTAIL_MIDDLEWARE,
 ]
 
 GRAPHENE["MIDDLEWARE"] = (
     # Slotted: use get("GRAPHENE__MIDDLEWARE", "slot_name") for explicit order; if plugin disabled, [].
-    "baseapp_profiles.graphql.middleware.CurrentProfileMiddleware",
+    *plugin_registry.get("GRAPHENE__MIDDLEWARE", "baseapp_profiles"),
 ) + GRAPHENE["MIDDLEWARE"]
 
 ROOT_URLCONF = "testproject.urls"
@@ -125,16 +125,16 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "baseapp_auth.permissions.UsersPermissionsBackend",
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_pages"),
-    "baseapp_profiles.permissions.ProfilesPermissionsBackend",
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_profiles"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_comments"),
     "baseapp.activity_log.permissions.ActivityLogPermissionsBackend",
     "baseapp_reactions.permissions.ReactionsPermissionsBackend",
     "baseapp_reports.permissions.ReportsPermissionsBackend",
     "baseapp_ratings.permissions.RatingsPermissionsBackend",
     "baseapp_follows.permissions.FollowsPermissionsBackend",
-    "baseapp_blocks.permissions.BlocksPermissionsBackend",
-    "baseapp_organizations.permissions.OrganizationsPermissionsBackend",
     "baseapp_chats.permissions.ChatsPermissionsBackend",
+    "baseapp_blocks.permissions.BlocksPermissionsBackend",
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_organizations"),
 ]
 
 ADMIN_TIME_ZONE = "UTC"

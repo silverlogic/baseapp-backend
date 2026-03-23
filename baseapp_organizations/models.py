@@ -37,16 +37,15 @@ class AbstractOrganization(*inheritances, DocumentIdMixin, RelayModel, TimeStamp
 
     class Meta:
         abstract = True
+        swappable = swapper.swappable_setting("baseapp_organizations", "Organization")
         verbose_name = _("organization")
         verbose_name_plural = _("organizations")
+
+    def __str__(self):
+        return self.name or ""
 
     @classmethod
     def get_graphql_object_type(cls):
         from .graphql.object_types import OrganizationObjectType
 
         return OrganizationObjectType
-
-
-class Organization(AbstractOrganization):
-    class Meta(AbstractOrganization.Meta):
-        swappable = swapper.swappable_setting("baseapp_organizations", "Organization")

@@ -93,7 +93,6 @@ class AbstractUserObjectType(*inheritances, object):
         return None
 
     def resolve_metadata(self, *args, **kwargs):
-        # TODO (plugin-arch): Define how to properly import this.
         if apps.is_installed("baseapp_pages"):
             from baseapp_pages.graphql.object_types import MetadataObjectType
 
