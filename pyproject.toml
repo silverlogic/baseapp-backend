@@ -89,6 +89,7 @@ socialauth = [
     "social-auth-app-django==5.6.0",
 ]
 pdf = ["pypdf>=6,<7"]
+api_key = []
 
 [dependency-groups]
 dev = [
