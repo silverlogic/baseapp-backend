@@ -54,7 +54,9 @@ class GraphQLSharedInterfaceRegistry:
         for iface_name_or_class in interfaces:
             if isinstance(iface_name_or_class, str):
                 iface = self.get_interface(iface_name_or_class)
-            elif issubclass(iface_name_or_class, Interface):
+            elif isinstance(iface_name_or_class, type) and issubclass(
+                iface_name_or_class, Interface
+            ):
                 iface = iface_name_or_class
             else:
                 raise TypeError(

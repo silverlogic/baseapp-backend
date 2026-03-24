@@ -80,9 +80,11 @@ def with_disabled_apps_context(
 
     with override_settings(INSTALLED_APPS=installed_apps, **swapped_models):
         _reset_plugin_runtime_state()
+        # Relax required-package checks only for this reload (reduced INSTALLED_APPS would
+        # otherwise fail plugins that declare removed apps). Test bodies use real validate().
         with patch.object(BaseAppPlugin, "validate", return_value=[]):
             plugin_registry.load_from_installed_apps()
-            yield
+        yield
 
 
 @pytest.fixture

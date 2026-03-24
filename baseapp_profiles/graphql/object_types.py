@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 import graphene
 import swapper
 from django.apps import apps
@@ -19,6 +21,33 @@ profile_app_label = Profile._meta.app_label
 
 ProfileRoleTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoles)
 ProfileRoleStatusTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoleStatus)
+
+
+@lru_cache(maxsize=1)
+def get_profile_metadata_type() -> type[object] | None:
+    if not apps.is_installed("baseapp_pages"):
+        return None
+
+    from baseapp_pages.graphql.object_types import AbstractMetadataObjectType
+
+    class ProfileMetadata(AbstractMetadataObjectType):
+        @property
+        def meta_title(self):
+            return self.instance.name
+
+        @property
+        def meta_description(self):
+            return None
+
+        @property
+        def meta_og_type(self):
+            return "profile"
+
+        @property
+        def meta_og_image(self):
+            return self.instance.image
+
+    return ProfileMetadata
 
 
 class BaseProfileUserRoleObjectType:
@@ -125,29 +154,11 @@ class BaseProfileObjectType(*inheritances, object):
 
     @classmethod
     def resolve_metadata(cls, instance, info):
-        if not apps.is_installed("baseapp_pages"):
+        ProfileMetadataType = get_profile_metadata_type()
+        if ProfileMetadataType is None:
             return None
 
-        from baseapp_pages.graphql.object_types import AbstractMetadataObjectType
-
-        class ProfileMetadata(AbstractMetadataObjectType):
-            @property
-            def meta_title(self):
-                return self.instance.name
-
-            @property
-            def meta_description(self):
-                return None
-
-            @property
-            def meta_og_type(self):
-                return "profile"
-
-            @property
-            def meta_og_image(self):
-                return self.instance.image
-
-        return ProfileMetadata(instance, info)
+        return ProfileMetadataType(instance, info)
 
     @classmethod
     def resolve_members(cls, instance, info, **kwargs):

@@ -45,7 +45,8 @@ class BaseProfileSerializer(serializers.ModelSerializer):
             suggested_value = Profile.generate_url_path_str(value)
             if suggested_value and path_with_slash != suggested_value:
                 raise serializers.ValidationError(
-                    _(f"Username already in use, suggested username: {suggested_value}"),
+                    _("Username already in use, suggested username: %(suggested_username)s")
+                    % {"suggested_username": suggested_value},
                 )
         return value
 
