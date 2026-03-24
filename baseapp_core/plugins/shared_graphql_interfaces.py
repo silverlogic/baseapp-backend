@@ -47,8 +47,9 @@ class GraphQLSharedInterfaceRegistry:
     @require_django_ready
     def get(self, *interfaces: str | Interface) -> tuple:
         """
-        Return (default_interfaces + interfaces for the given names).
-        Missing names are skipped; no error. Consumers opt in explicitly.
+        Resolve and return a tuple of interfaces.
+        Accepts interface classes directly or registered names (strings).
+        Missing/unregistered names are silently skipped.
         """
         result = []
         for iface_name_or_class in interfaces:
