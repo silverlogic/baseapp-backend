@@ -42,6 +42,8 @@ COPY . /usr/src/app
 
 WORKDIR /usr/src/app
 
+RUN git config --global --add safe.directory /usr/src/app
+
 # Install uv and sync dependencies (all extras + dev for tests)
 COPY --from=ghcr.io/astral-sh/uv:0.10.9 /uv /uvx /bin/
 RUN --mount=type=cache,target=/root/.cache/uv \
