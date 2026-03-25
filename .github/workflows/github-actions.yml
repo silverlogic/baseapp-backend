@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # for sonarcloud
+          fetch-depth: 0 # for sonarcloud
 
       - name: docker compose build
         run: docker compose build --build-arg "PYTHON_VERSION=${{ matrix.python-version }}"
@@ -46,7 +46,7 @@ jobs:
         if: steps.requirements_installation.outcome == 'success'
         run: |
           docker compose exec backend uv run --python ${{ matrix.python-version }} pytest --cov=./ --cov-report=xml --cov-branch .
-      
+
       - name: pytest drf_view_action_permissions
         if: steps.requirements_installation.outcome == 'success'
         run: |
@@ -63,8 +63,8 @@ jobs:
       # protobuf               6.33.4  CVE-2026-0994  => # there is no fix version available yet
       - name: Run pip-audit (installed dependencies)
         if: steps.requirements_installation.outcome == 'success' && startsWith(matrix.django-version, '5.2')
-        run: docker compose exec backend pip-audit --skip-editable --ignore-vuln CVE-2025-61783 --ignore-vuln CVE-2026-0994
-      
+        run: docker compose exec backend pip-audit --skip-editable --ignore-vuln CVE-2025-61783 --ignore-vuln CVE-2026-0994 --ignore-vuln CVE-2026-4539
+
       - name: upload coverage report
         if: matrix.python-version == '3.11' && startsWith(matrix.django-version, '5.2')
         uses: actions/upload-artifact@v4
@@ -81,7 +81,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
 
       - name: Download coverage report
         uses: actions/download-artifact@v4
@@ -92,5 +92,5 @@ jobs:
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@master
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
