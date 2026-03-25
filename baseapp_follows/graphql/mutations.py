@@ -60,9 +60,14 @@ class FollowToggle(RelayMutation):
                     extensions={"code": "permission_required"},
                 )
 
-            # Prevent owners from unfollowing their own entities
+            # Prevent owners from unfollowing their own entities,
+            # but allow profile-to-profile unfollows (cross-profile actions by the same user)
             content_obj = follow.target.content_object
-            if hasattr(content_obj, "owner_id") and content_obj.owner_id == info.context.user.id:
+            if (
+                hasattr(content_obj, "owner_id")
+                and content_obj.owner_id == info.context.user.id
+                and not follow._is_profile_to_profile()
+            ):
                 raise GraphQLError(
                     str(_("The owner cannot leave")),
                     extensions={"code": "owner_cannot_leave"},
