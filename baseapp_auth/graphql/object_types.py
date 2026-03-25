@@ -13,19 +13,13 @@ from .permissions import PermissionsInterface
 
 User = get_user_model()
 
-interfaces = (RelayNode, PermissionsInterface)
+interfaces = tuple()
 inheritances = tuple()
 
 if apps.is_installed("baseapp_notifications"):
     from baseapp_notifications.graphql.object_types import NotificationsInterface
 
     interfaces += (NotificationsInterface,)
-
-
-if apps.is_installed("baseapp_pages"):
-    from baseapp_pages.graphql.object_types import MetadataObjectType, PageInterface
-
-    interfaces += (PageInterface,)
 
 
 if apps.is_installed("baseapp_ratings"):
@@ -83,8 +77,13 @@ class AbstractUserObjectType(*inheritances, object):
             "last_login",
             "profiles",
         )
-        interfaces = graphql_shared_interfaces.get_interfaces(
-            ["profile", "profiles_list"], interfaces
+        interfaces = graphql_shared_interfaces.get(
+            RelayNode,
+            PermissionsInterface,
+            *interfaces,
+            "ProfileInterface",
+            "ProfilesInterface",
+            "PageInterface",
         )
         filterset_class = UsersFilter
 
@@ -94,9 +93,14 @@ class AbstractUserObjectType(*inheritances, object):
         return None
 
     def resolve_metadata(self, *args, **kwargs):
-        return MetadataObjectType(
-            meta_title=self.get_full_name(),
-        )
+        if apps.is_installed("baseapp_pages"):
+            from baseapp_pages.graphql.object_types import MetadataObjectType
+
+            return MetadataObjectType(
+                meta_title=self.get_full_name(),
+            )
+
+        return None
 
     def resolve_is_authenticated(self, info):
         return info.context.user.is_authenticated and self.pk == info.context.user.pk

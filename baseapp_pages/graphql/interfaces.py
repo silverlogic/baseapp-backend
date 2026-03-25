@@ -1,4 +1,4 @@
-def get_pages_interface():
+def get_page_interface():
     from .object_types import PageInterface
 
     return PageInterface

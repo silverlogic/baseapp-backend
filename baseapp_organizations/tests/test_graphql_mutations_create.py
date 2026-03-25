@@ -46,11 +46,13 @@ def test_anon_cant_create_organization(graphql_client):
 
 
 def test_user_can_create_organization(graphql_user_client):
-
-    graphql_user_client(
+    response = graphql_user_client(
         ORGANIZATION_CREATE_GRAPHQL,
         variables={"input": {"name": "my organization", "urlPath": "my-organization"}},
     )
+
+    content = response.json()
+    assert "errors" not in content
     organization = Organization.objects.get()
     assert organization.profile.name == "my organization"
     assert organization.profile.url_path.path == "/myorganization"

@@ -81,24 +81,29 @@ Example:
 ObjectTypes that implements `PageInterface` is required to implement a resolve for `metadata` like this:
 
 ```python
+from django.apps import apps
 from django.utils.translation import get_language
 from baseapp_core.graphql import DjangoObjectType, Node as RelayNode
-from baseapp_pages.graphql import PageInterface, MetadataObjectType
+from baseapp_core.plugins import graphql_shared_interfaces
 
 
 class MyModelObjectType(DjangoObjectType):
     class Meta:
         model = MyModel
-        interfaces = (RelayNode, PageInterface)
+        interfaces = graphql_shared_interfaces.get(RelayNode, "PageInterface")
 
     @classmethod
     def resolve_metadata(cls, instance, info, **kwargs):
-        return MetadataObjectType(
-            meta_title=instance.title,
-            meta_description=instance.body[:160],
-            meta_og_image=instance.image.url,
-            meta_robots='noindex,nofollow'
-        )
+        if apps.is_installed("baseapp_pages"):
+            from baseapp_pages.graphql import MetadataObjectType
+
+            return MetadataObjectType(
+                meta_title=instance.title,
+                meta_description=instance.body[:160],
+                meta_og_image=instance.image.url,
+                meta_robots='noindex,nofollow'
+            )
+        return None
 ```
 
 If you want to support `Metadata` being manually set or overriden in the admin you can use the following code:

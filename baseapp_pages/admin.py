@@ -29,6 +29,13 @@ class URLPathAdmin(admin.ModelAdmin):
             return "-"
 
 
+@admin.register(Metadata)
+class MetadataAdmin(admin.ModelAdmin):
+    search_fields = ("meta_title", "meta_description")
+    list_display = ("target", "meta_title", "language", "created", "modified")
+    list_filter = ("target_content_type", "language")
+
+
 class MetadataAdminInline(GenericStackedInline):
     model = Metadata
     extra = 0
@@ -42,10 +49,3 @@ class PageAdmin(TranslatedFieldAdmin, admin.ModelAdmin):
     raw_id_fields = ("user",)
     list_display = ("id", "title", "created", "modified")
     inlines = [URLPathAdminInline, MetadataAdminInline]
-
-
-@admin.register(Metadata)
-class MetadataAdmin(admin.ModelAdmin):
-    search_fields = ("meta_title", "meta_description")
-    list_display = ("target", "meta_title", "language", "created", "modified")
-    list_filter = ("target_content_type", "language")

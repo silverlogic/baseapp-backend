@@ -450,9 +450,11 @@ class PackageConfig(BaseAppConfig, GraphQLContributor):
 from baseapp_core.plugins import graphql_shared_interfaces
 
 def _get_page_interfaces():
-    return graphql_shared_interfaces.get_interfaces(
-        ["comments", "permissions"],  # By name only; no import
-        [RelayNode, PageInterface],    # Default interfaces
+    return graphql_shared_interfaces.get(
+        RelayNode,
+        "PageInterface",
+        "CommentsInterface",
+        "PermissionsInterface",
     )
 
 class PageObjectType(DjangoObjectType):
@@ -549,7 +551,7 @@ INSTALLED_APPS += [
 - [ ] **Imports**: Remove cross-package runtime imports; use DocumentId/services instead
 - [ ] **URLs**: Replace hardcoded BaseApp includes with `plugin_registry.get_all_urlpatterns()`
 - [ ] **GraphQL**: Remove BaseApp Query/Mutation/Subscription imports; use registry getters
-- [ ] **GraphQL interfaces**: Replace direct interface imports with `graphql_shared_interfaces.get_interfaces([...], default_interfaces)` by name
+- [ ] **GraphQL interfaces**: Replace direct interface imports with `graphql_shared_interfaces.get(...)` by name
 - [ ] **Swapper**: Keep settings correct; ensure auxiliary models match new schema (DocumentId-based)
 - [ ] **Entry points**: Move from `setup.py` to root `setup.cfg`
 
@@ -561,7 +563,7 @@ INSTALLED_APPS += [
 - **Registry API**: `plugin_registry.get("INSTALLED_APPS")`, `plugin_registry.get("MIDDLEWARE", "slot")`
 - **URLs**: `plugin_registry.get_all_urlpatterns()`, `get_all_v1_urlpatterns()`
 - **GraphQL**: `plugin_registry.get_all_graphql_queries()`, `get_all_graphql_mutations()`, `get_all_graphql_subscriptions()`
-- **GraphQL interfaces**: `graphql_shared_interfaces.get_interfaces([...], default_interfaces)` by name
+- **GraphQL interfaces**: `graphql_shared_interfaces.get(...)` by name
 - **Services**: `shared_services.get("name")`
 - **Signals**: Connect in `AppConfig.ready()`
 - **DocumentId**: Use `DocumentIdMixin` or `DocumentId.get_or_create_for_object(obj)`

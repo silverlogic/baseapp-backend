@@ -14,7 +14,6 @@ from baseapp_core.graphql import (
     get_pk_from_relay_id,
     login_required,
 )
-from baseapp_pages.models import URLPath
 
 from .object_types import ProfileRoleTypesEnum
 
@@ -40,13 +39,15 @@ class BaseProfileSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(_("Username must be at least 8 characters long."))
         if value in string.punctuation:
             raise serializers.ValidationError(_("Username can only contain letters and numbers."))
-        value_with_slash = value if value.startswith("/") else f"/{value}"
-        if URLPath.objects.filter(path=value_with_slash).exists():
-            suggested_value = self.instance.generate_url_path(increase_path_string=value)
-            raise serializers.ValidationError(
-                _(f"Username already in use, suggested username: {suggested_value}"),
-            )
 
+        if apps.is_installed("baseapp_pages"):
+            path_with_slash = value if value.startswith("/") else f"/{value}"
+            suggested_value = Profile.generate_url_path_str(value)
+            if suggested_value and path_with_slash != suggested_value:
+                raise serializers.ValidationError(
+                    _("Username already in use, suggested username: %(suggested_username)s")
+                    % {"suggested_username": suggested_value},
+                )
         return value
 
 
@@ -64,8 +65,8 @@ class ProfileCreateSerializer(BaseProfileSerializer):
     def create(self, validated_data):
         url_path = validated_data.pop("url_path", None)
         instance = super().create(validated_data)
-        if url_path:
-            URLPath.objects.create(path=url_path, target=instance, is_active=True)
+        if apps.is_installed("baseapp_pages") and url_path:
+            instance.create_url_path(profile_name=url_path)
         return instance
 
 
@@ -90,10 +91,9 @@ class ProfileUpdateSerializer(BaseProfileSerializer):
         if phone_number and hasattr(instance.owner, "phone_number"):
             instance.owner.phone_number = phone_number
             instance.owner.save(update_fields=["phone_number"])
-        if url_path:
+        if apps.is_installed("baseapp_pages") and url_path:
             instance.url_paths.all().delete()
-            path_with_slash = url_path if url_path.startswith("/") else f"/{url_path}"
-            URLPath.objects.create(path=path_with_slash, target=instance, is_active=True)
+            instance.create_url_path(profile_name=url_path)
         if self.should_delete_field(original_data, "image"):
             instance.image.delete()
         elif "image" in original_data:

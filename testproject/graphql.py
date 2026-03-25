@@ -15,12 +15,6 @@ from baseapp_core.plugins import plugin_registry
 from baseapp_follows.graphql.mutations import FollowsMutations
 from baseapp_notifications.graphql.mutations import NotificationsMutations
 from baseapp_notifications.graphql.subscriptions import NotificationsSubscription
-from baseapp_organizations.graphql.mutations import OrganizationsMutations
-from baseapp_organizations.graphql.queries import OrganizationsQueries
-from baseapp_pages.graphql.mutations import PagesMutations
-from baseapp_pages.graphql.queries import PagesQueries
-from baseapp_profiles.graphql.mutations import ProfilesMutations
-from baseapp_profiles.graphql.queries import ProfilesQueries
 from baseapp_ratings.graphql.mutations import RatingsMutations
 from baseapp_ratings.graphql.queries import RatingsQueries
 from baseapp_reactions.graphql.mutations import ReactionsMutations
@@ -37,12 +31,9 @@ subscriptions = plugin_registry.get_all_graphql_subscriptions()
 class Query(
     graphene.ObjectType,
     UsersQueries,
-    ProfilesQueries,
     ActivityLogQueries,
     ReactionsQueries,
     RatingsQueries,
-    PagesQueries,
-    OrganizationsQueries,
     ChatsQueries,
     ContentFeedQueries,
     ReportsQueries,
@@ -54,15 +45,12 @@ class Query(
 
 class Mutation(
     graphene.ObjectType,
-    ProfilesMutations,
     ReactionsMutations,
     ReportsMutations,
     RatingsMutations,
     FollowsMutations,
     BlocksMutations,
-    PagesMutations,
     NotificationsMutations,
-    OrganizationsMutations,
     ChatsMutations,
     ContentFeedMutations,
     *mutations,

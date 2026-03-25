@@ -60,17 +60,15 @@ class TestGraphQLSharedInterfaceRegistry:
 
     def test_get_interfaces_returns_default_when_no_names(self):
         registry = GraphQLSharedInterfaceRegistry()
-        default_interfaces = [MockInterface]
 
-        result = registry.get_interfaces([], default_interfaces)
-        assert result == tuple(default_interfaces)
+        result = registry.get(MockInterface)
+        assert result == (MockInterface,)
 
     def test_get_interfaces_includes_registered_interfaces(self):
         registry = GraphQLSharedInterfaceRegistry()
         registry.register("test_interface", MockInterface)
-        default_interfaces = []
 
-        result = registry.get_interfaces(["test_interface"], default_interfaces)
+        result = registry.get("test_interface")
         assert len(result) == 1
         assert result[0] == MockInterface
 
@@ -81,26 +79,22 @@ class TestGraphQLSharedInterfaceRegistry:
         class DefaultInterface(Interface):
             default_field = String()
 
-        default_interfaces = [DefaultInterface]
-
-        result = registry.get_interfaces(["test_interface"], default_interfaces)
+        result = registry.get("test_interface", DefaultInterface)
         assert len(result) == 2
-        assert result[0] == DefaultInterface
-        assert result[1] == MockInterface
+        assert result[0] == MockInterface
+        assert result[1] == DefaultInterface
 
     def test_get_interfaces_skips_missing_interfaces(self):
         registry = GraphQLSharedInterfaceRegistry()
-        default_interfaces = []
 
-        result = registry.get_interfaces(["nonexistent"], default_interfaces)
-        assert result == tuple(default_interfaces)
+        result = registry.get("nonexistent")
+        assert result == ()
 
     def test_get_interfaces_handles_mixed_existing_and_missing(self):
         registry = GraphQLSharedInterfaceRegistry()
         registry.register("existing", MockInterface)
-        default_interfaces = []
 
-        result = registry.get_interfaces(["existing", "missing"], default_interfaces)
+        result = registry.get("existing", "missing")
         assert len(result) == 1
         assert result[0] == MockInterface
 

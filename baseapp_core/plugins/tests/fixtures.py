@@ -9,6 +9,7 @@ import pytest
 from django.conf import settings
 from django.test import override_settings
 
+from baseapp_core.plugins.base import BaseAppPlugin
 from baseapp_core.plugins.registry import plugin_registry
 
 
@@ -79,7 +80,10 @@ def with_disabled_apps_context(
 
     with override_settings(INSTALLED_APPS=installed_apps, **swapped_models):
         _reset_plugin_runtime_state()
-        plugin_registry.load_from_installed_apps()
+        # Relax required-package checks only for this reload (reduced INSTALLED_APPS would
+        # otherwise fail plugins that declare removed apps). Test bodies use real validate().
+        with patch.object(BaseAppPlugin, "validate", return_value=[]):
+            plugin_registry.load_from_installed_apps()
         yield
 
 

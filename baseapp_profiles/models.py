@@ -15,6 +15,7 @@ from model_utils.models import TimeStampedModel
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import DocumentIdMixin, random_name_in
 from baseapp_core.pghelpers import pghistory_register_default_track
+from baseapp_core.plugins import shared_services
 from baseapp_core.swapper import init_swapped_models
 from baseapp_profiles.managers import ProfileManager
 
@@ -115,29 +116,23 @@ class AbstractProfile(*inheritances):
             models.Q(profiles_owner=self) | models.Q(profile_members__profile=self)
         ).distinct()
 
-    def generate_url_path(self, increase_path_string=None):
-        if apps.is_installed("baseapp_pages"):
-            from baseapp_pages.models import URLPath
+    def create_url_path(self, profile_name: str | None = None):
+        if service := shared_services.get("pages.url_path"):
+            path_string = self.generate_url_path_str(profile_name=profile_name or self.name)
+            service.create_url_path(
+                self, path_string, language=None, is_active=True, generate_path_str=False
+            )
 
-            # In case a path already exists, we'll increase the last digit by 1
-            if increase_path_string:
-                path_string = (
-                    increase_path_string
-                    if increase_path_string.startswith("/")
-                    else f"/{increase_path_string}"
-                )
-                last_char = path_string[-1]
-                if last_char.isdigit():
-                    path_string = path_string[:-1] + str(int(last_char) + 1)
-                else:
-                    path_string = path_string + "1"
-                if URLPath.objects.filter(path=path_string).exists():
-                    return self.generate_url_path(increase_path_string=path_string)
-                return path_string
+    @classmethod
+    def generate_url_path_str(cls, profile_name: str | None = None) -> str | None:
+        if service := shared_services.get("pages.url_path"):
+            name = profile_name or ""
 
-            name = self.name or ""
             # Remove whitespaces
             name = name.translate(str.maketrans("", "", string.whitespace))
+
+            # Make sure the name starts with a slash.
+            name = name if name.startswith("/") else f"/{name}"
 
             # If name is an email (which would only occur if the user's first and last names are empty during user registration),
             # we'll remove the email domain and check if it's less than 8 characters. If it is, we'll add random digits to make it 8 characters.
@@ -145,17 +140,13 @@ class AbstractProfile(*inheritances):
             # that changes, we should add a check here.
             name = name.split("@")[0]
             if len(name) < 8:
-                path_string = "/" + name + "".join(random.choices(string.digits, k=8 - len(name)))
+                path_string = name + "".join(random.choices(string.digits, k=8 - len(name)))
             else:
-                path_string = f"/{name}"
-            if URLPath.objects.filter(path=path_string).exists():
-                return self.generate_url_path(increase_path_string=path_string)
-            return path_string
+                path_string = name
 
-    def create_url_path(self):
-        if apps.is_installed("baseapp_pages"):
-            url_path = self.generate_url_path()
-            self.url_paths.create(path=url_path, language=None, is_active=True)
+            return service.generate_url_path_str(path_string)
+
+        return None
 
     def check_if_member(self, user):
         return (

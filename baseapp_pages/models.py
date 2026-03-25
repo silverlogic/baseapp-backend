@@ -14,6 +14,8 @@ from translated_fields import TranslatedField
 
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import DocumentIdMixin, random_name_in
+from baseapp_core.pghelpers import pghistory_register_default_track
+from baseapp_core.swapper import init_swapped_models
 
 
 class URLPath(DocumentIdMixin, RelayModel, TimeStampedModel):
@@ -82,6 +84,11 @@ class Metadata(TimeStampedModel, DocumentIdMixin, RelayModel):
 
 
 class PageMixin(models.Model):
+    """
+    This mixin doesn't add any fields in the database level, it creates reverse ORM relation to
+    rows stored in the target tables.
+    """
+
     url_paths = GenericRelation(
         URLPath,
         content_type_field="target_content_type",
@@ -114,6 +121,14 @@ if apps.is_installed("baseapp_comments"):
 
 
 class AbstractPage(*inheritances, PageMixin, DocumentIdMixin, RelayModel, TimeStampedModel):
+    class PageStatus(models.IntegerChoices):
+        DRAFT = 1, _("Draft")
+        PUBLISHED = 2, _("Published")
+
+        @property
+        def description(self):
+            return self.label
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="pages",
@@ -125,42 +140,34 @@ class AbstractPage(*inheritances, PageMixin, DocumentIdMixin, RelayModel, TimeSt
 
     title = TranslatedField(models.CharField(_("title"), max_length=255, blank=True, null=True))
     body = TranslatedField(QuillField(_("body"), blank=True, null=True))
-
-    class PageStatus(models.IntegerChoices):
-        DRAFT = 1, _("Draft")
-        PUBLISHED = 2, _("Published")
-
-        @property
-        def description(self):
-            return self.label
-
     status = models.IntegerField(
         choices=PageStatus.choices, default=PageStatus.PUBLISHED, db_index=True
     )
 
     class Meta:
         abstract = True
+        swappable = swapper.swappable_setting("baseapp_pages", "Page")
 
     def __str__(self):
         return self.title or str(self.pk)
-
-
-def conditional_decorator(dec, condition):
-    def decorator(func):
-        if not condition:
-            # Return the function unchanged, not decorated.
-            return func
-        return dec(func)
-
-    return decorator
-
-
-class Page(AbstractPage):
-    class Meta:
-        swappable = swapper.swappable_setting("baseapp_pages", "Page")
 
     @classmethod
     def get_graphql_object_type(cls):
         from .graphql.object_types import PageObjectType
 
         return PageObjectType
+
+
+Page = init_swapped_models(
+    [
+        ("baseapp_pages", "Page"),
+    ]
+)
+
+
+pghistory_register_default_track(
+    Page,
+    pghistory.InsertEvent(),
+    pghistory.UpdateEvent(),
+    pghistory.DeleteEvent(),
+)

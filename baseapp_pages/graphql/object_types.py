@@ -13,11 +13,14 @@ from baseapp_core.graphql import ThumbnailField
 from baseapp_core.plugins import graphql_shared_interfaces
 from baseapp_pages.models import AbstractPage, Metadata, URLPath
 
-from ..meta import AbstractMetadataObjectType
-
 Page = swapper.load_model("baseapp_pages", "Page")
 page_app_label = Page._meta.app_label
 PageStatusEnum = graphene.Enum.from_enum(Page.PageStatus)
+
+
+# ================================
+# URL Path Object Types/Interfaces
+# ================================
 
 
 class PageInterface(RelayNode):
@@ -75,16 +78,42 @@ class URLPathNode(DjangoObjectType):
         return optimize(queryset, info, max_complexity=MAX_COMPLEXITY)
 
 
+# =====================
+# Metadata Object Types
+# =====================
+
+
+class AbstractMetadataObjectType:
+    def __init__(self, instance, info):
+        self.instance = instance
+        self.info = info
+
+
+class MetadataObjectType(DjangoObjectType):
+    language = graphene.Field(LanguagesEnum)
+    meta_og_image = ThumbnailField(required=False)
+
+    class Meta:
+        interfaces = []
+        model = Metadata
+        exclude = ("id",)
+
+    @classmethod
+    def is_type_of(cls, root, info):
+        if isinstance(root, AbstractMetadataObjectType):
+            return True
+        return super().is_type_of(root, info)
+
+
+# =================
+# Page Object Types
+# =================
+
+
 class PageFilter(django_filters.FilterSet):
     class Meta:
         model = Page
         fields = ["status"]
-
-
-def _get_page_interfaces():
-    return graphql_shared_interfaces.get_interfaces(
-        ["comments"], [RelayNode, PageInterface, PermissionsInterface]
-    )
 
 
 class BasePageObjectType:
@@ -94,7 +123,9 @@ class BasePageObjectType:
     body = graphene.String()
 
     class Meta:
-        interfaces = _get_page_interfaces()
+        interfaces = graphql_shared_interfaces.get(
+            RelayNode, PageInterface, PermissionsInterface, "CommentsInterface"
+        )
         model = Page
         fields = ("pk", "user", "title", "body", "status", "created", "modified")
         filterset_class = PageFilter
@@ -152,19 +183,3 @@ class BasePageObjectType:
 class PageObjectType(BasePageObjectType, DjangoObjectType):
     class Meta(BasePageObjectType.Meta):
         pass
-
-
-class MetadataObjectType(DjangoObjectType):
-    language = graphene.Field(LanguagesEnum)
-    meta_og_image = ThumbnailField(required=False)
-
-    class Meta:
-        interfaces = []
-        model = Metadata
-        exclude = ("id",)
-
-    @classmethod
-    def is_type_of(cls, root, info):
-        if isinstance(root, AbstractMetadataObjectType):
-            return True
-        return super().is_type_of(root, info)
