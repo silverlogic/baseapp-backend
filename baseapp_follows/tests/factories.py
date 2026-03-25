@@ -1,7 +1,7 @@
 import factory
 import swapper
 
-from ..models import get_document_id_for_object
+from baseapp_core.models import DocumentId
 
 
 class FollowFactory(factory.django.DjangoModelFactory):
@@ -16,9 +16,9 @@ class FollowFactory(factory.django.DjangoModelFactory):
         target_object = kwargs.pop("target_object", None)
 
         if actor_object:
-            kwargs["actor"] = get_document_id_for_object(actor_object)
+            kwargs["actor"] = DocumentId.get_or_create_for_object(actor_object)
 
         if target_object:
-            kwargs["target"] = get_document_id_for_object(target_object)
+            kwargs["target"] = DocumentId.get_or_create_for_object(target_object)
 
         return super()._create(model_class, *args, **kwargs)

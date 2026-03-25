@@ -1,6 +1,5 @@
 import graphene
 import swapper
-from django.contrib.contenttypes.models import ContentType
 from graphene_django.filter import DjangoFilterConnectionField
 
 from baseapp_core.graphql import Node as RelayNode
@@ -13,6 +12,8 @@ Follow = swapper.load_model("baseapp_follows", "Follow")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
+# TODO: Mitigate N+1 issues by ensuring the query optimizer covers
+# ContentType + DocumentId pre-fetch for all resolvers below.
 class FollowsInterface(RelayNode):
     followers = DjangoFilterConnectionField(get_object_type_for_model(Follow))
     following = DjangoFilterConnectionField(get_object_type_for_model(Follow))
@@ -23,28 +24,26 @@ class FollowsInterface(RelayNode):
     )
 
     def resolve_followers_count(self, info):
-        ct = ContentType.objects.get_for_model(self)
+        doc = DocumentId.get_or_create_for_object(self)
         try:
-            doc = DocumentId.objects.get(content_type=ct, object_id=self.pk)
             return doc.follow_stats.followers_count
-        except (DocumentId.DoesNotExist, FollowStats.DoesNotExist):
+        except FollowStats.DoesNotExist:
             return 0
 
     def resolve_following_count(self, info):
-        ct = ContentType.objects.get_for_model(self)
+        doc = DocumentId.get_or_create_for_object(self)
         try:
-            doc = DocumentId.objects.get(content_type=ct, object_id=self.pk)
             return doc.follow_stats.following_count
-        except (DocumentId.DoesNotExist, FollowStats.DoesNotExist):
+        except FollowStats.DoesNotExist:
             return 0
 
     def resolve_followers(self, info, **kwargs):
-        ct = ContentType.objects.get_for_model(self)
-        return Follow.objects.filter(target__content_type=ct, target__object_id=self.pk)
+        doc = DocumentId.get_or_create_for_object(self)
+        return Follow.objects.filter(target=doc)
 
     def resolve_following(self, info, **kwargs):
-        ct = ContentType.objects.get_for_model(self)
-        return Follow.objects.filter(actor__content_type=ct, actor__object_id=self.pk)
+        doc = DocumentId.get_or_create_for_object(self)
+        return Follow.objects.filter(actor=doc)
 
     def resolve_is_followed_by_me(self, info, profile_id=None, **kwargs):
         if not info.context.user.is_authenticated:

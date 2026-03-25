@@ -118,6 +118,13 @@ class DocumentId(TimeStampedModel):
         except cls.DoesNotExist:
             return None
 
+    @classmethod
+    def get_or_create_for_object(cls, obj):
+        """Get or create the DocumentId for a model instance."""
+        ct = ContentType.objects.get_for_model(obj)
+        doc, _ = cls.objects.get_or_create(content_type=ct, object_id=obj.pk)
+        return doc
+
 
 class DocumentIdMixin:
     """

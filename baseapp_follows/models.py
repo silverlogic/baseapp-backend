@@ -9,16 +9,6 @@ from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import DocumentId
 
 
-def get_document_id_for_object(obj):
-    """Get the DocumentId for the given model instance.
-
-    Assumes the object's model uses DocumentIdMixin, which auto-creates
-    DocumentId rows via pgtrigger on insert.
-    """
-    ct = ContentType.objects.get_for_model(obj)
-    return DocumentId.objects.get(content_type=ct, object_id=obj.pk)
-
-
 class FollowStats(models.Model):
     target = models.OneToOneField(
         DocumentId,

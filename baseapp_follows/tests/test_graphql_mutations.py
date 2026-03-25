@@ -1,8 +1,6 @@
 import pytest
 import swapper
-from django.contrib.contenttypes.models import ContentType
 
-from baseapp_core.models import DocumentId
 from baseapp_profiles.tests.factories import ProfileFactory
 
 Follow = swapper.load_model("baseapp_follows", "Follow")
@@ -164,24 +162,3 @@ def test_user_can_unfollow_profile_from_same_user(django_user_client, graphql_us
     assert content["data"]["followToggle"]["actor"]["followingCount"] == 0
 
 
-def test_follow_non_followable_object_returns_error(django_user_client, graphql_user_client):
-    profile1 = ProfileFactory(owner=django_user_client.user)
-    profile2 = ProfileFactory()
-
-    # Delete target's DocumentId to simulate a non-followable object
-    target_ct = ContentType.objects.get_for_model(profile2)
-    DocumentId.objects.filter(content_type=target_ct, object_id=profile2.pk).delete()
-
-    variables = {
-        "input": {
-            "actorObjectId": profile1.relay_id,
-            "targetObjectId": profile2.relay_id,
-        }
-    }
-
-    response = graphql_user_client(FOLLOW_TOGGLE_GRAPHQL, variables=variables)
-
-    content = response.json()
-    assert content["errors"][0]["message"] == "The provided object is not followable"
-    assert content["errors"][0]["extensions"]["code"] == "invalid_target"
-    assert Follow.objects.count() == 0

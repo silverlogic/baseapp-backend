@@ -2,7 +2,8 @@ import pytest
 import swapper
 from django.contrib.auth import get_user_model
 
-from baseapp_follows.models import FollowStats, get_document_id_for_object
+from baseapp_core.models import DocumentId
+from baseapp_follows.models import FollowStats
 from baseapp_profiles.tests.factories import ProfileFactory
 
 Follow = swapper.load_model("baseapp_follows", "Follow")
@@ -16,8 +17,8 @@ def test_follow_and_unfollow():
     profile1 = ProfileFactory()
     profile2 = ProfileFactory()
 
-    doc1 = get_document_id_for_object(profile1)
-    doc2 = get_document_id_for_object(profile2)
+    doc1 = DocumentId.get_or_create_for_object(profile1)
+    doc2 = DocumentId.get_or_create_for_object(profile2)
 
     follow = Follow.objects.create(
         actor=doc1,
@@ -43,8 +44,8 @@ def test_target_is_following_back():
     profile1 = ProfileFactory()
     profile2 = ProfileFactory()
 
-    doc1 = get_document_id_for_object(profile1)
-    doc2 = get_document_id_for_object(profile2)
+    doc1 = DocumentId.get_or_create_for_object(profile1)
+    doc2 = DocumentId.get_or_create_for_object(profile2)
 
     original = Follow.objects.create(
         actor=doc1,

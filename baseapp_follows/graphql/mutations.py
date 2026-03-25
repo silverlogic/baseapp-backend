@@ -7,7 +7,6 @@ from graphql_relay import offset_to_cursor
 from baseapp_core.graphql import RelayMutation, get_obj_from_relay_id, login_required
 from baseapp_core.models import DocumentId
 
-from ..models import get_document_id_for_object
 from .interfaces import FollowsInterface
 
 Follow = swapper.load_model("baseapp_follows", "Follow")
@@ -45,14 +44,8 @@ class FollowToggle(RelayMutation):
             )
 
         # Convert to DocumentIds
-        try:
-            actor_doc = get_document_id_for_object(actor_obj)
-            target_doc = get_document_id_for_object(target_obj)
-        except DocumentId.DoesNotExist:
-            raise GraphQLError(
-                str(_("The provided object is not followable")),
-                extensions={"code": "invalid_target"},
-            )
+        actor_doc = DocumentId.get_or_create_for_object(actor_obj)
+        target_doc = DocumentId.get_or_create_for_object(target_obj)
 
         follow, created = Follow.objects.get_or_create(
             actor=actor_doc,
@@ -68,16 +61,15 @@ class FollowToggle(RelayMutation):
                 )
 
             # Prevent owners from unfollowing their own entities
-            if follow.actor.content_type_id != follow.target.content_type_id:
-                content_obj = follow.target.content_object
-                if (
-                    hasattr(content_obj, "owner_id")
-                    and content_obj.owner_id == info.context.user.id
-                ):
-                    raise GraphQLError(
-                        str(_("The owner cannot leave")),
-                        extensions={"code": "owner_cannot_leave"},
-                    )
+            content_obj = follow.target.content_object
+            if (
+                hasattr(content_obj, "owner_id")
+                and content_obj.owner_id == info.context.user.id
+            ):
+                raise GraphQLError(
+                    str(_("The owner cannot leave")),
+                    extensions={"code": "owner_cannot_leave"},
+                )
 
             follow_deleted_id = follow.relay_id
             follow.delete()

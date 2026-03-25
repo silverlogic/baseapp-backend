@@ -81,6 +81,26 @@ class Migration(migrations.Migration):
                 "verbose_name_plural": "Follow Stats",
             },
         ),
+        migrations.AlterField(
+            model_name="follow",
+            name="actor",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="following",
+                to="baseapp_core.documentid",
+                verbose_name="actor",
+            ),
+        ),
+        migrations.AlterField(
+            model_name="follow",
+            name="target",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="followers",
+                to="baseapp_core.documentid",
+                verbose_name="target",
+            ),
+        ),
         migrations.RunPython(
             remap_follows_to_document_ids,
             migrations.RunPython.noop,
