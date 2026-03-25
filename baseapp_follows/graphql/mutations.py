@@ -62,10 +62,7 @@ class FollowToggle(RelayMutation):
 
             # Prevent owners from unfollowing their own entities
             content_obj = follow.target.content_object
-            if (
-                hasattr(content_obj, "owner_id")
-                and content_obj.owner_id == info.context.user.id
-            ):
+            if hasattr(content_obj, "owner_id") and content_obj.owner_id == info.context.user.id:
                 raise GraphQLError(
                     str(_("The owner cannot leave")),
                     extensions={"code": "owner_cannot_leave"},

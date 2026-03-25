@@ -160,5 +160,3 @@ def test_user_can_unfollow_profile_from_same_user(django_user_client, graphql_us
 
     assert content["data"]["followToggle"]["target"]["followersCount"] == 0
     assert content["data"]["followToggle"]["actor"]["followingCount"] == 0
-
-
