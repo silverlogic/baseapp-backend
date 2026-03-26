@@ -1,5 +1,3 @@
-import typing
-
 from constance import config
 from django.db import models
 from django.db.models import ExpressionWrapper, F, Q, Value
