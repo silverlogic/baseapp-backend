@@ -25,7 +25,7 @@ class TestAPIKey(TestCase):
 
         assert APIKey.objects.get(pk=api_key.pk).is_expired is False
 
-        with freeze_time((timezone.now() + timezone.timedelta(days=1)).strftime("%Y-%m-%d")):
+        with freeze_time(timezone.now() + timezone.timedelta(days=1)):
             assert APIKey.objects.get(pk=api_key.pk).is_expired is False
 
     def test_is_expired_when_expiry_date_is_set(self):
@@ -33,7 +33,7 @@ class TestAPIKey(TestCase):
 
         assert APIKey.objects.get(pk=api_key.pk).is_expired is False
 
-        with freeze_time((timezone.now() + timezone.timedelta(days=1)).strftime("%Y-%m-%d")):
+        with freeze_time(timezone.now() + timezone.timedelta(days=1, minutes=1)):
             assert APIKey.objects.get(pk=api_key.pk).is_expired is True
 
     @override_settings(
@@ -138,7 +138,7 @@ class TestAPIKeyAuthentication(APITestCase, URLPatternsTestCase):
         api_key = f.APIKeyFactory(expiry_date=timezone.now() + timezone.timedelta(days=1))
         unencrypted_api_key = APIKey.objects.decrypt(encrypted_value=api_key.encrypted_api_key)
 
-        with freeze_time((timezone.now() + timezone.timedelta(days=1)).strftime("%Y-%m-%d")):
+        with freeze_time(timezone.now() + timezone.timedelta(days=1)):
             r = self.client.post(
                 path=reverse("dummy-custom-action"),
                 data={},
@@ -186,7 +186,7 @@ class TestHasAPIKeyPermission(APITestCase, URLPatternsTestCase):
         api_key = f.APIKeyFactory(expiry_date=timezone.now() + timezone.timedelta(days=1))
         unencrypted_api_key = APIKey.objects.decrypt(encrypted_value=api_key.encrypted_api_key)
 
-        with freeze_time((timezone.now() + timezone.timedelta(days=1)).strftime("%Y-%m-%d")):
+        with freeze_time(timezone.now() + timezone.timedelta(days=1)):
             r = self.client.post(
                 path=reverse("dummy-custom-action"),
                 data={},
