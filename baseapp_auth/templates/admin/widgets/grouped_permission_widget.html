@@ -1,0 +1,88 @@
+<div class="space-y-6">
+  <div class="mb-4">
+    <input
+      type="text"
+      class="permission-filter w-full rounded-lg px-3 py-2 text-sm"
+      placeholder="Filter permissions…"
+      aria-label="Filter permissions"
+    >
+  </div>
+  <div class="grouped-permissions space-y-6">
+    {% for app_label, models in grouped_permissions.items %}
+    <details class="permission-app rounded-xl p-4" open>
+      <summary class="flex items-center justify-between font-semibold list-none">
+        <label class="flex items-center gap-2">
+          <input
+            type="checkbox"
+            class="select-all-app"
+            aria-label="Select all {{ app_label }} permissions"
+            onclick="event.stopPropagation()"
+            onkeydown="event.stopPropagation()"
+          >
+          <span>{{ app_label|capfirst }}</span>
+        </label>
+        <span
+          class="permission-toggle text-gray-500 transition-transform cursor-pointer"
+          aria-hidden="true"
+        >
+          <span class="material-symbols-outlined icon-font">
+            expand_more
+          </span>
+          <span class="icon-fallback">
+            ▼
+          </span>
+        </span>
+      </summary>
+      <div class="mt-4 space-y-4">
+        {% for model_name, permissions in models.items %}
+          <details class="permission-model ml-6" open>
+            <summary
+              class="flex items-center justify-between cursor-default list-none"
+            >
+              <label class="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  class="select-all-model"
+                  aria-label="Select all {{ model_name }} permissions"
+                  onclick="event.stopPropagation()"
+                  onkeypress="event.stopPropagation()"
+                >
+                <span>{{ model_name|capfirst }}</span>
+              </label>
+              <span
+                class="permission-toggle text-gray-500 transition-transform cursor-pointer"
+                aria-hidden="true"
+              >
+                <span class="material-symbols-outlined icon-font">
+                  expand_more
+                </span>
+                <span class="icon-fallback">
+                  ▼
+                </span>
+              </span>
+            </summary>
+            <ul class="ml-6 mt-2 space-y-1 permission-labels-list">
+              {% for perm in permissions %}
+                <li>
+                  <label
+                    class="permission-label flex items-center gap-2 text-sm cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      name="{{ widget.name }}"
+                      value="{{ perm.value }}"
+                      class="permission-checkbox"
+                      {% if perm.checked %}checked{% endif %}
+                    >
+                    {{ perm.label }}
+                  </label>
+                </li>
+              {% endfor %}
+            </ul>
+          </details>
+        {% endfor %}
+      </div>
+    </details>
+  {% endfor %}
+  </div>
+</div>

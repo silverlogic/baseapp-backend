@@ -9,12 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12"]
-        django-version: ["4.2.15", "5.2.1"]
+        python-version: ["3.11", "3.12"]
+        django-version: ["4.2", "5.2"]
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # for sonarcloud
+          fetch-depth: 0 # for sonarcloud
 
       - name: docker compose build
         run: docker compose build --build-arg "PYTHON_VERSION=${{ matrix.python-version }}"
@@ -24,49 +24,49 @@ jobs:
 
       - name: flake8
         id: flake8
-        run: docker compose exec backend flake8 ./ --show-source --statistics --count
+        run: docker compose exec backend uv run --python ${{ matrix.python-version }} flake8 ./ --show-source --statistics --count
 
       - name: isort
         id: isort
         if: steps.flake8.outcome == 'success'
-        run: docker compose exec backend isort --check ./
+        run: docker compose exec backend uv run --python ${{ matrix.python-version }} isort --check ./
 
       - name: black
         id: black
         if: steps.isort.outcome == 'success'
-        run: docker compose exec backend black --check ./
+        run: docker compose exec backend uv run --python ${{ matrix.python-version }} black --check ./
 
       - name: Install tests requirements with Django ${{ matrix.django-version }}
         if: steps.black.outcome == 'success'
         id: requirements_installation
         run: |
-          docker compose exec backend pip install "Django~=${{ matrix.django-version }}"
+          docker compose exec backend uv pip install --python ${{ matrix.python-version }} "Django~=${{ matrix.django-version }}"
 
       - name: pytest
         if: steps.requirements_installation.outcome == 'success'
         run: |
-          docker compose exec backend pytest --cov=./ --cov-report=xml --cov-branch .
-      
+          docker compose exec backend uv run --python ${{ matrix.python-version }} pytest --cov=./ --cov-report=xml --cov-branch .
+
       - name: pytest drf_view_action_permissions
         if: steps.requirements_installation.outcome == 'success'
         run: |
-          docker compose exec backend pytest --cov=./ --cov-report=xml --cov-branch --cov-append baseapp_drf_view_action_permissions --ds=baseapp_drf_view_action_permissions.tests.settings
+          docker compose exec backend uv run --python ${{ matrix.python-version }} pytest --cov=./ --cov-report=xml --cov-branch --cov-append baseapp_drf_view_action_permissions --ds=baseapp_drf_view_action_permissions.tests.settings
 
       - name: Install pip-audit
-        if: steps.requirements_installation.outcome == 'success' && matrix.django-version == '5.2.1'
-        run: docker compose exec backend pip install --upgrade pip pip-audit
+        if: steps.requirements_installation.outcome == 'success' && startsWith(matrix.django-version, '5.2')
+        run: docker compose exec backend uv tool install --python ${{ matrix.python-version }} pip-audit
       # Ignored vulnerabilities:
 
       # Name                   Version ID             Fix Versions
       # ---------------------- ------- -------------- ------------
-      # social-auth-app-django 5.4.3   CVE-2025-61783 5.6.0
-      # the reason for ignoring this vulnerability relates to https://github.com/silverlogic/baseapp-backend/pull/308
+      # social-auth-app-django 5.4.3   CVE-2025-61783 5.6.0 => the reason for ignoring this vulnerability relates to https://github.com/silverlogic/baseapp-backend/pull/308
+      # protobuf               6.33.4  CVE-2026-0994  => # there is no fix version available yet
       - name: Run pip-audit (installed dependencies)
-        if: steps.requirements_installation.outcome == 'success' && matrix.django-version == '5.2.1'
-        run: docker compose exec backend pip-audit --skip-editable --ignore-vuln CVE-2025-61783
-      
+        if: steps.requirements_installation.outcome == 'success' && startsWith(matrix.django-version, '5.2')
+        run: docker compose exec backend pip-audit --skip-editable --ignore-vuln CVE-2025-61783 --ignore-vuln CVE-2026-0994 --ignore-vuln CVE-2026-4539
+
       - name: upload coverage report
-        if: matrix.python-version == '3.12' && matrix.django-version == '5.2.1'
+        if: matrix.python-version == '3.11' && startsWith(matrix.django-version, '5.2')
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
@@ -81,7 +81,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
 
       - name: Download coverage report
         uses: actions/download-artifact@v4
@@ -92,5 +92,5 @@ jobs:
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@master
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

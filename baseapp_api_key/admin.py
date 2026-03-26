@@ -46,5 +46,5 @@ for APIKeyClass in [
 ]:
 
     @admin.register(APIKeyClass)
-    class _APIKeyAdmin(BaseAPIKeyAdmin[APIKeyClass]):
+    class _APIKeyAdmin(BaseAPIKeyAdmin):
         pass

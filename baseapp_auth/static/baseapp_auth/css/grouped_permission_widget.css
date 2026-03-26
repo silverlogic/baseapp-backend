@@ -1,0 +1,37 @@
+.permission-filter {
+  border-radius: 8px;
+}
+.grouped-permissions {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #2F3544;
+  border-radius: 8px;
+}
+.permission-app {
+  border-bottom: 1px solid #2F3544;
+}
+.permission-app:last-child {
+  border-bottom: none;
+}
+.permission-toggle {
+  display: inline-flex;
+  align-items: center;
+}
+.material-symbols-outlined + .icon-fallback {
+  display: none;
+}
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined", sans-serif;
+}
+details[open] > summary .permission-toggle {
+  transform: rotate(180deg);
+}
+.permission-model {
+  margin-left: 24px;
+}
+.permission-labels-list {
+  margin-left: 24px;
+}
+.is-hidden {
+  display: none !important;
+}

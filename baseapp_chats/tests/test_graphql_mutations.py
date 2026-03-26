@@ -15,6 +15,7 @@ pytestmark = pytest.mark.django_db
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 Message = swapper.load_model("baseapp_chats", "Message")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
+ChatRoomParticipantRoles = ChatRoomParticipant.ChatRoomParticipantRoles
 UnreadMessageCount = swapper.load_model("baseapp_chats", "UnreadMessageCount")
 MessageStatus = swapper.load_model("baseapp_chats", "MessageStatus")
 
@@ -195,6 +196,23 @@ DELETE_MESSAGE_GRAPHQL = """
                 node {
                     id
                     deleted
+                }
+            }
+            errors {
+                field
+                messages
+            }
+        }
+    }
+"""
+
+TOGGLE_ADMIN_GRAPHQL = """
+    mutation ChatRoomToggleAdminMutation($input: ChatRoomToggleAdminInput!) {
+        chatRoomToggleAdmin(input: $input) {
+            participant {
+                node {
+                    id
+                    role
                 }
             }
             errors {
@@ -1542,4 +1560,112 @@ def test_member_user_cant_add_participants(django_user_client, graphql_user_clie
     assert (
         content["data"]["chatRoomUpdate"]["errors"][0]["messages"][0]
         == "You don't have permission to update this room"
+    )
+
+
+@pytest.mark.parametrize(
+    "role_before, role_after",
+    [(ChatRoomParticipantRoles.MEMBER, "ADMIN"), (ChatRoomParticipantRoles.ADMIN, "MEMBER")],
+)
+def test_chat_room_toggle_admin_success(
+    role_before, role_after, django_user_client, graphql_user_client
+):
+    friend = ProfileFactory()
+
+    room = ChatRoomFactory(created_by=django_user_client.user, is_group=True)
+    ChatRoomParticipantFactory(
+        profile=django_user_client.user.profile, room=room, role=ChatRoomParticipantRoles.ADMIN
+    )
+    friend_participant = ChatRoomParticipantFactory(profile=friend, room=room, role=role_before)
+
+    response = graphql_user_client(
+        TOGGLE_ADMIN_GRAPHQL,
+        variables={
+            "input": {
+                "targetParticipantId": friend_participant.relay_id,
+                "profileId": django_user_client.user.profile.relay_id,
+                "roomId": room.relay_id,
+            }
+        },
+    )
+    content = response.json()
+    assert content["data"]["chatRoomToggleAdmin"]["participant"]["node"]["role"] == role_after
+
+
+def test_chat_room_toggle_admin_no_permission(django_user_client, graphql_user_client):
+    room = ChatRoomFactory(created_by=django_user_client.user, is_group=True)
+    ChatRoomParticipantFactory(
+        profile=django_user_client.user.profile, room=room, role=ChatRoomParticipantRoles.MEMBER
+    )
+    friend = ProfileFactory()
+    friend_participant = ChatRoomParticipantFactory(profile=friend, room=room)
+
+    response = graphql_user_client(
+        TOGGLE_ADMIN_GRAPHQL,
+        variables={
+            "input": {
+                "targetParticipantId": friend_participant.relay_id,
+                "profileId": django_user_client.user.profile.relay_id,
+                "roomId": room.relay_id,
+            }
+        },
+    )
+    content = response.json()
+    assert (
+        content["data"]["chatRoomToggleAdmin"]["errors"][0]["messages"][0]
+        == "You don't have permission to update this room"
+    )
+
+
+def test_chat_room_toggle_admin_invalid_target(django_user_client, graphql_user_client):
+    room = ChatRoomFactory(created_by=django_user_client.user, is_group=True)
+    ChatRoomParticipantFactory(
+        profile=django_user_client.user.profile, room=room, role=ChatRoomParticipantRoles.ADMIN
+    )
+    friend = ProfileFactory()
+    ChatRoomParticipantFactory(profile=friend, room=room)
+
+    room_2 = ChatRoomFactory(created_by=friend.owner, is_group=True)
+    ChatRoomParticipantFactory(profile=friend, room=room_2, role=ChatRoomParticipantRoles.ADMIN)
+    room_2_participant = ChatRoomParticipantFactory(
+        profile=django_user_client.user.profile, room=room_2
+    )
+
+    response = graphql_user_client(
+        TOGGLE_ADMIN_GRAPHQL,
+        variables={
+            "input": {
+                "targetParticipantId": room_2_participant.relay_id,
+                "profileId": django_user_client.user.profile.relay_id,
+                "roomId": room.relay_id,
+            }
+        },
+    )
+    content = response.json()
+    assert (
+        content["data"]["chatRoomToggleAdmin"]["errors"][0]["messages"][0]
+        == "The target participant is not part of the room"
+    )
+
+
+def test_chat_room_toggle_admin_cannot_remove_last_admin(django_user_client, graphql_user_client):
+    room = ChatRoomFactory(created_by=django_user_client.user, is_group=True)
+    admin_participant = ChatRoomParticipantFactory(
+        profile=django_user_client.user.profile, room=room, role=ChatRoomParticipantRoles.ADMIN
+    )
+
+    response = graphql_user_client(
+        TOGGLE_ADMIN_GRAPHQL,
+        variables={
+            "input": {
+                "targetParticipantId": admin_participant.relay_id,
+                "profileId": django_user_client.user.profile.relay_id,
+                "roomId": room.relay_id,
+            }
+        },
+    )
+    content = response.json()
+    assert (
+        content["data"]["chatRoomToggleAdmin"]["errors"][0]["messages"][0]
+        == "The room must have at least one admin"
     )

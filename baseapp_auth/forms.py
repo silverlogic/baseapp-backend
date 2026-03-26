@@ -5,6 +5,8 @@ from django.utils.translation import gettext_lazy as _
 
 from baseapp_auth.password_validators import apply_password_validators
 
+from .fields import GroupedPermissionField
+
 User = get_user_model()
 
 
@@ -52,6 +54,7 @@ class UserChangeForm(forms.ModelForm):
             "this user's password, but you can <a href='../password/'>change the password.</a>"
         ),
     )
+    user_permissions = GroupedPermissionField(required=False)
 
     class Meta:
         model = User
