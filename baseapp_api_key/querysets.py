@@ -11,7 +11,7 @@ class BaseAPIKeyQuerySet(models.QuerySet):
             return self
         return self.annotate(
             is_expired=ExpressionWrapper(
-                Q(expiry_date__isnull=False) & Q(expiry_date__lte=timezone.now().date()),
+                Q(expiry_date__isnull=False) & Q(expiry_date__lte=timezone.now()),
                 output_field=models.BooleanField(),
             ),
         )
