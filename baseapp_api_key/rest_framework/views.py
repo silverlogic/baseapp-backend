@@ -13,6 +13,9 @@ class APIKeyViewSet(viewsets.GenericViewSet):
 
     expiry_time_seconds = 60 * 60  # 1 hour by default, can be overridden in subclass
 
+    def get_key_name(self, request):
+        return "auto-generated-key"
+
     def create(self, request, *args, **kwargs):
         unencrypted_api_key = APIKey.objects.generate_unencrypted_api_key()
         encrypted_api_key = APIKey.objects.encrypt(unencrypted_value=unencrypted_api_key)
@@ -23,7 +26,7 @@ class APIKeyViewSet(viewsets.GenericViewSet):
         )
         APIKey.objects.create(
             user=request.user,
-            name="auto-gen",
+            name=self.get_key_name(request),
             encrypted_api_key=encrypted_api_key,
             expiry_date=expiry_date,
         )
