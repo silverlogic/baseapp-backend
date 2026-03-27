@@ -1,10 +1,10 @@
 from django.utils import timezone
-
-from baseapp_api_key.models import APIKey
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.settings import api_settings as drf_api_settings
+
+from baseapp_api_key.models import APIKey
 
 
 class APIKeyViewSet(viewsets.GenericViewSet):
