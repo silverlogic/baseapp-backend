@@ -2,7 +2,7 @@ import typing
 
 from django.db import models
 from django.db.models import ExpressionWrapper, Q
-from django.utils import timezone
+from django.db.models.functions import Now
 
 
 class BaseAPIKeyQuerySet(models.QuerySet):
@@ -11,7 +11,7 @@ class BaseAPIKeyQuerySet(models.QuerySet):
             return self
         return self.annotate(
             is_expired=ExpressionWrapper(
-                Q(expiry_date__isnull=False) & Q(expiry_date__lte=timezone.now()),
+                Q(expiry_date__isnull=False) & Q(expiry_date__lte=Now()),
                 output_field=models.BooleanField(),
             ),
         )

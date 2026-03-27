@@ -4,7 +4,6 @@ from django.conf import ImproperlyConfigured
 from django.test import TestCase, override_settings
 from django.urls import include, path, reverse
 from django.utils import timezone
-from freezegun import freeze_time
 from rest_framework import decorators, response, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.routers import DefaultRouter
@@ -25,16 +24,14 @@ class TestAPIKey(TestCase):
 
         assert APIKey.objects.get(pk=api_key.pk).is_expired is False
 
-        with freeze_time(timezone.now() + timezone.timedelta(days=1)):
-            assert APIKey.objects.get(pk=api_key.pk).is_expired is False
-
     def test_is_expired_when_expiry_date_is_set(self):
         api_key = f.APIKeyFactory(expiry_date=timezone.now() + timezone.timedelta(days=1))
+        expired_api_key = f.APIKeyFactory(
+            expiry_date=timezone.now() - timezone.timedelta(minutes=1)
+        )
 
         assert APIKey.objects.get(pk=api_key.pk).is_expired is False
-
-        with freeze_time(timezone.now() + timezone.timedelta(days=1, minutes=1)):
-            assert APIKey.objects.get(pk=api_key.pk).is_expired is True
+        assert APIKey.objects.get(pk=expired_api_key.pk).is_expired is True
 
     @override_settings(
         BA_API_KEY_ENCRYPTION_KEY="jCe8USiQJDatFT5T0WCIl86QBxYs0-Q7iDJQc77Dh7LR1VAnWW3PA9UyXK-V7LhFnKq9sLd3xDw5FTrrYYtj2Q=="
@@ -135,16 +132,15 @@ class TestAPIKeyAuthentication(APITestCase, URLPatternsTestCase):
         h.responseOk(r)
 
     def test_has_expired_api_key(self):
-        api_key = f.APIKeyFactory(expiry_date=timezone.now() + timezone.timedelta(days=1))
+        api_key = f.APIKeyFactory(expiry_date=timezone.now() - timezone.timedelta(minutes=1))
         unencrypted_api_key = APIKey.objects.decrypt(encrypted_value=api_key.encrypted_api_key)
 
-        with freeze_time(timezone.now() + timezone.timedelta(days=1)):
-            r = self.client.post(
-                path=reverse("dummy-custom-action"),
-                data={},
-                headers=dict(API_KEY=unencrypted_api_key),
-            )
-            h.responseUnauthorized(r)
+        r = self.client.post(
+            path=reverse("dummy-custom-action"),
+            data={},
+            headers=dict(API_KEY=unencrypted_api_key),
+        )
+        h.responseUnauthorized(r)
 
 
 class TestHasAPIKeyPermission(APITestCase, URLPatternsTestCase):
@@ -183,13 +179,12 @@ class TestHasAPIKeyPermission(APITestCase, URLPatternsTestCase):
         h.responseOk(r)
 
     def test_has_expired_api_key(self):
-        api_key = f.APIKeyFactory(expiry_date=timezone.now() + timezone.timedelta(days=1))
+        api_key = f.APIKeyFactory(expiry_date=timezone.now() - timezone.timedelta(minutes=1))
         unencrypted_api_key = APIKey.objects.decrypt(encrypted_value=api_key.encrypted_api_key)
 
-        with freeze_time(timezone.now() + timezone.timedelta(days=1)):
-            r = self.client.post(
-                path=reverse("dummy-custom-action"),
-                data={},
-                headers=dict(API_KEY=unencrypted_api_key),
-            )
-            h.responseUnauthorized(r)
+        r = self.client.post(
+            path=reverse("dummy-custom-action"),
+            data={},
+            headers=dict(API_KEY=unencrypted_api_key),
+        )
+        h.responseUnauthorized(r)
