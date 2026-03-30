@@ -174,6 +174,7 @@ baseapp_referrals = "baseapp_referrals.plugin:ReferralsPlugin"
 baseapp_pdf = "baseapp_pdf.plugin:PDFPlugin"
 baseapp_message_templates = "baseapp_message_templates.plugin:MessageTemplatesPlugin"
 baseapp_claudflare_stream_field = "baseapp_cloudflare_stream_field.plugin:CloudflareStreamFieldPlugin"
+baseapp_e2e = "baseapp_e2e.plugin:E2EPlugin"
 
 [tool.black]
 line-length = 100

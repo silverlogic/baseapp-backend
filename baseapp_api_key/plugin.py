@@ -15,7 +15,9 @@ class ApiKeyPlugin(BaseAppPlugin):
 
         return PackageSettings(
             django_extra_settings={
-                "BA_API_KEY_REQUEST_HEADER": env("BA_API_KEY_REQUEST_HEADER", default="HTTP_API_KEY"),
+                "BA_API_KEY_REQUEST_HEADER": env(
+                    "BA_API_KEY_REQUEST_HEADER", default="HTTP_API_KEY"
+                ),
                 "BA_API_KEY_ENCRYPTION_KEY": env("BA_API_KEY_ENCRYPTION_KEY", default=None),
             },
             required_packages=[],

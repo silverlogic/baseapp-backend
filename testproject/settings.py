@@ -248,12 +248,6 @@ GRAPHQL_QUERY_OPTIMIZER = {
     "ALLOW_CONNECTION_AS_DEFAULT_NESTED_TO_MANY_FIELD": True,
 }
 
-# End-to-end tests
-E2E = {
-    "ENABLED": True,
-    "SCRIPTS_PACKAGE": "testproject.e2e.scripts",
-}
-
 # Social auth
 SOCIAL_AUTH_PIPELINE_MODULE = "baseapp_social_auth.tests.pipeline"
 SOCIAL_AUTH_FACEBOOK_KEY = "1234"
