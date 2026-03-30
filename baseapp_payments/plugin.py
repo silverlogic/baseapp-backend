@@ -13,12 +13,13 @@ class PaymentsPlugin(BaseAppPlugin):
     def get_settings(self) -> PackageSettings:
         return PackageSettings(
             v1_urlpatterns=self.v1_urlpatterns,
-            required_packages=[],  # TODO (plugin-arch): review required packages
+            required_packages=[],
+            optional_packages=[],
         )
 
     @staticmethod
     def v1_urlpatterns(include, path, re_path):
-        from baseapp_payments.router import payments_router
+        from baseapp_payments.rest_framework.router import payments_router
 
         return [
             re_path(r"payments/", include(payments_router.urls)),

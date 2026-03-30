@@ -1,9 +1,9 @@
-from django.apps import AppConfig
+from baseapp_core.plugins import BaseAppConfig
 
 
-class ReferralsConfig(AppConfig):
-    default_auto_field = "django.db.models.BigAutoField"
+class ReferralsConfig(BaseAppConfig):
+    default = True
     name = "baseapp_referrals"
-
-    def ready(self):
-        pass
+    label = "baseapp_referrals"
+    verbose_name = "BaseApp Referrals"
+    default_auto_field = "django.db.models.BigAutoField"

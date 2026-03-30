@@ -1,9 +1,7 @@
 import factory
-
-import baseapp_auth.tests.helpers as h
-
-UserFactory = h.get_user_factory()
 from uuid import uuid4
+
+from baseapp_core.tests.factories import UserFactory
 
 
 class APIKeyFactory(factory.django.DjangoModelFactory):

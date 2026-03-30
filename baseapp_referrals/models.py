@@ -4,9 +4,6 @@ from django.db import models
 
 
 class BaseUserReferral(models.Model):
-    class Meta:
-        abstract = True
-
     referrer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="referrals",
@@ -18,7 +15,6 @@ class BaseUserReferral(models.Model):
         on_delete=models.CASCADE,
     )
 
-
-class UserReferral(BaseUserReferral):
     class Meta:
+        abstract = True
         swappable = swapper.swappable_setting("baseapp_referrals", "UserReferral")
