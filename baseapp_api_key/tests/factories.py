@@ -1,5 +1,6 @@
-import factory
 from uuid import uuid4
+
+import factory
 
 from baseapp_core.tests.factories import UserFactory
 
