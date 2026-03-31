@@ -1,4 +1,5 @@
 import django_filters
+import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
 
@@ -15,11 +16,28 @@ class FollowsFilter(django_filters.FilterSet):
 
 
 class BaseFollowObjectType:
+    actor_object = graphene.Field(RelayNode)
+    target_object = graphene.Field(RelayNode)
+
     class Meta:
         model = Follow
-        fields = "__all__"
+        fields = (
+            "id",
+            "user",
+            "actor",
+            "target",
+            "target_is_following_back",
+            "created",
+            "modified",
+        )
         interfaces = (RelayNode,)
         filterset_class = FollowsFilter
+
+    def resolve_actor_object(self, info):
+        return self.actor.content_object
+
+    def resolve_target_object(self, info):
+        return self.target.content_object
 
 
 class FollowObjectType(
