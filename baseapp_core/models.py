@@ -131,12 +131,9 @@ class DocumentId(TimeStampedModel):
         # TODO: Cover with unit tests.
         if not obj or not obj.pk:
             return None
+
         ct = ContentType.objects.get_for_model(obj)
-        doc, _ = cls.objects.get_or_create(
-            content_type=ct,
-            object_id=obj.pk,
-            defaults={"public_id": uuid.uuid4()},
-        )
+        doc, _ = cls.objects.get_or_create(content_type=ct, object_id=obj.pk)
         return doc
 
 

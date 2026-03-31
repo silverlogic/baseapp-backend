@@ -8,7 +8,7 @@ from django.conf import ImproperlyConfigured, settings
 from django.db import models
 from django.utils.crypto import get_random_string
 
-from baseapp_auth.querysets import BaseAPIKeyQuerySet
+from .querysets import BaseAPIKeyQuerySet
 
 logger = logging.getLogger(__name__)
 

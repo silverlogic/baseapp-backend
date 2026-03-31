@@ -1,55 +1,58 @@
 import graphene
 import swapper
-from django.apps import apps
 from graphene_django.filter import DjangoFilterConnectionField
 
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
-from baseapp_core.plugins import apply_if_installed
+from baseapp_core.models import DocumentId
+
+from ..models import FollowStats
 
 Follow = swapper.load_model("baseapp_follows", "Follow")
+Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
+# TODO: Mitigate N+1 issues by ensuring the query optimizer covers
+# ContentType + DocumentId pre-fetch for all resolvers below.
 class FollowsInterface(RelayNode):
     followers = DjangoFilterConnectionField(get_object_type_for_model(Follow))
     following = DjangoFilterConnectionField(get_object_type_for_model(Follow))
     followers_count = graphene.Int()
     following_count = graphene.Int()
     is_followed_by_me = graphene.Boolean(
-        **apply_if_installed("baseapp_profiles", {"profile_id": graphene.ID(required=False)}),
+        profile_id=graphene.ID(required=False),
     )
 
     def resolve_followers_count(self, info):
-        return self.followers_count
+        doc = DocumentId.get_or_create_for_object(self)
+        try:
+            return doc.follow_stats.followers_count
+        except FollowStats.DoesNotExist:
+            return 0
 
     def resolve_following_count(self, info):
-        return self.following_count
+        doc = DocumentId.get_or_create_for_object(self)
+        try:
+            return doc.follow_stats.following_count
+        except FollowStats.DoesNotExist:
+            return 0
 
     def resolve_followers(self, info, **kwargs):
-        return self.followers.all()
+        doc = DocumentId.get_or_create_for_object(self)
+        return Follow.objects.filter(target=doc)
 
     def resolve_following(self, info, **kwargs):
-        return self.following.all()
+        doc = DocumentId.get_or_create_for_object(self)
+        return Follow.objects.filter(actor=doc)
 
     def resolve_is_followed_by_me(self, info, profile_id=None, **kwargs):
         if not info.context.user.is_authenticated:
             return False
-        if apps.is_installed("baseapp_profiles"):
-            return FollowsInterface._resolve_is_followed_by_me_with_profiles(
-                self, info, profile_id=profile_id
-            )
-        return FollowsInterface._resolve_is_followed_by_me_with_current_user(self, info)
-
-    @staticmethod
-    def _resolve_is_followed_by_me_with_profiles(root, info, profile_id=None):
-        Profile = swapper.load_model("baseapp_profiles", "Profile")
         if profile_id:
             pk = get_pk_from_relay_id(profile_id)
-            actor = Profile.objects.get_if_member(pk=pk, user=info.context.user)
+            profile = Profile.objects.get_if_member(pk=pk, user=info.context.user)
         else:
-            actor = info.context.user.current_profile
-        return bool(actor) and Follow.objects.filter(actor_id=actor.id, target_id=root.id).exists()
-
-    @staticmethod
-    def _resolve_is_followed_by_me_with_current_user(root, info):
-        return Follow.objects.filter(user_id=info.context.user.id, target_id=root.id).exists()
+            profile = info.context.user.current_profile
+        if not profile:
+            return False
+        return Follow.is_following(profile, self)

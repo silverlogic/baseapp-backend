@@ -26,11 +26,6 @@ if apps.is_installed("baseapp_blocks"):
     inheritances.append(BlockableModel)
 
 
-if apps.is_installed("baseapp_follows"):
-    from baseapp_follows.models import FollowableModel
-
-    inheritances.append(FollowableModel)
-
 if apps.is_installed("baseapp_reports"):
     from baseapp_reports.models import ReportableModel
 
