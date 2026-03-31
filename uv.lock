@@ -448,7 +448,7 @@ requires-dist = [
     { name = "wagtail", marker = "extra == 'wagtail'", specifier = ">=7.0" },
     { name = "wagtail-headless-preview", marker = "extra == 'wagtail'", specifier = "==0.8" },
 ]
-provides-extras = ["auth", "referrals", "graphql", "pages", "payments", "notifications", "urlshortening", "messagetemplates", "wagtail", "socialauth", "pdf"]
+provides-extras = ["auth", "referrals", "graphql", "pages", "payments", "notifications", "urlshortening", "messagetemplates", "wagtail", "socialauth", "pdf", "api-key"]
 
 [package.metadata.requires-dev]
 dev = [
