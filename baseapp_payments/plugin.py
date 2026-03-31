@@ -19,7 +19,7 @@ class PaymentsPlugin(BaseAppPlugin):
 
     @staticmethod
     def v1_urlpatterns(include, path, re_path):
-        from baseapp_payments.rest_framework.router import payments_router
+        from baseapp_payments.router import payments_router
 
         return [
             re_path(r"payments/", include(payments_router.urls)),

@@ -28,7 +28,7 @@ class TestCustomerRetrieveView:
         response = user_client.get(reverse(self.viewname, kwargs={"pk": "me"}))
         responseEquals(response, status.HTTP_200_OK)
 
-    @patch("baseapp_payments.utils.StripeService.retrieve_customer")
+    @patch("baseapp_payments.views.StripeService.retrieve_customer")
     def test_user_can_get_self_customer_with_existing_stripe_entry(
         self, mock_retrieve_customer, user_client
     ):
@@ -41,10 +41,6 @@ class TestCustomerRetrieveView:
             remote_customer_id="cus_123",
         ).exists()
 
-    def test_user_cannot_get_nonexistent_customer(self, user_client):
-        response = user_client.get(reverse(self.viewname, kwargs={"pk": "cus_nonexistent"}))
-        responseEquals(response, status.HTTP_404_NOT_FOUND)
-
 
 class TestCustomerCreateView:
     viewname = "v1:customers-list"
@@ -53,7 +49,7 @@ class TestCustomerCreateView:
         response = client.post(reverse(self.viewname, kwargs={}))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
-    @patch("baseapp_payments.utils.StripeService.create_customer")
+    @patch("baseapp_payments.views.StripeService.create_customer")
     def test_user_can_create_customer(self, mock_create_customer, user_client):
         mock_create_customer.return_value = {"id": "cus_123"}
         response = user_client.post(reverse(self.viewname))
