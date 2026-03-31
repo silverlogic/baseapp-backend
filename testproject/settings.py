@@ -339,3 +339,10 @@ plugin_settings = plugin_registry.get_all_django_extra_settings()
 for key, value in plugin_settings.items():
     if key not in globals():
         globals()[key] = value
+
+# Anything after this line will override the plugin settings, so you can customize them.
+
+E2E = {
+    "ENABLED": True,
+    "SCRIPTS_PACKAGE": "testproject.e2e.scripts",
+}

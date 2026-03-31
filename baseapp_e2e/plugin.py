@@ -13,9 +13,11 @@ class E2EPlugin(BaseAppPlugin):
     def get_settings(self) -> PackageSettings:
         return PackageSettings(
             django_extra_settings={
+                # If needed, override this E2E setting and define the SCRIPTS_PACKAGE to enable E2E tests.
                 "E2E": {
-                    "ENABLED": True,
-                    "SCRIPTS_PACKAGE": "testproject.e2e.scripts",
+                    "ENABLED": False,
+                    # Example of script:
+                    # "SCRIPTS_PACKAGE": "testproject.e2e.scripts",
                 },
             },
             required_packages=[],
