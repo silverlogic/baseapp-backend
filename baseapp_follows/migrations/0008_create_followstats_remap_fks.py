@@ -2,7 +2,7 @@ import django.db.models.deletion
 import swapper
 from django.db import migrations, models
 
-from baseapp_core.swappable import get_apps_model
+from baseapp_core.swapper import get_apps_model
 
 
 def remap_follows_to_document_ids(apps, schema_editor):

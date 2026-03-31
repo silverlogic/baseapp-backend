@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql.models import RelayModel
-from baseapp_core.models import DocumentId
+from baseapp_core.models import DocumentId, DocumentIdMixin
 
 
 class FollowStats(models.Model):
@@ -27,7 +27,7 @@ class FollowStats(models.Model):
         return f"FollowStats for {self.target}"
 
 
-class AbstractBaseFollow(TimeStampedModel, RelayModel):
+class AbstractBaseFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name=_("user"),
@@ -55,7 +55,6 @@ class AbstractBaseFollow(TimeStampedModel, RelayModel):
     class Meta:
         abstract = True
         unique_together = [("actor", "target")]
-        swappable = swapper.swappable_setting("baseapp_follows", "Follow")
 
     def __str__(self):
         return "{} followed {}".format(self.actor, self.target)
@@ -142,3 +141,8 @@ class AbstractBaseFollow(TimeStampedModel, RelayModel):
         from .graphql.object_types import FollowObjectType
 
         return FollowObjectType
+
+
+class Follow(AbstractBaseFollow):
+    class Meta:
+        swappable = swapper.swappable_setting("baseapp_follows", "Follow")
