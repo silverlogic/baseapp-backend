@@ -17,6 +17,8 @@ inheritances.append(RelayModel)
 
 
 class AbstractOrganization(*inheritances):
+    profile_name_sql = "NEW.name"
+
     name = models.CharField(
         _("name"),
         max_length=255,

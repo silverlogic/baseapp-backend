@@ -160,10 +160,11 @@ def test_anon_can_query_users_list_with_optimized_query_with_public_id(graphql_c
     response, queries = graphql_client_with_queries(QUERY_USERS_LIST)
     content = response.json()
 
-    assert queries.count == 5
+    assert queries.count == 6
     assert len(content["data"]["users"]["edges"]) == 10
 
-    # With optimizer queries are expected to be 5 and retrieving just the queried fields:
+    # With optimizer queries are expected to be 6 and retrieving just the queried fields:
+    # The first query is a ContentType lookup (cached after the first request in production)
     # SELECT "users_user"."id", "users_user"."profile_id", "users_user"."first_name", "users_user"."last_name", ("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AS "password_expiry_date", (("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AT TIME ZONE UTC)::date <= 2025-02-28 AS "is_password_expired" FROM "users_user" WHERE "users_user"."is_active"
     # SELECT "profiles_profile"."id","profiles_profile"."name",(SELECT U0."public_id" FROM "baseapp_core_publicidmapping" U0 WHERE (U0."content_type_id" = 1591 AND U0."object_id" = ("profiles_profile"."id"))) AS "mapped_public_id" FROM "profiles_profile" WHERE "profiles_profile"."id" IN (1970,1971,1972,1973,1974,1975,1976,1977,1978,1979)
     # SELECT COUNT(*) AS "__count" FROM "users_user" WHERE "users_user"."is_active"

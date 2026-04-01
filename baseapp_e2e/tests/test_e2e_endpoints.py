@@ -44,6 +44,9 @@ class TestLoadData(TestBaseE2E):
         data = json.loads(serialize("json", User.objects.all()))
         Profile.objects.all().delete()
         User.objects.all().delete()
+        # Clear stale profile references so the DB trigger recreates profiles on load
+        for obj in data:
+            obj["fields"]["profile"] = None
         return {
             "objects": data,
         }
