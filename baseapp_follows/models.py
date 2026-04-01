@@ -54,6 +54,7 @@ class AbstractBaseFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
 
     class Meta:
         abstract = True
+        unique_together = [("actor", "target")]
 
     def __str__(self):
         return "{} followed {}".format(self.actor, self.target)
