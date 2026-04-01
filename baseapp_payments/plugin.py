@@ -13,7 +13,8 @@ class PaymentsPlugin(BaseAppPlugin):
     def get_settings(self) -> PackageSettings:
         return PackageSettings(
             v1_urlpatterns=self.v1_urlpatterns,
-            required_packages=[],  # TODO (plugin-arch): review required packages
+            required_packages=[],
+            optional_packages=[],
         )
 
     @staticmethod

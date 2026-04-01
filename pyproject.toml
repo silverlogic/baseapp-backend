@@ -42,6 +42,7 @@ dependencies = [
     "requests>=2.32.3",
     "stevedore>=5.7.0",
     "pydantic>=2.12.5",
+    "drf-spectacular==0.29.0",
 ]
 
 [project.optional-dependencies]
@@ -164,11 +165,17 @@ baseapp_api_key = ["*.j2", "*.html"]
 
 [project.entry-points."baseapp.plugins"]
 baseapp_auth = "baseapp_auth.plugin:AuthPlugin"
+baseapp_api_key = "baseapp_api_key.plugin:ApiKeyPlugin"
 baseapp_profiles = "baseapp_profiles.plugin:ProfilesPlugin"
 baseapp_pages = "baseapp_pages.plugin:PagesPlugin"
 baseapp_organizations = "baseapp_organizations.plugin:OrganizationsPlugin"
 baseapp_comments = "baseapp_comments.plugin:CommentsPlugin"
 baseapp_payments = "baseapp_payments.plugin:PaymentsPlugin"
+baseapp_referrals = "baseapp_referrals.plugin:ReferralsPlugin"
+baseapp_pdf = "baseapp_pdf.plugin:PDFPlugin"
+baseapp_message_templates = "baseapp_message_templates.plugin:MessageTemplatesPlugin"
+baseapp_cloudflare_stream_field = "baseapp_cloudflare_stream_field.plugin:CloudflareStreamFieldPlugin"
+baseapp_e2e = "baseapp_e2e.plugin:E2EPlugin"
 
 [tool.black]
 line-length = 100

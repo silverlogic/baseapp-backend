@@ -146,3 +146,4 @@ class AbstractBaseFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
 class Follow(AbstractBaseFollow):
     class Meta:
         swappable = swapper.swappable_setting("baseapp_follows", "Follow")
+        unique_together = [("actor", "target")]

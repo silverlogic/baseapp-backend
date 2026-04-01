@@ -10,7 +10,6 @@ from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Subscription
 from .serializers import (
     StripeCustomerSerializer,
     StripePaymentMethodSerializer,
@@ -24,6 +23,7 @@ from .utils import StripeService, StripeWebhookHandler
 logger = logging.getLogger(__name__)
 
 Customer = swapper.load_model("baseapp_payments", "Customer")
+Subscription = swapper.load_model("baseapp_payments", "Subscription")
 
 
 class StripeSubscriptionViewset(

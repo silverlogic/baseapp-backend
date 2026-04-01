@@ -62,6 +62,8 @@ INSTALLED_APPS += [
     "testproject.pages",
     "testproject.organizations",
     "testproject.chats",
+    "testproject.payments",
+    "testproject.referrals",
     "baseapp_wagtail.tests",
 ]
 
@@ -234,19 +236,16 @@ NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"
 BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False
 BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS = False
 
-# API Key
-BA_API_KEY_REQUEST_HEADER = env("BA_API_KEY_REQUEST_HEADER", default="HTTP_API_KEY")
-BA_API_KEY_ENCRYPTION_KEY = env("BA_API_KEY_ENCRYPTION_KEY", default=None)
+# Payments
+BASEAPP_PAYMENTS_CUSTOMER_MODEL = "payments.Customer"
+BASEAPP_PAYMENTS_SUBSCRIPTION_MODEL = "payments.Subscription"
+
+# Referrals
+BASEAPP_REFERRALS_USERREFERRAL_MODEL = "referrals.UserReferral"
 
 # Graphene query optimizer
 GRAPHQL_QUERY_OPTIMIZER = {
     "ALLOW_CONNECTION_AS_DEFAULT_NESTED_TO_MANY_FIELD": True,
-}
-
-# End-to-end tests
-E2E = {
-    "ENABLED": True,
-    "SCRIPTS_PACKAGE": "testproject.e2e.scripts",
 }
 
 # Social auth
@@ -302,6 +301,13 @@ SIMPLE_JWT = {
 }
 JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
 
+# Swagger docs (drf-spectacular)
+PUBLISH_SWAGGER_DOC = env("PUBLISH_SWAGGER_DOC", default=True, required=False)
+
+if PUBLISH_SWAGGER_DOC:
+    INSTALLED_APPS += ["drf_spectacular"]
+    REST_FRAMEWORK["DEFAULT_SCHEMA_CLASS"] = "drf_spectacular.openapi.AutoSchema"
+
 # Sites
 FRONT_CONFIRM_EMAIL_URL = FRONT_URL + "/confirm-email/{id}/{token}"
 FRONT_FORGOT_PASSWORD_URL = FRONT_URL + "/forgot-password/{token}"
@@ -333,3 +339,10 @@ plugin_settings = plugin_registry.get_all_django_extra_settings()
 for key, value in plugin_settings.items():
     if key not in globals():
         globals()[key] = value
+
+# Anything after this line will override the plugin settings, so you can customize them.
+
+E2E = {
+    "ENABLED": True,
+    "SCRIPTS_PACKAGE": "testproject.e2e.scripts",
+}

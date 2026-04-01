@@ -8,11 +8,10 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.http import JsonResponse
 
-from .models import Subscription
-
 logger = logging.getLogger(__name__)
 
 Customer = swapper.load_model("baseapp_payments", "Customer")
+Subscription = swapper.load_model("baseapp_payments", "Subscription")
 
 
 class StripeWebhookHandler:
