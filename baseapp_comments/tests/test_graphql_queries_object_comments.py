@@ -56,6 +56,48 @@ VIEW_ALL_QUERY = """
     }
 """
 
+PAGINATED_COMMENTS_QUERY = """
+    query GetObject($id: ID!, $first: Int, $after: String, $orderBy: String) {
+        node(id: $id) {
+                id
+            ... on CommentsInterface {
+                commentsCount {
+                    total
+                    main
+                }
+                comments(first: $first, after: $after, orderBy: $orderBy) {
+                    edges {
+                        node {
+                            id
+                            pk
+                            commentsCount {
+                                total
+                                main
+                                replies
+                            }
+                            comments(first: 5) {
+                                edges {
+                                    node {
+                                        id
+                                        pk
+                                    }
+                                }
+                                pageInfo {
+                                    hasNextPage
+                                    endCursor
+                                }
+                            }
+                        }
+                    }
+                    pageInfo {
+                        hasNextPage
+                        endCursor
+                    }
+                }
+            }
+        }
+    }
+"""
 
 SIMPLIFIED_QUERY_FOR_TESTING_OPTIMIZATION = """
     query GetObject($id: ID!, $orderBy: String, $q: String) {
@@ -154,6 +196,77 @@ def test_anon_see_comments_and_replies_with_pagination(
     ]
 
     assert queries.count == 10
+
+
+@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+def test_top_level_comments_pagination_on_page_target(django_user_client, graphql_client):
+    """Reproduces the FE bug: when using first=5 on the top-level comments
+    of a Page (matching the FE CommentsList query), hasNextPage must be True
+    when there are more than 5 comments."""
+    page = PageFactory(user=django_user_client.user)
+    user = UserFactory()
+    # Create 10 top-level comments — more than the page size of 5
+    CommentFactory.create_batch(target=page, size=10, user=user)
+
+    response = graphql_client(
+        PAGINATED_COMMENTS_QUERY,
+        variables={"id": page.relay_id, "first": 5},
+    )
+    content = response.json()
+
+    comments_connection = content["data"]["node"]["comments"]
+    assert len(comments_connection["edges"]) == 5
+    assert comments_connection["pageInfo"]["hasNextPage"] is True
+
+
+@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+def test_top_level_comments_pagination_on_comment_target(django_user_client, graphql_client):
+    """Same bug but with a Comment as target (how baseapp tests are structured)."""
+    target = CommentFactory()
+    user = UserFactory()
+    # Create 10 top-level comments — more than the page size of 5
+    CommentFactory.create_batch(target=target, size=10, user=user)
+
+    response = graphql_client(
+        PAGINATED_COMMENTS_QUERY,
+        variables={"id": target.relay_id, "first": 5},
+    )
+    content = response.json()
+
+    comments_connection = content["data"]["node"]["comments"]
+    assert len(comments_connection["edges"]) == 5
+    assert comments_connection["pageInfo"]["hasNextPage"] is True
+
+
+@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+def test_logged_user_replies_to_a_page_comment_has_next_page_true_when_more_than_5_replies(
+    django_user_client, graphql_user_client
+):
+    page = PageFactory(user=django_user_client.user)
+    user = UserFactory()
+    comment = CommentFactory(target=page, user=user)
+    replying_user = UserFactory()
+    # Create 10 replies — more than the page size of 5
+    CommentFactory.create_batch(target=page, in_reply_to=comment, size=10, user=replying_user)
+
+    response = graphql_user_client(
+        PAGINATED_COMMENTS_QUERY,
+        variables={"id": page.relay_id, "first": 5},
+    )
+    content = response.json()
+    page = content["data"]["node"]
+
+    assert page["commentsCount"]["main"] == 1
+    assert page["commentsCount"]["total"] == 11
+
+    page_comments = page["comments"]
+
+    page_comment = page_comments["edges"][0]["node"]
+    assert page_comment["commentsCount"]["total"] == 10
+
+    comment_replies = page_comment["comments"]
+    assert len(comment_replies["edges"]) == 5
+    assert comment_replies["pageInfo"]["hasNextPage"] is True
 
 
 def test_anon_cant_see_comments_when_disabled(graphql_client):
