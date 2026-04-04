@@ -36,6 +36,28 @@ def create_object_type_from_dict(name, d):
 CommentsCount = create_object_type_from_dict("CommentsCount", default_comments_count())
 
 
+def _exclude_blocked_profiles(queryset, info):
+    """Exclude comments from blocked/blocking profiles.
+
+    Must be called BEFORE evaluate_with_prefetch_hack / optimize
+    so that .exclude() cloning doesn't destroy the result cache.
+    """
+    user = info.context.user
+    if user.is_anonymous:
+        return queryset
+
+    profile = getattr(user, "current_profile", None)
+    if not profile:
+        return queryset
+
+    blocked_profile_ids = profile.blocking.values_list("target_id", flat=True)
+    blocker_profile_ids = profile.blockers.values_list("actor_id", flat=True)
+
+    return queryset.exclude(profile__id__in=blocked_profile_ids).exclude(
+        profile__id__in=blocker_profile_ids
+    )
+
+
 class CommentsInterface(RelayNode):
     comments_count = graphene.Field(CommentsCount, required=True)
     comments = DjangoConnectionField(get_object_type_for_model(Comment))
@@ -64,6 +86,7 @@ class CommentsInterface(RelayNode):
 
         if is_root_a_comment and (root.target_object_id or root.in_reply_to_id):
             qs = root.comments.filter(status=CommentStatus.PUBLISHED)
+            qs = _exclude_blocked_profiles(qs, info)
             # The root.comments were already optimized. But because of the new filter, we need to
             # re-evaluate the queryset so it can be properly paginated.
             evaluate_with_prefetch_hack(qs)
@@ -78,14 +101,13 @@ class CommentsInterface(RelayNode):
             info_proxy = info
 
         target_content_type = ContentType.objects.get_for_model(root)
-        return optimize(
-            Comment.objects_visible.filter(
-                target_content_type=target_content_type,
-                target_object_id=root.pk,
-                in_reply_to__isnull=True,
-            ),
-            info_proxy,
+        qs = Comment.objects_visible.filter(
+            target_content_type=target_content_type,
+            target_object_id=root.pk,
+            in_reply_to__isnull=True,
         )
+        qs = _exclude_blocked_profiles(qs, info)
+        return optimize(qs, info_proxy)
 
 
 comment_interfaces = (
@@ -162,23 +184,15 @@ class BaseCommentObjectType:
 
     @classmethod
     def get_queryset(cls, queryset, info):
-        user = info.context.user
-        if user.is_anonymous:
+        # Skip filtering when _result_cache is already populated (e.g. by
+        # evaluate_with_prefetch_hack in resolve_comments).  Calling .exclude()
+        # would clone the queryset and destroy the cache, breaking pagination
+        # counts for nested comment connections.  The filtering is already
+        # applied inside resolve_comments before evaluation instead.
+        if getattr(queryset, "_result_cache", None) is not None:
             return queryset
 
-        profile = user.current_profile
-
-        if not profile:
-            return queryset
-
-        bloked_profile_ids = profile.blocking.values_list("target_id", flat=True)
-        bloker_profile_ids = profile.blockers.values_list("actor_id", flat=True)
-
-        queryset = queryset.exclude(profile__id__in=bloked_profile_ids).exclude(
-            profile__id__in=bloker_profile_ids
-        )
-
-        return queryset
+        return _exclude_blocked_profiles(queryset, info)
 
 
 class CommentObjectType(BaseCommentObjectType, DjangoObjectType):
