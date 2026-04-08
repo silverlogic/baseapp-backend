@@ -15,6 +15,7 @@ from query_optimizer.filter_info import FilterInfoCompiler
 from query_optimizer.typing import GQLInfo
 
 from baseapp_core.graphql.optimizer import (
+    NESTED_INFO_PROXY_HINT,
     ConnectionFieldNodeExtractor,
     FilterInfoCompilerPatch,
     GraphQLASTWalkerPatchMixin,
@@ -192,6 +193,55 @@ class TestOptimizationCompilerPatch:
         assert result == "result"
         assert compiler.info._use_mode == "queryset"
         compiler.handle_selections.assert_called_once()
+
+    def test_compile_swaps_info_when_hint_present(self, mock_info):
+        """When NESTED_INFO_PROXY_HINT is in queryset._hints, compile() should
+        replace self.info with the proxy so the AST walker uses the correct
+        field nodes for nested comments -> comments structures."""
+        proxy = NestedConnectionInfoProxy(
+            mock_info, queryset_field_nodes=[MagicMock(spec=FieldNode)]
+        )
+        qs = MagicMock(spec=["_hints", "model", "_result_cache"])
+        qs._hints = {NESTED_INFO_PROXY_HINT: proxy}
+
+        compiler = OptimizationCompilerPatch(mock_info, max_complexity=None)
+        assert compiler.info is mock_info
+
+        # Patch super().compile() to avoid full optimization pipeline
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(OptimizationCompiler, "compile", lambda self, qs: None)
+            compiler.compile(qs)
+
+        assert compiler.info is proxy
+        # Hint is read with .get() (not .pop()), so it remains
+        assert NESTED_INFO_PROXY_HINT in qs._hints
+
+    def test_compile_keeps_info_when_hint_absent(self, mock_info):
+        """When no NESTED_INFO_PROXY_HINT exists, compile() should not mutate
+        self.info — behaving identically to the base OptimizationCompiler."""
+        qs = MagicMock(spec=["_hints", "model", "_result_cache"])
+        qs._hints = {}
+
+        compiler = OptimizationCompilerPatch(mock_info, max_complexity=None)
+        original_info = compiler.info
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(OptimizationCompiler, "compile", lambda self, qs: None)
+            compiler.compile(qs)
+
+        assert compiler.info is original_info
+
+    def test_compile_with_list_input_does_not_crash(self, mock_info):
+        """When compile() receives a list (from prefetch to_attr), it should
+        skip the hints check and delegate to the base class without error."""
+        compiler = OptimizationCompilerPatch(mock_info, max_complexity=None)
+        original_info = compiler.info
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(OptimizationCompiler, "compile", lambda self, qs: None)
+            compiler.compile([MagicMock()])
+
+        assert compiler.info is original_info
 
 
 class TestFilterInfoCompilerPatch:
