@@ -3,6 +3,7 @@ from constance.test import override_config
 from django.contrib.contenttypes.models import ContentType
 from django.test import override_settings
 
+from baseapp_blocks.tests.factories import BlockFactory
 from baseapp_core.tests.factories import UserFactory
 from baseapp_pages.tests.factories import PageFactory
 from baseapp_profiles.tests.factories import ProfileFactory
@@ -154,7 +155,7 @@ def test_anon_see_comments_and_replies(django_user_client, graphql_client_with_q
     assert content["data"]["node"]["comments"]["edges"][0]["node"]["commentsCount"]["main"] == 2
     assert len(content["data"]["node"]["comments"]["edges"][0]["node"]["comments"]["edges"]) == 2
 
-    assert queries.count == 10
+    assert queries.count == 11
 
     ### Optimized queries.
     # 1) 'SELECT "baseapp_core_documentid"."id", "baseapp_core_documentid"."created", "baseapp_core_documentid"."modified", "baseapp_core_documentid"."public_id", "baseapp_core_documentid"."content_type_id", "baseapp_core_documentid"."object_id", "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "baseapp_core_documentid" INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE "baseapp_core_documentid"."public_id" = 97c2483b-2625-448f-ba16-2e58b92a76c3 LIMIT 21',
@@ -195,7 +196,7 @@ def test_anon_see_comments_and_replies_with_pagination(
         "hasNextPage"
     ]
 
-    assert queries.count == 10
+    assert queries.count == 11
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
@@ -267,6 +268,133 @@ def test_logged_user_replies_to_a_page_comment_has_next_page_true_when_more_than
     comment_replies = page_comment["comments"]
     assert len(comment_replies["edges"]) == 5
     assert comment_replies["pageInfo"]["hasNextPage"] is True
+
+
+@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+def test_get_queryset_skips_filtering_only_when_hint_set(django_user_client, graphql_user_client):
+    """get_queryset() must rely on the explicit _BLOCKED_PROFILES_FILTERED_HINT
+    flag — NOT on _result_cache — to decide whether to skip blocked-profile
+    filtering.  A queryset whose _result_cache is populated but lacks the hint
+    must still apply the .exclude()."""
+    from baseapp_comments.graphql.object_types import (
+        _BLOCKED_PROFILES_FILTERED_HINT,
+        BaseCommentObjectType,
+        _exclude_blocked_profiles,
+    )
+
+    page = PageFactory(user=django_user_client.user)
+    current_profile = ProfileFactory(owner=django_user_client.user)
+
+    blocked_user = UserFactory()
+    blocked_profile = ProfileFactory(owner=blocked_user)
+    BlockFactory(actor=current_profile, target=blocked_profile)
+
+    CommentFactory.create_batch(target=page, size=3, user=django_user_client.user)
+    CommentFactory.create_batch(target=page, size=2, user=blocked_user, profile=blocked_profile)
+
+    qs = page.comments.all()
+
+    # Build a fake info object with the authenticated user + current_profile
+    class FakeRequest:
+        def __init__(self, user, profile):
+            self.user = user
+            self.user.current_profile = profile
+
+    class FakeInfo:
+        def __init__(self, request):
+            self.context = request
+
+    info = FakeInfo(FakeRequest(django_user_client.user, current_profile))
+
+    # --- Case 1: hint IS set → get_queryset skips filtering (returns as-is)
+    qs_with_hint = _exclude_blocked_profiles(qs, info)
+    assert qs_with_hint._hints.get(_BLOCKED_PROFILES_FILTERED_HINT) is True
+    # Filtering was already applied by _exclude_blocked_profiles
+    assert qs_with_hint.count() == 3
+
+    result = BaseCommentObjectType.get_queryset(qs_with_hint, info)
+    # Should return the same queryset without applying .exclude() again
+    assert result.count() == 3
+
+    # --- Case 2: hint NOT set → get_queryset applies filtering
+    qs_no_hint = page.comments.all()
+    assert _BLOCKED_PROFILES_FILTERED_HINT not in qs_no_hint._hints
+    result = BaseCommentObjectType.get_queryset(qs_no_hint, info)
+    assert result.count() == 3  # blocked user's comments excluded
+
+    # --- Case 3: _result_cache populated WITHOUT hint → must still filter
+    qs_cached = page.comments.all()
+    list(qs_cached)  # populates _result_cache
+    assert qs_cached._result_cache is not None
+    assert _BLOCKED_PROFILES_FILTERED_HINT not in qs_cached._hints
+    result = BaseCommentObjectType.get_queryset(qs_cached, info)
+    assert result.count() == 3  # blocked user's comments excluded despite cache
+
+
+@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+def test_blocked_profiles_excluded_with_pagination(django_user_client, graphql_user_client):
+    """Blocked/blocking profiles are excluded and pagination still works correctly."""
+    page = PageFactory(user=django_user_client.user)
+    current_profile = ProfileFactory(owner=django_user_client.user)
+
+    blocked_user = UserFactory()
+    blocked_profile = ProfileFactory(owner=blocked_user)
+    BlockFactory(actor=current_profile, target=blocked_profile)
+
+    visible_user = UserFactory()
+    # 7 visible comments + 3 from blocked profile = 10 total
+    visible_comments = CommentFactory.create_batch(target=page, size=7, user=visible_user)
+    CommentFactory.create_batch(target=page, size=3, user=blocked_user, profile=blocked_profile)
+
+    response = graphql_user_client(
+        PAGINATED_COMMENTS_QUERY,
+        variables={"id": page.relay_id, "first": 5},
+        headers={"HTTP_CURRENT_PROFILE": current_profile.relay_id},
+    )
+    content = response.json()
+
+    comments_connection = content["data"]["node"]["comments"]
+    visible_pks = {c.pk for c in visible_comments}
+
+    # Only visible comments appear, none from the blocked profile
+    for edge in comments_connection["edges"]:
+        assert int(edge["node"]["pk"]) in visible_pks
+
+    assert len(comments_connection["edges"]) == 5
+    assert comments_connection["pageInfo"]["hasNextPage"] is True
+    assert comments_connection["pageInfo"]["endCursor"] is not None
+
+
+@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+def test_top_level_comments_second_page_with_cursor(django_user_client, graphql_client):
+    """Fetching the second page with an `after` cursor returns the remaining comments."""
+    page = PageFactory(user=django_user_client.user)
+    user = UserFactory()
+    CommentFactory.create_batch(target=page, size=8, user=user)
+
+    # Fetch first page
+    response = graphql_client(
+        PAGINATED_COMMENTS_QUERY,
+        variables={"id": page.relay_id, "first": 5},
+    )
+    first_page = response.json()["data"]["node"]["comments"]
+    assert len(first_page["edges"]) == 5
+    assert first_page["pageInfo"]["hasNextPage"] is True
+    end_cursor = first_page["pageInfo"]["endCursor"]
+
+    # Fetch second page using the cursor
+    response = graphql_client(
+        PAGINATED_COMMENTS_QUERY,
+        variables={"id": page.relay_id, "first": 5, "after": end_cursor},
+    )
+    second_page = response.json()["data"]["node"]["comments"]
+    assert len(second_page["edges"]) == 3
+    assert second_page["pageInfo"]["hasNextPage"] is False
+
+    # Ensure no overlap between pages
+    first_page_pks = {e["node"]["pk"] for e in first_page["edges"]}
+    second_page_pks = {e["node"]["pk"] for e in second_page["edges"]}
+    assert first_page_pks.isdisjoint(second_page_pks)
 
 
 def test_anon_cant_see_comments_when_disabled(graphql_client):
@@ -508,7 +636,7 @@ def test_comments_query_from_foreigh_target_is_partially_optimized_with_public_i
     content = response.json()
 
     assert len(content["data"]["node"]["comments"]["edges"]) == 5
-    assert queries.count == 8
+    assert queries.count == 9
 
     ### Optimized queries. About the comments it's only 4 queries.
     # 1) 'SELECT "baseapp_core_documentid"."id", "baseapp_core_documentid"."created", "baseapp_core_documentid"."modified", "baseapp_core_documentid"."public_id", "baseapp_core_documentid"."content_type_id", "baseapp_core_documentid"."object_id", "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "baseapp_core_documentid" INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE "baseapp_core_documentid"."public_id" = 1e044df1-9a3d-4a26-b056-01f9e1d9dfb5 LIMIT 21',

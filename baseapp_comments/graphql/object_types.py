@@ -23,6 +23,11 @@ from baseapp_reactions.graphql.object_types import ReactionsInterface
 from ..models import CommentStatus, default_comments_count
 from .filters import CommentFilter
 
+# Hint key set by _exclude_blocked_profiles so get_queryset() knows
+# filtering was already applied and can skip a redundant .exclude().
+_BLOCKED_PROFILES_FILTERED_HINT = "_blocked_profiles_filtered"
+
+
 Comment = swapper.load_model("baseapp_comments", "Comment")
 app_label = Comment._meta.app_label
 
@@ -44,21 +49,27 @@ def _exclude_blocked_profiles(queryset: models.QuerySet, info: GQLInfo) -> model
 
     Must be called BEFORE evaluate_with_prefetch_hack / optimize
     so that .exclude() cloning doesn't destroy the result cache.
+    Sets ``_BLOCKED_PROFILES_FILTERED_HINT`` on the queryset so
+    ``get_queryset()`` knows filtering was already applied.
     """
     user = info.context.user
     if user.is_anonymous:
+        queryset._hints[_BLOCKED_PROFILES_FILTERED_HINT] = True
         return queryset
 
     profile = getattr(user, "current_profile", None)
     if not profile:
+        queryset._hints[_BLOCKED_PROFILES_FILTERED_HINT] = True
         return queryset
 
     blocked_profile_ids = profile.blocking.values_list("target_id", flat=True)
     blocker_profile_ids = profile.blockers.values_list("actor_id", flat=True)
 
-    return queryset.exclude(
+    qs = queryset.exclude(
         Q(profile__id__in=blocked_profile_ids) | Q(profile__id__in=blocker_profile_ids)
     )
+    qs._hints[_BLOCKED_PROFILES_FILTERED_HINT] = True
+    return qs
 
 
 class CommentsInterface(RelayNode):
@@ -193,12 +204,11 @@ class BaseCommentObjectType:
 
     @classmethod
     def get_queryset(cls, queryset, info):
-        # Skip filtering when _result_cache is already populated (e.g. by
-        # evaluate_with_prefetch_hack in resolve_comments).  Calling .exclude()
-        # would clone the queryset and destroy the cache, breaking pagination
-        # counts for nested comment connections.  The filtering is already
-        # applied inside resolve_comments before evaluation instead.
-        if getattr(queryset, "_result_cache", None) is not None:
+        # Skip filtering when it was already applied by resolve_comments
+        # (indicated by an explicit _hints flag).  Calling .exclude() on an
+        # already-evaluated queryset would clone it and destroy _result_cache,
+        # breaking pagination counts for nested comment connections.
+        if queryset._hints.get(_BLOCKED_PROFILES_FILTERED_HINT):
             return queryset
 
         return _exclude_blocked_profiles(queryset, info)

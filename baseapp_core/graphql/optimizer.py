@@ -129,7 +129,7 @@ class OptimizationCompilerPatch(GraphQLASTWalkerPatchMixin, OptimizationCompiler
         # resolve_comments, swap it in so the AST walker uses the correct
         # field nodes for nested comments -> comments structures.
         if not isinstance(queryset, list):
-            proxy = queryset._hints.pop(NESTED_INFO_PROXY_HINT, None)
+            proxy = queryset._hints.get(NESTED_INFO_PROXY_HINT, None)
             if proxy is not None:
                 self.info = proxy
         return super().compile(queryset)
@@ -148,13 +148,6 @@ class FilterInfoCompilerPatch(GraphQLASTWalkerPatchMixin, FilterInfoCompiler):
     automatically overridden by this class when loaded at runtime. This enables filter
     optimization from connection resolvers.
     """
-
-    def compile(self, queryset):
-        if not isinstance(queryset, list):
-            proxy = queryset._hints.get(NESTED_INFO_PROXY_HINT)
-            if proxy is not None:
-                self.info = proxy
-        return super().compile(queryset)
 
     def run(self) -> Any:
         if isinstance(self.info, NestedConnectionInfoProxy):
