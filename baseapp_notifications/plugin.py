@@ -33,4 +33,37 @@ class NotificationsPlugin(BaseAppPlugin):
             # Plugin deps
             required_packages=[],
             optional_packages=[],
+            v1_urlpatterns=self.v1_urlpatterns,
         )
+
+    @staticmethod
+    def v1_urlpatterns(include, path, re_path):
+        from push_notifications.api.rest_framework import (
+            APNSDeviceAuthorizedViewSet,
+            GCMDeviceAuthorizedViewSet,
+            WebPushDeviceAuthorizedViewSet,
+            WNSDeviceAuthorizedViewSet,
+        )
+
+        return [
+            re_path(
+                r"push-notifications/apns",
+                APNSDeviceAuthorizedViewSet.as_view({"post": "create"}),
+                name="create_apns_device",
+            ),
+            re_path(
+                r"push-notifications/gcm",
+                GCMDeviceAuthorizedViewSet.as_view({"post": "create"}),
+                name="create_gcm_device",
+            ),
+            re_path(
+                r"push-notifications/wns",
+                WNSDeviceAuthorizedViewSet.as_view({"post": "create"}),
+                name="create_wns_device",
+            ),
+            re_path(
+                r"push-notifications/web",
+                WebPushDeviceAuthorizedViewSet.as_view({"post": "create"}),
+                name="create_web_device",
+            ),
+        ]
