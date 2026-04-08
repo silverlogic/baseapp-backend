@@ -1,3 +1,5 @@
+from django.apps import apps
+
 from baseapp_core.plugins.base import BaseAppPlugin, PackageSettings
 
 
@@ -17,9 +19,6 @@ class NotificationsPlugin(BaseAppPlugin):
 
     def get_settings(self) -> PackageSettings:
         return PackageSettings(
-            INSTALLED_APPS=[
-                "push_notifications",
-            ],
             django_extra_settings={
                 "DJANGO_NOTIFICATIONS_CONFIG": {"USE_JSONFIELD": True},
             },
@@ -32,12 +31,19 @@ class NotificationsPlugin(BaseAppPlugin):
             ],
             # Plugin deps
             required_packages=[],
-            optional_packages=[],
+            optional_packages=[
+                {
+                    "push_notifications": "Used for push notifications. See baseapp_notifications/README.md for more details.",
+                },
+            ],
             v1_urlpatterns=self.v1_urlpatterns,
         )
 
     @staticmethod
     def v1_urlpatterns(include, path, re_path):
+        if not apps.is_installed("push_notifications"):
+            return []
+
         from push_notifications.api.rest_framework import (
             APNSDeviceAuthorizedViewSet,
             GCMDeviceAuthorizedViewSet,

@@ -19,6 +19,7 @@ INSTALLED_APPS += [
     "rest_social_auth",
     "trench",
     "rest_framework_simplejwt",
+    "push_notifications",
     "baseapp_profiles",
     "baseapp_reactions",
     "baseapp_reports",
