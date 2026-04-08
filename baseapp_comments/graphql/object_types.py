@@ -67,7 +67,7 @@ class CommentsInterface(RelayNode):
         if is_root_a_comment and (root.target_object_id or root.in_reply_to_id):
             qs = root.comments.filter(status=CommentStatus.PUBLISHED)
             if service := shared_services.get("blocks.lookup"):
-                qs = service.exclude_blocked_profiles(qs, info)
+                qs = service.exclude_blocked_from_foreign_queryset(qs, info)
 
             # The root.comments were already optimized. But because of the new filter, we need to
             # re-evaluate the queryset so it can be properly paginated.
@@ -81,7 +81,7 @@ class CommentsInterface(RelayNode):
             in_reply_to__isnull=True,
         )
         if service := shared_services.get("blocks.lookup"):
-            qs = service.exclude_blocked_profiles(qs, info)
+            qs = service.exclude_blocked_from_foreign_queryset(qs, info)
 
         if is_root_a_comment:
             # When the root is a comment used as a target, the AST walker can't handle the

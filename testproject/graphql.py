@@ -13,8 +13,6 @@ from baseapp_core.graphql import DeleteNode
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.plugins import plugin_registry
 from baseapp_follows.graphql.mutations import FollowsMutations
-from baseapp_notifications.graphql.mutations import NotificationsMutations
-from baseapp_notifications.graphql.subscriptions import NotificationsSubscription
 from baseapp_ratings.graphql.mutations import RatingsMutations
 from baseapp_ratings.graphql.queries import RatingsQueries
 from baseapp_reactions.graphql.mutations import ReactionsMutations
@@ -50,7 +48,6 @@ class Mutation(
     RatingsMutations,
     FollowsMutations,
     BlocksMutations,
-    NotificationsMutations,
     ChatsMutations,
     ContentFeedMutations,
     *mutations,
@@ -60,7 +57,6 @@ class Mutation(
 
 class Subscription(
     graphene.ObjectType,
-    NotificationsSubscription,
     ChatsSubscriptions,
     *subscriptions,
 ):

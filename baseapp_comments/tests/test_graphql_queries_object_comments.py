@@ -4,6 +4,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.test import override_settings
 
 from baseapp_blocks.tests.factories import BlockFactory
+from baseapp_core.plugins import shared_services
 from baseapp_core.tests.factories import UserFactory
 from baseapp_pages.tests.factories import PageFactory
 from baseapp_profiles.tests.factories import ProfileFactory
@@ -276,11 +277,8 @@ def test_get_queryset_skips_filtering_only_when_hint_set(django_user_client, gra
     flag — NOT on _result_cache — to decide whether to skip blocked-profile
     filtering.  A queryset whose _result_cache is populated but lacks the hint
     must still apply the .exclude()."""
-    from baseapp_comments.graphql.object_types import (
-        _BLOCKED_PROFILES_FILTERED_HINT,
-        BaseCommentObjectType,
-        _exclude_blocked_profiles,
-    )
+    from baseapp_blocks.services import _BLOCKED_PROFILES_FILTERED_HINT
+    from baseapp_comments.graphql.object_types import BaseCommentObjectType
 
     page = PageFactory(user=django_user_client.user)
     current_profile = ProfileFactory(owner=django_user_client.user)
@@ -307,9 +305,10 @@ def test_get_queryset_skips_filtering_only_when_hint_set(django_user_client, gra
     info = FakeInfo(FakeRequest(django_user_client.user, current_profile))
 
     # --- Case 1: hint IS set → get_queryset skips filtering (returns as-is)
-    qs_with_hint = _exclude_blocked_profiles(qs, info)
+    service = shared_services.get("blocks.lookup")
+    qs_with_hint = service.exclude_blocked_from_foreign_queryset(qs, info)
     assert qs_with_hint._hints.get(_BLOCKED_PROFILES_FILTERED_HINT) is True
-    # Filtering was already applied by _exclude_blocked_profiles
+    # Filtering was already applied by _exclude_blocked_profiles_from_foreign_queryset
     assert qs_with_hint.count() == 3
 
     result = BaseCommentObjectType.get_queryset(qs_with_hint, info)

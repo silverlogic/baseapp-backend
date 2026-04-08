@@ -14,8 +14,6 @@ from baseapp_wagtail.settings import (
 INSTALLED_APPS += [
     "channels",
     "graphene_django",
-    "notifications",
-    "push_notifications",
     "django_quill",
     "social_django",
     "rest_social_auth",
@@ -64,6 +62,7 @@ INSTALLED_APPS += [
     "testproject.chats",
     "testproject.payments",
     "testproject.referrals",
+    "testproject.notifications",
     "baseapp_wagtail.tests",
 ]
 
@@ -196,10 +195,12 @@ BASEAPP_PROFILES_PROFILEUSERROLE_MODEL = "profiles.ProfileUserRole"
 
 # Reactions
 BASEAPP_REACTIONS_REACTION_MODEL = "reactions.Reaction"
+BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS = False
 
 # Comments
 BASEAPP_COMMENTS_COMMENT_MODEL = "comments.Comment"
 BASEAPP_COMMENTS_COMMENTSTATS_MODEL = "comments.CommentStats"
+BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False
 
 # Content Feed
 BASEAPP_CONTENT_FEED_CONTENTPOST_MODEL = "content_feed.ContentPost"
@@ -232,9 +233,8 @@ BASEAPP_CHATS_MESSAGE_MODEL = "chats.Message"
 BASEAPP_CHATS_MESSAGESTATUS_MODEL = "chats.MessageStatus"
 
 # Notifications
-NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"
-BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False
-BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS = False
+NOTIFICATIONS_NOTIFICATION_MODEL = "notifications.Notification"
+BASEAPP_NOTIFICATIONS_NOTIFICATIONSETTING_MODEL = "notifications.NotificationSetting"
 
 # Payments
 BASEAPP_PAYMENTS_CUSTOMER_MODEL = "payments.Customer"

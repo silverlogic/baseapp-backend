@@ -69,11 +69,11 @@ CELERY_TASK_ROUTES = {
 
 ```python
 from baseapp_core.graphql import DjangoObjectType, Node as RelayNode
-from baseapp_notifications.graphql.object_types import NotificationsInterface
+from baseapp_core.plugins import graphql_shared_interfaces
 
 class UserNode(DjangoObjectType):
     class Meta:
-        interfaces = (RelayNode, NotificationsInterface)
+        interfaces = graphql_shared_interfaces.get(RelayNode, "NotificationsInterface")
 ```
 
 5 - Then you can expose notification's mutations and subscriptions:
@@ -147,26 +147,27 @@ router.register(r"push-notifications/web", WebPushDeviceAuthorizedViewSet, basen
 ## How to send a notification
 
 ```python
-from baseapp_notifications import send_notification
+from baseapp_core.plugins import shared_services
 
-send_notification(
-    add_to_history=True,
-    send_push=True,
-    send_email=True,
-    sender=user,
-    recipient=user,
-    verb="opened",
-    action_object=pr,
-    target=repository,
-    level="info",
-    description=_("{user_name} opened a pull request in {repository_name}").format(
-      user_name=user.name,
-      repository_name=repository.name
-    ),
-    push_title=_("title"),
-    push_description=_("description"),
-    extra={},
-)
+if service := shared_services.get("notifications"):
+    service.send_notification(
+        add_to_history=True,
+        send_push=True,
+        send_email=True,
+        sender=user,
+        recipient=user,
+        verb="opened",
+        action_object=pr,
+        target=repository,
+        level="info",
+        description=_("{user_name} opened a pull request in {repository_name}").format(
+          user_name=user.name,
+          repository_name=repository.name
+        ),
+        push_title=_("title"),
+        push_description=_("description"),
+        extra={},
+    )
 ```
 
 Arguments:
@@ -197,15 +198,18 @@ Arguments:
 To send email notifications make sure to set `send_email=True` argument and `notification_url` so users can open the notification in the browser. The `description` will be used both as email's subject and email's body by default, check how to customize bellow.
 
 ```python
-send_notification(
-    sender=user,
-    recipient=user,
-    verb="opened",
-    description="email's subject",
-    add_to_history=True,
-    send_email=True,
-    notification_url="https://github.com/silverlogic/baseapp-backend/pull/18",
-)
+from baseapp_core.plugins import shared_services
+
+if service := shared_services.get("notifications"):
+    service.send_notification(
+        sender=user,
+        recipient=user,
+        verb="opened",
+        description="email's subject",
+        add_to_history=True,
+        send_email=True,
+        notification_url="https://github.com/silverlogic/baseapp-backend/pull/18",
+    )
 ```
 
 ### How to customize email notification templates

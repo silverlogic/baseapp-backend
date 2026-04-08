@@ -177,6 +177,7 @@ class TestReactionsWithoutBaseappProfiles:
         sender_user = SimpleNamespace(id=12)
         recipient = SimpleNamespace(id=22)
         reaction = SimpleNamespace(profile=None, user=sender_user, target=SimpleNamespace())
+        notification_service = Mock()
 
         with (
             patch(
@@ -187,9 +188,12 @@ class TestReactionsWithoutBaseappProfiles:
                 "baseapp_reactions.notifications.User.objects.get",
                 return_value=recipient,
             ),
-            patch("baseapp_reactions.notifications.send_notification") as send_notification,
+            patch(
+                "baseapp_core.plugins.shared_services.SharedServiceRegistry.get",
+                return_value=notification_service,
+            ),
         ):
             send_reaction_created_notification(reaction_pk=1, recipient_id=2)
 
-        assert send_notification.called
-        assert send_notification.call_args.kwargs["sender"] is sender_user
+        assert notification_service.send_notification.called
+        assert notification_service.send_notification.call_args.kwargs["sender"] is sender_user

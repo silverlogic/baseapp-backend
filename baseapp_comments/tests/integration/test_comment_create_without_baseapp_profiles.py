@@ -106,7 +106,6 @@ class TestCommentsWithoutBaseappProfiles:
         mock_service.exclude_blocked_from_foreign_queryset.assert_called_once()
         call = mock_service.exclude_blocked_from_foreign_queryset.call_args
         assert getattr(call.args[0], "model", None) is Comment
-        assert call.kwargs["user"].id == django_user_client.user.id
 
     def test_add_comment_with_profile_permission_is_disabled_without_profiles(
         self, with_disabled_apps
