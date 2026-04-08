@@ -223,6 +223,30 @@ TOGGLE_ADMIN_GRAPHQL = """
     }
 """
 
+CHAT_ROOM_ADD_PARTICIPANT_TO_MULTIPLE_ROOMS_GRAPHQL = """
+    mutation ChatRoomAddParticipantToMultipleRoomsMutation($input: ChatRoomAddParticipantToMultipleRoomsInput!) {
+        chatRoomAddParticipantToMultipleRooms(input: $input) {
+            rooms {
+                node {
+                    id
+                    participantsCount
+                }
+            }
+            addedParticipants {
+                id
+                profile {
+                    id
+                    pk
+                }
+            }
+            errors {
+                field
+                messages
+            }
+        }
+    }
+"""
+
 
 def test_user_can_read_all_messages(graphql_user_client, django_user_client):
     room = ChatRoomFactory(created_by=django_user_client.user)

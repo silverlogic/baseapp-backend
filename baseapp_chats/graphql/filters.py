@@ -16,10 +16,11 @@ class ChatRoomFilter(django_filters.FilterSet):
 
     order_by = django_filters.OrderingFilter(fields=(("created", "created"),))
     is_group = django_filters.BooleanFilter()
+    is_admin = django_filters.BooleanFilter(method="filter_is_admin")
 
     class Meta:
         model = ChatRoom
-        fields = ["q", "order_by", "profile_id", "unread_messages", "archived", "is_group"]
+        fields = ["q", "order_by", "profile_id", "unread_messages", "archived", "is_group", "is_admin"]
 
     def filter_q(self, queryset, name, value):
         if not value:
@@ -77,6 +78,19 @@ class ChatRoomFilter(django_filters.FilterSet):
 
         return queryset.filter(
             participants__profile_id=user_profile.pk, participants__has_archived_room=value
+        ).distinct()
+
+    def filter_is_admin(self, queryset, name, value):
+        try:
+            user_profile = self.request.user.current_profile
+        except AttributeError:
+            return queryset.none()
+
+        role = ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN if value else ChatRoomParticipant.ChatRoomParticipantRoles.MEMBER
+
+        return queryset.filter(
+            is_group=True,
+            participants__profile_id=user_profile.pk, participants__role=role
         ).distinct()
 
 

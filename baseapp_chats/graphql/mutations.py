@@ -389,6 +389,105 @@ class ChatRoomUpdate(RelayMutation):
         )
 
 
+class ChatRoomAddParticipantToMultipleRooms(RelayMutation):
+    rooms = graphene.List(ChatRoomObjectType._meta.connection.Edge)
+    added_participants = graphene.List(ChatRoomParticipantObjectType)
+
+    class Input:
+        profile_id = graphene.ID(required=True)
+        target_profile_id = graphene.ID(required=True)
+        room_ids = graphene.List(graphene.ID, required=True)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(
+        cls, root, info, profile_id, target_profile_id, room_ids, **input
+    ):
+        profile = get_obj_from_relay_id(info, profile_id)
+        participant_profile = get_obj_from_relay_id(info, target_profile_id)
+
+        if not info.context.user.has_perm(f"{profile_app_label}.use_profile", profile):
+            return ChatRoomAddParticipantToMultipleRooms(
+                errors=[
+                    ErrorType(
+                        field="profile_id",
+                        messages=[_("You don't have permission to act as this profile")],
+                    )
+                ]
+            )
+        
+        rooms = [get_obj_from_relay_id(info, room_id) for room_id in room_ids]
+
+        for room in rooms:
+            print("Processing room:", room)
+            if not room or not getattr(room, "is_group", False):
+                return ChatRoomAddParticipantToMultipleRooms(
+                    errors=[
+                        ErrorType(
+                            field="room_ids",
+                            messages=[_("Some rooms are not valid")],
+                        )
+                    ]
+                )
+
+            if not info.context.user.has_perm(
+                "baseapp_chats.modify_chatroom",
+                {
+                    "profile": profile,
+                    "room": room,
+                    "add_participants": [participant_profile.pk],
+                    "is_leaving_chatroom": False,
+                    "modify_image": False,
+                    "modify_title": False,
+                },
+            ):
+                return ChatRoomAddParticipantToMultipleRooms(
+                    errors=[
+                        ErrorType(
+                            field="room_ids",
+                            messages=[_("You don't have permission to update all the rooms")],
+                        )
+                    ]
+                )
+
+        # Check if added participant is blocked
+        if Block.objects.filter(
+            Q(actor_id=participant_profile.id, target_id=profile.id)
+            | Q(actor_id=profile.id, target_id=participant_profile.id)
+        ).exists():
+            return ChatRoomAddParticipantToMultipleRooms(
+                errors=[
+                    ErrorType(
+                        field="target_profile_id",
+                        messages=[_("You can't add this participant to the chatrooms")],
+                    )
+                ]
+            )
+
+        created_participants = []
+        with transaction.atomic():
+            for room in rooms:
+                participant, created = ChatRoomParticipant.objects.get_or_create(
+                    profile=participant_profile,
+                    room=room,
+                    defaults={
+                        "role": ChatRoomParticipantRoles.MEMBER,
+                        "accepted_at": timezone.now(),
+                    },
+                )
+                if created:
+                    created_participants.append(participant)
+                    room.participants_count += 1
+                    room.save(update_fields=["participants_count"])
+                    ChatRoomOnRoomUpdate.room_updated(room, added_participants=[participant])
+
+        return ChatRoomAddParticipantToMultipleRooms(
+            rooms=[
+                ChatRoomObjectType._meta.connection.Edge(node=room) for room in rooms
+            ],
+            added_participants=created_participants,
+        )
+
 class ChatRoomToggleAdmin(RelayMutation):
     participant = graphene.Field(ChatRoomParticipantObjectType._meta.connection.Edge)
 
@@ -910,3 +1009,4 @@ class ChatsMutations(object):
     chat_room_unread = ChatRoomUnread.Field()
     chat_room_archive = ChatRoomArchive.Field()
     chat_room_toggle_admin = ChatRoomToggleAdmin.Field()
+    chat_room_add_participant_to_multiple_rooms = ChatRoomAddParticipantToMultipleRooms.Field()
