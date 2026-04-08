@@ -45,6 +45,7 @@ class UserBaseSerializer(ModelSerializer):
             "referred_by_code",
             "phone_number",
             "preferred_language",
+            "is_superuser",
         )
         private_fields = (
             "email",
@@ -54,6 +55,7 @@ class UserBaseSerializer(ModelSerializer):
             "is_new_email_confirmed",
             "referral_code",
             "preferred_language",
+            "is_superuser",
         )
         read_only_fields = (
             "email",
@@ -61,6 +63,7 @@ class UserBaseSerializer(ModelSerializer):
             "email_verification_required",
             "new_email",
             "is_new_email_confirmed",
+            "is_superuser",
         )
 
     def get_email_verification_required(self, user):

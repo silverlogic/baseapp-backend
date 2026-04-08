@@ -4,7 +4,7 @@ from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from query_optimizer import DjangoConnectionField, optimize
+from query_optimizer import DjangoConnectionField
 from query_optimizer.prefetch_hack import evaluate_with_prefetch_hack
 
 from baseapp_auth.graphql import PermissionsInterface
@@ -15,6 +15,7 @@ from baseapp_core.graphql import (
 )
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model, skip_ast_walker
+from baseapp_core.graphql.optimizer import NESTED_INFO_PROXY_HINT
 from baseapp_core.plugins import apply_if_installed, shared_services
 from baseapp_reactions.graphql.object_types import ReactionsInterface
 
@@ -65,28 +66,37 @@ class CommentsInterface(RelayNode):
 
         if is_root_a_comment and (root.target_object_id or root.in_reply_to_id):
             qs = root.comments.filter(status=CommentStatus.PUBLISHED)
+            if service := shared_services.get("blocks.lookup"):
+                qs = service.exclude_blocked_profiles(qs, info)
+
             # The root.comments were already optimized. But because of the new filter, we need to
             # re-evaluate the queryset so it can be properly paginated.
             evaluate_with_prefetch_hack(qs)
             return qs
 
+        target_content_type = ContentType.objects.get_for_model(root)
+        qs = Comment.objects_visible.filter(
+            target_content_type=target_content_type,
+            target_object_id=root.pk,
+            in_reply_to__isnull=True,
+        )
+        if service := shared_services.get("blocks.lookup"):
+            qs = service.exclude_blocked_profiles(qs, info)
+
         if is_root_a_comment:
-            # When the root is a comment, we need to trick the optimizer to properly walk the AST.
-            # The ast walker doesn't work properly with nested elements (comments -> comments).
+            # When the root is a comment used as a target, the AST walker can't handle the
+            # nested comments -> comments structure with the regular info.  Stash a
+            # NestedConnectionInfoProxy on the queryset hints so the patched
+            # OptimizationCompilerPatch (in baseapp_core.graphql.optimizer) picks it up
+            # when the DjangoConnectionField compiles the optimisation.  This avoids calling
+            # optimize() eagerly, which would evaluate the queryset and break pagination.
             queryset_field_nodes = ConnectionFieldNodeExtractor(info).get_sliced_field_nodes()
             info_proxy = NestedConnectionInfoProxy(info, queryset_field_nodes=queryset_field_nodes)
-        else:
-            info_proxy = info
+            qs._hints[NESTED_INFO_PROXY_HINT] = info_proxy
 
-        target_content_type = ContentType.objects.get_for_model(root)
-        return optimize(
-            Comment.objects_visible.filter(
-                target_content_type=target_content_type,
-                target_object_id=root.pk,
-                in_reply_to__isnull=True,
-            ),
-            info_proxy,
-        )
+        # Return the un-evaluated queryset so the DjangoConnectionField handles both
+        # optimization and pagination (first/after slicing).
+        return qs
 
 
 comment_interfaces = (
@@ -163,12 +173,8 @@ class BaseCommentObjectType:
 
     @classmethod
     def get_queryset(cls, queryset, info):
-        user = info.context.user
-        if user.is_anonymous:
-            return queryset
-
         if service := shared_services.get("blocks.lookup"):
-            return service.exclude_blocked_from_foreign_queryset(queryset, user=user)
+            return service.exclude_blocked_from_foreign_queryset(queryset, info)
 
         return queryset
 
