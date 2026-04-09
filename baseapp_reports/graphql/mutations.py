@@ -13,8 +13,31 @@ Report = swapper.load_model("baseapp_reports", "Report")
 ReportType = swapper.load_model("baseapp_reports", "ReportType")
 ReportObjectType = Report.get_graphql_object_type()
 
+REPORT_SUBJECT_MAX_LENGTH = 250
+
+
+def get_target_author_profile_id(target):
+    """Return the profile id that authored *target*, or ``None``.
+
+    Supports:
+    - Profile targets (reporter's own profile vs target profile).
+    - Targets exposing ``get_author_profile()`` (custom hook).
+    - Targets with a ``profile`` / ``profile_id`` FK (e.g. ContentPost).
+    """
+    if hasattr(target, "get_author_profile"):
+        author_profile = target.get_author_profile()
+        return author_profile.pk if author_profile else None
+
+    profile_id = getattr(target, "profile_id", None)
+    if profile_id is not None:
+        return profile_id
+
+    return None
+
 
 class ReportCreate(RelayMutation):
+    """Create a report against any ``ReportableModel`` target."""
+
     report = graphene.Field(ReportObjectType._meta.connection.Edge, required=False)
     target = graphene.Field(ReportsInterface)
 
@@ -36,10 +59,31 @@ class ReportCreate(RelayMutation):
                 extensions={"code": "permission_required"},
             )
 
-        if info.context.user.current_profile.relay_id == target.relay_id:
+        current_profile = info.context.user.current_profile
+        is_self_report = False
+
+        if current_profile.relay_id == target.relay_id:
+            is_self_report = True
+        else:
+            author_profile_id = get_target_author_profile_id(target)
+            if author_profile_id is not None and author_profile_id == current_profile.pk:
+                is_self_report = True
+
+        if is_self_report:
             raise GraphQLError(
                 str(_("You cannot report yourself")),
                 extensions={"code": "invalid_action"},
+            )
+
+        if report_subject and len(report_subject) > REPORT_SUBJECT_MAX_LENGTH:
+            raise GraphQLError(
+                str(
+                    _(
+                        "Report subject must be %(max_length)d characters or fewer."
+                        % {"max_length": REPORT_SUBJECT_MAX_LENGTH}
+                    )
+                ),
+                extensions={"code": "validation_error"},
             )
 
         content_type = ContentType.objects.get_for_model(target)

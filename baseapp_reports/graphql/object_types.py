@@ -42,14 +42,14 @@ class ReportsInterface(RelayNode):
     reports = DjangoFilterConnectionField(get_object_type_for_model(Report))
     my_reports = graphene.Field(get_object_type_for_model(Report), required=False)
 
-    def resolve_reactions(self, info, **kwargs):
+    def resolve_reports(self, info, **kwargs):
         target_content_type = ContentType.objects.get_for_model(self)
         return Report.objects.filter(
             target_content_type=target_content_type,
             target_object_id=self.pk,
         ).order_by("-created")
 
-    def resolve_my_reaction(self, info, **kwargs):
+    def resolve_my_reports(self, info, **kwargs):
         if info.context.user.is_authenticated:
             target_content_type = ContentType.objects.get_for_model(self)
             return Report.objects.filter(
