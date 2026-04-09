@@ -14,6 +14,7 @@ from baseapp_core.graphql import (
     get_pk_from_relay_id,
     login_required,
 )
+from baseapp_core.plugins import shared_services
 
 from .object_types import ProfileRoleTypesEnum
 
@@ -249,10 +250,8 @@ class ProfileUpdate(SerializerMutation):
     def mutate_and_get_payload(cls, root, info, **input):
         activity_name = "baseapp_profiles.update_profile"
 
-        if apps.is_installed("baseapp.activity_log"):
-            from baseapp.activity_log.context import set_public_activity
-
-            set_public_activity(verb=activity_name)
+        if service := shared_services.get("activity_log"):
+            service.set_public_activity(verb=activity_name)
 
         return super().mutate_and_get_payload(root, info, **input)
 

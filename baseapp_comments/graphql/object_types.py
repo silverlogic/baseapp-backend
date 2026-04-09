@@ -1,6 +1,5 @@
 import graphene
 import swapper
-from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -16,7 +15,11 @@ from baseapp_core.graphql import (
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model, skip_ast_walker
 from baseapp_core.graphql.optimizer import NESTED_INFO_PROXY_HINT
-from baseapp_core.plugins import apply_if_installed, shared_services
+from baseapp_core.plugins import (
+    apply_if_installed,
+    graphql_shared_interfaces,
+    shared_services,
+)
 from baseapp_reactions.graphql.object_types import ReactionsInterface
 
 from ..models import CommentStatus, default_comments_count
@@ -99,25 +102,18 @@ class CommentsInterface(RelayNode):
         return qs
 
 
-comment_interfaces = (
-    RelayNode,
-    CommentsInterface,
-    ReactionsInterface,
-    PermissionsInterface,
-)
-
-if apps.is_installed("baseapp.activity_log"):
-    from baseapp.activity_log.graphql.interfaces import NodeActivityLogInterface
-
-    comment_interfaces += (NodeActivityLogInterface,)
-
-
 class BaseCommentObjectType:
     target = graphene.Field(CommentsInterface)
     status = graphene.Field(CommentStatusEnum)
 
     class Meta:
-        interfaces = comment_interfaces
+        interfaces = graphql_shared_interfaces.get(
+            RelayNode,
+            CommentsInterface,
+            ReactionsInterface,
+            PermissionsInterface,
+            "NodeActivityLogInterface",
+        )
         model = Comment
         fields = (
             "pk",

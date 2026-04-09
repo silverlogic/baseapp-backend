@@ -2,7 +2,6 @@ import graphene
 from graphene.relay.node import NodeField as RelayNodeField
 from graphene_django.debug import DjangoDebug
 
-from baseapp.activity_log.graphql.queries import ActivityLogQueries
 from baseapp.content_feed.graphql.mutations import ContentFeedMutations
 from baseapp.content_feed.graphql.queries import ContentFeedQueries
 from baseapp_blocks.graphql.mutations import BlocksMutations
@@ -29,7 +28,6 @@ subscriptions = plugin_registry.get_all_graphql_subscriptions()
 class Query(
     graphene.ObjectType,
     UsersQueries,
-    ActivityLogQueries,
     ReactionsQueries,
     RatingsQueries,
     ChatsQueries,

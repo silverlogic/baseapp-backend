@@ -1,4 +1,3 @@
-import swapper
 from django.db import connection
 
 
@@ -21,7 +20,15 @@ def anonymize_activitylog(self, *args, **kwargs):
      IP addresses (if not considered personal data), and details of changes made. Personal identifiers
      such as names, emails, and profile information are removed or set to null.
     """
-    ActivityLog = swapper.load_model("baseapp_activity_log", "ActivityLog")
+    from django.apps import apps
+
+    if apps.is_installed("baseapp.activity_log"):
+        _anonymize_activitylog(self, *args, **kwargs)
+
+
+def _anonymize_activitylog(self, *args, **kwargs):
+    from baseapp.activity_log.models import ActivityLog
+
     all_activity_logs = ActivityLog.objects.filter(user=self)
     if all_activity_logs.exists():
         user_id_str = str(self.id)

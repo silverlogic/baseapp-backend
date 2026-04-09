@@ -71,7 +71,6 @@ plugin_registry.load_from_installed_apps()
 
 INSTALLED_APPS += plugin_registry.get("INSTALLED_APPS")
 
-MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")
 MIDDLEWARE += [
     # Slotted: use get("MIDDLEWARE", "slot_name") for explicit order; if plugin disabled, [].
     *plugin_registry.get("MIDDLEWARE", "baseapp_profiles"),
@@ -129,7 +128,7 @@ AUTHENTICATION_BACKENDS = [
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_pages"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_profiles"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_comments"),
-    "baseapp.activity_log.permissions.ActivityLogPermissionsBackend",
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp.activity_log"),
     "baseapp_reactions.permissions.ReactionsPermissionsBackend",
     "baseapp_reports.permissions.ReportsPermissionsBackend",
     "baseapp_ratings.permissions.RatingsPermissionsBackend",

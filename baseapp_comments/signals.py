@@ -4,7 +4,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import Signal
 
-from baseapp_comments.graphql.subscriptions import OnCommentChange
 from baseapp_comments.notifications import (
     send_comment_created_notification,
     send_reply_created_notification,
@@ -21,6 +20,8 @@ comment_deleted = Signal()
 
 
 def on_comment_saved_graphql_subscription(sender, instance, created, **kwargs):
+    from baseapp_comments.graphql.subscriptions import OnCommentChange
+
     if created:
         OnCommentChange.send_created_comment(comment=instance)
     else:
@@ -28,6 +29,8 @@ def on_comment_saved_graphql_subscription(sender, instance, created, **kwargs):
 
 
 def on_comment_deleted_graphql_subscription(sender, instance, **kwargs):
+    from baseapp_comments.graphql.subscriptions import OnCommentChange
+
     comment_replay_id = instance.relay_id
     target_relay_id = instance.target.relay_id if instance.target else None
     in_reply_to_relay_id = instance.in_reply_to.relay_id if instance.in_reply_to_id else None

@@ -167,6 +167,7 @@ baseapp_api_key = ["*.j2", "*.html"]
 baseapp_auth = "baseapp_auth.plugin:AuthPlugin"
 baseapp_api_key = "baseapp_api_key.plugin:ApiKeyPlugin"
 baseapp_profiles = "baseapp_profiles.plugin:ProfilesPlugin"
+baseapp_activity_log = "baseapp.activity_log.plugin:ActivityLogPlugin"
 baseapp_pages = "baseapp_pages.plugin:PagesPlugin"
 baseapp_organizations = "baseapp_organizations.plugin:OrganizationsPlugin"
 baseapp_payments = "baseapp_payments.plugin:PaymentsPlugin"
