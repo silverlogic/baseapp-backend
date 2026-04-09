@@ -24,7 +24,7 @@ Add the following to your settings file. `URL_SHORTENING_PREFIX` can be any stri
 URL_SHORTENING_PREFIX = "c"
 ```
 
-Add the following to your apps/urls.py file
+Make sure your `urls.py` main file loads routes from the plugin_registry. Otherwise, add the following to your apps/urls.py file:
 
 ```py
 urlpatterns = [

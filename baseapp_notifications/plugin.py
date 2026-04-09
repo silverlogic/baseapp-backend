@@ -36,6 +36,7 @@ class NotificationsPlugin(BaseAppPlugin):
                     "push_notifications": "Used for push notifications. See baseapp_notifications/README.md for more details.",
                 },
             ],
+            # URLs
             v1_urlpatterns=self.v1_urlpatterns,
         )
 

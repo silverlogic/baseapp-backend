@@ -177,6 +177,7 @@ baseapp_message_templates = "baseapp_message_templates.plugin:MessageTemplatesPl
 baseapp_cloudflare_stream_field = "baseapp_cloudflare_stream_field.plugin:CloudflareStreamFieldPlugin"
 baseapp_e2e = "baseapp_e2e.plugin:E2EPlugin"
 baseapp_notifications = "baseapp_notifications.plugin:NotificationsPlugin"
+baseapp_url_shortening = "baseapp_url_shortening.plugin:UrlShorteningPlugin"
 baseapp_comments = "baseapp_comments.plugin:CommentsPlugin"
 
 [tool.black]
