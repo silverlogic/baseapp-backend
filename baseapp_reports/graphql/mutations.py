@@ -19,13 +19,11 @@ REPORT_SUBJECT_MAX_LENGTH = 250
 def get_target_author_profile_id(target):
     """Return the pk of the profile that authored *target*, or ``None``.
 
-    Checks ``ReportableModel.get_author_profile()`` first (subclasses
-    override this to return the author profile).  Falls back to a
+    Checks for a ``get_author_profile()`` method on the target (models
+    that have author semantics define this).  Falls back to a
     ``profile_id`` FK when present.
     """
-    from baseapp_reports.models import ReportableModel
-
-    if isinstance(target, ReportableModel):
+    if hasattr(target, "get_author_profile"):
         author_profile = target.get_author_profile()
         return author_profile.pk if author_profile else None
 

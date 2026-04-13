@@ -151,12 +151,3 @@ class ReportableModel(models.Model):
 
     class Meta:
         abstract = True
-
-    def get_author_profile(self):
-        """Return the profile that authored this object, or ``None``.
-
-        Override in subclasses that have author semantics so that
-        ``ReportCreate`` can block self-reports generically.
-        The default returns ``None`` (no author concept).
-        """
-        return None
