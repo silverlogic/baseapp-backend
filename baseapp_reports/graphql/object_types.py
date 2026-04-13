@@ -40,7 +40,7 @@ class ReportTypeObjectType(
 class ReportsInterface(RelayNode):
     reports_count = GenericScalar()
     reports = DjangoFilterConnectionField(get_object_type_for_model(Report))
-    my_reports = graphene.Field(get_object_type_for_model(Report), required=False)
+    my_report = graphene.Field(get_object_type_for_model(Report), required=False)
 
     def resolve_reports(self, info, **kwargs):
         target_content_type = ContentType.objects.get_for_model(self)
@@ -49,7 +49,7 @@ class ReportsInterface(RelayNode):
             target_object_id=self.pk,
         ).order_by("-created")
 
-    def resolve_my_reports(self, info, **kwargs):
+    def resolve_my_report(self, info, **kwargs):
         if info.context.user.is_authenticated:
             target_content_type = ContentType.objects.get_for_model(self)
             return Report.objects.filter(
