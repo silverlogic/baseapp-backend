@@ -17,12 +17,11 @@ REPORT_SUBJECT_MAX_LENGTH = 250
 
 
 def get_target_author_profile_id(target):
-    """Return the profile id that authored *target*, or ``None``.
+    """Return the pk of the profile that authored *target*, or ``None``.
 
-    Uses ``ReportableModel.get_author_profile()`` when the target is a
-    ``ReportableModel`` subclass (override returns the author profile).
-    Falls back to a ``profile_id`` FK for non-reportable targets that
-    still have author semantics (e.g. legacy models).
+    Checks ``ReportableModel.get_author_profile()`` first (subclasses
+    override this to return the author profile).  Falls back to a
+    ``profile_id`` FK when present.
     """
     from baseapp_reports.models import ReportableModel
 
@@ -73,7 +72,7 @@ class ReportCreate(RelayMutation):
 
         if is_self_report:
             raise GraphQLError(
-                str(_("You cannot report yourself")),
+                str(_("You cannot report your own content")),
                 extensions={"code": "invalid_action"},
             )
 

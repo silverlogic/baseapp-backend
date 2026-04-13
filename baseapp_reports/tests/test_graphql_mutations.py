@@ -84,7 +84,7 @@ def test_user_profile_cant_self_report(django_user_client, graphql_user_client):
     profile.refresh_from_db()
     assert profile.reports_count["total"] == 0
 
-    assert content["errors"][0]["message"] == "You cannot report yourself"
+    assert content["errors"][0]["message"] == "You cannot report your own content"
 
 
 def test_report_subject_exceeds_max_length(django_user_client, graphql_user_client):
