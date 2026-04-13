@@ -50,8 +50,8 @@ INSTALLED_APPS = [
 2 - Set the notification and notification settings model in your `settings/base.py`:
 
 ```python
-NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"
-BASEAPP_NOTIFICATIONS_NOTIFICATIONSETTING_MODEL = "notifications.NotificationSetting"
+NOTIFICATIONS_NOTIFICATION_MODEL = "notifications.Notification"
+BASEAPP_NOTIFICATIONS_NOTIFICATIONSETTING_MODEL = "baseapp_notifications.NotificationSetting"
 ```
 
 Check how to customize to your own model [bellow](#how-to-customize-notifications-model).

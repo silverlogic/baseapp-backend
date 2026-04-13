@@ -50,6 +50,9 @@ query ProfileWithActivityLogs($id: ID!) {
 
 def test_profile_node_resolves_activity_logs(graphql_user_client, django_user_client):
     """A Profile node implements ProfileActivityLogInterface and returns matching activity rows."""
+    django_user_client.user.is_superuser = True
+    django_user_client.user.save(update_fields=["is_superuser"])
+
     verb = f"{Comment._meta.app_label}.add_comment"
     profile = django_user_client.user.profile
 
@@ -118,6 +121,9 @@ def test_profile_activity_logs_only_include_own_profile(graphql_user_client, dja
 
 def test_profile_root_query_exposes_activity_logs_field(graphql_user_client, django_user_client):
     """ProfileObjectType surfaces activityLogs from ProfileActivityLogInterface on the profile query."""
+    django_user_client.user.is_superuser = True
+    django_user_client.user.save(update_fields=["is_superuser"])
+
     verb = f"{Comment._meta.app_label}.add_comment"
     profile = django_user_client.user.profile
 

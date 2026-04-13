@@ -56,6 +56,6 @@ class BlockLookupService(SharedServiceProvider):
 
         blocked_user_ids = user.social_blocks.values_list("target_id", flat=True)
         blocker_user_ids = user.blockers.values_list("user_id", flat=True)
-        qs = qs.exclude(Q(user__id__in=blocked_user_ids) | Q(user__id__in=blocker_user_ids))
+        qs = queryset.exclude(Q(user__id__in=blocked_user_ids) | Q(user__id__in=blocker_user_ids))
         qs._hints[_BLOCKED_PROFILES_FILTERED_HINT] = True
         return qs
