@@ -1,5 +1,6 @@
 import graphene
 import swapper
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
@@ -13,7 +14,7 @@ Report = swapper.load_model("baseapp_reports", "Report")
 ReportType = swapper.load_model("baseapp_reports", "ReportType")
 ReportObjectType = Report.get_graphql_object_type()
 
-REPORT_SUBJECT_MAX_LENGTH = 250
+REPORT_SUBJECT_MAX_LENGTH = getattr(settings, "REPORT_SUBJECT_MAX_LENGTH", 250)
 
 
 def get_target_author_profile_id(target):
