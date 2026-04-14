@@ -1,6 +1,5 @@
 import graphene
 import swapper
-from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
@@ -14,30 +13,8 @@ Report = swapper.load_model("baseapp_reports", "Report")
 ReportType = swapper.load_model("baseapp_reports", "ReportType")
 ReportObjectType = Report.get_graphql_object_type()
 
-REPORT_SUBJECT_MAX_LENGTH = getattr(settings, "REPORT_SUBJECT_MAX_LENGTH", 250)
-
-
-def get_target_author_profile_id(target):
-    """Return the pk of the profile that authored *target*, or ``None``.
-
-    Checks for a ``get_author_profile()`` method on the target (models
-    that have author semantics define this).  Falls back to a
-    ``profile_id`` FK when present.
-    """
-    if hasattr(target, "get_author_profile"):
-        author_profile = target.get_author_profile()
-        return author_profile.pk if author_profile else None
-
-    profile_id = getattr(target, "profile_id", None)
-    if profile_id is not None:
-        return profile_id
-
-    return None
-
 
 class ReportCreate(RelayMutation):
-    """Create a report against any ``ReportableModel`` target."""
-
     report = graphene.Field(ReportObjectType._meta.connection.Edge, required=False)
     target = graphene.Field(ReportsInterface)
 
@@ -59,31 +36,10 @@ class ReportCreate(RelayMutation):
                 extensions={"code": "permission_required"},
             )
 
-        current_profile = info.context.user.current_profile
-        is_self_report = False
-
-        if current_profile.relay_id == target.relay_id:
-            is_self_report = True
-        else:
-            author_profile_id = get_target_author_profile_id(target)
-            if author_profile_id is not None and author_profile_id == current_profile.pk:
-                is_self_report = True
-
-        if is_self_report:
+        if info.context.user.current_profile.relay_id == target.relay_id:
             raise GraphQLError(
-                str(_("You cannot report your own content")),
+                str(_("You cannot report yourself")),
                 extensions={"code": "invalid_action"},
-            )
-
-        if report_subject and len(report_subject) > REPORT_SUBJECT_MAX_LENGTH:
-            raise GraphQLError(
-                str(
-                    _(
-                        "Report subject must be %(max_length)d characters or fewer."
-                        % {"max_length": REPORT_SUBJECT_MAX_LENGTH}
-                    )
-                ),
-                extensions={"code": "validation_error"},
             )
 
         content_type = ContentType.objects.get_for_model(target)
