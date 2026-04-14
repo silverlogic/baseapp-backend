@@ -1,12 +1,11 @@
 import pytest
-import swapper
 
+from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.tests.factories import ProfileFactory
 
-Report = swapper.load_model("baseapp_reports", "Report")
+from .factories import ReportFactory, ReportTypeFactory
 
 pytestmark = pytest.mark.django_db
-
 
 REPORT_TYPES_LIST_GRAPHQL = """
 query reportTypesQuery($topLevelOnly: Boolean, $targetObjectId: String) {
@@ -16,6 +15,35 @@ query reportTypesQuery($topLevelOnly: Boolean, $targetObjectId: String) {
                 id
                 key
                 label
+            }
+        }
+    }
+}
+"""
+
+PROFILE_REPORTS_QUERY = """
+query ProfileReports($nodeId: ID!) {
+    node(id: $nodeId) {
+        ... on Profile {
+            reports(first: 20) {
+                totalCount
+                edges {
+                    node {
+                        id
+                    }
+                }
+            }
+        }
+    }
+}
+"""
+
+PROFILE_MY_REPORT_QUERY = """
+query ProfileMyReport($nodeId: ID!) {
+    node(id: $nodeId) {
+        ... on Profile {
+            myReport {
+                id
             }
         }
     }
@@ -47,3 +75,105 @@ def test_anon_can_get_report_type_filtered_by_content_type(graphql_client):
     assert (
         len(content["data"]["allReportTypes"]["edges"]) == 8
     )  # 11 total, with 3 being exclusive to comments
+
+
+def test_reports_interface_resolve_reports_filters_by_target_profile(
+    django_user_client, graphql_user_client
+):
+    """Reports on a profile list Report rows for that target only."""
+    django_user_client.user.is_superuser = True
+    django_user_client.user.save()
+
+    target_a = ProfileFactory()
+    target_b = ProfileFactory()
+    reporter_a = UserFactory()
+    reporter_b = UserFactory()
+    report_type = ReportTypeFactory()
+
+    report_on_a_first = ReportFactory(user=reporter_a, target=target_a, report_type=report_type)
+    report_on_a_second = ReportFactory(user=reporter_b, target=target_a, report_type=report_type)
+    ReportFactory(user=reporter_a, target=target_b, report_type=report_type)
+
+    response = graphql_user_client(
+        PROFILE_REPORTS_QUERY,
+        variables={"nodeId": target_a.relay_id},
+    )
+    content = response.json()
+    assert "errors" not in content, content
+
+    conn = content["data"]["node"]["reports"]
+    assert conn["totalCount"] == 2
+    assert len(conn["edges"]) == 2
+    assert {edge["node"]["id"] for edge in conn["edges"]} == {
+        report_on_a_first.relay_id,
+        report_on_a_second.relay_id,
+    }
+
+
+def test_reports_interface_resolve_reports_empty_when_no_reports(
+    django_user_client, graphql_user_client
+):
+    django_user_client.user.is_superuser = True
+    django_user_client.user.save()
+
+    target = ProfileFactory()
+
+    response = graphql_user_client(
+        PROFILE_REPORTS_QUERY,
+        variables={"nodeId": target.relay_id},
+    )
+    content = response.json()
+    assert "errors" not in content, content
+
+    conn = content["data"]["node"]["reports"]
+    assert conn["totalCount"] == 0
+    assert conn["edges"] == []
+
+
+def test_reports_interface_resolve_my_report_returns_only_current_users_report(
+    django_user_client, graphql_user_client
+):
+    reporter_me = django_user_client.user
+    other_user = UserFactory()
+    target = ProfileFactory()
+    report_type = ReportTypeFactory()
+
+    my_report = ReportFactory(user=reporter_me, target=target, report_type=report_type)
+    ReportFactory(user=other_user, target=target, report_type=report_type)
+
+    response = graphql_user_client(
+        PROFILE_MY_REPORT_QUERY,
+        variables={"nodeId": target.relay_id},
+    )
+    content = response.json()
+    assert "errors" not in content, content
+
+    assert content["data"]["node"]["myReport"]["id"] == my_report.relay_id
+
+
+def test_reports_interface_resolve_my_report_null_when_user_has_not_reported(
+    django_user_client, graphql_user_client
+):
+    target = ProfileFactory()
+    other_user = UserFactory()
+    report_type = ReportTypeFactory()
+    ReportFactory(user=other_user, target=target, report_type=report_type)
+
+    response = graphql_user_client(
+        PROFILE_MY_REPORT_QUERY,
+        variables={"nodeId": target.relay_id},
+    )
+    content = response.json()
+    assert "errors" not in content, content
+    assert content["data"]["node"]["myReport"] is None
+
+
+def test_reports_interface_resolve_my_report_null_for_anonymous(graphql_client):
+    target = ProfileFactory()
+    response = graphql_client(
+        PROFILE_MY_REPORT_QUERY,
+        variables={"nodeId": target.relay_id},
+    )
+    content = response.json()
+    assert "errors" not in content, content
+    assert content["data"]["node"]["myReport"] is None
