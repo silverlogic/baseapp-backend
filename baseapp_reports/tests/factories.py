@@ -3,7 +3,6 @@ import swapper
 from django.contrib.contenttypes.models import ContentType
 
 from baseapp_core.tests.factories import UserFactory
-from baseapp_profiles.tests.factories import ProfileFactory
 
 Report = swapper.load_model("baseapp_reports", "Report")
 ReportType = swapper.load_model("baseapp_reports", "ReportType")
@@ -38,9 +37,5 @@ class AbstractReportFactory(factory.django.DjangoModelFactory):
 
 
 class ReportFactory(AbstractReportFactory):
-    """Report against a Profile target (matches typical ``ReportsInterface`` usage)."""
-
-    target = factory.SubFactory(ProfileFactory)
-
     class Meta:
         model = Report
