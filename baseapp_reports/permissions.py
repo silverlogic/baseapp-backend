@@ -3,8 +3,6 @@ from django.contrib.auth.backends import BaseBackend
 
 Report = swapper.load_model("baseapp_reports", "Report")
 
-# No DB at import time (``ContentType.objects.get_for_model`` breaks pytest collection / early imports).
-# Swapped ``Report`` uses the concrete model's ``app_label`` (e.g. ``reports``), matching ``auth_permission``.
 VIEW_REPORT_PERMISSION = f"{Report._meta.app_label}.view_report"
 ADD_REPORT_PERMISSION = f"{Report._meta.app_label}.add_report"
 
