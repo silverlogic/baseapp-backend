@@ -9,7 +9,7 @@ from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model
 
-from ..permissions import VIEW_REPORT_PERMISSION, user_can_list_reports_on_target
+from ..permissions import VIEW_REPORT_PERMISSION
 from .filters import ReportTypeFilter
 
 Report = swapper.load_model("baseapp_reports", "Report")
@@ -45,7 +45,7 @@ class ReportsInterface(graphene.Interface):
 
     def resolve_reports(self, info, **kwargs):
         user = info.context.user
-        if not user_can_list_reports_on_target(user, self):
+        if not user.has_perm(VIEW_REPORT_PERMISSION):
             return Report.objects.none()
 
         target_content_type = ContentType.objects.get_for_model(self)

@@ -9,16 +9,6 @@ VIEW_REPORT_PERMISSION = f"{Report._meta.app_label}.view_report"
 ADD_REPORT_PERMISSION = f"{Report._meta.app_label}.add_report"
 
 
-def user_can_list_reports_on_target(user, target):
-    """Whether ``user`` may query the ``reports`` connection on this report target.
-
-    Listing is gated by **global** ``view_report`` (same string as ``auth_permission`` /
-    ``ModelBackend``), not object-level checks on ``target``. The ``target`` argument is
-    kept for call-site clarity and future object-level rules.
-    """
-    return user.has_perm(VIEW_REPORT_PERMISSION)
-
-
 class ReportsPermissionsBackend(BaseBackend):
     def has_perm(self, user_obj, perm, obj=None):
         if perm == ADD_REPORT_PERMISSION:
