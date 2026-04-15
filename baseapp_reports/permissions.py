@@ -19,4 +19,5 @@ class ReportsPermissionsBackend(BaseBackend):
                 return True
             if isinstance(obj, Report) and user_obj.pk == obj.user_id:
                 return True
-            return False
+
+            return user_obj.has_perm(VIEW_REPORT_PERMISSION)
