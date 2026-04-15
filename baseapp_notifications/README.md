@@ -6,12 +6,12 @@ Based on the [Activity Streams Spec](http://activitystrea.ms/specs/atom/1.0/).
 
 Notifications are actually actions events, which are categorized by four main components.
 
--   `Actor`. The object that performed the activity.
--   `Verb`. The verb phrase that identifies the action of the activity.
--   `Action Object`. *(Optional)* The object linked to the action
-    itself.
--   `Target`. *(Optional)* The object to which the activity was
-    performed.
+- `Actor`. The object that performed the activity.
+- `Verb`. The verb phrase that identifies the action of the activity.
+- `Action Object`. *(Optional)* The object linked to the action
+itself.
+- `Target`. *(Optional)* The object to which the activity was
+performed.
 
 `Actor`, `Action Object` and `Target` are `GenericForeignKeys` to any
 arbitrary Django object. An action is a description of an action that
@@ -27,8 +27,9 @@ For example: [nossila](https://github.com/nossila/) `(actor)`
 `(target)` 12 hours ago
 
 ## Whats missing
-- [X] Finish implementing push notifications
-- [ ] DRF views and serializers
+
+- Finish implementing push notifications
+- DRF views and serializers
 
 ## How to install:
 
@@ -46,10 +47,11 @@ INSTALLED_APPS = [
 ]
 ```
 
-2 - Set the notification model in your `settings/base.py`:
+2 - Set the notification and notification settings model in your `settings/base.py`:
 
 ```python
-NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"
+NOTIFICATIONS_NOTIFICATION_MODEL = "notifications.Notification"
+BASEAPP_NOTIFICATIONS_NOTIFICATIONSETTING_MODEL = "baseapp_notifications.NotificationSetting"
 ```
 
 Check how to customize to your own model [bellow](#how-to-customize-notifications-model).
@@ -69,40 +71,14 @@ CELERY_TASK_ROUTES = {
 
 ```python
 from baseapp_core.graphql import DjangoObjectType, Node as RelayNode
-from baseapp_notifications.graphql.object_types import NotificationsInterface
+from baseapp_core.plugins import graphql_shared_interfaces
 
 class UserNode(DjangoObjectType):
     class Meta:
-        interfaces = (RelayNode, NotificationsInterface)
+        interfaces = graphql_shared_interfaces.get(RelayNode, "NotificationsInterface")
 ```
 
-5 - Then you can expose notification's mutations and subscriptions:
-
-```python
-import graphene
-
-from baseapp_notifications.graphql.mutations import NotificationsMutations
-from baseapp_notifications.graphql.subscriptions import NotificationsSubscription
-
-
-class Query(graphene.ObjectType):
-    me = graphene.Field(UserNode)
-
-    def resolve_me(self, info):
-        if info.context.user.is_authenticated:
-            return info.context.user
-
-
-class Mutation(graphene.ObjectType, NotificationsMutations):
-    pass
-
-
-class Subscription(graphene.ObjectType, NotificationsSubscription):
-    pass
-
-
-schema = graphene.Schema(query=Query, mutation=Mutation, subscription=Subscription)
-```
+5 - Make sure your graphql.py main file is loading queries, mutations and subscriptions from plugin_registry.
 
 ## Setup Push notifications (apple and google)
 
@@ -129,44 +105,36 @@ PUSH_NOTIFICATIONS_SETTINGS = {
 
 You can get more details about this settings dict at the [django-push-notifications oficial repository](https://github.com/jazzband/django-push-notifications?tab=readme-ov-file#settings-list).
 
-3 - Set the push notification routes in your `router.py`
-
-```python
-from push_notifications.api.rest_framework import (  # noqa
-    APNSDeviceAuthorizedViewSet,
-    GCMDeviceAuthorizedViewSet,
-    WNSDeviceAuthorizedViewSet,
-    WebPushDeviceAuthorizedViewSet,
-)
-router.register(r"push-notifications/apns", APNSDeviceAuthorizedViewSet, basename="apns")
-router.register(r"push-notifications/gcm", GCMDeviceAuthorizedViewSet, basename="gcm")
-router.register(r"push-notifications/wns", WNSDeviceAuthorizedViewSet, basename="wns")
-router.register(r"push-notifications/web", WebPushDeviceAuthorizedViewSet, basename="web")
-```
+3 - Make sure your `urls.py` main file loads routes from the plugin_registry. The following push-notifications endpoints will be loaded automatically when `push_notifications` is installed:
+- "push-notifications/apns": push_notifications.api.rest_framework.APNSDeviceAuthorizedViewSet
+- "push-notifications/gcm": push_notifications.api.rest_framework.GCMDeviceAuthorizedViewSet
+- "push-notifications/wns": push_notifications.api.rest_framework.WNSDeviceAuthorizedViewSet
+- "push-notifications/web": push_notifications.api.rest_framework.WebPushDeviceAuthorizedViewSet
 
 ## How to send a notification
 
 ```python
-from baseapp_notifications import send_notification
+from baseapp_core.plugins import shared_services
 
-send_notification(
-    add_to_history=True,
-    send_push=True,
-    send_email=True,
-    sender=user,
-    recipient=user,
-    verb="opened",
-    action_object=pr,
-    target=repository,
-    level="info",
-    description=_("{user_name} opened a pull request in {repository_name}").format(
-      user_name=user.name,
-      repository_name=repository.name
-    ),
-    push_title=_("title"),
-    push_description=_("description"),
-    extra={},
-)
+if service := shared_services.get("notifications"):
+    service.send_notification(
+        add_to_history=True,
+        send_push=True,
+        send_email=True,
+        sender=user,
+        recipient=user,
+        verb="opened",
+        action_object=pr,
+        target=repository,
+        level="info",
+        description=_("{user_name} opened a pull request in {repository_name}").format(
+          user_name=user.name,
+          repository_name=repository.name
+        ),
+        push_title=_("title"),
+        push_description=_("description"),
+        extra={},
+    )
 ```
 
 Arguments:
@@ -197,15 +165,18 @@ Arguments:
 To send email notifications make sure to set `send_email=True` argument and `notification_url` so users can open the notification in the browser. The `description` will be used both as email's subject and email's body by default, check how to customize bellow.
 
 ```python
-send_notification(
-    sender=user,
-    recipient=user,
-    verb="opened",
-    description="email's subject",
-    add_to_history=True,
-    send_email=True,
-    notification_url="https://github.com/silverlogic/baseapp-backend/pull/18",
-)
+from baseapp_core.plugins import shared_services
+
+if service := shared_services.get("notifications"):
+    service.send_notification(
+        sender=user,
+        recipient=user,
+        verb="opened",
+        description="email's subject",
+        add_to_history=True,
+        send_email=True,
+        notification_url="https://github.com/silverlogic/baseapp-backend/pull/18",
+    )
 ```
 
 ### How to customize email notification templates
@@ -298,33 +269,6 @@ subscription {
   }
 }
 ```
-
-## How to customize Notification's Model
-
-Create your `custom_notifications` django app inside your project and inherit from `AbstractNotification` like:
-
-```python
-from baseapp_notifications.base import AbstractNotification
-
-class Notification(AbstractNotification):
-  my_custom_field = models.CharField()
-
-  class Meta(AbstractNotification.Meta):
-        abstract = False
-```
-
-Then make sure to change your `settings/base.py` like:
-
-```python
-INSTALLED_APPS = [
-  "baseapp_notifications",
-  "custom_notifications", # need to have both
-]
-
-NOTIFICATIONS_NOTIFICATION_MODEL = "custom_notifications.Notification"
-```
-
-That's it, `my_custom_field` should be available in your GraphQL's Notification ObjectType as well.
 
 ## How to develop
 

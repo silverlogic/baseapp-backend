@@ -103,11 +103,6 @@ if apps.is_installed("baseapp_chats"):
     interfaces.append(ChatRoomsInterface)
 
 
-if apps.is_installed("baseapp.activity_log"):
-    from baseapp.activity_log.graphql.interfaces import ProfileActivityLog
-
-    inheritances += (ProfileActivityLog,)
-
 if apps.is_installed("baseapp_reports"):
     from baseapp_reports.graphql.object_types import ReportsInterface
 
@@ -127,6 +122,7 @@ class BaseProfileObjectType(*inheritances, object):
             RelayNode,
             PermissionsInterface,
             *interfaces,
+            "ProfileActivityLogInterface",
             "PageInterface",
         )
         model = Profile

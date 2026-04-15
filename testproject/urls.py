@@ -12,7 +12,6 @@ __all__ = [
 ]
 
 v1_urlpatterns = [
-    path(r"", include("baseapp_url_shortening.urls")),
     *plugin_registry.get_all_v1_urlpatterns(),
 ]
 

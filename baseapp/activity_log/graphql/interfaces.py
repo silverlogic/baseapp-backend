@@ -23,7 +23,7 @@ class NodeActivityLogInterface(graphene.Interface):
         return ActivityLog.objects.filter(pk__in=context_ids)
 
 
-class UserActivityLog:
+class UserActivityLogInterface(graphene.Interface):
     activity_logs = DjangoFilterConnectionField(
         ActivityLogObjectType,
         visibility=VisibilityTypesEnum(),
@@ -37,7 +37,7 @@ class UserActivityLog:
         return ActivityLog.objects.filter(user_id=self.pk)
 
 
-class ProfileActivityLog:
+class ProfileActivityLogInterface(graphene.Interface):
     activity_logs = DjangoFilterConnectionField(
         ActivityLogObjectType,
         visibility=VisibilityTypesEnum(),

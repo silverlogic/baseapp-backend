@@ -14,13 +14,12 @@ from baseapp_wagtail.settings import (
 INSTALLED_APPS += [
     "channels",
     "graphene_django",
-    "notifications",
-    "push_notifications",
     "django_quill",
     "social_django",
     "rest_social_auth",
     "trench",
     "rest_framework_simplejwt",
+    "push_notifications",
     "baseapp_profiles",
     "baseapp_reactions",
     "baseapp_reports",
@@ -64,6 +63,7 @@ INSTALLED_APPS += [
     "testproject.chats",
     "testproject.payments",
     "testproject.referrals",
+    "testproject.notifications",
     "baseapp_wagtail.tests",
 ]
 
@@ -71,7 +71,6 @@ plugin_registry.load_from_installed_apps()
 
 INSTALLED_APPS += plugin_registry.get("INSTALLED_APPS")
 
-MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")
 MIDDLEWARE += [
     # Slotted: use get("MIDDLEWARE", "slot_name") for explicit order; if plugin disabled, [].
     *plugin_registry.get("MIDDLEWARE", "baseapp_profiles"),
@@ -129,7 +128,7 @@ AUTHENTICATION_BACKENDS = [
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_pages"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_profiles"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_comments"),
-    "baseapp.activity_log.permissions.ActivityLogPermissionsBackend",
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp.activity_log"),
     "baseapp_reactions.permissions.ReactionsPermissionsBackend",
     "baseapp_reports.permissions.ReportsPermissionsBackend",
     "baseapp_ratings.permissions.RatingsPermissionsBackend",
@@ -196,10 +195,12 @@ BASEAPP_PROFILES_PROFILEUSERROLE_MODEL = "profiles.ProfileUserRole"
 
 # Reactions
 BASEAPP_REACTIONS_REACTION_MODEL = "reactions.Reaction"
+BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS = False
 
 # Comments
 BASEAPP_COMMENTS_COMMENT_MODEL = "comments.Comment"
 BASEAPP_COMMENTS_COMMENTSTATS_MODEL = "comments.CommentStats"
+BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False
 
 # Content Feed
 BASEAPP_CONTENT_FEED_CONTENTPOST_MODEL = "content_feed.ContentPost"
@@ -232,9 +233,8 @@ BASEAPP_CHATS_MESSAGE_MODEL = "chats.Message"
 BASEAPP_CHATS_MESSAGESTATUS_MODEL = "chats.MessageStatus"
 
 # Notifications
-NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"
-BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False
-BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS = False
+NOTIFICATIONS_NOTIFICATION_MODEL = "notifications.Notification"
+BASEAPP_NOTIFICATIONS_NOTIFICATIONSETTING_MODEL = "notifications.NotificationSetting"
 
 # Payments
 BASEAPP_PAYMENTS_CUSTOMER_MODEL = "payments.Customer"

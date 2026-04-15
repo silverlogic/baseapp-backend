@@ -14,6 +14,7 @@ from baseapp_core.graphql import (
     get_pk_from_relay_id,
     login_required,
 )
+from baseapp_core.plugins import shared_services
 
 from .object_types import CommentsInterface
 
@@ -44,10 +45,8 @@ class CommentCreate(RelayMutation):
     def mutate_and_get_payload(cls, root, info, **input):
         activity_name = f"{app_label}.add_comment"
 
-        if apps.is_installed("baseapp.activity_log"):
-            from baseapp.activity_log.context import set_public_activity
-
-            set_public_activity(verb=activity_name)
+        if service := shared_services.get("activity_log"):
+            service.set_public_activity(verb=activity_name)
 
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
 
@@ -125,10 +124,8 @@ class CommentUpdate(RelayMutation):
                 extensions={"code": "permission_required"},
             )
 
-        if apps.is_installed("baseapp.activity_log"):
-            from baseapp.activity_log.context import set_public_activity
-
-            set_public_activity(verb=activity_name)
+        if service := shared_services.get("activity_log"):
+            service.set_public_activity(verb=activity_name)
 
         comment.is_edited = True
 
@@ -164,10 +161,8 @@ class CommentPin(RelayMutation):
                 extensions={"code": "permission_required"},
             )
 
-        if apps.is_installed("baseapp.activity_log"):
-            from baseapp.activity_log.context import set_public_activity
-
-            set_public_activity(verb=activity_name)
+        if service := shared_services.get("activity_log"):
+            service.set_public_activity(verb=activity_name)
 
         MAX_PINS_PER_THREAD = getattr(settings, "BASEAPP_COMMENTS_MAX_PINS_PER_THREAD", None)
         if MAX_PINS_PER_THREAD is not None:

@@ -3,7 +3,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 
-from baseapp_notifications import send_notification
+from baseapp_core.plugins import shared_services
 
 CONTENT_LINKED_PROFILE_ACTOR = "{content_linked_profile_actor}"
 CONTENT_LINKED_PROFILE_TARGET = "{content_linked_profile_target}"
@@ -56,21 +56,22 @@ def send_message(
 
 
 def send_new_chat_message_notification(room, message, info):
-    for participant in room.participants.all():
-        recipients = participant.profile.get_all_users()
-        for recipient in recipients:
-            send_notification(
-                add_to_history=False,
-                send_email=False,
-                send_push=True,
-                sender=message.profile,
-                recipient=recipient,
-                verb="CHATS.NEW_CHAT_MESSAGE",
-                action_object=message,
-                target=room,
-                level="info",
-                description=_("You got a new message"),
-                notification_url=f"{settings.FRONT_URL}/chat?roomId={room.relay_id}",
-                push_title=_("New message"),
-                push_description=_("You got a new message"),
-            )
+    if service := shared_services.get("notifications"):
+        for participant in room.participants.all():
+            recipients = participant.profile.get_all_users()
+            for recipient in recipients:
+                service.send_notification(
+                    add_to_history=False,
+                    send_email=False,
+                    send_push=True,
+                    sender=message.profile,
+                    recipient=recipient,
+                    verb="CHATS.NEW_CHAT_MESSAGE",
+                    action_object=message,
+                    target=room,
+                    level="info",
+                    description=_("You got a new message"),
+                    notification_url=f"{settings.FRONT_URL}/chat?roomId={room.relay_id}",
+                    push_title=_("New message"),
+                    push_description=_("You got a new message"),
+                )

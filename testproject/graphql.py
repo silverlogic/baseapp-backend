@@ -2,7 +2,6 @@ import graphene
 from graphene.relay.node import NodeField as RelayNodeField
 from graphene_django.debug import DjangoDebug
 
-from baseapp.activity_log.graphql.queries import ActivityLogQueries
 from baseapp.content_feed.graphql.mutations import ContentFeedMutations
 from baseapp.content_feed.graphql.queries import ContentFeedQueries
 from baseapp_blocks.graphql.mutations import BlocksMutations
@@ -13,8 +12,6 @@ from baseapp_core.graphql import DeleteNode
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.plugins import plugin_registry
 from baseapp_follows.graphql.mutations import FollowsMutations
-from baseapp_notifications.graphql.mutations import NotificationsMutations
-from baseapp_notifications.graphql.subscriptions import NotificationsSubscription
 from baseapp_ratings.graphql.mutations import RatingsMutations
 from baseapp_ratings.graphql.queries import RatingsQueries
 from baseapp_reactions.graphql.mutations import ReactionsMutations
@@ -31,7 +28,6 @@ subscriptions = plugin_registry.get_all_graphql_subscriptions()
 class Query(
     graphene.ObjectType,
     UsersQueries,
-    ActivityLogQueries,
     ReactionsQueries,
     RatingsQueries,
     ChatsQueries,
@@ -50,7 +46,6 @@ class Mutation(
     RatingsMutations,
     FollowsMutations,
     BlocksMutations,
-    NotificationsMutations,
     ChatsMutations,
     ContentFeedMutations,
     *mutations,
@@ -60,7 +55,6 @@ class Mutation(
 
 class Subscription(
     graphene.ObjectType,
-    NotificationsSubscription,
     ChatsSubscriptions,
     *subscriptions,
 ):

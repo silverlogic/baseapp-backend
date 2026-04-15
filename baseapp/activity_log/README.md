@@ -26,12 +26,12 @@ INSTALLED_APPS = [
 ]
 ```
 
-Add `HistoryMiddleware` to the `MIDDLEWARE` list in the `settings.py` file:
+Make sure you have the pghistory middleware from baseapp_core configured:
 
 ```python
 MIDDLEWARE = [
     ...
-    'baseapp.activity_log.middleware.HistoryMiddleware',
+    'baseapp_core.middleware.HistoryMiddleware',
 ]
 ```
 
@@ -40,31 +40,23 @@ Add `ActivityLogPermissionsBackend` to the `AUTHENTICATION_BACKENDS` list in the
 ```python
 AUTHENTICATION_BACKENDS = [
     ...
-    "baseapp.activity_log.permissions.ActivityLogPermissionsBackend",
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp.activity_log"),
 ]
 ```
 
-Add `ActivityLogQueries` to your GraphQL schema:
-
-```python
-from baseapp.activity_log.schema import ActivityLogQueries
-
-class Query(ActivityLogQueries, graphene.ObjectType):
-    pass
-
-schema = graphene.Schema(query=Query)
-```
+Make sure your graphql.py main file is loading queries, mutations and subscriptions from plugin_registry.
 
 ## Usage
 
-By default users only have access to public activities. To log an activity as public use the `set_public_activity` function:
+By default users only have access to public activities. To log an activity as public use the `set_public_activity` in the shared service:
 
 ```python
-from baseapp.activity_log.context import set_public_activity
+from baseapp_core.plugins import shared_services
 
 def create_comment(request, body):
     # ...
-    set_public_activity(verb="baseapp_comments.add_comment")
+    if service := shared_services.get("activity_log"):
+        service.set_public_activity(verb="baseapp_comments.add_comment")
 ```
 
 ### GraphQL
@@ -72,8 +64,8 @@ def create_comment(request, body):
 This packages provides the following interfaces that can be used to expose the activity logs for user, profile and specific models:
 
 - `NodeActivityLogInterface`
-- `UserActivityLog`
-- `ProfileActivityLog`
+- `UserActivityLogInterface`
+- `ProfileActivityLogInterface`
 
 This app also exposes a query to fetch a global list of activities:
 

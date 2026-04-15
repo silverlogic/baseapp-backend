@@ -16,22 +16,11 @@ User = get_user_model()
 interfaces = tuple()
 inheritances = tuple()
 
-if apps.is_installed("baseapp_notifications"):
-    from baseapp_notifications.graphql.object_types import NotificationsInterface
-
-    interfaces += (NotificationsInterface,)
-
 
 if apps.is_installed("baseapp_ratings"):
     from baseapp_ratings.graphql.object_types import RatingsInterface
 
     interfaces += (RatingsInterface,)
-
-
-if apps.is_installed("baseapp.activity_log"):
-    from baseapp.activity_log.graphql.interfaces import UserActivityLog
-
-    inheritances += (UserActivityLog,)
 
 
 class AbstractUserObjectType(*inheritances, object):
@@ -81,6 +70,8 @@ class AbstractUserObjectType(*inheritances, object):
             RelayNode,
             PermissionsInterface,
             *interfaces,
+            "UserActivityLogInterface",
+            "NotificationsInterface",
             "ProfileInterface",
             "ProfilesInterface",
             "PageInterface",
