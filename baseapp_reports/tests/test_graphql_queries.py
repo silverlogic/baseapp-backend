@@ -3,10 +3,9 @@ import swapper
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 
-from baseapp_reports.permissions import VIEW_REPORT_PERMISSION
-
 from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.tests.factories import ProfileFactory
+from baseapp_reports.permissions import VIEW_REPORT_PERMISSION
 
 from .factories import ReportFactory, ReportTypeFactory
 
