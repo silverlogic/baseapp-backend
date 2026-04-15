@@ -9,6 +9,7 @@ from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model
 
+from ..permissions import VIEW_REPORT_PERMISSION, user_can_list_reports_on_target
 from .filters import ReportTypeFilter
 
 Report = swapper.load_model("baseapp_reports", "Report")
@@ -37,12 +38,16 @@ class ReportTypeObjectType(
         pass
 
 
-class ReportsInterface(RelayNode):
+class ReportsInterface(graphene.Interface):
     reports_count = GenericScalar()
     reports = DjangoFilterConnectionField(get_object_type_for_model(Report))
     my_report = graphene.Field(get_object_type_for_model(Report), required=False)
 
     def resolve_reports(self, info, **kwargs):
+        user = info.context.user
+        if not user_can_list_reports_on_target(user, self):
+            return Report.objects.none()
+
         target_content_type = ContentType.objects.get_for_model(self)
         return Report.objects.filter(
             target_content_type=target_content_type,
@@ -81,7 +86,7 @@ class BaseReportObjectType:
     @classmethod
     def get_node(self, info, id):
         node = super().get_node(info, id)
-        if not info.context.user.has_perm("baseapp_reports.view_report", node):
+        if not info.context.user.has_perm(VIEW_REPORT_PERMISSION, node):
             return None
         return node
 

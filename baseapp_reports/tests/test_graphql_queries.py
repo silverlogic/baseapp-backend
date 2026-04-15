@@ -1,9 +1,16 @@
 import pytest
+import swapper
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
+
+from baseapp_reports.permissions import VIEW_REPORT_PERMISSION
 
 from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.tests.factories import ProfileFactory
 
 from .factories import ReportFactory, ReportTypeFactory
+
+Report = swapper.load_model("baseapp_reports", "Report")
 
 pytestmark = pytest.mark.django_db
 
@@ -80,7 +87,6 @@ def test_anon_can_get_report_type_filtered_by_content_type(graphql_client):
 def test_reports_interface_resolve_reports_filters_by_target_profile(
     django_user_client, graphql_user_client
 ):
-    """Reports on a profile list Report rows for that target only."""
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
 
@@ -128,6 +134,81 @@ def test_reports_interface_resolve_reports_empty_when_no_reports(
     conn = content["data"]["node"]["reports"]
     assert conn["totalCount"] == 0
     assert conn["edges"] == []
+
+
+def test_reports_interface_resolve_reports_anonymous_cannot_list_reports(graphql_client):
+    target = ProfileFactory()
+    report_type = ReportTypeFactory()
+    ReportFactory(user=UserFactory(), target=target, report_type=report_type)
+
+    response = graphql_client(
+        PROFILE_REPORTS_QUERY,
+        variables={"nodeId": target.relay_id},
+    )
+    content = response.json()
+    assert "errors" not in content, content
+
+    conn = content["data"]["node"]["reports"]
+    assert conn["totalCount"] == 0
+    assert conn["edges"] == []
+
+
+def test_reports_interface_resolve_reports_normal_user_without_perm_cannot_list_reports(
+    django_user_client, graphql_user_client
+):
+    django_user_client.user.is_superuser = False
+    django_user_client.user.is_staff = False
+    django_user_client.user.save()
+
+    target = ProfileFactory()
+    report_type = ReportTypeFactory()
+    ReportFactory(user=UserFactory(), target=target, report_type=report_type)
+    ReportFactory(user=UserFactory(), target=target, report_type=report_type)
+
+    response = graphql_user_client(
+        PROFILE_REPORTS_QUERY,
+        variables={"nodeId": target.relay_id},
+    )
+    content = response.json()
+    assert "errors" not in content, content
+
+    conn = content["data"]["node"]["reports"]
+    assert conn["totalCount"] == 0
+    assert conn["edges"] == []
+
+
+def test_reports_interface_resolve_reports_user_with_view_report_can_list_reports(
+    django_user_client, graphql_user_client
+):
+    user = django_user_client.user
+    user.is_superuser = False
+    user.is_staff = True
+    user.save()
+
+    perm = Permission.objects.get(
+        content_type=ContentType.objects.get_for_model(Report),
+        codename="view_report",
+    )
+    assert VIEW_REPORT_PERMISSION == f"{perm.content_type.app_label}.{perm.codename}"
+    user.user_permissions.add(perm)
+    user.refresh_from_db()
+    django_user_client.force_login(user)
+    assert user.has_perm(VIEW_REPORT_PERMISSION)
+
+    target = ProfileFactory()
+    report_type = ReportTypeFactory()
+    r1 = ReportFactory(user=UserFactory(), target=target, report_type=report_type)
+
+    response = graphql_user_client(
+        PROFILE_REPORTS_QUERY,
+        variables={"nodeId": target.relay_id},
+    )
+    content = response.json()
+    assert "errors" not in content, content
+
+    conn = content["data"]["node"]["reports"]
+    assert conn["totalCount"] == 1
+    assert conn["edges"][0]["node"]["id"] == r1.relay_id
 
 
 def test_reports_interface_resolve_my_report_returns_only_current_users_report(
