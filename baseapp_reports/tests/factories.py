@@ -34,3 +34,8 @@ class AbstractReportFactory(factory.django.DjangoModelFactory):
     class Meta:
         exclude = ["target"]
         abstract = True
+
+
+class ReportFactory(AbstractReportFactory):
+    class Meta:
+        model = Report
