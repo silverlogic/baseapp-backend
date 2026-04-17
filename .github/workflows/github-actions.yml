@@ -61,9 +61,10 @@ jobs:
       # ---------------------- ------- -------------- ------------
       # social-auth-app-django 5.4.3   CVE-2025-61783 5.6.0 => the reason for ignoring this vulnerability relates to https://github.com/silverlogic/baseapp-backend/pull/308
       # protobuf               6.33.4  CVE-2026-0994  => # there is no fix version available yet
+      # pip                    26.0.1  CVE-2026-3219  => there is no fix version available yet
       - name: Run pip-audit (installed dependencies)
         if: steps.requirements_installation.outcome == 'success' && startsWith(matrix.django-version, '5.2')
-        run: docker compose exec backend pip-audit --skip-editable --ignore-vuln CVE-2025-61783 --ignore-vuln CVE-2026-0994 --ignore-vuln CVE-2026-4539
+        run: docker compose exec backend pip-audit --skip-editable --ignore-vuln CVE-2025-61783 --ignore-vuln CVE-2026-0994 --ignore-vuln CVE-2026-4539 --ignore-vuln CVE-2026-3219
 
       - name: upload coverage report
         if: matrix.python-version == '3.11' && startsWith(matrix.django-version, '5.2')
