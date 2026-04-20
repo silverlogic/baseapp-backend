@@ -93,7 +93,7 @@ api_key = []
 
 [dependency-groups]
 dev = [
-    "pytest==7.4.2",
+    "pytest==9.0.3",
     "pytest-cov==4.1.0",
     "pytest-django==4.5.2",
     "pytest-asyncio==0.21.1",
@@ -131,7 +131,7 @@ testproject = [
     "flake8==7.0.0",
     "freezegun==1.2.1",
     "isort==5.13.2",
-    "pytest==7.4.2",
+    "pytest==9.0.3",
     "pytest-asyncio==0.21.1",
     "pytest-celery==1.2.1",
     "pytest-cov==4.1.0",
