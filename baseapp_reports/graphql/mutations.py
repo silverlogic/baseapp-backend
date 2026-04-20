@@ -8,6 +8,7 @@ from graphql_relay.connection.arrayconnection import offset_to_cursor
 
 from baseapp_core.graphql import RelayMutation, get_obj_from_relay_id, login_required
 
+from ..permissions import ADD_REPORT_PERMISSION
 from .object_types import ReportsInterface
 
 Report = swapper.load_model("baseapp_reports", "Report")
@@ -31,7 +32,7 @@ class ReportCreate(RelayMutation):
         report_type = get_obj_from_relay_id(info, input.get("report_type_id"))
         report_subject = input.get("report_subject")
 
-        if not info.context.user.has_perm("baseapp_reports.add_report", target):
+        if not info.context.user.has_perm(ADD_REPORT_PERMISSION, target):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
