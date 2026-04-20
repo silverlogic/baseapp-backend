@@ -48,13 +48,42 @@ def test_user_creation_sets_profile_target():
     assert profile.target_object_id == user.pk
 
 
-def test_user_creation_with_existing_profile_does_not_duplicate():
-    user = UserFactory(first_name="John", last_name="Doe")
+def test_user_creation_reuses_existing_profile_on_conflict():
+    """
+    When a Profile with the same (target_content_type, target_object_id) already
+    exists before the User is inserted, the trigger's ON CONFLICT … DO UPDATE branch
+    should be taken: no second profile is created and the user is linked to the
+    pre-existing profile.
+    """
+    from django.contrib.contenttypes.models import ContentType
+    from django.db import connection
+
+    # Advance the sequence so we know the PK the next INSERT will receive.
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT nextval(pg_get_serial_sequence(%s, 'id'))",
+            [User._meta.db_table],
+        )
+        next_user_id = cursor.fetchone()[0]
+
+    # Seed a Profile that shares the same unique key the trigger would insert.
+    # owner_id has db_constraint=False so pointing at a not-yet-existing user is safe.
+    user_ct = ContentType.objects.get_for_model(User)
+    existing_profile = Profile.objects.create(
+        owner_id=next_user_id,
+        target_content_type=user_ct,
+        target_object_id=next_user_id,
+        name="Pre-existing",
+        status=Profile.ProfileStatus.PUBLIC,
+    )
+
+    # Create the user with the reserved PK – trigger hits ON CONFLICT, updates
+    # `modified` on the existing profile, and links user.profile_id to it.
+    user = UserFactory(id=next_user_id, first_name="John", last_name="Doe")
     user.refresh_from_db()
-    profile_id = user.profile_id
-    profile_count = Profile.objects.filter(owner=user).count()
-    assert profile_count == 1
-    assert profile_id is not None
+
+    assert Profile.objects.filter(owner_id=next_user_id).count() == 1
+    assert user.profile_id == existing_profile.pk
 
 
 # ---------------------------------------------------------------------------
