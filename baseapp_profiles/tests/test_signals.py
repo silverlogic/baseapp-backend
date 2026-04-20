@@ -5,9 +5,9 @@ The signal handlers are tested by calling them directly with mock instances
 so we are not dependent on how (or whether) the host project wires them up.
 """
 
-import pytest
+from unittest.mock import MagicMock, patch
+
 import swapper
-from unittest.mock import MagicMock, call, patch
 
 from baseapp_profiles.signals import create_profile_url_path, update_user_profile
 

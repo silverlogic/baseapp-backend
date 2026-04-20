@@ -7,9 +7,10 @@ class_prepared time (add_profilable_triggers), so they are not exercised by
 the DB-level trigger tests.  The tests here call them directly.
 """
 
+from unittest.mock import MagicMock
+
 import pytest
 import swapper
-from unittest.mock import MagicMock, patch
 from django.contrib.auth import get_user_model
 
 from baseapp_profiles.models import (
@@ -57,7 +58,7 @@ def test_python_default_to_sql_str_escapes_single_quotes():
 
 def test_python_default_to_sql_dict():
     result = _python_default_to_sql({"total": 0})
-    assert result == '\'{"total":0}\'::jsonb'
+    assert result == "'{\"total\":0}'::jsonb"
 
 
 def test_python_default_to_sql_list():
@@ -212,8 +213,7 @@ def test_add_profilable_triggers_skips_when_no_profile_name_sql():
 
     add_profilable_triggers(sender=FakeNoSql)
     assert not any(
-        t.name == "update_profile_name"
-        for t in getattr(FakeNoSql._meta, "triggers", [])
+        t.name == "update_profile_name" for t in getattr(FakeNoSql._meta, "triggers", [])
     )
 
 
