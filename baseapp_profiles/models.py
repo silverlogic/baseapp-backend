@@ -245,7 +245,8 @@ def _python_default_to_sql(default):
     elif isinstance(default, str):
         return "'{}'".format(default.replace("'", "''"))
     elif isinstance(default, (dict, list)):
-        return "'{}'::jsonb".format(_json.dumps(default, separators=(",", ":")))
+        serialized = _json.dumps(default, separators=(",", ":")).replace("'", "''")
+        return "'{}'::jsonb".format(serialized)
     return None
 
 
@@ -310,8 +311,14 @@ class CreateProfileFunc(pgtrigger.Func):
             if not field.has_default():
                 continue
             sql_val = _python_default_to_sql(field.get_default())
-            if sql_val is not None:
-                explicit[col] = sql_val
+            if sql_val is None:
+                raise ValueError(
+                    f"CreateProfileFunc: cannot convert the default value of NOT NULL field "
+                    f"'{col}' ({type(field).__name__}) to a SQL literal. "
+                    f"Add explicit handling for {type(field.get_default()).__name__} in "
+                    f"_python_default_to_sql or make the field nullable."
+                )
+            explicit[col] = sql_val
 
         columns = ", ".join(explicit.keys())
         values = ", ".join(explicit.values())
