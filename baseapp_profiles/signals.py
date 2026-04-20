@@ -28,5 +28,11 @@ def update_user_profile(instance, created, **kwargs):
 
     Connect via: post_save.connect(update_user_profile, sender=User)
     """
-    if created:
-        update_or_create_profile(instance, instance, f"{instance.first_name} {instance.last_name}")
+    if not created:
+        return
+    # The DB trigger may have already created and linked the profile. Refresh so
+    # the Python instance reflects the DB state before deciding whether to act.
+    instance.refresh_from_db(fields=["profile"])
+    if instance.profile_id:
+        return
+    update_or_create_profile(instance, instance, f"{instance.first_name} {instance.last_name}")
