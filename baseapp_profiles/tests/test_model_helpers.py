@@ -201,19 +201,13 @@ def test_add_profilable_triggers_skips_abstract_model():
     assert getattr(FakeAbstract._meta, "triggers", original) == original
 
 
-def test_add_profilable_triggers_skips_when_no_profile_name_sql():
-    """Concrete ProfilableModel subclass without profile_name_sql is ignored."""
+def test_add_profilable_triggers_skips_when_no_profile_name_sql(monkeypatch):
+    """Concrete ProfilableModel with profile_name_sql=None is ignored (profile_name_sql guard)."""
+    monkeypatch.setattr(User, "profile_name_sql", None)
+    monkeypatch.setattr(User._meta, "triggers", [])
 
-    class FakeNoSql(ProfilableModel):
-        profile_name_sql = None
-
-        class Meta:
-            app_label = "baseapp_profiles"
-
-    add_profilable_triggers(sender=FakeNoSql)
-    assert not any(
-        t.name == "update_profile_name" for t in getattr(FakeNoSql._meta, "triggers", [])
-    )
+    add_profilable_triggers(sender=User)
+    assert not any(t.name == "update_profile_name" for t in getattr(User._meta, "triggers", []))
 
 
 def test_add_profilable_triggers_skips_duplicate_trigger(monkeypatch):

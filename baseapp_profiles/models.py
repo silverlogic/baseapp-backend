@@ -1,6 +1,9 @@
+import logging
 import random
 import re
 import string
+
+logger = logging.getLogger(__name__)
 
 import pgtrigger
 import swapper
@@ -288,16 +291,20 @@ class CreateProfileFunc(pgtrigger.Func):
         profile_table = Profile._meta.db_table
         content_type_table = ContentType._meta.db_table
 
+        # Escape single quotes in app_label/model_name as a defensive measure
+        # (Django enforces these are valid identifiers, but belt-and-suspenders).
+        safe_app_label = self._app_label.replace("'", "''")
+        safe_model_name = self._model_name.replace("'", "''")
+
         # Columns and SQL values we always provide explicitly.
         explicit = {
             "owner_id": self._profile_owner_sql,
             "target_content_type_id": (
                 f"(SELECT id FROM {content_type_table}"
-                f" WHERE app_label = '{self._app_label}' AND model = '{self._model_name}')"
+                f" WHERE app_label = '{safe_app_label}' AND model = '{safe_model_name}')"
             ),
             "target_object_id": f"NEW.{self._pk}",
             "name": f"TRIM(COALESCE({self._profile_name_sql}, ''))",
-            "status": "1",
             "created": "NOW()",
             "modified": "NOW()",
         }
@@ -423,20 +430,35 @@ def add_profilable_triggers(sender, **kwargs):
                 profile_column=profile_column,
             )
         )
+    else:
+        logger.warning(
+            "add_profilable_triggers: skipping 'update_profile_name' trigger for %s.%s "
+            "because a trigger with that name already exists.",
+            sender._meta.app_label,
+            sender._meta.model_name,
+        )
 
     profile_owner_sql = getattr(sender, "profile_owner_sql", None)
-    if "create_profile" not in existing and profile_owner_sql:
-        sender._meta.triggers.append(
-            create_profile_trigger(
-                profile_name_sql=profile_name_sql,
-                profile_owner_sql=profile_owner_sql,
-                profile_column=profile_column,
-                app_label=sender._meta.app_config.label,
-                model_name=sender._meta.model_name,
-                self_table=sender._meta.db_table,
-                pk=sender._meta.pk.column,
+    if profile_owner_sql:
+        if "create_profile" not in existing:
+            sender._meta.triggers.append(
+                create_profile_trigger(
+                    profile_name_sql=profile_name_sql,
+                    profile_owner_sql=profile_owner_sql,
+                    profile_column=profile_column,
+                    app_label=sender._meta.app_config.label,
+                    model_name=sender._meta.model_name,
+                    self_table=sender._meta.db_table,
+                    pk=sender._meta.pk.column,
+                )
             )
-        )
+        else:
+            logger.warning(
+                "add_profilable_triggers: skipping 'create_profile' trigger for %s.%s "
+                "because a trigger with that name already exists.",
+                sender._meta.app_label,
+                sender._meta.model_name,
+            )
 
 
 class Profile(AbstractProfile):

@@ -77,13 +77,17 @@ def test_user_creation_reuses_existing_profile_on_conflict():
         status=Profile.ProfileStatus.PUBLIC,
     )
 
-    # Create the user with the reserved PK – trigger hits ON CONFLICT, updates
-    # `modified` on the existing profile, and links user.profile_id to it.
+    # Create the user with the reserved PK – trigger hits ON CONFLICT and the
+    # DO UPDATE branch refreshes owner_id, name, and modified on the existing profile.
     user = UserFactory(id=next_user_id, first_name="John", last_name="Doe")
     user.refresh_from_db()
 
     assert Profile.objects.filter(owner_id=next_user_id).count() == 1
     assert user.profile_id == existing_profile.pk
+
+    existing_profile.refresh_from_db()
+    assert existing_profile.owner_id == next_user_id
+    assert existing_profile.name == "John Doe"
 
 
 # ---------------------------------------------------------------------------
