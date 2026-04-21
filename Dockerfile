@@ -1,7 +1,7 @@
-ARG PYTHON_VERSION=3.11.6
-FROM python:${PYTHON_VERSION}-bookworm
+ARG PYTHON_VERSION=3.11
+FROM python:${PYTHON_VERSION}-slim-trixie
 
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Copy from the cache instead of linking since it's a mounted volume
 ENV UV_LINK_MODE=copy
@@ -18,23 +18,25 @@ ENV UV_TOOL_BIN_DIR=/usr/local/bin
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 ENV PATH="$UV_PROJECT_ENVIRONMENT/bin:$PATH"
 
-RUN apt-get update -qq  && \
+RUN apt-get update -qq && \
     apt-get install -y --no-install-recommends \
-    libjpeg62-turbo libjpeg62-turbo-dev libfreetype6 libfreetype6-dev zlib1g-dev \
-    libgeos-dev libgeos3.11.1 libgeos-c1v5 gdal-bin \
+    libjpeg62-turbo libjpeg62-turbo-dev libfreetype-dev zlib1g-dev \
+    libgeos-dev libgeos3.13.1 libgeos-c1t64 gdal-bin \
     proj-bin libproj-dev libproj25 \
     locales -qq \
     gettext \
     wget \
+    git \
     ca-certificates \
     apt-transport-https \
-    gnupg \
-    chromium && \
-    wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-    echo "deb [arch=amd64] https://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google.list && \
+    gnupg && \
+    wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub \
+      | gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg && \
+    echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] https://dl.google.com/linux/chrome/deb/ stable main" \
+      > /etc/apt/sources.list.d/google-chrome.list && \
     apt-get update -y && \
     apt-get install -y --no-install-recommends google-chrome-stable && \
-    rm -rf /etc/apt/sources.list.d/google.list
+    rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /usr/src/app
 
