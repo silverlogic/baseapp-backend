@@ -328,7 +328,14 @@ class CreateProfileFunc(pgtrigger.Func):
                 WITH new_profile AS (
                     INSERT INTO {profile_table} ({columns})
                     VALUES ({values})
-                    ON CONFLICT (target_content_type_id, target_object_id) DO UPDATE SET modified = EXCLUDED.modified
+                    -- Conflicts arise when a Profile for this object already exists
+                    -- (e.g. seeded by a migration or a prior trigger run).  Refresh
+                    -- owner, name, and modified so the profile stays consistent with
+                    -- the current row rather than silently retaining stale values.
+                    ON CONFLICT (target_content_type_id, target_object_id) DO UPDATE
+                        SET owner_id = EXCLUDED.owner_id,
+                            name     = EXCLUDED.name,
+                            modified = EXCLUDED.modified
                     RETURNING id
                 )
                 UPDATE {self._self_table} SET {self._profile_column} = (SELECT id FROM new_profile) WHERE {self._pk} = NEW.{self._pk};
