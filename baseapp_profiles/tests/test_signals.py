@@ -7,11 +7,7 @@ so we are not dependent on how (or whether) the host project wires them up.
 
 from unittest.mock import MagicMock, patch
 
-import swapper
-
 from baseapp_profiles.signals import create_profile_url_path, update_user_profile
-
-Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
 # ---------------------------------------------------------------------------

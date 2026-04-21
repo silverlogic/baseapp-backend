@@ -222,7 +222,7 @@ class UpdateProfileNameFunc(pgtrigger.Func):
         profile_table = Profile._meta.db_table
         return f"""
             IF NEW.{self._profile_column} IS NOT NULL THEN
-                UPDATE {profile_table} SET name = TRIM({self._profile_name_sql}) WHERE id = NEW.{self._profile_column};
+                UPDATE {profile_table} SET name = TRIM(COALESCE({self._profile_name_sql}, '')) WHERE id = NEW.{self._profile_column};
             END IF;
             RETURN NULL;
         """
@@ -296,7 +296,7 @@ class CreateProfileFunc(pgtrigger.Func):
                 f" WHERE app_label = '{self._app_label}' AND model = '{self._model_name}')"
             ),
             "target_object_id": f"NEW.{self._pk}",
-            "name": f"TRIM({self._profile_name_sql})",
+            "name": f"TRIM(COALESCE({self._profile_name_sql}, ''))",
             "status": "1",
             "created": "NOW()",
             "modified": "NOW()",

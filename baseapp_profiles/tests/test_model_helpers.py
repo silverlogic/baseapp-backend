@@ -114,7 +114,7 @@ def test_update_profile_name_func_render_produces_valid_sql():
     assert "IF NEW.profile_id IS NOT NULL THEN" in sql
     assert "UPDATE" in sql
     assert "profiles_profile" in sql
-    assert "TRIM(NEW.first_name || ' ' || NEW.last_name)" in sql
+    assert "TRIM(COALESCE(NEW.first_name || ' ' || NEW.last_name, ''))" in sql
 
 
 # ---------------------------------------------------------------------------
@@ -137,7 +137,7 @@ def test_create_profile_func_render_produces_valid_sql():
     assert "IF NEW.profile_id IS NULL THEN" in sql
     assert "ON CONFLICT (target_content_type_id, target_object_id)" in sql
     assert "RETURNING id" in sql
-    assert "TRIM(NEW.first_name || ' ' || NEW.last_name)" in sql
+    assert "TRIM(COALESCE(NEW.first_name || ' ' || NEW.last_name, ''))" in sql
 
 
 @pytest.mark.django_db
@@ -155,7 +155,7 @@ def test_create_profile_func_render_raises_for_unconvertible_default(monkeypatch
 
     # Extend the live field list with our unconvertible field.
     # monkeypatch replaces the attribute on the _meta instance for this test only.
-    monkeypatch.setattr(Profile._meta, "fields", list(Profile._meta.fields) + [bad_field])
+    monkeypatch.setattr(Profile._meta, "fields", [*Profile._meta.fields, bad_field])
 
     func = CreateProfileFunc(
         profile_name_sql="NEW.first_name",
@@ -216,12 +216,13 @@ def test_add_profilable_triggers_skips_when_no_profile_name_sql():
     )
 
 
-def test_add_profilable_triggers_skips_duplicate_trigger():
+def test_add_profilable_triggers_skips_duplicate_trigger(monkeypatch):
     """Calling add_profilable_triggers twice must not add the same trigger twice."""
-    trigger_names_before = [t.name for t in getattr(User._meta, "triggers", [])]
-    count_before = trigger_names_before.count("update_profile_name")
+    original_triggers = list(getattr(User._meta, "triggers", []))
+    monkeypatch.setattr(User._meta, "triggers", list(original_triggers))
 
+    count_before = sum(1 for t in User._meta.triggers if t.name == "update_profile_name")
     add_profilable_triggers(sender=User)
+    count_after = sum(1 for t in User._meta.triggers if t.name == "update_profile_name")
 
-    trigger_names_after = [t.name for t in getattr(User._meta, "triggers", [])]
-    assert trigger_names_after.count("update_profile_name") == count_before
+    assert count_after == count_before
