@@ -202,13 +202,12 @@ def test_add_profilable_triggers_skips_abstract_model():
 
 
 def test_add_profilable_triggers_skips_when_no_profile_name_sql():
-    """ProfilableModel subclass without profile_name_sql is ignored."""
+    """Concrete ProfilableModel subclass without profile_name_sql is ignored."""
 
     class FakeNoSql(ProfilableModel):
         profile_name_sql = None
 
         class Meta:
-            abstract = True
             app_label = "baseapp_profiles"
 
     add_profilable_triggers(sender=FakeNoSql)
