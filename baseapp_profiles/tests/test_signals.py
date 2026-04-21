@@ -9,7 +9,6 @@ from unittest.mock import MagicMock, patch
 
 from baseapp_profiles.signals import create_profile_url_path, update_user_profile
 
-
 # ---------------------------------------------------------------------------
 # create_profile_url_path
 # ---------------------------------------------------------------------------
