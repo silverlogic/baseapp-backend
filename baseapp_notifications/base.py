@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 from notifications.base.models import AbstractNotification as BaseAbstractNotification
@@ -17,10 +17,19 @@ class AbstractNotification(BaseAbstractNotification, RelayModel):
 
         from baseapp_notifications.graphql.subscriptions import OnNotificationChange
 
-        if created:
-            OnNotificationChange.send_created_notification(notification=self)
-        else:
-            OnNotificationChange.send_updated_notification(notification=self)
+        pk = self.pk
+        Notification = type(self)
+
+        def broadcast():
+            notification = Notification.objects.filter(pk=pk).first()
+            if notification is None:
+                return
+            if created:
+                OnNotificationChange.send_created_notification(notification=notification)
+            else:
+                OnNotificationChange.send_updated_notification(notification=notification)
+
+        transaction.on_commit(broadcast)
 
     def delete(self, *args, **kwargs):
         notification_relay_id = self.relay_id
