@@ -55,13 +55,21 @@ from baseapp_profiles.models import ProfilableModel
 
 class MyModel(ProfilableModel):
     # Required: SQL expression using NEW.<col> references that produces the profile name.
-    # NULL-safe — COALESCE and TRIM are applied automatically.
+    # The framework automatically wraps the whole expression with TRIM(COALESCE(..., ''))
+    # so a fully-NULL result never reaches profile.name.
     profile_name_sql = "NEW.first_name || ' ' || NEW.last_name"
 
     # Optional: SQL expression for the profile owner_id on INSERT.
     # When provided, the trigger creates and links a Profile automatically.
     # Omit when ownership is determined later by application logic (e.g. Organization).
     profile_owner_sql = "NEW.id"
+```
+
+If any of the referenced columns are **nullable**, wrap them individually with `COALESCE` to prevent a single NULL from making the entire expression NULL (PostgreSQL: `NULL || anything = NULL`):
+
+```python
+    # first_name and last_name are nullable on this model
+    profile_name_sql = "COALESCE(NEW.first_name, '') || ' ' || COALESCE(NEW.last_name, '')"
 ```
 
 After adding or changing these attributes, run `makemigrations` to capture the updated trigger SQL:
