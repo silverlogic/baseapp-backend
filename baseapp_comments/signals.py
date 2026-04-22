@@ -56,37 +56,49 @@ if getattr(settings, "BASEAPP_COMMENTS_ENABLE_GRAPHQL_SUBSCRIPTIONS", True):
 
 
 def update_comments_count(sender, instance, created=False, **kwargs):
-    default_comments_count = sender._meta.get_field("comments_count").get_default
+    CommentableMetadata = swapper.load_model("baseapp_comments", "CommentableMetadata")
 
     if instance.in_reply_to_id:
+        parent = instance.in_reply_to
         qs = sender.objects_visible.filter(in_reply_to_id=instance.in_reply_to_id)
 
-        counts = default_comments_count()
-        counts["total"] = qs.count()
-        counts["pinned"] = qs.filter(is_pinned=True).count()
+        counts = {
+            "total": qs.count(),
+            "pinned": qs.filter(is_pinned=True).count(),
+            "replies": 0,
+            "main": 0,
+            "reported": 0,
+        }
         counts["replies"] = counts["total"]
         counts["main"] = counts["total"]
 
-        parent = instance.in_reply_to
-        parent.comments_count = counts
-        parent.save(update_fields=["comments_count"])
+        metadata = CommentableMetadata.get_or_create_for_object(parent)
+        if metadata:
+            metadata.comments_count = counts
+            metadata.save(update_fields=["comments_count"])
 
     target = instance.target
-    if target and hasattr(target, "comments_count"):
-        counts = default_comments_count()
-
+    if target:
         target_content_type = ContentType.objects.get_for_model(target)
         qs = sender.objects_visible.filter(
-            target_content_type=target_content_type, target_object_id=target.pk
+            target_content_type=target_content_type,
+            target_object_id=target.pk,
         )
 
-        counts["total"] = qs.count()
-        counts["replies"] = qs.filter(in_reply_to__isnull=False).count()
-        counts["pinned"] = qs.filter(in_reply_to__isnull=True, is_pinned=True).count()
-        counts["main"] = counts["total"] - counts["replies"]
+        total = qs.count()
+        replies = qs.filter(in_reply_to__isnull=False).count()
+        counts = {
+            "total": total,
+            "replies": replies,
+            "pinned": qs.filter(in_reply_to__isnull=True, is_pinned=True).count(),
+            "main": total - replies,
+            "reported": 0,
+        }
 
-        target.comments_count = counts
-        target.save(update_fields=["comments_count"])
+        metadata = CommentableMetadata.get_or_create_for_object(target)
+        if metadata:
+            metadata.comments_count = counts
+            metadata.save(update_fields=["comments_count"])
 
 
 post_save.connect(update_comments_count, sender=Comment, dispatch_uid="update_comments_count")

@@ -10,7 +10,7 @@ from baseapp_auth.graphql import PermissionsInterface
 from baseapp_core.graphql import DjangoObjectType, LanguagesEnum
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import ThumbnailField
-from baseapp_core.plugins import graphql_shared_interfaces
+from baseapp_core.plugins import graphql_shared_interfaces, shared_services
 from baseapp_pages.models import AbstractPage, Metadata, URLPath
 
 Page = swapper.load_model("baseapp_pages", "Page")
@@ -156,6 +156,13 @@ class BasePageObjectType:
                 info,
                 max_complexity=cls.MAX_COMPLEXITY,
             )
+
+    @classmethod
+    def pre_optimization_hook(cls, queryset, optimizer):
+        queryset = super().pre_optimization_hook(queryset, optimizer)
+        if service := shared_services.get("commentable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+        return queryset
 
     @classmethod
     def resolve_body(cls, instance, info, **kwargs):

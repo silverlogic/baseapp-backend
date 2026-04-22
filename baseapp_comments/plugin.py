@@ -24,12 +24,7 @@ class CommentsPlugin(BaseAppPlugin):
                 "BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS": True,
                 "BASEAPP_COMMENTS_MAX_PINS_PER_THREAD": None,
             },
-            required_packages=[
-                "baseapp_core",
-            ],
-            optional_packages=[
-                "baseapp_notifications",
-            ],
+            # GraphQL
             graphql_queries=[
                 "baseapp_comments.graphql.queries.CommentsQueries",
             ],
@@ -38,5 +33,10 @@ class CommentsPlugin(BaseAppPlugin):
             ],
             graphql_subscriptions=[
                 "baseapp_comments.graphql.subscriptions.CommentsSubscriptions",
+            ],
+            # Deps
+            required_packages=[],
+            optional_packages=[
+                "baseapp_notifications",
             ],
         )

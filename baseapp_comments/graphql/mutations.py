@@ -87,8 +87,6 @@ class CommentCreate(RelayMutation):
         if form.is_valid():
             form.save()
 
-            # Need to refresh to update comments_count
-            target.refresh_from_db()
             if hasattr(comment, "profile") and comment.profile:
                 comment.profile.refresh_from_db()
             if comment.in_reply_to:

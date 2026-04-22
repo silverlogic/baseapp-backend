@@ -46,3 +46,18 @@ class AbstractCommentFactory(factory.django.DjangoModelFactory):
 class CommentFactory(AbstractCommentFactory):
     class Meta:
         model = Comment
+
+    @factory.post_generation
+    def is_comments_enabled(obj, create, extracted, **kwargs):
+        """
+        Set is_comments_enabled on the CommentableMetadata associated with this comment.
+        Usage: CommentFactory(is_comments_enabled=False)
+        """
+        if extracted is None or not create:
+            return
+
+        CommentableMetadata = swapper.load_model("baseapp_comments", "CommentableMetadata")
+        metadata = CommentableMetadata.get_or_create_for_object(obj)
+        if metadata:
+            metadata.is_comments_enabled = extracted
+            metadata.save(update_fields=["is_comments_enabled"])

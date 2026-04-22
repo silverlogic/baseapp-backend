@@ -10,7 +10,7 @@ from baseapp_auth.graphql import PermissionsInterface
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import ThumbnailField, get_object_type_for_model
-from baseapp_core.plugins import graphql_shared_interfaces
+from baseapp_core.plugins import graphql_shared_interfaces, shared_services
 
 from .filters import MemberFilter, ProfileFilter
 
@@ -135,6 +135,13 @@ class BaseProfileObjectType(*inheritances, object):
         if not info.context.user.has_perm(f"{profile_app_label}.view_profile", node):
             return None
         return node
+
+    @classmethod
+    def pre_optimization_hook(cls, queryset, optimizer):
+        queryset = super().pre_optimization_hook(queryset, optimizer)
+        if service := shared_services.get("commentable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+        return queryset
 
     @classmethod
     def get_queryset(cls, queryset, info):
