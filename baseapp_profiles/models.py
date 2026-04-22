@@ -225,7 +225,7 @@ class UpdateProfileNameFunc(pgtrigger.Func):
         profile_table = Profile._meta.db_table
         return f"""
             IF NEW.{self._profile_column} IS NOT NULL THEN
-                UPDATE {profile_table} SET name = TRIM(COALESCE({self._profile_name_sql}, '')) WHERE id = NEW.{self._profile_column};
+                UPDATE {profile_table} SET name = TRIM(COALESCE({self._profile_name_sql}, '')), modified = NOW() WHERE id = NEW.{self._profile_column};
             END IF;
             RETURN NULL;
         """
