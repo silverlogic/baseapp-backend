@@ -1,6 +1,11 @@
+import logging
 import random
+import re
 import string
 
+logger = logging.getLogger(__name__)
+
+import pgtrigger
 import swapper
 from django.apps import apps
 from django.conf import settings
@@ -8,6 +13,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.db.models.signals import class_prepared
+from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
@@ -171,6 +178,25 @@ class AbstractProfile(*inheritances):
 
 
 class ProfilableModel(models.Model):
+    """
+    Abstract mixin for entities that act as first-class participants in the system —
+    capable of writing comments, sending private messages, following other entities,
+    and so on.
+
+    Each concrete subclass gets a linked Profile row that holds public-facing
+    metadata (name, avatar, URL path, etc.) and is the identity used across all
+    social features.  Currently User and Organization are ProfilableModel subclasses.
+
+    To wire up a new entity:
+      1. Inherit from ProfilableModel.
+      2. Set profile_name_sql to a SQL expression (using NEW.<col>) that produces
+         the display name, e.g. "NEW.first_name || ' ' || NEW.last_name".
+      3. Optionally set profile_owner_sql (e.g. "NEW.user_id") to have the INSERT
+         trigger create and link the Profile automatically. Omit it when the
+         owner is determined later by application logic.
+      4. Run makemigrations.
+    """
+
     profile = models.OneToOneField(
         swapper.get_model_name("baseapp_profiles", "Profile"),
         related_name="%(class)s",
@@ -180,8 +206,278 @@ class ProfilableModel(models.Model):
         blank=True,
     )
 
+    # Subclasses must define this as a SQL expression referencing NEW columns.
+    # e.g. "NEW.first_name || ' ' || NEW.last_name" or "NEW.name"
+    profile_name_sql = None
+
+    # Subclasses that want automatic profile creation on INSERT must define this
+    # as a SQL expression for the profile owner_id.
+    # e.g. "NEW.id" for a self-owned model like User.
+    # Leave as None to skip auto-creation (e.g. Organization, where the owner
+    # is determined by application context at creation time).
+    profile_owner_sql = None
+
     class Meta:
         abstract = True
+
+
+def _columns_from_profile_name_sql(sql):
+    """Extract column names referenced as NEW.<col> in a profile_name_sql expression."""
+    return re.findall(r"NEW\.(\w+)", sql) or None
+
+
+class UpdateProfileNameFunc(pgtrigger.Func):
+    """
+    Reusable pgtrigger function that updates profile.name whenever a ProfilableModel row is updated.
+    SQL values are captured at class_prepared time (real model) so that render() works
+    correctly when called with migration state models (which lack custom class attributes).
+    Leading/trailing whitespace is trimmed from the resulting name.
+    """
+
+    def __init__(self, func="", *, profile_name_sql, profile_column):
+        super().__init__(func)
+        self._profile_name_sql = profile_name_sql
+        self._profile_column = profile_column
+
+    def render(self, **kwargs) -> str:
+        Profile = swapper.load_model("baseapp_profiles", "Profile")
+        profile_table = Profile._meta.db_table
+        return f"""
+            IF NEW.{self._profile_column} IS NOT NULL THEN
+                UPDATE {profile_table} SET name = TRIM(COALESCE({self._profile_name_sql}, '')), modified = NOW() WHERE id = NEW.{self._profile_column};
+            END IF;
+            RETURN NULL;
+        """
+
+
+def _python_default_to_sql(default):
+    """
+    Convert a Python value (from field.get_default()) to a SQL literal safe for embedding
+    in a raw trigger INSERT statement.
+    Returns None if the value cannot be safely converted.
+    """
+    import json as _json
+
+    if isinstance(default, bool):
+        return "TRUE" if default else "FALSE"
+    elif isinstance(default, int):
+        return str(default)
+    elif isinstance(default, float):
+        return str(default)
+    elif isinstance(default, str):
+        return "'{}'".format(default.replace("'", "''"))
+    elif isinstance(default, (dict, list)):
+        serialized = _json.dumps(default, separators=(",", ":")).replace("'", "''")
+        return "'{}'::jsonb".format(serialized)
+    return None
+
+
+class CreateProfileFunc(pgtrigger.Func):
+    """
+    Reusable pgtrigger function that creates a Profile on INSERT of a ProfilableModel row
+    and links it back by setting profile_id on the source row.
+    Only fires when profile_id is not already set on the new row.
+    SQL values are captured at class_prepared time so that render() works with state models.
+
+    render() dynamically builds the INSERT column list from the live Profile model so that
+    extra NOT NULL fields added by optional mixins (e.g. BlockableModel, CommentableModel)
+    are included with their Python defaults — no manual maintenance required.
+    """
+
+    def __init__(
+        self,
+        func="",
+        *,
+        profile_name_sql,
+        profile_owner_sql,
+        profile_column,
+        app_label,
+        model_name,
+        self_table,
+        pk,
+    ):
+        super().__init__(func)
+        self._profile_name_sql = profile_name_sql
+        self._profile_owner_sql = profile_owner_sql
+        self._profile_column = profile_column
+        self._app_label = app_label
+        self._model_name = model_name
+        self._self_table = self_table
+        self._pk = pk
+
+    def render(self, **kwargs) -> str:
+        Profile = swapper.load_model("baseapp_profiles", "Profile")
+        profile_table = Profile._meta.db_table
+        content_type_table = ContentType._meta.db_table
+
+        # Escape single quotes in app_label/model_name as a defensive measure
+        # (Django enforces these are valid identifiers, but belt-and-suspenders).
+        safe_app_label = self._app_label.replace("'", "''")
+        safe_model_name = self._model_name.replace("'", "''")
+
+        # Columns and SQL values we always provide explicitly.
+        explicit = {
+            "owner_id": self._profile_owner_sql,
+            "target_content_type_id": (
+                f"(SELECT id FROM {content_type_table}"
+                f" WHERE app_label = '{safe_app_label}' AND model = '{safe_model_name}')"
+            ),
+            "target_object_id": f"NEW.{self._pk}",
+            "name": f"TRIM(COALESCE({self._profile_name_sql}, ''))",
+            "created": "NOW()",
+            "modified": "NOW()",
+        }
+
+        # Dynamically add any extra NOT NULL columns that have Python-level defaults
+        # (e.g. blockers_count, reports_count from optional mixins).
+        for field in Profile._meta.fields:
+            col = field.column
+            if col in explicit or field.primary_key or field.null:
+                continue
+            if not field.has_default():
+                continue
+            sql_val = _python_default_to_sql(field.get_default())
+            if sql_val is None:
+                raise ValueError(
+                    f"CreateProfileFunc: cannot convert the default value of NOT NULL field "
+                    f"'{col}' ({type(field).__name__}) to a SQL literal. "
+                    f"Add explicit handling for {type(field.get_default()).__name__} in "
+                    f"_python_default_to_sql or make the field nullable."
+                )
+            explicit[col] = sql_val
+
+        columns = ", ".join(explicit.keys())
+        values = ", ".join(explicit.values())
+
+        return f"""
+            IF NEW.{self._profile_column} IS NULL THEN
+                WITH new_profile AS (
+                    INSERT INTO {profile_table} ({columns})
+                    VALUES ({values})
+                    -- Conflicts arise when a Profile for this object already exists
+                    -- (e.g. seeded by a migration or a prior trigger run).  Refresh
+                    -- owner, name, and modified so the profile stays consistent with
+                    -- the current row rather than silently retaining stale values.
+                    ON CONFLICT (target_content_type_id, target_object_id) DO UPDATE
+                        SET owner_id = EXCLUDED.owner_id,
+                            name     = EXCLUDED.name,
+                            modified = EXCLUDED.modified
+                    RETURNING id
+                )
+                UPDATE {self._self_table} SET {self._profile_column} = (SELECT id FROM new_profile) WHERE {self._pk} = NEW.{self._pk};
+            END IF;
+            RETURN NULL;
+        """
+
+
+def update_profile_name_trigger(profile_name_sql, profile_column):
+    """
+    Trigger to automatically update profile.name when a ProfilableModel row is updated.
+    The columns referenced in `profile_name_sql` (as NEW.<col>) are automatically used
+    to scope the trigger to only fire when those columns change.
+    """
+    columns = _columns_from_profile_name_sql(profile_name_sql)
+    operation = pgtrigger.UpdateOf(*columns) if columns else pgtrigger.Update
+    return pgtrigger.Trigger(
+        name="update_profile_name",
+        level=pgtrigger.Row,
+        when=pgtrigger.After,
+        operation=operation,
+        func=UpdateProfileNameFunc(
+            profile_name_sql=profile_name_sql,
+            profile_column=profile_column,
+        ),
+    )
+
+
+def create_profile_trigger(
+    *, profile_name_sql, profile_owner_sql, profile_column, app_label, model_name, self_table, pk
+):
+    """
+    Trigger to automatically create a Profile and link it back to the ProfilableModel instance on INSERT.
+    """
+    return pgtrigger.Trigger(
+        name="create_profile",
+        level=pgtrigger.Row,
+        when=pgtrigger.After,
+        operation=pgtrigger.Insert,
+        func=CreateProfileFunc(
+            profile_name_sql=profile_name_sql,
+            profile_owner_sql=profile_owner_sql,
+            profile_column=profile_column,
+            app_label=app_label,
+            model_name=model_name,
+            self_table=self_table,
+            pk=pk,
+        ),
+    )
+
+
+@receiver(class_prepared)
+def add_profilable_triggers(sender, **kwargs):
+    """
+    Auto-add pgtriggers to every concrete ProfilableModel subclass that defines `profile_name_sql`.
+    - Always adds the UPDATE trigger to keep profile.name in sync.
+    - Also adds the INSERT trigger when `profile_owner_sql` is defined, enabling automatic
+      profile creation without a Python-level signal.
+
+    All SQL values are extracted from the live sender model here so that the Func objects
+    carry them as plain strings — safe to use even when pgtrigger later calls render() with
+    a migration state model (which lacks custom class attributes).
+    """
+    if not issubclass(sender, ProfilableModel):
+        return
+    if sender._meta.abstract or sender._meta.proxy:
+        return
+    if getattr(sender._meta, "swapped", None):
+        return
+
+    profile_name_sql = getattr(sender, "profile_name_sql", None)
+    if not profile_name_sql:
+        return
+
+    if not hasattr(sender._meta, "triggers"):
+        sender._meta.triggers = []
+
+    existing = [t.name for t in sender._meta.triggers]
+    profile_column = sender._meta.get_field("profile").column
+
+    if "update_profile_name" not in existing:
+        sender._meta.triggers.append(
+            update_profile_name_trigger(
+                profile_name_sql=profile_name_sql,
+                profile_column=profile_column,
+            )
+        )
+    else:
+        logger.warning(
+            "add_profilable_triggers: skipping 'update_profile_name' trigger for %s.%s "
+            "because a trigger with that name already exists.",
+            sender._meta.app_label,
+            sender._meta.model_name,
+        )
+
+    profile_owner_sql = getattr(sender, "profile_owner_sql", None)
+    if profile_owner_sql:
+        if "create_profile" not in existing:
+            sender._meta.triggers.append(
+                create_profile_trigger(
+                    profile_name_sql=profile_name_sql,
+                    profile_owner_sql=profile_owner_sql,
+                    profile_column=profile_column,
+                    app_label=sender._meta.app_config.label,
+                    model_name=sender._meta.model_name,
+                    self_table=sender._meta.db_table,
+                    pk=sender._meta.pk.column,
+                )
+            )
+        else:
+            logger.warning(
+                "add_profilable_triggers: skipping 'create_profile' trigger for %s.%s "
+                "because a trigger with that name already exists.",
+                sender._meta.app_label,
+                sender._meta.model_name,
+            )
 
 
 class Profile(AbstractProfile):

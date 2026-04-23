@@ -40,6 +40,9 @@ def use_profile_model():
                 blank=True,
             )
 
+            profile_name_sql = "NEW.first_name || ' ' || NEW.last_name"
+            profile_owner_sql = "NEW.id"
+
             class Meta:
                 abstract = True
 
