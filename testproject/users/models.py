@@ -10,9 +10,6 @@ from baseapp_ratings.models import RatableModel
 
 
 class User(AbstractUser, RelayModel, RatableModel, ProfilableModel):
-    profile_name_sql = "NEW.first_name || ' ' || NEW.last_name"
-    profile_owner_sql = "NEW.id"
-
     # FieldTracker doesn't work with abstract model classes
     tracker = FieldTracker(fields=["is_superuser", "password"])
 
