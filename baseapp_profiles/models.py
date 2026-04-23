@@ -178,6 +178,25 @@ class AbstractProfile(*inheritances):
 
 
 class ProfilableModel(models.Model):
+    """
+    Abstract mixin for entities that act as first-class participants in the system —
+    capable of writing comments, sending private messages, following other entities,
+    and so on.
+
+    Each concrete subclass gets a linked Profile row that holds public-facing
+    metadata (name, avatar, URL path, etc.) and is the identity used across all
+    social features.  Currently User and Organization are ProfilableModel subclasses.
+
+    To wire up a new entity:
+      1. Inherit from ProfilableModel.
+      2. Set profile_name_sql to a SQL expression (using NEW.<col>) that produces
+         the display name, e.g. "NEW.first_name || ' ' || NEW.last_name".
+      3. Optionally set profile_owner_sql (e.g. "NEW.user_id") to have the INSERT
+         trigger create and link the Profile automatically. Omit it when the
+         owner is determined later by application logic.
+      4. Run makemigrations.
+    """
+
     profile = models.OneToOneField(
         swapper.get_model_name("baseapp_profiles", "Profile"),
         related_name="%(class)s",
