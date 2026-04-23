@@ -3,7 +3,6 @@ import pgtrigger
 import swapper
 from django.apps import apps
 from django.conf import settings
-from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import OuterRef, Subquery
@@ -17,6 +16,195 @@ from baseapp_core.plugins import apply_if_installed
 from baseapp_core.swapper import init_swapped_models
 
 from .validators import blocked_words_validator
+
+
+class CommentStatus(models.IntegerChoices):
+    DELETED = 0, _("deleted")
+    PUBLISHED = 1, _("published")
+
+
+class NonDeletedComments(models.Manager):
+    """Automatically filters out soft deleted objects from QuerySets"""
+
+    def get_queryset(self):
+        return super(NonDeletedComments, self).get_queryset().exclude(status=CommentStatus.DELETED)
+
+    def for_target(self, obj, *, root_only=True):
+        """
+        Top-level (or all) non-deleted comments for a target object, without requiring a reverse
+        GenericRelation on the target model. Mirrors the queryset used for GraphQL
+        `CommentsInterface` for non-Comment targets (e.g. pages).
+        """
+        ct = ContentType.objects.get_for_model(obj)
+        qs = self.get_queryset().filter(
+            target_document__content_type=ct, target_document__object_id=obj.pk
+        )
+        if root_only:
+            qs = qs.filter(in_reply_to__isnull=True)
+        return qs
+
+
+comment_inheritances = []
+
+if apps.is_installed("baseapp_profiles"):
+
+    class ProfileMixin(models.Model):
+        profile = models.ForeignKey(
+            swapper.get_model_name("baseapp_profiles", "Profile"),
+            verbose_name=_("profile"),
+            related_name="comments",
+            on_delete=models.SET_NULL,
+            null=True,
+            blank=True,
+        )
+
+        class Meta:
+            abstract = True
+
+    comment_inheritances.append(ProfileMixin)
+
+
+if apps.is_installed("baseapp_reactions"):
+    from baseapp_reactions.models import ReactableModel
+
+    comment_inheritances.append(ReactableModel)
+
+
+if apps.is_installed("baseapp_reports"):
+    from baseapp_reports.models import ReportableModel
+
+    comment_inheritances.append(ReportableModel)
+
+
+class AbstractComment(
+    *comment_inheritances,
+    DocumentIdMixin,
+    RelayModel,
+    TimeStampedModel,
+):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name=_("user"),
+        related_name="comments",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+
+    body = models.TextField(
+        blank=True, null=True, validators=[blocked_words_validator], verbose_name=_("body")
+    )
+
+    language = models.CharField(
+        _("language"),
+        max_length=10,
+        null=True,
+        blank=True,
+        help_text=_("languaged used in the comment"),
+    )
+
+    is_edited = models.BooleanField(default=False, verbose_name=_("is edited"))
+    is_pinned = models.BooleanField(default=False, verbose_name=_("is pinned"))
+
+    target_document = models.ForeignKey(
+        DocumentId,
+        verbose_name=_("target document"),
+        blank=True,
+        null=True,
+        related_name="comments_inbox",
+        on_delete=models.CASCADE,
+    )
+
+    in_reply_to = models.ForeignKey(
+        to=swapper.get_model_name("baseapp_comments", "Comment"),
+        verbose_name=_("in reply to"),
+        blank=True,
+        null=True,
+        related_name="comments",
+        on_delete=models.CASCADE,
+    )
+
+    status = models.IntegerField(
+        _("status"), choices=CommentStatus.choices, default=CommentStatus.PUBLISHED, db_index=True
+    )
+
+    objects = models.Manager()
+    objects_visible = NonDeletedComments()
+
+    class Meta:
+        abstract = True
+        ordering = ["-is_pinned", "-created"]
+        indexes = [
+            models.Index(
+                fields=[
+                    "target_document",
+                    "status",
+                    "-is_pinned",
+                    "-created",
+                ]
+            ),
+        ]
+        triggers = [
+            pgtrigger.SoftDelete(name="soft_delete", field="status", value=CommentStatus.DELETED)
+        ]
+        permissions = [
+            ("pin_comment", _("can pin comments")),
+            ("report_comment", _("can report comments")),
+            ("view_all_comments", _("can view all comments")),
+            *apply_if_installed(
+                "baseapp_profiles",
+                [("add_comment_with_profile", _("can add comments with profile"))],
+            ),
+        ]
+        verbose_name = _("comment")
+        verbose_name_plural = _("comments")
+
+    def __str__(self):
+        return "Comment #%s by %s" % (self.id, self.user_id)
+
+    def _get_target(self):
+        if not self.target_document_id:
+            return None
+        if hasattr(self, "_target_object_cache"):
+            return self._target_object_cache
+        self._target_object_cache = self.target_document.content_object
+        return self._target_object_cache
+
+    _get_target.short_description = _("target")
+
+    def _set_target(self, value):
+        if not value:
+            self.target_document = None
+            self._target_object_cache = None
+            return
+        self.target_document = DocumentId.get_or_create_for_object(value)
+        self._target_object_cache = value
+
+    target = property(_get_target, _set_target)
+
+    @property
+    def target_content_type(self):
+        if self.target_document_id:
+            return self.target_document.content_type
+        return None
+
+    @property
+    def target_content_type_id(self):
+        if self.target_document_id:
+            return self.target_document.content_type_id
+        return None
+
+    @property
+    def target_object_id(self):
+        if self.target_document_id:
+            return self.target_document.object_id
+        return None
+
+    @classmethod
+    def get_graphql_object_type(cls):
+        from .graphql.object_types import CommentObjectType
+
+        return CommentObjectType
 
 
 def default_comments_count():
@@ -101,165 +289,6 @@ class AbstractCommentableMetadata(models.Model):
                 output_field=models.BooleanField(),
             ),
         )
-
-
-class CommentStatus(models.IntegerChoices):
-    DELETED = 0, _("deleted")
-    PUBLISHED = 1, _("published")
-
-
-class NonDeletedComments(models.Manager):
-    """Automatically filters out soft deleted objects from QuerySets"""
-
-    def get_queryset(self):
-        return super(NonDeletedComments, self).get_queryset().exclude(status=CommentStatus.DELETED)
-
-    def for_target(self, obj, *, root_only=True):
-        """
-        Top-level (or all) non-deleted comments for a target object, without requiring a reverse
-        GenericRelation on the target model. Mirrors the queryset used for GraphQL
-        `CommentsInterface` for non-Comment targets (e.g. pages).
-        """
-        ct = ContentType.objects.get_for_model(obj)
-        qs = self.get_queryset().filter(
-            target_content_type=ct,
-            target_object_id=obj.pk,
-        )
-        if root_only:
-            qs = qs.filter(in_reply_to__isnull=True)
-        return qs
-
-
-comment_inheritances = []
-
-if apps.is_installed("baseapp_profiles"):
-
-    class ProfileMixin(models.Model):
-        profile = models.ForeignKey(
-            swapper.get_model_name("baseapp_profiles", "Profile"),
-            verbose_name=_("profile"),
-            related_name="comments",
-            on_delete=models.SET_NULL,
-            null=True,
-            blank=True,
-        )
-
-        class Meta:
-            abstract = True
-
-    comment_inheritances.append(ProfileMixin)
-
-
-if apps.is_installed("baseapp_reactions"):
-    from baseapp_reactions.models import ReactableModel
-
-    comment_inheritances.append(ReactableModel)
-
-
-if apps.is_installed("baseapp_reports"):
-    from baseapp_reports.models import ReportableModel
-
-    comment_inheritances.append(ReportableModel)
-
-
-class AbstractComment(
-    *comment_inheritances,
-    DocumentIdMixin,
-    RelayModel,
-    TimeStampedModel,
-):
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        verbose_name=_("user"),
-        related_name="comments",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-    )
-
-    body = models.TextField(
-        blank=True, null=True, validators=[blocked_words_validator], verbose_name=_("body")
-    )
-
-    language = models.CharField(
-        _("language"),
-        max_length=10,
-        null=True,
-        blank=True,
-        help_text=_("languaged used in the comment"),
-    )
-
-    is_edited = models.BooleanField(default=False, verbose_name=_("is edited"))
-    is_pinned = models.BooleanField(default=False, verbose_name=_("is pinned"))
-
-    target_content_type = models.ForeignKey(
-        ContentType,
-        verbose_name=_("target content type"),
-        blank=True,
-        null=True,
-        related_name="comments_inbox",
-        on_delete=models.CASCADE,
-        db_index=True,
-    )
-    target_object_id = models.PositiveIntegerField(
-        blank=True, null=True, db_index=True, verbose_name=_("target object id")
-    )
-    target = GenericForeignKey("target_content_type", "target_object_id")
-    target.short_description = _("target")  # because GenericForeignKey doens't have verbose_name
-
-    in_reply_to = models.ForeignKey(
-        to=swapper.get_model_name("baseapp_comments", "Comment"),
-        verbose_name=_("in reply to"),
-        blank=True,
-        null=True,
-        related_name="comments",
-        on_delete=models.CASCADE,
-    )
-
-    status = models.IntegerField(
-        _("status"), choices=CommentStatus.choices, default=CommentStatus.PUBLISHED, db_index=True
-    )
-
-    objects = models.Manager()
-    objects_visible = NonDeletedComments()
-
-    class Meta:
-        abstract = True
-        ordering = ["-is_pinned", "-created"]
-        indexes = [
-            models.Index(
-                fields=[
-                    "target_content_type",
-                    "target_object_id",
-                    "status",
-                    "-is_pinned",
-                    "-created",
-                ]
-            ),
-        ]
-        triggers = [
-            pgtrigger.SoftDelete(name="soft_delete", field="status", value=CommentStatus.DELETED)
-        ]
-        permissions = [
-            ("pin_comment", _("can pin comments")),
-            ("report_comment", _("can report comments")),
-            ("view_all_comments", _("can view all comments")),
-            *apply_if_installed(
-                "baseapp_profiles",
-                [("add_comment_with_profile", _("can add comments with profile"))],
-            ),
-        ]
-        verbose_name = _("comment")
-        verbose_name_plural = _("comments")
-
-    def __str__(self):
-        return "Comment #%s by %s" % (self.id, self.user_id)
-
-    @classmethod
-    def get_graphql_object_type(cls):
-        from .graphql.object_types import CommentObjectType
-
-        return CommentObjectType
 
 
 # Both init_swapped_models calls are placed here so that when the first one (Comment)

@@ -1,6 +1,5 @@
 import swapper
 from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import Signal
 
@@ -79,11 +78,7 @@ def update_comments_count(sender, instance, created=False, **kwargs):
 
     target = instance.target
     if target:
-        target_content_type = ContentType.objects.get_for_model(target)
-        qs = sender.objects_visible.filter(
-            target_content_type=target_content_type,
-            target_object_id=target.pk,
-        )
+        qs = sender.objects_visible.for_target(target, root_only=False)
 
         total = qs.count()
         replies = qs.filter(in_reply_to__isnull=False).count()

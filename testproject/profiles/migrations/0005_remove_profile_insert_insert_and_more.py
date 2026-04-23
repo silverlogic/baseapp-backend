@@ -4,11 +4,34 @@ import pgtrigger.compiler
 import pgtrigger.migrations
 from django.db import migrations
 
+from baseapp_comments.migration_helpers.convert_legacy_commentable_fields_into_metadata_helper import (
+    migrate_legacy_commentable_fields_to_metadata,
+    reverse_migrate_legacy_commentable_fields_from_metadata,
+)
+
+
+def migrate_profile_commentable_fields(apps, schema_editor):
+    migrate_legacy_commentable_fields_to_metadata(
+        apps,
+        schema_editor,
+        source_app_label="profiles",
+        source_model_name="Profile",
+    )
+
+
+def reverse_migrate_profile_commentable_fields(apps, schema_editor):
+    reverse_migrate_legacy_commentable_fields_from_metadata(
+        apps,
+        schema_editor,
+        source_app_label="profiles",
+        source_model_name="Profile",
+    )
+
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("profiles", "0004_remove_profile_insert_insert_and_more"),
+        ("comments", "0003_commentablemetadata"),
     ]
 
     operations = [
@@ -23,6 +46,10 @@ class Migration(migrations.Migration):
         pgtrigger.migrations.RemoveTrigger(
             model_name="profile",
             name="delete_delete",
+        ),
+        migrations.RunPython(
+            migrate_profile_commentable_fields,
+            reverse_migrate_profile_commentable_fields,
         ),
         migrations.RemoveField(
             model_name="profile",

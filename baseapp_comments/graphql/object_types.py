@@ -81,7 +81,7 @@ class CommentsInterface(RelayNode):
 
         is_root_a_comment = isinstance(root, Comment)
 
-        if is_root_a_comment and (root.target_object_id or root.in_reply_to_id):
+        if is_root_a_comment and (root.target_document_id or root.in_reply_to_id):
             qs = root.comments.filter(status=CommentStatus.PUBLISHED)
             if service := shared_services.get("blocks.lookup"):
                 qs = service.exclude_blocked_from_foreign_queryset(qs, info)
@@ -147,14 +147,36 @@ class BaseCommentObjectType:
             return None
         return node
 
+    def resolve_target(root, info, **kwargs):
+        if not root.target_document_id:
+            return None
+
+        request_cache = getattr(info.context, "_comment_target_cache", None)
+        if request_cache is None:
+            request_cache = {}
+            setattr(info.context, "_comment_target_cache", request_cache)
+
+        target_document = root.target_document
+        cache_key = (target_document.content_type_id, target_document.object_id)
+        if cache_key in request_cache:
+            return request_cache[cache_key]
+
+        model_cls = target_document.content_type.model_class()
+        target = (
+            model_cls.objects.filter(pk=target_document.object_id).first() if model_cls else None
+        )
+        request_cache[cache_key] = target
+        return target
+
     @classmethod
     def pre_optimization_hook(cls, queryset, optimizer):
         queryset = super().pre_optimization_hook(queryset, optimizer)
+        queryset = queryset.select_related("target_document", "target_document__content_type")
 
         # Required for CommentsInterface.resolve_comments checks (no longer a column).
         required_fields = [
             "id",
-            "target_object_id",
+            "target_document_id",
             "in_reply_to_id",
             "status",
         ]
