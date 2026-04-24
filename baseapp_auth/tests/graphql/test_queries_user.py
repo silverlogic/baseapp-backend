@@ -1,6 +1,7 @@
 import pytest
 from constance.test import override_config
 from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 
 from baseapp_core.tests.factories import UserFactory
 
@@ -157,14 +158,17 @@ def test_anon_can_query_users_list_with_optimized_query(graphql_client_with_quer
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_can_query_users_list_with_optimized_query_with_public_id(graphql_client_with_queries):
     UserFactory.create_batch(10)
+    ContentType.objects.clear_cache()
     response, queries = graphql_client_with_queries(QUERY_USERS_LIST)
     content = response.json()
 
-    assert queries.count == 6
+    assert queries.count == 7
     assert len(content["data"]["users"]["edges"]) == 10
 
-    # With optimizer queries are expected to be 6 and retrieving just the queried fields:
-    # The first query is a ContentType lookup (cached after the first request in production)
+    # With optimizer queries are expected to be 7 and retrieving just the queried fields:
+    # The first two queries are ContentType lookups (cached after the first request in production)
+    # SELECT "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "django_content_type" WHERE ("django_content_type"."app_label" = users AND "django_content_type"."model" = user) LIMIT 21
+    # SELECT "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "django_content_type" WHERE ("django_content_type"."app_label" = profiles AND "django_content_type"."model" = profile) LIMIT 21
     # SELECT "users_user"."id", "users_user"."profile_id", "users_user"."first_name", "users_user"."last_name", ("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AS "password_expiry_date", (("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AT TIME ZONE UTC)::date <= 2025-02-28 AS "is_password_expired" FROM "users_user" WHERE "users_user"."is_active"
     # SELECT "profiles_profile"."id","profiles_profile"."name",(SELECT U0."public_id" FROM "baseapp_core_publicidmapping" U0 WHERE (U0."content_type_id" = 1591 AND U0."object_id" = ("profiles_profile"."id"))) AS "mapped_public_id" FROM "profiles_profile" WHERE "profiles_profile"."id" IN (1970,1971,1972,1973,1974,1975,1976,1977,1978,1979)
     # SELECT COUNT(*) AS "__count" FROM "users_user" WHERE "users_user"."is_active"
