@@ -15,7 +15,7 @@ from baseapp_comments.migration_helpers.convert_comments_gfk_into_document_id_he
 class Migration(migrations.Migration):
     dependencies = [
         ("baseapp_core", "0001_initial"),
-        ("comments", "0003_commentablemetadata"),
+        ("comments", "0003_migrate_comment_commentable_to_metadata_remove_comment_mixin"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         migrations.swappable_dependency(settings.BASEAPP_PROFILES_PROFILE_MODEL),
     ]
@@ -66,6 +66,32 @@ class Migration(migrations.Migration):
         migrations.RunPython(
             migrate_comment_targets_to_document_id,
             reverse_migrate_comment_targets_to_generic_fk,
+        ),
+        migrations.AlterField(
+            model_name="comment",
+            name="target_document",
+            field=models.ForeignKey(
+                blank=True,
+                null=False,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="comments_inbox",
+                to="baseapp_core.documentid",
+                verbose_name="target document",
+            ),
+        ),
+        migrations.AlterField(
+            model_name="commentevent",
+            name="target_document",
+            field=models.ForeignKey(
+                blank=True,
+                null=False,
+                db_constraint=False,
+                on_delete=django.db.models.deletion.DO_NOTHING,
+                related_name="+",
+                related_query_name="+",
+                to="baseapp_core.documentid",
+                verbose_name="target document",
+            ),
         ),
         migrations.RemoveField(
             model_name="comment",

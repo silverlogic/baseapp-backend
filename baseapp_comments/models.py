@@ -110,7 +110,7 @@ class AbstractComment(
         DocumentId,
         verbose_name=_("target document"),
         blank=True,
-        null=True,
+        null=False,
         related_name="comments_inbox",
         on_delete=models.CASCADE,
     )

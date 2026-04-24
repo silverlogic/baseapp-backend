@@ -45,17 +45,18 @@ def get_document_id(field_name):
 class AbstractCommentFactory(factory.django.DjangoModelFactory):
     user = factory.SubFactory("baseapp_core.tests.factories.UserFactory")
     body = factory.Faker("text")
+    # When `target` is not passed, still satisfy NOT NULL on `target_document_id` after
+    # migrations that apply `null=False` on that column.
+    _default_thread_target = factory.SubFactory("baseapp_profiles.tests.factories.ProfileFactory")
 
     class Meta:
         abstract = True
+        exclude = ("target", "_default_thread_target")
 
-    target_document = factory.LazyAttribute(get_document_id("target"))
-
-    def __setattr__(self, name, value):
-        super().__setattr__(name, value)
-
-        if name in ["target"]:
-            setattr(self, "target_document", DocumentId.get_or_create_for_object(value))
+    target_document = factory.LazyAttribute(
+        lambda o: get_document_id("target")(o)
+        or DocumentId.get_or_create_for_object(o._default_thread_target)
+    )
 
 
 class CommentFactory(AbstractCommentFactory):

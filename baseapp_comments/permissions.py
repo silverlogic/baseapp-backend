@@ -11,10 +11,9 @@ app_label = Comment._meta.app_label
 def _is_comments_enabled(obj):
     from baseapp_core.plugins import shared_services
 
-    service = shared_services.get("commentable_metadata")
-    if service:
+    if service := shared_services.get("commentable_metadata"):
         return service.is_comments_enabled(obj)
-    return True
+    return False
 
 
 class CommentsPermissionsBackend(BaseBackend):

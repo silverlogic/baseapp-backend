@@ -31,7 +31,7 @@ def reverse_migrate_profile_commentable_fields(apps, schema_editor):
 class Migration(migrations.Migration):
     dependencies = [
         ("profiles", "0004_remove_profile_insert_insert_and_more"),
-        ("comments", "0003_commentablemetadata"),
+        ("comments", "0002_commentablemetadata"),
     ]
 
     operations = [

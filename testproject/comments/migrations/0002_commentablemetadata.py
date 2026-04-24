@@ -7,10 +7,9 @@ import baseapp_comments.models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("baseapp_core", "0001_initial"),
-        ("comments", "0002_remove_comment_insert_insert_and_more"),
+        ("comments", "0001_initial"),
     ]
 
     operations = [
