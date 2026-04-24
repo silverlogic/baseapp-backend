@@ -8,6 +8,10 @@ from baseapp_core.graphql.models import RelayModel
 
 
 class AbstractNotification(BaseAbstractNotification, RelayModel):
+    action_required = models.BooleanField(
+        default=False, help_text=_("Whether the notification requires action from the recipient")
+    )
+
     class Meta(BaseAbstractNotification.Meta):
         abstract = True
 

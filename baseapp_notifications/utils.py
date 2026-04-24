@@ -25,6 +25,7 @@ def send_notification(
     email_message=None,
     push_title=None,
     push_description=None,
+    action_required=False,
     **kwargs,
 ):
     NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationSetting")
@@ -40,6 +41,7 @@ def send_notification(
             action_object=action_object,
             description=description,
             target=target,
+            action_required=action_required,
             **kwargs,
         )
 
@@ -66,6 +68,7 @@ def send_notification(
                 send_push=send_push,
                 email_subject=email_subject or description,
                 email_message=email_message or description,
+                action_required=action_required,
                 **kwargs,
             ),
         )
