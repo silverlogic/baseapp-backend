@@ -47,6 +47,7 @@ class ContentPostObjectType(DjangoObjectType):
             "created",
             "modified",
             "is_reactions_enabled",
+            "mentioned_profiles",
         )
         filterset_class = ContentPostFilter
 
