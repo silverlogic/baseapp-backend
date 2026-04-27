@@ -7,7 +7,6 @@ from django.db.models import IntegerField, OuterRef, Subquery, Value
 from django.db.models.fields.json import KeyTextTransform
 from django.db.models.functions import Cast, Coalesce
 from query_optimizer import DjangoConnectionField
-from query_optimizer.prefetch_hack import evaluate_with_prefetch_hack
 
 from baseapp_auth.graphql import PermissionsInterface
 from baseapp_core.graphql import (
@@ -81,21 +80,17 @@ class CommentsInterface(RelayNode):
 
         is_root_a_comment = isinstance(root, Comment)
 
-        if is_root_a_comment and (root.target_document_id or root.in_reply_to_id):
-            qs = root.comments.filter(status=CommentStatus.PUBLISHED)
-            if service := shared_services.get("blocks.lookup"):
-                qs = service.exclude_blocked_from_foreign_queryset(qs, info)
-
-            # The root.comments were already optimized. But because of the new filter, we need to
-            # re-evaluate the queryset so it can be properly paginated.
-            evaluate_with_prefetch_hack(qs)
-            return qs
-
-        qs = Comment.objects_visible.for_target(root, root_only=True)
-        if service := shared_services.get("blocks.lookup"):
-            qs = service.exclude_blocked_from_foreign_queryset(qs, info)
-
         if is_root_a_comment:
+            qs = Comment.objects_visible.filter(
+                models.Q(in_reply_to_id=root.id)
+                | models.Q(
+                    target_document__content_type__app_label=app_label,
+                    target_document__content_type__model=Comment._meta.model_name,
+                    target_document__object_id=root.id,
+                    in_reply_to__isnull=True,
+                )
+            )
+
             # When the root is a comment used as a target, the AST walker can't handle the
             # nested comments -> comments structure with the regular info.  Stash a
             # NestedConnectionInfoProxy on the queryset hints so the patched
@@ -105,6 +100,11 @@ class CommentsInterface(RelayNode):
             queryset_field_nodes = ConnectionFieldNodeExtractor(info).get_sliced_field_nodes()
             info_proxy = NestedConnectionInfoProxy(info, queryset_field_nodes=queryset_field_nodes)
             qs._hints[NESTED_INFO_PROXY_HINT] = info_proxy
+        else:
+            qs = Comment.objects_visible.for_target(root, root_only=True)
+
+        if service := shared_services.get("blocks.lookup"):
+            qs = service.exclude_blocked_from_foreign_queryset(qs, info)
 
         # Return the un-evaluated queryset so the DjangoConnectionField handles both
         # optimization and pagination (first/after slicing).

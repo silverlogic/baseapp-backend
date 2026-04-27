@@ -156,7 +156,7 @@ def test_anon_see_comments_and_replies(django_user_client, graphql_client_with_q
     assert content["data"]["node"]["comments"]["edges"][0]["node"]["commentsCount"]["main"] == 2
     assert len(content["data"]["node"]["comments"]["edges"][0]["node"]["comments"]["edges"]) == 2
 
-    assert queries.count == 10
+    assert queries.count == 11
 
     ### Optimized queries.
     # 1) 'SELECT "baseapp_core_documentid"."id", "baseapp_core_documentid"."created", "baseapp_core_documentid"."modified", "baseapp_core_documentid"."public_id", "baseapp_core_documentid"."content_type_id", "baseapp_core_documentid"."object_id", "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "baseapp_core_documentid" INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE "baseapp_core_documentid"."public_id" = 97c2483b-2625-448f-ba16-2e58b92a76c3 LIMIT 21',
@@ -197,7 +197,7 @@ def test_anon_see_comments_and_replies_with_pagination(
         "hasNextPage"
     ]
 
-    assert queries.count == 10
+    assert queries.count == 11
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
@@ -535,7 +535,7 @@ def test_comments_query_is_partially_optimized(django_user_client, graphql_clien
     content = response.json()
 
     assert content["data"]["node"]["commentsCount"]["replies"] == 5
-    assert queries.count == 4
+    assert queries.count == 5
 
     ### Queries Optimized
     # 1) 'SELECT "comments_comment"."id", "comments_comment"."comments_count", "comments_comment"."is_comments_enabled", "comments_comment"."target_object_id", "comments_comment"."in_reply_to_id", "comments_comment"."status", ("comments_comment"."comments_count" -> total) AS "replies_count_total", ("comments_comment"."reactions_count" -> total) AS "reactions_count_total" FROM "comments_comment" WHERE "comments_comment"."id" = 26712 ORDER BY "comments_comment"."is_pinned" DESC, "comments_comment"."created" DESC',
@@ -567,7 +567,7 @@ def test_comments_query_is_partially_optimized_with_public_id(
     content = response.json()
 
     assert content["data"]["node"]["commentsCount"]["replies"] == 5
-    assert queries.count == 11
+    assert queries.count == 12
 
     ### Optimized queries.
     # 1) 'SELECT "baseapp_core_documentid"."id", "baseapp_core_documentid"."created", "baseapp_core_documentid"."modified", "baseapp_core_documentid"."public_id", "baseapp_core_documentid"."content_type_id", "baseapp_core_documentid"."object_id", "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "baseapp_core_documentid" INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE "baseapp_core_documentid"."public_id" = 426019ba-e5de-4d20-bef9-7ec0af7c4f4e LIMIT 21',
@@ -612,7 +612,7 @@ def test_comments_query_is_partially_optimized_with_public_id_and_pagination(
     )  # Because the max_limit is 100 by default
     assert content["data"]["node"]["comments"]["pageInfo"]["hasNextPage"]
 
-    assert queries.count == 11
+    assert queries.count == 12
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
@@ -635,7 +635,7 @@ def test_comments_query_from_foreigh_target_is_partially_optimized_with_public_i
     content = response.json()
 
     assert len(content["data"]["node"]["comments"]["edges"]) == 5
-    assert queries.count == 10
+    assert queries.count == 9
 
     ### Optimized queries. About the comments it's only 4 queries.
     # 1) 'SELECT "baseapp_core_documentid"."id", "baseapp_core_documentid"."created", "baseapp_core_documentid"."modified", "baseapp_core_documentid"."public_id", "baseapp_core_documentid"."content_type_id", "baseapp_core_documentid"."object_id", "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "baseapp_core_documentid" INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE "baseapp_core_documentid"."public_id" = 1e044df1-9a3d-4a26-b056-01f9e1d9dfb5 LIMIT 21',
