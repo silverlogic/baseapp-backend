@@ -68,6 +68,7 @@ class BaseMessageObjectType:
             "in_reply_to",
             "is_read",
             "deleted",
+            "mentioned_profiles",
         )
         filter_fields = ("verb",)
 

@@ -6,10 +6,11 @@ from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql import RelayModel
 from baseapp_core.models import random_name_in
+from baseapp_mentions.models import MentionableModel
 from baseapp_reactions.models import ReactableModel
 
 
-class AbstractContentPost(RelayModel, TimeStampedModel, ReactableModel):
+class AbstractContentPost(RelayModel, TimeStampedModel, MentionableModel, ReactableModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name=_("user"),

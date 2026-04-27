@@ -7,6 +7,7 @@ from graphene_django.types import ErrorType
 from rest_framework import serializers
 
 from baseapp_core.graphql import RelayMutation, login_required
+from baseapp_mentions.services import resolve_mentioned_profiles
 
 ContentPost = swapper.load_model(
     "baseapp_content_feed", "ContentPost", required=False, require_ready=False
@@ -35,10 +36,12 @@ class ContentPostCreate(RelayMutation):
     class Input:
         content = graphene.String(required=True)
         is_reactions_enabled = graphene.Boolean(required=True)
+        mentioned_profile_ids = graphene.List(graphene.ID, required=False)
 
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
+        mentioned_profile_ids = input.pop("mentioned_profile_ids", None) or []
         form = ContentPostForm(data=input)
         images = [v for k, v in info.context.FILES.items() if k.startswith("images")]
 
@@ -63,6 +66,13 @@ class ContentPostCreate(RelayMutation):
                             image=serializer.validated_data["image"], post=instance
                         )
                     )
+
+                if mentioned_profile_ids:
+                    mentioned_profiles = resolve_mentioned_profiles(
+                        mentioned_profile_ids,
+                        exclude_profile=getattr(info.context.user, "current_profile", None),
+                    )
+                    instance.mentioned_profiles.set(mentioned_profiles)
 
                 instance.refresh_from_db()
 

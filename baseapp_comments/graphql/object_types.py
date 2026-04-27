@@ -163,6 +163,7 @@ class BaseCommentObjectType:
             "in_reply_to",
             "language",
             "status",
+            "mentioned_profiles",
         )
         filterset_class = CommentFilter
 
