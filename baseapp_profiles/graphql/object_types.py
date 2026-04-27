@@ -171,6 +171,6 @@ class BaseProfileObjectType(*inheritances, object):
         return instance.members.all()
 
 
-class ProfileObjectType(BaseProfileObjectType, DjangoObjectType):
+class ProfileObjectType(DjangoObjectType, BaseProfileObjectType):
     class Meta(BaseProfileObjectType.Meta):
         model = Profile

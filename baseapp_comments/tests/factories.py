@@ -47,7 +47,7 @@ class AbstractCommentFactory(factory.django.DjangoModelFactory):
     body = factory.Faker("text")
     # When `target` is not passed, still satisfy NOT NULL on `target_document_id` after
     # migrations that apply `null=False` on that column.
-    _default_thread_target = factory.SubFactory("baseapp_profiles.tests.factories.ProfileFactory")
+    _default_thread_target = factory.SubFactory("baseapp_pages.tests.factories.PageFactory")
 
     class Meta:
         abstract = True
