@@ -1,11 +1,7 @@
 import graphene
 import swapper
 from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.db.models import IntegerField, OuterRef, Subquery, Value
-from django.db.models.fields.json import KeyTextTransform
-from django.db.models.functions import Cast, Coalesce
 from query_optimizer import DjangoConnectionField
 
 from baseapp_auth.graphql import PermissionsInterface
@@ -28,7 +24,6 @@ from ..models import CommentStatus, default_comments_count
 from .filters import CommentFilter
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
-CommentableMetadata = swapper.load_model("baseapp_comments", "CommentableMetadata")
 app_label = Comment._meta.app_label
 
 CommentStatusEnum = graphene.Enum.from_enum(CommentStatus)
@@ -79,7 +74,6 @@ class CommentsInterface(RelayNode):
             return skip_ast_walker(Comment.objects.none())
 
         is_root_a_comment = isinstance(root, Comment)
-
         if is_root_a_comment:
             qs = Comment.objects_visible.filter(
                 models.Q(in_reply_to_id=root.id)
@@ -187,33 +181,11 @@ class BaseCommentObjectType:
             )
             optimizer.prefetch_related["comments"].only_fields = list(required_fields_set)
 
-        # Annotate commentable metadata for N+1 prevention (is_comments_enabled, comments_count).
+        # Annotate commentable metadata (includes replies_count_total for CommentFilter).
         if service := shared_services.get("commentable_metadata"):
             queryset = service.annotate_queryset(queryset)
 
-        # Annotation for replies_count_total ordering in CommentFilter.
-        # JSON key lookup yields jsonb in PostgreSQL; cast to int so Coalesce with 0 is valid
-        # and NULL (no metadata row) orders like 0.
-        ct = ContentType.objects.get_for_model(Comment)
-        replies_subquery = (
-            CommentableMetadata.objects.filter(
-                target__content_type=ct,
-                target__object_id=OuterRef("pk"),
-            )
-            .annotate(
-                _reply_total=Cast(
-                    KeyTextTransform("total", "comments_count"),
-                    output_field=IntegerField(),
-                )
-            )
-            .values("_reply_total")[:1]
-        )
-
         queryset = queryset.annotate(
-            replies_count_total=Coalesce(
-                Subquery(replies_subquery, output_field=IntegerField()),
-                Value(0),
-            ),
             reactions_count_total=models.F("reactions_count__total"),
         )
         return queryset

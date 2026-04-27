@@ -1,4 +1,5 @@
 import pytest
+from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings
 
 from baseapp_core.plugins.base import BaseAppPlugin
@@ -36,6 +37,30 @@ class TestPluginRegistry:
 
         assert first_count == second_count
         assert registry._initialized is True
+
+    def test_load_from_installed_apps_with_empty_list_skips_all_plugins(self):
+        registry = PluginRegistry()
+        registry.load_from_installed_apps(installed_apps=[])
+        assert registry._initialized is True
+        assert len(registry._plugins) == 0
+
+    def test_load_from_installed_apps_with_app_list_validates_against_list(self):
+        """Passing ``installed_apps`` uses that list for both inclusion and required deps."""
+        registry = PluginRegistry()
+        with pytest.raises(ImproperlyConfigured) as exc:
+            # baseapp_auth is included but it requires baseapp_core in PackageSettings; list omits it.
+            registry.load_from_installed_apps(installed_apps=["baseapp_auth"])
+        assert "baseapp_core" in str(exc.value) or "validation failed" in str(exc.value).lower()
+
+    @pytest.mark.django_db
+    def test_load_from_installed_apps_with_list_loads_matching_plugins_only(self):
+        registry = PluginRegistry()
+        registry.load_from_installed_apps(
+            installed_apps=["baseapp_core", "baseapp_auth", "baseapp_api_key", "testproject.users"]
+        )
+        assert "baseapp_auth" in registry._plugins
+        # Not in the explicit list → skipped
+        assert "baseapp_pages" not in registry._plugins
 
     @pytest.mark.django_db
     def test_get_plugin_returns_plugin_when_installed(self, installed_apps_with_test_plugin):

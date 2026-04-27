@@ -5,7 +5,9 @@ from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.db.models import OuterRef, Subquery
+from django.db.models import IntegerField, OuterRef, Subquery, Value
+from django.db.models.fields.json import KeyTextTransform
+from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
@@ -217,7 +219,7 @@ def default_comments_count():
     }
 
 
-class AbstractCommentableMetadata(models.Model):
+class AbstractCommentableMetadata(TimeStampedModel):
     """
     Stores commenting metadata (count + enabled flag) for any documentable object.
     Linked to DocumentId instead of adding columns to each commentable model,
@@ -275,20 +277,37 @@ class AbstractCommentableMetadata(models.Model):
     def annotate_queryset(cls, queryset):
         """
         Annotate a queryset with commentable metadata to prevent N+1 queries.
-        Adds _commentable_comments_count and _commentable_is_comments_enabled annotations.
+        Adds _commentable_comments_count and _commentable_is_comments_enabled.
+        For Comment querysets only, also adds replies_count_total (CommentFilter / ordering).
+        Resolves the model ContentType id once per call (Django's ContentType manager caches
+        until ContentType.objects.clear_cache()).
         """
-        ct = ContentType.objects.get_for_model(queryset.model)
+        model_cls = queryset.model
+        ct_id = ContentType.objects.get_for_model(model_cls).pk
         metadata_qs = cls.objects.filter(
-            target__content_type=ct,
+            target__content_type_id=ct_id,
             target__object_id=OuterRef("pk"),
         )
-        return queryset.annotate(
-            _commentable_comments_count=Subquery(metadata_qs.values("comments_count")[:1]),
-            _commentable_is_comments_enabled=Subquery(
+        annotations = {
+            "_commentable_comments_count": Subquery(metadata_qs.values("comments_count")[:1]),
+            "_commentable_is_comments_enabled": Subquery(
                 metadata_qs.values("is_comments_enabled")[:1],
                 output_field=models.BooleanField(),
             ),
-        )
+        }
+        CommentModel = swapper.load_model("baseapp_comments", "Comment")
+        if model_cls is CommentModel:
+            replies_total_sq = metadata_qs.annotate(
+                _reply_total=Cast(
+                    KeyTextTransform("total", "comments_count"),
+                    output_field=IntegerField(),
+                )
+            ).values("_reply_total")[:1]
+            annotations["replies_count_total"] = Coalesce(
+                Subquery(replies_total_sq, output_field=IntegerField()),
+                Value(0),
+            )
+        return queryset.annotate(**annotations)
 
 
 # Both init_swapped_models calls are placed here so that when the first one (Comment)

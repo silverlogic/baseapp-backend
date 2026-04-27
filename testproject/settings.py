@@ -67,7 +67,7 @@ INSTALLED_APPS += [
     "baseapp_wagtail.tests",
 ]
 
-plugin_registry.load_from_installed_apps()
+plugin_registry.load_from_installed_apps(installed_apps=INSTALLED_APPS)
 
 INSTALLED_APPS += plugin_registry.get("INSTALLED_APPS")
 

@@ -34,18 +34,12 @@ class PluginRegistry:
                 )
         return self._manager
 
-    def _is_app_installed(self, package_name: str) -> bool:
-        try:
-            return apps.is_installed(package_name)
-        except Exception:
-            try:
-                from django.conf import settings
+    def _is_app_installed(self, package_name: str, installed_apps: List[str] = None) -> bool:
+        if installed_apps is not None:
+            return package_name in installed_apps
+        return apps.is_installed(package_name)
 
-                return package_name in settings.INSTALLED_APPS
-            except Exception:
-                return False
-
-    def load_from_installed_apps(self) -> None:
+    def load_from_installed_apps(self, installed_apps: List[str] = None) -> None:
         if self._initialized:
             return
 
@@ -59,10 +53,10 @@ class PluginRegistry:
                     f"Plugin '{extension.name}' does not implement BaseAppPlugin"
                 )
 
-            if not self._is_app_installed(plugin.package_name):
+            if not self._is_app_installed(plugin.package_name, installed_apps):
                 continue
 
-            errors = plugin.validate()
+            errors = plugin.validate(installed_apps)
             if errors:
                 raise ImproperlyConfigured(
                     f"Plugin '{plugin.name}' validation failed: {', '.join(errors)}"

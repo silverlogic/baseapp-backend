@@ -114,6 +114,10 @@ SIMPLIFIED_QUERY_FOR_TESTING_OPTIMIZATION = """
                             body
                             id
                             pk
+                            commentsCount {
+                                main
+                                replies
+                            }
                             user {
                                 id
                                 firstName
@@ -535,7 +539,8 @@ def test_comments_query_is_partially_optimized(django_user_client, graphql_clien
     content = response.json()
 
     assert content["data"]["node"]["commentsCount"]["replies"] == 5
-    assert queries.count == 5
+    # Two comment querysets get annotate_queryset; after clear_cache each resolves ContentType once.
+    assert queries.count == 6
 
     ### Queries Optimized
     # 1) 'SELECT "comments_comment"."id", "comments_comment"."comments_count", "comments_comment"."is_comments_enabled", "comments_comment"."target_object_id", "comments_comment"."in_reply_to_id", "comments_comment"."status", ("comments_comment"."comments_count" -> total) AS "replies_count_total", ("comments_comment"."reactions_count" -> total) AS "reactions_count_total" FROM "comments_comment" WHERE "comments_comment"."id" = 26712 ORDER BY "comments_comment"."is_pinned" DESC, "comments_comment"."created" DESC',
@@ -543,6 +548,50 @@ def test_comments_query_is_partially_optimized(django_user_client, graphql_clien
     #
     ### --- Note: It repeated the following queries because the resolve_comments method filters the replies by status = 1.
     # 3) 'SELECT "col1", "col2", "col3", "col4", "col5", "col6", "col7", "col8", "replies_count_total", "reactions_count_total", "_optimizer_count", "col9", "col10", "col11", "col12" FROM ( SELECT * FROM ( SELECT "comments_comment"."id" AS "col1", "comments_comment"."is_comments_enabled" AS "col2", "comments_comment"."user_id" AS "col3", "comments_comment"."profile_id" AS "col4", "comments_comment"."body" AS "col5", "comments_comment"."target_object_id" AS "col6", "comments_comment"."in_reply_to_id" AS "col7", "comments_comment"."status" AS "col8", ("comments_comment"."comments_count" -> total) AS "replies_count_total", ("comments_comment"."reactions_count" -> total) AS "reactions_count_total", (SELECT COUNT(*) FROM (SELECT U0."id", U0."is_comments_enabled", U0."user_id", U0."profile_id", U0."body", U0."target_object_id", U0."in_reply_to_id", U0."status", (U0."comments_count" -> total) AS "replies_count_total", (U0."reactions_count" -> total) AS "reactions_count_total", "users_user"."id", "users_user"."first_name", "profiles_profile"."id", "profiles_profile"."name" FROM "comments_comment" U0 LEFT OUTER JOIN "users_user" ON (U0."user_id" = "users_user"."id") LEFT OUTER JOIN "profiles_profile" ON (U0."profile_id" = "profiles_profile"."id") WHERE U0."in_reply_to_id" = ("comments_comment"."in_reply_to_id") ORDER BY U0."is_pinned" DESC, U0."created" DESC) _count) AS "_optimizer_count", 100 AS "qual0", (ROW_NUMBER() OVER (PARTITION BY "comments_comment"."in_reply_to_id" ORDER BY "comments_comment"."is_pinned" DESC, "comments_comment"."created" DESC) - 1) AS "qual1", 0 AS "qual2", "comments_comment"."is_pinned" AS "qual3", "comments_comment"."created" AS "qual4", "users_user"."id" AS "col9", "users_user"."first_name" AS "col10", "profiles_profile"."id" AS "col11", "profiles_profile"."name" AS "col12" FROM "comments_comment" LEFT OUTER JOIN "users_user" ON ("comments_comment"."user_id" = "users_user"."id") LEFT OUTER JOIN "profiles_profile" ON ("comments_comment"."profile_id" = "profiles_profile"."id") WHERE ("comments_comment"."in_reply_to_id" = 26712 AND "comments_comment"."status" = 1) ORDER BY "comments_comment"."is_pinned" DESC, "comments_comment"."created" DESC ) "qualify" WHERE ("qual1" >= ("qual2") AND "qual1" < ("qual0")) ) "qualify_mask" ORDER BY "qual3" DESC, "qual4" DESC'
+
+
+@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+def test_comments_query_is_optimized_with_nested_replies(
+    django_user_client, graphql_client_with_queries
+):
+    first_comment = CommentFactory()
+    target = CommentFactory(
+        user=django_user_client.user, body="test body", in_reply_to=first_comment
+    )
+    replying_user = UserFactory()
+    replying_profile = ProfileFactory(owner=replying_user)
+    top_level_replies = CommentFactory.create_batch(
+        target=target, size=5, user=replying_user, profile=replying_profile, in_reply_to=target
+    )
+    # Nested reply so at least one comment in the list has replies > 0 on commentsCount.
+    CommentFactory.create_batch(
+        target=target,
+        size=5,
+        user=replying_user,
+        profile=replying_profile,
+        in_reply_to=top_level_replies[0],
+    )
+    CommentFactory.create_batch(
+        target=target,
+        size=5,
+        user=replying_user,
+        profile=replying_profile,
+        in_reply_to=top_level_replies[1],
+    )
+
+    ContentType.objects.clear_cache()
+    response, queries = graphql_client_with_queries(
+        SIMPLIFIED_QUERY_FOR_TESTING_OPTIMIZATION, variables={"id": target.relay_id}
+    )
+
+    content = response.json()
+
+    assert content["data"]["node"]["commentsCount"]["replies"] == 15
+    comment_nodes = [e["node"] for e in content["data"]["node"]["comments"]["edges"]]
+    assert any(n["commentsCount"]["main"] >= 1 for n in comment_nodes)
+    # Root + nested comments connections (incl. status-filtered duplicate) + metadata subqueries;
+    # stays flat (no per-row CommentableMetadata fetch) thanks to annotate_queryset on both optimizers.
+    assert queries.count == 12
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
