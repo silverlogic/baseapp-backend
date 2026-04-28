@@ -2,10 +2,6 @@
 
 Reusable app to handle comments threads.
 
-## Whats missing
-
-- [ ] DRF views and serializers
-
 ## How to install:
 
 Install the package with `pip install baseapp-backend`.
@@ -26,12 +22,12 @@ INSTALLED_APPS = [
 ]
 ```
 
-3 - Add `baseapp_comments.permissions.CommentsPermissionsBackend` to the `AUTHENTICATION_BACKENDS` list in your django settings file.
+3 - Add `CommentsPermissionsBackend` to the `AUTHENTICATION_BACKENDS` list in your django settings file.
 
 ```python
 AUTHENTICATION_BACKENDS = [
     # ...
-    "baseapp_comments.permissions.CommentsPermissionsBackend",
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_comments"),
     # ...
 ]
 ```
@@ -51,55 +47,20 @@ CELERY_TASK_ROUTES = {
 }
 ```
 
-5 - Expose `CommentsMutations`, `CommentsQueries` and `CommentsSubscriptions` in your GraphQL/graphene endpoint, like:
-
-```python
-from baseapp_comments.graphql.mutations import CommentsMutations
-from baseapp_comments.graphql.queries import CommentsQueries
-from baseapp_comments.graphql.subscriptions import CommentsSubscriptions
-
-class Query(graphene.ObjectType, CommentsQueries):
-    pass
-
-class Mutation(graphene.ObjectType, CommentsMutations):
-    pass
-
-class Subscription(graphene.ObjectType, CommentsSubscriptions):
-    pass
-
-schema = graphene.Schema(query=Query, mutation=Mutation, subscription=Subscription)
-```
+5 - Make sure your graphql.py main file is loading queries, mutations and subscriptions from plugin_registry.
 
 ## How to use
 
 You can customize some settings, bellow are the default values:
 
 ```python
-BASEAPP_COMMENTS_CAN_ANONYMOUS_VIEW_COMMENTS = True
-BASEAPP_COMMENTS_MAX_PINS_PER_THREAD = None
-BASEAPP_COMMENTS_ENABLE_GRAPHQL_SUBSCRIPTIONS = True
-BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = True
+BASEAPP_COMMENTS_CAN_ANONYMOUS_VIEW_COMMENTS = True  # default True
+BASEAPP_COMMENTS_ENABLE_GRAPHQL_SUBSCRIPTIONS = True  # default True
+BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = True  # default True
+BASEAPP_COMMENTS_MAX_PINS_PER_THREAD = None  # default None
 ```
 
-You need to inherit `CommentableModel` in your model and make sure to add `CommentsInterface` to your ObjectType's interfaces like:
-
-### CommentableModel
-
-```python
-from django.db import models
-from baseapp_comments.models import CommentableModel
-
-class MyModel(models.Model, CommentableModel):
-    pass
-```
-
-This will add the following fields to your model:
-
-- `comments` a reverse relation to `Comment` model
-- `comments_count` a JSON field that stores the count of comments for the object like: `{total: 5, main: 3, replies: 2, pinned: 1}`
-- `is_comments_enabled` a boolean fields that stores if comments are enabled for the object
-
-**Don't forget** to run `./manage.py makemigrations` and `./manage.py migrate` after adding `CommentableModel` to your model.
+You need to make sure to add `CommentsInterface` to your ObjectType's interfaces like:
 
 ### CommentsInterface
 
@@ -115,13 +76,15 @@ This will add the following fields to your model:
 
 ```python
 from baseapp_core.graphql import DjangoObjectType, Node as RelayNode
-from baseapp_comments.graphql import CommentsInterface
+from baseapp_core.plugins import graphql_shared_interfaces
 
 
 class MyModelObjectType(DjangoObjectType):
     class Meta:
         model = MyModel
-        interfaces = (RelayNode, CommentsInterface)
+        interfaces = graphql_shared_interfaces.get(
+            RelayNode, "CommentsInterface"
+        )
 
 ```
 
@@ -163,32 +126,64 @@ class MyCommentsPermissionsBackend(CommentsPermissionsBackend):
         return super().has_perm(user_obj, perm, obj)
 ```
 
-And add it to your `AUTHENTICATION_BACKENDS` list in your django settings file.
+Then in the `AUTHENTICATION_BACKENDS` in your django settings file, comment the plugin_registry insertion and add the new one to the list.
 
 ```python
 AUTHENTICATION_BACKENDS = [
     # ...
+    # *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_comments"),
     "myapp.permissions.MyCommentsPermissionsBackend",
     # ...
 ]
 
 ```
 
-## How to develop
+## How to Develop
 
-General development instructions can be found in [main README](..#how-to-develop).
+General development instructions can be found in the [main README](..#how-to-develop).
 
+### Prerequisites When Activating `baseapp_comments`
 
-## Breaking Changes
-### [0.3.0] - 2024-10-23
-- Removed pghistory tracking from the `Comment` model:
+Whenever you activate `baseapp_comments`, you need to create a corresponding app to implement the concrete models. We suggest creating an app at `apps/social/comments/`. Then, inside `apps/social/comments/models.py`, you must implement:
 
 ```python
-@pghistory.track(
+from baseapp_comments.models import AbstractComment, AbstractCommentableMetadata
+
+
+class Comment(AbstractComment):
+    class Meta(AbstractComment.Meta):
+        pass
+
+
+class CommentableMetadata(AbstractCommentableMetadata):
+    class Meta(AbstractCommentableMetadata.Meta):
+        pass
+```
+
+After that, use swapper to identify these models as the comment models. You can then customize these models as needed, but we strongly recommend reviewing any customizations with the current CoP members to determine if they are necessary.
+
+```python
+# In your settings.py or settings/base.py, add:
+BASEAPP_COMMENTS_COMMENT_MODEL = "comments.Comment"
+BASEAPP_COMMENTS_COMMENTABLEMETADATA_MODEL = "comments.CommentableMetadata"
+```
+
+### Overriding `pghistory` Events
+
+If you need to modify the default `pghistory` events registered for the concrete Comment model (see where `pghistory_register_default_track` is used in `baseapp_comments/models.py`), you can use our custom decorator `baseapp_core.pghelpers.pghistory_register_track` as shown below:
+
+```python
+from baseapp_comments.models import AbstractComment
+from baseapp_core.pghelpers import pghistory_register_track
+
+
+@pghistory_register_track(
     pghistory.InsertEvent(),
     pghistory.UpdateEvent(),
     pghistory.DeleteEvent(),
-    exclude=["comments_count", "reactions_count"],
+    exclude=["reactions_count", "modified", "extra_field_1"],
 )
-
+class Comment(AbstractComment):
+    class Meta(AbstractComment.Meta):
+        pass
 ```

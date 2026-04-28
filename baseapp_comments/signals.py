@@ -1,6 +1,6 @@
 import swapper
 from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
+from django.db import transaction
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import Signal
 
@@ -55,38 +55,57 @@ if getattr(settings, "BASEAPP_COMMENTS_ENABLE_GRAPHQL_SUBSCRIPTIONS", True):
     )
 
 
+def _recompute_and_save_comments_count(CommentableMetadata, obj, recompute):
+    """
+    Recompute and persist `comments_count` for `obj` under a row lock to avoid
+    read-compute-write races when many comments change concurrently.
+    """
+    with transaction.atomic():
+        metadata = CommentableMetadata.get_or_create_for_object(obj)
+        if not metadata:
+            return
+        metadata = CommentableMetadata.objects.select_for_update().get(pk=metadata.pk)
+        metadata.comments_count = recompute()
+        metadata.save(update_fields=["comments_count"])
+
+
 def update_comments_count(sender, instance, created=False, **kwargs):
-    default_comments_count = sender._meta.get_field("comments_count").get_default
+    CommentableMetadata = swapper.load_model("baseapp_comments", "CommentableMetadata")
 
     if instance.in_reply_to_id:
-        qs = sender.objects_visible.filter(in_reply_to_id=instance.in_reply_to_id)
-
-        counts = default_comments_count()
-        counts["total"] = qs.count()
-        counts["pinned"] = qs.filter(is_pinned=True).count()
-        counts["replies"] = counts["total"]
-        counts["main"] = counts["total"]
-
         parent = instance.in_reply_to
-        parent.comments_count = counts
-        parent.save(update_fields=["comments_count"])
+
+        def recompute_for_parent():
+            qs = sender.objects_visible.filter(in_reply_to_id=instance.in_reply_to_id)
+            counts = {
+                "total": qs.count(),
+                "pinned": qs.filter(is_pinned=True).count(),
+                "replies": 0,
+                "main": 0,
+                "reported": 0,
+            }
+            counts["replies"] = counts["total"]
+            counts["main"] = counts["total"]
+            return counts
+
+        _recompute_and_save_comments_count(CommentableMetadata, parent, recompute_for_parent)
 
     target = instance.target
-    if target and hasattr(target, "comments_count"):
-        counts = default_comments_count()
+    if target:
 
-        target_content_type = ContentType.objects.get_for_model(target)
-        qs = sender.objects_visible.filter(
-            target_content_type=target_content_type, target_object_id=target.pk
-        )
+        def recompute_for_target():
+            qs = sender.objects_visible.for_target(target, root_only=False)
+            total = qs.count()
+            replies = qs.filter(in_reply_to__isnull=False).count()
+            return {
+                "total": total,
+                "replies": replies,
+                "pinned": qs.filter(in_reply_to__isnull=True, is_pinned=True).count(),
+                "main": total - replies,
+                "reported": 0,
+            }
 
-        counts["total"] = qs.count()
-        counts["replies"] = qs.filter(in_reply_to__isnull=False).count()
-        counts["pinned"] = qs.filter(in_reply_to__isnull=True, is_pinned=True).count()
-        counts["main"] = counts["total"] - counts["replies"]
-
-        target.comments_count = counts
-        target.save(update_fields=["comments_count"])
+        _recompute_and_save_comments_count(CommentableMetadata, target, recompute_for_target)
 
 
 post_save.connect(update_comments_count, sender=Comment, dispatch_uid="update_comments_count")

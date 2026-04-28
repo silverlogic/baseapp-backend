@@ -13,7 +13,8 @@ class CommentFilter(django_filters.FilterSet):
             ("created", "created"),
             ("is_pinned", "is_pinned"),
             ("reactions_count__total", "reactions_count_total"),
-            ("comments_count__total", "replies_count_total"),
+            # replies_count_total is annotated in BaseCommentObjectType.pre_optimization_hook
+            ("replies_count_total", "replies_count_total"),
         )
     )
 

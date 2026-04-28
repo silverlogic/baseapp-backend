@@ -1,6 +1,5 @@
 import pghistory
 import swapper
-from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -112,15 +111,7 @@ class PageMixin(models.Model):
         ).first()
 
 
-inheritances = []
-
-if apps.is_installed("baseapp_comments"):
-    from baseapp_comments.models import CommentableModel
-
-    inheritances.append(CommentableModel)
-
-
-class AbstractPage(*inheritances, PageMixin, DocumentIdMixin, RelayModel, TimeStampedModel):
+class AbstractPage(PageMixin, DocumentIdMixin, RelayModel, TimeStampedModel):
     class PageStatus(models.IntegerChoices):
         DRAFT = 1, _("Draft")
         PUBLISHED = 2, _("Published")

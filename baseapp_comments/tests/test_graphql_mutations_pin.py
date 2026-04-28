@@ -3,6 +3,8 @@ import swapper
 from django.contrib.auth.models import Permission
 from django.test import override_settings
 
+from baseapp_core.plugins import shared_services
+
 from .factories import CommentFactory
 
 pytestmark = pytest.mark.django_db
@@ -63,10 +65,10 @@ def test_superuser_can_pin_comment(django_user_client, graphql_user_client):
         variables={"input": {"id": comment.relay_id}},
     )
     content = response.json()
+    service = shared_services.get("commentable_metadata")
     comment.refresh_from_db()
-    target.refresh_from_db()
     assert content["data"]["commentPin"]["comment"]["isPinned"] is True
-    assert target.comments_count["pinned"] == 1
+    assert service.get_comments_count(target)["pinned"] == 1
     assert comment.is_pinned is True
 
 

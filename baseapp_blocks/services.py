@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import swapper
 from django.apps import apps
 from django.db import models
 from django.db.models import Q
@@ -41,12 +42,16 @@ class BlockLookupService(SharedServiceProvider):
 
         if apps.is_installed("baseapp_profiles"):
             profile = getattr(user, "current_profile", None)
-            if not profile:
-                queryset._hints[_BLOCKED_PROFILES_FILTERED_HINT] = True
-                return queryset
-
-            blocked_profile_ids = profile.blocking.values_list("target_id", flat=True)
-            blocker_profile_ids = profile.blockers.values_list("actor_id", flat=True)
+            if profile:
+                blocked_profile_ids = profile.blocking.values_list("target_id", flat=True)
+                blocker_profile_ids = profile.blockers.values_list("actor_id", flat=True)
+            else:
+                # Fallback for contexts where middleware did not set current_profile:
+                # apply the union of block relations for all profiles owned by the user.
+                Profile = swapper.load_model("baseapp_profiles", "Profile")
+                owned_profiles = Profile.objects.filter(owner=user)
+                blocked_profile_ids = owned_profiles.values_list("blocking__target_id", flat=True)
+                blocker_profile_ids = owned_profiles.values_list("blockers__actor_id", flat=True)
 
             qs = queryset.exclude(
                 Q(profile__id__in=blocked_profile_ids) | Q(profile__id__in=blocker_profile_ids)

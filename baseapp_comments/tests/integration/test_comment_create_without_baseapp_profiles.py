@@ -43,7 +43,7 @@ class TestCommentsWithoutBaseappProfiles:
         self, with_disabled_apps, django_user_client, graphql_user_client
     ):
         Comment = swapper.load_model("baseapp_comments", "Comment")
-        target = Comment(pk=10, is_comments_enabled=True)
+        target = Comment(pk=10)  # is_comments_enabled defaults to True via CommentableMetadata
         target.refresh_from_db = Mock()
         fake_form = Mock()
         fake_form.is_valid.return_value = True

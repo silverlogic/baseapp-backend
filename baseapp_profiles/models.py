@@ -31,10 +31,6 @@ if apps.is_installed("baseapp_reports"):
 
     inheritances.append(ReportableModel)
 
-if apps.is_installed("baseapp_comments"):
-    from baseapp_comments.models import CommentableModel
-
-    inheritances.append(CommentableModel)
 
 if apps.is_installed("baseapp_pages"):
     from baseapp_pages.models import PageMixin

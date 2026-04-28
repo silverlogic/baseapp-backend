@@ -87,8 +87,6 @@ class CommentCreate(RelayMutation):
         if form.is_valid():
             form.save()
 
-            # Need to refresh to update comments_count
-            target.refresh_from_db()
             if hasattr(comment, "profile") and comment.profile:
                 comment.profile.refresh_from_db()
             if comment.in_reply_to:
@@ -170,8 +168,7 @@ class CommentPin(RelayMutation):
                 qs = Comment.objects_visible.filter(in_reply_to_id=comment.in_reply_to_id)
             else:
                 qs = Comment.objects_visible.filter(
-                    target_object_id=comment.target_object_id,
-                    target_content_type_id=comment.target_content_type_id,
+                    target_document_id=comment.target_document_id,
                     in_reply_to__isnull=True,
                 )
 

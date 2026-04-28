@@ -1,7 +1,7 @@
-from baseapp_core.plugins import BaseAppConfig, GraphQLContributor
+from baseapp_core.plugins import BaseAppConfig, GraphQLContributor, ServicesContributor
 
 
-class PackageConfig(BaseAppConfig, GraphQLContributor):
+class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
     default = True
     name = "baseapp_comments"
     label = "baseapp_comments"
@@ -11,6 +11,11 @@ class PackageConfig(BaseAppConfig, GraphQLContributor):
     def ready(self):
         super().ready()
         import baseapp_comments.signals  # noqa: F401
+
+    def register_shared_services(self, registry):
+        from .services import CommentableMetadataService
+
+        registry.register(CommentableMetadataService())
 
     def register_graphql_shared_interfaces(self, registry):
         from .graphql.interfaces import get_comments_interface

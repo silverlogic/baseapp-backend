@@ -12,7 +12,8 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 from phonenumber_field.modelfields import PhoneNumberField
 
-from baseapp_core.models import CaseInsensitiveEmailField
+from baseapp_core.graphql.models import RelayModel
+from baseapp_core.models import CaseInsensitiveEmailField, DocumentIdMixin
 
 from .managers import UserManager
 
@@ -48,8 +49,9 @@ def use_profile_model():
 
 class AbstractUser(
     use_profile_model(),
-    use_relay_model(),
     PermissionsMixin,
+    DocumentIdMixin,
+    RelayModel,
     AbstractBaseUser,
 ):
     email = CaseInsensitiveEmailField(unique=True, db_index=True)

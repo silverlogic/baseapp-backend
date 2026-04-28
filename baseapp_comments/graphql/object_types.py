@@ -1,10 +1,8 @@
 import graphene
 import swapper
 from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from query_optimizer import DjangoConnectionField
-from query_optimizer.prefetch_hack import evaluate_with_prefetch_hack
 
 from baseapp_auth.graphql import PermissionsInterface
 from baseapp_core.graphql import (
@@ -49,14 +47,24 @@ class CommentsInterface(RelayNode):
     class Meta:
         model = Comment
 
+    def resolve_comments_count(root, info, **kwargs):
+        if service := shared_services.get("commentable_metadata"):
+            return service.get_comments_count(root)
+        return default_comments_count()
+
+    def resolve_is_comments_enabled(root, info, **kwargs):
+        if service := shared_services.get("commentable_metadata"):
+            return service.is_comments_enabled(root)
+        return True
+
     def resolve_comments(root, info, **kwargs):
         # if root is a comment and is attached to a target use root.comments so it can be filtered
         # by using ForeignKey related field
         # if not then assume its another object type, like a post
         # this is used in the tests because we treat those comment as the target for other comments
         # so we can test the package without having to create a new model
-
-        if not getattr(root, "is_comments_enabled", True):
+        service = shared_services.get("commentable_metadata")
+        if service and not service.is_comments_enabled(root):
             return skip_ast_walker(Comment.objects.none())
 
         CAN_ANONYMOUS_VIEW_COMMENTS = getattr(
@@ -66,27 +74,17 @@ class CommentsInterface(RelayNode):
             return skip_ast_walker(Comment.objects.none())
 
         is_root_a_comment = isinstance(root, Comment)
-
-        if is_root_a_comment and (root.target_object_id or root.in_reply_to_id):
-            qs = root.comments.filter(status=CommentStatus.PUBLISHED)
-            if service := shared_services.get("blocks.lookup"):
-                qs = service.exclude_blocked_from_foreign_queryset(qs, info)
-
-            # The root.comments were already optimized. But because of the new filter, we need to
-            # re-evaluate the queryset so it can be properly paginated.
-            evaluate_with_prefetch_hack(qs)
-            return qs
-
-        target_content_type = ContentType.objects.get_for_model(root)
-        qs = Comment.objects_visible.filter(
-            target_content_type=target_content_type,
-            target_object_id=root.pk,
-            in_reply_to__isnull=True,
-        )
-        if service := shared_services.get("blocks.lookup"):
-            qs = service.exclude_blocked_from_foreign_queryset(qs, info)
-
         if is_root_a_comment:
+            qs = Comment.objects_visible.filter(
+                models.Q(in_reply_to_id=root.id)
+                | models.Q(
+                    target_document__content_type__app_label=app_label,
+                    target_document__content_type__model=Comment._meta.model_name,
+                    target_document__object_id=root.id,
+                    in_reply_to__isnull=True,
+                )
+            )
+
             # When the root is a comment used as a target, the AST walker can't handle the
             # nested comments -> comments structure with the regular info.  Stash a
             # NestedConnectionInfoProxy on the queryset hints so the patched
@@ -96,6 +94,11 @@ class CommentsInterface(RelayNode):
             queryset_field_nodes = ConnectionFieldNodeExtractor(info).get_sliced_field_nodes()
             info_proxy = NestedConnectionInfoProxy(info, queryset_field_nodes=queryset_field_nodes)
             qs._hints[NESTED_INFO_PROXY_HINT] = info_proxy
+        else:
+            qs = Comment.objects_visible.for_target(root, root_only=True)
+
+        if service := shared_services.get("blocks.lookup"):
+            qs = service.exclude_blocked_from_foreign_queryset(qs, info)
 
         # Return the un-evaluated queryset so the DjangoConnectionField handles both
         # optimization and pagination (first/after slicing).
@@ -138,31 +141,51 @@ class BaseCommentObjectType:
             return None
         return node
 
+    def resolve_target(root, info, **kwargs):
+        if not root.target_document_id:
+            return None
+
+        request_cache = getattr(info.context, "_comment_target_cache", None)
+        if request_cache is None:
+            request_cache = {}
+            setattr(info.context, "_comment_target_cache", request_cache)
+
+        target_document = root.target_document
+        cache_key = (target_document.content_type_id, target_document.object_id)
+        if cache_key in request_cache:
+            return request_cache[cache_key]
+
+        model_cls = target_document.content_type.model_class()
+        target = (
+            model_cls.objects.filter(pk=target_document.object_id).first() if model_cls else None
+        )
+        request_cache[cache_key] = target
+        return target
+
     @classmethod
     def pre_optimization_hook(cls, queryset, optimizer):
         queryset = super().pre_optimization_hook(queryset, optimizer)
+        queryset = queryset.select_related("target_document", "target_document__content_type")
 
-        # Needed in the CommentsInterface.resolve_comments.
+        # Required for CommentsInterface.resolve_comments checks (no longer a column).
         required_fields = [
             "id",
-            "target_object_id",
+            "target_document_id",
             "in_reply_to_id",
-            "is_comments_enabled",
             "status",
         ]
         optimizer.only_fields.extend(required_fields)
         if "comments" in optimizer.prefetch_related:
-            required_fields = [
-                "status",
-            ]
             required_fields_set = set(
-                [*optimizer.prefetch_related["comments"].only_fields, *required_fields]
+                [*optimizer.prefetch_related["comments"].only_fields, "status"]
             )
             optimizer.prefetch_related["comments"].only_fields = list(required_fields_set)
 
-        # In order to otimize custom filers from django_filters properly, we need to annotate them in the queryset.
+        # Annotate commentable metadata (includes replies_count_total for CommentFilter).
+        if service := shared_services.get("commentable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+
         queryset = queryset.annotate(
-            replies_count_total=models.F("comments_count__total"),
             reactions_count_total=models.F("reactions_count__total"),
         )
         return queryset

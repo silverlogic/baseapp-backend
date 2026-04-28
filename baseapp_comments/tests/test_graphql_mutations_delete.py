@@ -2,6 +2,8 @@ import pytest
 import swapper
 from django.contrib.auth.models import Permission
 
+from baseapp_core.plugins import shared_services
+
 from .factories import CommentFactory
 
 pytestmark = pytest.mark.django_db
@@ -104,15 +106,16 @@ def test_user_with_permission_can_delete_comment(django_user_client, graphql_use
 
 
 def test_update_comments_counts_after_delete_comment(django_user_client, graphql_user_client):
+    service = shared_services.get("commentable_metadata")
     target = CommentFactory()
     parent = CommentFactory(target=target)
 
     comment = CommentFactory(user=django_user_client.user, target=target, in_reply_to=parent)
 
-    assert target.comments_count["total"] == 2
-    assert target.comments_count["replies"] == 1
+    assert service.get_comments_count(target)["total"] == 2
+    assert service.get_comments_count(target)["replies"] == 1
 
-    assert parent.comments_count["total"] == 1
+    assert service.get_comments_count(parent)["total"] == 1
 
     response = graphql_user_client(
         COMMENT_DELETE_GRAPHQL,
@@ -124,10 +127,7 @@ def test_update_comments_counts_after_delete_comment(django_user_client, graphql
     assert content["data"]["commentDelete"]["target"]["commentsCount"]["replies"] == 0
     assert content["data"]["commentDelete"]["inReplyTo"]["commentsCount"]["total"] == 0
 
-    target.refresh_from_db()
-    parent.refresh_from_db()
+    assert service.get_comments_count(target)["total"] == 1
+    assert service.get_comments_count(target)["replies"] == 0
 
-    assert target.comments_count["total"] == 1
-    assert target.comments_count["replies"] == 0
-
-    assert parent.comments_count["total"] == 0
+    assert service.get_comments_count(parent)["total"] == 0

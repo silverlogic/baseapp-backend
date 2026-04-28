@@ -127,32 +127,27 @@ class BaseAppPlugin(ABC):
     def get_settings(self) -> PackageSettings:
         pass
 
-    def validate(self) -> List[str]:
+    def validate(self, installed_apps: List[str] = None) -> List[str]:
         errors = []
-        from django.apps import apps
-        from django.core.exceptions import AppRegistryNotReady
-
         settings = self.get_settings()
-
         for req_dep in settings.required_packages:
             req_pkg = req_dep.package
             message = f"Plugin '{self.name}' requires package '{req_pkg}'"
             if req_dep.description:
                 message = f"{message} (used for: {req_dep.description})"
             message = f"{message} but it's not in INSTALLED_APPS"
-            try:
-                if not apps.is_installed(req_pkg):
-                    errors.append(message)
-            except AppRegistryNotReady:
-                try:
-                    from django.conf import settings as django_settings
-
-                    if req_pkg not in django_settings.INSTALLED_APPS:
-                        errors.append(message)
-                except Exception:
-                    pass
+            if not self._is_app_installed(req_pkg, installed_apps):
+                errors.append(message)
 
         return errors
+
+    def _is_app_installed(self, package_name: str, installed_apps: List[str] = None) -> bool:
+        if installed_apps is not None:
+            return package_name in installed_apps
+
+        from django.apps import apps
+
+        return apps.is_installed(package_name)
 
     def ready(self):
         pass

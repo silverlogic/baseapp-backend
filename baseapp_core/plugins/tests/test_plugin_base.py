@@ -124,6 +124,18 @@ class TestBaseAppPlugin:
         assert "missing_package" in errors[0]
         assert "Enable advanced permissions" in errors[0]
 
+    def test_plugin_validate_uses_installed_apps_override(self):
+        """When ``installed_apps`` is passed, membership is checked against that list only."""
+        plugin = MockPlugin("test_plugin", "test_package", required_packages=["baseapp_core"])
+        assert plugin.validate(installed_apps=["baseapp_core", "test_package"]) == []
+        err = plugin.validate(installed_apps=["test_package"])[0]
+        assert "baseapp_core" in err
+
+    def test_plugin_validate_empty_installed_apps_list(self):
+        """An explicit empty list means no app is considered installed for dependency checks."""
+        plugin = MockPlugin("test_plugin", "test_package", required_packages=["baseapp_core"])
+        assert len(plugin.validate(installed_apps=[])) == 1
+
     def test_plugin_ready_default_implementation(self):
         """Test that ready() has a default no-op implementation."""
         plugin = MockPlugin("test_plugin", "test_package")

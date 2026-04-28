@@ -10,7 +10,7 @@ from baseapp_pages.tests.factories import PageFactory
 from baseapp_profiles.tests.factories import ProfileFactory
 from baseapp_reactions.tests.factories import ReactionFactory
 
-from .factories import CommentFactory
+from .factories import Comment, CommentFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -114,6 +114,10 @@ SIMPLIFIED_QUERY_FOR_TESTING_OPTIMIZATION = """
                             body
                             id
                             pk
+                            commentsCount {
+                                main
+                                replies
+                            }
                             user {
                                 id
                                 firstName
@@ -290,7 +294,7 @@ def test_get_queryset_skips_filtering_only_when_hint_set(django_user_client, gra
     CommentFactory.create_batch(target=page, size=3, user=django_user_client.user)
     CommentFactory.create_batch(target=page, size=2, user=blocked_user, profile=blocked_profile)
 
-    qs = page.comments.all()
+    qs = Comment.objects_visible.for_target(page)
 
     # Build a fake info object with the authenticated user + current_profile
     class FakeRequest:
@@ -316,13 +320,13 @@ def test_get_queryset_skips_filtering_only_when_hint_set(django_user_client, gra
     assert result.count() == 3
 
     # --- Case 2: hint NOT set → get_queryset applies filtering
-    qs_no_hint = page.comments.all()
+    qs_no_hint = Comment.objects_visible.for_target(page)
     assert _BLOCKED_PROFILES_FILTERED_HINT not in qs_no_hint._hints
     result = BaseCommentObjectType.get_queryset(qs_no_hint, info)
     assert result.count() == 3  # blocked user's comments excluded
 
     # --- Case 3: _result_cache populated WITHOUT hint → must still filter
-    qs_cached = page.comments.all()
+    qs_cached = Comment.objects_visible.for_target(page)
     list(qs_cached)  # populates _result_cache
     assert qs_cached._result_cache is not None
     assert _BLOCKED_PROFILES_FILTERED_HINT not in qs_cached._hints
@@ -535,7 +539,8 @@ def test_comments_query_is_partially_optimized(django_user_client, graphql_clien
     content = response.json()
 
     assert content["data"]["node"]["commentsCount"]["replies"] == 5
-    assert queries.count == 3
+    # Two comment querysets get annotate_queryset; after clear_cache each resolves ContentType once.
+    assert queries.count == 6
 
     ### Queries Optimized
     # 1) 'SELECT "comments_comment"."id", "comments_comment"."comments_count", "comments_comment"."is_comments_enabled", "comments_comment"."target_object_id", "comments_comment"."in_reply_to_id", "comments_comment"."status", ("comments_comment"."comments_count" -> total) AS "replies_count_total", ("comments_comment"."reactions_count" -> total) AS "reactions_count_total" FROM "comments_comment" WHERE "comments_comment"."id" = 26712 ORDER BY "comments_comment"."is_pinned" DESC, "comments_comment"."created" DESC',
@@ -543,6 +548,50 @@ def test_comments_query_is_partially_optimized(django_user_client, graphql_clien
     #
     ### --- Note: It repeated the following queries because the resolve_comments method filters the replies by status = 1.
     # 3) 'SELECT "col1", "col2", "col3", "col4", "col5", "col6", "col7", "col8", "replies_count_total", "reactions_count_total", "_optimizer_count", "col9", "col10", "col11", "col12" FROM ( SELECT * FROM ( SELECT "comments_comment"."id" AS "col1", "comments_comment"."is_comments_enabled" AS "col2", "comments_comment"."user_id" AS "col3", "comments_comment"."profile_id" AS "col4", "comments_comment"."body" AS "col5", "comments_comment"."target_object_id" AS "col6", "comments_comment"."in_reply_to_id" AS "col7", "comments_comment"."status" AS "col8", ("comments_comment"."comments_count" -> total) AS "replies_count_total", ("comments_comment"."reactions_count" -> total) AS "reactions_count_total", (SELECT COUNT(*) FROM (SELECT U0."id", U0."is_comments_enabled", U0."user_id", U0."profile_id", U0."body", U0."target_object_id", U0."in_reply_to_id", U0."status", (U0."comments_count" -> total) AS "replies_count_total", (U0."reactions_count" -> total) AS "reactions_count_total", "users_user"."id", "users_user"."first_name", "profiles_profile"."id", "profiles_profile"."name" FROM "comments_comment" U0 LEFT OUTER JOIN "users_user" ON (U0."user_id" = "users_user"."id") LEFT OUTER JOIN "profiles_profile" ON (U0."profile_id" = "profiles_profile"."id") WHERE U0."in_reply_to_id" = ("comments_comment"."in_reply_to_id") ORDER BY U0."is_pinned" DESC, U0."created" DESC) _count) AS "_optimizer_count", 100 AS "qual0", (ROW_NUMBER() OVER (PARTITION BY "comments_comment"."in_reply_to_id" ORDER BY "comments_comment"."is_pinned" DESC, "comments_comment"."created" DESC) - 1) AS "qual1", 0 AS "qual2", "comments_comment"."is_pinned" AS "qual3", "comments_comment"."created" AS "qual4", "users_user"."id" AS "col9", "users_user"."first_name" AS "col10", "profiles_profile"."id" AS "col11", "profiles_profile"."name" AS "col12" FROM "comments_comment" LEFT OUTER JOIN "users_user" ON ("comments_comment"."user_id" = "users_user"."id") LEFT OUTER JOIN "profiles_profile" ON ("comments_comment"."profile_id" = "profiles_profile"."id") WHERE ("comments_comment"."in_reply_to_id" = 26712 AND "comments_comment"."status" = 1) ORDER BY "comments_comment"."is_pinned" DESC, "comments_comment"."created" DESC ) "qualify" WHERE ("qual1" >= ("qual2") AND "qual1" < ("qual0")) ) "qualify_mask" ORDER BY "qual3" DESC, "qual4" DESC'
+
+
+@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+def test_comments_query_is_optimized_with_nested_replies(
+    django_user_client, graphql_client_with_queries
+):
+    first_comment = CommentFactory()
+    target = CommentFactory(
+        user=django_user_client.user, body="test body", in_reply_to=first_comment
+    )
+    replying_user = UserFactory()
+    replying_profile = ProfileFactory(owner=replying_user)
+    top_level_replies = CommentFactory.create_batch(
+        target=target, size=5, user=replying_user, profile=replying_profile, in_reply_to=target
+    )
+    # Nested reply so at least one comment in the list has replies > 0 on commentsCount.
+    CommentFactory.create_batch(
+        target=target,
+        size=5,
+        user=replying_user,
+        profile=replying_profile,
+        in_reply_to=top_level_replies[0],
+    )
+    CommentFactory.create_batch(
+        target=target,
+        size=5,
+        user=replying_user,
+        profile=replying_profile,
+        in_reply_to=top_level_replies[1],
+    )
+
+    ContentType.objects.clear_cache()
+    response, queries = graphql_client_with_queries(
+        SIMPLIFIED_QUERY_FOR_TESTING_OPTIMIZATION, variables={"id": target.relay_id}
+    )
+
+    content = response.json()
+
+    assert content["data"]["node"]["commentsCount"]["replies"] == 15
+    comment_nodes = [e["node"] for e in content["data"]["node"]["comments"]["edges"]]
+    assert any(n["commentsCount"]["main"] >= 1 for n in comment_nodes)
+    # Root + nested comments connections (incl. status-filtered duplicate) + metadata subqueries;
+    # stays flat (no per-row CommentableMetadata fetch) thanks to annotate_queryset on both optimizers.
+    assert queries.count == 12
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
@@ -567,7 +616,7 @@ def test_comments_query_is_partially_optimized_with_public_id(
     content = response.json()
 
     assert content["data"]["node"]["commentsCount"]["replies"] == 5
-    assert queries.count == 11
+    assert queries.count == 12
 
     ### Optimized queries.
     # 1) 'SELECT "baseapp_core_documentid"."id", "baseapp_core_documentid"."created", "baseapp_core_documentid"."modified", "baseapp_core_documentid"."public_id", "baseapp_core_documentid"."content_type_id", "baseapp_core_documentid"."object_id", "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "baseapp_core_documentid" INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE "baseapp_core_documentid"."public_id" = 426019ba-e5de-4d20-bef9-7ec0af7c4f4e LIMIT 21',
@@ -612,7 +661,7 @@ def test_comments_query_is_partially_optimized_with_public_id_and_pagination(
     )  # Because the max_limit is 100 by default
     assert content["data"]["node"]["comments"]["pageInfo"]["hasNextPage"]
 
-    assert queries.count == 11
+    assert queries.count == 12
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
