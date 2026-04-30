@@ -1,25 +1,31 @@
 """End-to-end tests for `mentioned_profile_ids` on `CommentCreate` / `CommentUpdate`.
 
-These exercise the full GraphQL mutation path so the integration between the
-`Input` field, `resolve_mentioned_profiles`, the M2M `set(...)` call, and the
-`mentioned_profiles` field on `CommentObjectType` stays wired up.
+Mentions live in the standalone `baseapp_mentions.Mention` through-table — the
+consuming Comment model no longer carries a `mentioned_profiles` field. The
+GraphQL surface (`mentionedProfiles` connection on `CommentObjectType`) is
+provided by `MentionsInterface` and remains contract-compatible with the
+frontend.
 
-The semantics under test:
+Semantics under test:
 
-- `CommentCreate` persists the M2M when `mentionedProfileIds` is provided and
-  silently no-ops when the field is omitted.
+- `CommentCreate` writes Mention rows when `mentionedProfileIds` is provided
+  and silently no-ops when the field is omitted.
 - `CommentUpdate` treats `mentionedProfileIds` as a *replace* operation when
   the list is given (including an empty list, which clears all mentions) and
-  preserves the existing mentions when the field is omitted (`None`).
-- The current profile is excluded from both create and update payloads — the
-  resolver hides self-mentions by design.
+  preserves existing mentions when the field is omitted (`None`).
+- The current profile is excluded from both create and update payloads.
 - The `mentionedProfiles` connection on `CommentObjectType` returns the
-  persisted mentions.
+  persisted mentions via the through-table.
 """
 
 import pytest
 import swapper
 
+from baseapp_mentions.tests.helpers import (
+    mention_count,
+    mentioned_profile_ids,
+    seed_mentions,
+)
 from baseapp_profiles.tests.factories import ProfileFactory
 
 from .factories import CommentFactory
@@ -100,7 +106,7 @@ def test_comment_create_persists_mentioned_profiles(django_user_client, graphql_
     content = response.json()
     assert "errors" not in content
     comment = Comment.objects.exclude(pk=target.pk).get()
-    assert {p.pk for p in comment.mentioned_profiles.all()} == {a.pk, b.pk}
+    assert mentioned_profile_ids(comment) == {a.pk, b.pk}
 
     payload = content["data"]["commentCreate"]["comment"]["node"]
     assert _profile_node_ids(payload) == {a.relay_id, b.relay_id}
@@ -122,7 +128,7 @@ def test_comment_create_without_mention_field_is_a_noop(graphql_user_client):
     content = response.json()
     assert "errors" not in content
     comment = Comment.objects.exclude(pk=target.pk).get()
-    assert comment.mentioned_profiles.count() == 0
+    assert mention_count(comment) == 0
 
 
 def test_comment_create_with_empty_list_persists_no_mentions(graphql_user_client):
@@ -140,7 +146,7 @@ def test_comment_create_with_empty_list_persists_no_mentions(graphql_user_client
     )
 
     comment = Comment.objects.exclude(pk=target.pk).get()
-    assert comment.mentioned_profiles.count() == 0
+    assert mention_count(comment) == 0
 
 
 def test_comment_create_excludes_self_mention(django_user_client, graphql_user_client):
@@ -162,7 +168,7 @@ def test_comment_create_excludes_self_mention(django_user_client, graphql_user_c
     )
 
     comment = Comment.objects.exclude(pk=target.pk).get()
-    assert list(comment.mentioned_profiles.values_list("pk", flat=True)) == [friend.pk]
+    assert mentioned_profile_ids(comment) == {friend.pk}
 
 
 def test_comment_create_drops_malformed_mention_ids(graphql_user_client):
@@ -181,7 +187,7 @@ def test_comment_create_drops_malformed_mention_ids(graphql_user_client):
     )
 
     comment = Comment.objects.exclude(pk=target.pk).get()
-    assert list(comment.mentioned_profiles.values_list("pk", flat=True)) == [real.pk]
+    assert mentioned_profile_ids(comment) == {real.pk}
 
 
 def test_comment_update_replaces_mentioned_profiles(django_user_client, graphql_user_client):
@@ -190,7 +196,7 @@ def test_comment_update_replaces_mentioned_profiles(django_user_client, graphql_
     a = ProfileFactory()
     b = ProfileFactory()
     c = ProfileFactory()
-    comment.mentioned_profiles.set([a, b])
+    seed_mentions(comment, [a, b])
 
     graphql_user_client(
         COMMENT_UPDATE_GRAPHQL,
@@ -204,14 +210,14 @@ def test_comment_update_replaces_mentioned_profiles(django_user_client, graphql_
     )
 
     comment.refresh_from_db()
-    assert list(comment.mentioned_profiles.values_list("pk", flat=True)) == [c.pk]
+    assert mentioned_profile_ids(comment) == {c.pk}
 
 
 def test_comment_update_with_empty_list_clears_mentions(django_user_client, graphql_user_client):
     user = django_user_client.user
     comment = CommentFactory(user=user)
     a = ProfileFactory()
-    comment.mentioned_profiles.set([a])
+    seed_mentions(comment, [a])
 
     graphql_user_client(
         COMMENT_UPDATE_GRAPHQL,
@@ -225,7 +231,7 @@ def test_comment_update_with_empty_list_clears_mentions(django_user_client, grap
     )
 
     comment.refresh_from_db()
-    assert comment.mentioned_profiles.count() == 0
+    assert mention_count(comment) == 0
 
 
 def test_comment_update_without_mention_field_preserves_existing(
@@ -237,7 +243,7 @@ def test_comment_update_without_mention_field_preserves_existing(
     comment = CommentFactory(user=user)
     a = ProfileFactory()
     b = ProfileFactory()
-    comment.mentioned_profiles.set([a, b])
+    seed_mentions(comment, [a, b])
 
     graphql_user_client(
         COMMENT_UPDATE_GRAPHQL,
@@ -250,4 +256,4 @@ def test_comment_update_without_mention_field_preserves_existing(
     )
 
     comment.refresh_from_db()
-    assert {p.pk for p in comment.mentioned_profiles.all()} == {a.pk, b.pk}
+    assert mentioned_profile_ids(comment) == {a.pk, b.pk}

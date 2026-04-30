@@ -10,7 +10,6 @@ from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import random_name_in
-from baseapp_mentions.models import MentionableModel
 
 
 class AbstractBaseChatRoom(TimeStampedModel, RelayModel):
@@ -58,7 +57,7 @@ class AbstractBaseChatRoom(TimeStampedModel, RelayModel):
         return ChatRoomObjectType
 
 
-class AbstractBaseMessage(TimeStampedModel, MentionableModel, RelayModel):
+class AbstractBaseMessage(TimeStampedModel, RelayModel):
     class Verbs(models.IntegerChoices):
         SENT_MESSAGE = 100, _("sent a message")
 

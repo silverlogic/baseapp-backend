@@ -1,26 +1,48 @@
 import swapper
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from model_utils.models import TimeStampedModel
+
+from baseapp_core.graphql.models import RelayModel
+from baseapp_core.models import DocumentId
 
 
-class MentionableModel(models.Model):
-    """Abstract mixin that adds a `mentioned_profiles` M2M to any model.
+class AbstractBaseMention(TimeStampedModel, RelayModel):
+    """A profile mentioned inside a target document.
 
-    The related_name template (`%(app_label)s_%(class)s_mentions`) keeps each
-    consuming model's reverse accessor distinct on Profile, e.g.
-    `profile.baseapp_comments_comment_mentions` and
-    `profile.baseapp_chats_message_mentions`.
-
-    Notification dispatch (signals, celery tasks, verbs) stays per-model — only
-    the field shape is shared here.
+    `target` is a `DocumentId` so any model registered with the DocumentId
+    registry can be a mention target without adding fields or migrations of
+    its own — mirrors the `baseapp_follows.Follow` pattern.
     """
 
-    mentioned_profiles = models.ManyToManyField(
+    profile = models.ForeignKey(
         swapper.get_model_name("baseapp_profiles", "Profile"),
-        verbose_name=_("mentioned profiles"),
-        related_name="%(app_label)s_%(class)s_mentions",
-        blank=True,
+        verbose_name=_("profile"),
+        related_name="mentions_received",
+        on_delete=models.CASCADE,
+    )
+    target = models.ForeignKey(
+        DocumentId,
+        verbose_name=_("target"),
+        related_name="mentions",
+        on_delete=models.CASCADE,
     )
 
     class Meta:
         abstract = True
+        unique_together = [("profile", "target")]
+        indexes = [models.Index(fields=["target", "profile"])]
+
+    def __str__(self):
+        return "{} mentioned in {}".format(self.profile, self.target)
+
+    @classmethod
+    def get_graphql_object_type(cls):
+        from .graphql.object_types import MentionObjectType
+
+        return MentionObjectType
+
+
+class Mention(AbstractBaseMention):
+    class Meta(AbstractBaseMention.Meta):
+        swappable = swapper.swappable_setting("baseapp_mentions", "Mention")

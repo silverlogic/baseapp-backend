@@ -1,20 +1,27 @@
 """End-to-end tests for `mentioned_profile_ids` on chat send/edit message mutations.
 
+Mentions live in `baseapp_mentions.Mention` — the chat Message model no longer
+carries a `mentioned_profiles` M2M. The GraphQL `mentionedProfiles` connection
+on `MessageObjectType` is provided by `MentionsInterface`.
+
 The chat mutations follow the same contract as comments:
 
-- `ChatRoomSendMessage` persists the M2M when `mentionedProfileIds` is provided
+- `ChatRoomSendMessage` persists mentions when `mentionedProfileIds` is provided
   and silently no-ops when omitted.
-- `ChatRoomEditMessage` replaces the M2M when `mentionedProfileIds` is given
-  (including `[]` to clear) and preserves the existing mentions when the field
-  is omitted.
-- The sender (the profile passed via `profileId`) is excluded from the M2M.
-- The `mentionedProfiles` field on `MessageObjectType` returns the persisted
-  mentions.
+- `ChatRoomEditMessage` replaces the mentions when `mentionedProfileIds` is
+  given (including `[]` to clear) and preserves the existing mentions when the
+  field is omitted.
+- The sender (the profile passed via `profileId`) is excluded.
 """
 
 import pytest
 import swapper
 
+from baseapp_mentions.tests.helpers import (
+    mention_count,
+    mentioned_profile_ids,
+    seed_mentions,
+)
 from baseapp_profiles.tests.factories import ProfileFactory
 
 from .factories import ChatRoomFactory, ChatRoomParticipantFactory, MessageFactory
@@ -106,7 +113,7 @@ def test_send_message_persists_mentioned_profiles(
     content = response.json()
     assert "errors" not in content
     message = Message.objects.filter(room=room).get()
-    assert {p.pk for p in message.mentioned_profiles.all()} == {a.pk, b.pk}
+    assert mentioned_profile_ids(message) == {a.pk, b.pk}
 
     payload = content["data"]["chatRoomSendMessage"]["message"]["node"]
     assert {edge["node"]["id"] for edge in payload["mentionedProfiles"]["edges"]} == {
@@ -135,7 +142,7 @@ def test_send_message_without_mention_field_persists_no_mentions(
     )
 
     message = Message.objects.filter(room=room).get()
-    assert message.mentioned_profiles.count() == 0
+    assert mention_count(message) == 0
 
 
 @pytest.mark.celery_app
@@ -157,7 +164,7 @@ def test_send_message_excludes_self_mention(django_user_client, graphql_user_cli
     )
 
     message = Message.objects.filter(room=room).get()
-    assert list(message.mentioned_profiles.values_list("pk", flat=True)) == [friend.pk]
+    assert mentioned_profile_ids(message) == {friend.pk}
 
 
 def test_edit_message_replaces_mentioned_profiles(django_user_client, graphql_user_client):
@@ -168,7 +175,7 @@ def test_edit_message_replaces_mentioned_profiles(django_user_client, graphql_us
     a = ProfileFactory()
     b = ProfileFactory()
     c = ProfileFactory()
-    message.mentioned_profiles.set([a, b])
+    seed_mentions(message, [a, b])
 
     graphql_user_client(
         EDIT_MESSAGE_WITH_MENTIONS_GRAPHQL,
@@ -182,7 +189,7 @@ def test_edit_message_replaces_mentioned_profiles(django_user_client, graphql_us
     )
 
     message.refresh_from_db()
-    assert list(message.mentioned_profiles.values_list("pk", flat=True)) == [c.pk]
+    assert mentioned_profile_ids(message) == {c.pk}
 
 
 def test_edit_message_with_empty_list_clears_mentions(django_user_client, graphql_user_client):
@@ -190,7 +197,7 @@ def test_edit_message_with_empty_list_clears_mentions(django_user_client, graphq
     friend = ProfileFactory()
     room = _set_up_two_person_room(user, friend)
     message = MessageFactory(room=room, profile=user.profile, user=user)
-    message.mentioned_profiles.set([ProfileFactory(), ProfileFactory()])
+    seed_mentions(message, [ProfileFactory(), ProfileFactory()])
 
     graphql_user_client(
         EDIT_MESSAGE_WITH_MENTIONS_GRAPHQL,
@@ -204,7 +211,7 @@ def test_edit_message_with_empty_list_clears_mentions(django_user_client, graphq
     )
 
     message.refresh_from_db()
-    assert message.mentioned_profiles.count() == 0
+    assert mention_count(message) == 0
 
 
 def test_edit_message_without_mention_field_preserves_existing(
@@ -215,7 +222,7 @@ def test_edit_message_without_mention_field_preserves_existing(
     room = _set_up_two_person_room(user, friend)
     message = MessageFactory(room=room, profile=user.profile, user=user)
     a = ProfileFactory()
-    message.mentioned_profiles.set([a])
+    seed_mentions(message, [a])
 
     graphql_user_client(
         EDIT_MESSAGE_WITH_MENTIONS_GRAPHQL,
@@ -228,4 +235,4 @@ def test_edit_message_without_mention_field_preserves_existing(
     )
 
     message.refresh_from_db()
-    assert list(message.mentioned_profiles.values_list("pk", flat=True)) == [a.pk]
+    assert mentioned_profile_ids(message) == {a.pk}

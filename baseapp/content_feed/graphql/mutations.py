@@ -7,7 +7,7 @@ from graphene_django.types import ErrorType
 from rest_framework import serializers
 
 from baseapp_core.graphql import RelayMutation, login_required
-from baseapp_mentions.services import resolve_mentioned_profiles
+from baseapp_mentions.services import update_mentions
 
 ContentPost = swapper.load_model(
     "baseapp_content_feed", "ContentPost", required=False, require_ready=False
@@ -68,11 +68,11 @@ class ContentPostCreate(RelayMutation):
                     )
 
                 if mentioned_profile_ids:
-                    mentioned_profiles = resolve_mentioned_profiles(
+                    update_mentions(
+                        instance,
                         mentioned_profile_ids,
                         exclude_profile=getattr(info.context.user, "current_profile", None),
                     )
-                    instance.mentioned_profiles.set(mentioned_profiles)
 
                 instance.refresh_from_db()
 

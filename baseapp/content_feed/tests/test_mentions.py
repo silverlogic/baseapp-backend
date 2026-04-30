@@ -1,20 +1,22 @@
 """End-to-end tests for `mentioned_profile_ids` on `ContentPostCreate`.
 
-`baseapp.content_feed` only ships a Create mutation upstream. Update / Edit
-behaviour is left to downstream projects. The cases below cover the create-time
-contract:
+Mentions live in `baseapp_mentions.Mention` — the ContentPost model no longer
+carries a `mentioned_profiles` M2M. The GraphQL `mentionedProfiles` connection
+on `ContentPostObjectType` is provided by `MentionsInterface`.
 
-- `ContentPostCreate` persists the M2M when `mentionedProfileIds` is provided
-  and silently no-ops when omitted.
-- The current profile is excluded from the persisted set.
+`baseapp.content_feed` only ships a Create mutation upstream. The cases below
+cover the create-time contract:
+
+- `ContentPostCreate` persists Mention rows when `mentionedProfileIds` is
+  provided and silently no-ops when omitted.
+- The current profile is excluded.
 - Malformed Relay IDs are dropped instead of breaking the parent mutation.
-- The `mentionedProfiles` connection on `ContentPostObjectType` returns the
-  persisted mentions.
 """
 
 import pytest
 import swapper
 
+from baseapp_mentions.tests.helpers import mention_count, mentioned_profile_ids
 from baseapp_profiles.tests.factories import ProfileFactory
 
 pytestmark = pytest.mark.django_db
@@ -65,7 +67,7 @@ def test_content_post_create_persists_mentioned_profiles(django_user_client, gra
     content = response.json()
     assert "errors" not in content
     post = ContentPost.objects.get()
-    assert {p.pk for p in post.mentioned_profiles.all()} == {a.pk, b.pk}
+    assert mentioned_profile_ids(post) == {a.pk, b.pk}
 
     payload = content["data"]["contentPostCreate"]["contentPost"]["node"]
     assert {edge["node"]["id"] for edge in payload["mentionedProfiles"]["edges"]} == {
@@ -87,7 +89,7 @@ def test_content_post_create_without_mention_field_persists_no_mentions(graphql_
 
     assert "errors" not in response.json()
     post = ContentPost.objects.get()
-    assert post.mentioned_profiles.count() == 0
+    assert mention_count(post) == 0
 
 
 def test_content_post_create_excludes_self_mention(django_user_client, graphql_user_client):
@@ -107,7 +109,7 @@ def test_content_post_create_excludes_self_mention(django_user_client, graphql_u
     )
 
     post = ContentPost.objects.get()
-    assert list(post.mentioned_profiles.values_list("pk", flat=True)) == [friend.pk]
+    assert mentioned_profile_ids(post) == {friend.pk}
 
 
 def test_content_post_create_drops_malformed_mention_ids(graphql_user_client):
@@ -125,4 +127,4 @@ def test_content_post_create_drops_malformed_mention_ids(graphql_user_client):
     )
 
     post = ContentPost.objects.get()
-    assert list(post.mentioned_profiles.values_list("pk", flat=True)) == [real.pk]
+    assert mentioned_profile_ids(post) == {real.pk}

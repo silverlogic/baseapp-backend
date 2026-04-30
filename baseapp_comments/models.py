@@ -8,7 +8,6 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql import RelayModel
-from baseapp_mentions.models import MentionableModel
 from baseapp_reactions.models import ReactableModel
 from baseapp_reports.models import ReportableModel
 
@@ -50,7 +49,6 @@ class NonDeletedComments(models.Manager):
 class AbstractComment(
     TimeStampedModel,
     AbstractCommentableModel,
-    MentionableModel,
     ReactableModel,
     ReportableModel,
     RelayModel,

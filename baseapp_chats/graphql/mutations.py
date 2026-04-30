@@ -26,7 +26,7 @@ from baseapp_core.graphql import (
     get_pk_from_relay_id,
     login_required,
 )
-from baseapp_mentions.services import resolve_mentioned_profiles
+from baseapp_mentions.services import update_mentions
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
@@ -578,11 +578,11 @@ class ChatRoomSendMessage(RelayMutation):
         )
 
         if mentioned_profile_ids:
-            mentioned_profiles = resolve_mentioned_profiles(
+            update_mentions(
+                message,
                 mentioned_profile_ids,
                 exclude_profile=profile,
             )
-            message.mentioned_profiles.set(mentioned_profiles)
 
         send_new_chat_message_notification(room, message, info)
         ChatRoomReadMessages.read_messages(room, profile)
@@ -665,11 +665,11 @@ class ChatRoomEditMessage(RelayMutation):
         message.save(update_fields=["content"])
 
         if mentioned_profile_ids is not None:
-            mentioned_profiles = resolve_mentioned_profiles(
+            update_mentions(
+                message,
                 mentioned_profile_ids,
                 exclude_profile=profile,
             )
-            message.mentioned_profiles.set(mentioned_profiles)
 
         ChatRoomOnMessage.edit_message(room_id=message.room.relay_id, message=message)
 

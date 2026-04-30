@@ -14,7 +14,7 @@ from baseapp_core.graphql import (
     get_pk_from_relay_id,
     login_required,
 )
-from baseapp_mentions.services import resolve_mentioned_profiles
+from baseapp_mentions.services import update_mentions
 
 from .object_types import CommentsInterface
 
@@ -96,11 +96,11 @@ class CommentCreate(RelayMutation):
                 comment.in_reply_to.refresh_from_db()
 
             if mentioned_profile_ids:
-                mentioned_profiles = resolve_mentioned_profiles(
+                update_mentions(
+                    comment,
                     mentioned_profile_ids,
                     exclude_profile=getattr(info.context.user, "current_profile", None),
                 )
-                comment.mentioned_profiles.set(mentioned_profiles)
 
             return cls(
                 comment=CommentObjectType._meta.connection.Edge(node=comment),
@@ -146,11 +146,11 @@ class CommentUpdate(RelayMutation):
             comment = form.save()
 
             if mentioned_profile_ids is not None:
-                mentioned_profiles = resolve_mentioned_profiles(
+                update_mentions(
+                    comment,
                     mentioned_profile_ids,
                     exclude_profile=getattr(info.context.user, "current_profile", None),
                 )
-                comment.mentioned_profiles.set(mentioned_profiles)
 
             return cls(
                 comment=comment,
