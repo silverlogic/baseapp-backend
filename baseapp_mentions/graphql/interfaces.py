@@ -1,10 +1,11 @@
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
+from graphene_django.filter import DjangoFilterConnectionField
+
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
 from baseapp_core.models import DocumentId
-from graphene_django.filter import DjangoFilterConnectionField
 
 Mention = swapper.load_model("baseapp_mentions", "Mention")
 Profile = swapper.load_model("baseapp_profiles", "Profile")

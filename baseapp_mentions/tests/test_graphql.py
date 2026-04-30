@@ -11,8 +11,8 @@ Two concerns:
 """
 
 import pytest
-from django.test.utils import CaptureQueriesContext
 from django.db import connection
+from django.test.utils import CaptureQueriesContext
 
 from baseapp_comments.tests.factories import CommentFactory
 from baseapp_mentions.tests.helpers import seed_mentions
