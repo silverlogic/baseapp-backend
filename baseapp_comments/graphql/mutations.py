@@ -14,7 +14,6 @@ from baseapp_core.graphql import (
     get_pk_from_relay_id,
     login_required,
 )
-from baseapp_mentions.services import update_mentions
 
 from .object_types import CommentsInterface
 
@@ -95,7 +94,9 @@ class CommentCreate(RelayMutation):
             if comment.in_reply_to:
                 comment.in_reply_to.refresh_from_db()
 
-            if mentioned_profile_ids:
+            if mentioned_profile_ids and apps.is_installed("baseapp_mentions"):
+                from baseapp_mentions.services import update_mentions
+
                 update_mentions(
                     comment,
                     mentioned_profile_ids,
@@ -145,7 +146,9 @@ class CommentUpdate(RelayMutation):
         if form.is_valid():
             comment = form.save()
 
-            if mentioned_profile_ids is not None:
+            if mentioned_profile_ids is not None and apps.is_installed("baseapp_mentions"):
+                from baseapp_mentions.services import update_mentions
+
                 update_mentions(
                     comment,
                     mentioned_profile_ids,

@@ -224,7 +224,7 @@ def test_edit_message_without_mention_field_preserves_existing(
     a = ProfileFactory()
     seed_mentions(message, [a])
 
-    graphql_user_client(
+    response = graphql_user_client(
         EDIT_MESSAGE_WITH_MENTIONS_GRAPHQL,
         variables={
             "input": {
@@ -234,5 +234,12 @@ def test_edit_message_without_mention_field_preserves_existing(
         },
     )
 
+    # Pin success — the assertion below would also pass if the mutation
+    # silently errored without touching mentions.
+    payload = response.json()
+    assert "errors" not in payload
+    assert payload["data"]["chatRoomEditMessage"]["errors"] in (None, [])
+
     message.refresh_from_db()
+    assert message.content == "edited body only"
     assert mentioned_profile_ids(message) == {a.pk}

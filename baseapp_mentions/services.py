@@ -57,6 +57,11 @@ def update_mentions(
     unchanged rows untouched. Single public extension point for consumer
     mutations. Fires ``mentions_changed`` once per call (batched) with the
     delta lists.
+
+    Concurrent callers writing the same target are serialized via a
+    ``select_for_update`` lock on the target's ``DocumentId`` row, so the
+    "replace" semantics survive overlapping requests instead of merging the
+    two callers' deltas against the same stale ``existing`` snapshot.
     """
     Mention = swapper.load_model("baseapp_mentions", "Mention")
 
@@ -65,6 +70,8 @@ def update_mentions(
     doc = DocumentId.get_or_create_for_object(target_obj)
 
     with transaction.atomic():
+        DocumentId.objects.select_for_update().filter(pk=doc.pk).first()
+
         existing = set(Mention.objects.filter(target=doc).values_list("profile_id", flat=True))
         to_remove = existing - new_pks
         to_add = new_pks - existing

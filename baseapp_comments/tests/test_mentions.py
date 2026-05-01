@@ -245,7 +245,7 @@ def test_comment_update_without_mention_field_preserves_existing(
     b = ProfileFactory()
     seed_mentions(comment, [a, b])
 
-    graphql_user_client(
+    response = graphql_user_client(
         COMMENT_UPDATE_GRAPHQL,
         variables={
             "input": {
@@ -255,5 +255,12 @@ def test_comment_update_without_mention_field_preserves_existing(
         },
     )
 
+    # Pin success — the assertion below would also pass if the mutation
+    # silently errored without touching mentions.
+    payload = response.json()
+    assert "errors" not in payload
+    assert payload["data"]["commentUpdate"]["errors"] in (None, [])
+
     comment.refresh_from_db()
+    assert comment.body == "edited body only"
     assert mentioned_profile_ids(comment) == {a.pk, b.pk}

@@ -79,7 +79,9 @@ def test_mentioned_profiles_resolver_returns_persisted_profiles(graphql_user_cli
     }
 
 
-def test_paginated_comments_with_mentions_does_not_explode_query_count(graphql_user_client):
+def test_paginated_comments_with_mentions_does_not_explode_query_count(
+    graphql_user_client,
+):
     """Regression guard for N+1 on the `mentionedProfiles` connection.
 
     With 5 comments each carrying 3 mentions, the resolver should batch:
@@ -105,11 +107,13 @@ def test_paginated_comments_with_mentions_does_not_explode_query_count(graphql_u
         )
 
     assert "errors" not in response.json(), response.json()
-    # Tight upper bound: a per-row join would be ~5 mention-fetches + ~5 profile-fetches +
-    # base query overhead = 15+. The IN-subquery resolver keeps it well under that.
-    assert len(ctx.captured_queries) < 25, (
-        f"Mentions connection issued {len(ctx.captured_queries)} queries — "
-        "regression: resolver may have reverted to per-row joins"
+    # Measured at 9 queries (5 children × 3 mentions × no per-row joins).
+    # The IN-subquery resolver collapses what would otherwise be ~15+ queries
+    # under a naive per-row implementation. The bound allows ±2 of optimizer
+    # drift; if it trips, inspect the diff before just bumping the number.
+    assert len(ctx.captured_queries) <= 11, (
+        f"Mentions connection issued {len(ctx.captured_queries)} queries (expected ~9). "
+        "Likely cause: resolver reverted to per-row joins."
     )
 
 

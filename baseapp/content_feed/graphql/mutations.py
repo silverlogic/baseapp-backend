@@ -1,13 +1,13 @@
 import graphene
 import swapper
 from django import forms
+from django.apps import apps
 from django.db import transaction
 from graphene_django.forms.mutation import _set_errors_flag_to_context
 from graphene_django.types import ErrorType
 from rest_framework import serializers
 
 from baseapp_core.graphql import RelayMutation, login_required
-from baseapp_mentions.services import update_mentions
 
 ContentPost = swapper.load_model(
     "baseapp_content_feed", "ContentPost", required=False, require_ready=False
@@ -67,7 +67,9 @@ class ContentPostCreate(RelayMutation):
                         )
                     )
 
-                if mentioned_profile_ids:
+                if mentioned_profile_ids and apps.is_installed("baseapp_mentions"):
+                    from baseapp_mentions.services import update_mentions
+
                     update_mentions(
                         instance,
                         mentioned_profile_ids,

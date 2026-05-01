@@ -1,5 +1,6 @@
 import graphene
 import swapper
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Count, Q
@@ -26,7 +27,6 @@ from baseapp_core.graphql import (
     get_pk_from_relay_id,
     login_required,
 )
-from baseapp_mentions.services import update_mentions
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
@@ -577,7 +577,9 @@ class ChatRoomSendMessage(RelayMutation):
             in_reply_to=in_reply_to,
         )
 
-        if mentioned_profile_ids:
+        if mentioned_profile_ids and apps.is_installed("baseapp_mentions"):
+            from baseapp_mentions.services import update_mentions
+
             update_mentions(
                 message,
                 mentioned_profile_ids,
@@ -664,7 +666,9 @@ class ChatRoomEditMessage(RelayMutation):
         message.content = content
         message.save(update_fields=["content"])
 
-        if mentioned_profile_ids is not None:
+        if mentioned_profile_ids is not None and apps.is_installed("baseapp_mentions"):
+            from baseapp_mentions.services import update_mentions
+
             update_mentions(
                 message,
                 mentioned_profile_ids,
