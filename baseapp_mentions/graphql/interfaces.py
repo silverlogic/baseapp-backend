@@ -11,6 +11,7 @@ Mention = swapper.load_model("baseapp_mentions", "Mention")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
+# TODO: residual N+1 — paginated parents still issue ~2 queries each for `mentioned_profiles`; add a pre_optimization_hook prefetch when profiling shows it's a measurable bottleneck.
 class MentionsInterface(RelayNode):
     """GraphQL fields exposed on any object type that has mentioned profiles.
 
