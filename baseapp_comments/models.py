@@ -47,7 +47,11 @@ class NonDeletedComments(models.Manager):
 
 
 class AbstractComment(
-    TimeStampedModel, AbstractCommentableModel, ReactableModel, ReportableModel, RelayModel
+    TimeStampedModel,
+    AbstractCommentableModel,
+    ReactableModel,
+    ReportableModel,
+    RelayModel,
 ):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

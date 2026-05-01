@@ -142,6 +142,11 @@ if apps.is_installed("baseapp.activity_log"):
 
     comment_interfaces += (NodeActivityLogInterface,)
 
+if apps.is_installed("baseapp_mentions"):
+    from baseapp_mentions.graphql.interfaces import MentionsInterface
+
+    comment_interfaces += (MentionsInterface,)
+
 
 class BaseCommentObjectType:
     target = graphene.Field(CommentsInterface)

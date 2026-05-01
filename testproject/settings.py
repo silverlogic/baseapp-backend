@@ -25,6 +25,7 @@ INSTALLED_APPS += [
     "baseapp_reports",
     "baseapp_pages",
     "baseapp_comments",
+    "baseapp_mentions",
     "baseapp_auth",
     "baseapp_referrals",
     "baseapp_follows",

@@ -1,5 +1,6 @@
 import graphene
 import swapper
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Count, Q
@@ -505,12 +506,14 @@ class ChatRoomSendMessage(RelayMutation):
         profile_id = graphene.ID(required=True)
         content = graphene.String(required=True)
         in_reply_to_id = graphene.ID(required=False)
+        mentioned_profile_ids = graphene.List(graphene.ID, required=False)
 
     @classmethod
     @login_required
     def mutate_and_get_payload(
         cls, root, info, room_id, content, profile_id, in_reply_to_id=None, **input
     ):
+        mentioned_profile_ids = input.pop("mentioned_profile_ids", None) or []
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 
@@ -574,6 +577,15 @@ class ChatRoomSendMessage(RelayMutation):
             in_reply_to=in_reply_to,
         )
 
+        if mentioned_profile_ids and apps.is_installed("baseapp_mentions"):
+            from baseapp_mentions.services import update_mentions
+
+            update_mentions(
+                message,
+                mentioned_profile_ids,
+                exclude_profile=profile,
+            )
+
         send_new_chat_message_notification(room, message, info)
         ChatRoomReadMessages.read_messages(room, profile)
 
@@ -590,10 +602,12 @@ class ChatRoomEditMessage(RelayMutation):
     class Input:
         id = graphene.ID(required=True)
         content = graphene.String(required=True)
+        mentioned_profile_ids = graphene.List(graphene.ID, required=False)
 
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
+        mentioned_profile_ids = input.pop("mentioned_profile_ids", None)
         pk = get_pk_from_relay_id(input.get("id"))
         try:
             message = Message.objects.get(pk=pk)
@@ -651,6 +665,15 @@ class ChatRoomEditMessage(RelayMutation):
 
         message.content = content
         message.save(update_fields=["content"])
+
+        if mentioned_profile_ids is not None and apps.is_installed("baseapp_mentions"):
+            from baseapp_mentions.services import update_mentions
+
+            update_mentions(
+                message,
+                mentioned_profile_ids,
+                exclude_profile=profile,
+            )
 
         ChatRoomOnMessage.edit_message(room_id=message.room.relay_id, message=message)
 

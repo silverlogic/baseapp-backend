@@ -1,6 +1,7 @@
 import graphene
 import swapper
 from django import forms
+from django.apps import apps
 from django.db import transaction
 from graphene_django.forms.mutation import _set_errors_flag_to_context
 from graphene_django.types import ErrorType
@@ -35,10 +36,12 @@ class ContentPostCreate(RelayMutation):
     class Input:
         content = graphene.String(required=True)
         is_reactions_enabled = graphene.Boolean(required=True)
+        mentioned_profile_ids = graphene.List(graphene.ID, required=False)
 
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
+        mentioned_profile_ids = input.pop("mentioned_profile_ids", None) or []
         form = ContentPostForm(data=input)
         images = [v for k, v in info.context.FILES.items() if k.startswith("images")]
 
@@ -62,6 +65,15 @@ class ContentPostCreate(RelayMutation):
                         ContentPostImage.objects.create(
                             image=serializer.validated_data["image"], post=instance
                         )
+                    )
+
+                if mentioned_profile_ids and apps.is_installed("baseapp_mentions"):
+                    from baseapp_mentions.services import update_mentions
+
+                    update_mentions(
+                        instance,
+                        mentioned_profile_ids,
+                        exclude_profile=getattr(info.context.user, "current_profile", None),
                     )
 
                 instance.refresh_from_db()
