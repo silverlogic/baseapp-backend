@@ -2,6 +2,8 @@ import swapper
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
+from django.db.models import OuterRef, Subquery, Value
+from django.db.models.functions import Coalesce
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
@@ -9,25 +11,76 @@ from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import DocumentId, DocumentIdMixin
 
 
-class FollowStats(models.Model):
+class AbstractFollowableMetadata(TimeStampedModel):
     target = models.OneToOneField(
         DocumentId,
         on_delete=models.CASCADE,
         primary_key=True,
-        related_name="follow_stats",
+        related_name="followable_metadata",
     )
     followers_count = models.PositiveIntegerField(default=0, editable=False)
     following_count = models.PositiveIntegerField(default=0, editable=False)
 
     class Meta:
-        verbose_name = "Follow Stats"
-        verbose_name_plural = "Follow Stats"
+        abstract = True
+        swappable = swapper.swappable_setting("baseapp_follows", "FollowableMetadata")
+        verbose_name = _("followable metadata")
+        verbose_name_plural = _("followable metadata")
 
     def __str__(self):
-        return f"FollowStats for {self.target}"
+        return f"{self.target} followable metadata"
+
+    @classmethod
+    def get_for_object(cls, obj):
+        """Return the metadata for the given object, or None if not found."""
+        if not obj or not getattr(obj, "pk", None):
+            return None
+        try:
+            ct = ContentType.objects.get_for_model(obj)
+            return cls.objects.get(target__content_type=ct, target__object_id=obj.pk)
+        except cls.DoesNotExist:
+            return None
+
+    @classmethod
+    def get_or_create_for_object(cls, obj):
+        """Return or create the metadata for the given object."""
+        if not obj or not getattr(obj, "pk", None):
+            return None
+        doc_id = DocumentId.get_or_create_for_object(obj)
+        if doc_id:
+            metadata, _ = cls.objects.get_or_create(target=doc_id)
+            return metadata
+        return None
+
+    @classmethod
+    def annotate_queryset(cls, queryset):
+        """
+        Annotate a queryset with followable metadata to prevent N+1 queries when resolving
+        `followers_count` / `following_count` for many rows of the same model.
+        Adds `_followable_followers_count` and `_followable_following_count` (zero when
+        no metadata row exists yet).
+        Resolves the model ContentType id once per call (Django's ContentType manager
+        caches until `ContentType.objects.clear_cache()`).
+        """
+        model_cls = queryset.model
+        ct_id = ContentType.objects.get_for_model(model_cls).pk
+        metadata_qs = cls.objects.filter(
+            target__content_type_id=ct_id,
+            target__object_id=OuterRef("pk"),
+        )
+        return queryset.annotate(
+            _followable_followers_count=Coalesce(
+                Subquery(metadata_qs.values("followers_count")[:1]),
+                Value(0),
+            ),
+            _followable_following_count=Coalesce(
+                Subquery(metadata_qs.values("following_count")[:1]),
+                Value(0),
+            ),
+        )
 
 
-class AbstractBaseFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
+class AbstractFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name=_("user"),
@@ -54,6 +107,7 @@ class AbstractBaseFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
 
     class Meta:
         abstract = True
+        swappable = swapper.swappable_setting("baseapp_follows", "Follow")
         unique_together = [("actor", "target")]
 
     def __str__(self):
@@ -114,13 +168,19 @@ class AbstractBaseFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
 
     def update_followers_count(self, target_doc_id):
         with transaction.atomic():
-            stats, _ = FollowStats.objects.select_for_update().get_or_create(target=target_doc_id)
+            FollowableMetadata = swapper.load_model("baseapp_follows", "FollowableMetadata")
+            stats, _ = FollowableMetadata.objects.select_for_update().get_or_create(
+                target=target_doc_id
+            )
             stats.followers_count = self.__class__.objects.filter(target=target_doc_id).count()
             stats.save(update_fields=["followers_count"])
 
     def update_following_count(self, actor_doc_id):
         with transaction.atomic():
-            stats, _ = FollowStats.objects.select_for_update().get_or_create(target=actor_doc_id)
+            FollowableMetadata = swapper.load_model("baseapp_follows", "FollowableMetadata")
+            stats, _ = FollowableMetadata.objects.select_for_update().get_or_create(
+                target=actor_doc_id
+            )
             stats.following_count = self.__class__.objects.filter(actor=actor_doc_id).count()
             stats.save(update_fields=["following_count"])
 
@@ -141,9 +201,3 @@ class AbstractBaseFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
         from .graphql.object_types import FollowObjectType
 
         return FollowObjectType
-
-
-class Follow(AbstractBaseFollow):
-    class Meta:
-        swappable = swapper.swappable_setting("baseapp_follows", "Follow")
-        unique_together = [("actor", "target")]

@@ -11,7 +11,6 @@ from baseapp_chats.graphql.subscriptions import ChatsSubscriptions
 from baseapp_core.graphql import DeleteNode
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.plugins import plugin_registry
-from baseapp_follows.graphql.mutations import FollowsMutations
 from baseapp_ratings.graphql.mutations import RatingsMutations
 from baseapp_ratings.graphql.queries import RatingsQueries
 from baseapp_reactions.graphql.mutations import ReactionsMutations
@@ -44,7 +43,6 @@ class Mutation(
     ReactionsMutations,
     ReportsMutations,
     RatingsMutations,
-    FollowsMutations,
     BlocksMutations,
     ChatsMutations,
     ContentFeedMutations,

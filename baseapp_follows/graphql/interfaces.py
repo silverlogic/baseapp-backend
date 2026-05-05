@@ -1,22 +1,19 @@
 import graphene
 import swapper
-from graphene_django.filter import DjangoFilterConnectionField
+from query_optimizer import DjangoConnectionField
 
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
 from baseapp_core.models import DocumentId
-
-from ..models import FollowStats
+from baseapp_core.plugins import shared_services
 
 Follow = swapper.load_model("baseapp_follows", "Follow")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
-# TODO: Mitigate N+1 issues by ensuring the query optimizer covers
-# ContentType + DocumentId pre-fetch for all resolvers below.
 class FollowsInterface(RelayNode):
-    followers = DjangoFilterConnectionField(get_object_type_for_model(Follow))
-    following = DjangoFilterConnectionField(get_object_type_for_model(Follow))
+    followers = DjangoConnectionField(get_object_type_for_model(Follow))
+    following = DjangoConnectionField(get_object_type_for_model(Follow))
     followers_count = graphene.Int()
     following_count = graphene.Int()
     is_followed_by_me = graphene.Boolean(
@@ -24,18 +21,14 @@ class FollowsInterface(RelayNode):
     )
 
     def resolve_followers_count(self, info):
-        doc = DocumentId.get_or_create_for_object(self)
-        try:
-            return doc.follow_stats.followers_count
-        except FollowStats.DoesNotExist:
-            return 0
+        if service := shared_services.get("followable_metadata"):
+            return service.get_followers_count(self)
+        return 0
 
     def resolve_following_count(self, info):
-        doc = DocumentId.get_or_create_for_object(self)
-        try:
-            return doc.follow_stats.following_count
-        except FollowStats.DoesNotExist:
-            return 0
+        if service := shared_services.get("followable_metadata"):
+            return service.get_following_count(self)
+        return 0
 
     def resolve_followers(self, info, **kwargs):
         doc = DocumentId.get_or_create_for_object(self)

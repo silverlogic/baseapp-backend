@@ -132,7 +132,7 @@ AUTHENTICATION_BACKENDS = [
     "baseapp_reactions.permissions.ReactionsPermissionsBackend",
     "baseapp_reports.permissions.ReportsPermissionsBackend",
     "baseapp_ratings.permissions.RatingsPermissionsBackend",
-    "baseapp_follows.permissions.FollowsPermissionsBackend",
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_follows"),
     "baseapp_chats.permissions.ChatsPermissionsBackend",
     "baseapp_blocks.permissions.BlocksPermissionsBackend",
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_organizations"),
@@ -207,6 +207,7 @@ BASEAPP_CONTENT_FEED_CONTENTPOSTIMAGE_MODEL = "content_feed.ContentPostImage"
 
 # Follows
 BASEAPP_FOLLOWS_FOLLOW_MODEL = "follows.Follow"
+BASEAPP_FOLLOWS_FOLLOWABLEMETADATA_MODEL = "follows.FollowableMetadata"
 
 # Blocks
 BASEAPP_BLOCKS_BLOCK_MODEL = "blocks.Block"

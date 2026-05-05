@@ -179,6 +179,7 @@ baseapp_e2e = "baseapp_e2e.plugin:E2EPlugin"
 baseapp_notifications = "baseapp_notifications.plugin:NotificationsPlugin"
 baseapp_url_shortening = "baseapp_url_shortening.plugin:UrlShorteningPlugin"
 baseapp_comments = "baseapp_comments.plugin:CommentsPlugin"
+baseapp_follows = "baseapp_follows.plugin:FollowsPlugin"
 
 [tool.black]
 line-length = 100

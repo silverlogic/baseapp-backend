@@ -3,10 +3,10 @@ import swapper
 from django.contrib.auth import get_user_model
 
 from baseapp_core.models import DocumentId
-from baseapp_follows.models import FollowStats
 from baseapp_profiles.tests.factories import ProfileFactory
 
 Follow = swapper.load_model("baseapp_follows", "Follow")
+FollowableMetadata = swapper.load_model("baseapp_follows", "FollowableMetadata")
 
 pytestmark = pytest.mark.django_db
 
@@ -25,8 +25,8 @@ def test_follow_and_unfollow():
         target=doc2,
     )
 
-    stats1 = FollowStats.objects.get(target=doc1)
-    stats2 = FollowStats.objects.get(target=doc2)
+    stats1 = FollowableMetadata.objects.get(target=doc1)
+    stats2 = FollowableMetadata.objects.get(target=doc2)
 
     assert stats1.following_count == 1
     assert stats2.followers_count == 1
@@ -57,8 +57,8 @@ def test_target_is_following_back():
         target=doc1,
     )
 
-    stats1 = FollowStats.objects.get(target=doc1)
-    stats2 = FollowStats.objects.get(target=doc2)
+    stats1 = FollowableMetadata.objects.get(target=doc1)
+    stats2 = FollowableMetadata.objects.get(target=doc2)
     original.refresh_from_db()
     reciprocal.refresh_from_db()
 
