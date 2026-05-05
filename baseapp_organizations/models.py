@@ -10,24 +10,14 @@ from baseapp_core.models import DocumentIdMixin
 inheritances = []
 
 if apps.is_installed("baseapp_profiles"):
-
-    class ProfilableModel(models.Model):
-        profile = models.OneToOneField(
-            swapper.get_model_name("baseapp_profiles", "Profile"),
-            related_name="%(class)s",
-            on_delete=models.PROTECT,
-            verbose_name=_("profile"),
-            null=True,
-            blank=True,
-        )
-
-        class Meta:
-            abstract = True
+    from baseapp_profiles.models import ProfilableModel
 
     inheritances.append(ProfilableModel)
 
 
 class AbstractOrganization(*inheritances, DocumentIdMixin, RelayModel, TimeStampedModel):
+    profile_name_sql = "NEW.name"
+
     name = models.CharField(
         _("name"),
         max_length=255,

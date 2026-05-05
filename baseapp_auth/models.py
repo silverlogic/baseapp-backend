@@ -29,8 +29,9 @@ def use_relay_model():
 
 def use_profile_model():
     if apps.is_installed("baseapp_profiles"):
+        from baseapp_profiles.models import ProfilableModel
 
-        class UserProfilableModel(models.Model):
+        class UserProfilableModel(ProfilableModel):
             profile = models.OneToOneField(
                 swapper.get_model_name("baseapp_profiles", "Profile"),
                 related_name="%(class)s",
@@ -39,6 +40,9 @@ def use_profile_model():
                 null=True,
                 blank=True,
             )
+
+            profile_name_sql = "NEW.first_name || ' ' || NEW.last_name"
+            profile_owner_sql = "NEW.id"
 
             class Meta:
                 abstract = True

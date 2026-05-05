@@ -3,13 +3,11 @@ from django.utils import timezone
 from model_utils import FieldTracker
 
 from baseapp_auth.models import AbstractUser
-from baseapp_core.graphql.models import RelayModel
-from baseapp_core.models import DocumentIdMixin
-from baseapp_profiles.signals import update_user_profile
+from baseapp_profiles.signals import create_profile_url_path
 from baseapp_ratings.models import RatableModel
 
 
-class User(AbstractUser, DocumentIdMixin, RelayModel, RatableModel):
+class User(AbstractUser, RatableModel):
     # FieldTracker doesn't work with abstract model classes
     tracker = FieldTracker(fields=["is_superuser", "password"])
 
@@ -20,4 +18,4 @@ class User(AbstractUser, DocumentIdMixin, RelayModel, RatableModel):
             super().save(*args, **kwargs)
 
 
-post_save.connect(update_user_profile, sender=User)
+post_save.connect(create_profile_url_path, sender=User)
