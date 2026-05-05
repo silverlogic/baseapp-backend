@@ -9,10 +9,10 @@ from baseapp_core.plugins import SharedServiceProvider
 class FollowableMetadataService(SharedServiceProvider):
     """
     Service that provides followable metadata (followers/following counts) for any object
-    that has a ``DocumentId``. Registered in ``apps.py`` ``ready()``.
+    that has a `DocumentId`. Registered in `apps.py` `ready()`.
 
-    Mirrors ``baseapp_comments.CommentableMetadataService`` so resolvers and
-    ``pre_optimization_hook`` consumers can stay consistent across packages.
+    Mirrors `baseapp_comments.CommentableMetadataService` so resolvers and
+    `pre_optimization_hook` consumers can stay consistent across packages.
     """
 
     @property
@@ -26,15 +26,15 @@ class FollowableMetadataService(SharedServiceProvider):
         return swapper.load_model("baseapp_follows", "FollowableMetadata")
 
     def get_metadata(self, obj):
-        """Return ``FollowableMetadata`` for ``obj``, or ``None`` if not found."""
+        """Return `FollowableMetadata` for `obj`, or `None` if not found."""
         return self._get_model().get_for_object(obj)
 
     def get_or_create_metadata(self, obj):
-        """Return or create ``FollowableMetadata`` for ``obj``."""
+        """Return or create `FollowableMetadata` for `obj`."""
         return self._get_model().get_or_create_for_object(obj)
 
     def get_followers_count(self, obj) -> int:
-        """Return followers count for ``obj``. Uses annotation if available."""
+        """Return followers count for `obj`. Uses annotation if available."""
         if hasattr(obj, "_followable_followers_count"):
             val = obj._followable_followers_count
             return val if val is not None else 0
@@ -42,7 +42,7 @@ class FollowableMetadataService(SharedServiceProvider):
         return metadata.followers_count if metadata else 0
 
     def get_following_count(self, obj) -> int:
-        """Return following count for ``obj``. Uses annotation if available."""
+        """Return following count for `obj`. Uses annotation if available."""
         if hasattr(obj, "_followable_following_count"):
             val = obj._followable_following_count
             return val if val is not None else 0
@@ -50,5 +50,5 @@ class FollowableMetadataService(SharedServiceProvider):
         return metadata.following_count if metadata else 0
 
     def annotate_queryset(self, queryset):
-        """Annotate ``queryset`` with followable metadata for N+1 prevention."""
+        """Annotate `queryset` with followable metadata for N+1 prevention."""
         return self._get_model().annotate_queryset(queryset)

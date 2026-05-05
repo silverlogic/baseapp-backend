@@ -1,20 +1,20 @@
 """
-Reusable migration helpers to convert ``Follow.actor`` and ``Follow.target`` from foreign keys
-on ``Profile`` (or any single source model) to foreign keys on ``DocumentId``.
+Reusable migration helpers to convert `Follow.actor` and `Follow.target` from foreign keys
+on `Profile` (or any single source model) to foreign keys on `DocumentId`.
 
-This is useful for legacy projects whose ``Follow`` rows still store the underlying
-``Profile`` primary key in ``actor_id``/``target_id`` columns.
+This is useful for legacy projects whose `Follow` rows still store the underlying
+`Profile` primary key in `actor_id`/`target_id` columns.
 
 How to use in a project migration
 ---------------------------------
-1. In your migration, ensure ``Follow.actor`` and ``Follow.target`` already reference
-   ``baseapp_core.documentid`` at the schema level (an ``AlterField`` operation that ran
+1. In your migration, ensure `Follow.actor` and `Follow.target` already reference
+   `baseapp_core.documentid` at the schema level (an `AlterField` operation that ran
    earlier — Django allows the FK target swap even while the column values are still
    profile PKs because the on-disk type is just an integer).
-2. Run a ``RunPython`` operation that calls
-   ``migrate_follow_profile_fks_to_document_id(...)`` BEFORE any subsequent operation
-   relies on ``actor`` or ``target`` resolving to a real ``DocumentId``.
-3. Optionally pass ``reverse_migrate_follow_document_id_fks_to_profile(...)`` as the
+2. Run a `RunPython` operation that calls
+   `migrate_follow_profile_fks_to_document_id(...)` BEFORE any subsequent operation
+   relies on `actor` or `target` resolving to a real `DocumentId`.
+3. Optionally pass `reverse_migrate_follow_document_id_fks_to_profile(...)` as the
    reverse code so a downgrade can restore the original profile PKs.
 
 Example:
@@ -39,12 +39,12 @@ Example:
 
 Notes
 -----
-- The helpers resolve models using ``apps.get_model(...)`` / ``get_apps_model(...)`` so they
-  are safe in historical migration state, including when ``Follow`` is swapped.
-- Rows whose ``actor_id``/``target_id`` cannot be resolved to an existing ``DocumentId`` are
-  removed; they are orphaned data that can no longer satisfy the FK to ``DocumentId``.
-- After the backfill the helper asserts every remaining ``Follow`` row has both ``actor_id``
-  and ``target_id`` pointing at a row in ``baseapp_core_documentid``, so the project
+- The helpers resolve models using `apps.get_model(...)` / `get_apps_model(...)` so they
+  are safe in historical migration state, including when `Follow` is swapped.
+- Rows whose `actor_id`/`target_id` cannot be resolved to an existing `DocumentId` are
+  removed; they are orphaned data that can no longer satisfy the FK to `DocumentId`.
+- After the backfill the helper asserts every remaining `Follow` row has both `actor_id`
+  and `target_id` pointing at a row in `baseapp_core_documentid`, so the project
   migration can rely on the FK being valid before tightening constraints.
 """
 
@@ -53,8 +53,8 @@ from baseapp_core.swapper import get_apps_model
 
 def assert_all_follow_rows_reference_document_ids(apps, schema_editor=None) -> None:
     """
-    Fail if any ``Follow`` row still has an ``actor_id`` or ``target_id`` that is not present
-    in ``baseapp_core_documentid``. Called at the end of
+    Fail if any `Follow` row still has an `actor_id` or `target_id` that is not present
+    in `baseapp_core_documentid`. Called at the end of
     :func:`migrate_follow_profile_fks_to_document_id`.
     """
     Follow = get_apps_model(apps, "baseapp_follows", "Follow")
@@ -85,10 +85,10 @@ def migrate_follow_profile_fks_to_document_id(
     source_model_name: str = "Profile",
 ):
     """
-    Remap ``Follow.actor_id`` and ``Follow.target_id`` from the source model's primary keys
-    (typically ``Profile``) to ``DocumentId`` primary keys.
+    Remap `Follow.actor_id` and `Follow.target_id` from the source model's primary keys
+    (typically `Profile`) to `DocumentId` primary keys.
 
-    Rows whose ``actor_id``/``target_id`` cannot be resolved are deleted before the assert,
+    Rows whose `actor_id`/`target_id` cannot be resolved are deleted before the assert,
     matching the policy in the original baseapp_follows 0008 migration.
     """
     Follow = get_apps_model(apps, "baseapp_follows", "Follow")
@@ -128,10 +128,10 @@ def reverse_migrate_follow_document_id_fks_to_profile(
     source_model_name: str = "Profile",
 ):
     """
-    Restore ``Follow.actor_id`` and ``Follow.target_id`` from ``DocumentId`` primary keys back
+    Restore `Follow.actor_id` and `Follow.target_id` from `DocumentId` primary keys back
     to the source model's primary keys.
 
-    Rows whose ``DocumentId`` does not point at the expected source content type are skipped
+    Rows whose `DocumentId` does not point at the expected source content type are skipped
     rather than deleted — the reverse path is best-effort and the schema downgrade is what
     actually restores the column type.
     """

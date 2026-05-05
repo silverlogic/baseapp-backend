@@ -168,8 +168,8 @@ def _make_apps(*, follows, documents, profile_ct_id=99):
 
 @pytest.fixture(autouse=True)
 def _stub_swapper_is_not_swapped():
-    """``get_apps_model`` consults ``swapper.is_swapped`` for the registered model. Force the
-    "not swapped" branch so the helper resolves through ``apps.get_model`` with the labels
+    """`get_apps_model` consults `swapper.is_swapped` for the registered model. Force the
+    "not swapped" branch so the helper resolves through `apps.get_model` with the labels
     we control in the fake apps registry."""
     with patch(
         "baseapp_follows.migration_helpers.convert_follow_profile_fks_into_document_id_helper.get_apps_model",

@@ -119,7 +119,7 @@ def _make_apps(*, follows, metadata_rows=None):
 
 @pytest.fixture(autouse=True)
 def _stub_swapper_is_not_swapped():
-    """Force the helper through ``apps.get_model`` instead of ``swapper.load_model``."""
+    """Force the helper through `apps.get_model` instead of `swapper.load_model`."""
     with patch(
         "baseapp_follows.migration_helpers.seed_followable_metadata_from_follows_helper.get_apps_model",
         side_effect=lambda apps, app_label, model_name: apps.get_model(app_label, model_name),
