@@ -250,8 +250,12 @@ def test_anon_followers_pagination_query_count_independent_of_page_size(
     use the same number of queries (within ContentType-cache jitter) as first=5.
     Catches a regression where the resolver fans out per-edge queries."""
     target_profile = ProfileFactory(owner=django_user_client.user)
-    for _ in range(60):
-        u = UserFactory()
+    # 60 followers + Faker's `email` provider draws from a finite pool, so unique-email
+    # collisions become routine at this volume (and stick around across --reuse-db
+    # runs). Build deterministic emails namespaced by the target profile's pk so they
+    # stay unique across runs and across other tests that share the test DB.
+    for i in range(60):
+        u = UserFactory(email=f"follower-{target_profile.pk}-{i}@example.com")
         fp = ProfileFactory(owner=u)
         FollowFactory(actor_object=fp, target_object=target_profile, user=u)
 
