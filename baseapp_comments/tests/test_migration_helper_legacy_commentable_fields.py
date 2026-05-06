@@ -222,3 +222,144 @@ def test_reverse_migrate_legacy_commentable_fields_from_metadata_restores_source
             },
         )
     ]
+
+
+# ---------------------------------------------------------------------------
+# Multi-db: schema_editor.connection.alias must be honored end-to-end so reads
+# (source model + ContentType + DocumentId) and writes (CommentableMetadata
+# upserts on forward, source updates on reverse) all hit the same database.
+# ---------------------------------------------------------------------------
+
+
+def _alias_tracking_apps(*, source_rows, ct, source_meta=("pages", "page")):
+    """Build a FakeApps where every manager records its `.using(alias)` calls in a
+    `using_log`. Returns (apps, source_manager, ct_manager, doc_manager, metadata_manager)
+    so the test can assert every layer was pinned to the alias."""
+    source_app_label, source_model_name = source_meta
+
+    class _AliasManager:
+        def __init__(self):
+            self.using_log = []
+
+        def using(self, alias):
+            self.using_log.append(alias)
+            return self
+
+    class SourceManager(_AliasManager):
+        def __init__(self, rows):
+            super().__init__()
+            self._rows = rows
+            self.update_log = []
+
+        def exclude(self, **kwargs):
+            return _LegacyQuerySet(self._rows).exclude(**kwargs)
+
+        def filter(self, **kwargs):
+            assert "pk" in kwargs
+            return _UpdateQuerySet(self.update_log, kwargs["pk"])
+
+    class ContentTypeManager(_AliasManager):
+        def get(self, **kwargs):
+            assert kwargs == {"app_label": source_app_label, "model": source_model_name}
+            return ct
+
+    class DocumentIdManager(_AliasManager):
+        def __init__(self):
+            super().__init__()
+            self.created = []
+
+        def get_or_create(self, **kwargs):
+            doc = _DocumentRowFactory(
+                id=1000 + kwargs["object_id"],
+                content_type_id=kwargs["content_type_id"],
+                object_id=kwargs["object_id"],
+            )
+            self.created.append(kwargs)
+            return doc, True
+
+        def filter(self, **kwargs):
+            return _LegacyQuerySet([])  # empty; reverse path doesn't use this fixture
+
+    class MetadataManager(_AliasManager):
+        def __init__(self):
+            super().__init__()
+            self.updates = []
+            self.metadata_rows = []
+
+        def update_or_create(self, **kwargs):
+            self.updates.append(kwargs)
+            return SimpleNamespace(), True
+
+        def filter(self, **kwargs):
+            class _MetadataQuerySet:
+                def __init__(self, rows):
+                    self._rows = rows
+
+                def select_related(self, *_args):
+                    return self
+
+                def __iter__(self):
+                    return iter(self._rows)
+
+            return _MetadataQuerySet([])
+
+    source_manager = SourceManager(source_rows)
+    ct_manager = ContentTypeManager()
+    doc_manager = DocumentIdManager()
+    metadata_manager = MetadataManager()
+
+    source_model = SimpleNamespace(
+        _meta=SimpleNamespace(app_label=source_app_label, model_name=source_model_name),
+        objects=source_manager,
+    )
+
+    class FakeApps:
+        def get_model(self, app_label, model_name):
+            mapping = {
+                (source_app_label, source_model_name.title()): source_model,
+                ("contenttypes", "ContentType"): SimpleNamespace(objects=ct_manager),
+                ("baseapp_core", "DocumentId"): SimpleNamespace(objects=doc_manager),
+                ("comments", "CommentableMetadata"): SimpleNamespace(objects=metadata_manager),
+            }
+            return mapping[(app_label, model_name)]
+
+    return FakeApps(), source_manager, ct_manager, doc_manager, metadata_manager
+
+
+def test_migrate_uses_db_alias_from_schema_editor():
+    source_rows = [_ModelRowFactory(pk=1)]
+    ct = _ContentTypeRowFactory()
+    apps, source_m, ct_m, doc_m, meta_m = _alias_tracking_apps(source_rows=source_rows, ct=ct)
+    se = SimpleNamespace(connection=SimpleNamespace(alias="replica"))
+
+    migrate_legacy_commentable_fields_to_metadata(
+        apps,
+        schema_editor=se,
+        source_app_label="pages",
+        source_model_name="Page",
+    )
+
+    assert source_m.using_log == ["replica"]
+    assert ct_m.using_log == ["replica"]
+    assert doc_m.using_log == ["replica"]
+    assert meta_m.using_log == ["replica"]
+
+
+def test_reverse_migrate_uses_db_alias_from_schema_editor():
+    apps, source_m, ct_m, _, meta_m = _alias_tracking_apps(
+        source_rows=[], ct=_ContentTypeRowFactory()
+    )
+    se = SimpleNamespace(connection=SimpleNamespace(alias="replica"))
+
+    reverse_migrate_legacy_commentable_fields_from_metadata(
+        apps,
+        schema_editor=se,
+        source_app_label="pages",
+        source_model_name="Page",
+    )
+
+    # The reverse path does NOT touch DocumentId, so we only assert the three managers
+    # it actually uses got pinned to the alias.
+    assert source_m.using_log == ["replica"]
+    assert ct_m.using_log == ["replica"]
+    assert meta_m.using_log == ["replica"]

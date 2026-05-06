@@ -40,6 +40,16 @@ Notes
 from baseapp_core.swapper import get_apps_model
 
 
+def _alias_pinned_managers(schema_editor, follow_model, metadata_model):
+    # Pin every read/write to the alias the schema editor is operating on so the count
+    # reads (Follow) and the upserts (FollowableMetadata) hit the same database — same
+    # pattern convert_follow_profile_fks_into_document_id_helper uses.
+    if schema_editor is not None and getattr(schema_editor, "connection", None) is not None:
+        alias = schema_editor.connection.alias
+        return follow_model.objects.using(alias), metadata_model.objects.using(alias)
+    return follow_model.objects, metadata_model.objects
+
+
 def seed_followable_metadata_from_follows(
     apps,
     schema_editor,
@@ -54,15 +64,16 @@ def seed_followable_metadata_from_follows(
     """
     Follow = get_apps_model(apps, "baseapp_follows", "Follow")
     FollowableMetadata = get_apps_model(apps, metadata_app_label, metadata_model_name)
+    follow_qs, metadata_qs = _alias_pinned_managers(schema_editor, Follow, FollowableMetadata)
 
-    target_ids = set(Follow.objects.values_list("target_id", flat=True).distinct())
-    actor_ids = set(Follow.objects.values_list("actor_id", flat=True).distinct())
+    target_ids = set(follow_qs.values_list("target_id", flat=True).distinct())
+    actor_ids = set(follow_qs.values_list("actor_id", flat=True).distinct())
     doc_ids = target_ids | actor_ids
 
     for doc_id in doc_ids:
-        followers_count = Follow.objects.filter(target_id=doc_id).count()
-        following_count = Follow.objects.filter(actor_id=doc_id).count()
-        FollowableMetadata.objects.update_or_create(
+        followers_count = follow_qs.filter(target_id=doc_id).count()
+        following_count = follow_qs.filter(actor_id=doc_id).count()
+        metadata_qs.update_or_create(
             target_id=doc_id,
             defaults={
                 "followers_count": followers_count,
@@ -87,10 +98,11 @@ def reverse_seed_followable_metadata(
     """
     Follow = get_apps_model(apps, "baseapp_follows", "Follow")
     FollowableMetadata = get_apps_model(apps, metadata_app_label, metadata_model_name)
+    follow_qs, metadata_qs = _alias_pinned_managers(schema_editor, Follow, FollowableMetadata)
 
-    target_ids = set(Follow.objects.values_list("target_id", flat=True).distinct())
-    actor_ids = set(Follow.objects.values_list("actor_id", flat=True).distinct())
+    target_ids = set(follow_qs.values_list("target_id", flat=True).distinct())
+    actor_ids = set(follow_qs.values_list("actor_id", flat=True).distinct())
     doc_ids = target_ids | actor_ids
 
     if doc_ids:
-        FollowableMetadata.objects.filter(target_id__in=doc_ids).delete()
+        metadata_qs.filter(target_id__in=doc_ids).delete()

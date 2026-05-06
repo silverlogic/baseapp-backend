@@ -51,6 +51,11 @@ class _FakeQuerySet:
 class _FakeFollowManager:
     def __init__(self, rows):
         self._rows = list(rows)
+        self.using_log = []
+
+    def using(self, alias):
+        self.using_log.append(alias)
+        return self
 
     def filter(self, **kwargs):
         return _FakeQuerySet(self._rows).filter(**kwargs)
@@ -64,6 +69,11 @@ class _FakeMetadataManager:
         self._rows = list(rows or [])
         self.update_log = []
         self.delete_log = []
+        self.using_log = []
+
+    def using(self, alias):
+        self.using_log.append(alias)
+        return self
 
     def update_or_create(self, **kwargs):
         self.update_log.append(kwargs)
@@ -182,3 +192,31 @@ def test_reverse_seed_followable_metadata_no_op_when_no_follows():
     reverse_seed_followable_metadata(apps, schema_editor=None)
 
     assert metadata_manager.delete_log == []
+
+
+def test_seed_uses_db_alias_from_schema_editor():
+    """Both Follow reads (values_list / filter / count) and FollowableMetadata writes
+    (update_or_create) must be pinned to schema_editor.connection.alias so reads and
+    writes never split across databases on a multi-db migration run."""
+    follows = [_FollowFactory(pk=1, actor_id=100, target_id=200)]
+    apps, follow_manager, metadata_manager = _make_apps(follows=follows)
+    se = SimpleNamespace(connection=SimpleNamespace(alias="replica"))
+
+    seed_followable_metadata_from_follows(apps, schema_editor=se)
+
+    assert follow_manager.using_log and all(a == "replica" for a in follow_manager.using_log)
+    assert metadata_manager.using_log == ["replica"]
+
+
+def test_reverse_seed_uses_db_alias_from_schema_editor():
+    follows = [_FollowFactory(pk=1, actor_id=100, target_id=200)]
+    apps, follow_manager, metadata_manager = _make_apps(
+        follows=follows,
+        metadata_rows=[SimpleNamespace(target_id=100), SimpleNamespace(target_id=200)],
+    )
+    se = SimpleNamespace(connection=SimpleNamespace(alias="replica"))
+
+    reverse_seed_followable_metadata(apps, schema_editor=se)
+
+    assert follow_manager.using_log and all(a == "replica" for a in follow_manager.using_log)
+    assert metadata_manager.using_log == ["replica"]

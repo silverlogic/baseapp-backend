@@ -23,10 +23,10 @@ class FollowsPlugin(BaseAppPlugin):
                 "baseapp_follows.graphql.mutations.FollowsMutations",
             ],
             # Deps
-            required_packages=[],
-            optional_packages=[
+            required_packages=[
                 {
-                    "baseapp_profiles": "If enabled, follows will use the Profile model to identify the actor."
+                    "baseapp_profiles": "This app relies on baseapp_profiles for permissions and query logic—certain features require tight integration with user profiles."
                 },
             ],
+            optional_packages=[],
         )

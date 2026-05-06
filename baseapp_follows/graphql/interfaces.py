@@ -23,12 +23,12 @@ class FollowsInterface(RelayNode):
     def resolve_followers_count(self, info):
         if service := shared_services.get("followable_metadata"):
             return service.get_followers_count(self)
-        return 0
+        raise RuntimeError("FollowableMetadata service is not available")
 
     def resolve_following_count(self, info):
         if service := shared_services.get("followable_metadata"):
             return service.get_following_count(self)
-        return 0
+        raise RuntimeError("FollowableMetadata service is not available")
 
     def resolve_followers(self, info, **kwargs):
         doc = DocumentId.get_or_create_for_object(self)

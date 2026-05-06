@@ -17,7 +17,7 @@ authors = [
 ]
 urls = { Homepage = "https://github.com/silverlogic/baseapp-backend" }
 dependencies = [
-    "Django>=4.2.15",
+    "Django>=5.2",
     "daphne>=4.0",
     "channels>=4.0",
     "django-filter>=23.3",

@@ -50,6 +50,11 @@ Notes
 
 from baseapp_core.swapper import get_apps_model
 
+# How many ``Follow`` rows we stream / batch-update at a time. Sized to keep memory and
+# the number of SQL ``UPDATE`` statements both reasonable on large tables — at 2k a 1M-row
+# Follow table converts in ~500 batched UPDATEs instead of 1M per-row UPDATEs.
+_CHUNK_SIZE = 2000
+
 
 def assert_all_follow_rows_reference_document_ids(apps, schema_editor=None) -> None:
     """
@@ -96,26 +101,59 @@ def migrate_follow_profile_fks_to_document_id(
     DocumentId = apps.get_model("baseapp_core", "DocumentId")
     ContentType = apps.get_model("contenttypes", "ContentType")
 
-    source_ct = ContentType.objects.get(
+    # Pin every read/write to the alias the schema editor is operating on so the doc
+    # map, the source-content-type lookup, and the per-row updates all hit the same
+    # database — same pattern the assert helper below uses.
+    if schema_editor is not None and getattr(schema_editor, "connection", None) is not None:
+        alias = schema_editor.connection.alias
+        follow_qs = Follow.objects.using(alias)
+        doc_qs = DocumentId.objects.using(alias)
+        ct_qs = ContentType.objects.using(alias)
+    else:
+        follow_qs = Follow.objects
+        doc_qs = DocumentId.objects
+        ct_qs = ContentType.objects
+
+    source_ct = ct_qs.get(
         app_label=SourceModel._meta.app_label,
         model=SourceModel._meta.model_name,
     )
 
     doc_by_object_id = {
         doc["object_id"]: doc["id"]
-        for doc in DocumentId.objects.filter(content_type_id=source_ct.id).values("id", "object_id")
+        for doc in doc_qs.filter(content_type_id=source_ct.id).values("id", "object_id")
     }
 
-    for follow in Follow.objects.all():
+    # Stream rows so we don't materialize a 1M-row Follow table at once, and batch the
+    # rewrites with ``bulk_update`` so we emit ~500 UPDATEs instead of 1M for that same
+    # table. Orphans (rows whose actor/target can't be resolved to a DocumentId) are
+    # collected and removed in a single ``DELETE … WHERE pk IN (…)`` at the end.
+    survivors_buffer = []
+    orphan_pks = []
+
+    def _flush_survivors():
+        if survivors_buffer:
+            follow_qs.bulk_update(
+                survivors_buffer, ["actor_id", "target_id"], batch_size=_CHUNK_SIZE
+            )
+            survivors_buffer.clear()
+
+    for follow in follow_qs.all().iterator(chunk_size=_CHUNK_SIZE):
         actor_doc_id = doc_by_object_id.get(follow.actor_id)
         target_doc_id = doc_by_object_id.get(follow.target_id)
         if actor_doc_id is None or target_doc_id is None:
-            Follow.objects.filter(pk=follow.pk).delete()
+            orphan_pks.append(follow.pk)
             continue
-        Follow.objects.filter(pk=follow.pk).update(
-            actor_id=actor_doc_id,
-            target_id=target_doc_id,
-        )
+        follow.actor_id = actor_doc_id
+        follow.target_id = target_doc_id
+        survivors_buffer.append(follow)
+        if len(survivors_buffer) >= _CHUNK_SIZE:
+            _flush_survivors()
+
+    _flush_survivors()
+
+    if orphan_pks:
+        follow_qs.filter(pk__in=orphan_pks).delete()
 
     assert_all_follow_rows_reference_document_ids(apps, schema_editor=schema_editor)
 
@@ -140,22 +178,47 @@ def reverse_migrate_follow_document_id_fks_to_profile(
     DocumentId = apps.get_model("baseapp_core", "DocumentId")
     ContentType = apps.get_model("contenttypes", "ContentType")
 
-    source_ct = ContentType.objects.get(
+    if schema_editor is not None and getattr(schema_editor, "connection", None) is not None:
+        alias = schema_editor.connection.alias
+        follow_qs = Follow.objects.using(alias)
+        doc_qs = DocumentId.objects.using(alias)
+        ct_qs = ContentType.objects.using(alias)
+    else:
+        follow_qs = Follow.objects
+        doc_qs = DocumentId.objects
+        ct_qs = ContentType.objects
+
+    source_ct = ct_qs.get(
         app_label=SourceModel._meta.app_label,
         model=SourceModel._meta.model_name,
     )
 
     object_id_by_doc = {
         doc["id"]: doc["object_id"]
-        for doc in DocumentId.objects.filter(content_type_id=source_ct.id).values("id", "object_id")
+        for doc in doc_qs.filter(content_type_id=source_ct.id).values("id", "object_id")
     }
 
-    for follow in Follow.objects.all():
+    # Same streaming + ``bulk_update`` pattern as the forward path; no orphan deletes
+    # here — the docstring promises the reverse is best-effort and skips unresolvable
+    # rows rather than dropping them.
+    survivors_buffer = []
+
+    def _flush_survivors():
+        if survivors_buffer:
+            follow_qs.bulk_update(
+                survivors_buffer, ["actor_id", "target_id"], batch_size=_CHUNK_SIZE
+            )
+            survivors_buffer.clear()
+
+    for follow in follow_qs.all().iterator(chunk_size=_CHUNK_SIZE):
         actor_object_id = object_id_by_doc.get(follow.actor_id)
         target_object_id = object_id_by_doc.get(follow.target_id)
         if actor_object_id is None or target_object_id is None:
             continue
-        Follow.objects.filter(pk=follow.pk).update(
-            actor_id=actor_object_id,
-            target_id=target_object_id,
-        )
+        follow.actor_id = actor_object_id
+        follow.target_id = target_object_id
+        survivors_buffer.append(follow)
+        if len(survivors_buffer) >= _CHUNK_SIZE:
+            _flush_survivors()
+
+    _flush_survivors()
