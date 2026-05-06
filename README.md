@@ -131,7 +131,7 @@ psql -U postgres -c 'drop database backend;'
 psql -U postgres -c 'create database backend;'
 ```
 
-Run testproject inside the backend docker container:
+Run testproject inside the web docker container:
 
 ```bash
 uv run python manage.py runserver 0.0.0.0:8000
