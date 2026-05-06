@@ -15,8 +15,6 @@ from baseapp_ratings.graphql.mutations import RatingsMutations
 from baseapp_ratings.graphql.queries import RatingsQueries
 from baseapp_reactions.graphql.mutations import ReactionsMutations
 from baseapp_reactions.graphql.queries import ReactionsQueries
-from baseapp_reports.graphql.mutations import ReportsMutations
-from baseapp_reports.graphql.queries import ReportsQueries
 from testproject.users.graphql.queries import UsersQueries
 
 queries = plugin_registry.get_all_graphql_queries()
@@ -31,7 +29,6 @@ class Query(
     RatingsQueries,
     ChatsQueries,
     ContentFeedQueries,
-    ReportsQueries,
     *queries,
 ):
     node = RelayNodeField(RelayNode)
@@ -41,7 +38,6 @@ class Query(
 class Mutation(
     graphene.ObjectType,
     ReactionsMutations,
-    ReportsMutations,
     RatingsMutations,
     BlocksMutations,
     ChatsMutations,

@@ -8,7 +8,9 @@ from graphene_django.filter import DjangoFilterConnectionField
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model
+from baseapp_core.plugins import shared_services
 
+from ..models import default_reports_count
 from ..permissions import VIEW_REPORT_PERMISSION
 from .filters import ReportTypeFilter
 
@@ -42,6 +44,11 @@ class ReportsInterface(graphene.Interface):
     reports_count = GenericScalar()
     reports = DjangoFilterConnectionField(get_object_type_for_model(Report))
     my_report = graphene.Field(get_object_type_for_model(Report), required=False)
+
+    def resolve_reports_count(self, info):
+        if service := shared_services.get("reportable_metadata"):
+            return service.get_reports_count(self)
+        return default_reports_count()
 
     def resolve_reports(self, info, **kwargs):
         user = info.context.user

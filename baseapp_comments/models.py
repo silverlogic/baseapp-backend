@@ -72,12 +72,6 @@ if apps.is_installed("baseapp_reactions"):
     comment_inheritances.append(ReactableModel)
 
 
-if apps.is_installed("baseapp_reports"):
-    from baseapp_reports.models import ReportableModel
-
-    comment_inheritances.append(ReportableModel)
-
-
 class AbstractComment(
     *comment_inheritances,
     DocumentIdMixin,

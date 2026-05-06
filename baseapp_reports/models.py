@@ -1,12 +1,15 @@
 import swapper
 from django.conf import settings
-from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.db.models import Count, OuterRef, Subquery, Value
+from django.db.models.functions import Coalesce
+from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql import RelayModel
-from baseapp_core.models import DocumentIdMixin
+from baseapp_core.models import DocumentId, DocumentIdMixin
 
 
 def default_reports_count():
@@ -24,7 +27,7 @@ def default_reports_count_full():
     return d
 
 
-class AbstractBaseReportType(DocumentIdMixin, RelayModel, TimeStampedModel):
+class AbstractReportType(DocumentIdMixin, RelayModel, TimeStampedModel):
     key = models.CharField(max_length=255, unique=True)
     label = models.CharField(max_length=255)
     content_types = models.ManyToManyField(
@@ -42,14 +45,10 @@ class AbstractBaseReportType(DocumentIdMixin, RelayModel, TimeStampedModel):
 
     class Meta:
         abstract = True
+        swappable = swapper.swappable_setting("baseapp_reports", "ReportType")
 
     def __str__(self):
         return self.label
-
-
-class ReportType(AbstractBaseReportType):
-    class Meta(AbstractBaseReportType.Meta):
-        swappable = swapper.swappable_setting("baseapp_reports", "ReportType")
 
     @classmethod
     def get_graphql_object_type(cls):
@@ -58,7 +57,7 @@ class ReportType(AbstractBaseReportType):
         return ReportTypeObjectType
 
 
-class AbstractBaseReport(DocumentIdMixin, RelayModel, TimeStampedModel):
+class AbstractReport(DocumentIdMixin, RelayModel, TimeStampedModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="reports",
@@ -85,6 +84,7 @@ class AbstractBaseReport(DocumentIdMixin, RelayModel, TimeStampedModel):
 
     class Meta:
         abstract = True
+        swappable = swapper.swappable_setting("baseapp_reports", "Report")
         unique_together = [["user", "target_content_type", "target_object_id"]]
         indexes = [
             models.Index(fields=["target_content_type", "target_object_id"]),
@@ -99,18 +99,44 @@ class AbstractBaseReport(DocumentIdMixin, RelayModel, TimeStampedModel):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-
-        update_reports_count(self.target)
+        self.update_reports_count(self.target)
 
     def delete(self, *args, **kwargs):
+        target = self.target
         super().delete(*args, **kwargs)
+        self.update_reports_count(target)
 
-        update_reports_count(self.target)
+    @classmethod
+    def update_reports_count(cls, target):
+        """Recompute and persist ``reports_count`` on ``ReportableMetadata`` for ``target``."""
+        if not target:
+            return
 
+        ReportableMetadata = swapper.load_model("baseapp_reports", "ReportableMetadata")
+        metadata = ReportableMetadata.get_or_create_for_object(target)
+        if metadata is None:
+            return
 
-class Report(AbstractBaseReport):
-    class Meta(AbstractBaseReport.Meta):
-        swappable = swapper.swappable_setting("baseapp_reports", "Report")
+        counts = default_reports_count_full()
+        target_content_type = ContentType.objects.get_for_model(target)
+        rows = (
+            cls.objects.filter(
+                target_content_type=target_content_type,
+                target_object_id=target.pk,
+                report_type__isnull=False,
+            )
+            .values("report_type__key")
+            .annotate(n=Count("id"))
+        )
+        for row in rows:
+            key = row["report_type__key"]
+            n = row["n"]
+            if key in counts:
+                counts[key] = n
+            counts["total"] += n
+
+        metadata.reports_count = counts
+        metadata.save(update_fields=["reports_count", "modified"])
 
     @classmethod
     def get_graphql_object_type(cls):
@@ -119,36 +145,72 @@ class Report(AbstractBaseReport):
         return ReportObjectType
 
 
-def update_reports_count(target):
-    if not target:
-        return
-    counts = default_reports_count_full()
-    ReportModel = swapper.load_model("baseapp_reports", "Report")
-    ReportTypeModel = swapper.load_model("baseapp_reports", "ReportType")
-    target_content_type = ContentType.objects.get_for_model(target)
-    for report_type in ReportTypeModel.objects.all():
-        # TO DO: improve performance by removing the FOR and making 1 query to return counts for all types at once
-        counts[report_type.key] = ReportModel.objects.filter(
-            target_content_type=target_content_type,
-            target_object_id=target.pk,
-            report_type=report_type,
-        ).count()
-        counts["total"] += counts[report_type.key]
+class AbstractReportableMetadata(TimeStampedModel):
+    """
+    Stores reporting metadata (per-type counts) for any documentable object.
+    Linked to ``DocumentId`` instead of adding columns to each reportable model,
+    following the plugin architecture pattern for loose coupling.
+    """
 
-    target.reports_count = counts
-    target.save(update_fields=["reports_count"])
-
-
-SwappedReport = swapper.load_model("baseapp_reports", "Report", required=False, require_ready=False)
-
-
-class ReportableModel(models.Model):
-    reports_count = models.JSONField(default=default_reports_count)
-    reports = GenericRelation(
-        SwappedReport,
-        content_type_field="target_content_type",
-        object_id_field="target_object_id",
+    target = models.OneToOneField(
+        DocumentId,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name="reportable_metadata",
+    )
+    reports_count = models.JSONField(
+        default=default_reports_count,
+        verbose_name=_("reports count"),
+        editable=False,
     )
 
     class Meta:
         abstract = True
+        swappable = swapper.swappable_setting("baseapp_reports", "ReportableMetadata")
+        verbose_name = _("reportable metadata")
+        verbose_name_plural = _("reportable metadata")
+
+    def __str__(self):
+        return f"ReportableMetadata for {self.target}"
+
+    @classmethod
+    def get_for_object(cls, obj):
+        """Return the metadata for the given object, or None if not found."""
+        if not obj or not getattr(obj, "pk", None):
+            return None
+        try:
+            ct = ContentType.objects.get_for_model(obj)
+            return cls.objects.get(target__content_type=ct, target__object_id=obj.pk)
+        except cls.DoesNotExist:
+            return None
+
+    @classmethod
+    def get_or_create_for_object(cls, obj):
+        """Return or create the metadata for the given object."""
+        if not obj or not getattr(obj, "pk", None):
+            return None
+        doc_id = DocumentId.get_or_create_for_object(obj)
+        if doc_id:
+            metadata, _ = cls.objects.get_or_create(target=doc_id)
+            return metadata
+        return None
+
+    @classmethod
+    def annotate_queryset(cls, queryset):
+        """
+        Annotate ``queryset`` with reportable metadata to prevent N+1 queries when
+        resolving ``reports_count`` for many rows of the same model.
+        Adds ``_reportable_reports_count`` (zero-total dict when no metadata row exists).
+        """
+        model_cls = queryset.model
+        ct_id = ContentType.objects.get_for_model(model_cls).pk
+        metadata_qs = cls.objects.filter(
+            target__content_type_id=ct_id,
+            target__object_id=OuterRef("pk"),
+        )
+        return queryset.annotate(
+            _reportable_reports_count=Coalesce(
+                Subquery(metadata_qs.values("reports_count")[:1]),
+                Value(default_reports_count(), output_field=models.JSONField()),
+            ),
+        )

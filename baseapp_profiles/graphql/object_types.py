@@ -97,12 +97,6 @@ if apps.is_installed("baseapp_chats"):
     interfaces.append(ChatRoomsInterface)
 
 
-if apps.is_installed("baseapp_reports"):
-    from baseapp_reports.graphql.object_types import ReportsInterface
-
-    interfaces.append(ReportsInterface)
-
-
 class BaseProfileObjectType(*inheritances, object):
     target = graphene.Field(lambda: ProfileInterface)
     image = ThumbnailField(required=False)
@@ -119,6 +113,7 @@ class BaseProfileObjectType(*inheritances, object):
             "ProfileActivityLogInterface",
             "PageInterface",
             "FollowsInterface",
+            "ReportsInterface",
         )
         model = Profile
         fields = "__all__"
@@ -137,6 +132,8 @@ class BaseProfileObjectType(*inheritances, object):
         if service := shared_services.get("commentable_metadata"):
             queryset = service.annotate_queryset(queryset)
         if service := shared_services.get("followable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+        if service := shared_services.get("reportable_metadata"):
             queryset = service.annotate_queryset(queryset)
         return queryset
 

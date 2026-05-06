@@ -1,8 +1,12 @@
-from baseapp_reports.models import AbstractBaseReport, AbstractBaseReportType
+from baseapp_reports.models import (
+    AbstractReport,
+    AbstractReportableMetadata,
+    AbstractReportType,
+)
 
 
-class ReportType(AbstractBaseReportType):
-    class Meta(AbstractBaseReportType.Meta):
+class ReportType(AbstractReportType):
+    class Meta(AbstractReportType.Meta):
         db_table = "baseapp_reports_reporttype"
 
     @classmethod
@@ -12,8 +16,8 @@ class ReportType(AbstractBaseReportType):
         return ReportTypeObjectType
 
 
-class Report(AbstractBaseReport):
-    class Meta(AbstractBaseReport.Meta):
+class Report(AbstractReport):
+    class Meta(AbstractReport.Meta):
         db_table = "baseapp_reports_report"
 
     @classmethod
@@ -21,3 +25,8 @@ class Report(AbstractBaseReport):
         from baseapp_reports.graphql.object_types import ReportObjectType
 
         return ReportObjectType
+
+
+class ReportableMetadata(AbstractReportableMetadata):
+    class Meta(AbstractReportableMetadata.Meta):
+        pass
