@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script is to refresh the tests migrations after any model changes. We don't need to heep old
+# This script is to refresh the tests migrations after any model changes. We don't need to keep old
 # versions of the migrations for tests, so we delete the initial migration and create a new one.
 
 DEFAULT_CONTAINER_NAME="baseapp-backend-web-1"
