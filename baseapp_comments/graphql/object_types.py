@@ -11,7 +11,11 @@ from baseapp_core.graphql import (
     NestedConnectionInfoProxy,
 )
 from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.graphql import get_object_type_for_model, skip_ast_walker
+from baseapp_core.graphql import (
+    get_object_type_for_model,
+    resolve_document_content_object,
+    skip_ast_walker,
+)
 from baseapp_core.graphql.optimizer import NESTED_INFO_PROXY_HINT
 from baseapp_core.plugins import (
     apply_if_installed,
@@ -144,23 +148,9 @@ class BaseCommentObjectType:
     def resolve_target(root, info, **kwargs):
         if not root.target_document_id:
             return None
-
-        request_cache = getattr(info.context, "_comment_target_cache", None)
-        if request_cache is None:
-            request_cache = {}
-            setattr(info.context, "_comment_target_cache", request_cache)
-
-        target_document = root.target_document
-        cache_key = (target_document.content_type_id, target_document.object_id)
-        if cache_key in request_cache:
-            return request_cache[cache_key]
-
-        model_cls = target_document.content_type.model_class()
-        target = (
-            model_cls.objects.filter(pk=target_document.object_id).first() if model_cls else None
+        return resolve_document_content_object(
+            root.target_document, info, cache_attr="_comment_target_cache"
         )
-        request_cache[cache_key] = target
-        return target
 
     @classmethod
     def pre_optimization_hook(cls, queryset, optimizer):

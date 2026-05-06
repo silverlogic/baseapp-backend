@@ -96,8 +96,10 @@ class _FakeManager:
     def __init__(self, rows):
         self._rows = list(rows)
         self.update_log = []
+        self.using_log = []
 
-    def using(self, _alias):
+    def using(self, alias):
+        self.using_log.append(alias)
         return self
 
     def exclude(self, **kwargs):
@@ -460,3 +462,81 @@ def test_migrate_ends_by_calling_post_backfill_assert(monkeypatch):
     assert len(calls) == 2
     assert calls[0][1] is se
     assert calls[1][1] is se
+
+
+def test_migrate_uses_db_alias_from_schema_editor(monkeypatch):
+    """Comment / CommentEvent / DocumentId reads and writes must all be pinned to the
+    schema editor's alias on a multi-db migration run, mirroring the assert helpers."""
+    monkeypatch.setattr(gfk, "assert_all_comment_rows_have_target_document", lambda *a, **kw: None)
+    monkeypatch.setattr(
+        gfk, "assert_all_commentevent_rows_have_target_document", lambda *a, **kw: None
+    )
+    monkeypatch.setattr(
+        gfk, "backfill_commentevent_target_from_pghistory_comment", lambda *a, **kw: None
+    )
+
+    comments = [_CommentLegacyFactory(pk=1, target_content_type_id=10, target_object_id=100)]
+    events = []
+    comment_manager = _FakeManager(comments)
+    event_manager = _FakeManager(events)
+
+    class _AliasTrackingDocumentIdManager:
+        def __init__(self):
+            self.using_log = []
+
+        def using(self, alias):
+            self.using_log.append(alias)
+            return self
+
+        def values(self, *_args):
+            return [_DocumentIdRowFactory(id=900, content_type_id=10, object_id=100)]
+
+        def create(self, *args, **kwargs):  # pragma: no cover - not exercised
+            raise AssertionError("should not need new doc")
+
+    document_manager = _AliasTrackingDocumentIdManager()
+
+    class FakeApps:
+        def get_model(self, app_label, model_name):
+            mapping = {
+                ("comments", "Comment"): SimpleNamespace(objects=comment_manager),
+                ("comments", "CommentEvent"): SimpleNamespace(objects=event_manager),
+                ("baseapp_core", "DocumentId"): SimpleNamespace(objects=document_manager),
+            }
+            return mapping[(app_label, model_name)]
+
+    se = SimpleNamespace(connection=SimpleNamespace(alias="replica"))
+    migrate_comment_targets_to_document_id(FakeApps(), schema_editor=se)
+
+    assert comment_manager.using_log == ["replica"]
+    assert event_manager.using_log == ["replica"]
+    assert document_manager.using_log == ["replica"]
+
+
+def test_reverse_migrate_uses_db_alias_from_schema_editor():
+    comments = [
+        _CommentLegacyFactory(
+            pk=1,
+            target_content_type_id=None,
+            target_object_id=None,
+            target_document_id=900,
+            target_document=SimpleNamespace(content_type_id=10, object_id=100),
+        )
+    ]
+    events = []
+    comment_manager = _FakeManager(comments)
+    event_manager = _FakeManager(events)
+
+    class FakeApps:
+        def get_model(self, app_label, model_name):
+            mapping = {
+                ("comments", "Comment"): SimpleNamespace(objects=comment_manager),
+                ("comments", "CommentEvent"): SimpleNamespace(objects=event_manager),
+            }
+            return mapping[(app_label, model_name)]
+
+    se = SimpleNamespace(connection=SimpleNamespace(alias="replica"))
+    reverse_migrate_comment_targets_to_generic_fk(FakeApps(), schema_editor=se)
+
+    assert comment_manager.using_log == ["replica"]
+    assert event_manager.using_log == ["replica"]

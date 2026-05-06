@@ -118,18 +118,31 @@ def backfill_commentevent_target_from_pghistory_comment(apps, schema_editor=None
             e_qs.filter(pk=event.pk).update(target_document_id=tid)
 
 
+def _alias_pinned_managers(schema_editor, *models):
+    # Pin every read/write to the alias the schema editor is operating on. The assert
+    # helpers above already do this; mirroring it here keeps the forward / reverse
+    # functions on the same database when running on a non-default alias.
+    if schema_editor is not None and getattr(schema_editor, "connection", None) is not None:
+        alias = schema_editor.connection.alias
+        return tuple(model.objects.using(alias) for model in models)
+    return tuple(model.objects for model in models)
+
+
 def migrate_comment_targets_to_document_id(apps, schema_editor):
     Comment = apps.get_model("comments", "Comment")
     CommentEvent = apps.get_model("comments", "CommentEvent")
     DocumentId = apps.get_model("baseapp_core", "DocumentId")
+    comment_qs, event_qs, doc_qs = _alias_pinned_managers(
+        schema_editor, Comment, CommentEvent, DocumentId
+    )
 
     doc_map = {
         (doc["content_type_id"], doc["object_id"]): doc["id"]
-        for doc in DocumentId.objects.values("id", "content_type_id", "object_id")
+        for doc in doc_qs.values("id", "content_type_id", "object_id")
     }
 
     target_pairs = (
-        Comment.objects.exclude(target_content_type_id__isnull=True)
+        comment_qs.exclude(target_content_type_id__isnull=True)
         .exclude(target_object_id__isnull=True)
         .values_list("target_content_type_id", "target_object_id")
         .distinct()
@@ -138,24 +151,24 @@ def migrate_comment_targets_to_document_id(apps, schema_editor):
         key = (content_type_id, object_id)
         if key not in doc_map:
             # Unhandled: bad FK to django_content_type raises IntegrityError and stops migrate.
-            doc = DocumentId.objects.create(content_type_id=content_type_id, object_id=object_id)
+            doc = doc_qs.create(content_type_id=content_type_id, object_id=object_id)
             doc_map[key] = doc.id
 
-    for comment in Comment.objects.filter(target_document_id__isnull=True).exclude(
+    for comment in comment_qs.filter(target_document_id__isnull=True).exclude(
         target_content_type_id__isnull=True
     ):
         key = (comment.target_content_type_id, comment.target_object_id)
         document_id = doc_map.get(key)
         if document_id:
-            Comment.objects.filter(pk=comment.pk).update(target_document_id=document_id)
+            comment_qs.filter(pk=comment.pk).update(target_document_id=document_id)
 
-    for event in CommentEvent.objects.filter(target_document_id__isnull=True).exclude(
+    for event in event_qs.filter(target_document_id__isnull=True).exclude(
         target_content_type_id__isnull=True
     ):
         key = (event.target_content_type_id, event.target_object_id)
         document_id = doc_map.get(key)
         if document_id:
-            CommentEvent.objects.filter(pk=event.pk).update(target_document_id=document_id)
+            event_qs.filter(pk=event.pk).update(target_document_id=document_id)
 
     backfill_commentevent_target_from_pghistory_comment(apps, schema_editor=schema_editor)
     assert_all_comment_rows_have_target_document(apps, schema_editor=schema_editor)
@@ -165,19 +178,20 @@ def migrate_comment_targets_to_document_id(apps, schema_editor):
 def reverse_migrate_comment_targets_to_generic_fk(apps, schema_editor):
     Comment = apps.get_model("comments", "Comment")
     CommentEvent = apps.get_model("comments", "CommentEvent")
+    comment_qs, event_qs = _alias_pinned_managers(schema_editor, Comment, CommentEvent)
 
-    for comment in Comment.objects.filter(target_document_id__isnull=False).select_related(
+    for comment in comment_qs.filter(target_document_id__isnull=False).select_related(
         "target_document"
     ):
-        Comment.objects.filter(pk=comment.pk).update(
+        comment_qs.filter(pk=comment.pk).update(
             target_content_type_id=comment.target_document.content_type_id,
             target_object_id=comment.target_document.object_id,
         )
 
-    for event in CommentEvent.objects.filter(target_document_id__isnull=False).select_related(
+    for event in event_qs.filter(target_document_id__isnull=False).select_related(
         "target_document"
     ):
-        CommentEvent.objects.filter(pk=event.pk).update(
+        event_qs.filter(pk=event.pk).update(
             target_content_type_id=event.target_document.content_type_id,
             target_object_id=event.target_document.object_id,
         )

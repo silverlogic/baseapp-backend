@@ -85,12 +85,6 @@ interfaces = []
 inheritances = tuple()
 
 
-if apps.is_installed("baseapp_follows"):
-    from baseapp_follows.graphql.interfaces import FollowsInterface
-
-    interfaces.append(FollowsInterface)
-
-
 if apps.is_installed("baseapp_blocks"):
     from baseapp_blocks.graphql.object_types import BlocksInterface
 
@@ -124,6 +118,7 @@ class BaseProfileObjectType(*inheritances, object):
             *interfaces,
             "ProfileActivityLogInterface",
             "PageInterface",
+            "FollowsInterface",
         )
         model = Profile
         fields = "__all__"
@@ -140,6 +135,8 @@ class BaseProfileObjectType(*inheritances, object):
     def pre_optimization_hook(cls, queryset, optimizer):
         queryset = super().pre_optimization_hook(queryset, optimizer)
         if service := shared_services.get("commentable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+        if service := shared_services.get("followable_metadata"):
             queryset = service.annotate_queryset(queryset)
         return queryset
 

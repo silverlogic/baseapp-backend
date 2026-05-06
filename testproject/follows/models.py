@@ -1,7 +1,11 @@
-from baseapp_follows.models import AbstractBaseFollow
+from baseapp_follows.models import AbstractFollow, AbstractFollowableMetadata
 
 
-class Follow(AbstractBaseFollow):
+class Follow(AbstractFollow):
+    class Meta(AbstractFollow.Meta):
+        pass
 
-    class Meta(AbstractBaseFollow.Meta):
+
+class FollowableMetadata(AbstractFollowableMetadata):
+    class Meta(AbstractFollowableMetadata.Meta):
         pass
