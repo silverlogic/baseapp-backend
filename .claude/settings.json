@@ -4,5 +4,8 @@
       "Bash(docker compose *)",
       "Bash(DOCKER_DEFAULT_PLATFORM=linux/amd64 docker compose *)"
     ]
+  },
+  "enabledPlugins": {
+    "skill-observer@silverlogic": true
   }
 }
