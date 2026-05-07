@@ -50,6 +50,10 @@ class TestRatingsWithoutBaseappProfiles:
                 return_value=target,
             ),
             patch(
+                "baseapp_ratings.permissions._is_ratings_enabled",
+                return_value=True,
+            ),
+            patch(
                 "baseapp_ratings.graphql.mutations.DocumentId.get_or_create_for_object",
                 return_value=fake_document,
             ),
@@ -81,6 +85,10 @@ class TestRatingsWithoutBaseappProfiles:
             patch(
                 "baseapp_ratings.graphql.mutations.get_obj_from_relay_id",
                 return_value=target,
+            ),
+            patch(
+                "baseapp_ratings.permissions._is_ratings_enabled",
+                return_value=True,
             ),
             patch(
                 "baseapp_ratings.graphql.mutations.DocumentId.get_or_create_for_object",

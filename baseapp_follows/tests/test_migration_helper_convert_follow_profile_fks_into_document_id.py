@@ -200,9 +200,22 @@ def _make_apps(*, follows, documents, profile_ct_id=99):
             self.using_log.append(alias)
             return self
 
-        def get(self, **kwargs):
-            assert kwargs == {"app_label": "profiles", "model": "profile"}
+        def _row(self):
             return SimpleNamespace(id=profile_ct_id, app_label="profiles", model="profile")
+
+        def get_or_create(self, **kwargs):
+            assert kwargs == {"app_label": "profiles", "model": "profile"}
+            return self._row(), False
+
+        def filter(self, **kwargs):
+            assert kwargs == {"app_label": "profiles", "model": "profile"}
+            row = self._row()
+
+            class _Filtered:
+                def first(_self):
+                    return row
+
+            return _Filtered()
 
     follow_model = SimpleNamespace(objects=follow_manager)
     profile_model = SimpleNamespace(
