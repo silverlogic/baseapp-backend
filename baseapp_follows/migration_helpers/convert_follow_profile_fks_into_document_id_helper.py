@@ -114,11 +114,8 @@ def migrate_follow_profile_fks_to_document_id(
         doc_qs = DocumentId.objects
         ct_qs = ContentType.objects
 
-    if not follow_qs.exists():
-        # Nothing to remap (fresh DB, e.g. test runner). Bail out before touching
-        # ContentType, which is populated by ``post_migrate`` and may not exist yet.
-        return
-
+    # `get_or_create` so the helper is self-sufficient on a fresh DB (e.g. test runner)
+    # where `post_migrate` hasn't yet populated the ContentType row for the source model.
     source_ct, _ = ct_qs.get_or_create(
         app_label=SourceModel._meta.app_label,
         model=SourceModel._meta.model_name,
@@ -192,9 +189,6 @@ def reverse_migrate_follow_document_id_fks_to_profile(
         follow_qs = Follow.objects
         doc_qs = DocumentId.objects
         ct_qs = ContentType.objects
-
-    if not follow_qs.exists():
-        return
 
     source_ct = ct_qs.filter(
         app_label=SourceModel._meta.app_label,

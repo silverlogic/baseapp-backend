@@ -69,20 +69,17 @@ def migrate_legacy_commentable_fields_to_metadata(
         schema_editor, SourceModel, ContentType, DocumentId, CommentableMetadata
     )
 
+    # `get_or_create` so the helper is self-sufficient on a fresh DB (e.g. test runner)
+    # where `post_migrate` hasn't yet populated the ContentType row for this model.
+    source_ct, _ = ct_qs.get_or_create(
+        app_label=SourceModel._meta.app_label,
+        model=SourceModel._meta.model_name,
+    )
+
     legacy_rows = (
         source_qs.exclude(**{f"{comments_count_field}__isnull": True})
         .exclude(**{f"{is_comments_enabled_field}__isnull": True})
         .only("pk", comments_count_field, is_comments_enabled_field)
-    )
-
-    if not legacy_rows.exists():
-        # Nothing to migrate (fresh DB, e.g. test runner). Bail out before touching
-        # ContentType, which is populated by ``post_migrate`` and may not exist yet.
-        return
-
-    source_ct, _ = ct_qs.get_or_create(
-        app_label=SourceModel._meta.app_label,
-        model=SourceModel._meta.model_name,
     )
 
     for row in legacy_rows:

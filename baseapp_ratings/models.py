@@ -171,7 +171,7 @@ class AbstractRatableMetadata(TimeStampedModel):
 
     @classmethod
     def get_for_object(cls, obj):
-        """Return the metadata for the given object, or ``None`` if not found."""
+        """Return the metadata for the given object, or `None` if not found."""
         if not obj or not getattr(obj, "pk", None):
             return None
         try:

@@ -188,8 +188,9 @@ def test_migrate_legacy_reports_count_to_metadata_creates_metadata_rows():
 
 
 def test_migrate_legacy_reports_count_no_op_when_no_source_rows():
-    """Empty source table → helper bails before touching ContentType (which may not exist
-    yet on a fresh test DB; this is the regression we patched in the helper)."""
+    """Empty source table → helper creates no DocumentId or metadata rows. ContentType
+    is upserted via `get_or_create` so the helper is safe on a fresh test DB where
+    `post_migrate` hasn't yet populated the row."""
     source_model = SimpleNamespace(
         _meta=SimpleNamespace(app_label="profiles", model_name="profile"),
         objects=_SourceManager([]),

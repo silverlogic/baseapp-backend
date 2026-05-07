@@ -51,22 +51,20 @@ def migrate_legacy_ratings_to_metadata(
         schema_editor, SourceModel, ContentType, DocumentId, RatableMetadata
     )
 
+    # `get_or_create` instead of `get` so the helper is self-sufficient on a
+    # fresh DB (e.g. test runner) where `post_migrate` hasn't yet populated the
+    # ContentType row for this model.
+    source_ct, _ = ct_qs.get_or_create(
+        app_label=SourceModel._meta.app_label,
+        model=SourceModel._meta.model_name,
+    )
+
     legacy_rows = source_qs.only(
         "pk",
         ratings_count_field,
         ratings_sum_field,
         ratings_average_field,
         is_ratings_enabled_field,
-    )
-
-    if not legacy_rows.exists():
-        # Fresh DB / test runner: nothing to migrate. Bail out before touching
-        # ContentType, which is populated by `post_migrate` and may not exist yet.
-        return
-
-    source_ct, _ = ct_qs.get_or_create(
-        app_label=SourceModel._meta.app_label,
-        model=SourceModel._meta.model_name,
     )
 
     for row in legacy_rows:

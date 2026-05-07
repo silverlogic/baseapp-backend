@@ -193,7 +193,7 @@ def test_seed_reportable_metadata_creates_one_row_per_unique_target():
 
     seed_reportable_metadata_from_reports(apps, schema_editor=None)
 
-    # Two metadata writes, one per ``target_document`` reference, in insertion order.
+    # Two metadata writes, one per `target_document` reference, in insertion order.
     assert len(metadata_manager.update_log) == 2
 
     # target_document=10 → spam=1, fake=1, total=2
@@ -204,7 +204,7 @@ def test_seed_reportable_metadata_creates_one_row_per_unique_target():
     assert counts_first == {"total": 2, "spam": 1, "fake": 1}
     assert counts_second == {"total": 1, "spam": 1, "fake": 0}
 
-    # And the metadata rows are keyed by ``target_id``, which is the DocumentId pk.
+    # And the metadata rows are keyed by `target_id`, which is the DocumentId pk.
     assert [e["target_id"] for e in metadata_manager.update_log] == [10, 20]
 
 
@@ -248,8 +248,8 @@ def test_reverse_seed_reportable_metadata_deletes_metadata_for_known_doc_ids():
 
     reverse_seed_reportable_metadata(apps, schema_editor=None)
 
-    # Delete filter: ``target_id__in`` matches only doc IDs that appear as a Report's
-    # ``target_document``. With only doc 100 referenced, doc 999 is left untouched.
+    # Delete filter: `target_id__in` matches only doc IDs that appear as a Report's
+    # `target_document`. With only doc 100 referenced, doc 999 is left untouched.
     assert len(metadata_manager.delete_log) == 1
     deleted_kwargs = metadata_manager.delete_log[0]
     assert deleted_kwargs == {"target_id__in": [100]}

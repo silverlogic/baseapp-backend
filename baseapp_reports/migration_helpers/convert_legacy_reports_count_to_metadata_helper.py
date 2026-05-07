@@ -18,8 +18,8 @@ Notes
 -----
 - Missing `DocumentId` rows are created automatically.
 - Uses `apps.get_model(...)` exclusively for historical migration safety.
-- Pins every read/write to ``schema_editor.connection.alias`` so the source-row scan,
-  ContentType / DocumentId lookups, and ``ReportableMetadata`` writes all hit the same
+- Pins every read/write to `schema_editor.connection.alias` so the source-row scan,
+  ContentType / DocumentId lookups, and `ReportableMetadata` writes all hit the same
   database — same pattern the baseapp_follows / baseapp_comments helpers use.
 """
 
@@ -53,18 +53,15 @@ def migrate_legacy_reports_count_to_metadata(
         schema_editor, SourceModel, ContentType, DocumentId, ReportableMetadata
     )
 
-    legacy_rows = source_qs.exclude(**{f"{reports_count_field}__isnull": True}).only(
-        "pk", reports_count_field
-    )
-
-    if not legacy_rows.exists():
-        # Nothing to migrate (fresh DB, e.g. test runner). Bail out before touching
-        # ContentType, which is populated by `post_migrate` and may not exist yet.
-        return
-
+    # `get_or_create` so the helper is self-sufficient on a fresh DB (e.g. test runner)
+    # where `post_migrate` hasn't yet populated the ContentType row for this model.
     source_ct, _ = ct_qs.get_or_create(
         app_label=SourceModel._meta.app_label,
         model=SourceModel._meta.model_name,
+    )
+
+    legacy_rows = source_qs.exclude(**{f"{reports_count_field}__isnull": True}).only(
+        "pk", reports_count_field
     )
 
     for row in legacy_rows:

@@ -30,7 +30,7 @@ Example:
 
 Notes
 -----
-- Pins every read/write to ``schema_editor.connection.alias`` so the ``ReportType``
+- Pins every read/write to `schema_editor.connection.alias` so the `ReportType`
   upserts and the ContentType lookups all hit the same database — same pattern the
   baseapp_follows / baseapp_comments helpers use.
 """
@@ -79,7 +79,7 @@ def _get_report_type_uris(ReportType):
 
 
 def _resolve_content_types(apps, ContentType, ct_qs, content_type_targets):
-    """Resolve each alias to a ``ContentType`` row, alias-pinning the get_or_create so the
+    """Resolve each alias to a `ContentType` row, alias-pinning the get_or_create so the
     lookup hits the same database the rest of the migration is running on."""
     resolved = {}
     for alias, (app_label, model_name) in content_type_targets.items():
@@ -131,8 +131,8 @@ def seed_default_report_types(
             )
             cts = [resolved_cts[a] for a in spec.get("targets", []) if a in resolved_cts]
             if cts:
-                # m2m operations follow the parent's ``_state.db``, which the alias-pinned
-                # ``update_or_create`` above already set, so the through-table writes hit
+                # m2m operations follow the parent's `_state.db`, which the alias-pinned
+                # `update_or_create` above already set, so the through-table writes hit
                 # the same alias.
                 rt.content_types.set(cts)
             if spec["key"] == "adult_content":

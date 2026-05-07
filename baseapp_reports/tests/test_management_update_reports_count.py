@@ -48,7 +48,7 @@ def test_command_recomputes_metadata_from_existing_reports():
 
 def test_command_iterates_over_distinct_targets_only():
     """A target with multiple reports should only get refreshed once. The command's
-    summary counts distinct ``target_document`` references, not raw report rows."""
+    summary counts distinct `target_document` references, not raw report rows."""
     target_a = ProfileFactory()
     target_b = ProfileFactory()
     rt = ReportTypeFactory(key="other_cmd_a", label="Other A")
@@ -72,11 +72,11 @@ def test_command_no_op_when_no_reports():
 
 
 def test_command_skips_targets_when_content_object_is_missing():
-    """If a ``DocumentId``'s ``content_object`` resolves to ``None`` (e.g. the
+    """If a `DocumentId`'s `content_object` resolves to `None` (e.g. the
     underlying row was hard-deleted out from under the document), the command should
     skip that target rather than crash. We exercise the defensive branch by patching
-    ``DocumentId.content_object`` to return ``None`` for every row — each iteration
-    falls into ``continue``."""
+    `DocumentId.content_object` to return `None` for every row — each iteration
+    falls into `continue`."""
     target = ProfileFactory()
     rt = ReportTypeFactory(key="violence_cmd", label="Violence cmd")
     ReportFactory(target=target, report_type=rt)

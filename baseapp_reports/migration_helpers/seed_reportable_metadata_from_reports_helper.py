@@ -21,8 +21,8 @@ Notes
 - `reverse_seed_reportable_metadata` only deletes rows whose `target_id` matches a
   current `Report.target_object_id` for the matching content type, so unrelated
   metadata records are preserved.
-- Pins every read/write to ``schema_editor.connection.alias`` so the
-  ``Report``/``ReportType``/``DocumentId``/``ReportableMetadata`` traffic all hits the
+- Pins every read/write to `schema_editor.connection.alias` so the
+  `Report`/`ReportType`/`DocumentId`/`ReportableMetadata` traffic all hits the
   same database — same pattern the baseapp_follows / baseapp_comments helpers use.
 """
 
