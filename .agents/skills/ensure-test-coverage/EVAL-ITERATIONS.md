@@ -29,7 +29,7 @@ Follow steps 1-6 exactly as documented. Skip step 7 (viewer).
 ### Key details
 
 - **Skill path**: `.agents/skills/ensure-test-coverage/`
-- **Evals**: `ensure-test-coverage/evals/evals.json`
+- **Evals**: `.agents/skills/ensure-test-coverage/evals/evals.json`
 - **Workspace**: `.agents/skills/ensure-test-coverage-workspace/`
 - **Baseline**: `without_skill` (no skill — tests what the model knows on its own)
 - **Model**: Use `model: "sonnet"` on Agent calls for cost-effective runs
@@ -97,7 +97,7 @@ Follow these exact steps for each iteration. All tools used are listed so the pr
 ```bash
 # Create directories + generate eval_metadata.json from evals.json
 mkdir -p ensure-test-coverage-workspace/iteration-N/{eval-1-feature-complete,...}/{with_skill/outputs,without_skill/outputs}
-python3 -c "... generate eval_metadata.json from evals/evals.json ..."
+python3 -c "... generate eval_metadata.json from .agents/skills/ensure-test-coverage/evals/evals.json ..."
 ```
 
 #### Step 2: Spawn agents (`Agent`, model: sonnet)
