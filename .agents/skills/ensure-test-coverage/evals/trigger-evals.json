@@ -40,8 +40,8 @@
     "should_trigger": false
   },
   {
-    "query": "Rename the variable `qs` to `queryset` in this method.",
-    "should_trigger": false
+    "query": "Backend refactor: rename the variable `qs` to `queryset` in this Django manager method.",
+    "should_trigger": true
   },
   {
     "query": "Update the README with the new local-dev setup steps.",
