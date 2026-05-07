@@ -10,7 +10,7 @@ services:
       timeout: 5s
       retries: 5
 
-  backend:
+  web:
     stdin_open: true
     tty: true
     env_file: .env

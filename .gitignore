@@ -38,3 +38,6 @@ db.sqlite3
 # build
 **/build/
 dist/
+
+# Skill eval workspaces (raw run output, not committed)
+.agents/skills/*-workspace/

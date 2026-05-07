@@ -121,8 +121,8 @@ psql -U postgres -c 'create database backend;'
 # Exit db container
 exit
 
-# Enter backend docker container
-docker compose exec backend bash
+# Enter web docker container
+docker compose exec web bash
 ```
 
 If you're switching between projects and you want to wipe the DB you can do
@@ -131,7 +131,7 @@ psql -U postgres -c 'drop database backend;'
 psql -U postgres -c 'create database backend;'
 ```
 
-Run testproject inside the backend docker container:
+Run testproject inside the web docker container:
 
 ```bash
 uv run python manage.py runserver 0.0.0.0:8000
@@ -192,7 +192,7 @@ To do this, assuming you've opened the folder at the root of the repo, just add 
 Running unit tests:
 
 ```bash
-docker compose exec backend pytest baseapp_APPNAME/tests
+docker compose exec web pytest baseapp_APPNAME/tests
 ```
 
 ### Implementation
