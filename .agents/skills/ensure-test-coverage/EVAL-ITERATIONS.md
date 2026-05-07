@@ -14,7 +14,7 @@ Content evals measure whether the loaded skill improves output quality. Each run
 
 Open a fresh Claude Code session (**set the model `Sonnet 4.6` and `medium` effort**) and paste this prompt:
 
-```
+```text
 Run ensure-test-coverage skill evals following the "Content evals" section of .agents/skills/ensure-test-coverage/EVAL-ITERATIONS.md.
 
 - Iteration: N (next number after existing iterations)
@@ -44,7 +44,7 @@ Both save their response to `outputs/response.md` in their respective directorie
 
 ### Directory structure
 
-```
+```text
 ensure-test-coverage-workspace/
 ├── EVAL-ITERATIONS.md             ← iteration history (committed in ensure-test-coverage/)
 └── iteration-N/
