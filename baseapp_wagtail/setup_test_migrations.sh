@@ -3,14 +3,10 @@
 # This script is to refresh the tests migrations after any model changes. We don't need to keep old
 # versions of the migrations for tests, so we delete the initial migration and create a new one.
 
-DEFAULT_CONTAINER_NAME="baseapp-backend-web-1"
-
-CONTAINER_NAME=${1:-$DEFAULT_CONTAINER_NAME}
-
 rm -f baseapp_wagtail/tests/migrations/0001_initial.py
 echo "Deleted baseapp_wagtail/tests/migrations/0001_initial.py"
 
-docker exec "$CONTAINER_NAME" bash -c "
+docker compose exec web bash -c "
   cd baseapp-wagtail &&
   export DJANGO_SETTINGS_MODULE=testproject.settings_for_tests &&
   echo 'DJANGO_SETTINGS_MODULE set to testproject.settings_for_tests' &&
