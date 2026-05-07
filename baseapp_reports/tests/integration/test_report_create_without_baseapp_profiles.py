@@ -50,7 +50,7 @@ class TestReportsWithoutBaseappProfiles:
             report_type=report_type,
             report_subject="spam",
         )
-        fake_content_type = object()
+        fake_document = object()
 
         with (
             patch(
@@ -58,8 +58,8 @@ class TestReportsWithoutBaseappProfiles:
                 side_effect=[target, report_type],
             ),
             patch(
-                "baseapp_reports.graphql.mutations.ContentType.objects.get_for_model",
-                return_value=fake_content_type,
+                "baseapp_reports.graphql.mutations.DocumentId.get_or_create_for_object",
+                return_value=fake_document,
             ),
             patch(
                 "baseapp_reports.graphql.mutations.Report.objects.create",
@@ -82,8 +82,7 @@ class TestReportsWithoutBaseappProfiles:
         assert content["data"]["reportCreate"]["report"]["node"]["reportSubject"] == "spam"
         _, kwargs = create_report.call_args
         assert kwargs["user"] == django_user_client.user
-        assert kwargs["target_object_id"] == 25
-        assert kwargs["target_content_type"] is fake_content_type
+        assert kwargs["target_document"] is fake_document
         assert kwargs["report_type"] is report_type
         assert kwargs["report_subject"] == "spam"
 

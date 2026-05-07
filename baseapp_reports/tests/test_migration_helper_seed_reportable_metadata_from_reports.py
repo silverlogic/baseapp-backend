@@ -43,16 +43,19 @@ class _FakeQuerySet:
         for key, value in kwargs.items():
             if key.endswith("__isnull"):
                 field = key.replace("__isnull", "")
-                # Django ORM permits both ``target_content_type`` and
-                # ``target_content_type_id`` for FK lookups; fall back to the FK column
-                # so fakes can store just the integer.
-                getter = lambda r, f=field: (
-                    getattr(r, f, None) if hasattr(r, f) else getattr(r, f"{f}_id", None)
-                )
+
+                def _is_null(row, _f=field):
+                    # Django ORM permits both `target_content_type` and
+                    # `target_content_type_id` for FK lookups; fall back to the FK
+                    # column so fakes can store just the integer.
+                    if hasattr(row, _f):
+                        return getattr(row, _f) is None
+                    return getattr(row, f"{_f}_id", None) is None
+
                 if exclude:
-                    rows = [r for r in rows if (getter(r) is None) != value]
+                    rows = [r for r in rows if _is_null(r) != value]
                 else:
-                    rows = [r for r in rows if (getter(r) is None) == value]
+                    rows = [r for r in rows if _is_null(r) == value]
             elif key.endswith("__in"):
                 field = key.replace("__in", "")
                 rows = [r for r in rows if getattr(r, field) in value]
@@ -115,8 +118,7 @@ class _ReportFactory(factory.Factory):
         model = SimpleNamespace
 
     pk = factory.Sequence(lambda n: n + 1)
-    target_content_type_id = 99
-    target_object_id = 1
+    target_document_id = 1000
     report_type_id = None
 
 
@@ -167,7 +169,7 @@ def _make_apps(*, reports, report_types, documents=None, metadata_rows=None):
 
 @pytest.fixture(autouse=True)
 def _stub_swapper_is_not_swapped():
-    """Force the helper through ``apps.get_model`` instead of ``swapper.load_model``."""
+    """Force the helper through `apps.get_model` instead of `swapper.load_model`."""
     with patch(
         "baseapp_reports.migration_helpers.seed_reportable_metadata_from_reports_helper.get_apps_model",
         side_effect=lambda apps, app_label, model_name: apps.get_model(app_label, model_name),
@@ -180,9 +182,9 @@ def test_seed_reportable_metadata_creates_one_row_per_unique_target():
     fake_type = _ReportTypeRowFactory(id=2, key="fake")
 
     reports = [
-        _ReportFactory(pk=1, target_content_type_id=99, target_object_id=10, report_type_id=1),
-        _ReportFactory(pk=2, target_content_type_id=99, target_object_id=10, report_type_id=2),
-        _ReportFactory(pk=3, target_content_type_id=99, target_object_id=20, report_type_id=1),
+        _ReportFactory(pk=1, target_document_id=10, report_type_id=1),
+        _ReportFactory(pk=2, target_document_id=10, report_type_id=2),
+        _ReportFactory(pk=3, target_document_id=20, report_type_id=1),
     ]
     apps, _, metadata_manager, _ = _make_apps(
         reports=reports,
@@ -191,16 +193,19 @@ def test_seed_reportable_metadata_creates_one_row_per_unique_target():
 
     seed_reportable_metadata_from_reports(apps, schema_editor=None)
 
-    # Two metadata writes, one per (ct, obj) pair, in insertion order.
+    # Two metadata writes, one per ``target_document`` reference, in insertion order.
     assert len(metadata_manager.update_log) == 2
 
-    # target=10 → spam=1, fake=1, total=2
-    # target=20 → spam=1, fake=0, total=1
+    # target_document=10 → spam=1, fake=1, total=2
+    # target_document=20 → spam=1, fake=0, total=1
     counts_first, counts_second = (
         e["defaults"]["reports_count"] for e in metadata_manager.update_log
     )
     assert counts_first == {"total": 2, "spam": 1, "fake": 1}
     assert counts_second == {"total": 1, "spam": 1, "fake": 0}
+
+    # And the metadata rows are keyed by ``target_id``, which is the DocumentId pk.
+    assert [e["target_id"] for e in metadata_manager.update_log] == [10, 20]
 
 
 def test_seed_reportable_metadata_no_op_when_no_reports():
@@ -214,49 +219,40 @@ def test_seed_reportable_metadata_no_op_when_no_reports():
 def test_seed_reportable_metadata_skips_reports_with_null_target():
     spam_type = _ReportTypeRowFactory(id=1, key="spam")
     reports = [
-        _ReportFactory(pk=1, target_content_type_id=None, target_object_id=10, report_type_id=1),
-        _ReportFactory(pk=2, target_content_type_id=99, target_object_id=None, report_type_id=1),
-        _ReportFactory(pk=3, target_content_type_id=99, target_object_id=20, report_type_id=1),
+        _ReportFactory(pk=1, target_document_id=None, report_type_id=1),
+        _ReportFactory(pk=2, target_document_id=20, report_type_id=1),
     ]
     apps, _, metadata_manager, _ = _make_apps(reports=reports, report_types=[spam_type])
 
     seed_reportable_metadata_from_reports(apps, schema_editor=None)
 
-    # Only the (99, 20) pair survives the NULL exclusions.
+    # Only the report with a non-null target_document survives the exclusion.
     assert len(metadata_manager.update_log) == 1
+    assert metadata_manager.update_log[0]["target_id"] == 20
     assert metadata_manager.update_log[0]["defaults"]["reports_count"] == {"total": 1, "spam": 1}
 
 
 def test_reverse_seed_reportable_metadata_deletes_metadata_for_known_doc_ids():
     spam_type = _ReportTypeRowFactory(id=1, key="spam")
     reports = [
-        _ReportFactory(pk=1, target_content_type_id=99, target_object_id=10, report_type_id=1)
-    ]
-    documents = [
-        _DocumentIdRowFactory(id=100, content_type_id=99, object_id=10),
-        _DocumentIdRowFactory(id=200, content_type_id=99, object_id=999),  # unrelated obj
+        _ReportFactory(pk=1, target_document_id=100, report_type_id=1),
     ]
     apps, _, metadata_manager, _ = _make_apps(
         reports=reports,
         report_types=[spam_type],
-        documents=documents,
         metadata_rows=[
             SimpleNamespace(target_id=100),
-            SimpleNamespace(target_id=200),
             SimpleNamespace(target_id=999),  # unrelated metadata
         ],
     )
 
     reverse_seed_reportable_metadata(apps, schema_editor=None)
 
-    # Delete filter: target_id__in matches only doc IDs whose (ct, obj) pair appears in
-    # live Reports. With (99, 10) being the only pair, doc 100 should be the deletion
-    # target. doc 200 is matched by the broad content_type_id__in / object_id__in but
-    # its (ct, obj) doesn't appear in reports — the helper *does* delete it because the
-    # reverse uses the broader filter; this test locks the current behavior.
+    # Delete filter: ``target_id__in`` matches only doc IDs that appear as a Report's
+    # ``target_document``. With only doc 100 referenced, doc 999 is left untouched.
     assert len(metadata_manager.delete_log) == 1
     deleted_kwargs = metadata_manager.delete_log[0]
-    assert "target_id__in" in deleted_kwargs
+    assert deleted_kwargs == {"target_id__in": [100]}
 
 
 def test_reverse_seed_reportable_metadata_no_op_when_no_reports():

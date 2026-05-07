@@ -75,12 +75,11 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                "db_table": "baseapp_ratings_rate",
                 "abstract": False,
                 "indexes": [
                     models.Index(
                         fields=["target_content_type", "target_object_id"],
-                        name="baseapp_rat_target__367d45_idx",
+                        name="ratings_rat_target__367d45_idx",
                     )
                 ],
                 "unique_together": {("user", "target_content_type", "target_object_id")},
@@ -96,7 +95,7 @@ class Migration(migrations.Migration):
                     hash="bba37248670c6b2e4e144d5fbfa461a46eb17ba1",
                     operation="INSERT",
                     pgid="pgtrigger_insert_document_id_62388",
-                    table="baseapp_ratings_rate",
+                    table="ratings_rate",
                     when="AFTER",
                 ),
             ),
@@ -110,7 +109,7 @@ class Migration(migrations.Migration):
                     hash="ac69d7a8c65fd78dffd2e3581ac6acb98c8d289d",
                     operation="DELETE",
                     pgid="pgtrigger_delete_document_id_3b27f",
-                    table="baseapp_ratings_rate",
+                    table="ratings_rate",
                     when="AFTER",
                 ),
             ),

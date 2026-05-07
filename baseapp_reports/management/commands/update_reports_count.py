@@ -1,11 +1,12 @@
 import swapper
-from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand
+
+from baseapp_core.models import DocumentId
 
 
 class Command(BaseCommand):
     """
-    Recompute ``ReportableMetadata.reports_count`` for every target referenced by an
+    Recompute `ReportableMetadata.reports_count` for every target referenced by an
     existing Report. Useful after manual data edits or when seeding metadata for a
     project that is just opting into the plugin architecture.
     """
@@ -15,20 +16,19 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         Report = swapper.load_model("baseapp_reports", "Report")
 
-        target_pairs = (
-            Report.objects.exclude(target_content_type__isnull=True)
-            .exclude(target_object_id__isnull=True)
-            .values_list("target_content_type_id", "target_object_id")
+        target_doc_ids = list(
+            Report.objects.exclude(target_document__isnull=True)
+            .values_list("target_document_id", flat=True)
             .distinct()
         )
 
         seen = 0
-        for ct_id, obj_id in target_pairs:
-            try:
-                ct = ContentType.objects.get_for_id(ct_id)
-            except ContentType.DoesNotExist:
+        for doc in DocumentId.objects.filter(pk__in=target_doc_ids).select_related("content_type"):
+            target = doc.content_object
+            if target is None:
+                # Document points at a content_type/object_id that no longer exists in DB
+                # (e.g. the underlying app was uninstalled). Skip rather than crash.
                 continue
-            target = ct.get_object_for_this_type(pk=obj_id)
             Report.update_reports_count(target)
             seen += 1
 

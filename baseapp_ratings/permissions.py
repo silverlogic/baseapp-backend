@@ -3,7 +3,15 @@ from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.backends import BaseBackend
 
+from baseapp_core.plugins import shared_services
+
 RateModel = swapper.load_model("baseapp_ratings", "Rate")
+
+
+def _is_ratings_enabled(obj) -> bool:
+    if service := shared_services.get("ratable_metadata"):
+        return service.is_ratings_enabled(obj)
+    return False
 
 
 class RatingsPermissionsBackend(BaseBackend):
@@ -18,7 +26,7 @@ class RatingsPermissionsBackend(BaseBackend):
         use_profile_perm = f"{Profile._meta.app_label}.use_profile"
 
         if perm == "baseapp_ratings.add_rate":
-            return user_obj.is_authenticated and getattr(obj, "is_ratings_enabled", False)
+            return user_obj.is_authenticated and _is_ratings_enabled(obj)
 
         if perm == "baseapp_ratings.add_rate_with_profile" and obj:
             return user_obj.has_perm(use_profile_perm, obj)
@@ -36,7 +44,7 @@ class RatingsPermissionsBackend(BaseBackend):
 
         if perm in ["baseapp_ratings.change_rate", "baseapp_ratings.delete_rate"]:
             if isinstance(obj, RateModel):
-                if obj.target and not getattr(obj.target, "is_ratings_enabled", True):
+                if obj.target and not _is_ratings_enabled(obj.target):
                     return False
 
                 if user_obj.is_authenticated:
@@ -51,7 +59,7 @@ class RatingsPermissionsBackend(BaseBackend):
 
     def _has_perm_with_user(self, user_obj, perm, obj=None):
         if perm == "baseapp_ratings.add_rate":
-            return user_obj.is_authenticated and getattr(obj, "is_ratings_enabled", False)
+            return user_obj.is_authenticated and _is_ratings_enabled(obj)
 
         if perm == "baseapp_ratings.view_rate":
             return True
@@ -66,7 +74,7 @@ class RatingsPermissionsBackend(BaseBackend):
 
         if perm in ["baseapp_ratings.change_rate", "baseapp_ratings.delete_rate"]:
             if isinstance(obj, RateModel):
-                if obj.target and not getattr(obj.target, "is_ratings_enabled", True):
+                if obj.target and not _is_ratings_enabled(obj.target):
                     return False
 
                 if user_obj.is_authenticated:

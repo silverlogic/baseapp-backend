@@ -13,7 +13,7 @@ pytestmark = pytest.mark.django_db
 
 def test_report_save_creates_metadata_and_increments_count():
     """Creating a Report through the ORM should populate ReportableMetadata for the target
-    and increment ``reports_count[type.key]`` and ``reports_count["total"]``."""
+    and increment `reports_count[type.key]` and `reports_count["total"]`."""
     target = ProfileFactory()
     report_type = ReportTypeFactory(key="spam_test", label="Spam test")
 
@@ -51,7 +51,7 @@ def test_report_delete_decrements_count():
 
 
 def test_reports_count_buckets_per_report_type():
-    """Reports against the same target with different ``ReportType`` keys should land in
+    """Reports against the same target with different `ReportType` keys should land in
     different buckets, with the total reflecting the sum."""
     target = ProfileFactory()
     spam_type = ReportTypeFactory(key="spam_b", label="Spam B")
@@ -83,8 +83,8 @@ def test_reports_count_isolated_per_target():
 
 
 def test_update_reports_count_recomputes_from_existing_reports(django_user_client):
-    """Calling ``Report.update_reports_count(target)`` directly should recompute counters
-    from the live ``Report`` rows even if the metadata row is out of sync."""
+    """Calling `Report.update_reports_count(target)` directly should recompute counters
+    from the live `Report` rows even if the metadata row is out of sync."""
     target = ProfileFactory()
     report_type = ReportTypeFactory(key="recount", label="Recount")
 
@@ -101,9 +101,9 @@ def test_update_reports_count_recomputes_from_existing_reports(django_user_clien
     assert metadata.reports_count["total"] == 1
 
     # Sanity: the report row really is the one we created.
-    assert report.pk == Report.objects.get(target_object_id=target.pk).pk
+    assert report.pk == Report.objects.get(target_document_id=metadata.target_id).pk
 
 
 def test_update_reports_count_no_op_when_target_is_none():
-    """``update_reports_count(None)`` should silently no-op rather than crash."""
+    """`update_reports_count(None)` should silently no-op rather than crash."""
     Report.update_reports_count(None)  # should not raise

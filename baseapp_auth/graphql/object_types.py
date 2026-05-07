@@ -17,12 +17,6 @@ interfaces = tuple()
 inheritances = tuple()
 
 
-if apps.is_installed("baseapp_ratings"):
-    from baseapp_ratings.graphql.object_types import RatingsInterface
-
-    interfaces += (RatingsInterface,)
-
-
 class AbstractUserObjectType(*inheritances, object):
     is_authenticated = graphene.Boolean()
     full_name = graphene.String()
@@ -70,6 +64,7 @@ class AbstractUserObjectType(*inheritances, object):
             RelayNode,
             PermissionsInterface,
             *interfaces,
+            "RatingsInterface",
             "UserActivityLogInterface",
             "NotificationsInterface",
             "ProfileInterface",

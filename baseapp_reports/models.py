@@ -1,6 +1,5 @@
 import swapper
 from django.conf import settings
-from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import Count, OuterRef, Subquery, Value
@@ -72,22 +71,21 @@ class AbstractReport(DocumentIdMixin, RelayModel, TimeStampedModel):
     )
     report_subject = models.TextField(blank=True, null=True)
 
-    target_content_type = models.ForeignKey(
-        ContentType,
+    target_document = models.ForeignKey(
+        DocumentId,
+        verbose_name=_("target document"),
         blank=True,
-        null=True,
+        null=False,
+        related_name="reports_inbox",
         on_delete=models.CASCADE,
-        db_index=True,
     )
-    target_object_id = models.PositiveIntegerField(blank=True, null=True, db_index=True)
-    target = GenericForeignKey("target_content_type", "target_object_id")
 
     class Meta:
         abstract = True
         swappable = swapper.swappable_setting("baseapp_reports", "Report")
-        unique_together = [["user", "target_content_type", "target_object_id"]]
+        unique_together = [["user", "target_document"]]
         indexes = [
-            models.Index(fields=["target_content_type", "target_object_id"]),
+            models.Index(fields=["target_document"]),
         ]
 
     def __str__(self):
@@ -106,9 +104,47 @@ class AbstractReport(DocumentIdMixin, RelayModel, TimeStampedModel):
         super().delete(*args, **kwargs)
         self.update_reports_count(target)
 
+    def _get_target(self):
+        if not self.target_document_id:
+            return None
+        if hasattr(self, "_target_object_cache"):
+            return self._target_object_cache
+        self._target_object_cache = self.target_document.content_object
+        return self._target_object_cache
+
+    _get_target.short_description = _("target")
+
+    def _set_target(self, value):
+        if not value:
+            self.target_document = None
+            self._target_object_cache = None
+            return
+        self.target_document = DocumentId.get_or_create_for_object(value)
+        self._target_object_cache = value
+
+    target = property(_get_target, _set_target)
+
+    @property
+    def target_content_type(self):
+        if self.target_document_id:
+            return self.target_document.content_type
+        return None
+
+    @property
+    def target_content_type_id(self):
+        if self.target_document_id:
+            return self.target_document.content_type_id
+        return None
+
+    @property
+    def target_object_id(self):
+        if self.target_document_id:
+            return self.target_document.object_id
+        return None
+
     @classmethod
     def update_reports_count(cls, target):
-        """Recompute and persist ``reports_count`` on ``ReportableMetadata`` for ``target``."""
+        """Recompute and persist `reports_count` on `ReportableMetadata` for `target`."""
         if not target:
             return
 
@@ -118,11 +154,9 @@ class AbstractReport(DocumentIdMixin, RelayModel, TimeStampedModel):
             return
 
         counts = default_reports_count_full()
-        target_content_type = ContentType.objects.get_for_model(target)
         rows = (
             cls.objects.filter(
-                target_content_type=target_content_type,
-                target_object_id=target.pk,
+                target_document=metadata.target_id,
                 report_type__isnull=False,
             )
             .values("report_type__key")
@@ -148,7 +182,7 @@ class AbstractReport(DocumentIdMixin, RelayModel, TimeStampedModel):
 class AbstractReportableMetadata(TimeStampedModel):
     """
     Stores reporting metadata (per-type counts) for any documentable object.
-    Linked to ``DocumentId`` instead of adding columns to each reportable model,
+    Linked to `DocumentId` instead of adding columns to each reportable model,
     following the plugin architecture pattern for loose coupling.
     """
 
@@ -198,9 +232,9 @@ class AbstractReportableMetadata(TimeStampedModel):
     @classmethod
     def annotate_queryset(cls, queryset):
         """
-        Annotate ``queryset`` with reportable metadata to prevent N+1 queries when
-        resolving ``reports_count`` for many rows of the same model.
-        Adds ``_reportable_reports_count`` (zero-total dict when no metadata row exists).
+        Annotate `queryset` with reportable metadata to prevent N+1 queries when
+        resolving `reports_count` for many rows of the same model.
+        Adds `_reportable_reports_count` (zero-total dict when no metadata row exists).
         """
         model_cls = queryset.model
         ct_id = ContentType.objects.get_for_model(model_cls).pk

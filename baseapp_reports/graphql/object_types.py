@@ -57,16 +57,16 @@ class ReportsInterface(graphene.Interface):
 
         target_content_type = ContentType.objects.get_for_model(self)
         return Report.objects.filter(
-            target_content_type=target_content_type,
-            target_object_id=self.pk,
+            target_document__content_type=target_content_type,
+            target_document__object_id=self.pk,
         ).order_by("-created")
 
     def resolve_my_report(self, info, **kwargs):
         if info.context.user.is_authenticated:
             target_content_type = ContentType.objects.get_for_model(self)
             return Report.objects.filter(
-                target_content_type=target_content_type,
-                target_object_id=self.pk,
+                target_document__content_type=target_content_type,
+                target_document__object_id=self.pk,
                 user=info.context.user,
             ).first()
 

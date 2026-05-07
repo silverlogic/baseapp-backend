@@ -1,12 +1,12 @@
 """
-Query-count tests for the ``ReportsInterface``.
+Query-count tests for the `ReportsInterface`.
 
-Mirrors ``baseapp_follows/tests/test_graphql_queries_object_follows.py`` and
-``baseapp_comments/tests/test_graphql_queries_object_comments.py``: exercise the
-GraphQL ``ReportsInterface`` against a target object (a ``Profile``) and assert that the
+Mirrors `baseapp_follows/tests/test_graphql_queries_object_follows.py` and
+`baseapp_comments/tests/test_graphql_queries_object_comments.py`: exercise the
+GraphQL `ReportsInterface` against a target object (a `Profile`) and assert that the
 number of database queries does NOT scale with the number of report rows. The goal is
-to lock in the query count for the ``reportable_metadata`` annotation path and catch
-regressions early — particularly the broken ``Coalesce(KeyTextTransform, Value("0"))``
+to lock in the query count for the `reportable_metadata` annotation path and catch
+regressions early — particularly the broken `Coalesce(KeyTextTransform, Value("0"))`
 mix that briefly leaked through the optimizer.
 """
 
@@ -22,7 +22,7 @@ from .factories import ReportFactory, ReportTypeFactory
 pytestmark = pytest.mark.django_db
 
 
-# Counts-only query: should resolve from ``ReportableMetadata`` via a single annotated
+# Counts-only query: should resolve from `ReportableMetadata` via a single annotated
 # subquery on the Profile fetch.
 COUNTS_ONLY_QUERY = """
     query GetProfile($id: ID!) {
@@ -39,9 +39,9 @@ COUNTS_ONLY_QUERY = """
 def test_anon_reports_count_is_flat_regardless_of_report_volume(
     django_user_client, graphql_client_with_queries
 ):
-    """``reportsCount`` should be a flat query path: regardless of how many ``Report``
+    """`reportsCount` should be a flat query path: regardless of how many `Report`
     rows point at the target, the GraphQL query should make the same number of DB
-    round-trips. This locks in the ``ReportableMetadataService.annotate_queryset``
+    round-trips. This locks in the `ReportableMetadataService.annotate_queryset`
     optimisation."""
     target_small = ProfileFactory(owner=django_user_client.user)
     spam_type = ReportTypeFactory(key="spam_query", label="Spam query")
@@ -68,7 +68,7 @@ def test_anon_reports_count_is_flat_regardless_of_report_volume(
 
     # Hard invariant: the optimizer should NOT issue more queries when there are 20
     # reports vs. 3. Counts come from a single annotated subquery against
-    # ``reports_reportablemetadata`` on the Profile fetch.
+    # `reports_reportablemetadata` on the Profile fetch.
     assert queries_big.count == small_count
 
 
@@ -76,9 +76,9 @@ def test_anon_reports_count_is_flat_regardless_of_report_volume(
 def test_anon_reports_count_zero_when_no_reports_does_not_extra_query(
     django_user_client, graphql_client_with_queries
 ):
-    """When a profile has no reports, ``reportsCount`` should still resolve in the
+    """When a profile has no reports, `reportsCount` should still resolve in the
     same query budget as a profile with reports — the metadata row simply doesn't
-    exist yet, and the annotated COALESCE returns the default ``{"total": 0}`` dict
+    exist yet, and the annotated COALESCE returns the default `{"total": 0}` dict
     without an extra round trip."""
     target_with_reports = ProfileFactory(owner=django_user_client.user)
     rt = ReportTypeFactory(key="rc_q1", label="rc_q1")
@@ -100,5 +100,5 @@ def test_anon_reports_count_zero_when_no_reports_does_not_extra_query(
     assert response_empty.json()["data"]["node"]["reportsCount"]["total"] == 0
 
     # Both paths annotate the same subquery; absence of the metadata row falls back to
-    # the default JSON via ``COALESCE``, no extra query.
+    # the default JSON via `COALESCE`, no extra query.
     assert queries_empty.count == queries_with.count

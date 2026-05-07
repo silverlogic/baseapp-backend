@@ -2,9 +2,9 @@ from types import SimpleNamespace
 
 import factory
 
-from baseapp_reports.migration_helpers.convert_legacy_reports_count_to_metadata_helper import (
-    migrate_legacy_reports_count_to_metadata,
-    reverse_migrate_legacy_reports_count_from_metadata,
+from baseapp_ratings.migration_helpers.convert_legacy_ratings_count_to_metadata_helper import (
+    migrate_legacy_ratings_to_metadata,
+    reverse_migrate_legacy_ratings_from_metadata,
 )
 
 
@@ -13,7 +13,10 @@ class _ModelRowFactory(factory.Factory):
         model = SimpleNamespace
 
     pk = factory.Sequence(lambda n: n + 1)
-    reports_count = {"total": 0}
+    ratings_count = 0
+    ratings_sum = 0
+    ratings_average = 0
+    is_ratings_enabled = True
 
 
 class _ContentTypeRowFactory(factory.Factory):
@@ -21,8 +24,8 @@ class _ContentTypeRowFactory(factory.Factory):
         model = SimpleNamespace
 
     id = 77
-    app_label = "profiles"
-    model = "profile"
+    app_label = "users"
+    model = "user"
 
 
 class _DocumentRowFactory(factory.Factory):
@@ -35,24 +38,13 @@ class _DocumentRowFactory(factory.Factory):
 
 
 class _LegacyQuerySet:
-    """Minimal queryset shim — the helper only calls `exists()`, `exclude()`,
-    `only()`, and iteration."""
+    """Minimal queryset shim — the helper calls `exists()`, `only()`, iteration."""
 
     def __init__(self, rows):
         self._rows = list(rows)
 
     def exists(self):
         return bool(self._rows)
-
-    def exclude(self, **kwargs):
-        rows = self._rows
-        for key, value in kwargs.items():
-            if key.endswith("__isnull"):
-                field = key.replace("__isnull", "")
-                rows = [r for r in rows if (getattr(r, field) is None) != value]
-            else:
-                rows = [r for r in rows if getattr(r, key) != value]
-        return _LegacyQuerySet(rows)
 
     def only(self, *_args):
         return self
@@ -75,8 +67,13 @@ class _SourceManager:
         self._rows = rows
         self.update_log = []
 
+    def only(self, *_args):
+        return _LegacyQuerySet(self._rows)
+
     def exclude(self, **kwargs):
-        return _LegacyQuerySet(self._rows).exclude(**kwargs)
+        # Helper doesn't use exclude on the source for ratings (no nullable counter
+        # field), but keep parity with the comments helper shim.
+        return _LegacyQuerySet(self._rows)
 
     def filter(self, **kwargs):
         if "pk" in kwargs:
@@ -87,11 +84,17 @@ class _SourceManager:
 def _make_apps(*, source_model, content_type, get_or_create_log, metadata_log):
     class ContentTypeManager:
         def get_or_create(self, **kwargs):
-            assert kwargs == {"app_label": "profiles", "model": "profile"}
+            assert kwargs == {
+                "app_label": source_model._meta.app_label,
+                "model": source_model._meta.model_name,
+            }
             return content_type, False
 
         def filter(self, **kwargs):
-            assert kwargs == {"app_label": "profiles", "model": "profile"}
+            assert kwargs == {
+                "app_label": source_model._meta.app_label,
+                "model": source_model._meta.model_name,
+            }
 
             class _Filtered:
                 def first(_self):
@@ -109,23 +112,19 @@ def _make_apps(*, source_model, content_type, get_or_create_log, metadata_log):
             get_or_create_log.append(kwargs)
             return doc, True
 
-    class ReportableMetadataManager:
+    class RatableMetadataManager:
         def update_or_create(self, **kwargs):
             metadata_log.append(kwargs)
             return SimpleNamespace(), True
 
-        def filter(self, **kwargs):
-            assert kwargs == {"target__content_type_id": content_type.id}
-            return _MetadataQuerySet(metadata_log.get("rows", []))
-
     class FakeApps:
         def get_model(self, app_label, model_name):
             mapping = {
-                ("profiles", "Profile"): source_model,
+                ("users", "User"): source_model,
                 ("contenttypes", "ContentType"): SimpleNamespace(objects=ContentTypeManager()),
                 ("baseapp_core", "DocumentId"): SimpleNamespace(objects=DocumentIdManager()),
-                ("baseapp_reports", "ReportableMetadata"): SimpleNamespace(
-                    objects=ReportableMetadataManager()
+                ("baseapp_ratings", "RatableMetadata"): SimpleNamespace(
+                    objects=RatableMetadataManager()
                 ),
             }
             return mapping[(app_label, model_name)]
@@ -133,27 +132,20 @@ def _make_apps(*, source_model, content_type, get_or_create_log, metadata_log):
     return FakeApps()
 
 
-class _MetadataQuerySet:
-    def __init__(self, rows):
-        self._rows = rows
-
-    def select_related(self, *_args):
-        return self
-
-    def __iter__(self):
-        return iter(self._rows)
-
-
-def test_migrate_legacy_reports_count_to_metadata_creates_metadata_rows():
+def test_migrate_legacy_ratings_to_metadata_creates_metadata_rows():
     source_rows = [
-        _ModelRowFactory(pk=1, reports_count={"total": 3, "spam": 2, "scam": 1}),
-        _ModelRowFactory(pk=2, reports_count={"total": 1, "spam": 0, "scam": 1}),
+        _ModelRowFactory(
+            pk=1, ratings_count=3, ratings_sum=12, ratings_average=4.0, is_ratings_enabled=False
+        ),
+        _ModelRowFactory(
+            pk=2, ratings_count=1, ratings_sum=5, ratings_average=5.0, is_ratings_enabled=True
+        ),
     ]
     source_model = SimpleNamespace(
-        _meta=SimpleNamespace(app_label="profiles", model_name="profile"),
+        _meta=SimpleNamespace(app_label="users", model_name="user"),
         objects=_SourceManager(source_rows),
     )
-    ct = _ContentTypeRowFactory(id=77, app_label="profiles", model="profile")
+    ct = _ContentTypeRowFactory(id=77, app_label="users", model="user")
     created_docs = []
     metadata_updates = []
 
@@ -164,11 +156,11 @@ def test_migrate_legacy_reports_count_to_metadata_creates_metadata_rows():
         metadata_log=metadata_updates,
     )
 
-    migrate_legacy_reports_count_to_metadata(
+    migrate_legacy_ratings_to_metadata(
         apps,
         schema_editor=None,
-        source_app_label="profiles",
-        source_model_name="Profile",
+        source_app_label="users",
+        source_model_name="User",
     )
 
     assert created_docs == [
@@ -178,23 +170,33 @@ def test_migrate_legacy_reports_count_to_metadata_creates_metadata_rows():
     assert metadata_updates == [
         {
             "target_id": 1001,
-            "defaults": {"reports_count": {"total": 3, "spam": 2, "scam": 1}},
+            "defaults": {
+                "ratings_count": 3,
+                "ratings_sum": 12,
+                "ratings_average": 4.0,
+                "is_ratings_enabled": False,
+            },
         },
         {
             "target_id": 1002,
-            "defaults": {"reports_count": {"total": 1, "spam": 0, "scam": 1}},
+            "defaults": {
+                "ratings_count": 1,
+                "ratings_sum": 5,
+                "ratings_average": 5.0,
+                "is_ratings_enabled": True,
+            },
         },
     ]
 
 
-def test_migrate_legacy_reports_count_no_op_when_no_source_rows():
-    """Empty source table → helper bails before touching ContentType (which may not exist
-    yet on a fresh test DB; this is the regression we patched in the helper)."""
+def test_migrate_legacy_ratings_no_op_when_no_source_rows():
+    """Empty source table → helper bails before touching ContentType (which may not
+    exist yet on a fresh test DB; this is the regression we patched in the helper)."""
     source_model = SimpleNamespace(
-        _meta=SimpleNamespace(app_label="profiles", model_name="profile"),
+        _meta=SimpleNamespace(app_label="users", model_name="user"),
         objects=_SourceManager([]),
     )
-    ct = _ContentTypeRowFactory(id=77, app_label="profiles", model="profile")
+    ct = _ContentTypeRowFactory(id=77, app_label="users", model="user")
     created_docs = []
     metadata_updates = []
 
@@ -205,26 +207,29 @@ def test_migrate_legacy_reports_count_no_op_when_no_source_rows():
         metadata_log=metadata_updates,
     )
 
-    migrate_legacy_reports_count_to_metadata(
+    migrate_legacy_ratings_to_metadata(
         apps,
         schema_editor=None,
-        source_app_label="profiles",
-        source_model_name="Profile",
+        source_app_label="users",
+        source_model_name="User",
     )
 
     assert created_docs == []
     assert metadata_updates == []
 
 
-def test_reverse_migrate_legacy_reports_count_restores_source_field():
+def test_reverse_migrate_legacy_ratings_restores_source_fields():
     source_model = SimpleNamespace(
-        _meta=SimpleNamespace(app_label="profiles", model_name="profile"),
+        _meta=SimpleNamespace(app_label="users", model_name="user"),
         objects=_SourceManager([]),
     )
-    ct = _ContentTypeRowFactory(id=77, app_label="profiles", model="profile")
+    ct = _ContentTypeRowFactory(id=77, app_label="users", model="user")
     metadata_rows = [
         SimpleNamespace(
-            reports_count={"total": 5, "spam": 5},
+            ratings_count=7,
+            ratings_sum=21,
+            ratings_average=3.0,
+            is_ratings_enabled=False,
             target=SimpleNamespace(object_id=10),
         )
     ]
@@ -241,7 +246,7 @@ def test_reverse_migrate_legacy_reports_count_restores_source_field():
 
     class ContentTypeManager:
         def filter(self, **kwargs):
-            assert kwargs == {"app_label": "profiles", "model": "profile"}
+            assert kwargs == {"app_label": "users", "model": "user"}
 
             class _Filtered:
                 def first(_self):
@@ -257,29 +262,35 @@ def test_reverse_migrate_legacy_reports_count_restores_source_field():
     class FakeApps:
         def get_model(self, app_label, model_name):
             mapping = {
-                ("profiles", "Profile"): source_model,
+                ("users", "User"): source_model,
                 ("contenttypes", "ContentType"): SimpleNamespace(objects=ContentTypeManager()),
-                ("baseapp_reports", "ReportableMetadata"): SimpleNamespace(
-                    objects=MetadataManager()
-                ),
+                ("baseapp_ratings", "RatableMetadata"): SimpleNamespace(objects=MetadataManager()),
             }
             return mapping[(app_label, model_name)]
 
-    reverse_migrate_legacy_reports_count_from_metadata(
+    reverse_migrate_legacy_ratings_from_metadata(
         FakeApps(),
         schema_editor=None,
-        source_app_label="profiles",
-        source_model_name="Profile",
+        source_app_label="users",
+        source_model_name="User",
     )
 
-    assert source_model.objects.update_log == [(10, {"reports_count": {"total": 5, "spam": 5}})]
+    assert source_model.objects.update_log == [
+        (
+            10,
+            {
+                "ratings_count": 7,
+                "ratings_sum": 21,
+                "ratings_average": 3.0,
+                "is_ratings_enabled": False,
+            },
+        )
+    ]
 
 
-def test_reverse_migrate_legacy_reports_count_no_op_when_content_type_missing():
-    """Reverse on a fresh DB where the source app's ContentType row does not exist yet
-    must not raise — it's the symmetric edge case to `test_migrate_..._no_op`."""
+def test_reverse_migrate_legacy_ratings_no_op_when_content_type_missing():
     source_model = SimpleNamespace(
-        _meta=SimpleNamespace(app_label="profiles", model_name="profile"),
+        _meta=SimpleNamespace(app_label="users", model_name="user"),
         objects=_SourceManager([]),
     )
 
@@ -298,19 +309,17 @@ def test_reverse_migrate_legacy_reports_count_no_op_when_content_type_missing():
     class FakeApps:
         def get_model(self, app_label, model_name):
             mapping = {
-                ("profiles", "Profile"): source_model,
+                ("users", "User"): source_model,
                 ("contenttypes", "ContentType"): SimpleNamespace(objects=ContentTypeManager()),
-                ("baseapp_reports", "ReportableMetadata"): SimpleNamespace(
-                    objects=MetadataManager()
-                ),
+                ("baseapp_ratings", "RatableMetadata"): SimpleNamespace(objects=MetadataManager()),
             }
             return mapping[(app_label, model_name)]
 
-    reverse_migrate_legacy_reports_count_from_metadata(
+    reverse_migrate_legacy_ratings_from_metadata(
         FakeApps(),
         schema_editor=None,
-        source_app_label="profiles",
-        source_model_name="Profile",
+        source_app_label="users",
+        source_model_name="User",
     )
 
     assert source_model.objects.update_log == []

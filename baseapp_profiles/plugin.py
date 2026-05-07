@@ -37,6 +37,7 @@ class ProfilesPlugin(BaseAppPlugin):
             optional_packages=[
                 "baseapp_blocks",
                 "baseapp_follows",
+                "baseapp_reports",
                 "baseapp_comments",
                 "baseapp_pages",
                 "baseapp.activity_log",
