@@ -6,7 +6,7 @@ BaseApp Backend is a monorepo of reusable Django packages (auth, profiles, comme
 
 **Core stack:** Django + DRF + Graphene Django (GraphQL) + Celery + PostgreSQL + Redis.
 
-**Dual API surface:** Some features exposes both a REST API (DRF) and a GraphQL API (Graphene Django with Relay). When adding features, defaul to GraphQL API, unless scoped otherwise.
+**Dual API surface:** Some features expose both a REST API (DRF) and a GraphQL API (Graphene Django with Relay). When adding features, default to GraphQL API, unless scoped otherwise.
 
 **Making ObjectTypes overridable:** Models should expose `get_graphql_object_type()` so consuming projects can swap the ObjectType. Use `get_object_type_for_model()` throughout package code instead of importing the ObjectType directly.
 
@@ -43,7 +43,7 @@ BaseApp Backend is a monorepo of reusable Django packages (auth, profiles, comme
 - Use `DjangoFilterConnectionField` + `FilterSet` for filterable list queries. `filters.py` can be shared with  DRF as well.
 - Document queries and mutations with docstrings and `description=` / `deprecated_reason=` fields.
 
-**Formatting:** Black with `line-length=100`, isort with Django profile.
+**Formatting:** Black with `line-length=100`, isort with Black profile.
 
 ## Test Structure
 

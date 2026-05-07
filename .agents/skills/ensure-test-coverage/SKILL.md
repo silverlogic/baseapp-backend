@@ -53,7 +53,7 @@ docker compose <run> web pytest --cov --reuse-db                   # faster re-r
 2. **Never mark a task complete if coverage < 75%.**
 3. **Prefer real behavior over mocks.** Mock only external I/O (HTTP, S3, email) — never the DB.
 4. **Bug fixes → regression test first.** Write a failing test reproducing the bug, then fix it.
-5. **Follow project test layout.** `apps/<app>/tests/integration/` or `apps/<app>/tests/unit/`. Use `factories.py` and `fixtures.py`.
+5. **Follow project test layout.** Place tests under `baseapp_<package>/tests/`, using `integration/` and `unit/` when working on packages or `apps/<app>/tests/integration/` or `apps/<app>/tests/unit/` when working on a project or template. Use `factories.py` and `fixtures.py`.
 6. **Both API surfaces need coverage.** REST + GraphQL features both need tests.
 7. **Don't over-test boilerplate.** Skip `__str__`, auto-generated migrations. Focus on logic, permissions, and edge cases.
 

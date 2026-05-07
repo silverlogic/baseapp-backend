@@ -56,9 +56,12 @@ docker compose up web      # web only
 docker compose <run> web pytest
 docker compose <run> web pytest apps/<app>/tests/
 docker compose <run> web pytest apps/<app>/tests/test_file.py::test_function
+docker compose <run> web pytest baseapp_<package>/tests/
+docker compose <run> web pytest baseapp_<package>/tests/test_file.py::test_function
 docker compose <run> web pytest -k "some_name"
 docker compose <run> web pytest --reuse-db
 docker compose <run> web pytest --cov="apps" --junitxml=test-reports/junit.xml tests
+docker compose <run> web pytest --cov="baseapp_<package>" --junitxml=test-reports/junit.xml baseapp_<package>/tests
 ```
 
 ### Migrations
