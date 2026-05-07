@@ -34,10 +34,10 @@ All commands must run inside the `web` Docker service. Never run Python, pytest,
 docker compose ps --status running --services | grep -qx web
 ```
 
-- Running → `docker compose exec web <command>`
-- Stopped → `docker compose run --rm web <command>`
+- Running → use `exec` → `docker compose exec web <command>`
+- Stopped → use `run --rm` → `docker compose run --rm web <command>`
 
-In all patterns below, `<run>` means whichever form applies.
+In all patterns below, `<run>` is the subcommand form (`exec` or `run --rm`); the service name `web` is written explicitly in each template.
 
 ---
 

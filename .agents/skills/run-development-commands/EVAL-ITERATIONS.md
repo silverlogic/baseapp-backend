@@ -14,7 +14,7 @@ Content evals measure whether the loaded skill improves output quality. Each run
 
 Open a fresh Claude Code session (**set the model `Sonnet 4.6` and `medium` effort**) and paste this prompt:
 
-```
+```text
 Run run-development-commands skill evals following the "Content evals" section of .agents/skills/run-development-commands/EVAL-ITERATIONS.md.
 
 - Iteration: N (next number after existing iterations)
@@ -29,7 +29,7 @@ Follow steps 1-6 exactly as documented. Skip step 7 (viewer).
 ### Key details
 
 - **Skill path**: `.agents/skills/run-development-commands/`
-- **Evals**: `run-development-commands/evals/evals.json`
+- **Evals**: `.agents/skills/run-development-commands/evals/evals.json`
 - **Workspace**: `.agents/skills/run-development-commands-workspace/`
 - **Baseline**: `without_skill` (no skill — tests what the model knows on its own)
 - **Model**: Use `model: "sonnet"` on Agent calls for cost-effective runs
@@ -44,9 +44,9 @@ Both save their response to `outputs/response.md` in their respective directorie
 
 ### Directory structure
 
-```
+```text
 run-development-commands-workspace/
-├── EVAL-ITERATIONS.md             ← iteration history (committed in run-development-commands/)
+├── EVAL-ITERATIONS.md             ← iteration history (committed in .agents/skills/run-development-commands/)
 └── iteration-N/
     ├── eval-1-run-tests/
     │   ├── eval_metadata.json         ← prompt + assertions for this eval
