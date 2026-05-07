@@ -69,15 +69,20 @@ def migrate_legacy_commentable_fields_to_metadata(
         schema_editor, SourceModel, ContentType, DocumentId, CommentableMetadata
     )
 
-    source_ct = ct_qs.get(
-        app_label=SourceModel._meta.app_label,
-        model=SourceModel._meta.model_name,
-    )
-
     legacy_rows = (
         source_qs.exclude(**{f"{comments_count_field}__isnull": True})
         .exclude(**{f"{is_comments_enabled_field}__isnull": True})
         .only("pk", comments_count_field, is_comments_enabled_field)
+    )
+
+    if not legacy_rows.exists():
+        # Nothing to migrate (fresh DB, e.g. test runner). Bail out before touching
+        # ContentType, which is populated by ``post_migrate`` and may not exist yet.
+        return
+
+    source_ct, _ = ct_qs.get_or_create(
+        app_label=SourceModel._meta.app_label,
+        model=SourceModel._meta.model_name,
     )
 
     for row in legacy_rows:
@@ -112,10 +117,14 @@ def reverse_migrate_legacy_commentable_fields_from_metadata(
         schema_editor, SourceModel, ContentType, CommentableMetadata
     )
 
-    source_ct = ct_qs.get(
+    source_ct = ct_qs.filter(
         app_label=SourceModel._meta.app_label,
         model=SourceModel._meta.model_name,
-    )
+    ).first()
+    if source_ct is None:
+        # No ContentType row for the source model (fresh DB / test runner). Nothing
+        # to restore.
+        return
 
     metadata_rows = metadata_qs.filter(target__content_type_id=source_ct.id).select_related(
         "target"
