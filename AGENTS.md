@@ -49,7 +49,7 @@ BaseApp Backend is a monorepo of reusable Django packages (auth, profiles, comme
 
 Each package follows this layout:
 
-```
+```text
 baseapp_<package>/tests/
 ├── integration/   # DB-dependent tests
 ├── unit/          # pure logic, no I/O
