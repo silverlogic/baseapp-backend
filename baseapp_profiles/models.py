@@ -114,7 +114,7 @@ class AbstractProfile(*inheritances):
             models.Q(profiles_owner=self) | models.Q(profile_members__profile=self)
         ).distinct()
 
-    def generate_url_path(self, increase_path_string=None):
+    def generate_url_path(self, increase_path_string: str | None = None) -> str | None:
         if apps.is_installed("baseapp_pages"):
             from baseapp_pages.models import URLPath
 
