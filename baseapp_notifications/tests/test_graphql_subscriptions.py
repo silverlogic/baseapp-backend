@@ -7,8 +7,7 @@ from .factories import NotificationFactory
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
-SUBSCRIPTION_QUERY = textwrap.dedent(
-    """
+SUBSCRIPTION_QUERY = textwrap.dedent("""
     subscription op_name {
       onNotificationChange {
         createdNotification {
@@ -25,8 +24,7 @@ SUBSCRIPTION_QUERY = textwrap.dedent(
         deletedNotificationId
       }
     }
-    """
-)
+    """)
 
 
 @pytest.mark.asyncio

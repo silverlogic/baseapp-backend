@@ -11,8 +11,7 @@ from baseapp_core.tests.fixtures import DjangoClient
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
-NOTIFICATION_SUBSCRIPTION_QUERY = textwrap.dedent(
-    """
+NOTIFICATION_SUBSCRIPTION_QUERY = textwrap.dedent("""
     subscription op_name {
       onNotificationChange {
         createdNotification {
@@ -27,8 +26,7 @@ NOTIFICATION_SUBSCRIPTION_QUERY = textwrap.dedent(
         }
       }
     }
-    """
-)
+    """)
 
 REACTION_TOGGLE_GRAPHQL = """
     mutation ReactionToggleMutation($input: ReactionToggleInput!) {

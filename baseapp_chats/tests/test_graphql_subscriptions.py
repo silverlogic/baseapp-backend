@@ -39,8 +39,7 @@ async def test_user_recieves_news_message_subscription_event___2(
     sub_id = await client.send(
         msg_type="subscribe",
         payload={
-            "query": textwrap.dedent(
-                """
+            "query": textwrap.dedent("""
                 subscription op_name($roomId: ID!, $profileId: ID!) {
                   chatRoomOnMessage(roomId: $roomId, profileId: $profileId) {
                     message {
@@ -51,8 +50,7 @@ async def test_user_recieves_news_message_subscription_event___2(
                     }
                   }
                 }
-                """
-            ),
+                """),
             "variables": {
                 "roomId": room_relay_id,
                 "profileId": client_profile_id,
@@ -106,8 +104,7 @@ async def test_build_absolute_uri_on_graphql_subscription(
     sub_id = await client.send(
         msg_type="subscribe",
         payload={
-            "query": textwrap.dedent(
-                """
+            "query": textwrap.dedent("""
                 subscription op_name($roomId: ID!, $profileId: ID!) {
                   chatRoomOnMessage(roomId: $roomId, profileId: $profileId) {
                     message {
@@ -121,8 +118,7 @@ async def test_build_absolute_uri_on_graphql_subscription(
                     }
                   }
                 }
-                """
-            ),
+                """),
             "variables": {
                 "roomId": room_relay_id,
                 "profileId": client_profile_id,
@@ -173,8 +169,7 @@ async def test_user_recieves_message_count_update(django_user_client, graphql_ws
     sub_id = await client.send(
         msg_type="subscribe",
         payload={
-            "query": textwrap.dedent(
-                """
+            "query": textwrap.dedent("""
                 subscription op_name($profileId: ID!) {
                   chatRoomOnMessagesCountUpdate(profileId: $profileId) {
                     profile {
@@ -184,8 +179,7 @@ async def test_user_recieves_message_count_update(django_user_client, graphql_ws
                     }
                   }
                 }
-                """
-            ),
+                """),
             "variables": {"profileId": client_profile_id},
             "operationName": "op_name",
         },
@@ -233,8 +227,7 @@ async def test_current_profile_ws_context(django_user_client, graphql_ws_user_cl
     sub_id = await client.send(
         msg_type="subscribe",
         payload={
-            "query": textwrap.dedent(
-                """
+            "query": textwrap.dedent("""
                 subscription op_name($profileId: ID!) {
                   chatRoomOnMessagesCountUpdate(profileId: $profileId) {
                     profile {
@@ -255,8 +248,7 @@ async def test_current_profile_ws_context(django_user_client, graphql_ws_user_cl
                     }
                   }
                 }
-                """
-            ),
+                """),
             "variables": {"profileId": client_profile_id},
             "operationName": "op_name",
         },
