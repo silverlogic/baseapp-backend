@@ -22,7 +22,7 @@ def test_rate_save_creates_metadata_and_increments_count():
     assert metadata is not None
     assert metadata.ratings_count == 1
     assert metadata.ratings_sum == 4
-    assert metadata.ratings_average == 4.0
+    assert metadata.ratings_average == pytest.approx(4.0)
 
 
 def test_rate_save_aggregates_multiple_ratings():
@@ -53,7 +53,7 @@ def test_rate_delete_decrements_count_and_recomputes_average():
     metadata.refresh_from_db()
     assert metadata.ratings_count == 1
     assert metadata.ratings_sum == 5
-    assert metadata.ratings_average == 5.0
+    assert metadata.ratings_average == pytest.approx(5.0)
 
 
 def test_rate_delete_resets_metadata_to_zero_when_no_ratings_left():
@@ -103,7 +103,7 @@ def test_update_ratings_indicators_recomputes_from_existing_rates():
     metadata.refresh_from_db()
     assert metadata.ratings_count == 1
     assert metadata.ratings_sum == 4
-    assert metadata.ratings_average == 4.0
+    assert metadata.ratings_average == pytest.approx(4.0)
 
 
 def test_update_ratings_indicators_no_op_when_target_is_none():
