@@ -17,6 +17,6 @@ class TestURLShortening:
         assert response.status_code == 404
 
     def test_rejects_non_http_scheme(self, client):
-        instance = f.ShortUrlFactory(full_url="ftp://example.com/file.txt")
+        instance = f.ShortUrlFactory(full_url="ftp://example.com/file.txt")  # NOSONAR
         response = client.get(instance.short_url_path)
         assert response.status_code == 400
