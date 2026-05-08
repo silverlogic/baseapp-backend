@@ -1,5 +1,5 @@
 ARG PYTHON_VERSION=3.11
-FROM python:${PYTHON_VERSION}-slim-trixie
+FROM python:${PYTHON_VERSION}-slim-trixie  # NOSONAR - test/CI image, intentionally runs as root
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -30,7 +30,7 @@ RUN apt-get update -qq && \
     ca-certificates \
     apt-transport-https \
     gnupg && \
-    wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub \
+    wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub \  # NOSONAR
       | gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg && \
     echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] https://dl.google.com/linux/chrome/deb/ stable main" \
       > /etc/apt/sources.list.d/google-chrome.list && \

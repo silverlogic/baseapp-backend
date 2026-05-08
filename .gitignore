@@ -41,3 +41,6 @@ dist/
 
 # Skill eval workspaces (raw run output, not committed)
 .agents/skills/*-workspace/
+
+# Claude Code local settings (may contain tokens)
+.claude/settings.local.json

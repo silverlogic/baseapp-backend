@@ -152,7 +152,7 @@ def test_owner_can_update_profile_banner_image(
     )
 
     content = response.json()
-    assert content["data"]["profileUpdate"]["profile"]["bannerImage"]["url"].startswith("http://")
+    assert content["data"]["profileUpdate"]["profile"]["bannerImage"]["url"].startswith("http://")  # NOSONAR
 
 
 def test_owner_can_delete_profile_image(django_user_client, graphql_user_client):
@@ -189,7 +189,7 @@ def test_owner_can_update_profile_banner_image_camel_case(
     )
 
     content = response.json()
-    assert content["data"]["profileUpdate"]["profile"]["bannerImage"]["url"].startswith("http://")
+    assert content["data"]["profileUpdate"]["profile"]["bannerImage"]["url"].startswith("http://")  # NOSONAR
 
 
 def test_superuser_can_update_profile(django_user_client, graphql_user_client):

@@ -65,7 +65,7 @@ class Command(BaseCommand):
                         items=[
                             (
                                 f"Story {i + 1}",
-                                float(randint(100, 1000)) + float(1 / randint(1, 10)),
+                                float(randint(100, 1000)) + float(1 / randint(1, 10)),  # NOSONAR
                             )
                             for i in range(0, 24)
                         ],
@@ -75,7 +75,7 @@ class Command(BaseCommand):
                         items=[
                             (
                                 f"Story {i + 1}",
-                                float(randint(100, 1000)) + float(1 / randint(1, 10)),
+                                float(randint(100, 1000)) + float(1 / randint(1, 10)),  # NOSONAR
                             )
                             for i in range(0, 24)
                         ],
@@ -85,7 +85,7 @@ class Command(BaseCommand):
                         items=[
                             (
                                 f"Story {i + 1}",
-                                float(randint(100, 1000)) + float(1 / randint(1, 10)),
+                                float(randint(100, 1000)) + float(1 / randint(1, 10)),  # NOSONAR
                             )
                             for i in range(0, 24)
                         ],
@@ -95,7 +95,7 @@ class Command(BaseCommand):
                         items=[
                             (
                                 f"Story {i + 1}",
-                                float(randint(100, 1000)) + float(1 / randint(1, 10)),
+                                float(randint(100, 1000)) + float(1 / randint(1, 10)),  # NOSONAR
                             )
                             for i in range(0, 24)
                         ],

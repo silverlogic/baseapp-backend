@@ -71,7 +71,7 @@ class TestResetPassword(ApiMixin):
         return {"email": "john@example.com"}
 
     def test_cant_reset_password_with_bad_token(self, client):
-        data = {"token": "bad", "new_password": "blub"}
+        data = {"token": "bad", "new_password": "blub"}  # NOSONAR
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
 
@@ -88,8 +88,8 @@ class TestResetPassword(ApiMixin):
         token = match.group(1)
         data = {
             "token": token,
-            "new_password": "blub",
-            "confirm_new_password": "blub",
+            "new_password": "blub",  # NOSONAR
+            "confirm_new_password": "blub",  # NOSONAR
         }
         r = client.post(self.reverse(), data)
         h.responseOk(r)
@@ -111,8 +111,8 @@ class TestResetPassword(ApiMixin):
 
         data = {
             "token": token,
-            "new_password": "blub",
-            "confirm_new_password": "blub",
+            "new_password": "blub",  # NOSONAR
+            "confirm_new_password": "blub",  # NOSONAR
         }
         r = client.post(self.reverse(), data)
         h.responseOk(r)
@@ -122,8 +122,8 @@ class TestResetPassword(ApiMixin):
 
         data = {
             "token": token,
-            "new_password": "diffpass",
-            "confirm_new_password": "diffpass",
+            "new_password": "diffpass",  # NOSONAR
+            "confirm_new_password": "diffpass",  # NOSONAR
         }
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
@@ -144,8 +144,8 @@ class TestResetPassword(ApiMixin):
         token = match.group(1)
         data = {
             "token": token,
-            "new_password": "blub",
-            "confirm_new_password": "blub",
+            "new_password": "blub",  # NOSONAR
+            "confirm_new_password": "blub",  # NOSONAR
         }
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)

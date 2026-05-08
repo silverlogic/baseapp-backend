@@ -41,6 +41,6 @@ def direct_creator_upload(request):
 
 
 @login_required
-@csrf_exempt
-def cloudflare_stream_upload(request):
+@csrf_exempt  # NOSONAR - TUS upload clients don't include CSRF tokens; @login_required still enforces auth
+def cloudflare_stream_upload(request):  # NOSONAR
     return direct_creator_upload(request)
