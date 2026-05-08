@@ -34,8 +34,8 @@ def test_generate_download_url_ready_no_download_url(
     content_type, obj = setup_video_ready_no_url
 
     mock_download_video.return_value = {
-        "result": {"default": {"url": "http://new.download.url"}}
-    }  # NOSONAR
+        "result": {"default": {"url": "http://new.download.url"}}  # NOSONAR
+    }
 
     generate_download_url(content_type.pk, obj.pk, "video")
 

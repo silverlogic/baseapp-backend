@@ -839,8 +839,8 @@ def test_user_can_create_group(django_user_client, graphql_user_client, image_dj
     assert content["data"]["chatRoomCreate"]["room"]["node"]["isGroup"]
     assert len(content["data"]["chatRoomCreate"]["room"]["node"]["participants"]["edges"]) == 3
     assert content["data"]["chatRoomCreate"]["room"]["node"]["image"]["url"].startswith(
-        "http://"
-    )  # NOSONAR
+        "http://"  # NOSONAR
+    )
 
 
 def test_user_cant_create_group_without_title(django_user_client, graphql_user_client):
@@ -1096,8 +1096,8 @@ def test_admin_user_can_update_group_image(
     )
     content = response.json()
     assert content["data"]["chatRoomUpdate"]["room"]["node"]["image"]["url"].startswith(
-        "http://"
-    )  # NOSONAR
+        "http://"  # NOSONAR
+    )
 
 
 def test_admin_user_can_delete_group_image(
