@@ -1,12 +1,12 @@
 import graphene
 import swapper
 from django.apps import apps
-from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from graphql_relay.connection.arrayconnection import offset_to_cursor
 
 from baseapp_core.graphql import RelayMutation, get_obj_from_relay_id, login_required
+from baseapp_core.models import DocumentId
 from baseapp_core.plugins import shared_services
 
 from .object_types import ReactionsInterface, ReactionTypesEnum
@@ -30,7 +30,7 @@ class ReactionToggle(RelayMutation):
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
-        target_content_type = ContentType.objects.get_for_model(target)
+        target_document = DocumentId.get_or_create_for_object(target)
         reaction_type = input["reaction_type"]
         activity_name = "baseapp_reactions.add_reaction"
 
@@ -58,15 +58,13 @@ class ReactionToggle(RelayMutation):
 
             reaction, created = Reaction.objects.get_or_create(
                 profile=profile,
-                target_object_id=target.pk,
-                target_content_type=target_content_type,
+                target_document=target_document,
                 defaults={"reaction_type": reaction_type, "user": info.context.user},
             )
         else:
             reaction, created = Reaction.objects.get_or_create(
                 user=info.context.user,
-                target_object_id=target.pk,
-                target_content_type=target_content_type,
+                target_document=target_document,
                 defaults={"reaction_type": reaction_type},
             )
         if not created:

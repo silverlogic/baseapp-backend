@@ -14,7 +14,8 @@ Comment = swapper.load_model("baseapp_comments", "Comment")
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
-SUBSCRIPTION_QUERY = textwrap.dedent("""
+SUBSCRIPTION_QUERY = textwrap.dedent(
+    """
     subscription op_name($targetObjectId: ID) {
       onCommentChange(targetObjectId: $targetObjectId) {
         createdComment {
@@ -31,7 +32,8 @@ SUBSCRIPTION_QUERY = textwrap.dedent("""
         deletedCommentId
       }
     }
-    """)
+    """
+)
 
 
 @pytest.mark.asyncio

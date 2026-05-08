@@ -11,8 +11,6 @@ from baseapp_chats.graphql.subscriptions import ChatsSubscriptions
 from baseapp_core.graphql import DeleteNode
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.plugins import plugin_registry
-from baseapp_reactions.graphql.mutations import ReactionsMutations
-from baseapp_reactions.graphql.queries import ReactionsQueries
 from testproject.users.graphql.queries import UsersQueries
 
 queries = plugin_registry.get_all_graphql_queries()
@@ -23,7 +21,6 @@ subscriptions = plugin_registry.get_all_graphql_subscriptions()
 class Query(
     graphene.ObjectType,
     UsersQueries,
-    ReactionsQueries,
     ChatsQueries,
     ContentFeedQueries,
     *queries,
@@ -34,7 +31,6 @@ class Query(
 
 class Mutation(
     graphene.ObjectType,
-    ReactionsMutations,
     BlocksMutations,
     ChatsMutations,
     ContentFeedMutations,

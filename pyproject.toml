@@ -182,6 +182,7 @@ baseapp_comments = "baseapp_comments.plugin:CommentsPlugin"
 baseapp_follows = "baseapp_follows.plugin:FollowsPlugin"
 baseapp_reports = "baseapp_reports.plugin:ReportsPlugin"
 baseapp_ratings = "baseapp_ratings.plugin:RatingsPlugin"
+baseapp_reactions = "baseapp_reactions.plugin:ReactionsPlugin"
 
 [tool.black]
 line-length = 100

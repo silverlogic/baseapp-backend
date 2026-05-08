@@ -129,7 +129,7 @@ AUTHENTICATION_BACKENDS = [
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_profiles"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_comments"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp.activity_log"),
-    "baseapp_reactions.permissions.ReactionsPermissionsBackend",
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_reactions"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_reports"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_ratings"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_follows"),
@@ -195,6 +195,7 @@ BASEAPP_PROFILES_PROFILEUSERROLE_MODEL = "profiles.ProfileUserRole"
 
 # Reactions
 BASEAPP_REACTIONS_REACTION_MODEL = "reactions.Reaction"
+BASEAPP_REACTIONS_REACTABLEMETADATA_MODEL = "reactions.ReactableMetadata"
 BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS = False
 
 # Comments

@@ -202,7 +202,8 @@ def insert_document_id_trigger():
         level=pgtrigger.Row,
         when=pgtrigger.After,
         operation=pgtrigger.Insert,
-        func=DocumentIdFunc("""
+        func=DocumentIdFunc(
+            """
             INSERT INTO {document_id_table} (public_id, content_type_id, object_id, created, modified)
             VALUES (
                 gen_random_uuid(),
@@ -213,7 +214,8 @@ def insert_document_id_trigger():
             )
             ON CONFLICT (content_type_id, object_id) DO NOTHING;
             RETURN NULL;
-            """),
+            """
+        ),
     )
 
 
@@ -226,13 +228,15 @@ def delete_document_id_trigger():
         level=pgtrigger.Row,
         when=pgtrigger.After,
         operation=pgtrigger.Delete,
-        func=DocumentIdFunc("""
+        func=DocumentIdFunc(
+            """
             DELETE FROM {document_id_table}
             WHERE
                 content_type_id = (SELECT id FROM {content_type_table} WHERE app_label = '{app_label}' AND model = '{model_name}')
                 AND object_id = OLD.{pk};
             RETURN NULL;
-            """),
+            """
+        ),
     )
 
 

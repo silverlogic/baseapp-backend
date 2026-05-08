@@ -66,12 +66,6 @@ if apps.is_installed("baseapp_profiles"):
     comment_inheritances.append(ProfileMixin)
 
 
-if apps.is_installed("baseapp_reactions"):
-    from baseapp_reactions.models import ReactableModel
-
-    comment_inheritances.append(ReactableModel)
-
-
 class AbstractComment(
     *comment_inheritances,
     DocumentIdMixin,
@@ -325,5 +319,5 @@ pghistory_register_default_track(
     pghistory.InsertEvent(),
     pghistory.UpdateEvent(),
     pghistory.DeleteEvent(),
-    exclude=["reactions_count", "modified"],
+    exclude=["modified"],
 )

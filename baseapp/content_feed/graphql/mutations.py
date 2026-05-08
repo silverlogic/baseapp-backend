@@ -8,6 +8,7 @@ from graphene_django.types import ErrorType
 from rest_framework import serializers
 
 from baseapp_core.graphql import RelayMutation, login_required
+from baseapp_core.plugins import shared_services
 
 ContentPost = swapper.load_model(
     "baseapp_content_feed", "ContentPost", required=False, require_ready=False
@@ -20,7 +21,7 @@ ContentPostObjectType = ContentPost.get_graphql_object_type()
 class ContentPostForm(forms.ModelForm):
     class Meta:
         model = ContentPost
-        fields = ("content", "is_reactions_enabled")
+        fields = ("content",)
 
 
 class ImageSerializer(serializers.Serializer):
@@ -47,6 +48,9 @@ class ContentPostCreate(RelayMutation):
                 if apps.is_installed("baseapp_profiles") and hasattr(instance, "profile"):
                     instance.profile = info.context.user.current_profile
                 instance.save()
+
+                if (service := shared_services.get("reactable_metadata")) is not None:
+                    service.set_is_reactions_enabled(instance, input["is_reactions_enabled"])
 
                 created_images_list = []
 

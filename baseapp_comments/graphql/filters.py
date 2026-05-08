@@ -2,6 +2,8 @@ import django_filters
 import swapper
 from django.db.models import Q
 
+from baseapp_core.plugins import apply_if_installed
+
 Comment = swapper.load_model("baseapp_comments", "Comment")
 
 
@@ -12,8 +14,14 @@ class CommentFilter(django_filters.FilterSet):
         fields=(
             ("created", "created"),
             ("is_pinned", "is_pinned"),
-            ("reactions_count__total", "reactions_count_total"),
-            # replies_count_total is annotated in BaseCommentObjectType.pre_optimization_hook
+            # `reactions_count_total` is annotated in `BaseCommentObjectType.pre_optimization_hook`,
+            # if `baseapp_reactions` is installed.
+            *apply_if_installed(
+                "baseapp_reactions",
+                [("reactions_count_total", "reactions_count_total")],
+                [],
+            ),
+            # `replies_count_total` is annotated in `BaseCommentObjectType.pre_optimization_hook`
             ("replies_count_total", "replies_count_total"),
         )
     )
