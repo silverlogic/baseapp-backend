@@ -292,9 +292,6 @@ def _alias_tracking_apps(*, source_rows, ct, source_meta=("pages", "page")):
             self.created.append(kwargs)
             return doc, True
 
-        def filter(self, **kwargs):
-            return _LegacyQuerySet([])  # empty; reverse path doesn't use this fixture
-
     class MetadataManager(_AliasManager):
         def __init__(self):
             super().__init__()
