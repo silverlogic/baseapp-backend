@@ -106,7 +106,7 @@ class Command(BaseCommand):
         with render_template_to_pdf(
             source="pdfs/render-template-to-pdf-example.html", context=context
         ) as pdf_file_path:
-            output_file_path = destination.joinpath(pdf_file_path.name)
+            output_file_path = destination.joinpath(pdf_file_path.name)  # NOSONAR - admin management command, destination validated as a directory above
             if output_file_path.exists():
                 output_file_path.unlink()
             output_file_path.write_bytes(pdf_file_path.read_bytes())

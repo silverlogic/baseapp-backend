@@ -46,11 +46,10 @@ class BaseGraphqlWsAPIKeyAuthenticatedConsumer(channels_graphql_ws.GraphqlWsCons
 
             if api_key is None:
                 user = None
-
-            if api_key.is_expired:
+            elif api_key.is_expired:
                 user = None
-
-            user = api_key.user
+            else:
+                user = api_key.user
 
         if user and user.is_active:
             self.scope["user"] = user

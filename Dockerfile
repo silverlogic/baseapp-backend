@@ -31,7 +31,7 @@ RUN apt-get update -qq && \
     ca-certificates \
     apt-transport-https \
     gnupg && \
-    wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub \
+    wget -q --max-redirect=0 -O - https://dl-ssl.google.com/linux/linux_signing_key.pub \
       | gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg && \
     echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] https://dl.google.com/linux/chrome/deb/ stable main" \
       > /etc/apt/sources.list.d/google-chrome.list && \
@@ -50,7 +50,7 @@ RUN git config --global --add safe.directory /usr/src/app
 # Install uv and sync dependencies (all extras + dev for tests)
 COPY --from=ghcr.io/astral-sh/uv:0.10.9 /uv /uvx /bin/
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --python "${PYTHON_VERSION}" --frozen --no-install-project --no-editable --group dev
+    uv sync --python "${PYTHON_VERSION}" --frozen --no-install-project --no-editable --group dev --no-build
 
 EXPOSE 8000
 CMD ["sleep", "infinity"]

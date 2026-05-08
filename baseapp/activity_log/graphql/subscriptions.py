@@ -42,7 +42,6 @@ class OnNewActivityLogMessage(channels_graphql_ws.Subscription):
             group=room_id,
             payload={"message": message},
         )
-        OnNewActivityLogMessage.new_message(message=message)
 
 
 class ActivityLogSubscriptions:

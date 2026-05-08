@@ -88,7 +88,7 @@ class GraphqlWsJWTAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
         self._auth = RestJWTAuthentication()
         self._exceptions = (AuthenticationFailed, InvalidToken, TokenError)
 
-        return super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @database_sync_to_async
     def get_jwt_user_instance(self, token_key):

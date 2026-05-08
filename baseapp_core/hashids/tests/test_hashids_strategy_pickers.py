@@ -268,13 +268,9 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
         mock_info = MagicMock()
         mock_only_type = MagicMock()
 
-        with pytest.raises(Exception) as e:
+        with pytest.raises(Exception):
             graphql_get_node_from_global_id_using_strategy(
                 mock_info, str(dummy_instance.pk), mock_only_type
-            )
-            assert (
-                f"{dummy_instance.__class__.__name__} is not compatible with the PK strategy"
-                in str(e.value)
             )
 
     def test_users_legacy_with_pk_model_with_pk_strategy(self):

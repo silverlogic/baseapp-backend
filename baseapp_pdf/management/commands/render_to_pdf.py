@@ -38,7 +38,7 @@ class Command(BaseCommand):
 
     def render_to_pdf(self, source: str | Path, destination: Path):
         with render_to_pdf(source=source) as pdf_file_path:
-            output_file_path = destination.joinpath(pdf_file_path.name)
+            output_file_path = destination.joinpath(pdf_file_path.name)  # NOSONAR - admin management command, destination validated as a directory above
             if output_file_path.exists():
                 output_file_path.unlink()
             output_file_path.write_bytes(pdf_file_path.read_bytes())
