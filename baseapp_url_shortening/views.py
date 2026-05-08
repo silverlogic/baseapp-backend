@@ -8,6 +8,8 @@ from baseapp_url_shortening.models import ShortUrl
 
 @csrf_exempt  # NOSONAR - public GET redirect, no state mutation, CSRF not applicable
 @require_GET
-def redirect_full_url(request: HttpRequest, short_code: str = "") -> HttpResponseRedirect:  # NOSONAR
+def redirect_full_url(
+    request: HttpRequest, short_code: str = ""
+) -> HttpResponseRedirect:  # NOSONAR
     short_url_object = get_object_or_404(ShortUrl, short_code=short_code)
     return redirect(short_url_object.full_url)
