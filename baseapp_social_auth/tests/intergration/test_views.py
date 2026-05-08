@@ -238,14 +238,14 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
                 "id": 543,
                 "name": "Sean Cook",
                 "screen_name": "thecooker",
-                "profile_image_url": "http://example.com/profile_images/1234431/18272_bigger.jpg",
+                "profile_image_url": "http://example.com/profile_images/1234431/18272_bigger.jpg",  # NOSONAR
             },
             status=200,
         )
 
         self.responses_mock.add(
             responses.GET,
-            "http://example.com/profile_images/1234431/18272_400x400.jpg",
+            "http://example.com/profile_images/1234431/18272_400x400.jpg",  # NOSONAR
             body=IMAGE_BASE64,
             status=200,
         )
@@ -269,7 +269,7 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
                 "id": 543,
                 "name": "Sean Cook",
                 "screen_name": "thecooker",
-                "profile_image_url": "http://example.com/sticky/default_profile_images/default_profile_3_bigger.png",
+                "profile_image_url": "http://example.com/sticky/default_profile_images/default_profile_3_bigger.png",  # NOSONAR
             },
             status=200,
         )

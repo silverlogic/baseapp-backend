@@ -1,6 +1,6 @@
 import logging
-import random
 import re
+import secrets
 import string
 
 logger = logging.getLogger(__name__)
@@ -114,7 +114,7 @@ class AbstractProfile(*inheritances):
             models.Q(profiles_owner=self) | models.Q(profile_members__profile=self)
         ).distinct()
 
-    def generate_url_path(self, increase_path_string=None):
+    def generate_url_path(self, increase_path_string: str | None = None) -> str | None:
         if apps.is_installed("baseapp_pages"):
             from baseapp_pages.models import URLPath
 
@@ -144,7 +144,11 @@ class AbstractProfile(*inheritances):
             # that changes, we should add a check here.
             name = name.split("@")[0]
             if len(name) < 8:
-                path_string = "/" + name + "".join(random.choices(string.digits, k=8 - len(name)))
+                path_string = (
+                    "/"
+                    + name
+                    + "".join(secrets.choice(string.digits) for _ in range(8 - len(name)))
+                )
             else:
                 path_string = f"/{name}"
             if URLPath.objects.filter(path=path_string).exists():

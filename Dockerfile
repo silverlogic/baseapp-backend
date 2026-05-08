@@ -1,4 +1,5 @@
 ARG PYTHON_VERSION=3.11
+# NOSONAR - test/CI image, intentionally runs as root
 FROM python:${PYTHON_VERSION}-slim-trixie
 
 ENV DEBIAN_FRONTEND=noninteractive

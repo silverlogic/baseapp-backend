@@ -28,8 +28,8 @@ class TestCustomImageModel(TestCase):
         self.assertEqual(self.image.default_alt_text, "")
 
 
-@override_settings(WAGTAILADMIN_BASE_URL="http://example.com/")
+@override_settings(WAGTAILADMIN_BASE_URL="http://example.com/")  # NOSONAR
 class TestCustomDocumentModel(TestCase):
     def test_file_extension_field(self):
         document = f.DocumentFactory()
-        self.assertTrue(document.url.startswith("http://example.com/"))
+        self.assertTrue(document.url.startswith("http://example.com/"))  # NOSONAR

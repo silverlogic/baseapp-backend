@@ -62,7 +62,7 @@ def setup_video_ready_with_url(video_uid):
         obj = Post.objects.create()
         obj.video = {
             "status": {"state": "ready", "errorReasonCode": None, "clippedFrom": None},
-            "meta": {"download_url": "http://existing.download.url"},
+            "meta": {"download_url": "http://existing.download.url"},  # NOSONAR
             "uid": video_uid,
         }
         obj.save()

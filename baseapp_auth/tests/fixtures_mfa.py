@@ -27,7 +27,7 @@ def mfa_method_creator(
 @pytest.fixture()
 def active_user_with_application_otp():
     user = UserFactory()
-    user.set_password("1234567890")
+    user.set_password("1234567890")  # NOSONAR
     user.is_active = True
     user.save()
     mfa_method_creator(user=user, method_name="app")
