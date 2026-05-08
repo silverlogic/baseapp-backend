@@ -15,3 +15,8 @@ class TestURLShortening:
     def test_redirect_nonexistent_short_code(self, client):
         response = client.get("/v1/c/invalid_code")
         assert response.status_code == 404
+
+    def test_rejects_non_http_scheme(self, client):
+        instance = f.ShortUrlFactory(full_url="ftp://example.com/file.txt")
+        response = client.get(instance.short_url_path)
+        assert response.status_code == 400
