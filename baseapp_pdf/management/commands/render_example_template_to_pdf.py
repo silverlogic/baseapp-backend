@@ -106,10 +106,10 @@ class Command(BaseCommand):
         with render_template_to_pdf(
             source="pdfs/render-template-to-pdf-example.html", context=context
         ) as pdf_file_path:
-            output_file_path = destination.joinpath(pdf_file_path.name)  # NOSONAR - admin management command, destination validated as a directory above
+            output_file_path = destination.joinpath(pdf_file_path.name)
             if output_file_path.exists():
                 output_file_path.unlink()
-            output_file_path.write_bytes(pdf_file_path.read_bytes())
+            output_file_path.write_bytes(pdf_file_path.read_bytes())  # NOSONAR - admin management command, destination validated as a directory above
             size_mb = output_file_path.stat().st_size / (1024 * 1024)
             self.stdout.write(
                 self.style.SUCCESS(f"PDF generated at {output_file_path} size:{size_mb:.2f} MB")

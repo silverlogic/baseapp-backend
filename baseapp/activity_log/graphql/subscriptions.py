@@ -37,7 +37,7 @@ class OnNewActivityLogMessage(channels_graphql_ws.Subscription):
         )
 
     @classmethod
-    def new_message(cls, message, room_id):
+    def new_message(cls, message, room_id):  # NOSONAR - calls parent class broadcast(), not recursive
         cls.broadcast(
             group=room_id,
             payload={"message": message},
