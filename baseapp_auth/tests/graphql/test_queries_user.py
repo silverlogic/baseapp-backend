@@ -143,19 +143,26 @@ def test_overcomplex_queries_are_not_executed(graphql_client_with_queries):
 @override_config(ENABLE_PUBLIC_ID_LOGIC=False)
 def test_anon_can_query_users_list_with_optimized_query(graphql_client_with_queries):
     UserFactory.create_batch(10)
+    ContentType.objects.clear_cache()
+
     response, queries = graphql_client_with_queries(QUERY_USERS_LIST)
     content = response.json()
 
-    assert queries.count == 4
+    assert queries.count == 5
     assert len(content["data"]["users"]["edges"]) == 10
 
-    # With optimizer queries are expected to be 4 and retrieving just the queried fields.
-    # The first is a cold-cache ContentType lookup fired by AbstractUserObjectType.pre_optimization_hook
-    # (ReactableMetadataService.annotate_queryset embeds the User ct_id in inline Subqueries).
-    # SELECT "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "django_content_type" WHERE ("django_content_type"."app_label" = users AND "django_content_type"."model" = user) LIMIT 21
-    # SELECT "users_user"."id", "users_user"."profile_id", "users_user"."first_name", "users_user"."last_name", ("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AS "password_expiry_date", (("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AT TIME ZONE UTC)::date <= 2025-02-28 AS "is_password_expired", "profiles_profile"."id", "profiles_profile"."name" FROM "users_user" LEFT OUTER JOIN "profiles_profile" ON ("users_user"."profile_id" = "profiles_profile"."id") WHERE "users_user"."is_active"
-    # SELECT COUNT(*) AS "__count" FROM "users_user" WHERE "users_user"."is_active"
-    # SELECT "users_user"."id", "users_user"."profile_id", "users_user"."first_name", "users_user"."last_name", ("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AS "password_expiry_date", (("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AT TIME ZONE UTC)::date <= 2025-02-28 AS "is_password_expired", "profiles_profile"."id", "profiles_profile"."name" FROM "users_user" LEFT OUTER JOIN "profiles_profile" ON ("users_user"."profile_id" = "profiles_profile"."id") WHERE "users_user"."is_active" LIMIT 10
+    # With optimizer queries are expected to be 5:
+    # 1. ContentType lookup for users.user (cold-cache; fired by
+    #    AbstractUserObjectType.pre_optimization_hook to embed the User ct_id in
+    #    inline RatableMetadata Subqueries on the user SELECT).
+    # 2. ContentType lookup for profiles.profile (cold-cache; the user SELECT joins
+    #    profiles_profile via profile_id, so the optimizer walks into
+    #    ProfileObjectType.pre_optimization_hook which fires its own annotate_queryset
+    #    calls for the profile half).
+    # 3. SELECT users_user with _ratable_* Subqueries inlined for RatingsInterface +
+    #    LEFT JOIN profiles_profile.
+    # 4. SELECT COUNT(*) for pagination.
+    # 5. Same as #3 with LIMIT 10 for the returned page slice.
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
