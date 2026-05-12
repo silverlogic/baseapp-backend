@@ -1,3 +1,6 @@
+from collections.abc import Iterable
+from typing import Any
+
 from django.conf import settings
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
@@ -9,7 +12,7 @@ from baseapp_core.graphql.models import RelayModel
 
 
 class NotificationQuerySet(BaseNotificationQuerySet):
-    def bulk_create(self, objs, *args, **kwargs):
+    def bulk_create(self, objs: Iterable[Any], *args: Any, **kwargs: Any) -> list[Any]:
         result = super().bulk_create(objs, *args, **kwargs)
 
         from baseapp_notifications.graphql.subscriptions import OnNotificationChange

@@ -30,22 +30,34 @@ def alter_data_column_to_jsonb(apps: Apps, schema_editor: BaseDatabaseSchemaEdit
     if row and row[0] == "text":
         quoted_table = schema_editor.connection.ops.quote_name(table)
         schema_editor.execute(
-            f"ALTER TABLE {quoted_table} ALTER COLUMN \"data\" TYPE jsonb USING data::jsonb"
+            f'ALTER TABLE {quoted_table} ALTER COLUMN "data" TYPE jsonb USING data::jsonb'
         )
 
 
-def reverse_alter_data_column_to_text(
-    apps: Apps, schema_editor: BaseDatabaseSchemaEditor
-) -> None:
-    """Reverse migration: cast ``data`` back from jsonb to text."""
+def reverse_alter_data_column_to_text(apps: Apps, schema_editor: BaseDatabaseSchemaEditor) -> None:
+    """Reverse migration: cast ``data`` back from jsonb to text.
+
+    Only executes the ALTER when the column is not already ``jsonb``.  On a
+    fresh install ``0001_initial`` creates the column as ``jsonb`` directly, so
+    the forward migration was a no-op; reversing it must also be a no-op to
+    avoid incorrectly casting an already-correct ``jsonb`` column to ``text``.
+    """
     if schema_editor.connection.vendor != "postgresql":
         return
     Notification = apps.get_model("baseapp_notifications", "Notification")
     table = Notification._meta.db_table
-    quoted_table = schema_editor.connection.ops.quote_name(table)
-    schema_editor.execute(
-        f"ALTER TABLE {quoted_table} ALTER COLUMN \"data\" TYPE text USING data::text"
-    )
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT data_type FROM information_schema.columns "
+            "WHERE table_schema = current_schema() AND table_name = %s AND column_name = 'data'",
+            [table],
+        )
+        row = cursor.fetchone()
+    if row and row[0] != "jsonb":
+        quoted_table = schema_editor.connection.ops.quote_name(table)
+        schema_editor.execute(
+            f'ALTER TABLE {quoted_table} ALTER COLUMN "data" TYPE text USING data::text'
+        )
 
 
 class Migration(migrations.Migration):

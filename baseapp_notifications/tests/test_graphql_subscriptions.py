@@ -185,8 +185,13 @@ async def test_user_receives_bulk_created_notification_subscription_events(
     await client.assert_no_messages()
 
     # Build two unsaved notification instances and bulk-create them.
-    n1 = NotificationFactory.build(recipient=django_user_client.user, actor=actor)
-    n2 = NotificationFactory.build(recipient=django_user_client.user, actor=actor)
+    # .build() triggers a ContentType DB lookup via GenericForeignKey, so it must run in a thread.
+    n1 = await database_sync_to_async(NotificationFactory.build)(
+        recipient=django_user_client.user, actor=actor
+    )
+    n2 = await database_sync_to_async(NotificationFactory.build)(
+        recipient=django_user_client.user, actor=actor
+    )
     created = await database_sync_to_async(Notification.objects.bulk_create)([n1, n2])
 
     # Collect the relay IDs assigned after bulk_create.
@@ -196,9 +201,7 @@ async def test_user_receives_bulk_created_notification_subscription_events(
     received_ids = set()
     for _ in range(2):
         resp = await client.receive(assert_id=sub_id, assert_type="next")
-        received_ids.add(
-            resp["data"]["onNotificationChange"]["createdNotification"]["node"]["id"]
-        )
+        received_ids.add(resp["data"]["onNotificationChange"]["createdNotification"]["node"]["id"])
 
     assert received_ids == relay_ids
 
@@ -227,8 +230,12 @@ async def test_another_user_does_not_receive_bulk_created_notification_subscript
     await client.assert_no_messages()
 
     # Bulk-create notifications for a different user — the connected user must not receive events.
-    n1 = NotificationFactory.build(recipient=other_recipient, actor=actor)
-    n2 = NotificationFactory.build(recipient=other_recipient, actor=actor)
+    n1 = await database_sync_to_async(NotificationFactory.build)(
+        recipient=other_recipient, actor=actor
+    )
+    n2 = await database_sync_to_async(NotificationFactory.build)(
+        recipient=other_recipient, actor=actor
+    )
     await database_sync_to_async(Notification.objects.bulk_create)([n1, n2])
 
     await client.assert_no_messages()
