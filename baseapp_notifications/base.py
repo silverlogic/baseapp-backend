@@ -1,13 +1,36 @@
+from collections.abc import Iterable
+from typing import Any
+
 from django.conf import settings
 from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 from notifications.base.models import AbstractNotification as BaseAbstractNotification
+from notifications.base.models import NotificationQuerySet as BaseNotificationQuerySet
 
 from baseapp_core.graphql.models import RelayModel
 
 
+class NotificationQuerySet(BaseNotificationQuerySet):
+    def bulk_create(self, objs: Iterable[Any], *args: Any, **kwargs: Any) -> list[Any]:
+        result = super().bulk_create(objs, *args, **kwargs)
+
+        from baseapp_notifications.graphql.subscriptions import OnNotificationChange
+
+        pks = [n.pk for n in result if n.pk]
+        Model = self.model
+
+        def broadcast():
+            for notification in Model.objects.filter(pk__in=pks):
+                OnNotificationChange.send_created_notification(notification=notification)
+
+        transaction.on_commit(broadcast)
+        return result
+
+
 class AbstractNotification(BaseAbstractNotification, RelayModel):
+    objects = NotificationQuerySet.as_manager()
+
     class Meta(BaseAbstractNotification.Meta):
         abstract = True
 

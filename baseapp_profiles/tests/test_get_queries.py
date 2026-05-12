@@ -272,10 +272,13 @@ def test_search_members_filters_by_name(django_user_client, graphql_user_client)
     p1 = ProfileUserRoleFactory(
         profile=profile,
         status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
+        user=UserFactory(first_name="UniqueMemberName"),
     )
+    p1.user.refresh_from_db()
     ProfileUserRoleFactory(
         profile=profile,
         status=ProfileUserRole.ProfileRoleStatus.PENDING,
+        user=UserFactory(first_name="OtherPendingMember"),
     )
 
     response = graphql_user_client(

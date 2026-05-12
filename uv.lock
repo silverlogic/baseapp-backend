@@ -317,7 +317,7 @@ messagetemplates = [
     { name = "sendgrid" },
 ]
 notifications = [
-    { name = "django-notifications-hq" },
+    { name = "django-notifications-community" },
     { name = "django-push-notifications", extra = ["apns-async", "fcm", "wp"] },
     { name = "firebase-admin" },
 ]
@@ -354,7 +354,7 @@ dev = [
     { name = "black" },
     { name = "channels" },
     { name = "channels-redis" },
-    { name = "django-notifications-hq" },
+    { name = "django-notifications-community" },
     { name = "django-push-notifications", extra = ["apns-async", "fcm", "wp"] },
     { name = "djangorestframework" },
     { name = "djangorestframework-simplejwt", extra = ["crypto"] },
@@ -378,7 +378,7 @@ testproject = [
     { name = "black" },
     { name = "channels" },
     { name = "channels-redis" },
-    { name = "django-notifications-hq" },
+    { name = "django-notifications-community" },
     { name = "django-push-notifications", extra = ["apns-async", "fcm", "wp"] },
     { name = "djangorestframework" },
     { name = "djangorestframework-simplejwt", extra = ["crypto"] },
@@ -415,7 +415,7 @@ requires-dist = [
     { name = "django-jinja", specifier = ">=2.11" },
     { name = "django-model-utils", specifier = ">=5.0.0" },
     { name = "django-nested-admin", marker = "extra == 'messagetemplates'", specifier = ">=3.3" },
-    { name = "django-notifications-hq", marker = "extra == 'notifications'", git = "https://github.com/openwisp/django-notifications.git?rev=f4918c2409a734ec1aa9798d86c3a729b505f753" },
+    { name = "django-notifications-community", marker = "extra == 'notifications'", specifier = ">=1.10" },
     { name = "django-pghistory", specifier = "==3.9.1" },
     { name = "django-pgtrigger", specifier = "==4.17.0" },
     { name = "django-phonenumber-field", specifier = ">=8.1.0" },
@@ -464,7 +464,7 @@ dev = [
     { name = "black", specifier = "==26.3.1" },
     { name = "channels", specifier = "==4.3.1" },
     { name = "channels-redis", specifier = "==4.3.0" },
-    { name = "django-notifications-hq", git = "https://github.com/openwisp/django-notifications.git?rev=f4918c2409a734ec1aa9798d86c3a729b505f753" },
+    { name = "django-notifications-community" },
     { name = "django-push-notifications", extras = ["apns-async", "fcm", "wp"], specifier = "==3.3.0" },
     { name = "djangorestframework", specifier = "==3.16.1" },
     { name = "djangorestframework-simplejwt", extras = ["crypto"], specifier = "==5.5.1" },
@@ -481,14 +481,14 @@ dev = [
     { name = "pytest-django", specifier = "==4.11.1" },
     { name = "responses", specifier = "==0.25.8" },
     { name = "rest-social-auth", specifier = "==9.0.0" },
-    { name = "urllib3", specifier = ">=2.6.3" },
+    { name = "urllib3", specifier = "==2.7.0" },
 ]
 testproject = [
     { name = "baseapp-backend", extras = ["auth", "graphql", "messagetemplates", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "urlshortening", "wagtail"], editable = "." },
     { name = "black", specifier = "==26.3.1" },
     { name = "channels", specifier = "==4.3.1" },
     { name = "channels-redis", specifier = "==4.3.0" },
-    { name = "django-notifications-hq", git = "https://github.com/openwisp/django-notifications.git?rev=f4918c2409a734ec1aa9798d86c3a729b505f753" },
+    { name = "django-notifications-community" },
     { name = "django-push-notifications", extras = ["apns-async", "fcm", "wp"], specifier = "==3.3.0" },
     { name = "djangorestframework", specifier = "==3.16.1" },
     { name = "djangorestframework-simplejwt", extras = ["crypto"], specifier = "==5.5.1" },
@@ -505,7 +505,7 @@ testproject = [
     { name = "pytest-django", specifier = "==4.11.1" },
     { name = "responses", specifier = "==0.25.8" },
     { name = "rest-social-auth", specifier = "==9.0.0" },
-    { name = "urllib3", specifier = ">=2.6.3" },
+    { name = "urllib3", specifier = "==2.7.0" },
 ]
 
 [[package]]
@@ -1292,15 +1292,15 @@ wheels = [
 ]
 
 [[package]]
-name = "django-notifications-hq"
-version = "1.8.3"
-source = { git = "https://github.com/openwisp/django-notifications.git?rev=f4918c2409a734ec1aa9798d86c3a729b505f753#f4918c2409a734ec1aa9798d86c3a729b505f753" }
+name = "django-notifications-community"
+version = "1.12.1"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
-    { name = "django-model-utils" },
-    { name = "jsonfield" },
-    { name = "packaging" },
-    { name = "swapper" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/51/d8/bb849a4d107e58776e66547f03b0a529e1007d4e9a02f3c9808e6b9c39a8/django_notifications_community-1.12.1.tar.gz", hash = "sha256:dc6d5a6e26d51dd4df5993c47fb650941c0b7cb7433558ccce432fd4cd555ac6", size = 52129, upload-time = "2026-04-30T17:46:36.905Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3c/46/273a621924cd6fc07efbbd56bd58d502b563ea177531b641a838a06baa1d/django_notifications_community-1.12.1-py3-none-any.whl", hash = "sha256:f7dbf933a9147327ac4a0c711d6c5af9f549f511a4707ac268de052a69369080", size = 38448, upload-time = "2026-04-30T17:46:35.252Z" },
 ]
 
 [[package]]
@@ -2247,18 +2247,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d3/59/322338183ecda247fb5d1763a6cbe46eff7222eaeebafd9fa65d4bf5cb11/jmespath-1.1.0.tar.gz", hash = "sha256:472c87d80f36026ae83c6ddd0f1d05d4e510134ed462851fd5f754c8c3cbb88d", size = 27377, upload-time = "2026-01-22T16:35:26.279Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/14/2f/967ba146e6d58cf6a652da73885f52fc68001525b4197effc174321d70b4/jmespath-1.1.0-py3-none-any.whl", hash = "sha256:a5663118de4908c91729bea0acadca56526eb2698e83de10cd116ae0f4e97c64", size = 20419, upload-time = "2026-01-22T16:35:24.919Z" },
-]
-
-[[package]]
-name = "jsonfield"
-version = "3.2.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "django" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/fa/e9/537e105246dba81d898853dbbe17eb3edd23d47a35074b99fd4add6f1662/jsonfield-3.2.0.tar.gz", hash = "sha256:ca53871bc3308ae4f4cddc3b4f99ed5c6fc6abb1832fbfb499bc6da566c70e4a", size = 17156, upload-time = "2025-07-04T23:06:24.883Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0a/22/2e08e7b957f50e5eceefde018ce9ee88aceb5126231128d9c1cb8167c1c8/jsonfield-3.2.0-py3-none-any.whl", hash = "sha256:ca4f6bf89c819f293e77074d613c0021e3c4e8521be95c73d03caecb4372e1ee", size = 8316, upload-time = "2025-07-04T23:06:23.588Z" },
 ]
 
 [[package]]
@@ -3984,11 +3972,11 @@ wheels = [
 
 [[package]]
 name = "urllib3"
-version = "2.6.3"
+version = "2.7.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c7/24/5f1b3bdffd70275f6661c76461e25f024d5a38a46f04aaca912426a2b1d3/urllib3-2.6.3.tar.gz", hash = "sha256:1b62b6884944a57dbe321509ab94fd4d3b307075e0c2eae991ac71ee15ad38ed", size = 435556, upload-time = "2026-01-07T16:24:43.925Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/53/0c/06f8b233b8fd13b9e5ee11424ef85419ba0d8ba0b3138bf360be2ff56953/urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c", size = 433602, upload-time = "2026-05-07T16:13:18.596Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/39/08/aaaad47bc4e9dc8c725e68f9d04865dbcb2052843ff09c97b08904852d84/urllib3-2.6.3-py3-none-any.whl", hash = "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4", size = 131584, upload-time = "2026-01-07T16:24:42.685Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/3e/5db95bcf282c52709639744ca2a8b149baccf648e39c8cc87553df9eae0c/urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897", size = 131087, upload-time = "2026-05-07T16:13:17.151Z" },
 ]
 
 [[package]]
