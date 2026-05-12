@@ -20,11 +20,6 @@ class Migration(migrations.Migration):
             model_name="rate",
             name="delete_document_id",
         ),
-        migrations.RenameIndex(
-            model_name="rate",
-            new_name="ratings_rat_target__e6a884_idx",
-            old_name="ratings_rat_target__d39bff_idx",
-        ),
         pgtrigger.migrations.AddTrigger(
             model_name="rate",
             trigger=pgtrigger.compiler.Trigger(

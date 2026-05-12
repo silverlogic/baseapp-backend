@@ -28,11 +28,6 @@ class Migration(migrations.Migration):
             model_name="reporttype",
             name="delete_document_id",
         ),
-        migrations.RenameIndex(
-            model_name="report",
-            new_name="reports_rep_target__e68343_idx",
-            old_name="reports_rep_target__d39bff_idx",
-        ),
         pgtrigger.migrations.AddTrigger(
             model_name="report",
             trigger=pgtrigger.compiler.Trigger(

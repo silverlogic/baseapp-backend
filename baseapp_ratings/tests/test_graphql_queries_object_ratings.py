@@ -19,6 +19,13 @@ from .factories import RateFactory
 pytestmark = pytest.mark.django_db
 
 
+# Baseline for `ratingsCount` + `ratingsSum` + `ratingsAverage` on one User node:
+# 1× relay `node()` (documentid + content_type JOIN) + 1× `users_user` load with
+# `RatableMetadata` inlined as a Subquery via `pre_optimization_hook`.
+# Update this number deliberately if you change the resolver / annotation path.
+EXPECTED_RATINGS_INTERFACE_QUERY_COUNT = 2
+
+
 COUNTS_ONLY_QUERY = """
     query GetUser($id: ID!) {
         node(id: $id) {
@@ -62,6 +69,8 @@ def test_anon_ratings_count_is_flat_regardless_of_rate_volume(
 
     # 20 rates vs. 3 rates: query count must not grow with row count.
     assert queries_big.count == small_count
+    # Absolute baseline, catches regressions that bump both sides together
+    assert small_count == EXPECTED_RATINGS_INTERFACE_QUERY_COUNT
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
@@ -91,3 +100,5 @@ def test_anon_ratings_count_zero_when_no_rates_does_not_extra_query(
 
     # Empty / populated targets share the same query plan.
     assert queries_empty.count == queries_with.count
+    # Absolute baseline, same expected count as the populated path.
+    assert queries_empty.count == EXPECTED_RATINGS_INTERFACE_QUERY_COUNT

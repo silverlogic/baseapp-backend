@@ -69,8 +69,4 @@ class Migration(migrations.Migration):
             name="rate",
             unique_together={("user", "target_document")},
         ),
-        migrations.AddIndex(
-            model_name="rate",
-            index=models.Index(fields=["target_document"], name="ratings_rat_target__d39bff_idx"),
-        ),
     ]

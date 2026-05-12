@@ -19,7 +19,6 @@ class CommentFilter(django_filters.FilterSet):
             *apply_if_installed(
                 "baseapp_reactions",
                 [("reactions_count_total", "reactions_count_total")],
-                [],
             ),
             # `replies_count_total` is annotated in `BaseCommentObjectType.pre_optimization_hook`
             ("replies_count_total", "replies_count_total"),

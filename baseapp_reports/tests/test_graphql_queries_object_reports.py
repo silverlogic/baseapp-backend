@@ -22,6 +22,13 @@ from .factories import ReportFactory, ReportTypeFactory
 pytestmark = pytest.mark.django_db
 
 
+# Baseline for `reportsCount` on one Profile node: 1× relay `node()` (documentid +
+# content_type JOIN) + 1× `profiles_profile` load with `ReportableMetadata` inlined
+# as a Subquery via `pre_optimization_hook`.
+# Update this number deliberately if you change the resolver / annotation path.
+EXPECTED_REPORTS_INTERFACE_QUERY_COUNT = 2
+
+
 # Counts-only query: should resolve from `ReportableMetadata` via a single annotated
 # subquery on the Profile fetch.
 COUNTS_ONLY_QUERY = """
@@ -70,6 +77,8 @@ def test_anon_reports_count_is_flat_regardless_of_report_volume(
     # reports vs. 3. Counts come from a single annotated subquery against
     # `reports_reportablemetadata` on the Profile fetch.
     assert queries_big.count == small_count
+    # Absolute baseline, catches regressions that bump both sides together.
+    assert small_count == EXPECTED_REPORTS_INTERFACE_QUERY_COUNT
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
@@ -102,3 +111,5 @@ def test_anon_reports_count_zero_when_no_reports_does_not_extra_query(
     # Both paths annotate the same subquery; absence of the metadata row falls back to
     # the default JSON via `COALESCE`, no extra query.
     assert queries_empty.count == queries_with.count
+    # Absolute baseline, same expected count as the populated path.
+    assert queries_empty.count == EXPECTED_REPORTS_INTERFACE_QUERY_COUNT

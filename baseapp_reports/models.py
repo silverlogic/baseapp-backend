@@ -84,9 +84,6 @@ class AbstractReport(DocumentIdMixin, RelayModel, TimeStampedModel):
         abstract = True
         swappable = swapper.swappable_setting("baseapp_reports", "Report")
         unique_together = [["user", "target_document"]]
-        indexes = [
-            models.Index(fields=["target_document"]),
-        ]
 
     def __str__(self):
         return "Report (%s) #%s by %s" % (

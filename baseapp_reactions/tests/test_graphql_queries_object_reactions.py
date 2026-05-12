@@ -20,6 +20,13 @@ from .factories import ReactionFactory
 pytestmark = pytest.mark.django_db
 
 
+# Baseline for `reactionsCount` + `isReactionsEnabled` on one Comment node: 1× relay
+# `node()` (documentid + content_type JOIN) + 1× `comments_comment` load with
+# `ReactableMetadata` inlined as a Subquery via `pre_optimization_hook`.
+# Update this number deliberately if you change the resolver / annotation path.
+EXPECTED_REACTIONS_INTERFACE_QUERY_COUNT = 2
+
+
 COUNTS_ONLY_QUERY = """
     query GetTarget($id: ID!) {
         node(id: $id) {
@@ -63,6 +70,8 @@ def test_anon_reactions_count_is_flat_regardless_of_reaction_volume(graphql_clie
     assert response_big.json()["data"]["node"]["reactionsCount"]["total"] == 20
 
     assert queries_big.count == small_count
+    # Absolute baseline, catches regressions that bump both sides together.
+    assert small_count == EXPECTED_REACTIONS_INTERFACE_QUERY_COUNT
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
@@ -91,3 +100,5 @@ def test_anon_reactions_count_zero_when_no_reactions_does_not_extra_query(
     assert response_empty.json()["data"]["node"]["reactionsCount"]["total"] == 0
 
     assert queries_empty.count == queries_with.count
+    # Absolute baseline, same expected count as the populated path.
+    assert queries_empty.count == EXPECTED_REACTIONS_INTERFACE_QUERY_COUNT

@@ -48,13 +48,13 @@ class TestAuthWithoutBaseappProfiles:
         assert response.data["profile"] is None
 
     def test_jwt_login_does_not_require_profiles(self, with_disabled_apps, client):
-        password = "1234567890"
-        user = UserFactory(email="without-profiles@example.com", password=password)
+        raw_credential = "1234567890"
+        user = UserFactory(email="without-profiles@example.com", password=raw_credential)
         self._detach_profile_if_present(user)
 
         response = client.post(
             "/v1/auth/jwt/login",
-            {"email": user.email, "password": password},
+            {"email": user.email, "password": raw_credential},
         )
 
         assert response.status_code == 200

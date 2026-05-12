@@ -70,8 +70,4 @@ class Migration(migrations.Migration):
             name="report",
             unique_together={("user", "target_document")},
         ),
-        migrations.AddIndex(
-            model_name="report",
-            index=models.Index(fields=["target_document"], name="reports_rep_target__d39bff_idx"),
-        ),
     ]

@@ -6,7 +6,7 @@ from query_optimizer import optimize
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import ThumbnailField
-from baseapp_core.plugins import graphql_shared_interfaces
+from baseapp_core.plugins import graphql_shared_interfaces, shared_services
 
 from .filters import UsersFilter
 from .permissions import PermissionsInterface
@@ -121,6 +121,14 @@ class AbstractUserObjectType(*inheritances, object):
         return view_user_private_field(self, info, "is_new_email_confirmed")
 
     MAX_COMPLEXITY = 3
+
+    @classmethod
+    def pre_optimization_hook(cls, queryset, optimizer):
+        queryset = super().pre_optimization_hook(queryset, optimizer)
+        # Annotate ratable metadata
+        if service := shared_services.get("ratable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+        return queryset
 
     @classmethod
     def get_queryset(cls, queryset, info):

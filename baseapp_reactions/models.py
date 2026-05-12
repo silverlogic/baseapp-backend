@@ -78,9 +78,6 @@ class AbstractReaction(*inheritances, TimeStampedModel, DocumentIdMixin, RelayMo
     class Meta:
         abstract = True
         swappable = swapper.swappable_setting("baseapp_reactions", "Reaction")
-        indexes = [
-            models.Index(fields=["target_document"]),
-        ]
         unique_together = [
             apply_if_installed(
                 "baseapp_profiles",

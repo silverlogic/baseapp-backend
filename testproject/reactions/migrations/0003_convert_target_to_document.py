@@ -69,8 +69,4 @@ class Migration(migrations.Migration):
             name="reaction",
             unique_together={("profile", "target_document")},
         ),
-        migrations.AddIndex(
-            model_name="reaction",
-            index=models.Index(fields=["target_document"], name="reactions_r_target__e92ce8_idx"),
-        ),
     ]

@@ -52,9 +52,6 @@ class AbstractRate(*inheritances, TimeStampedModel, DocumentIdMixin, RelayModel)
         abstract = True
         swappable = swapper.swappable_setting("baseapp_ratings", "Rate")
         unique_together = [["user", "target_document"]]
-        indexes = [
-            models.Index(fields=["target_document"]),
-        ]
 
     def __str__(self):
         return "Rating (%s) by %s" % (
