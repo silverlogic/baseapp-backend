@@ -110,7 +110,7 @@ dev = [
     "drf-nested-routers==0.93.5",
     "easy-thumbnails==2.10.1",
     "rest-social-auth==9.0.0",
-    "urllib3==2.6.3",
+    "urllib3==2.7.0",
     "channels==4.3.1",
     "django-notifications-community",
     "django-push-notifications[apns-async,fcm,wp]==3.3.0",
@@ -138,7 +138,7 @@ testproject = [
     "pytest-django==4.11.1",
     "responses==0.25.8",
     "rest-social-auth==9.0.0",
-    "urllib3==2.6.3",
+    "urllib3==2.7.0",
 ]
 
 [tool.uv.sources]
