@@ -146,10 +146,13 @@ def test_anon_can_query_users_list_with_optimized_query(graphql_client_with_quer
     response, queries = graphql_client_with_queries(QUERY_USERS_LIST)
     content = response.json()
 
-    assert queries.count == 3
+    assert queries.count == 4
     assert len(content["data"]["users"]["edges"]) == 10
 
-    # With optimizer queries are expected to be 3 and retrieving just the queried fields:
+    # With optimizer queries are expected to be 4 and retrieving just the queried fields.
+    # The first is a cold-cache ContentType lookup fired by AbstractUserObjectType.pre_optimization_hook
+    # (ReactableMetadataService.annotate_queryset embeds the User ct_id in inline Subqueries).
+    # SELECT "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "django_content_type" WHERE ("django_content_type"."app_label" = users AND "django_content_type"."model" = user) LIMIT 21
     # SELECT "users_user"."id", "users_user"."profile_id", "users_user"."first_name", "users_user"."last_name", ("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AS "password_expiry_date", (("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AT TIME ZONE UTC)::date <= 2025-02-28 AS "is_password_expired", "profiles_profile"."id", "profiles_profile"."name" FROM "users_user" LEFT OUTER JOIN "profiles_profile" ON ("users_user"."profile_id" = "profiles_profile"."id") WHERE "users_user"."is_active"
     # SELECT COUNT(*) AS "__count" FROM "users_user" WHERE "users_user"."is_active"
     # SELECT "users_user"."id", "users_user"."profile_id", "users_user"."first_name", "users_user"."last_name", ("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AS "password_expiry_date", (("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AT TIME ZONE UTC)::date <= 2025-02-28 AS "is_password_expired", "profiles_profile"."id", "profiles_profile"."name" FROM "users_user" LEFT OUTER JOIN "profiles_profile" ON ("users_user"."profile_id" = "profiles_profile"."id") WHERE "users_user"."is_active" LIMIT 10
@@ -165,12 +168,13 @@ def test_anon_can_query_users_list_with_optimized_query_with_public_id(graphql_c
     assert queries.count == 7
     assert len(content["data"]["users"]["edges"]) == 10
 
-    # With optimizer queries are expected to be 7 and retrieving just the queried fields:
-    # The first two queries are ContentType lookups (cached after the first request in production)
-    # SELECT "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "django_content_type" WHERE ("django_content_type"."app_label" = users AND "django_content_type"."model" = user) LIMIT 21
-    # SELECT "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "django_content_type" WHERE ("django_content_type"."app_label" = profiles AND "django_content_type"."model" = profile) LIMIT 21
-    # SELECT "users_user"."id", "users_user"."profile_id", "users_user"."first_name", "users_user"."last_name", ("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AS "password_expiry_date", (("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AT TIME ZONE UTC)::date <= 2025-02-28 AS "is_password_expired" FROM "users_user" WHERE "users_user"."is_active"
-    # SELECT "profiles_profile"."id","profiles_profile"."name",(SELECT U0."public_id" FROM "baseapp_core_publicidmapping" U0 WHERE (U0."content_type_id" = 1591 AND U0."object_id" = ("profiles_profile"."id"))) AS "mapped_public_id" FROM "profiles_profile" WHERE "profiles_profile"."id" IN (1970,1971,1972,1973,1974,1975,1976,1977,1978,1979)
-    # SELECT COUNT(*) AS "__count" FROM "users_user" WHERE "users_user"."is_active"
-    # SELECT "users_user"."id", "users_user"."profile_id", "users_user"."first_name", "users_user"."last_name", ("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AS "password_expiry_date", (("users_user"."password_changed_date" + (730 days, 0:00:00)::interval) AT TIME ZONE UTC)::date <= 2025-02-28 AS "is_password_expired" FROM "users_user" WHERE "users_user"."is_active" LIMIT 10
-    # SELECT "profiles_profile"."id","profiles_profile"."name",(SELECT U0."public_id" FROM "baseapp_core_publicidmapping" U0 WHERE (U0."content_type_id" = 1591 AND U0."object_id" = ("profiles_profile"."id"))) AS "mapped_public_id" FROM "profiles_profile" WHERE "profiles_profile"."id" IN (1970,1971,1972,1973,1974,1975,1976,1977,1978,1979)
+    # With optimizer queries are expected to be 7:
+    # 1. ContentType lookup for users.user (cold-cache; cached after first request in production)
+    # 2. ContentType lookup for profiles.profile (cold-cache; same caching as above)
+    # 3. SELECT users_user with _ratable_* Subqueries inlined by
+    #    AbstractUserObjectType.pre_optimization_hook (RatableMetadataService.annotate_queryset)
+    # 4. SELECT profiles_profile with _commentable_*, _followable_*, mapped_public_id Subqueries
+    #    inlined by ProfileObjectType.pre_optimization_hook
+    # 5. SELECT COUNT(*) for pagination
+    # 6. Same as #3 with LIMIT 10 for the returned page slice
+    # 7. Same as #4 for the page's profiles
