@@ -10,6 +10,8 @@ from .factories import NotificationFactory
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
+Notification = swapper.load_model("notifications", "Notification")
+
 SUBSCRIPTION_QUERY = textwrap.dedent("""
     subscription op_name {
       onNotificationChange {
@@ -185,7 +187,6 @@ async def test_user_receives_bulk_created_notification_subscription_events(
     # Build two unsaved notification instances and bulk-create them.
     n1 = NotificationFactory.build(recipient=django_user_client.user, actor=actor)
     n2 = NotificationFactory.build(recipient=django_user_client.user, actor=actor)
-    Notification = swapper.load_model("notifications", "Notification")
     created = await database_sync_to_async(Notification.objects.bulk_create)([n1, n2])
 
     # Collect the relay IDs assigned after bulk_create.
@@ -228,7 +229,6 @@ async def test_another_user_does_not_receive_bulk_created_notification_subscript
     # Bulk-create notifications for a different user — the connected user must not receive events.
     n1 = NotificationFactory.build(recipient=other_recipient, actor=actor)
     n2 = NotificationFactory.build(recipient=other_recipient, actor=actor)
-    Notification = swapper.load_model("notifications", "Notification")
     await database_sync_to_async(Notification.objects.bulk_create)([n1, n2])
 
     await client.assert_no_messages()
