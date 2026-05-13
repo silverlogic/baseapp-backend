@@ -22,10 +22,10 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         try:
             self._handle(*args, **options)
-        except BaseException as e:
+        except KeyboardInterrupt:
             self.stdout.write("\r\n")
-            if isinstance(e, KeyboardInterrupt):
-                return
+        except Exception:
+            self.stdout.write("\r\n")
             self.stdout.write(self.style.ERROR(traceback.format_exc()))
 
     def _handle(self, *args, **options):
