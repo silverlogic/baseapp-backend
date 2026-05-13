@@ -267,6 +267,9 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
         dummy_instance = DummyLegacyModelFactory()
         mock_info = MagicMock()
         mock_only_type = MagicMock()
+        mock_only_type._meta.name = "DummyLegacyModel"
+        mock_only_type._meta.interfaces = [Node]
+        mock_only_type.get_node = MagicMock(return_value=dummy_instance)
 
         with pytest.raises(Exception) as e:
             graphql_get_node_from_global_id_using_strategy(
