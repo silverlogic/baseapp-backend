@@ -1,12 +1,10 @@
-import traceback
 from pathlib import Path
 
-from django.core.management.base import BaseCommand
-
+from baseapp_pdf.management.commands.base import BasePDFCommand
 from baseapp_pdf.utils import render_to_pdf
 
 
-class Command(BaseCommand):
+class Command(BasePDFCommand):  # pragma: no cover
     help = "Render to PDF"
 
     def __init__(self, *args, **kwargs):
@@ -19,15 +17,6 @@ class Command(BaseCommand):
         parser.add_argument(
             "--destination", type=str, help="The destination directory_path. Defaults to cwd."
         )
-
-    def handle(self, *args, **options):
-        try:
-            self._handle(*args, **options)
-        except KeyboardInterrupt:
-            self.stdout.write("\r\n")
-        except Exception:
-            self.stdout.write("\r\n")
-            self.stdout.write(self.style.ERROR(traceback.format_exc()))
 
     def _handle(self, *args, **options):
         source = Path(options.get("source"))
