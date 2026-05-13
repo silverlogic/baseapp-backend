@@ -88,7 +88,7 @@ class BaseReactionObjectType:
         }
 
     @classmethod
-    def get_node(self, info, id):
+    def get_node(cls, info, id):
         node = super().get_node(info, id)
         if not info.context.user.has_perm("baseapp_comments.view_comment", node):
             return None

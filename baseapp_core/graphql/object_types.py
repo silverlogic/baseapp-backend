@@ -70,5 +70,5 @@ class DjangoObjectTypeWithPkField(DjangoObjectType):
 
     pk = graphene.Int(required=True)
 
-    def resolve_pk(root, info):
-        return root.pk
+    def resolve_pk(self, info):
+        return self.pk

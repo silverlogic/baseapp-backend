@@ -84,7 +84,7 @@ class BaseReportObjectType:
         }
 
     @classmethod
-    def get_node(self, info, id):
+    def get_node(cls, info, id):
         node = super().get_node(info, id)
         if not info.context.user.has_perm(VIEW_REPORT_PERMISSION, node):
             return None

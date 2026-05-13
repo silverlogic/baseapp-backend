@@ -83,14 +83,14 @@ class CommentsInterface(RelayNode):
     class Meta:
         model = Comment
 
-    def resolve_comments(root, info, **kwargs):
-        # if root is a comment and is attached to a target use root.comments so it can be filtered
+    def resolve_comments(self, info, **kwargs):
+        # if self is a comment and is attached to a target use self.comments so it can be filtered
         # by using ForeignKey related field
         # if not then assume its another object type, like a post
         # this is used in the tests because we treat those comment as the target for other comments
         # so we can test the package without having to create a new model
 
-        if not getattr(root, "is_comments_enabled", True):
+        if not getattr(self, "is_comments_enabled", True):
             return skip_ast_walker(Comment.objects.none())
 
         CAN_ANONYMOUS_VIEW_COMMENTS = getattr(
@@ -99,20 +99,20 @@ class CommentsInterface(RelayNode):
         if not CAN_ANONYMOUS_VIEW_COMMENTS and not info.context.user.is_authenticated:
             return skip_ast_walker(Comment.objects.none())
 
-        is_root_a_comment = isinstance(root, Comment)
+        is_root_a_comment = isinstance(self, Comment)
 
-        if is_root_a_comment and (root.target_object_id or root.in_reply_to_id):
-            qs = root.comments.filter(status=CommentStatus.PUBLISHED)
+        if is_root_a_comment and (self.target_object_id or self.in_reply_to_id):
+            qs = self.comments.filter(status=CommentStatus.PUBLISHED)
             qs = _exclude_blocked_profiles(qs, info)
-            # The root.comments were already optimized. But because of the new filter, we need to
+            # self.comments were already optimized. But because of the new filter, we need to
             # re-evaluate the queryset so it can be properly paginated.
             evaluate_with_prefetch_hack(qs)
             return qs
 
-        target_content_type = ContentType.objects.get_for_model(root)
+        target_content_type = ContentType.objects.get_for_model(self)
         qs = Comment.objects_visible.filter(
             target_content_type=target_content_type,
-            target_object_id=root.pk,
+            target_object_id=self.pk,
             in_reply_to__isnull=True,
         )
         qs = _exclude_blocked_profiles(qs, info)
@@ -175,7 +175,7 @@ class BaseCommentObjectType:
         filterset_class = CommentFilter
 
     @classmethod
-    def get_node(self, info, id):
+    def get_node(cls, info, id):
         node = super().get_node(info, id)
         if not info.context.user.has_perm(f"{app_label}.view_comment", node):
             return None

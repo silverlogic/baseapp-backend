@@ -17,7 +17,7 @@ class AbstractOrganizationObjectType(object):
         )
 
     @classmethod
-    def get_node(self, info, id):
+    def get_node(cls, info, id):
         if not info.context.user.has_perm("baseapp_organizations.view_organization"):
             return None
         node = super().get_node(info, id)

@@ -143,7 +143,7 @@ class AbstractUserObjectType(*inheritances, object):
         return optimize(queryset, info, max_complexity=cls.MAX_COMPLEXITY)
 
     @classmethod
-    def get_node(self, info, id):
+    def get_node(cls, info, id):
         node = super().get_node(info, id)
         if not info.context.user.has_perm(f"{User._meta.app_label}.view_user", node):
             return None

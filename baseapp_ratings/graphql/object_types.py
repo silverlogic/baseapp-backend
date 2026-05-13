@@ -71,7 +71,7 @@ class BaseRatingObjectType:
         )
 
     @classmethod
-    def get_node(self, info, id):
+    def get_node(cls, info, id):
         if not info.context.user.has_perm("baseapp_ratings.view_rate"):
             return None
         return super().get_node(info, id)
