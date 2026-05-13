@@ -29,13 +29,13 @@ class TestPreAuthJWT(TestPreAuthMixin):
 
     def test_user_cant_retrieve(self, user_client):
         token = PreAuthTokenGenerator().make_token(user_client.user)
-        r = user_client.post(self.reverse(), data=dict(token=token))
+        r = user_client.post(self.reverse(), data={"token": token})
         h.responseForbidden(r)
 
     def test_guest_can_authenticate(self, client):
         user = UserFactory()
         token = PreAuthTokenGenerator().make_token(user)
-        r = client.post(self.reverse(), data=dict(token=token))
+        r = client.post(self.reverse(), data={"token": token})
         h.responseOk(r)
         self.assert_token_response(r)
 
@@ -44,7 +44,7 @@ class TestPreAuthJWT(TestPreAuthMixin):
         user = UserFactory()
         token = PreAuthTokenGenerator().make_token(user)
         with freeze_time((timezone.now() + timezone.timedelta(days=2)).strftime("%Y-%m-%d")):
-            r = client.post(self.reverse(), data=dict(token=token))
+            r = client.post(self.reverse(), data={"token": token})
             h.responseBadRequest(r)
 
 
@@ -56,13 +56,13 @@ class TestPreAuthAuthToken(TestPreAuthMixin):
 
     def test_user_cant_retrieve(self, user_client):
         token = PreAuthTokenGenerator().make_token(user_client.user)
-        r = user_client.post(self.reverse(), data=dict(token=token))
+        r = user_client.post(self.reverse(), data={"token": token})
         h.responseForbidden(r)
 
     def test_guest_can_authenticate(self, client):
         user = UserFactory()
         token = PreAuthTokenGenerator().make_token(user)
-        r = client.post(self.reverse(), data=dict(token=token))
+        r = client.post(self.reverse(), data={"token": token})
         h.responseOk(r)
         self.assert_token_response(r)
 
@@ -71,5 +71,5 @@ class TestPreAuthAuthToken(TestPreAuthMixin):
         user = UserFactory()
         token = PreAuthTokenGenerator().make_token(user)
         with freeze_time((timezone.now() + timezone.timedelta(days=2)).strftime("%Y-%m-%d")):
-            r = client.post(self.reverse(), data=dict(token=token))
+            r = client.post(self.reverse(), data={"token": token})
             h.responseBadRequest(r)

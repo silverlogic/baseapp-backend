@@ -13,7 +13,7 @@ from .permissions import PermissionsInterface
 User = get_user_model()
 
 interfaces = (RelayNode, PermissionsInterface)
-inheritances = tuple()
+inheritances = ()
 
 if apps.is_installed("baseapp_notifications"):
     from baseapp_notifications.graphql.object_types import NotificationsInterface

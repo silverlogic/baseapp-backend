@@ -35,74 +35,74 @@ class Command(BaseCommand):
         self.render_example_template_to_pdf(destination=destination)
 
     def render_example_template_to_pdf(self, destination: Path):
-        context = dict(
-            pdf_title="Example PDF",
-            pdf_margins="1cm 1cm",
-            pdf_datetime=timezone.now(),
-            pdf_header_data=dict(
-                left=dict(
-                    table_data=[
+        context = {
+            "pdf_title": "Example PDF",
+            "pdf_margins": "1cm 1cm",
+            "pdf_datetime": timezone.now(),
+            "pdf_header_data": {
+                "left": {
+                    "table_data": [
                         "Please Remit Payment To:",
                         "The SilverLogic",
                         "751 Park of Commerce Dr #126, Boca Raton, FL 33487, United States",
                         "+1 561-569-2366",
                     ]
-                ),
-                right=dict(
-                    table_data=[
+                },
+                "right": {
+                    "table_data": [
                         ("Invoice #", "BA-0000000001"),
                         ("Client Account Number:", "0000000001"),
                         ("Client Account Name:", "Awesome Client"),
                         ("Invoice Date", timezone.now() - timezone.timedelta(weeks=2)),
                     ]
-                ),
-            ),
-            pdf_content=dict(
-                title="Summary",
-                table_data=[
-                    dict(
-                        title="Backend Charges",
-                        items=[
+                },
+            },
+            "pdf_content": {
+                "title": "Summary",
+                "table_data": [
+                    {
+                        "title": "Backend Charges",
+                        "items": [
                             (
                                 f"Story {i + 1}",
                                 float(randint(100, 1000)) + float(1 / randint(1, 10)),  # NOSONAR
                             )
                             for i in range(0, 24)
                         ],
-                    ),
-                    dict(
-                        title="Web App(React) Charges",
-                        items=[
+                    },
+                    {
+                        "title": "Web App(React) Charges",
+                        "items": [
                             (
                                 f"Story {i + 1}",
                                 float(randint(100, 1000)) + float(1 / randint(1, 10)),  # NOSONAR
                             )
                             for i in range(0, 24)
                         ],
-                    ),
-                    dict(
-                        title="Android App Charges",
-                        items=[
+                    },
+                    {
+                        "title": "Android App Charges",
+                        "items": [
                             (
                                 f"Story {i + 1}",
                                 float(randint(100, 1000)) + float(1 / randint(1, 10)),  # NOSONAR
                             )
                             for i in range(0, 24)
                         ],
-                    ),
-                    dict(
-                        title="iOS App Charges",
-                        items=[
+                    },
+                    {
+                        "title": "iOS App Charges",
+                        "items": [
                             (
                                 f"Story {i + 1}",
                                 float(randint(100, 1000)) + float(1 / randint(1, 10)),  # NOSONAR
                             )
                             for i in range(0, 24)
                         ],
-                    ),
+                    },
                 ],
-            ),
-        )
+            },
+        }
         with render_template_to_pdf(
             source="pdfs/render-template-to-pdf-example.html", context=context
         ) as pdf_file_path:

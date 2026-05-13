@@ -29,7 +29,7 @@ def redirect_if_user_has_expired_password(f: Callable[P, T]) -> Callable[P, T]:
             token = ChangeExpiredPasswordTokenGenerator().make_token(self.request.user)
             url = settings.FRONT_CHANGE_EXPIRED_PASSWORD_URL.format(token=token)
             serializer = LoginChangeExpiredPasswordRedirectSerializer(
-                data=dict(redirect_url=url), context=self.get_serializer_context()
+                data={"redirect_url": url}, context=self.get_serializer_context()
             )
             serializer.is_valid(raise_exception=True)
             return response.Response(serializer.data, status=status.HTTP_200_OK)

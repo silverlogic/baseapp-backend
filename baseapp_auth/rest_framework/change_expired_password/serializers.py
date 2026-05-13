@@ -43,12 +43,12 @@ class ChangeExpiredPasswordSerializer(serializers.Serializer):
         new_password = self.validated_data["new_password"]
         if current_password == new_password:
             raise serializers.ValidationError(
-                dict(new_password=[_("New password cannot be the same as the current password.")])
+                {"new_password": [_("New password cannot be the same as the current password.")]}
             )
         try:
             # Make sure the current password is correct
             login_serializer = LoginSerializer(
-                data=dict(email=self.user.email, password=current_password)
+                data={"email": self.user.email, "password": current_password}
             )
             login_serializer.is_valid(raise_exception=True)
         except UserPasswordExpiredException:
