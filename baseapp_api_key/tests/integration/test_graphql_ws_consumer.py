@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
@@ -69,6 +71,8 @@ async def test_on_connect_skips_auth_when_user_already_in_scope():
     consumer = _make_consumer()
     consumer.scope["user"] = sentinel
 
-    await consumer.on_connect({"HTTP_API_KEY": "BA-should-not-be-checked"})
+    with patch.object(GraphqlWsAPIKeyAuthenticatedConsumer, "APIKeyModel") as mock_model:
+        await consumer.on_connect({"HTTP_API_KEY": "BA-should-not-be-checked"})
 
+    mock_model.objects.encrypt.assert_not_called()
     assert consumer.scope["user"] is sentinel
