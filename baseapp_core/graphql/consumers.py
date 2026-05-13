@@ -99,7 +99,7 @@ class GraphqlWsJWTAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
             validated_token = self._auth.get_validated_token(token_key)
             return self._auth.get_user(validated_token)
         except self._exceptions as e:
-            logging.error(e)
+            logging.exception(e)
             return None
 
     async def on_connect(self, payload):

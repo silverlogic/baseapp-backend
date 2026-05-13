@@ -50,7 +50,7 @@ def mass_send_personalized_mail(
         try:
             mail.send(fail_silently=True)
         except Exception as e:
-            logger.error(f"Error: {e} while sending mass email")
+            logger.exception(f"Error: {e} while sending mass email")
 
 
 def get_personalization(recipient_email: str, context={}):
