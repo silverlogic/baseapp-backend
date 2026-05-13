@@ -106,10 +106,10 @@ class BaseActivityLogObjectType:
         )
         filterset_class = ActivityLogFilter
 
-    def resolve_events(self, info, **kwargs):
+    def resolve_events(self, _info, **kwargs):
         return MiddlewareEvents.objects.filter(pgh_context_id=self.pk)
 
-    def resolve_user(self, info, **kwargs):
+    def resolve_user(self, _info, **kwargs):
         user_id = getattr(self, "user_id", None)
         if user_id is not None:
             try:
@@ -118,7 +118,7 @@ class BaseActivityLogObjectType:
                 return None
         return getattr(self, "user", None)
 
-    def resolve_profile(self, info, **kwargs):
+    def resolve_profile(self, _info, **kwargs):
         profile_id = getattr(self, "profile_id", None)
         if profile_id is not None:
             try:

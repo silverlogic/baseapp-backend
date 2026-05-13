@@ -315,7 +315,7 @@ class BaseChatRoomObjectType:
         if other_participant and other_participant.profile:
             return other_participant.profile.image
 
-    def resolve_participant_ids(self, info, **kwargs):
+    def resolve_participant_ids(self, _info, **kwargs):
 
         profiles = Profile.objects.filter(
             id__in=self.participants.values_list("profile_id", flat=True)

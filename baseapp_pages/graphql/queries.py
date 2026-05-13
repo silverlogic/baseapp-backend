@@ -18,7 +18,7 @@ class PagesQueries:
     all_pages = DjangoFilterConnectionField(PageObjectType)
     page = Node.Field(PageObjectType)
 
-    def resolve_url_path(self, info, path):
+    def resolve_url_path(self, _info, path):
         language = get_language()
 
         try:

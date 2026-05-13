@@ -33,10 +33,10 @@ class BaseFollowObjectType:
         interfaces = (RelayNode,)
         filterset_class = FollowsFilter
 
-    def resolve_actor_object(self, info):
+    def resolve_actor_object(self, _info):
         return self.actor.content_object
 
-    def resolve_target_object(self, info):
+    def resolve_target_object(self, _info):
         return self.target.content_object
 
 

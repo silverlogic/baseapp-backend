@@ -13,7 +13,7 @@ class EmailNotProvidedError(Exception):
     pass
 
 
-def get_username(strategy, details, response, user=None, *args, **kwargs):
+def get_username(strategy, details, _response, user=None, *args, **kwargs):
     storage = strategy.storage
 
     if not user:

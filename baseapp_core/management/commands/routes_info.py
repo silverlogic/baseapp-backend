@@ -16,7 +16,7 @@ class Command(BaseCommand):
             help="List only routes without permission_classes",
         )
 
-    def get_actions(self, viewset, debug):
+    def get_actions(self, viewset, _debug):
         actions = []
         has_empty_permission_classes = False
         default_permissions = [permission.__class__ for permission in viewset().get_permissions()]
