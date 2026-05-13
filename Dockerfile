@@ -31,7 +31,7 @@ RUN apt-get update -qq && \
     ca-certificates \
     apt-transport-https \
     gnupg && \
-    wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub \
+    wget -q --max-redirect=0 -O - https://dl.google.com/linux/linux_signing_key.pub \
       | gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg && \
     echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] https://dl.google.com/linux/chrome/deb/ stable main" \
       > /etc/apt/sources.list.d/google-chrome.list && \

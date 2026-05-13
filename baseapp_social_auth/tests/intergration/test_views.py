@@ -150,13 +150,6 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
         r = self.client.post(self.reverse(), no_email_data)
         h.responseBadRequest(r)
         assert r.data["email"] == "no_email_provided"
-        return "TODO"
-
-        no_email_data["email"] = "rob@example.com"
-        r = self.client.post(self.reverse(), no_email_data)
-        h.responseOk(r)
-        user = get_user_model().objects.get()
-        assert user.email == "rob@example.com"
 
     def test_facebook_when_email_already_belongs_to_another_user(self):
         complete_data = self.complete_data()

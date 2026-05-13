@@ -41,16 +41,17 @@ class BaseGraphqlWsAPIKeyAuthenticatedConsumer(channels_graphql_ws.GraphqlWsCons
                 unencrypted_value=unencrypted_api_key
             )
             api_key = await database_sync_to_async(
-                self.APIKeyModel.objects.all().filter(encrypted_api_key=encrypted_api_key).first
+                self.APIKeyModel.objects.select_related("user")
+                .filter(encrypted_api_key=encrypted_api_key)
+                .first
             )()
 
             if api_key is None:
                 user = None
-
-            if api_key.is_expired:
+            elif api_key.is_expired:
                 user = None
-
-            user = api_key.user
+            else:
+                user = api_key.user
 
         if user and user.is_active:
             self.scope["user"] = user
