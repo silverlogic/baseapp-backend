@@ -38,12 +38,13 @@ class Command(BaseCommand):
 
     def render_to_pdf(self, source: str | Path, destination: Path):
         with render_to_pdf(source=source) as pdf_file_path:
-            output_file_path = destination.joinpath(pdf_file_path.name)
+            resolved_destination = destination.resolve()
+            output_file_path = (resolved_destination / pdf_file_path.name).resolve()
+            if not output_file_path.is_relative_to(resolved_destination):
+                raise ValueError(f"Output path escapes destination directory: {output_file_path}")
             if output_file_path.exists():
                 output_file_path.unlink()
-            output_file_path.write_bytes(
-                pdf_file_path.read_bytes()
-            )  # NOSONAR - admin management command, destination validated as a directory above
+            output_file_path.write_bytes(pdf_file_path.read_bytes())
             size_mb = output_file_path.stat().st_size / (1024 * 1024)
             self.stdout.write(
                 self.style.SUCCESS(f"PDF generated at {output_file_path} size:{size_mb:.2f} MB")
