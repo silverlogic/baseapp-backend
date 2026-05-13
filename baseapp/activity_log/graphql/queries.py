@@ -13,5 +13,5 @@ class ActivityLogQueries:
         max_limit=100,
     )
 
-    def resolve_activity_logs(self, _info, _visibility=None, **kwargs):
+    def resolve_activity_logs(self, info, visibility=None, **kwargs):  # NOSONAR
         return ActivityLog.objects.all()

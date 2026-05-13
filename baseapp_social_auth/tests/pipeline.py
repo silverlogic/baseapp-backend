@@ -18,7 +18,9 @@ class EmailNotProvidedError(Exception):
     pass
 
 
-def get_username(strategy, details, response, user=None, *args, **kwargs):  # NOSONAR - response is required by python-social-auth pipeline interface
+def get_username(
+    strategy, details, response, user=None, *args, **kwargs
+):  # NOSONAR - response is required by python-social-auth pipeline interface
     storage = strategy.storage
 
     if not user:

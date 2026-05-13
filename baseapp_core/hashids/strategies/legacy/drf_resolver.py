@@ -5,5 +5,5 @@ class LegacyDRFResolverStrategy:
     def __init__(self, id_resolver: IdResolverStrategy):
         self.id_resolver = id_resolver
 
-    def resolve_public_id_to_pk(self, id, **_kwargs):
+    def resolve_public_id_to_pk(self, id, expected_model=None):  # NOSONAR
         return id

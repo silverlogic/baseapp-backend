@@ -51,7 +51,7 @@ class DestroyModelMixin:
 
     """
 
-    def destroy(self, _request, *args, **kwargs):
+    def destroy(self, request, *args, **kwargs):  # NOSONAR
         instance = self.get_object()
         self.perform_destroy(instance)
         return Response({}, status=status.HTTP_204_NO_CONTENT)

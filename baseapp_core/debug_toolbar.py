@@ -1,2 +1,2 @@
-def show_toolbar(_request):
+def show_toolbar(request):  # NOSONAR
     return True

@@ -14,7 +14,7 @@ class MustContainCapitalLetterValidator:
     def __init__(self, min_length=1):
         self.min_length = min_length
 
-    def validate(self, password, _user=None):
+    def validate(self, password, user=None):  # NOSONAR
         if len(re.findall(r"[A-Z]", password)) < self.min_length:
             raise ValidationError(
                 _("This password must contain at least %(min_length)d capital letter characters."),
@@ -33,7 +33,7 @@ class MustContainSpecialCharacterValidator:
     def __init__(self, min_length=1):
         self.min_length = min_length
 
-    def validate(self, password, _user=None):
+    def validate(self, password, user=None):  # NOSONAR
         if len(re.findall(r"[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?]", password)) < self.min_length:
             raise ValidationError(
                 _("This password must contain at least %(min_length)d special characters."),
