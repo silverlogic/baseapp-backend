@@ -42,7 +42,7 @@ class Migration(migrations.Migration):
             model_name="rate",
             name="target_document",
             field=models.ForeignKey(
-                blank=True,
+                blank=False,
                 on_delete=django.db.models.deletion.CASCADE,
                 related_name="ratings_inbox",
                 to="baseapp_core.documentid",

@@ -69,7 +69,7 @@ class AbstractReaction(*inheritances, TimeStampedModel, DocumentIdMixin, RelayMo
     target_document = models.ForeignKey(
         DocumentId,
         verbose_name=_("target document"),
-        blank=True,
+        blank=False,
         null=False,
         related_name="reactions_inbox",
         on_delete=models.CASCADE,

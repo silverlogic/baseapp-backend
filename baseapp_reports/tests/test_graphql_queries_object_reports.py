@@ -22,8 +22,8 @@ from .factories import ReportFactory, ReportTypeFactory
 pytestmark = pytest.mark.django_db
 
 
-# Baseline for `reportsCount` on one Profile node: 1× relay `node()` (documentid +
-# content_type JOIN) + 1× `profiles_profile` load with `ReportableMetadata` inlined
+# Baseline for `reportsCount` on one Profile node: relay `node()` (documentid +
+# content_type JOIN) + `profiles_profile` load with `ReportableMetadata` inlined
 # as a Subquery via `pre_optimization_hook`.
 # Update this number deliberately if you change the resolver / annotation path.
 EXPECTED_REPORTS_INTERFACE_QUERY_COUNT = 2

@@ -74,7 +74,7 @@ class AbstractReport(DocumentIdMixin, RelayModel, TimeStampedModel):
     target_document = models.ForeignKey(
         DocumentId,
         verbose_name=_("target document"),
-        blank=True,
+        blank=False,
         null=False,
         related_name="reports_inbox",
         on_delete=models.CASCADE,

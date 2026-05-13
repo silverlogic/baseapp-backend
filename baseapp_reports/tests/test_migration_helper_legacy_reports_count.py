@@ -13,7 +13,7 @@ class _ModelRowFactory(factory.Factory):
         model = SimpleNamespace
 
     pk = factory.Sequence(lambda n: n + 1)
-    reports_count = {"total": 0}
+    reports_count = factory.LazyFunction(lambda: {"total": 0})
 
 
 class _ContentTypeRowFactory(factory.Factory):

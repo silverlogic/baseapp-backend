@@ -99,7 +99,7 @@ class AbstractComment(
     target_document = models.ForeignKey(
         DocumentId,
         verbose_name=_("target document"),
-        blank=True,
+        blank=False,
         null=False,
         related_name="comments_inbox",
         on_delete=models.CASCADE,

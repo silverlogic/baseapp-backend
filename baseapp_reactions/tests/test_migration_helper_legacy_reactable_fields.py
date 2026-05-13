@@ -13,7 +13,7 @@ class _ModelRowFactory(factory.Factory):
         model = SimpleNamespace
 
     pk = factory.Sequence(lambda n: n + 1)
-    reactions_count = {"total": 0, "LIKE": 0, "DISLIKE": 0}
+    reactions_count = factory.LazyFunction(lambda: {"total": 0, "LIKE": 0, "DISLIKE": 0})
     is_reactions_enabled = True
 
 
