@@ -285,6 +285,7 @@ dependencies = [
     { name = "drf-extra-fields" },
     { name = "drf-nested-routers" },
     { name = "easy-thumbnails" },
+    { name = "json-log-formatter" },
     { name = "phonenumbers" },
     { name = "psycopg2-binary" },
     { name = "python-ipware" },
@@ -441,6 +442,7 @@ requires-dist = [
     { name = "graphene-file-upload", marker = "extra == 'graphql'", specifier = "==1.3.0" },
     { name = "hashids", marker = "extra == 'referrals'", specifier = "==1.3.1" },
     { name = "hashids", marker = "extra == 'socialauth'", specifier = "==1.3.1" },
+    { name = "json-log-formatter", specifier = ">=1.1.1" },
     { name = "lxml", marker = "extra == 'messagetemplates'", specifier = ">=4.9" },
     { name = "nh3", marker = "extra == 'messagetemplates'", specifier = ">=0.2" },
     { name = "phonenumbers", specifier = ">=9.0.12" },
@@ -2252,6 +2254,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/d3/59/322338183ecda247f
 wheels = [
     { url = "https://files.pythonhosted.org/packages/14/2f/967ba146e6d58cf6a652da73885f52fc68001525b4197effc174321d70b4/jmespath-1.1.0-py3-none-any.whl", hash = "sha256:a5663118de4908c91729bea0acadca56526eb2698e83de10cd116ae0f4e97c64", size = 20419, upload-time = "2026-01-22T16:35:24.919Z" },
 ]
+
+[[package]]
+name = "json-log-formatter"
+version = "1.1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e8/ef/324f4a28ed0152a32b80685b26316b604218e4ac77487ea82719c3c28bc6/json_log_formatter-1.1.1.tar.gz", hash = "sha256:0815e3b4469e5c79cf3f6dc8a0613ba6601f4a7464f85ba03655cfa6e3e17d10", size = 5896, upload-time = "2025-02-27T22:56:15.643Z" }
 
 [[package]]
 name = "jsonfield"

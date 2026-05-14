@@ -96,16 +96,4 @@ class Command(BasePDFCommand):  # pragma: no cover
         with render_template_to_pdf(
             source="pdfs/render-template-to-pdf-example.html", context=context
         ) as pdf_file_path:
-            resolved_destination = destination.resolve()
-            output_file_path = (
-                resolved_destination / pdf_file_path.name
-            ).resolve()  # NOSONAR - S2083: path validated by is_relative_to below; admin-only management command
-            if not output_file_path.is_relative_to(resolved_destination):
-                raise ValueError(f"Output path escapes destination directory: {output_file_path}")
-            if output_file_path.exists():
-                output_file_path.unlink()  # NOSONAR - S2083
-            output_file_path.write_bytes(pdf_file_path.read_bytes())  # NOSONAR - S2083
-            size_mb = output_file_path.stat().st_size / (1024 * 1024)
-            self.stdout.write(
-                self.style.SUCCESS(f"PDF generated at {output_file_path} size:{size_mb:.2f} MB")
-            )
+            self._write_pdf_output(pdf_file_path, destination)
