@@ -47,9 +47,7 @@ class ContentPostObjectType(DjangoObjectType):
 
     class Meta:
         interfaces = graphql_shared_interfaces.get(
-            RelayNode,
-            *content_post_interfaces,
-            "ReactionsInterface"
+            RelayNode, *content_post_interfaces, "ReactionsInterface"
         )
         model = ContentPost
         fields = (
