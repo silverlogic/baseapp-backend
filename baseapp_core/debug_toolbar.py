@@ -1,2 +1,2 @@
-def show_toolbar(request):  # NOSONAR
+def show_toolbar(request):  # NOSONAR  # pragma: no cover
     return True

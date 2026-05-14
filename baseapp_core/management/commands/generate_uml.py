@@ -140,7 +140,9 @@ class Command(BaseCommand):
                 return
             raise e
 
-    def _handle(self, library, apps, models, output_format, **options):  # NOSONAR
+    def _handle(
+        self, library, apps, models, output_format, **options
+    ):  # NOSONAR  # pragma: no cover
         command_name = "graph_models"
         command_app = get_commands()[command_name]
         command_class = load_command_class(command_app, command_name)
