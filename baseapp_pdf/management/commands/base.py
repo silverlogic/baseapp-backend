@@ -10,9 +10,7 @@ class BasePDFCommand(BaseCommand):  # pragma: no cover
             self._handle(*args, **options)
         except KeyboardInterrupt:
             self.stdout.write("\r\n")
-        except (
-            Exception
-        ):  # NOSONAR - S5754: management command handler intentionally catches all exceptions to print stacktrace
+        except Exception:  # NOSONAR - S5754
             self.stdout.write("\r\n")
             self.stdout.write(self.style.ERROR(traceback.format_exc()))
 
