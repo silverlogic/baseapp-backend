@@ -4,7 +4,9 @@ from baseapp_pdf.management.commands.base import BasePDFCommand
 from baseapp_pdf.utils import render_to_pdf
 
 
-class Command(BasePDFCommand):  # pragma: no cover
+class Command(  # NOSONAR - S8443: inherits BaseCommand via BasePDFCommand
+    BasePDFCommand
+):  # pragma: no cover
     help = "Render to PDF"
 
     def __init__(self, *args, **kwargs):
