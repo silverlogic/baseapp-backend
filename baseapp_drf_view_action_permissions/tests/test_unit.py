@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from django.contrib.auth.models import Permission
 
@@ -90,3 +92,14 @@ class TestUserPermissions:
                 "baseapp_drf_view_action_permissions_tests.test_disable",
             ]
         )
+
+    def test_get_permission_list_returns_empty_set_on_exception(self):
+        role = f.RoleFactory()
+        with patch(
+            "baseapp_drf_view_action_permissions.models.Role.groups",
+            new_callable=lambda: property(
+                lambda self: (_ for _ in ()).throw(Exception("db error"))
+            ),
+        ):
+            result = role.get_permission_list()
+        assert result == set()
