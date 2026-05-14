@@ -36,7 +36,7 @@ def test_user_can_see_rating_indicators(graphql_user_client):
 
     assert content["data"]["node"]["ratingsCount"] == 2
     assert content["data"]["node"]["ratingsSum"] == 9
-    assert content["data"]["node"]["ratingsAverage"] == 4.5
+    assert content["data"]["node"]["ratingsAverage"] == pytest.approx(4.5)
 
 
 def test_user_can_list_ratings(graphql_user_client):

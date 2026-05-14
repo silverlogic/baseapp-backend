@@ -267,15 +267,17 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
         dummy_instance = DummyLegacyModelFactory()
         mock_info = MagicMock()
         mock_only_type = MagicMock()
+        mock_only_type._meta.name = "DummyLegacyModel"
+        mock_only_type._meta.interfaces = [Node]
+        mock_only_type.get_node = MagicMock(return_value=dummy_instance)
 
         with pytest.raises(Exception) as e:
             graphql_get_node_from_global_id_using_strategy(
                 mock_info, str(dummy_instance.pk), mock_only_type
             )
-            assert (
-                f"{dummy_instance.__class__.__name__} is not compatible with the PK strategy"
-                in str(e.value)
-            )
+        assert f"{dummy_instance.__class__.__name__} is not compatible with the PK strategy" in str(
+            e.value
+        )
 
     def test_users_legacy_with_pk_model_with_pk_strategy(self):
         dummy_instance = DummyLegacyWithPkModelFactory()

@@ -403,7 +403,7 @@ class TestUsersChangePassword(ApiMixin):
 
     @pytest.fixture
     def data(self):
-        return {"current_password": "1234567890", "new_password": "0987654321"}
+        return {"current_password": "1234567890", "new_password": "0987654321"}  # NOSONAR
 
     def test_as_anon(self, client):
         r = client.post(self.reverse())
@@ -424,7 +424,7 @@ class TestUsersChangePassword(ApiMixin):
         assert user.check_password(data["new_password"])
 
     def test_current_password_must_match(self, client, data):
-        user = UserFactory(password="not current password")
+        user = UserFactory(password="not current password")  # NOSONAR
         client.force_authenticate(user)
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)

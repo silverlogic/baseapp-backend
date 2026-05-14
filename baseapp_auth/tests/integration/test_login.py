@@ -50,7 +50,7 @@ class TestLoginBase(ApiMixin):
         h.responseUnauthorized(r)
 
     def check_when_password_doesnt_match(self, client, data):
-        UserFactory(email=data["email"], password="not password")
+        UserFactory(email=data["email"], password="not password")  # NOSONAR
         r = self.send_login_request(client, data)
         h.responseUnauthorized(r)
 
@@ -84,7 +84,7 @@ class TestLoginAuthToken(TestLoginBase):
 
     @pytest.fixture
     def data(self):
-        return {"email": "john@doe.com", "password": "1234567890"}
+        return {"email": "john@doe.com", "password": "1234567890"}  # NOSONAR
 
     def test_can_login(self, client, data):
         self.check_receives_auth_simple_token(client, data)
@@ -122,7 +122,7 @@ class TestLoginJwt(TestLoginBase):
 
     @pytest.fixture
     def data(self):
-        return {"email": "john@doe.com", "password": "1234567890"}
+        return {"email": "john@doe.com", "password": "1234567890"}  # NOSONAR
 
     def test_can_login(self, client, data):
         self.check_receives_auth_jwt_token(client, data)
@@ -163,7 +163,7 @@ class TestLoginMfaAuthToken(TestLoginBase):
 
     @pytest.fixture
     def data(self):
-        return {"email": "john@doe.com", "password": "1234567890"}
+        return {"email": "john@doe.com", "password": "1234567890"}  # NOSONAR
 
     def test_when_email_doesnt_exist(self, client, data):
         self.check_when_email_doesnt_exist(client, data)
@@ -179,7 +179,7 @@ class TestLoginMfaAuthToken(TestLoginBase):
 
     def test_receives_first_step_mfa_response(self, client, active_user_with_application_otp):
         user = active_user_with_application_otp
-        data = {"email": user.email, "password": "1234567890"}
+        data = {"email": user.email, "password": "1234567890"}  # NOSONAR
         r = self.send_login_request(client, data)
         h.responseOk(r)
         assert set(r.data.keys()) == {"ephemeral_token", "method"}
@@ -202,7 +202,7 @@ class TestLoginMfaJwt(TestLoginBase):
 
     @pytest.fixture
     def data(self):
-        return {"email": "john@doe.com", "password": "1234567890"}
+        return {"email": "john@doe.com", "password": "1234567890"}  # NOSONAR
 
     def test_when_email_doesnt_exist(self, client, data):
         self.check_when_email_doesnt_exist(client, data)
@@ -218,7 +218,7 @@ class TestLoginMfaJwt(TestLoginBase):
 
     def test_receives_first_step_mfa_response(self, client, active_user_with_application_otp):
         user = active_user_with_application_otp
-        data = {"email": user.email, "password": "1234567890"}
+        data = {"email": user.email, "password": "1234567890"}  # NOSONAR
         r = self.send_login_request(client, data)
         h.responseOk(r)
         assert set(r.data.keys()) == {"ephemeral_token", "method"}

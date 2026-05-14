@@ -4,11 +4,11 @@ import logging
 import requests
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.views.decorators.csrf import csrf_exempt
 
 
-def direct_creator_upload(request):
+def direct_creator_upload(request: HttpRequest) -> HttpResponse:
     url = f"https://api.cloudflare.com/client/v4/accounts/{settings.CLOUDFLARE_ACCOUNT_ID}/stream?direct_user=true"
 
     headers = {
@@ -41,6 +41,6 @@ def direct_creator_upload(request):
 
 
 @login_required
-@csrf_exempt
-def cloudflare_stream_upload(request):
+@csrf_exempt  # NOSONAR - TUS upload clients don't include CSRF tokens; @login_required still enforces auth
+def cloudflare_stream_upload(request: HttpRequest) -> HttpResponse:  # NOSONAR
     return direct_creator_upload(request)

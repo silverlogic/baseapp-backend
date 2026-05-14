@@ -25,7 +25,7 @@ class ThumbnailField(graphene.Field):
                 }
             }
         )
-        return super(ThumbnailField, self).__init__(type, **kwargs)
+        super(ThumbnailField, self).__init__(type, **kwargs)
 
     def get_resolver(self, parent_resolver):
         resolver = self.resolver or parent_resolver
