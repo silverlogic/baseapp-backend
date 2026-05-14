@@ -650,7 +650,7 @@ def test_new_participant_cant_list_previous_messages_when_joining_group_room(
 
 
 def test_filter_participants_by_name(django_client):
-    user = UserFactory()
+    user = UserFactory(first_name="Alice", last_name="Test")
     profile_1 = ProfileFactory(name="John Doe")
     profile_2 = ProfileFactory(name="Jane Smith")
     profile_3 = ProfileFactory(name="Bob Johnson")
