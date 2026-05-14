@@ -47,6 +47,21 @@ class TestPreAuthJWT(TestPreAuthMixin):
             r = client.post(self.reverse(), data={"token": token})
             h.responseBadRequest(r)
 
+    def test_guest_cant_authenticate_when_user_deleted(self, client):
+        user = UserFactory()
+        token = PreAuthTokenGenerator().make_token(user)
+        user.delete()
+        r = client.post(self.reverse(), data={"token": token})
+        h.responseBadRequest(r)
+
+    def test_guest_cant_authenticate_when_user_email_changed(self, client):
+        user = UserFactory()
+        token = PreAuthTokenGenerator().make_token(user)
+        user.email = "changed@example.com"
+        user.save()
+        r = client.post(self.reverse(), data={"token": token})
+        h.responseBadRequest(r)
+
 
 class TestPreAuthAuthToken(TestPreAuthMixin):
     view_name = "pre_auth-auth-token"
