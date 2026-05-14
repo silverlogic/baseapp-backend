@@ -19,7 +19,9 @@ def test_remove_superuser_notification_email(outbox):
     assert len(outbox) == 1
 
 
-@override_settings(FRONT_CHANGE_EXPIRED_PASSWORD_URL="https://example.com/change/{token}")
+@override_settings(
+    FRONT_CHANGE_EXPIRED_PASSWORD_URL="https://example.com/change/{token}"  # NOSONAR - S2068
+)
 def test_send_password_expired_email(outbox):
     user = UserFactory()
     send_password_expired_email(user)
