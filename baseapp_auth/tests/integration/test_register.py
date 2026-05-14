@@ -24,7 +24,7 @@ class TestRegister(ApiMixin):
 
     @pytest.fixture
     def data(self):
-        return {"email": "john@doe.com", "password": "1234"}
+        return {"email": "john@doe.com", "password": "1234"}  # NOSONAR
 
     def test_can_register(self, client, data, outbox):
         r = client.post(self.reverse(), data)

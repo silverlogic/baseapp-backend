@@ -36,6 +36,7 @@ class CommentCreate(RelayMutation):
         target_object_id = graphene.ID(required=True)
         in_reply_to_id = graphene.ID(required=False)
         body = graphene.String(required=True)
+        mentioned_profile_ids = graphene.List(graphene.ID, required=False)
 
         if apps.is_installed("baseapp_profiles"):
             profile_id = graphene.ID(required=False)
@@ -43,6 +44,7 @@ class CommentCreate(RelayMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
+        mentioned_profile_ids = input.pop("mentioned_profile_ids", None) or []
         activity_name = f"{app_label}.add_comment"
 
         if service := shared_services.get("activity_log"):
@@ -92,6 +94,15 @@ class CommentCreate(RelayMutation):
             if comment.in_reply_to:
                 comment.in_reply_to.refresh_from_db()
 
+            if mentioned_profile_ids and apps.is_installed("baseapp_mentions"):
+                from baseapp_mentions.services import update_mentions
+
+                update_mentions(
+                    comment,
+                    mentioned_profile_ids,
+                    exclude_profile=getattr(info.context.user, "current_profile", None),
+                )
+
             return cls(
                 comment=CommentObjectType._meta.connection.Edge(node=comment),
             )
@@ -108,10 +119,12 @@ class CommentUpdate(RelayMutation):
     class Input:
         id = graphene.ID(required=True)
         body = graphene.String(required=True)
+        mentioned_profile_ids = graphene.List(graphene.ID, required=False)
 
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
+        mentioned_profile_ids = input.pop("mentioned_profile_ids", None)
         pk = get_pk_from_relay_id(input.get("id"))
         comment = Comment.objects.get(pk=pk)
         activity_name = f"{app_label}.change_comment"
@@ -130,6 +143,16 @@ class CommentUpdate(RelayMutation):
         form = CommentForm(instance=comment, data=input)
         if form.is_valid():
             comment = form.save()
+
+            if mentioned_profile_ids is not None and apps.is_installed("baseapp_mentions"):
+                from baseapp_mentions.services import update_mentions
+
+                update_mentions(
+                    comment,
+                    mentioned_profile_ids,
+                    exclude_profile=getattr(info.context.user, "current_profile", None),
+                )
+
             return cls(
                 comment=comment,
             )

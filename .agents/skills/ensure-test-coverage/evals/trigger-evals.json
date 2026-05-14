@@ -1,0 +1,50 @@
+[
+  {
+    "query": "I just finished the password reset endpoint, ready to merge.",
+    "should_trigger": true
+  },
+  {
+    "query": "Fix the bug where users can receive duplicate notifications.",
+    "should_trigger": true
+  },
+  {
+    "query": "Refactor the payments service to use the new base class.",
+    "should_trigger": true
+  },
+  {
+    "query": "I'm done with the avatar upload feature, can we ship it?",
+    "should_trigger": true
+  },
+  {
+    "query": "Implement a soft-delete flag on the Post model.",
+    "should_trigger": true
+  },
+  {
+    "query": "Add a new GraphQL mutation to update user preferences.",
+    "should_trigger": true
+  },
+  {
+    "query": "Patch the rate-limit middleware to fix the off-by-one error.",
+    "should_trigger": true
+  },
+  {
+    "query": "Mark this task as complete — all done.",
+    "should_trigger": true
+  },
+  {
+    "query": "Explain how the conftest.py fixtures are wired up.",
+    "should_trigger": false
+  },
+  {
+    "query": "What's in factories.py for the users app?",
+    "should_trigger": false
+  },
+  {
+    "query": "Backend refactor: rename the variable `qs` to `queryset` in this Django manager method.",
+    "should_trigger": true
+  },
+  {
+    "query": "Update the README with the new local-dev setup steps.",
+    "should_trigger": false
+  }
+]

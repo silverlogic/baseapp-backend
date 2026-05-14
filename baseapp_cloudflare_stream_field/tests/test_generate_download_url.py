@@ -33,12 +33,14 @@ def test_generate_download_url_ready_no_download_url(
 ):
     content_type, obj = setup_video_ready_no_url
 
-    mock_download_video.return_value = {"result": {"default": {"url": "http://new.download.url"}}}
+    mock_download_video.return_value = {
+        "result": {"default": {"url": "http://new.download.url"}}  # NOSONAR
+    }
 
     generate_download_url(content_type.pk, obj.pk, "video")
 
     obj.refresh_from_db()
-    assert obj.video["meta"]["download_url"] == "http://new.download.url"
+    assert obj.video["meta"]["download_url"] == "http://new.download.url"  # NOSONAR
     mock_update_video_data.assert_called_once_with(obj.video["uid"], {"meta": obj.video["meta"]})
 
 
@@ -51,5 +53,5 @@ def test_generate_download_url_ready_with_download_url(setup_video_ready_with_ur
         generate_download_url(content_type.pk, obj.pk, "video")
 
         obj.refresh_from_db()
-        assert obj.video["meta"]["download_url"] == "http://existing.download.url"
+        assert obj.video["meta"]["download_url"] == "http://existing.download.url"  # NOSONAR
         mock_download_video.assert_not_called()

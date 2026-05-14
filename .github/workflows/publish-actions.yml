@@ -35,7 +35,7 @@ jobs:
         run: uv build
 
       - name: Publish distribution 📦 to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.13.0
+        uses: pypa/gh-action-pypi-publish@106e0b0b7c337fa67ed433972f777c6357f78598  # v1.13.0
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
           packages-dir: ./dist/

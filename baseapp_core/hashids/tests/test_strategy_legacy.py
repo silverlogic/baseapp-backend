@@ -60,7 +60,7 @@ class TestLegacyGraphQLResolverStrategy:
 
         with pytest.raises(Exception) as e:
             resolver.get_node_from_global_id(info, dummy_instance.pk, only_type_mock)
-            assert "Unable to parse global ID" in str(e.value)
+        assert "Unable to parse global ID" in str(e.value)
 
     def test_get_node_from_global_id_using_global_id(
         self, resolver: LegacyGraphQLResolverStrategy, monkeypatch

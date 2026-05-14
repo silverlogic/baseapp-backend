@@ -63,7 +63,7 @@ class TestPkGraphQLResolverStrategy:
         dummy_instance = DummyLegacyModelFactory()
         with pytest.raises(Exception) as e:
             resolver.get_node_from_global_id(info, dummy_instance.pk)
-            assert "Can't resolve PK query without a specific type provided" in str(e.value)
+        assert "Can't resolve PK query without a specific type provided" in str(e.value)
 
     def test_get_from_global_id_using_global_id_without_only_type(
         self, resolver: PkGraphQLResolverStrategy
