@@ -42,7 +42,7 @@ class TestRatingsWithoutBaseappProfiles:
         RateModel = swapper.load_model("baseapp_ratings", "Rate")
         target = SimpleNamespace(pk=10, is_ratings_enabled=True, refresh_from_db=Mock())
         fake_rate = RateModel(pk=1, value=4, user=django_user_client.user)
-        fake_content_type = object()
+        fake_document = object()
 
         with (
             patch(
@@ -50,8 +50,12 @@ class TestRatingsWithoutBaseappProfiles:
                 return_value=target,
             ),
             patch(
-                "baseapp_ratings.graphql.mutations.ContentType.objects.get_for_model",
-                return_value=fake_content_type,
+                "baseapp_ratings.permissions._is_ratings_enabled",
+                return_value=True,
+            ),
+            patch(
+                "baseapp_ratings.graphql.mutations.DocumentId.get_or_create_for_object",
+                return_value=fake_document,
             ),
             patch(
                 "baseapp_ratings.graphql.mutations.RateModel.objects.create",
@@ -68,8 +72,7 @@ class TestRatingsWithoutBaseappProfiles:
         assert content["data"]["rateCreate"]["rate"]["node"]["value"] == 4
         _, kwargs = create_rate.call_args
         assert kwargs["user"] == django_user_client.user
-        assert kwargs["target_object_id"] == 10
-        assert kwargs["target_content_type"] is fake_content_type
+        assert kwargs["target_document"] is fake_document
         assert kwargs["value"] == 4
 
     def test_mutation_ignores_profile_id_when_profiles_disabled(
@@ -84,7 +87,11 @@ class TestRatingsWithoutBaseappProfiles:
                 return_value=target,
             ),
             patch(
-                "baseapp_ratings.graphql.mutations.ContentType.objects.get_for_model",
+                "baseapp_ratings.permissions._is_ratings_enabled",
+                return_value=True,
+            ),
+            patch(
+                "baseapp_ratings.graphql.mutations.DocumentId.get_or_create_for_object",
                 return_value=object(),
             ),
             patch(
@@ -143,8 +150,8 @@ class TestRatingsWithoutBaseappProfiles:
         assert "errors" not in content
         assert content["data"]["node"]["myRating"]["value"] == 5
         rate_filter.assert_called_once_with(
-            target_content_type=fake_content_type,
-            target_object_id=200,
+            target_document__content_type=fake_content_type,
+            target_document__object_id=200,
             user=django_user_client.user,
         )
 

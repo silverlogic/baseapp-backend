@@ -2,7 +2,6 @@ import graphene
 import swapper
 from django.apps import apps
 from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from graphql_relay.connection.arrayconnection import offset_to_cursor
@@ -13,6 +12,7 @@ from baseapp_core.graphql import (
     get_pk_from_relay_id,
     login_required,
 )
+from baseapp_core.models import DocumentId
 
 from .object_types import RatingsInterface
 
@@ -34,7 +34,6 @@ class RateCreate(RelayMutation):
     def mutate_and_get_payload(cls, root, info, **input):
         has_profiles = apps.is_installed("baseapp_profiles")
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
-        target_content_type = ContentType.objects.get_for_model(target)
 
         if not info.context.user.has_perm("baseapp_ratings.add_rate", target):
             raise GraphQLError(
@@ -71,8 +70,7 @@ class RateCreate(RelayMutation):
 
         rate_create_kwargs = dict(
             user=info.context.user,
-            target_object_id=target.pk,
-            target_content_type=target_content_type,
+            target_document=DocumentId.get_or_create_for_object(target),
             value=input["value"],
         )
         if has_profiles:

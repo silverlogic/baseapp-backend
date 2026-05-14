@@ -1,7 +1,8 @@
 import django_filters
+import swapper
 from django.db.models import Q
 
-from ..models import ReportType
+ReportType = swapper.load_model("baseapp_reports", "ReportType")
 
 
 class ReportTypeFilter(django_filters.FilterSet):

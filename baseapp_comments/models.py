@@ -66,18 +66,6 @@ if apps.is_installed("baseapp_profiles"):
     comment_inheritances.append(ProfileMixin)
 
 
-if apps.is_installed("baseapp_reactions"):
-    from baseapp_reactions.models import ReactableModel
-
-    comment_inheritances.append(ReactableModel)
-
-
-if apps.is_installed("baseapp_reports"):
-    from baseapp_reports.models import ReportableModel
-
-    comment_inheritances.append(ReportableModel)
-
-
 class AbstractComment(
     *comment_inheritances,
     DocumentIdMixin,
@@ -111,7 +99,7 @@ class AbstractComment(
     target_document = models.ForeignKey(
         DocumentId,
         verbose_name=_("target document"),
-        blank=True,
+        blank=False,
         null=False,
         related_name="comments_inbox",
         on_delete=models.CASCADE,
@@ -331,5 +319,5 @@ pghistory_register_default_track(
     pghistory.InsertEvent(),
     pghistory.UpdateEvent(),
     pghistory.DeleteEvent(),
-    exclude=["reactions_count", "modified"],
+    exclude=["modified"],
 )

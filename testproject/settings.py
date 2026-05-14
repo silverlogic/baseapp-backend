@@ -130,9 +130,9 @@ AUTHENTICATION_BACKENDS = [
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_profiles"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_comments"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp.activity_log"),
-    "baseapp_reactions.permissions.ReactionsPermissionsBackend",
-    "baseapp_reports.permissions.ReportsPermissionsBackend",
-    "baseapp_ratings.permissions.RatingsPermissionsBackend",
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_reactions"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_reports"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_ratings"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_follows"),
     "baseapp_chats.permissions.ChatsPermissionsBackend",
     "baseapp_blocks.permissions.BlocksPermissionsBackend",
@@ -196,6 +196,7 @@ BASEAPP_PROFILES_PROFILEUSERROLE_MODEL = "profiles.ProfileUserRole"
 
 # Reactions
 BASEAPP_REACTIONS_REACTION_MODEL = "reactions.Reaction"
+BASEAPP_REACTIONS_REACTABLEMETADATA_MODEL = "reactions.ReactableMetadata"
 BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS = False
 
 # Comments
@@ -215,10 +216,12 @@ BASEAPP_BLOCKS_BLOCK_MODEL = "blocks.Block"
 
 # Ratings
 BASEAPP_RATINGS_RATE_MODEL = "ratings.Rate"
+BASEAPP_RATINGS_RATABLEMETADATA_MODEL = "ratings.RatableMetadata"
 
 # Reports
 BASEAPP_REPORTS_REPORT_MODEL = "reports.Report"
 BASEAPP_REPORTS_REPORTTYPE_MODEL = "reports.ReportType"
+BASEAPP_REPORTS_REPORTABLEMETADATA_MODEL = "reports.ReportableMetadata"
 
 # Pages
 BASEAPP_PAGES_PAGE_MODEL = "pages.Page"

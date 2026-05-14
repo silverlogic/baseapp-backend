@@ -1,12 +1,11 @@
-from baseapp_reactions.models import AbstractBaseReaction
+from baseapp_reactions.models import AbstractReactableMetadata, AbstractReaction
 
 
-class Reaction(AbstractBaseReaction):
-    class Meta(AbstractBaseReaction.Meta):
+class Reaction(AbstractReaction):
+    class Meta(AbstractReaction.Meta):
         pass
 
-    @classmethod
-    def get_graphql_object_type(cls):
-        from baseapp_reactions.graphql.object_types import ReactionObjectType
 
-        return ReactionObjectType
+class ReactableMetadata(AbstractReactableMetadata):
+    class Meta(AbstractReactableMetadata.Meta):
+        pass

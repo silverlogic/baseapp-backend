@@ -42,7 +42,7 @@ class TestReactionsWithoutBaseappProfiles:
         Reaction = swapper.load_model("baseapp_reactions", "Reaction")
         target = SimpleNamespace(pk=10, is_reactions_enabled=True, refresh_from_db=Mock())
         reaction = Reaction(pk=1, reaction_type=Reaction.ReactionTypes.LIKE)
-        fake_content_type = object()
+        fake_document = object()
 
         with (
             patch(
@@ -50,8 +50,12 @@ class TestReactionsWithoutBaseappProfiles:
                 return_value=target,
             ),
             patch(
-                "baseapp_reactions.graphql.mutations.ContentType.objects.get_for_model",
-                return_value=fake_content_type,
+                "baseapp_reactions.permissions._is_reactions_enabled",
+                return_value=True,
+            ),
+            patch(
+                "baseapp_reactions.graphql.mutations.DocumentId.get_or_create_for_object",
+                return_value=fake_document,
             ),
             patch(
                 "baseapp_reactions.graphql.mutations.Reaction.objects.get_or_create",
@@ -73,8 +77,7 @@ class TestReactionsWithoutBaseappProfiles:
         assert content["data"]["reactionToggle"]["reaction"]["node"]["reactionType"] == "LIKE"
         _, kwargs = get_or_create.call_args
         assert kwargs["user"] == django_user_client.user
-        assert kwargs["target_object_id"] == 10
-        assert kwargs["target_content_type"] is fake_content_type
+        assert kwargs["target_document"] is fake_document
         assert kwargs["defaults"] == {"reaction_type": Reaction.ReactionTypes.LIKE}
 
     def test_mutation_ignores_profile_object_id_when_profiles_disabled(
@@ -90,7 +93,11 @@ class TestReactionsWithoutBaseappProfiles:
                 return_value=target,
             ) as get_obj_from_relay_id,
             patch(
-                "baseapp_reactions.graphql.mutations.ContentType.objects.get_for_model",
+                "baseapp_reactions.permissions._is_reactions_enabled",
+                return_value=True,
+            ),
+            patch(
+                "baseapp_reactions.graphql.mutations.DocumentId.get_or_create_for_object",
                 return_value=object(),
             ),
             patch(
@@ -150,8 +157,8 @@ class TestReactionsWithoutBaseappProfiles:
         assert "errors" not in content
         assert content["data"]["node"]["myReaction"]["reactionType"] == "LIKE"
         reaction_filter.assert_called_once_with(
-            target_content_type=fake_content_type,
-            target_object_id=200,
+            target_document__content_type=fake_content_type,
+            target_document__object_id=200,
             user_id=django_user_client.user.id,
         )
 

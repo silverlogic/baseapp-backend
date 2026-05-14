@@ -80,13 +80,24 @@ class TestContentFeedWithoutBaseappProfiles:
         graphql_user_client,
     ):
         ContentPost = swapper.load_model("baseapp_content_feed", "ContentPost")
-        instance = ContentPost(pk=101, content="without profiles", is_reactions_enabled=True)
+        instance = ContentPost(pk=101, content="without profiles")
         instance.save = Mock()
         instance.refresh_from_db = Mock()
 
         form = Mock()
         form.is_valid.return_value = True
         form.save.return_value = instance
+
+        # Stub the reactable_metadata service so the mutation's write-through doesn't
+        # try to insert into the (absent) metadata table for our pk=101 fake, and so
+        # the GraphQL `isReactionsEnabled` resolver returns the True we'd expect.
+        reactable_service = Mock()
+        reactable_service.is_reactions_enabled.return_value = True
+
+        def _shared_services_get(name):
+            if name == "reactable_metadata":
+                return reactable_service
+            return None
 
         with (
             patch(
@@ -96,6 +107,14 @@ class TestContentFeedWithoutBaseappProfiles:
             patch(
                 "baseapp.content_feed.graphql.mutations.apps.is_installed",
                 side_effect=lambda app_name: False if app_name == "baseapp_profiles" else True,
+            ),
+            patch(
+                "baseapp.content_feed.graphql.mutations.shared_services.get",
+                side_effect=_shared_services_get,
+            ),
+            patch(
+                "baseapp_reactions.graphql.object_types.shared_services.get",
+                side_effect=_shared_services_get,
             ),
         ):
             response = graphql_user_client(
@@ -115,6 +134,8 @@ class TestContentFeedWithoutBaseappProfiles:
             "without profiles"
         )
         assert content["data"]["contentPostCreate"]["contentPost"]["node"]["isReactionsEnabled"]
+        # The mutation should write the input through to the metadata service.
+        reactable_service.set_is_reactions_enabled.assert_called_once_with(instance, True)
         assert instance.user == django_user_client.user
         if hasattr(instance, "profile"):
             assert instance.profile is None

@@ -114,7 +114,9 @@ def migrate_follow_profile_fks_to_document_id(
         doc_qs = DocumentId.objects
         ct_qs = ContentType.objects
 
-    source_ct = ct_qs.get(
+    # `get_or_create` so the helper is self-sufficient on a fresh DB (e.g. test runner)
+    # where `post_migrate` hasn't yet populated the ContentType row for the source model.
+    source_ct, _ = ct_qs.get_or_create(
         app_label=SourceModel._meta.app_label,
         model=SourceModel._meta.model_name,
     )
@@ -188,10 +190,13 @@ def reverse_migrate_follow_document_id_fks_to_profile(
         doc_qs = DocumentId.objects
         ct_qs = ContentType.objects
 
-    source_ct = ct_qs.get(
+    source_ct = ct_qs.filter(
         app_label=SourceModel._meta.app_label,
         model=SourceModel._meta.model_name,
-    )
+    ).first()
+    if source_ct is None:
+        # Nothing to restore if the source ContentType is gone.
+        return
 
     object_id_by_doc = {
         doc["id"]: doc["object_id"]

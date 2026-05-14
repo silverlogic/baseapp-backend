@@ -69,7 +69,9 @@ def migrate_legacy_commentable_fields_to_metadata(
         schema_editor, SourceModel, ContentType, DocumentId, CommentableMetadata
     )
 
-    source_ct = ct_qs.get(
+    # `get_or_create` so the helper is self-sufficient on a fresh DB (e.g. test runner)
+    # where `post_migrate` hasn't yet populated the ContentType row for this model.
+    source_ct, _ = ct_qs.get_or_create(
         app_label=SourceModel._meta.app_label,
         model=SourceModel._meta.model_name,
     )
@@ -112,10 +114,14 @@ def reverse_migrate_legacy_commentable_fields_from_metadata(
         schema_editor, SourceModel, ContentType, CommentableMetadata
     )
 
-    source_ct = ct_qs.get(
+    source_ct = ct_qs.filter(
         app_label=SourceModel._meta.app_label,
         model=SourceModel._meta.model_name,
-    )
+    ).first()
+    if source_ct is None:
+        # No ContentType row for the source model (fresh DB / test runner). Nothing
+        # to restore.
+        return
 
     metadata_rows = metadata_qs.filter(target__content_type_id=source_ct.id).select_related(
         "target"

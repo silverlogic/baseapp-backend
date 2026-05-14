@@ -4,10 +4,9 @@ from model_utils import FieldTracker
 
 from baseapp_auth.models import AbstractUser
 from baseapp_profiles.signals import create_profile_url_path
-from baseapp_ratings.models import RatableModel
 
 
-class User(AbstractUser, RatableModel):
+class User(AbstractUser):
     # FieldTracker doesn't work with abstract model classes
     tracker = FieldTracker(fields=["is_superuser", "password"])
 

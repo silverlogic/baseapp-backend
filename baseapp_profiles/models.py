@@ -34,12 +34,6 @@ if apps.is_installed("baseapp_blocks"):
     inheritances.append(BlockableModel)
 
 
-if apps.is_installed("baseapp_reports"):
-    from baseapp_reports.models import ReportableModel
-
-    inheritances.append(ReportableModel)
-
-
 if apps.is_installed("baseapp_pages"):
     from baseapp_pages.models import PageMixin
 
@@ -324,7 +318,7 @@ class CreateProfileFunc(pgtrigger.Func):
         }
 
         # Dynamically add any extra NOT NULL columns that have Python-level defaults
-        # (e.g. blockers_count, reports_count from optional mixins).
+        # (e.g. blockers_count from optional mixins).
         for field in Profile._meta.fields:
             col = field.column
             if col in explicit or field.primary_key or field.null:

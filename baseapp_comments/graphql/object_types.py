@@ -22,7 +22,6 @@ from baseapp_core.plugins import (
     graphql_shared_interfaces,
     shared_services,
 )
-from baseapp_reactions.graphql.object_types import ReactionsInterface
 
 from ..models import CommentStatus, default_comments_count
 from .filters import CommentFilter
@@ -117,7 +116,7 @@ class BaseCommentObjectType:
         interfaces = graphql_shared_interfaces.get(
             RelayNode,
             CommentsInterface,
-            ReactionsInterface,
+            "ReactionsInterface",
             PermissionsInterface,
             "NodeActivityLogInterface",
         )
@@ -175,9 +174,10 @@ class BaseCommentObjectType:
         if service := shared_services.get("commentable_metadata"):
             queryset = service.annotate_queryset(queryset)
 
-        queryset = queryset.annotate(
-            reactions_count_total=models.F("reactions_count__total"),
-        )
+        # Annotate reactable metadata (includes reactions_count_total for CommentFilter).
+        if service := shared_services.get("reactable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+
         return queryset
 
     @classmethod

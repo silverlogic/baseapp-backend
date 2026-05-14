@@ -103,9 +103,9 @@ def test_migrate_legacy_commentable_fields_to_metadata_creates_metadata_rows():
     metadata_updates = []
 
     class ContentTypeManager:
-        def get(self, **kwargs):
+        def get_or_create(self, **kwargs):
             assert kwargs == {"app_label": "pages", "model": "page"}
-            return ct
+            return ct, False
 
     class DocumentIdManager:
         def get_or_create(self, **kwargs):
@@ -188,9 +188,14 @@ def test_reverse_migrate_legacy_commentable_fields_from_metadata_restores_source
             return iter(self._rows)
 
     class ContentTypeManager:
-        def get(self, **kwargs):
+        def filter(self, **kwargs):
             assert kwargs == {"app_label": "pages", "model": "page"}
-            return ct
+
+            class _Filtered:
+                def first(_self):
+                    return ct
+
+            return _Filtered()
 
     class MetadataManager:
         def filter(self, **kwargs):
@@ -259,9 +264,19 @@ def _alias_tracking_apps(*, source_rows, ct, source_meta=("pages", "page")):
             return _UpdateQuerySet(self.update_log, kwargs["pk"])
 
     class ContentTypeManager(_AliasManager):
-        def get(self, **kwargs):
+        def get_or_create(self, **kwargs):
             assert kwargs == {"app_label": source_app_label, "model": source_model_name}
-            return ct
+            return ct, False
+
+        def filter(self, **kwargs):
+            assert kwargs == {"app_label": source_app_label, "model": source_model_name}
+            row = ct
+
+            class _Filtered:
+                def first(_self):
+                    return row
+
+            return _Filtered()
 
     class DocumentIdManager(_AliasManager):
         def __init__(self):
@@ -276,9 +291,6 @@ def _alias_tracking_apps(*, source_rows, ct, source_meta=("pages", "page")):
             )
             self.created.append(kwargs)
             return doc, True
-
-        def filter(self, **kwargs):
-            return _LegacyQuerySet([])  # empty; reverse path doesn't use this fixture
 
     class MetadataManager(_AliasManager):
         def __init__(self):

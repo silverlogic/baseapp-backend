@@ -1,8 +1,27 @@
 import swapper
 from django.apps import apps
+from django.conf import settings
 from django.contrib.auth.backends import BaseBackend
 
+from baseapp_core.plugins import shared_services
+
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
+
+
+def _is_reactions_enabled(obj) -> bool:
+    if service := shared_services.get("reactable_metadata"):
+        return service.is_reactions_enabled(obj)
+    return False
+
+
+def can_anonymous_view_reactions() -> bool:
+    """Resolve `BASEAPP_REACTIONS_CAN_ANONYMOUS_VIEW_REACTIONS`, falling back to
+    the original double-S typo'd name for back-compat (drop in a future release)."""
+    return getattr(
+        settings,
+        "BASEAPP_REACTIONS_CAN_ANONYMOUS_VIEW_REACTIONS",
+        getattr(settings, "BASEAPP_REACTIONS_CAN_ANONYMOUS_VIEW_REACTIONSS", True),
+    )
 
 
 class ReactionsPermissionsBackend(BaseBackend):
@@ -16,15 +35,16 @@ class ReactionsPermissionsBackend(BaseBackend):
         use_profile_perm = f"{Profile._meta.app_label}.use_profile"
 
         if perm == "baseapp_reactions.add_reaction":
-            return user_obj.is_authenticated and getattr(obj, "is_reactions_enabled", False)
+            return user_obj.is_authenticated and _is_reactions_enabled(obj)
 
         if perm == "baseapp_reactions.view_reaction":
-            # Anyone can view a reaction
+            if not can_anonymous_view_reactions() and not user_obj.is_authenticated:
+                return False
             return True
 
         if perm in ["baseapp_reactions.change_reaction", "baseapp_reactions.delete_reaction"]:
             if isinstance(obj, Reaction):
-                if obj.target and not getattr(obj.target, "is_reactions_enabled", True):
+                if obj.target and not _is_reactions_enabled(obj.target):
                     return False
 
                 if user_obj.is_authenticated:
@@ -42,14 +62,16 @@ class ReactionsPermissionsBackend(BaseBackend):
 
     def _has_perm_with_user(self, user_obj, perm, obj=None):
         if perm == "baseapp_reactions.add_reaction":
-            return user_obj.is_authenticated and getattr(obj, "is_reactions_enabled", False)
+            return user_obj.is_authenticated and _is_reactions_enabled(obj)
 
         if perm == "baseapp_reactions.view_reaction":
+            if not can_anonymous_view_reactions() and not user_obj.is_authenticated:
+                return False
             return True
 
         if perm in ["baseapp_reactions.change_reaction", "baseapp_reactions.delete_reaction"]:
             if isinstance(obj, Reaction):
-                if obj.target and not getattr(obj.target, "is_reactions_enabled", True):
+                if obj.target and not _is_reactions_enabled(obj.target):
                     return False
 
                 if user_obj.is_authenticated:
