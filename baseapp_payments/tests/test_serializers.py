@@ -1,5 +1,8 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
+from rest_framework.exceptions import ValidationError
+
 from baseapp_payments.serializers import (
     StripePaymentMethodSerializer,
     StripeSubscriptionPatchSerializer,
@@ -55,5 +58,5 @@ def test_payment_method_create_setup_intent_failure():
         mock_create.side_effect = Exception("Setup intent failed")
 
         serializer = StripePaymentMethodSerializer()
-        result = serializer.create({"customer_id": "cus_123"})
-    assert result is None
+        with pytest.raises(ValidationError):
+            serializer.create({"customer_id": "cus_123"})
