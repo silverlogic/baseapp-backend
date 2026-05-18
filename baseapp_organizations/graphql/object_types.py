@@ -1,3 +1,6 @@
+from typing import Optional
+
+import graphene
 import swapper
 
 from baseapp_auth.graphql.permissions import PermissionsInterface
@@ -17,7 +20,9 @@ class AbstractOrganizationObjectType(object):
         )
 
     @classmethod
-    def get_node(cls, info, id):
+    def get_node(
+        cls, info: graphene.ResolveInfo, id: str
+    ) -> Optional["AbstractOrganizationObjectType"]:
         if not info.context.user.has_perm("baseapp_organizations.view_organization"):
             return None
         node = super().get_node(info, id)

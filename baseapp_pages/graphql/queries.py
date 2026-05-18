@@ -1,3 +1,5 @@
+from typing import Optional
+
 import graphene
 import swapper
 from django.db.models import Q
@@ -18,7 +20,9 @@ class PagesQueries:
     all_pages = DjangoFilterConnectionField(PageObjectType)
     page = Node.Field(PageObjectType)
 
-    def resolve_url_path(self, info, path):  # NOSONAR
+    def resolve_url_path(
+        self, info: graphene.ResolveInfo, path: str
+    ) -> Optional[URLPath]:  # NOSONAR
         language = get_language()
 
         try:

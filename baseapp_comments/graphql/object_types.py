@@ -83,7 +83,7 @@ class CommentsInterface(RelayNode):
     class Meta:
         model = Comment
 
-    def resolve_comments(self, info, **kwargs):
+    def resolve_comments(self, info: GQLInfo, **kwargs) -> models.QuerySet:
         # if self is a comment and is attached to a target use self.comments so it can be filtered
         # by using ForeignKey related field
         # if not then assume its another object type, like a post
@@ -175,8 +175,8 @@ class BaseCommentObjectType:
         filterset_class = CommentFilter
 
     @classmethod
-    def get_node(cls, info, id):
-        node = super().get_node(info, id)
+    def get_node(cls, info: GQLInfo, node_id: str) -> "Comment | None":
+        node = super().get_node(info, node_id)
         if not info.context.user.has_perm(f"{app_label}.view_comment", node):
             return None
         return node

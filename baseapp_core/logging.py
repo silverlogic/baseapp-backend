@@ -10,7 +10,7 @@ from .middleware import threading_local
 class BaseJSONFormatter(JSONFormatter):
     def json_record(self, message: str, extra: dict, record: LogRecord) -> dict:
         extra["message"] = message
-        extra["@timestamp"] = datetime.fromtimestamp(record.created, tz=timezone.utc)
+        extra["@timestamp"] = datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat()
         extra["log.level"] = record.levelname
         extra["log.logger"] = record.name
 

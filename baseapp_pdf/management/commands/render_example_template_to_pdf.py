@@ -10,7 +10,7 @@ from baseapp_pdf.utils import render_template_to_pdf
 class Command(  # NOSONAR - S8443: inherits BaseCommand via BasePDFCommand
     BasePDFCommand
 ):  # pragma: no cover
-    help = "Render Example Templateto PDF"
+    help = "Render Example Template to PDF"
 
     def __init__(self, *args, **kwargs):
         super(Command, self).__init__(*args, **kwargs)
@@ -20,7 +20,7 @@ class Command(  # NOSONAR - S8443: inherits BaseCommand via BasePDFCommand
             "--destination", type=str, help="The destination directory_path. Defaults to cwd."
         )
 
-    def _handle(self, *args, **options):
+    def _handle(self, *args, **options) -> None:
         destination = Path(options.get("destination") or Path.cwd())
         if destination.is_dir() is False:
             raise ValueError(f"Destination must be a directory! {destination}")

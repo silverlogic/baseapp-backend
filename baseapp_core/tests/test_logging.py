@@ -1,5 +1,4 @@
 import logging
-from datetime import timezone
 from unittest.mock import patch
 
 import pytest
@@ -23,7 +22,8 @@ class TestBaseJSONFormatter:
     def test_json_record_timestamp_is_utc(self, formatter):
         record = self._make_record()
         result = formatter.json_record("msg", {}, record)
-        assert result["@timestamp"].tzinfo is timezone.utc
+        assert isinstance(result["@timestamp"], str)
+        assert result["@timestamp"].endswith("+00:00")
 
     def test_json_record_includes_log_level(self, formatter):
         record = self._make_record(level=logging.WARNING)

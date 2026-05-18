@@ -1,11 +1,12 @@
 import traceback
 from pathlib import Path
+from typing import Any
 
 from django.core.management.base import BaseCommand
 
 
 class BasePDFCommand(BaseCommand):  # pragma: no cover
-    def handle(self, *args, **options):
+    def handle(self, *args: Any, **options: Any) -> None:
         try:
             self._handle(*args, **options)
         except KeyboardInterrupt:

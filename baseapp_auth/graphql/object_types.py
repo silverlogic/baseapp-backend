@@ -1,3 +1,5 @@
+from typing import Optional
+
 import graphene
 from django.apps import apps
 from django.contrib.auth import get_user_model
@@ -143,8 +145,10 @@ class AbstractUserObjectType(*inheritances, object):
         return optimize(queryset, info, max_complexity=cls.MAX_COMPLEXITY)
 
     @classmethod
-    def get_node(cls, info, id):
-        node = super().get_node(info, id)
+    def get_node(
+        cls, info: graphene.ResolveInfo, node_id: str
+    ) -> Optional["AbstractUserObjectType"]:
+        node = super().get_node(info, node_id)
         if not info.context.user.has_perm(f"{User._meta.app_label}.view_user", node):
             return None
         return node

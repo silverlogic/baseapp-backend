@@ -1,5 +1,6 @@
 import re
 from io import BytesIO
+from typing import Any, Dict, Optional
 
 import requests
 from django.core.files.images import ImageFile
@@ -14,8 +15,13 @@ class EmailNotProvidedError(Exception):
 
 
 def get_username(  # pragma: no cover
-    strategy, details, response, user=None, *args, **kwargs
-):  # NOSONAR - response is required by python-social-auth pipeline interface
+    strategy: Any,
+    details: Dict[str, Any],
+    response: Any,
+    user: Optional[Any] = None,
+    *args: Any,
+    **kwargs: Any,
+) -> Dict[str, str]:  # NOSONAR - response is required by python-social-auth pipeline interface
     storage = strategy.storage
 
     if not user:

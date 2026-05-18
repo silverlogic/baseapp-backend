@@ -1,7 +1,11 @@
+import logging
+
 from django.contrib.auth.models import Group, Permission
 from django.db import models
 from django.db.models import Q
 from django.utils.functional import cached_property
+
+logger = logging.getLogger(__name__)
 
 
 class Role(models.Model):
@@ -46,7 +50,11 @@ class Role(models.Model):
             )
             perms |= {"%s.%s" % (ct, name) for ct, name in group_perms}
         except Exception:
-            pass
+            logger.exception(
+                "Failed to resolve permission list for role %r (id=%s)",
+                getattr(self, "name", None),
+                getattr(self, "pk", None),
+            )
         return perms
 
 

@@ -1,3 +1,5 @@
+from typing import Optional
+
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
@@ -84,8 +86,8 @@ class BaseReportObjectType:
         }
 
     @classmethod
-    def get_node(cls, info, id):
-        node = super().get_node(info, id)
+    def get_node(cls, info: graphene.ResolveInfo, node_id: str) -> Optional["BaseReportObjectType"]:
+        node = super().get_node(info, node_id)
         if not info.context.user.has_perm(VIEW_REPORT_PERMISSION, node):
             return None
         return node
