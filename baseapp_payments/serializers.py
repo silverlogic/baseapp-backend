@@ -274,8 +274,8 @@ class StripePaymentMethodSerializer(serializers.Serializer):
         except Exception as e:
             logger.exception(f"Failed to create setup intent: {str(e)}")
             raise serializers.ValidationError(
-                "An internal error has occurred. Please try again later."
-            )
+                {"non_field_errors": ["An internal error has occurred. Please try again later."]}
+            ) from e
 
     def update(self, validated_data):
         stripe_service = StripeService()

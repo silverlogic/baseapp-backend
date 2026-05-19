@@ -1,5 +1,6 @@
 from pathlib import Path
 from random import randint
+from typing import Any
 
 from django.utils import timezone
 
@@ -20,7 +21,7 @@ class Command(  # NOSONAR - S8443: inherits BaseCommand via BasePDFCommand
             "--destination", type=str, help="The destination directory_path. Defaults to cwd."
         )
 
-    def _handle(self, *args, **options) -> None:
+    def _handle(self, *args: Any, **options: Any) -> None:
         destination = Path(options.get("destination") or Path.cwd())
         if destination.is_dir() is False:
             raise ValueError(f"Destination must be a directory! {destination}")

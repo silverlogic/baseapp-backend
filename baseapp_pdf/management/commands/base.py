@@ -2,7 +2,7 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 
 class BasePDFCommand(BaseCommand):  # pragma: no cover
@@ -11,9 +11,10 @@ class BasePDFCommand(BaseCommand):  # pragma: no cover
             self._handle(*args, **options)
         except KeyboardInterrupt:
             self.stdout.write("\r\n")
-        except Exception:  # NOSONAR - S5754
+        except Exception as exc:  # NOSONAR - S5754
             self.stdout.write("\r\n")
             self.stdout.write(self.style.ERROR(traceback.format_exc()))
+            raise CommandError(str(exc)) from exc
 
     def _write_pdf_output(self, pdf_file_path: Path, destination: Path) -> None:
         resolved_destination = destination.resolve()

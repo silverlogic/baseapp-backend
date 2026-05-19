@@ -23,7 +23,7 @@ class BasePreAuthSerializer(serializers.Serializer):
         try:
             self.user = User.objects.get(id=value[0])
         except User.DoesNotExist:
-            raise serializers.ValidationError(_INVALID_TOKEN_ERROR)
+            raise serializers.ValidationError(_INVALID_TOKEN_ERROR) from None
         if not generator.is_value_valid(self.user, value):
             raise serializers.ValidationError(_INVALID_TOKEN_ERROR)
         return token
