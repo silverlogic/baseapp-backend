@@ -7,6 +7,7 @@ from graphene_django import DjangoConnectionField
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
+from baseapp_core.plugins import shared_services
 
 Block = swapper.load_model("baseapp_blocks", "Block")
 
@@ -22,11 +23,15 @@ class BlocksInterface(RelayNode):
 
     def resolve_blockers_count(self, info):
         if info.context.user.has_perm("baseapp_blocks.view_block-blockers_count", self):
-            return self.blockers_count
+            if service := shared_services.get("blockable_metadata"):
+                return service.get_blockers_count(self)
+            return 0
 
     def resolve_blocking_count(self, info):
         if info.context.user.has_perm("baseapp_blocks.view_block-blocking_count", self):
-            return self.blocking_count
+            if service := shared_services.get("blockable_metadata"):
+                return service.get_blocking_count(self)
+            return 0
 
     def resolve_blockers(self, info, **kwargs):
         if info.context.user.has_perm("baseapp_blocks.view_block-blockers", self):

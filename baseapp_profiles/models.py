@@ -28,11 +28,6 @@ logger = logging.getLogger(__name__)
 
 
 inheritances = [TimeStampedModel]
-if apps.is_installed("baseapp_blocks"):
-    from baseapp_blocks.models import BlockableModel
-
-    inheritances.append(BlockableModel)
-
 
 if apps.is_installed("baseapp_pages"):
     from baseapp_pages.models import PageMixin
@@ -269,8 +264,8 @@ class CreateProfileFunc(pgtrigger.Func):
     SQL values are captured at class_prepared time so that render() works with state models.
 
     render() dynamically builds the INSERT column list from the live Profile model so that
-    extra NOT NULL fields added by optional mixins (e.g. BlockableModel, CommentableModel)
-    are included with their Python defaults — no manual maintenance required.
+    extra NOT NULL fields added by optional mixins (e.g. CommentableModel) are included with
+    their Python defaults — no manual maintenance required.
     """
 
     def __init__(

@@ -2,7 +2,6 @@ import graphene
 from graphene.relay.node import NodeField as RelayNodeField
 from graphene_django.debug import DjangoDebug
 
-from baseapp_blocks.graphql.mutations import BlocksMutations
 from baseapp_chats.graphql.mutations import ChatsMutations
 from baseapp_chats.graphql.queries import ChatsQueries
 from baseapp_chats.graphql.subscriptions import ChatsSubscriptions
@@ -28,7 +27,6 @@ class Query(
 
 class Mutation(
     graphene.ObjectType,
-    BlocksMutations,
     ChatsMutations,
     *mutations,
 ):
