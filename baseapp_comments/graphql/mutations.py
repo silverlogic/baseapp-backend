@@ -44,7 +44,6 @@ class CommentCreate(RelayMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        mentioned_profile_ids = input.pop("mentioned_profile_ids", None) or []
         activity_name = f"{app_label}.add_comment"
 
         if service := shared_services.get("activity_log"):
@@ -85,6 +84,7 @@ class CommentCreate(RelayMutation):
                     extensions={"code": "permission_required"},
                 )
 
+        mentioned_profile_ids = input.pop("mentioned_profile_ids", None) or []
         form = CommentForm(instance=comment, data=input)
         if form.is_valid():
             form.save()
@@ -94,14 +94,13 @@ class CommentCreate(RelayMutation):
             if comment.in_reply_to:
                 comment.in_reply_to.refresh_from_db()
 
-            if mentioned_profile_ids and apps.is_installed("baseapp_mentions"):
-                from baseapp_mentions.services import update_mentions
-
-                update_mentions(
-                    comment,
-                    mentioned_profile_ids,
-                    exclude_profile=getattr(info.context.user, "current_profile", None),
-                )
+            if mentioned_profile_ids:
+                if service := shared_services.get("mentions"):
+                    service.update_mentions(
+                        comment,
+                        mentioned_profile_ids,
+                        exclude_profile=getattr(info.context.user, "current_profile", None),
+                    )
 
             return cls(
                 comment=CommentObjectType._meta.connection.Edge(node=comment),
@@ -144,14 +143,13 @@ class CommentUpdate(RelayMutation):
         if form.is_valid():
             comment = form.save()
 
-            if mentioned_profile_ids is not None and apps.is_installed("baseapp_mentions"):
-                from baseapp_mentions.services import update_mentions
-
-                update_mentions(
-                    comment,
-                    mentioned_profile_ids,
-                    exclude_profile=getattr(info.context.user, "current_profile", None),
-                )
+            if mentioned_profile_ids is not None:
+                if service := shared_services.get("mentions"):
+                    service.update_mentions(
+                        comment,
+                        mentioned_profile_ids,
+                        exclude_profile=getattr(info.context.user, "current_profile", None),
+                    )
 
             return cls(
                 comment=comment,

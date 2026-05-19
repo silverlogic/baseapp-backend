@@ -25,25 +25,32 @@ class CommentStatus(models.IntegerChoices):
     PUBLISHED = 1, _("published")
 
 
+class CommentQuerySet(models.QuerySet):
+    def visible(self):
+        return self.exclude(status=CommentStatus.DELETED)
+
+    def for_target(self, obj, *, root_only=True):
+        ct = ContentType.objects.get_for_model(obj)
+
+        qs = self.visible().filter(
+            target_document__content_type=ct,
+            target_document__object_id=obj.pk,
+        )
+
+        if root_only:
+            qs = qs.filter(in_reply_to__isnull=True)
+
+        return qs
+
+
 class NonDeletedComments(models.Manager):
     """Automatically filters out soft deleted objects from QuerySets"""
 
     def get_queryset(self):
-        return super(NonDeletedComments, self).get_queryset().exclude(status=CommentStatus.DELETED)
+        return CommentQuerySet(self.model, using=self._db).visible()
 
     def for_target(self, obj, *, root_only=True):
-        """
-        Top-level (or all) non-deleted comments for a target object, without requiring a reverse
-        GenericRelation on the target model. Mirrors the queryset used for GraphQL
-        `CommentsInterface` for non-Comment targets (e.g. pages).
-        """
-        ct = ContentType.objects.get_for_model(obj)
-        qs = self.get_queryset().filter(
-            target_document__content_type=ct, target_document__object_id=obj.pk
-        )
-        if root_only:
-            qs = qs.filter(in_reply_to__isnull=True)
-        return qs
+        return self.get_queryset().for_target(obj, root_only=root_only)
 
 
 comment_inheritances = []
@@ -118,7 +125,7 @@ class AbstractComment(
         _("status"), choices=CommentStatus.choices, default=CommentStatus.PUBLISHED, db_index=True
     )
 
-    objects = models.Manager()
+    objects = CommentQuerySet.as_manager()
     objects_visible = NonDeletedComments()
 
     class Meta:

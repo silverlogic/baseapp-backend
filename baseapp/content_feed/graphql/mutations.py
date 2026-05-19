@@ -69,14 +69,13 @@ class ContentPostCreate(RelayMutation):
                         )
                     )
 
-                if mentioned_profile_ids and apps.is_installed("baseapp_mentions"):
-                    from baseapp_mentions.services import update_mentions
-
-                    update_mentions(
-                        instance,
-                        mentioned_profile_ids,
-                        exclude_profile=getattr(info.context.user, "current_profile", None),
-                    )
+                if mentioned_profile_ids:
+                    if service := shared_services.get("mentions"):
+                        service.update_mentions(
+                            instance,
+                            mentioned_profile_ids,
+                            exclude_profile=getattr(info.context.user, "current_profile", None),
+                        )
 
                 instance.refresh_from_db()
 
