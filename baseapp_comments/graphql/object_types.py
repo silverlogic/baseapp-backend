@@ -1,5 +1,6 @@
 import graphene
 import swapper
+from django.apps import apps
 from django.conf import settings
 from django.db import models
 from query_optimizer import DjangoConnectionField
@@ -108,6 +109,14 @@ class CommentsInterface(RelayNode):
         return qs
 
 
+comment_interfaces = []
+
+if apps.is_installed("baseapp_mentions"):
+    from baseapp_mentions.graphql.interfaces import MentionsInterface
+
+    comment_interfaces.append(MentionsInterface)
+
+
 class BaseCommentObjectType:
     target = graphene.Field(CommentsInterface)
     status = graphene.Field(CommentStatusEnum)
@@ -119,6 +128,7 @@ class BaseCommentObjectType:
             "ReactionsInterface",
             PermissionsInterface,
             "NodeActivityLogInterface",
+            *comment_interfaces,
         )
         model = Comment
         fields = (
