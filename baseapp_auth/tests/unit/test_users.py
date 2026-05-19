@@ -36,24 +36,26 @@ def test_user_get_full_name_as_email():
 
 @override_config(USER_PASSWORD_EXPIRATION_INTERVAL=1)
 def test_user_only_notified_once_for_expired_password():
+    now = timezone.now()
+
     user = UserFactory()
-    user.password_changed_date = timezone.now() - timezone.timedelta(days=1)
+    user.password_changed_date = now - timezone.timedelta(days=1)
     user.save()
 
     mock = MagicMock()
     tasks.send_password_expired_email = mock
 
-    with freeze_time((timezone.now() - timezone.timedelta(days=1)).strftime("%Y-%m-%d")):
+    with freeze_time((now - timezone.timedelta(days=1)).strftime("%Y-%m-%d")):
         tasks.notify_users_is_password_expired()
         assert mock.call_count == 0
         mock.reset_mock()
 
-    with freeze_time(timezone.now().strftime("%Y-%m-%d")):
+    with freeze_time(now.strftime("%Y-%m-%d")):
         tasks.notify_users_is_password_expired()
         assert mock.call_count == 1
         mock.reset_mock()
 
-    with freeze_time((timezone.now() + timezone.timedelta(days=1)).strftime("%Y-%m-%d")):
+    with freeze_time((now + timezone.timedelta(days=1)).strftime("%Y-%m-%d")):
         tasks.notify_users_is_password_expired()
         assert mock.call_count == 0
         mock.reset_mock()
