@@ -2,8 +2,6 @@ import graphene
 from graphene.relay.node import NodeField as RelayNodeField
 from graphene_django.debug import DjangoDebug
 
-from baseapp.content_feed.graphql.mutations import ContentFeedMutations
-from baseapp.content_feed.graphql.queries import ContentFeedQueries
 from baseapp_blocks.graphql.mutations import BlocksMutations
 from baseapp_chats.graphql.mutations import ChatsMutations
 from baseapp_chats.graphql.queries import ChatsQueries
@@ -22,7 +20,6 @@ class Query(
     graphene.ObjectType,
     UsersQueries,
     ChatsQueries,
-    ContentFeedQueries,
     *queries,
 ):
     node = RelayNodeField(RelayNode)
@@ -33,7 +30,6 @@ class Mutation(
     graphene.ObjectType,
     BlocksMutations,
     ChatsMutations,
-    ContentFeedMutations,
     *mutations,
 ):
     delete_node = DeleteNode.Field()
