@@ -40,6 +40,7 @@ dependencies = [
     "django-ipware>=7.0.1",
     "python-ipware>=3.0.0",
     "requests>=2.33.0",
+    "json-log-formatter>=1.1.1",
 ]
 
 [project.optional-dependencies]

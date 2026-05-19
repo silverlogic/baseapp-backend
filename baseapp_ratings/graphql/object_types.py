@@ -1,3 +1,5 @@
+from typing import Optional
+
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
@@ -71,7 +73,7 @@ class BaseRatingObjectType:
         )
 
     @classmethod
-    def get_node(self, info, id):
+    def get_node(cls, info: graphene.ResolveInfo, id: str) -> Optional["BaseRatingObjectType"]:
         if not info.context.user.has_perm("baseapp_ratings.view_rate"):
             return None
         return super().get_node(info, id)

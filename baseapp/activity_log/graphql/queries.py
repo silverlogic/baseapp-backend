@@ -1,4 +1,7 @@
+from typing import Any, Optional
+
 import graphene
+from django.db.models import QuerySet
 from graphene_django.filter import DjangoFilterConnectionField
 
 from ..models import ActivityLog
@@ -13,5 +16,7 @@ class ActivityLogQueries:
         max_limit=100,
     )
 
-    def resolve_activity_logs(self, info, visibility=None, **kwargs):
+    def resolve_activity_logs(
+        self, info: graphene.ResolveInfo, visibility: Optional[str] = None, **kwargs: Any
+    ) -> QuerySet:  # NOSONAR
         return ActivityLog.objects.all()

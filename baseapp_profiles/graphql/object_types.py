@@ -71,7 +71,7 @@ class ProfileMetadata(AbstractMetadataObjectType):
 
 
 interfaces = [RelayNode, PermissionsInterface]
-inheritances = tuple()
+inheritances = ()
 
 if apps.is_installed("baseapp_pages"):
     from baseapp_pages.graphql import PageInterface

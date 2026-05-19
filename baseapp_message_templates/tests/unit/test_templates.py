@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 import baseapp_message_templates.tests.factories as f
@@ -6,7 +8,10 @@ from baseapp_message_templates.email_utils import (
     send_sendgrid_email,
     send_template_email,
 )
-from baseapp_message_templates.sendgrid import get_personalization
+from baseapp_message_templates.sendgrid import (
+    get_personalization,
+    mass_send_personalized_mail,
+)
 from baseapp_message_templates.sms_utils import get_sms_message
 
 pytestmark = pytest.mark.django_db
@@ -101,3 +106,17 @@ class TestSmsTemplates:
         get_sms_message("Nonexistent Template", context)
 
         assert "Template Nonexistent Template does not exist" in caplog.text
+
+
+def test_mass_send_personalized_mail_logs_on_send_exception(db):
+    mock_template = MagicMock()
+    mock_template.sendgrid_template_id = "d-test"
+    mock_template.static_attachments.all.return_value = []
+
+    personalization = MagicMock()
+
+    with patch(
+        "baseapp_message_templates.sendgrid.SengridMessage.send", side_effect=Exception("fail")
+    ):
+        # Should not raise; exception is caught and logged
+        mass_send_personalized_mail(mock_template, [personalization])

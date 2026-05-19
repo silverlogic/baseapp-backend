@@ -60,7 +60,7 @@ class JWTAuthMiddleware(BaseMiddleware):
             validated_token = self._auth.get_validated_token(token)
             return self._auth.get_user(validated_token)
         except (InvalidToken, AuthenticationFailed, TokenError) as e:
-            logging.error(e)
+            logging.exception(e)
             return None
 
     @database_sync_to_async
@@ -72,7 +72,7 @@ class JWTAuthMiddleware(BaseMiddleware):
             refresh = RefreshToken(refresh_token)
             return str(refresh.access_token)
         except TokenError as e:
-            logging.error(e)
+            logging.exception(e)
             return None
 
     async def __call__(self, scope, receive, send):

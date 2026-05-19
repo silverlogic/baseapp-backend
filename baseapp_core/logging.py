@@ -1,8 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from logging import LogRecord
 
 from django.conf import settings
-from django.utils import timezone
 from json_log_formatter import JSONFormatter
 
 from .middleware import threading_local
@@ -11,8 +10,7 @@ from .middleware import threading_local
 class BaseJSONFormatter(JSONFormatter):
     def json_record(self, message: str, extra: dict, record: LogRecord) -> dict:
         extra["message"] = message
-        timestamp = datetime.utcfromtimestamp(record.created)
-        extra["@timestamp"] = timezone.make_aware(timestamp)
+        extra["@timestamp"] = datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat()
         extra["log.level"] = record.levelname
         extra["log.logger"] = record.name
 
