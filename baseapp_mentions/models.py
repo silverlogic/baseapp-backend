@@ -31,7 +31,7 @@ class AbstractBaseMention(TimeStampedModel, RelayModel):
     class Meta:
         abstract = True
         unique_together = [("profile", "target")]
-        indexes = [models.Index(fields=["target", "profile"])]
+        swappable = swapper.swappable_setting("baseapp_mentions", "Mention")
 
     def __str__(self):
         return "{} mentioned in {}".format(self.profile, self.target)
@@ -41,8 +41,3 @@ class AbstractBaseMention(TimeStampedModel, RelayModel):
         from .graphql.object_types import MentionObjectType
 
         return MentionObjectType
-
-
-class Mention(AbstractBaseMention):
-    class Meta(AbstractBaseMention.Meta):
-        swappable = swapper.swappable_setting("baseapp_mentions", "Mention")

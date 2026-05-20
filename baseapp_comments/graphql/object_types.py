@@ -125,8 +125,9 @@ class BaseCommentObjectType:
         interfaces = graphql_shared_interfaces.get(
             RelayNode,
             CommentsInterface,
-            "ReactionsInterface",
             PermissionsInterface,
+            "ReactionsInterface",
+            "MentionsInterface",
             "NodeActivityLogInterface",
             *comment_interfaces,
         )

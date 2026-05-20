@@ -1,6 +1,5 @@
 import graphene
 import swapper
-from django.apps import apps
 from django.db.models import Case, When
 from django.utils.translation import gettext_lazy as _
 from graphene_django.filter import DjangoFilterConnectionField
@@ -15,6 +14,7 @@ from baseapp_core.graphql import (
     get_object_type_for_model,
     get_pk_from_relay_id,
 )
+from baseapp_core.plugins import graphql_shared_interfaces
 
 from .filters import ChatRoomFilter, ChatRoomParticipantFilter
 
@@ -47,14 +47,6 @@ VerbsEnum = graphene.Enum.from_enum(Message.Verbs)
 MessageTypeEnum = graphene.Enum.from_enum(Message.MessageType)
 
 
-message_interfaces = (RelayNode,)
-
-if apps.is_installed("baseapp_mentions"):
-    from baseapp_mentions.graphql.interfaces import MentionsInterface
-
-    message_interfaces += (MentionsInterface,)
-
-
 class BaseMessageObjectType:
     action_object = graphene.Field(RelayNode)
     verb = graphene.Field(VerbsEnum)
@@ -63,7 +55,7 @@ class BaseMessageObjectType:
     is_read = graphene.Boolean(profile_id=graphene.ID(required=False))
 
     class Meta:
-        interfaces = message_interfaces
+        interfaces = graphql_shared_interfaces.get(RelayNode, "MentionsInterface")
         model = Message
         fields = (
             "id",

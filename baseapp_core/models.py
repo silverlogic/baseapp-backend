@@ -2,7 +2,7 @@ import os
 import uuid
 
 import pgtrigger
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models.signals import class_prepared
@@ -137,7 +137,7 @@ class DocumentId(TimeStampedModel):
         return doc
 
 
-class DocumentIdMixin:
+class DocumentIdMixin(models.Model):
     """
     Mixin to add document ID functionality to any model.
 
@@ -146,6 +146,21 @@ class DocumentIdMixin:
 
     By extending this mixin, a new migration will be created to add the required pgtriggers to the model.
     """
+
+    # Reverse-GFK to this object's row in the DocumentId registry. Lets downstream
+    # packages that key off DocumentId (mentions, follows, reactions, …) be
+    # walked as standard `prefetch_related("document__<relation>")` chains
+    # by the query optimizer, instead of falling back to per-row fetches.
+    # Carries no DB column on this model, the join goes through DocumentId's
+    # `(content_type, object_id)` GFK.
+    document = GenericRelation(
+        DocumentId,
+        content_type_field="content_type",
+        object_id_field="object_id",
+    )
+
+    class Meta:
+        abstract = True
 
     @property
     def public_id(self):

@@ -130,4 +130,4 @@ class MyModelObjectType(DjangoObjectType):
 
 ## How to develop
 
-General development instructions can be found in [main README](..#how-to-develop).
+General development instructions can be found in [main README](../README.md#how-to-develop).

@@ -65,6 +65,7 @@ INSTALLED_APPS += [
     "testproject.payments",
     "testproject.referrals",
     "testproject.notifications",
+    "testproject.social.mentions",
     "baseapp_wagtail.tests",
 ]
 
@@ -247,6 +248,9 @@ BASEAPP_PAYMENTS_SUBSCRIPTION_MODEL = "payments.Subscription"
 
 # Referrals
 BASEAPP_REFERRALS_USERREFERRAL_MODEL = "referrals.UserReferral"
+
+# Mentions
+BASEAPP_MENTIONS_MENTION_MODEL = "social_mentions.Mention"
 
 # Graphene query optimizer
 GRAPHQL_QUERY_OPTIMIZER = {

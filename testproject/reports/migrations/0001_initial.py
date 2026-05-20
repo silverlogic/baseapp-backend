@@ -16,6 +16,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+        ("baseapp_core", "0001_initial"),
         ("contenttypes", "0002_remove_content_type_name"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]

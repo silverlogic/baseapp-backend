@@ -15,7 +15,7 @@ below cover the contract the upstream mutations rely on:
 import pytest
 import swapper
 
-from baseapp_mentions.services import resolve_mentioned_profiles
+from baseapp_mentions.services import MentionsService
 from baseapp_profiles.tests.factories import ProfileFactory
 
 pytestmark = pytest.mark.django_db
@@ -27,22 +27,24 @@ def test_resolves_valid_relay_ids_to_profiles():
     a = ProfileFactory()
     b = ProfileFactory()
 
-    profiles = resolve_mentioned_profiles([a.relay_id, b.relay_id])
+    profiles = MentionsService().resolve_mentioned_profiles([a.relay_id, b.relay_id])
 
     assert {p.pk for p in profiles} == {a.pk, b.pk}
 
 
 def test_returns_empty_list_for_empty_iterable():
-    assert resolve_mentioned_profiles([]) == []
+    assert MentionsService().resolve_mentioned_profiles([]) == []
 
 
 def test_returns_empty_list_for_none():
-    assert resolve_mentioned_profiles(None) == []
+    assert MentionsService().resolve_mentioned_profiles(None) == []
 
 
 def test_drops_malformed_relay_ids():
     valid = ProfileFactory()
-    profiles = resolve_mentioned_profiles(["not-a-relay-id", valid.relay_id, "!!!", ""])
+    profiles = MentionsService().resolve_mentioned_profiles(
+        ["not-a-relay-id", valid.relay_id, "!!!", ""]
+    )
 
     assert [p.pk for p in profiles] == [valid.pk]
 
@@ -53,7 +55,7 @@ def test_drops_relay_ids_pointing_at_non_existent_profiles():
     stale_relay_id = stale.relay_id
     stale.delete()
 
-    profiles = resolve_mentioned_profiles([valid.relay_id, stale_relay_id])
+    profiles = MentionsService().resolve_mentioned_profiles([valid.relay_id, stale_relay_id])
 
     assert [p.pk for p in profiles] == [valid.pk]
 
@@ -62,7 +64,7 @@ def test_excludes_self_when_exclude_profile_provided():
     me = ProfileFactory()
     friend = ProfileFactory()
 
-    profiles = resolve_mentioned_profiles(
+    profiles = MentionsService().resolve_mentioned_profiles(
         [me.relay_id, friend.relay_id],
         exclude_profile=me,
     )
@@ -77,7 +79,7 @@ def test_exclude_profile_with_unsaved_instance_is_a_noop():
     b = ProfileFactory()
     unsaved = Profile()
 
-    profiles = resolve_mentioned_profiles(
+    profiles = MentionsService().resolve_mentioned_profiles(
         [a.relay_id, b.relay_id],
         exclude_profile=unsaved,
     )
@@ -88,6 +90,6 @@ def test_exclude_profile_with_unsaved_instance_is_a_noop():
 def test_duplicate_relay_ids_collapse_to_unique_profiles():
     a = ProfileFactory()
 
-    profiles = resolve_mentioned_profiles([a.relay_id, a.relay_id])
+    profiles = MentionsService().resolve_mentioned_profiles([a.relay_id, a.relay_id])
 
     assert [p.pk for p in profiles] == [a.pk]

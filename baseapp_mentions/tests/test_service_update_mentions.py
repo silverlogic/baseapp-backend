@@ -17,7 +17,7 @@ import pytest
 import swapper
 
 from baseapp_comments.tests.factories import CommentFactory
-from baseapp_mentions.services import update_mentions
+from baseapp_mentions.services import MentionsService
 from baseapp_mentions.signals import mentions_changed
 from baseapp_mentions.tests.helpers import mentioned_profile_ids, seed_mentions
 from baseapp_profiles.tests.factories import ProfileFactory
@@ -45,12 +45,13 @@ def captured_signal():
     mentions_changed.disconnect(capture)
 
 
-def test_inserts_mentions_for_new_profiles(captured_signal):
+def test_inserts_mentions_for_new_profiles(captured_signal, django_capture_on_commit_callbacks):
     target = CommentFactory()
     a = ProfileFactory()
     b = ProfileFactory()
 
-    update_mentions(target, [a.relay_id, b.relay_id])
+    with django_capture_on_commit_callbacks(execute=True):
+        MentionsService().update_mentions(target, [a.relay_id, b.relay_id])
 
     assert mentioned_profile_ids(target) == {a.pk, b.pk}
     assert len(captured_signal.events) == 1
@@ -58,7 +59,7 @@ def test_inserts_mentions_for_new_profiles(captured_signal):
     assert captured_signal.events[0]["removed"] == []
 
 
-def test_replaces_existing_mentions_with_delta(captured_signal):
+def test_replaces_existing_mentions_with_delta(captured_signal, django_capture_on_commit_callbacks):
     target = CommentFactory()
     a = ProfileFactory()
     b = ProfileFactory()
@@ -66,7 +67,8 @@ def test_replaces_existing_mentions_with_delta(captured_signal):
     seed_mentions(target, [a, b])
     captured_signal.events.clear()  # ignore pre-update state
 
-    update_mentions(target, [b.relay_id, c.relay_id])
+    with django_capture_on_commit_callbacks(execute=True):
+        MentionsService().update_mentions(target, [b.relay_id, c.relay_id])
 
     assert mentioned_profile_ids(target) == {b.pk, c.pk}
     assert len(captured_signal.events) == 1
@@ -75,13 +77,14 @@ def test_replaces_existing_mentions_with_delta(captured_signal):
     assert event["removed"] == [a.pk]
 
 
-def test_empty_list_clears_all_mentions(captured_signal):
+def test_empty_list_clears_all_mentions(captured_signal, django_capture_on_commit_callbacks):
     target = CommentFactory()
     a = ProfileFactory()
     seed_mentions(target, [a])
     captured_signal.events.clear()
 
-    update_mentions(target, [])
+    with django_capture_on_commit_callbacks(execute=True):
+        MentionsService().update_mentions(target, [])
 
     assert mentioned_profile_ids(target) == set()
     assert len(captured_signal.events) == 1
@@ -93,18 +96,20 @@ def test_exclude_profile_filters_self_mention(captured_signal):
     me = ProfileFactory()
     friend = ProfileFactory()
 
-    update_mentions(target, [me.relay_id, friend.relay_id], exclude_profile=me)
+    MentionsService().update_mentions(target, [me.relay_id, friend.relay_id], exclude_profile=me)
 
     assert mentioned_profile_ids(target) == {friend.pk}
 
 
-def test_idempotent_call_does_not_fire_signal(captured_signal):
+def test_idempotent_call_does_not_fire_signal(captured_signal, django_capture_on_commit_callbacks):
     target = CommentFactory()
     a = ProfileFactory()
-    update_mentions(target, [a.relay_id])
+    with django_capture_on_commit_callbacks(execute=True):
+        MentionsService().update_mentions(target, [a.relay_id])
     captured_signal.events.clear()
 
-    update_mentions(target, [a.relay_id])
+    with django_capture_on_commit_callbacks(execute=True):
+        MentionsService().update_mentions(target, [a.relay_id])
 
     assert mentioned_profile_ids(target) == {a.pk}
     assert captured_signal.events == []
@@ -114,6 +119,6 @@ def test_malformed_relay_ids_are_dropped(captured_signal):
     target = CommentFactory()
     real = ProfileFactory()
 
-    update_mentions(target, [real.relay_id, "not-a-real-id", ""])
+    MentionsService().update_mentions(target, [real.relay_id, "not-a-real-id", ""])
 
     assert mentioned_profile_ids(target) == {real.pk}
