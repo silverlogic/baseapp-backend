@@ -43,7 +43,7 @@ def create_object_type_from_dict(name, d):
 CommentsCount = create_object_type_from_dict("CommentsCount", default_comments_count())
 
 
-class CommentsInterface(graphene.Interface):
+class CommentsInterface(RelayNode):
     comments_count = graphene.Field(CommentsCount, required=True)
     comments = DjangoConnectionField(get_object_type_for_model(Comment))
     is_comments_enabled = graphene.Boolean(required=True)

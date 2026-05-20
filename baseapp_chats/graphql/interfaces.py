@@ -3,6 +3,7 @@ import swapper
 from django.db.models import Q, Sum
 from graphene_django.filter import DjangoFilterConnectionField
 
+from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
@@ -10,7 +11,7 @@ UnreadMessageCount = swapper.load_model("baseapp_chats", "UnreadMessageCount")
 Block = swapper.load_model("baseapp_blocks", "Block")
 
 
-class ChatRoomsInterface(graphene.Interface):
+class ChatRoomsInterface(RelayNode):
     chat_rooms = DjangoFilterConnectionField(get_object_type_for_model(ChatRoom))
     unread_messages_count = graphene.Int()
 

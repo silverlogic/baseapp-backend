@@ -23,7 +23,7 @@ PageStatusEnum = graphene.Enum.from_enum(Page.PageStatus)
 # ================================
 
 
-class PageInterface(graphene.Interface):
+class PageInterface(RelayNode):
     url_path = graphene.Field(lambda: URLPathNode)
     url_paths = graphene.List(lambda: URLPathNode)
     metadata = graphene.Field(lambda: MetadataObjectType)

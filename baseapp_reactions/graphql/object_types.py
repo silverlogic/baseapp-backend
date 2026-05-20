@@ -28,7 +28,7 @@ def create_object_type_from_enum(name, enum):
 ReactionsCount = create_object_type_from_enum("ReactionsCount", Reaction.ReactionTypes)
 
 
-class ReactionsInterface(graphene.Interface):
+class ReactionsInterface(RelayNode):
     reactions_count = graphene.Field(ReactionsCount)
     reactions = DjangoFilterConnectionField(get_object_type_for_model(Reaction))
     is_reactions_enabled = graphene.Boolean(required=True)

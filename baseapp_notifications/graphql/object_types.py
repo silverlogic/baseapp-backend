@@ -17,7 +17,7 @@ NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationS
 NotificationChannelTypesEnum = graphene.Enum.from_enum(NotificationSetting.NotificationChannelTypes)
 
 
-class NotificationsInterface(graphene.Interface):
+class NotificationsInterface(RelayNode):
     notifications_unread_count = graphene.Int()
     notifications = DjangoFilterConnectionField(
         get_object_type_for_model(Notification), filterset_class=NotificationFilter

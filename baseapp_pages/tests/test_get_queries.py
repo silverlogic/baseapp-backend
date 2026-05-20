@@ -14,7 +14,7 @@ GET_PAGE_BY_PATH = """
         urlPath(path: $path) {
             path
             target {
-                ... on Node { id }
+                id
 
                 metadata {
                     metaTitle
