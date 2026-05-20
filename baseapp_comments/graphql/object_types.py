@@ -1,5 +1,6 @@
 import graphene
 import swapper
+from django.apps import apps
 from django.conf import settings
 from django.db import models
 from query_optimizer import DjangoConnectionField
@@ -42,7 +43,7 @@ def create_object_type_from_dict(name, d):
 CommentsCount = create_object_type_from_dict("CommentsCount", default_comments_count())
 
 
-class CommentsInterface(RelayNode):
+class CommentsInterface(graphene.Interface):
     comments_count = graphene.Field(CommentsCount, required=True)
     comments = DjangoConnectionField(get_object_type_for_model(Comment))
     is_comments_enabled = graphene.Boolean(required=True)
@@ -108,6 +109,14 @@ class CommentsInterface(RelayNode):
         return qs
 
 
+comment_interfaces = []
+
+if apps.is_installed("baseapp_mentions"):
+    from baseapp_mentions.graphql.interfaces import MentionsInterface
+
+    comment_interfaces.append(MentionsInterface)
+
+
 class BaseCommentObjectType:
     target = graphene.Field(CommentsInterface)
     status = graphene.Field(CommentStatusEnum)
@@ -120,6 +129,7 @@ class BaseCommentObjectType:
             "ReactionsInterface",
             "MentionsInterface",
             "NodeActivityLogInterface",
+            *comment_interfaces,
         )
         model = Comment
         fields = (

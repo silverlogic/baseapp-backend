@@ -66,11 +66,11 @@ class ProfileUserRoleObjectType(DjangoObjectType, BaseProfileUserRoleObjectType)
         model = ProfileUserRole
 
 
-class ProfileInterface(RelayNode):
+class ProfileInterface(graphene.Interface):
     profile = graphene.Field(get_object_type_for_model(Profile))
 
 
-class ProfilesInterface(RelayNode):
+class ProfilesInterface(graphene.Interface):
     profiles = DjangoFilterConnectionField(lambda: ProfileObjectType)
 
     def resolve_profiles(self, info, **kwargs):
@@ -83,12 +83,6 @@ class ProfilesInterface(RelayNode):
 
 interfaces = []
 inheritances = tuple()
-
-
-if apps.is_installed("baseapp_blocks"):
-    from baseapp_blocks.graphql.object_types import BlocksInterface
-
-    interfaces.append(BlocksInterface)
 
 
 if apps.is_installed("baseapp_chats"):
@@ -114,6 +108,7 @@ class BaseProfileObjectType(*inheritances, object):
             "PageInterface",
             "FollowsInterface",
             "ReportsInterface",
+            "BlocksInterface",
         )
         model = Profile
         fields = "__all__"
@@ -134,6 +129,8 @@ class BaseProfileObjectType(*inheritances, object):
         if service := shared_services.get("followable_metadata"):
             queryset = service.annotate_queryset(queryset)
         if service := shared_services.get("reportable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+        if service := shared_services.get("blockable_metadata"):
             queryset = service.annotate_queryset(queryset)
         return queryset
 

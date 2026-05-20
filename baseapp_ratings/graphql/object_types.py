@@ -3,7 +3,7 @@ import graphene_django_optimizer as gql_optimizer
 import swapper
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
-from graphene_django import DjangoConnectionField
+from query_optimizer import DjangoConnectionField
 
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
@@ -17,7 +17,7 @@ def _service():
     return shared_services.get("ratable_metadata")
 
 
-class RatingsInterface(RelayNode):
+class RatingsInterface(graphene.Interface):
     ratings_count = graphene.Int()
     ratings_sum = graphene.Int()
     ratings_average = graphene.Float()

@@ -2,7 +2,6 @@ import graphene
 import swapper
 from query_optimizer import DjangoConnectionField
 
-from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
 from baseapp_core.models import DocumentId
 from baseapp_core.plugins import shared_services
@@ -54,7 +53,7 @@ def _is_mentioning_profile_optimizer_hook(compiler) -> None:
         service.annotate_target_doc_id_in_optimizer_compiler(compiler)
 
 
-class MentionsInterface(RelayNode):
+class MentionsInterface(graphene.Interface):
     """GraphQL fields exposed on any object type that has mentioned profiles.
 
     Consuming object types (Comment, ContentPost, Message, ...) opt in by

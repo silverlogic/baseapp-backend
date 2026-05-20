@@ -39,18 +39,13 @@ class AbstractContentPost(*inheritances, DocumentIdMixin, RelayModel, TimeStampe
 
     class Meta:
         abstract = True
+        swappable = swapper.swappable_setting("baseapp_content_feed", "ContentPost")
 
     @classmethod
     def get_graphql_object_type(cls):
         from .graphql.object_types import ContentPostObjectType
 
         return ContentPostObjectType
-
-
-class ContentPost(AbstractContentPost):
-    class Meta(AbstractContentPost.Meta):
-        abstract = False
-        swappable = swapper.swappable_setting("baseapp_content_feed", "ContentPost")
 
 
 class AbstractContentPostImage(DocumentIdMixin, RelayModel):
@@ -66,15 +61,10 @@ class AbstractContentPostImage(DocumentIdMixin, RelayModel):
 
     class Meta:
         abstract = True
+        swappable = swapper.swappable_setting("baseapp_content_feed", "ContentPostImage")
 
     @classmethod
     def get_graphql_object_type(cls):
         from .graphql.object_types import ContentPostImageObjectType
 
         return ContentPostImageObjectType
-
-
-class ContentPostImage(AbstractContentPostImage):
-    class Meta(AbstractContentPostImage.Meta):
-        abstract = False
-        swappable = swapper.swappable_setting("baseapp_content_feed", "ContentPostImage")

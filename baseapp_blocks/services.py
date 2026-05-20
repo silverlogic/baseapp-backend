@@ -64,3 +64,74 @@ class BlockLookupService(SharedServiceProvider):
         qs = queryset.exclude(Q(user__id__in=blocked_user_ids) | Q(user__id__in=blocker_user_ids))
         qs._hints[_BLOCKED_PROFILES_FILTERED_HINT] = True
         return qs
+
+
+class BlockableMetadataService(SharedServiceProvider):
+    """
+    Service that provides blockable metadata (blockers / blocking counts) for
+    any object that has a `DocumentId`. Registered in `apps.py` via
+    `register_shared_services`.
+    """
+
+    @property
+    def service_name(self) -> str:
+        return "blockable_metadata"
+
+    def is_available(self) -> bool:
+        return apps.is_installed("baseapp_blocks")
+
+    def _get_model(self):
+        return swapper.load_model("baseapp_blocks", "BlockableMetadata")
+
+    def get_metadata(self, obj):
+        """Return `BlockableMetadata` for `obj`, or `None` if not found."""
+        return self._get_model().get_for_object(obj)
+
+    def get_or_create_metadata(self, obj):
+        """Return or create `BlockableMetadata` for `obj`."""
+        return self._get_model().get_or_create_for_object(obj)
+
+    def get_blockers_count(self, obj) -> int:
+        """Return number of blocks where `obj` is the target. Uses annotation if available."""
+        if hasattr(obj, "_blockable_blockers_count"):
+            val = obj._blockable_blockers_count
+            return val if val is not None else 0
+        metadata = self.get_metadata(obj)
+        return metadata.blockers_count if metadata else 0
+
+    def get_blocking_count(self, obj) -> int:
+        """Return number of blocks where `obj` is the actor. Uses annotation if available."""
+        if hasattr(obj, "_blockable_blocking_count"):
+            val = obj._blockable_blocking_count
+            return val if val is not None else 0
+        metadata = self.get_metadata(obj)
+        return metadata.blocking_count if metadata else 0
+
+    def recompute_blockers_count(self, target) -> None:
+        """Recount blocks where `target` is the target and write through to the metadata row."""
+        if not target or not getattr(target, "pk", None):
+            return
+        metadata = self.get_or_create_metadata(target)
+        if metadata is None:
+            return
+        # The reverse manager `blockers` is provided by ProfileMixin (or UserMixin) on
+        # the consumer model — its name is stable across profile / user paths.
+        count = target.blockers.count() if hasattr(target, "blockers") else 0
+        if metadata.blockers_count != count:
+            metadata.blockers_count = count
+            metadata.save(update_fields=["blockers_count", "modified"])
+
+    def recompute_blocking_count(self, actor) -> None:
+        """Recount blocks where `actor` is the actor and write through to the metadata row."""
+        if not actor or not getattr(actor, "pk", None):
+            return
+        metadata = self.get_or_create_metadata(actor)
+        if metadata is None:
+            return
+        count = actor.blocking.count() if hasattr(actor, "blocking") else 0
+        if metadata.blocking_count != count:
+            metadata.blocking_count = count
+            metadata.save(update_fields=["blocking_count", "modified"])
+
+    def annotate_queryset(self, queryset):
+        return self._get_model().annotate_queryset(queryset)

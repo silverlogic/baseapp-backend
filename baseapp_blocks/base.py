@@ -7,7 +7,7 @@ from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import DocumentIdMixin
-from baseapp_core.plugins import apply_if_installed
+from baseapp_core.plugins import apply_if_installed, shared_services
 
 inheritances = []
 
@@ -55,7 +55,7 @@ else:
     inheritances.append(UserMixin)
 
 
-class AbstractBaseBlock(*inheritances, DocumentIdMixin, RelayModel, TimeStampedModel):
+class AbstractBlock(*inheritances, DocumentIdMixin, RelayModel, TimeStampedModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=apply_if_installed(
@@ -73,6 +73,7 @@ class AbstractBaseBlock(*inheritances, DocumentIdMixin, RelayModel, TimeStampedM
 
     class Meta:
         abstract = True
+        swappable = swapper.swappable_setting("baseapp_blocks", "Block")
         indexes = [
             models.Index(
                 fields=(
@@ -81,6 +82,13 @@ class AbstractBaseBlock(*inheritances, DocumentIdMixin, RelayModel, TimeStampedM
                     else ["target", "user"]
                 )
             ),
+        ]
+        unique_together = [
+            apply_if_installed(
+                "baseapp_profiles",
+                ("actor", "target"),
+                ("user", "target"),
+            )
         ]
 
     def __str__(self):
@@ -104,14 +112,24 @@ class AbstractBaseBlock(*inheritances, DocumentIdMixin, RelayModel, TimeStampedM
         self.update_blockers_count(target)
         self.update_blocking_count(actor)
 
+    @classmethod
+    def get_graphql_object_type(cls):
+        from .graphql.object_types import BlockObjectType
+
+        return BlockObjectType
+
     def update_blockers_count(self, target):
-        if not target or not hasattr(target, "blockers_count"):
+        if not target:
             return
-        target.blockers_count = target.blockers.count()
-        target.save(update_fields=["blockers_count"])
+        service = shared_services.get("blockable_metadata")
+        if service is None:
+            return
+        service.recompute_blockers_count(target)
 
     def update_blocking_count(self, actor):
-        if not actor or not hasattr(actor, "blocking_count"):
+        if not actor:
             return
-        actor.blocking_count = actor.blocking.count()
-        actor.save(update_fields=["blocking_count"])
+        service = shared_services.get("blockable_metadata")
+        if service is None:
+            return
+        service.recompute_blocking_count(actor)

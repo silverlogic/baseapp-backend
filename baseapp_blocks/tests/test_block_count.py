@@ -1,11 +1,20 @@
 import pytest
 import swapper
 
+from baseapp_core.plugins import shared_services
 from baseapp_profiles.tests.factories import ProfileFactory
 
 Block = swapper.load_model("baseapp_blocks", "Block")
 
 pytestmark = pytest.mark.django_db
+
+
+def _counts(profile):
+    service = shared_services.get("blockable_metadata")
+    return (
+        service.get_blockers_count(profile),
+        service.get_blocking_count(profile),
+    )
 
 
 def test_block_and_unblock():
@@ -17,16 +26,14 @@ def test_block_and_unblock():
         target=profile2,
     )
 
-    profile1.refresh_from_db()
-    profile2.refresh_from_db()
-
-    assert profile1.blocking_count == 1
-    assert profile2.blockers_count == 1
+    p1_blockers, p1_blocking = _counts(profile1)
+    p2_blockers, p2_blocking = _counts(profile2)
+    assert p1_blocking == 1
+    assert p2_blockers == 1
 
     block.delete()
 
-    profile1.refresh_from_db()
-    profile2.refresh_from_db()
-
-    assert profile1.blocking_count == 0
-    assert profile2.blockers_count == 0
+    p1_blockers, p1_blocking = _counts(profile1)
+    p2_blockers, p2_blocking = _counts(profile2)
+    assert p1_blocking == 0
+    assert p2_blockers == 0
