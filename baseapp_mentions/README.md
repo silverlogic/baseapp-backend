@@ -127,7 +127,7 @@ BASEAPP_MENTIONS_MENTION_MODEL = "mentions.Mention"
 
 ## How to Develop
 
-General development instructions can be found in the [main README](..#how-to-develop).
+General development instructions can be found in the [main README](../README.md#how-to-develop).
 
 ### Prerequisites When Activating `baseapp_mentions`
 
