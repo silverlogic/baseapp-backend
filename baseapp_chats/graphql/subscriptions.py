@@ -110,14 +110,10 @@ class ChatRoomOnMessage(channels_graphql_ws.Subscription):
         ):
             return []
 
-        if not database_sync_to_async(
-            room.participants.filter(profile=profile).exists
-        )():
+        if not database_sync_to_async(room.participants.filter(profile=profile).exists)():
             return []
 
-        if not database_sync_to_async(user.has_perm)(
-            "baseapp_chats.view_chatroom", room
-        ):
+        if not database_sync_to_async(user.has_perm)("baseapp_chats.view_chatroom", room):
             return []
         return [room_id]
 
@@ -129,15 +125,10 @@ class ChatRoomOnMessage(channels_graphql_ws.Subscription):
         if not user.is_authenticated:
             return None
         subscriber_profile = get_obj_from_relay_id(info, profile_id)
-        if (
-            subscriber_profile is not None
-            and message.profile_id == subscriber_profile.pk
-        ):
+        if subscriber_profile is not None and message.profile_id == subscriber_profile.pk:
             return None
 
-        return ChatRoomOnMessage(
-            message=MessageObjectType._meta.connection.Edge(node=message)
-        )
+        return ChatRoomOnMessage(message=MessageObjectType._meta.connection.Edge(node=message))
 
     @classmethod
     def new_message(cls, message, room_id):
