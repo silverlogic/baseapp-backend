@@ -109,14 +109,6 @@ class CommentsInterface(graphene.Interface):
         return qs
 
 
-comment_interfaces = []
-
-if apps.is_installed("baseapp_mentions"):
-    from baseapp_mentions.graphql.interfaces import MentionsInterface
-
-    comment_interfaces.append(MentionsInterface)
-
-
 class BaseCommentObjectType:
     target = graphene.Field(CommentsInterface)
     status = graphene.Field(CommentStatusEnum)
@@ -129,7 +121,6 @@ class BaseCommentObjectType:
             "ReactionsInterface",
             "MentionsInterface",
             "NodeActivityLogInterface",
-            *comment_interfaces,
         )
         model = Comment
         fields = (
