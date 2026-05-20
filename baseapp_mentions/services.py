@@ -3,6 +3,7 @@ from typing import Iterable, List, Optional
 import swapper
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count, OuterRef, Subquery, Value
 from django.db.models.functions import Coalesce
@@ -75,11 +76,13 @@ class MentionsService(SharedServiceProvider):
                 )
 
             if to_add or to_remove:
-                mentions_changed.send(
-                    sender=Mention,
-                    target=target_obj,
-                    added=list(to_add),
-                    removed=list(to_remove),
+                transaction.on_commit(
+                    lambda: mentions_changed.send(
+                        sender=Mention,
+                        target=target_obj,
+                        added=list(to_add),
+                        removed=list(to_remove),
+                    )
                 )
 
         return list(Mention.objects.filter(target=doc).select_related("profile"))
@@ -94,7 +97,7 @@ class MentionsService(SharedServiceProvider):
         Silently drops malformed or stale IDs so a flaky client reference does not
         break the parent mutation.
         """
-        pks: List[int] = []
+        pks: List = []
         for relay_id in mentioned_profile_ids or []:
             try:
                 pk = get_pk_from_relay_id(relay_id)
@@ -104,11 +107,13 @@ class MentionsService(SharedServiceProvider):
                 continue
             # `get_pk_from_relay_id` returns whatever survived hashids/base64 decoding —
             # for some malformed inputs that's an empty string or a non-numeric chunk
-            # rather than a raised exception. Coerce to int explicitly so a stray value
-            # never reaches the queryset filter (where it would blow up the parent mutation).
+            # rather than a raised exception. Normalize through the swapped Profile's
+            # own PK field so a stray value never reaches the queryset filter, and
+            # so projects that swap Profile to a non-integer PK (UUID, string) still
+            # resolve real relay IDs instead of having them coerced away.
             try:
-                pks.append(int(pk))
-            except (TypeError, ValueError):
+                pks.append(Profile._meta.pk.to_python(pk))
+            except (TypeError, ValueError, ValidationError):
                 continue
 
         if not pks:
