@@ -17,7 +17,7 @@ def _service():
     return shared_services.get("ratable_metadata")
 
 
-class RatingsInterface(RelayNode):
+class RatingsInterface(graphene.Interface):
     ratings_count = graphene.Int()
     ratings_sum = graphene.Int()
     ratings_average = graphene.Float()

@@ -16,11 +16,11 @@ mutation BlockToggle($input: BlockToggleInput!) {
       }
     }
     target {
-      id
+      ... on Node { id }
       blockersCount
     }
     actor {
-      id
+      ... on Node { id }
       blockingCount
     }
   }

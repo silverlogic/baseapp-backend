@@ -2,7 +2,6 @@ import graphene
 import swapper
 from query_optimizer import DjangoConnectionField
 
-from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
 from baseapp_core.models import DocumentId
 from baseapp_core.plugins import shared_services
@@ -11,7 +10,7 @@ Follow = swapper.load_model("baseapp_follows", "Follow")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
-class FollowsInterface(RelayNode):
+class FollowsInterface(graphene.Interface):
     followers = DjangoConnectionField(get_object_type_for_model(Follow))
     following = DjangoConnectionField(get_object_type_for_model(Follow))
     followers_count = graphene.Int()

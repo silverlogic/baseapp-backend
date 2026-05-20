@@ -16,11 +16,11 @@ mutation FollowToggle($input: FollowToggleInput!) {
       }
     }
     target {
-      id
+      ... on Node { id }
       followersCount
     }
     actor {
-      id
+      ... on Node { id }
       followingCount
     }
   }

@@ -12,7 +12,7 @@ from baseapp_core.plugins import shared_services
 Block = swapper.load_model("baseapp_blocks", "Block")
 
 
-class BlocksInterface(RelayNode):
+class BlocksInterface(graphene.Interface):
     blockers = DjangoConnectionField(get_object_type_for_model(Block))
     blocking = DjangoConnectionField(get_object_type_for_model(Block))
     blockers_count = graphene.Int()

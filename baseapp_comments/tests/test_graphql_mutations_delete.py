@@ -16,14 +16,14 @@ COMMENT_DELETE_GRAPHQL = """
         commentDelete(input: $input) {
             deletedId
             inReplyTo {
-                id
+                ... on Node { id }
                 commentsCount {
                     total
                     replies
                 }
             }
             target {
-                id
+                ... on Node { id }
                 commentsCount {
                     total
                     replies

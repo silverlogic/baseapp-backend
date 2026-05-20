@@ -66,11 +66,11 @@ class ProfileUserRoleObjectType(DjangoObjectType, BaseProfileUserRoleObjectType)
         model = ProfileUserRole
 
 
-class ProfileInterface(RelayNode):
+class ProfileInterface(graphene.Interface):
     profile = graphene.Field(get_object_type_for_model(Profile))
 
 
-class ProfilesInterface(RelayNode):
+class ProfilesInterface(graphene.Interface):
     profiles = DjangoFilterConnectionField(lambda: ProfileObjectType)
 
     def resolve_profiles(self, info, **kwargs):

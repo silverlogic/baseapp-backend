@@ -3,7 +3,6 @@ import graphene_django_optimizer as gql_optimizer
 import swapper
 from graphene_django.filter import DjangoFilterConnectionField
 
-from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
 from baseapp_core.models import DocumentId
 
@@ -12,7 +11,7 @@ Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
 # TODO: residual N+1 — paginated parents still issue ~2 queries each for `mentioned_profiles`; add a pre_optimization_hook prefetch when profiling shows it's a measurable bottleneck.
-class MentionsInterface(RelayNode):
+class MentionsInterface(graphene.Interface):
     """GraphQL fields exposed on any object type that has mentioned profiles.
 
     Consuming object types (Comment, ContentPost, Message, ...) append this

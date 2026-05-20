@@ -161,29 +161,28 @@ def test_anon_see_comments_and_replies(django_user_client, graphql_client_with_q
     assert content["data"]["node"]["comments"]["edges"][0]["node"]["commentsCount"]["main"] == 2
     assert len(content["data"]["node"]["comments"]["edges"][0]["node"]["comments"]["edges"]) == 2
 
-    assert queries.count == 13
+    assert queries.count == 12
 
     ### Optimized queries.
-    ### Queries 2 and 3 are ContentType lookups; they are usually cached after
+    ### Queries 3 and 4 are ContentType lookups; they are usually cached after
     ### an earlier request in production, but we clear the cache here to make the
     ### query count deterministic.
-    # 1) 'SELECT "baseapp_core_documentid"."id", "baseapp_core_documentid"."created", "baseapp_core_documentid"."modified", "baseapp_core_documentid"."public_id", "baseapp_core_documentid"."content_type_id", "baseapp_core_documentid"."object_id", "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "baseapp_core_documentid" INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE "baseapp_core_documentid"."public_id" = e8aa1f94-9fd5-4add-9979-431e014e2625 LIMIT 21',
-    # 2) 'SELECT "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "django_content_type" WHERE ("django_content_type"."app_label" = users AND "django_content_type"."model" = user) LIMIT 21',
-    # 3) 'SELECT "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "django_content_type" WHERE ("django_content_type"."app_label" = profiles AND "django_content_type"."model" = profile) LIMIT 21',
-    # 4) 'SELECT "comments_comment"."id", "comments_comment"."target_document_id", "comments_comment"."in_reply_to_id", "comments_comment"."status", (SELECT U0."comments_count" AS "comments_count" FROM "comments_commentablemetadata" U0 INNER JOIN "baseapp_core_documentid" U1 ON (U0."target_id" = U1."id") WHERE (U1."content_type_id" = 3277 AND U1."object_id" = ("comments_comment"."id")) LIMIT 1) AS "_commentable_comments_count", (SELECT U0."is_comments_enabled" AS "is_comments_enabled" FROM "comments_commentablemetadata" U0 INNER JOIN "baseapp_core_documentid" U1 ON (U0."target_id" = U1."id") WHERE (U1."content_type_id" = 3277 AND U1."object_id" = ("comments_comment"."id")) LIMIT 1) AS "_commentable_is_comments_enabled", COALESCE((SELECT ((U0."comments_count" ->> total))::integer AS "_reply_total" FROM "comments_commentablemetadata" U0 INNER JOIN "baseapp_core_documentid" U1 ON (U0."target_id" = U1."id") WHERE (U1."content_type_id" = 3277 AND U1."object_id" = ("comments_comment"."id")) LIMIT 1), 0) AS "replies_count_total", ("comments_comment"."reactions_count" -> total) AS "reactions_count_total", "baseapp_core_documentid"."id", "baseapp_core_documentid"."created", "baseapp_core_documentid"."modified", "baseapp_core_documentid"."public_id", "baseapp_core_documentid"."content_type_id", "baseapp_core_documentid"."object_id", "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "comments_comment" INNER JOIN "baseapp_core_documentid" ON ("comments_comment"."target_document_id" = "baseapp_core_documentid"."id") INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE "comments_comment"."id" = 477 ORDER BY "comments_comment"."is_pinned" DESC, "comments_comment"."created" DESC',
-    # 5) 'SELECT "col1", "col2", "col3", "col4", "_commentable_comments_count", "_commentable_is_comments_enabled", "replies_count_total", "reactions_count_total", "mapped_public_id", "col5", "col6", "col7", "col8", "col9", "col10", "col11", "col12", "col13" FROM ( SELECT * FROM ( SELECT "comments_comment"."id" AS "col1", "comments_comment"."target_document_id" AS "col2", "comments_comment"."in_reply_to_id" AS "col3", "comments_comment"."status" AS "col4", (SELECT U0."comments_count" ... LIMIT 1) AS "_commentable_comments_count", (SELECT U0."is_comments_enabled" ... LIMIT 1) AS "_commentable_is_comments_enabled", COALESCE(...) AS "replies_count_total", ("comments_comment"."reactions_count" -> total) AS "reactions_count_total", (SELECT U0."public_id" ... ) AS "mapped_public_id", 100 AS "qual0", (ROW_NUMBER() OVER (PARTITION BY "comments_comment"."in_reply_to_id" ORDER BY ...) - 1) AS "qual1", 0 AS "qual2", "comments_comment"."is_pinned" AS "qual3", "comments_comment"."created" AS "qual4", "baseapp_core_documentid".* AS cols, "django_content_type".* AS cols FROM "comments_comment" INNER JOIN "baseapp_core_documentid" ON ("comments_comment"."target_document_id" = "baseapp_core_documentid"."id") INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE "comments_comment"."in_reply_to_id" IN (477) ORDER BY "comments_comment"."is_pinned" DESC, "comments_comment"."created" DESC ) "qualify" WHERE ("qual1" >= ("qual2") AND "qual1" < ("qual0")) ) "qualify_mask" ORDER BY "qual3" DESC, "qual4" DESC',
+    # 1) 'SELECT "baseapp_core_documentid".* FROM "baseapp_core_documentid" INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE "baseapp_core_documentid"."public_id" = <root uuid> LIMIT 21',
+    # 2) 'SELECT "comments_comment".id, target_document_id, in_reply_to_id, status, <commentable + reactable metadata subqueries>, "reactions_count_total", "baseapp_core_documentid".*, "django_content_type".* FROM "comments_comment" INNER JOIN "baseapp_core_documentid" ON ... INNER JOIN "django_content_type" ON ... WHERE "comments_comment"."id" = <root_comment_id> ORDER BY ...',
+    # 3) 'SELECT "django_content_type".id, app_label, model FROM "django_content_type" WHERE app_label = users AND model = user LIMIT 21',
+    # 4) 'SELECT "django_content_type".id, app_label, model FROM "django_content_type" WHERE app_label = profiles AND model = profile LIMIT 21',
     #
     ### resolve_comments queries (top-level connection on the target):
-    # 6) 'SELECT COUNT(*) AS "__count" FROM "comments_comment" INNER JOIN "baseapp_core_documentid" ON ("comments_comment"."target_document_id" = "baseapp_core_documentid"."id") INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE (NOT ("comments_comment"."status" = 0) AND ("comments_comment"."in_reply_to_id" = 477 OR ("comments_comment"."in_reply_to_id" IS NULL AND "django_content_type"."app_label" = comments AND "django_content_type"."model" = comment AND "baseapp_core_documentid"."object_id" = 477)))',
-    # 7) 'SELECT "comments_comment"."id", "comments_comment"."target_document_id", "comments_comment"."in_reply_to_id", "comments_comment"."status", <commentable metadata subqueries>, ("comments_comment"."reactions_count" -> total) AS "reactions_count_total", "baseapp_core_documentid".*, "django_content_type".* FROM "comments_comment" INNER JOIN "baseapp_core_documentid" ON ("comments_comment"."target_document_id" = "baseapp_core_documentid"."id") INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE (NOT ("comments_comment"."status" = 0) AND ("comments_comment"."in_reply_to_id" = 477 OR ("comments_comment"."in_reply_to_id" IS NULL AND "django_content_type"."app_label" = comments AND "django_content_type"."model" = comment AND "baseapp_core_documentid"."object_id" = 477))) ORDER BY "comments_comment"."is_pinned" DESC, "comments_comment"."created" DESC LIMIT 1',
-    # 8) 'SELECT <comment cols + commentable metadata + mapped_public_id + _optimizer_count + window funcs>, "baseapp_core_documentid".*, "django_content_type".* FROM "comments_comment" INNER JOIN "baseapp_core_documentid" ON ("comments_comment"."target_document_id" = "baseapp_core_documentid"."id") INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE "comments_comment"."in_reply_to_id" IN (478) ORDER BY "comments_comment"."is_pinned" DESC, "comments_comment"."created" DESC) "qualify" WHERE ("qual1" >= ("qual2") AND "qual1" < ("qual0")) ) "qualify_mask" ORDER BY "qual3" DESC, "qual4" DESC',
-    # 9) 'SELECT "users_user"."id", "users_user"."first_name", (SELECT U0."public_id" AS "public_id" FROM "baseapp_core_documentid" U0 WHERE (U0."content_type_id" = 3272 AND U0."object_id" = ("users_user"."id"))) AS "mapped_public_id" FROM "users_user" WHERE ("users_user"."id") IN ((1129))',
+    # 5) 'SELECT COUNT(*) FROM "comments_comment" ... WHERE NOT status=0 AND (in_reply_to_id = <root_comment_id> OR (in_reply_to_id IS NULL AND ct.app_label = comments AND ct.model = comment AND doc.object_id = <root_comment_id>))',
+    # 6) 'SELECT "comments_comment".id, target_document_id, in_reply_to_id, status, <commentable + reactable metadata subqueries>, "reactions_count_total", "baseapp_core_documentid".*, "django_content_type".* FROM "comments_comment" ... WHERE <same predicate as #5> ORDER BY ... LIMIT 1',
+    # 7) 'SELECT <col1..col15 + commentable + reactable metadata + mapped_public_id + _optimizer_count + window funcs>, "baseapp_core_documentid".*, "django_content_type".* FROM "comments_comment" ... WHERE in_reply_to_id IN (<child_id>) ... qualify_mask ORDER BY ...',
+    # 8) 'SELECT "users_user".id, first_name, <ratings ratable metadata subqueries> AS _ratable_*, mapped_public_id FROM "users_user" WHERE id IN (<user_ids>)',
     #
-    ### Nested replies connection on the comment node (status-filtered duplicate):
-    # 10) 'SELECT "baseapp_core_documentid"."id", "baseapp_core_documentid"."created", "baseapp_core_documentid"."modified", "baseapp_core_documentid"."public_id", "baseapp_core_documentid"."content_type_id", "baseapp_core_documentid"."object_id" FROM "baseapp_core_documentid" WHERE ("baseapp_core_documentid"."content_type_id" = 3277 AND "baseapp_core_documentid"."object_id" = 478) LIMIT 21',
-    # 11) 'SELECT COUNT(*) AS "__count" FROM "comments_comment" INNER JOIN "baseapp_core_documentid" ON ("comments_comment"."target_document_id" = "baseapp_core_documentid"."id") INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE (NOT ("comments_comment"."status" = 0) AND ("comments_comment"."in_reply_to_id" = 478 OR ("comments_comment"."in_reply_to_id" IS NULL AND "django_content_type"."app_label" = comments AND "django_content_type"."model" = comment AND "baseapp_core_documentid"."object_id" = 478)))',
-    # 12) 'SELECT "comments_comment".*, <commentable metadata subqueries>, "baseapp_core_documentid".*, "django_content_type".* FROM "comments_comment" INNER JOIN "baseapp_core_documentid" ON ("comments_comment"."target_document_id" = "baseapp_core_documentid"."id") INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE (NOT ("comments_comment"."status" = 0) AND ("comments_comment"."in_reply_to_id" = 478 OR ("comments_comment"."in_reply_to_id" IS NULL AND "django_content_type"."app_label" = comments AND "django_content_type"."model" = comment AND "baseapp_core_documentid"."object_id" = 478))) ORDER BY "comments_comment"."is_pinned" DESC, "comments_comment"."created" DESC LIMIT 2',
-    # 13) 'SELECT "users_user"."id", "users_user"."first_name", (SELECT U0."public_id" AS "public_id" FROM "baseapp_core_documentid" U0 WHERE (U0."content_type_id" = 3272 AND U0."object_id" = ("users_user"."id"))) AS "mapped_public_id" FROM "users_user" WHERE ("users_user"."id") IN ((1129))'
+    ### Nested replies connection on the child comment (status-filtered duplicate):
+    # 9) 'SELECT "baseapp_core_documentid".* FROM "baseapp_core_documentid" WHERE content_type_id = <Comment ct> AND object_id = <child_id> LIMIT 21',
+    # 10) 'SELECT COUNT(*) FROM "comments_comment" ... WHERE NOT status=0 AND in_reply_to_id = <child_id> ...',
+    # 11) 'SELECT "comments_comment".id, profile_id, user_id, target_document_id, in_reply_to_id, status, <commentable + reactable metadata subqueries>, "reactions_count_total", mapped_public_id, "baseapp_core_documentid".*, "django_content_type".* FROM "comments_comment" ... WHERE <same predicate as #10> ORDER BY ... LIMIT 2',
+    # 12) 'SELECT "users_user".id, first_name, <ratings ratable metadata subqueries> AS _ratable_*, mapped_public_id FROM "users_user" WHERE id IN (<user_ids>)'
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
@@ -211,7 +210,7 @@ def test_anon_see_comments_and_replies_with_pagination(
         "hasNextPage"
     ]
 
-    assert queries.count == 13
+    assert queries.count == 12
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
@@ -549,21 +548,22 @@ def test_comments_query_is_partially_optimized(django_user_client, graphql_clien
     content = response.json()
 
     assert content["data"]["node"]["commentsCount"]["replies"] == 5
-    assert queries.count == 7
+    assert queries.count == 6
 
-    # With optimizer queries are expected to be 7:
+    # With optimizer queries are expected to be 6:
     # 1. ContentType lookup for comments.comment (cold-cache; cached after first request in production)
-    # 2. ContentType lookup for users.user (fired by AbstractUserObjectType.pre_optimization_hook
+    # 2. SELECT root comments_comment by id with _commentable_* / _reactable_* Subqueries inlined by
+    #    {Commentable,Reactable}MetadataService.annotate_queryset
+    # 3. ContentType lookup for users.user (fired by AbstractUserObjectType.pre_optimization_hook
     #    when the optimizer walks the comments.user FK)
-    # 3. ContentType lookup for profiles.profile (fired by ProfileObjectType.pre_optimization_hook
+    # 4. ContentType lookup for profiles.profile (fired by ProfileObjectType.pre_optimization_hook
     #    when the optimizer walks the comments.profile FK)
-    # 4. SELECT root comments_comment by id with _commentable_* and reply-count Subqueries
-    #    inlined by CommentableMetadataService.annotate_queryset
-    # 5. SELECT replies (CTE-shaped) for commentsCount with _commentable_*, _reactable_*,
-    #    replies_count_total, reactions_count_total Subqueries + JOIN users_user, profiles_profile
-    # 6. SELECT COUNT(*) for pagination
-    # 7. Same as #5 with status = 1 filter — resolve_comments runs a second query because it
-    #    filters replies by status; this is the "partially optimized" part the test name refers to
+    # 5. SELECT COUNT(*) for pagination
+    # 6. SELECT replies for resolve_comments with full column projection + _commentable_* /
+    #    _reactable_* / replies_count_total / reactions_count_total metadata Subqueries —
+    #    one fetch instead of the previously-duplicated qualify_mask + status-filtered pair
+    #    (the optimizer's Node-id resolution overhead was removed when the package interfaces
+    #    moved from RelayNode to graphene.Interface).
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
@@ -605,9 +605,9 @@ def test_comments_query_is_optimized_with_nested_replies(
     assert content["data"]["node"]["commentsCount"]["replies"] == 15
     comment_nodes = [e["node"] for e in content["data"]["node"]["comments"]["edges"]]
     assert any(n["commentsCount"]["main"] >= 1 for n in comment_nodes)
-    # Root + nested comments connections (incl. status-filtered duplicate) + metadata subqueries;
-    # stays flat (no per-row CommentableMetadata fetch) thanks to annotate_queryset on both optimizers.
-    assert queries.count == 12
+    # Root + nested comments connections + metadata subqueries; stays flat (no per-row
+    # CommentableMetadata fetch) thanks to annotate_queryset on both optimizers.
+    assert queries.count == 9
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
@@ -632,22 +632,18 @@ def test_comments_query_is_partially_optimized_with_public_id(
     content = response.json()
 
     assert content["data"]["node"]["commentsCount"]["replies"] == 5
-    assert queries.count == 12
+    assert queries.count == 9
 
     ### Optimized queries.
-    # 1) 'SELECT "baseapp_core_documentid"."id", "baseapp_core_documentid"."created", "baseapp_core_documentid"."modified", "baseapp_core_documentid"."public_id", "baseapp_core_documentid"."content_type_id", "baseapp_core_documentid"."object_id", "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "baseapp_core_documentid" INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE "baseapp_core_documentid"."public_id" = 426019ba-e5de-4d20-bef9-7ec0af7c4f4e LIMIT 21',
-    # 2) 'SELECT "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "django_content_type" WHERE ("django_content_type"."app_label" = comments AND "django_content_type"."model" = comment) LIMIT 21',
-    # 3) 'SELECT "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "django_content_type" WHERE ("django_content_type"."app_label" = users AND "django_content_type"."model" = user) LIMIT 21',
-    # 4) 'SELECT "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "django_content_type" WHERE ("django_content_type"."app_label" = profiles AND "django_content_type"."model" = profile) LIMIT 21',
-    # 5) 'SELECT "comments_comment"."id", "comments_comment"."comments_count", "comments_comment"."is_comments_enabled", "comments_comment"."target_object_id", "comments_comment"."in_reply_to_id", "comments_comment"."status", ("comments_comment"."comments_count" -> total) AS "replies_count_total", ("comments_comment"."reactions_count" -> total) AS "reactions_count_total" FROM "comments_comment" WHERE "comments_comment"."id" = 26691 ORDER BY "comments_comment"."is_pinned" DESC, "comments_comment"."created" DESC',
-    # 6) 'SELECT "col1", "col2", "col3", "col4", "col5", "col6", "col7", "col8", "replies_count_total", "reactions_count_total", "mapped_public_id", "_optimizer_count" FROM ( SELECT * FROM ( SELECT "comments_comment"."id" AS "col1", "comments_comment"."is_comments_enabled" AS "col2", "comments_comment"."user_id" AS "col3", "comments_comment"."profile_id" AS "col4", "comments_comment"."body" AS "col5", "comments_comment"."target_object_id" AS "col6", "comments_comment"."in_reply_to_id" AS "col7", "comments_comment"."status" AS "col8", ("comments_comment"."comments_count" -> total) AS "replies_count_total", ("comments_comment"."reactions_count" -> total) AS "reactions_count_total", (SELECT U0."public_id" FROM "baseapp_core_documentid" U0 WHERE (U0."content_type_id" = 26 AND U0."object_id" = ("comments_comment"."id"))) AS "mapped_public_id", (SELECT COUNT(*) FROM (SELECT V0."id", V0."is_comments_enabled", V0."user_id", V0."profile_id", V0."body", V0."target_object_id", V0."in_reply_to_id", V0."status", (V0."comments_count" -> total) AS "replies_count_total", (V0."reactions_count" -> total) AS "reactions_count_total", (SELECT U0."public_id" FROM "baseapp_core_documentid" U0 WHERE (U0."content_type_id" = 26 AND U0."object_id" = (V0."id"))) AS "mapped_public_id" FROM "comments_comment" V0 WHERE V0."in_reply_to_id" = ("comments_comment"."in_reply_to_id") ORDER BY V0."is_pinned" DESC, V0."created" DESC) _count) AS "_optimizer_count", 100 AS "qual0", (ROW_NUMBER() OVER (PARTITION BY "comments_comment"."in_reply_to_id" ORDER BY "comments_comment"."is_pinned" DESC, "comments_comment"."created" DESC) - 1) AS "qual1", 0 AS "qual2", "comments_comment"."is_pinned" AS "qual3", "comments_comment"."created" AS "qual4" FROM "comments_comment" WHERE "comments_comment"."in_reply_to_id" IN (26691) ORDER BY "comments_comment"."is_pinned" DESC, "comments_comment"."created" DESC ) "qualify" WHERE ("qual1" >= ("qual2") AND "qual1" < ("qual0")) ) "qualify_mask" ORDER BY "qual3" DESC, "qual4" DESC',
-    # 7) 'SELECT "users_user"."id", "users_user"."first_name", (SELECT U0."public_id" FROM "baseapp_core_documentid" U0 WHERE (U0."content_type_id" = 74 AND U0."object_id" = ("users_user"."id"))) AS "mapped_public_id" FROM "users_user" WHERE "users_user"."id" IN (552)',
-    # 8) 'SELECT "profiles_profile"."id", "profiles_profile"."name", (SELECT U0."public_id" FROM "baseapp_core_documentid" U0 WHERE (U0."content_type_id" = 28 AND U0."object_id" = ("profiles_profile"."id"))) AS "mapped_public_id" FROM "profiles_profile" WHERE "profiles_profile"."id" IN (736)',
-    #
-    ### --- Note: It repeated the following queries because the resolve_comments method filters the replies by status = 1.
-    # 9) 'SELECT "col1", "col2", "col3", "col4", "col5", "col6", "col7", "col8", "replies_count_total", "reactions_count_total", "mapped_public_id", "_optimizer_count" FROM ( SELECT * FROM ( SELECT "comments_comment"."id" AS "col1", "comments_comment"."is_comments_enabled" AS "col2", "comments_comment"."user_id" AS "col3", "comments_comment"."profile_id" AS "col4", "comments_comment"."body" AS "col5", "comments_comment"."target_object_id" AS "col6", "comments_comment"."in_reply_to_id" AS "col7", "comments_comment"."status" AS "col8", ("comments_comment"."comments_count" -> total) AS "replies_count_total", ("comments_comment"."reactions_count" -> total) AS "reactions_count_total", (SELECT U0."public_id" FROM "baseapp_core_documentid" U0 WHERE (U0."content_type_id" = 26 AND U0."object_id" = ("comments_comment"."id"))) AS "mapped_public_id", (SELECT COUNT(*) FROM (SELECT V0."id", V0."is_comments_enabled", V0."user_id", V0."profile_id", V0."body", V0."target_object_id", V0."in_reply_to_id", V0."status", (V0."comments_count" -> total) AS "replies_count_total", (V0."reactions_count" -> total) AS "reactions_count_total", (SELECT U0."public_id" FROM "baseapp_core_documentid" U0 WHERE (U0."content_type_id" = 26 AND U0."object_id" = (V0."id"))) AS "mapped_public_id" FROM "comments_comment" V0 WHERE V0."in_reply_to_id" = ("comments_comment"."in_reply_to_id") ORDER BY V0."is_pinned" DESC, V0."created" DESC) _count) AS "_optimizer_count", 100 AS "qual0", (ROW_NUMBER() OVER (PARTITION BY "comments_comment"."in_reply_to_id" ORDER BY "comments_comment"."is_pinned" DESC, "comments_comment"."created" DESC) - 1) AS "qual1", 0 AS "qual2", "comments_comment"."is_pinned" AS "qual3", "comments_comment"."created" AS "qual4" FROM "comments_comment" WHERE ("comments_comment"."in_reply_to_id" = 26691 AND "comments_comment"."status" = 1) ORDER BY "comments_comment"."is_pinned" DESC, "comments_comment"."created" DESC ) "qualify" WHERE ("qual1" >= ("qual2") AND "qual1" < ("qual0")) ) "qualify_mask" ORDER BY "qual3" DESC, "qual4" DESC',
-    # 10) 'SELECT "users_user"."id", "users_user"."first_name", (SELECT U0."public_id" FROM "baseapp_core_documentid" U0 WHERE (U0."content_type_id" = 74 AND U0."object_id" = ("users_user"."id"))) AS "mapped_public_id" FROM "users_user" WHERE "users_user"."id" IN (552)',
-    # 11) 'SELECT "profiles_profile"."id", "profiles_profile"."name", (SELECT U0."public_id" FROM "baseapp_core_documentid" U0 WHERE (U0."content_type_id" = 28 AND U0."object_id" = ("profiles_profile"."id"))) AS "mapped_public_id" FROM "profiles_profile" WHERE "profiles_profile"."id" IN (736)'
+    # 1) 'SELECT "baseapp_core_documentid".* FROM "baseapp_core_documentid" INNER JOIN "django_content_type" ON ... WHERE "baseapp_core_documentid"."public_id" = <root uuid> LIMIT 21',
+    # 2) 'SELECT "django_content_type".id, app_label, model FROM "django_content_type" WHERE app_label = comments AND model = comment LIMIT 21',
+    # 3) 'SELECT "comments_comment".id, target_document_id, in_reply_to_id, status, <commentable + reactable metadata subqueries>, "reactions_count_total", "baseapp_core_documentid".*, "django_content_type".* FROM "comments_comment" ... WHERE "comments_comment"."id" = <root_comment_id> ORDER BY ...',
+    # 4) 'SELECT "django_content_type".id, app_label, model FROM "django_content_type" WHERE app_label = users AND model = user LIMIT 21',
+    # 5) 'SELECT "django_content_type".id, app_label, model FROM "django_content_type" WHERE app_label = profiles AND model = profile LIMIT 21',
+    # 6) 'SELECT COUNT(*) FROM "comments_comment" ... WHERE NOT status=0 AND (in_reply_to_id = <root_comment_id> OR (in_reply_to_id IS NULL AND ct.app_label = comments AND ct.model = comment AND doc.object_id = <root_comment_id>))',
+    # 7) 'SELECT "comments_comment".id, profile_id, user_id, body, target_document_id, in_reply_to_id, status, <commentable + reactable metadata subqueries>, mapped_public_id FROM "comments_comment" ... WHERE <same predicate as #6> ORDER BY ...',
+    # 8) 'SELECT "users_user".id, first_name, <ratings ratable metadata subqueries> AS _ratable_*, mapped_public_id FROM "users_user" WHERE id IN (<user_ids>)',
+    # 9) 'SELECT "profiles_profile".id, name, <commentable + followable + reportable + blockable metadata subqueries>, mapped_public_id FROM "profiles_profile" WHERE id IN (<profile_ids>)'
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
@@ -677,7 +673,7 @@ def test_comments_query_is_partially_optimized_with_public_id_and_pagination(
     )  # Because the max_limit is 100 by default
     assert content["data"]["node"]["comments"]["pageInfo"]["hasNextPage"]
 
-    assert queries.count == 12
+    assert queries.count == 9
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
@@ -702,12 +698,13 @@ def test_comments_query_from_foreigh_target_is_partially_optimized_with_public_i
     assert len(content["data"]["node"]["comments"]["edges"]) == 5
     assert queries.count == 9
 
-    ### Optimized queries. About the comments it's only 4 queries.
-    # 1) 'SELECT "baseapp_core_documentid"."id", "baseapp_core_documentid"."created", "baseapp_core_documentid"."modified", "baseapp_core_documentid"."public_id", "baseapp_core_documentid"."content_type_id", "baseapp_core_documentid"."object_id", "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "baseapp_core_documentid" INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE "baseapp_core_documentid"."public_id" = 1e044df1-9a3d-4a26-b056-01f9e1d9dfb5 LIMIT 21',
-    # 2) 'SELECT "baseapp_pages_page"."id", "baseapp_pages_page"."created", "baseapp_pages_page"."modified", "baseapp_pages_page"."comments_count", "baseapp_pages_page"."is_comments_enabled", "baseapp_pages_page"."user_id", "baseapp_pages_page"."title_en", "baseapp_pages_page"."title_es", "baseapp_pages_page"."title_pt", "baseapp_pages_page"."body_en", "baseapp_pages_page"."body_es", "baseapp_pages_page"."body_pt", "baseapp_pages_page"."status" FROM "baseapp_pages_page" WHERE "baseapp_pages_page"."id" = 3',
-    # 3) 'SELECT "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "django_content_type" WHERE ("django_content_type"."app_label" = comments AND "django_content_type"."model" = comment) LIMIT 21',
-    # 4) 'SELECT "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "django_content_type" WHERE ("django_content_type"."app_label" = users AND "django_content_type"."model" = user) LIMIT 21',
-    # 5) 'SELECT "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "django_content_type" WHERE ("django_content_type"."app_label" = profiles AND "django_content_type"."model" = profile) LIMIT 21',
-    # 6) 'SELECT "comments_comment"."id", "comments_comment"."is_comments_enabled", "comments_comment"."user_id", "comments_comment"."profile_id", "comments_comment"."body", "comments_comment"."target_object_id", "comments_comment"."in_reply_to_id", "comments_comment"."status", ("comments_comment"."comments_count" -> total) AS "replies_count_total", ("comments_comment"."reactions_count" -> total) AS "reactions_count_total", (SELECT U0."public_id" FROM "baseapp_core_documentid" U0 WHERE (U0."content_type_id" = 26 AND U0."object_id" = ("comments_comment"."id"))) AS "mapped_public_id" FROM "comments_comment" WHERE (NOT ("comments_comment"."status" = 0) AND "comments_comment"."in_reply_to_id" IS NULL AND "comments_comment"."target_content_type_id" = 27 AND "comments_comment"."target_object_id" = 3) ORDER BY "comments_comment"."is_pinned" DESC, "comments_comment"."created" DESC',
-    # 7) 'SELECT "users_user"."id", "users_user"."first_name", (SELECT U0."public_id" FROM "baseapp_core_documentid" U0 WHERE (U0."content_type_id" = 74 AND U0."object_id" = ("users_user"."id"))) AS "mapped_public_id" FROM "users_user" WHERE "users_user"."id" IN (567)',
-    # 8) 'SELECT "profiles_profile"."id", "profiles_profile"."name", (SELECT U0."public_id" FROM "baseapp_core_documentid" U0 WHERE (U0."content_type_id" = 28 AND U0."object_id" = ("profiles_profile"."id"))) AS "mapped_public_id" FROM "profiles_profile" WHERE "profiles_profile"."id" IN (757)'
+    ### Optimized queries. About the comments it's only 4 queries (#6 - #9).
+    # 1) 'SELECT "baseapp_core_documentid".* FROM "baseapp_core_documentid" INNER JOIN "django_content_type" ON ... WHERE "baseapp_core_documentid"."public_id" = <root uuid> LIMIT 21',
+    # 2) 'SELECT "pages_page".id, created, modified, user_id, title_*, body_*, status, <commentable + reactable metadata subqueries>, mapped_public_id FROM "pages_page" WHERE id = <page_id>',
+    # 3) 'SELECT "django_content_type".id, app_label, model FROM "django_content_type" WHERE app_label = comments AND model = comment LIMIT 21',
+    # 4) 'SELECT "django_content_type".id, app_label, model FROM "django_content_type" WHERE app_label = users AND model = user LIMIT 21',
+    # 5) 'SELECT "django_content_type".id, app_label, model FROM "django_content_type" WHERE app_label = profiles AND model = profile LIMIT 21',
+    # 6) 'SELECT COUNT(*) FROM "comments_comment" INNER JOIN "baseapp_core_documentid" ON ... WHERE NOT status=0 AND doc.content_type_id = <Page ct> AND doc.object_id = <page_id>',
+    # 7) 'SELECT "comments_comment".id, profile_id, user_id, body, target_document_id, in_reply_to_id, status, <commentable + reactable metadata subqueries>, mapped_public_id FROM "comments_comment" ... WHERE <same predicate as #6> ORDER BY ...',
+    # 8) 'SELECT "users_user".id, first_name, <ratings ratable metadata subqueries> AS _ratable_*, mapped_public_id FROM "users_user" WHERE id IN (<user_ids>)',
+    # 9) 'SELECT "profiles_profile".id, name, <commentable + followable + reportable + blockable metadata subqueries>, mapped_public_id FROM "profiles_profile" WHERE id IN (<profile_ids>)'
