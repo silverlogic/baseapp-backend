@@ -15,7 +15,7 @@ def _build_api_key_model(api_key):
     queryset.first.return_value = api_key
     manager = Mock()
     manager.encrypt.return_value = b"encrypted"
-    manager.all.return_value = queryset
+    manager.select_related.return_value = queryset
     return SimpleNamespace(objects=manager), queryset
 
 

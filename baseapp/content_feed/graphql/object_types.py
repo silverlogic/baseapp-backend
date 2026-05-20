@@ -1,5 +1,4 @@
 import swapper
-from django.apps import apps
 from graphene_django.filter import DjangoFilterConnectionField
 
 from baseapp.content_feed.graphql.filters import (
@@ -24,14 +23,6 @@ ContentPostImage = swapper.load_model(
 )
 
 
-content_post_interfaces = []
-
-if apps.is_installed("baseapp_mentions"):
-    from baseapp_mentions.graphql.interfaces import MentionsInterface
-
-    content_post_interfaces.append(MentionsInterface)
-
-
 class ContentPostImageObjectType(DjangoObjectType):
     image = ThumbnailField(required=False)
 
@@ -47,7 +38,7 @@ class ContentPostObjectType(DjangoObjectType):
 
     class Meta:
         interfaces = graphql_shared_interfaces.get(
-            RelayNode, *content_post_interfaces, "ReactionsInterface"
+            RelayNode, "MentionsInterface", "ReactionsInterface"
         )
         model = ContentPost
         fields = (

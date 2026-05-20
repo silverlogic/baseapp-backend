@@ -1,6 +1,5 @@
 import graphene
 import swapper
-from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Count, Q
@@ -27,6 +26,7 @@ from baseapp_core.graphql import (
     get_pk_from_relay_id,
     login_required,
 )
+from baseapp_core.plugins import shared_services
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
@@ -513,7 +513,6 @@ class ChatRoomSendMessage(RelayMutation):
     def mutate_and_get_payload(
         cls, root, info, room_id, content, profile_id, in_reply_to_id=None, **input
     ):
-        mentioned_profile_ids = input.pop("mentioned_profile_ids", None) or []
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 
@@ -577,14 +576,14 @@ class ChatRoomSendMessage(RelayMutation):
             in_reply_to=in_reply_to,
         )
 
-        if mentioned_profile_ids and apps.is_installed("baseapp_mentions"):
-            from baseapp_mentions.services import update_mentions
-
-            update_mentions(
-                message,
-                mentioned_profile_ids,
-                exclude_profile=profile,
-            )
+        mentioned_profile_ids = input.pop("mentioned_profile_ids", None) or []
+        if mentioned_profile_ids:
+            if service := shared_services.get("mentions"):
+                service.update_mentions(
+                    message,
+                    mentioned_profile_ids,
+                    exclude_profile=profile,
+                )
 
         send_new_chat_message_notification(room, message, info)
         ChatRoomReadMessages.read_messages(room, profile)
@@ -666,14 +665,13 @@ class ChatRoomEditMessage(RelayMutation):
         message.content = content
         message.save(update_fields=["content"])
 
-        if mentioned_profile_ids is not None and apps.is_installed("baseapp_mentions"):
-            from baseapp_mentions.services import update_mentions
-
-            update_mentions(
-                message,
-                mentioned_profile_ids,
-                exclude_profile=profile,
-            )
+        if mentioned_profile_ids is not None:
+            if service := shared_services.get("mentions"):
+                service.update_mentions(
+                    message,
+                    mentioned_profile_ids,
+                    exclude_profile=profile,
+                )
 
         ChatRoomOnMessage.edit_message(room_id=message.room.relay_id, message=message)
 

@@ -12,6 +12,7 @@ import baseapp_core.models
 class Migration(migrations.Migration):
 
     dependencies = [
+        ("baseapp_core", "0001_initial"),
         ("profiles", "0002_alter_profile_name_alter_profileevent_name"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
