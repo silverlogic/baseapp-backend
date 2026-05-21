@@ -21,10 +21,10 @@ class BlocksPlugin(BaseAppPlugin):
             graphql_mutations=[
                 "baseapp_blocks.graphql.mutations.BlocksMutations",
             ],
-            required_packages=[],
-            optional_packages=[
+            required_packages=[
                 {
-                    "baseapp_profiles": "If enabled, Block.actor / Block.target point to Profile and BlocksInterface resolvers disambiguate by the current Profile; otherwise they fall back to AUTH_USER_MODEL."
+                    "baseapp_profiles": "Block.actor / Block.target are Profile FKs and BlocksInterface resolvers disambiguate by the current Profile."
                 },
             ],
+            optional_packages=[],
         )

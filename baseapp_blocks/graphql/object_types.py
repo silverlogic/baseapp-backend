@@ -1,7 +1,6 @@
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
-from django.apps import apps
 from query_optimizer import DjangoConnectionField
 
 from baseapp_core.graphql import DjangoObjectType
@@ -10,16 +9,47 @@ from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
 from baseapp_core.plugins import shared_services
 
 Block = swapper.load_model("baseapp_blocks", "Block")
+Profile = swapper.load_model("baseapp_profiles", "Profile")
+
+
+# Field-level optimizer hooks below — `query_optimizer` calls them during AST
+# compilation only when the matching field is selected, so each attaches its
+# subquery annotation to the parent optimizer on demand. The optimizer auto-
+# promotes `select_related` to `prefetch_related` when the child sub-optimizer
+# has annotations, which is what makes `block.target.blockersCount` resolve
+# without an extra DocumentId + BlockableMetadata fetch per row.
+
+
+def _blockers_count_optimizer_hook(compiler) -> None:
+    if service := shared_services.get("blockable_metadata"):
+        service.annotate_blockers_count_in_optimizer_compiler(compiler)
+
+
+def _blocking_count_optimizer_hook(compiler) -> None:
+    if service := shared_services.get("blockable_metadata"):
+        service.annotate_blocking_count_in_optimizer_compiler(compiler)
 
 
 class BlocksInterface(RelayNode):
     blockers = DjangoConnectionField(get_object_type_for_model(Block))
     blocking = DjangoConnectionField(get_object_type_for_model(Block))
-    blockers_count = graphene.Int()
-    blocking_count = graphene.Int()
+    blockers_count = graphene.Field(graphene.Int)
+    blocking_count = graphene.Field(graphene.Int)
     is_blocked_by_me = graphene.Boolean(
         profile_id=graphene.ID(required=False),
     )
+    blockers_count.optimizer_hook = _blockers_count_optimizer_hook
+    blocking_count.optimizer_hook = _blocking_count_optimizer_hook
+
+    class Meta:
+        # `query_optimizer`'s AST walker skips `... on <Interface>` inline
+        # fragments whose declared model doesn't match the queryset's model.
+        # Pinning Profile here lets the top-level `node(id: profile-relay-id)`
+        # optimization pass descend into BlocksInterface's fields when resolving
+        # a Profile. Without this, `block.target.blockersCount` never gets its
+        # annotation attached on the outer pass and falls back to a per-row
+        # `BlockableMetadata` fetch.
+        model = Profile
 
     def resolve_blockers_count(self, info):
         if info.context.user.has_perm("baseapp_blocks.view_block-blockers_count", self):
@@ -36,6 +66,7 @@ class BlocksInterface(RelayNode):
     def resolve_blockers(self, info, **kwargs):
         if info.context.user.has_perm("baseapp_blocks.view_block-blockers", self):
             return self.blockers.all()
+        return Block.objects.none()
 
     def resolve_blocking(self, info, **kwargs):
         if info.context.user.has_perm("baseapp_blocks.view_block-blocking", self):
@@ -46,36 +77,13 @@ class BlocksInterface(RelayNode):
         if not info.context.user.is_authenticated:
             return False
 
-        if apps.is_installed("baseapp_profiles"):
-            return BlocksInterface._resolve_is_blocked_by_me_with_profiles(
-                self, info, profile_id=profile_id
-            )
-        return BlocksInterface._resolve_is_blocked_by_me_without_profiles(self, info)
-
-    @staticmethod
-    def _resolve_is_blocked_by_me_with_profiles(root, info, profile_id=None) -> bool:
-        Profile = swapper.load_model("baseapp_profiles", "Profile")
-
         if profile_id:
             pk = get_pk_from_relay_id(profile_id)
             actor = Profile.objects.get_if_member(pk=pk, user=info.context.user)
         else:
             actor = info.context.user.current_profile
 
-        return (
-            bool(actor)
-            and Block.objects.filter(
-                actor_id=actor.id,
-                target_id=root.id,
-            ).exists()
-        )
-
-    @staticmethod
-    def _resolve_is_blocked_by_me_without_profiles(root, info) -> bool:
-        return Block.objects.filter(
-            user_id=info.context.user.id,
-            target_id=root.id,
-        ).exists()
+        return bool(actor) and Block.objects.filter(actor_id=actor.id, target_id=self.id).exists()
 
 
 class BaseBlockObjectType:

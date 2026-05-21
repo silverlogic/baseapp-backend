@@ -2,11 +2,16 @@ from __future__ import annotations
 
 import swapper
 from django.apps import apps
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.db.models import Q
+from django.db.models import OuterRef, Q, Subquery, Value
+from django.db.models.functions import Coalesce
+from query_optimizer.compiler import OptimizationCompiler
 from query_optimizer.typing import GQLInfo
 
 from baseapp_core.plugins import SharedServiceProvider
+
+Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 # Hint key set by _exclude_blocked_from_foreign_queryset so get_queryset() knows
 # filtering was already applied and can skip a redundant .exclude().
@@ -40,28 +45,20 @@ class BlockLookupService(SharedServiceProvider):
             queryset._hints[_BLOCKED_PROFILES_FILTERED_HINT] = True
             return queryset
 
-        if apps.is_installed("baseapp_profiles"):
-            profile = getattr(user, "current_profile", None)
-            if profile:
-                blocked_profile_ids = profile.blocking.values_list("target_id", flat=True)
-                blocker_profile_ids = profile.blockers.values_list("actor_id", flat=True)
-            else:
-                # Fallback for contexts where middleware did not set current_profile:
-                # apply the union of block relations for all profiles owned by the user.
-                Profile = swapper.load_model("baseapp_profiles", "Profile")
-                owned_profiles = Profile.objects.filter(owner=user)
-                blocked_profile_ids = owned_profiles.values_list("blocking__target_id", flat=True)
-                blocker_profile_ids = owned_profiles.values_list("blockers__actor_id", flat=True)
+        profile = getattr(user, "current_profile", None)
+        if profile:
+            blocked_profile_ids = profile.blocking.values_list("target_id", flat=True)
+            blocker_profile_ids = profile.blockers.values_list("actor_id", flat=True)
+        else:
+            # Fallback for contexts where middleware did not set current_profile:
+            # apply the union of block relations for all profiles owned by the user.
+            owned_profiles = Profile.objects.filter(owner=user)
+            blocked_profile_ids = owned_profiles.values_list("blocking__target_id", flat=True)
+            blocker_profile_ids = owned_profiles.values_list("blockers__actor_id", flat=True)
 
-            qs = queryset.exclude(
-                Q(profile__id__in=blocked_profile_ids) | Q(profile__id__in=blocker_profile_ids)
-            )
-            qs._hints[_BLOCKED_PROFILES_FILTERED_HINT] = True
-            return qs
-
-        blocked_user_ids = user.social_blocks.values_list("target_id", flat=True)
-        blocker_user_ids = user.blockers.values_list("user_id", flat=True)
-        qs = queryset.exclude(Q(user__id__in=blocked_user_ids) | Q(user__id__in=blocker_user_ids))
+        qs = queryset.exclude(
+            Q(profile__id__in=blocked_profile_ids) | Q(profile__id__in=blocker_profile_ids)
+        )
         qs._hints[_BLOCKED_PROFILES_FILTERED_HINT] = True
         return qs
 
@@ -114,8 +111,7 @@ class BlockableMetadataService(SharedServiceProvider):
         metadata = self.get_or_create_metadata(target)
         if metadata is None:
             return
-        # The reverse manager `blockers` is provided by ProfileMixin (or UserMixin) on
-        # the consumer model — its name is stable across profile / user paths.
+        # `blockers` is the reverse manager from `AbstractBlock.target` (Profile FK).
         count = target.blockers.count() if hasattr(target, "blockers") else 0
         if metadata.blockers_count != count:
             metadata.blockers_count = count
@@ -134,4 +130,71 @@ class BlockableMetadataService(SharedServiceProvider):
             metadata.save(update_fields=["blocking_count", "modified"])
 
     def annotate_queryset(self, queryset):
+        """Bulk-annotate `queryset` with both counts. Useful for non-GraphQL
+        callers (admin, DRF, management commands). The GraphQL path attaches
+        each annotation on-demand via the field-level optimizer hooks below."""
         return self._get_model().annotate_queryset(queryset)
+
+    # --- Correlated subquery builders, used by both `annotate_queryset` on the
+    #     metadata model and the optimizer-compiler hooks below. -------------
+
+    def _blockers_count_subquery(self, model_cls):
+        """Correlated subquery producing `blockers_count` for a row of `model_cls`."""
+        BlockableMetadata = self._get_model()
+        ct_id = ContentType.objects.get_for_model(model_cls).pk
+        qs = BlockableMetadata.objects.filter(
+            target__content_type_id=ct_id,
+            target__object_id=OuterRef("pk"),
+        )
+        return Coalesce(
+            Subquery(
+                qs.values("blockers_count")[:1],
+                output_field=models.PositiveIntegerField(),
+            ),
+            Value(0),
+        )
+
+    def _blocking_count_subquery(self, model_cls):
+        """Correlated subquery producing `blocking_count` for a row of `model_cls`."""
+        BlockableMetadata = self._get_model()
+        ct_id = ContentType.objects.get_for_model(model_cls).pk
+        qs = BlockableMetadata.objects.filter(
+            target__content_type_id=ct_id,
+            target__object_id=OuterRef("pk"),
+        )
+        return Coalesce(
+            Subquery(
+                qs.values("blocking_count")[:1],
+                output_field=models.PositiveIntegerField(),
+            ),
+            Value(0),
+        )
+
+    def annotate_blockers_count_in_optimizer_compiler(self, compiler: OptimizationCompiler):
+        """Attach `_blockable_blockers_count` to the parent optimizer's annotations.
+
+        Wired from `BlocksInterface.blockers_count.optimizer_hook` so the
+        subquery only fires when the GraphQL query actually selects
+        `blockersCount`. Setting the annotation on `optimizer.annotations` also
+        triggers `query_optimizer`'s auto-promotion of `select_related` to
+        `prefetch_related` for nested FK paths (e.g. `block.target`), which is
+        what carries the annotation through to the nested Profile load.
+        """
+        parent = compiler.optimizer
+        if parent is None or parent.model is None:
+            return
+        parent.annotations.setdefault(
+            "_blockable_blockers_count", self._blockers_count_subquery(parent.model)
+        )
+
+    def annotate_blocking_count_in_optimizer_compiler(self, compiler: OptimizationCompiler):
+        """Attach `_blockable_blocking_count` to the parent optimizer's annotations.
+
+        Wired from `BlocksInterface.blocking_count.optimizer_hook` — same mechanism
+        as `annotate_blockers_count_in_optimizer_compiler`."""
+        parent = compiler.optimizer
+        if parent is None or parent.model is None:
+            return
+        parent.annotations.setdefault(
+            "_blockable_blocking_count", self._blocking_count_subquery(parent.model)
+        )

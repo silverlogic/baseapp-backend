@@ -1,15 +1,8 @@
 """
-Query-count tests for the `BlocksInterface`.
-
-Mirrors `baseapp_reactions/tests/test_graphql_queries_object_reactions.py`: assert
-the GraphQL `BlocksInterface` resolves in a flat number of database queries
-regardless of how many `Block` rows exist for the target — locks in the
-`BlockableMetadataService.annotate_queryset` optimisation and catches
-`Coalesce` / annotation-removal regressions in the read path.
-
-Each test promotes the `django_user_client` user to `is_superuser=True` so the
-per-field perm checks in `BlocksInterface.resolve_*` pass; otherwise an anon
-user would see `null` counts and the metadata read would never run.
+Query-count tests for `BlocksInterface`: assert the GraphQL `blockersCount` /
+`blockingCount` fields resolve in a flat number of DB queries regardless of how
+many `Block` rows point at the target, both on a direct Profile node and on a
+nested `block.target.blockersCount` list path.
 """
 
 import pytest
@@ -25,32 +18,6 @@ from .factories import BlockFactory
 pytestmark = pytest.mark.django_db
 
 
-# Baseline for `blockersCount` + `blockingCount` on one Profile node when the
-# requesting client is an authenticated superuser:
-#   1) django_session (session middleware)
-#   2) users_user (request.user load)
-#   3) profiles_profile minimal fetch (current_profile middleware sets
-#      request.user.current_profile = request.user.profile)
-#   4) baseapp_core_documentid lookup by public_id (relay GlobalID resolution)
-#   5) ContentType lookup for profiles.profile (cache cleared at top of test)
-#   6) profiles_profile with all pre_optimization_hook metadata Subqueries
-#      inlined (commentable + followable + reportable + blockable + ratable)
-#      — counts come back from this same SELECT, no extra per-row fetch.
-# Items 1-3 are session/auth/current_profile middleware overhead that fires
-# on every authenticated request and is unrelated to the BlocksInterface;
-# items 4-6 are the irreducible relay-node + optimized-fetch path.
-# Update this number deliberately if you change the resolver / annotation path.
-EXPECTED_BLOCKS_INTERFACE_QUERY_COUNT = 6
-
-# Upper bound for the perm-denied path (regular user). Higher than the superuser
-# baseline because Django short-circuits `has_perm` for superusers, while
-# non-superusers load `auth_user_user_permissions`, `auth_group`, and
-# `auth_group_permissions` on the first `has_perm` call (Django caches them on
-# the user instance, so subsequent calls in the same request are free).
-# Headroom over the observed value accommodates Django version / perm-cache drift.
-EXPECTED_BLOCKS_INTERFACE_PERM_DENIED_UPPER_BOUND = 10
-
-
 COUNTS_ONLY_QUERY = """
     query GetTarget($id: ID!) {
         node(id: $id) {
@@ -62,12 +29,52 @@ COUNTS_ONLY_QUERY = """
     }
 """
 
+PROFILE_BLOCKING_LIST_QUERY = """
+    query ProfileBlocking($id: ID!) {
+        node(id: $id) {
+            ... on BlocksInterface {
+                blocking {
+                    edges {
+                        node {
+                            id
+                            target {
+                                id
+                                blockersCount
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+"""
+
+
+# Absolute query budgets for the COUNTS_ONLY_QUERY path. These guard against
+# regressions where BOTH the small- and big-volume counts bump together (which
+# the per-test `big == small` assertion would miss). Bump these deliberately if
+# you change the resolver / annotation / middleware path and the new total is
+# the new normal — don't bump them to silence a failure without first
+# understanding which extra query was added.
+
+# Authenticated superuser, COUNTS_ONLY_QUERY on a Profile node.
+EXPECTED_BLOCKS_INTERFACE_QUERY_COUNT = 6
+
+# Regular user, COUNTS_ONLY_QUERY on a Profile node — perm-denied branch.
+# Upper bound (not equality) because Django's first `has_perm` call loads
+# auth_user_user_permissions / auth_group / auth_group_permissions, which can
+# vary slightly with Django version and perm-cache behaviour.
+EXPECTED_BLOCKS_INTERFACE_PERM_DENIED_UPPER_BOUND = 10
+
+# Authenticated superuser, PROFILE_BLOCKING_LIST_QUERY (nested
+# `block.target.blockersCount` on each edge).
+EXPECTED_BLOCKS_INTERFACE_NESTED_LIST_QUERY_COUNT = 9
+
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_block_counts_are_flat_regardless_of_block_volume(django_user_client, graphql_user_client):
-    """`blockersCount` / `blockingCount` should be a flat query path: regardless
-    of how many `Block` rows point at the target, the GraphQL query should make
-    the same number of DB round-trips (modulo content-type cache jitter)."""
+    """`blockersCount` / `blockingCount` on a Profile node take the same number
+    of queries for 3 blocks as for 20."""
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
 
@@ -95,7 +102,6 @@ def test_block_counts_are_flat_regardless_of_block_volume(django_user_client, gr
     assert response_big.json()["data"]["node"]["blockersCount"] == 20
 
     assert queries_big.count == small_count
-    # Absolute baseline, catches regressions that bump both sides together.
     assert small_count == EXPECTED_BLOCKS_INTERFACE_QUERY_COUNT
 
 
@@ -103,9 +109,8 @@ def test_block_counts_are_flat_regardless_of_block_volume(django_user_client, gr
 def test_block_counts_zero_when_no_blocks_does_not_extra_query(
     django_user_client, graphql_user_client
 ):
-    """A profile with no blocks should resolve in the same query budget as one
-    with blocks — the metadata row simply doesn't exist yet, and `Coalesce`
-    returns the zero defaults without an extra round trip."""
+    """A Profile with no blocks resolves in the same query budget as one with
+    blocks — the missing metadata row falls through `Coalesce` to zero."""
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
 
@@ -131,18 +136,13 @@ def test_block_counts_zero_when_no_blocks_does_not_extra_query(
     assert response_empty.json()["data"]["node"]["blockersCount"] == 0
 
     assert queries_empty.count == queries_with.count
-    # Absolute baseline, same expected count as the populated path.
     assert queries_empty.count == EXPECTED_BLOCKS_INTERFACE_QUERY_COUNT
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_block_counts_perm_denied_path_is_flat(graphql_user_client):
-    """Regular (non-superuser) viewer should hit the perm-denied branch in each
-    `BlocksInterface.resolve_*_count` resolver — `has_perm` returns False, the
-    resolver returns `None`, and the GraphQL field comes back as `null`. The
-    important invariant here: the perm checks themselves should be cached
-    (Django's user permission cache) and not scale with the number of blocks
-    on the target."""
+    """A non-superuser sees `null` for both counts and the perm-check path
+    stays flat regardless of block volume."""
     target_small = ProfileFactory()
     for _ in range(3):
         actor = ProfileFactory(owner=UserFactory())
@@ -166,7 +166,44 @@ def test_block_counts_perm_denied_path_is_flat(graphql_user_client):
         response_big = graphql_user_client(COUNTS_ONLY_QUERY, variables={"id": big_relay_id})
     assert response_big.json()["data"]["node"]["blockersCount"] is None
 
-    # Flat regardless of block volume — catches regressions where perm checking
-    # starts iterating over `Block` rows or re-fetching ContentType per call.
     assert queries_big.count == queries_small.count
     assert queries_small.count <= EXPECTED_BLOCKS_INTERFACE_PERM_DENIED_UPPER_BOUND
+
+
+@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+def test_block_list_with_target_blockers_count_is_flat(django_user_client, graphql_user_client):
+    """Listing a Profile's `blocking` connection with `target.blockersCount` on
+    each edge takes the same number of queries for 3 blocks as for 20."""
+    django_user_client.user.is_superuser = True
+    django_user_client.user.save()
+
+    actor = ProfileFactory(owner=django_user_client.user)
+    for _ in range(3):
+        target = ProfileFactory(owner=UserFactory())
+        BlockFactory(actor=actor, target=target, user=django_user_client.user)
+    actor_relay_id = actor.relay_id
+
+    ContentType.objects.clear_cache()
+    with capture_database_queries() as queries_small:
+        r_small = graphql_user_client(PROFILE_BLOCKING_LIST_QUERY, variables={"id": actor_relay_id})
+    assert "errors" not in r_small.json(), r_small.json()
+    assert len(r_small.json()["data"]["node"]["blocking"]["edges"]) == 3
+    small_count = queries_small.count
+
+    for _ in range(17):
+        target = ProfileFactory(owner=UserFactory())
+        BlockFactory(actor=actor, target=target, user=django_user_client.user)
+
+    ContentType.objects.clear_cache()
+    with capture_database_queries() as queries_big:
+        r_big = graphql_user_client(PROFILE_BLOCKING_LIST_QUERY, variables={"id": actor_relay_id})
+    assert "errors" not in r_big.json(), r_big.json()
+    assert len(r_big.json()["data"]["node"]["blocking"]["edges"]) == 20
+    big_count = queries_big.count
+
+    assert big_count == small_count, (
+        f"N+1: {small_count} queries for 3 blocks vs {big_count} for 20 "
+        f"(delta {big_count - small_count} over 17 extra blocks = "
+        f"{(big_count - small_count) / 17:.1f} per row)"
+    )
+    assert small_count == EXPECTED_BLOCKS_INTERFACE_NESTED_LIST_QUERY_COUNT

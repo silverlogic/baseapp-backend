@@ -130,8 +130,6 @@ class BaseProfileObjectType(*inheritances, object):
             queryset = service.annotate_queryset(queryset)
         if service := shared_services.get("reportable_metadata"):
             queryset = service.annotate_queryset(queryset)
-        if service := shared_services.get("blockable_metadata"):
-            queryset = service.annotate_queryset(queryset)
         return queryset
 
     @classmethod

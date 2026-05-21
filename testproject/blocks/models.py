@@ -1,5 +1,4 @@
-from baseapp_blocks.base import AbstractBlock
-from baseapp_blocks.models import AbstractBlockableMetadata
+from baseapp_blocks.models import AbstractBlock, AbstractBlockableMetadata
 
 
 class Block(AbstractBlock):
