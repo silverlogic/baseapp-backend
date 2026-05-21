@@ -1,68 +1,145 @@
 # BaseApp Chats
 
-This package provides a simple chat system for your project, where multiple profiles can chat with each other.
+Reusable app for one-to-one and group chat: rooms, messages, message statuses (read/unread receipts), and unread-message counts. Built on Django Channels for real-time delivery and pgtrigger for trigger-based denormalised counters.
 
-## How to install:
+## How to install
 
-And install the package with `pip install baseapp-backend`.
+Install the package with `pip install baseapp-backend`.
 
 If you want to develop, [install using this other guide](#how-to-develop).
 
-Add `baseapp_chats` to your project's `INSTALLED_APPS`
+## How to setup
 
-Make sure your Profile's GraphQL Object Types extends `ChatRoomsInterface` interface:
+1. **Enable GraphQL websockets** in your project ([guide](../baseapp-core/baseapp_core/graphql/README.md#enable-websockets)). Chats relies on `channels_graphql_ws` for the message / room / unread-count subscriptions.
 
-```python
-from baseapp_core.graphql import Node as RelayNode
-from baseapp_chats.graphql.interfaces import ChatRoomsInterface
-
-class ProfileObjectType(DjangoObjectType):
-    class Meta:
-        interfaces = (RelayNode, ChatRoomsInterface)
-```
-
-This is not necessary if you are using the `baseapp-profile` as it is without a custom ProfileObjectType implementation.
-
-Expose `ChatsMutations`, `ChatsQueries` and `ChatsSubscriptions` in your GraphQL/graphene endpoint, like:
+2. Add `baseapp_chats` to `INSTALLED_APPS` and run `./manage.py migrate`:
 
 ```python
-from baseapp_chats.graphql.mutations import ChatsMutations
-from baseapp_chats.graphql.queries import ChatsQueries
-from baseapp_chats.graphql.subscriptions import ChatsSubscriptions
-
-
-class Query(graphene.ObjectType, ChatsQueries):
-    pass
-
-
-class Mutation(graphene.ObjectType, ChatsMutations):
-    pass
-
-
-class Subscription(graphene.ObjectType, ChatsSubscriptions):
-    pass
-
-
-schema = graphene.Schema(query=Query, mutation=Mutation, subscription=Subscription)
+INSTALLED_APPS = [
+    # ...
+    "baseapp_chats",
+    # ...
+]
 ```
 
-Those will expose the following queries, mutations and subscriptions:
+3. Wire the auth backend slot:
+
+```python
+AUTHENTICATION_BACKENDS = [
+    # ...
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_chats"),
+    # ...
+]
+```
+
+4. Make sure your project's `graphql.py` composes the schema via `plugin_registry.get_all_graphql_*()` so `ChatsQueries / ChatsMutations / ChatsSubscriptions` are picked up automatically.
+
+5. Point the swapper settings at your concrete models (see [models](#models)):
+
+```python
+BASEAPP_CHATS_CHATROOM_MODEL = "chats.ChatRoom"
+BASEAPP_CHATS_CHATROOMPARTICIPANT_MODEL = "chats.ChatRoomParticipant"
+BASEAPP_CHATS_UNREADMESSAGECOUNT_MODEL = "chats.UnreadMessageCount"
+BASEAPP_CHATS_MESSAGE_MODEL = "chats.Message"
+BASEAPP_CHATS_MESSAGESTATUS_MODEL = "chats.MessageStatus"
+```
+
+## Models
+
+All five models are abstract + swappable. Subclass the abstracts in a project-local app to add fields or behaviour; otherwise inherit the abstracts directly and only override `Meta`.
+
+| Abstract | Concrete reference | Purpose |
+|---|---|---|
+| `AbstractBaseChatRoom` | `ChatRoom` | Conversation between 2+ participants; carries `last_message`, denormalised `participants_count` / `messages_count`. |
+| `AbstractChatRoomParticipant` | `ChatRoomParticipant` | Profile↔Room join row; role (member / admin), accepted-at, archived flag. |
+| `AbstractBaseMessage` | `Message` | A single message. Supports replies via `in_reply_to`, system-generated messages, and a `GenericForeignKey` action object. |
+| `AbstractMessageStatus` | `MessageStatus` | Per-participant read/unread receipt for a message. |
+| `AbstractUnreadMessageCount` | `UnreadMessageCount` | Per-participant rolling counter; powers room-level "unread" badges. |
+
+All five inherit `DocumentIdMixin`, so any chat object can be the target of mentions, comments, follows, etc. without extra wiring.
+
+### Triggers
+
+The concrete models attach four `pgtrigger` triggers (see [`baseapp_chats/triggers.py`](triggers.py)):
+
+- `set_last_message_on_insert_trigger` — keeps `ChatRoom.last_message` / `last_message_time` current on insert.
+- `update_last_message_on_delete_trigger` — recomputes `ChatRoom.last_message` when the current last message is deleted.
+- `create_message_status_trigger` — creates a `MessageStatus` row per active participant when a `Message` is inserted.
+- `increment_unread_count_trigger` / `decrement_unread_count_trigger` — keep `UnreadMessageCount.count` in sync as message statuses flip `is_read`.
+
+Override these in your concrete `Meta.triggers` only when your model needs different counting semantics.
+
+## GraphQL
 
 ### Queries
 
-- `chatRoom(id: ID!)`: Return a specific chatRoom
+| Field | Description |
+|---|---|
+| `chatRoom(id)` | RelayNode fetch by relay id. Permission: `baseapp_chats.view_chatroom`. |
 
 ### Mutations
 
-- `chatRoomCreate(profileId: ID!, participants: [ID!]!)`: Create a chatRoom with your profile and multiple participants
-- `chatRoomSendMessage(roomId: ID!, profileId: ID!, content: String!, inReplyToId: ID)`: Send a message in a room, using a specific profile. Optionally, you can reply to a message by passing the `inReplyToId` argument.
-- `chatRoomReadMessages(roomId: ID!, profileId: ID!, messageIds: [ID])`: Mark messages in a room as read by a specific profile, if `messageIds` is not passed, all messages will be marked as read.
+| Field | Purpose |
+|---|---|
+| `chatRoomCreate` | Create a 1-on-1 or group room. Dedupes 1-on-1 rooms. |
+| `chatRoomUpdate` | Edit title / image, add or remove participants, hand off admin when the last admin leaves. |
+| `chatRoomToggleAdmin` | Promote / demote a participant; refuses to demote the only remaining admin. |
+| `chatRoomSendMessage` | Persist a message, fire the subscription, optionally persist mentions and trigger notifications. |
+| `chatRoomEditMessage` | Edit message body and replace mentions. |
+| `chatRoomDeleteMessage` | Soft-delete a message (sets `deleted=True`). |
+| `chatRoomReadMessages` | Mark messages read; broadcasts `ChatRoomOnMessagesCountUpdate`. |
+| `chatRoomUnread` | Flag a room as unread for a participant. |
+| `chatRoomArchive` | Toggle the participant's archived flag for a room. |
 
 ### Subscriptions
 
-- `chatRoomOnRoomUpdate(profileId: ID!)`: Subscribe to chat rooms updates under your current profile
-- `chatRoomOnMessagesCountUpdate(profileId: ID!)`: Subscribe to unread/read messages count updates under your current profile
-- `chatRoomOnMessage(roomId: ID!)`: Subscribe to new messages in a specific room
+| Field | Topic |
+|---|---|
+| `chatRoomOnMessage` | New / edited messages in a room. |
+| `chatRoomOnRoomUpdate` | Room metadata, participant adds / removes. |
+| `chatRoomOnMessagesCountUpdate` | Per-profile unread count changed. |
+
+### Shared GraphQL interfaces
+
+Chats publishes one shared interface via the registry — consuming object types opt in by name:
+
+```python
+from baseapp_core.graphql import Node as RelayNode
+from baseapp_core.plugins import graphql_shared_interfaces
+
+
+class ProfileObjectType(DjangoObjectType):
+    class Meta:
+        interfaces = graphql_shared_interfaces.get(RelayNode, "ChatRoomsInterface")
+        model = Profile
+```
+
+The interface exposes:
+
+- `chatRooms` — paginated `ChatRoom` connection scoped to the profile.
+- `unreadMessagesCount` — sum of `UnreadMessageCount.count` across all rooms the profile participates in.
+
+## Shared services
+
+### Provided
+
+Chats registers one service via `apps.py.ready()`:
+
+- **`chats_participation`** — `cleanup_user_participation(user)`. Removes the user's `ChatRoomParticipant` rows and recomputes affected rooms' `participants_count`. Called by the auth anonymize-user task. Consume it as:
+
+  ```python
+  from baseapp_core.plugins import shared_services
+
+  if service := shared_services.get("chats_participation"):
+      service.cleanup_user_participation(user)
+  ```
+
+### Consumed
+
+Chats consumes the following services lazily via `shared_services.get(...)` — they are all optional, behaviour degrades gracefully when absent:
+
+- `notifications` — push / email notification of new messages.
+- `mentions` — persisting `@mention` references on `chatRoomSendMessage` / `chatRoomEditMessage`.
 
 ## How to develop
 
@@ -78,4 +155,8 @@ And manually install the package:
 pip install -e baseapp-backend/baseapp-chats
 ```
 
-The `-e` flag will make it like any change you make in the cloned repo files will effect into the project.
+The `-e` flag means any change you make in the cloned repo files will be reflected in the project. Run the test suite from the backend root:
+
+```bash
+docker compose run --rm web pytest baseapp_chats/
+```
