@@ -1,8 +1,10 @@
+import logging
+
 import swapper
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 from django.utils.timesince import timesince as djtimesince
 from django.utils.translation import gettext_lazy as _
@@ -20,6 +22,8 @@ from .triggers import (
     set_last_message_on_insert_trigger,
     update_last_message_on_delete_trigger,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class AbstractBaseChatRoom(TimeStampedModel, DocumentIdMixin, RelayModel):
@@ -132,7 +136,7 @@ class AbstractBaseMessage(TimeStampedModel, DocumentIdMixin, RelayModel):
         ContentType,
         blank=True,
         null=True,
-        related_name="action_object",
+        related_name="+",
         on_delete=models.CASCADE,
         db_index=True,
     )
@@ -186,16 +190,36 @@ class AbstractBaseMessage(TimeStampedModel, DocumentIdMixin, RelayModel):
         created = self._state.adding
         super().save(*args, **kwargs)
 
-        if created:
+        if not created or self.room is None:
+            return
+
+        # Materialise inside the current transaction with the Profile
+        # FK pulled in one query so the on_commit callback doesn't
+        # re-hit the DB and doesn't fan out as N+1.
+        participants = list(
+            self.room.participants.select_related("profile").exclude(profile_id=self.profile_id)
+        )
+        if not participants:
+            return
+
+        def _broadcast_unread_counts():
             from baseapp_chats.graphql.subscriptions import (
                 ChatRoomOnMessagesCountUpdate,
             )
 
-            for participant in self.room.participants.all():
-                if participant.profile_id != self.profile_id:
+            for participant in participants:
+                try:
                     ChatRoomOnMessagesCountUpdate.send_updated_chat_count(
-                        profile=participant.profile, profile_id=participant.profile.relay_id
+                        profile=participant.profile,
+                        profile_id=participant.profile.relay_id,
                     )
+                except Exception:
+                    logger.exception(
+                        "Failed to broadcast unread-count update to profile_id=%s",
+                        participant.profile_id,
+                    )
+
+        transaction.on_commit(_broadcast_unread_counts)
 
 
 class AbstractChatRoomParticipant(TimeStampedModel, DocumentIdMixin, RelayModel):

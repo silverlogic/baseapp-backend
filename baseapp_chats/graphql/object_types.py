@@ -1,8 +1,10 @@
 import graphene
 import swapper
-from django.db.models import Case, When
+from django.db.models import Case, QuerySet, When
 from django.utils.translation import gettext_lazy as _
 from query_optimizer import DjangoConnectionField
+from query_optimizer.optimizer import QueryOptimizer
+from query_optimizer.typing import TModel
 
 from baseapp_core.graphql import (
     DjangoObjectType,
@@ -75,7 +77,9 @@ class BaseMessageObjectType:
         filter_fields = ("verb",)
 
     @classmethod
-    def pre_optimization_hook(cls, queryset, optimizer):
+    def pre_optimization_hook(
+        cls, queryset: QuerySet[TModel], optimizer: QueryOptimizer
+    ) -> QuerySet[TModel]:
         """Preload three columns the optimizer would otherwise defer.
 
         - `room_id`: when `chatRoom.allMessages` is evaluated, Django's
