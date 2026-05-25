@@ -61,10 +61,10 @@ INSTALLED_APPS += [
     "testproject.reports",
     "testproject.pages",
     "testproject.organizations",
-    "testproject.chats",
     "testproject.payments",
     "testproject.referrals",
     "testproject.notifications",
+    "testproject.social.chats",
     "testproject.social.mentions",
     "baseapp_wagtail.tests",
 ]
@@ -135,7 +135,7 @@ AUTHENTICATION_BACKENDS = [
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_reports"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_ratings"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_follows"),
-    "baseapp_chats.permissions.ChatsPermissionsBackend",
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_chats"),
     "baseapp_blocks.permissions.BlocksPermissionsBackend",
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_organizations"),
 ]
@@ -231,11 +231,11 @@ BASEAPP_PAGES_PAGE_MODEL = "pages.Page"
 BASEAPP_ORGANIZATIONS_ORGANIZATION_MODEL = "organizations.Organization"
 
 # Chats
-BASEAPP_CHATS_CHATROOM_MODEL = "chats.ChatRoom"
-BASEAPP_CHATS_CHATROOMPARTICIPANT_MODEL = "chats.ChatRoomParticipant"
-BASEAPP_CHATS_UNREADMESSAGECOUNT_MODEL = "chats.UnreadMessageCount"
-BASEAPP_CHATS_MESSAGE_MODEL = "chats.Message"
-BASEAPP_CHATS_MESSAGESTATUS_MODEL = "chats.MessageStatus"
+BASEAPP_CHATS_CHATROOM_MODEL = "social_chats.ChatRoom"
+BASEAPP_CHATS_CHATROOMPARTICIPANT_MODEL = "social_chats.ChatRoomParticipant"
+BASEAPP_CHATS_UNREADMESSAGECOUNT_MODEL = "social_chats.UnreadMessageCount"
+BASEAPP_CHATS_MESSAGE_MODEL = "social_chats.Message"
+BASEAPP_CHATS_MESSAGESTATUS_MODEL = "social_chats.MessageStatus"
 
 # Notifications
 NOTIFICATIONS_NOTIFICATION_MODEL = "notifications.Notification"

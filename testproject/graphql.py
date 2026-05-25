@@ -5,9 +5,6 @@ from graphene_django.debug import DjangoDebug
 from baseapp.content_feed.graphql.mutations import ContentFeedMutations
 from baseapp.content_feed.graphql.queries import ContentFeedQueries
 from baseapp_blocks.graphql.mutations import BlocksMutations
-from baseapp_chats.graphql.mutations import ChatsMutations
-from baseapp_chats.graphql.queries import ChatsQueries
-from baseapp_chats.graphql.subscriptions import ChatsSubscriptions
 from baseapp_core.graphql import DeleteNode
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.plugins import plugin_registry
@@ -21,7 +18,6 @@ subscriptions = plugin_registry.get_all_graphql_subscriptions()
 class Query(
     graphene.ObjectType,
     UsersQueries,
-    ChatsQueries,
     ContentFeedQueries,
     *queries,
 ):
@@ -32,7 +28,6 @@ class Query(
 class Mutation(
     graphene.ObjectType,
     BlocksMutations,
-    ChatsMutations,
     ContentFeedMutations,
     *mutations,
 ):
@@ -41,7 +36,6 @@ class Mutation(
 
 class Subscription(
     graphene.ObjectType,
-    ChatsSubscriptions,
     *subscriptions,
 ):
     pass
