@@ -1,6 +1,5 @@
 import graphene
 import swapper
-from django.apps import apps
 from django.conf import settings
 from django.db import models
 from query_optimizer import DjangoConnectionField
