@@ -1,8 +1,10 @@
 import graphene
 import swapper
-from django.db.models import Case, When
+from django.db.models import Case, QuerySet, When
 from django.utils.translation import gettext_lazy as _
-from graphene_django.filter import DjangoFilterConnectionField
+from query_optimizer import DjangoConnectionField
+from query_optimizer.optimizer import QueryOptimizer
+from query_optimizer.typing import TModel
 
 from baseapp_core.graphql import (
     DjangoObjectType,
@@ -73,6 +75,30 @@ class BaseMessageObjectType:
             "deleted",
         )
         filter_fields = ("verb",)
+
+    @classmethod
+    def pre_optimization_hook(
+        cls, queryset: QuerySet[TModel], optimizer: QueryOptimizer
+    ) -> QuerySet[TModel]:
+        """Preload three columns the optimizer would otherwise defer.
+
+        - `room_id`: when `chatRoom.allMessages` is evaluated, Django's
+          prefetch pipeline reads `message.room_id` to map children
+          back to their parent. If it's not in `only_fields`, every
+          message triggers `refresh_from_db(['room_id'])` (N round trips).
+        - `deleted`, `message_type`: `resolve_content` branches on both
+          before returning `root.content`. They live on the model but
+          aren't surfaced through GraphQL, so they get deferred and
+          each access fans out as a per-row `refresh_from_db`.
+
+        All three are tiny scalars; loading them unconditionally costs
+        a few bytes per row and is far cheaper than the AST-walk we'd
+        need to gate on which fields the caller actually requested.
+        """
+        for field_name in ("room_id", "deleted", "message_type"):
+            if field_name not in optimizer.only_fields:
+                optimizer.only_fields.append(field_name)
+        return super().pre_optimization_hook(queryset, optimizer)
 
     @classmethod
     def get_node(cls, info, id):
@@ -153,8 +179,8 @@ class MessageObjectType(BaseMessageObjectType, DjangoObjectType):
 
 
 class BaseChatRoomObjectType:
-    all_messages = DjangoFilterConnectionField(get_object_type_for_model(Message))
-    participants = DjangoFilterConnectionField(get_object_type_for_model(ChatRoomParticipant))
+    all_messages = DjangoConnectionField(get_object_type_for_model(Message))
+    participants = DjangoConnectionField(get_object_type_for_model(ChatRoomParticipant))
     unread_messages = graphene.Field(
         get_object_type_for_model(UnreadMessageCount), profile_id=graphene.ID(required=False)
     )
