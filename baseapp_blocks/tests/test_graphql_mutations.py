@@ -143,9 +143,12 @@ def test_user_profile_cant_self_block(django_user_client, graphql_user_client):
     profile1.refresh_from_db()
     content = response.json()
 
+    from baseapp_core.plugins import shared_services
+
+    service = shared_services.get("blockable_metadata")
     assert Block.objects.count() == 0
-    assert profile1.blockers_count == 0
-    assert profile1.blocking_count == 0
+    assert service.get_blockers_count(profile1) == 0
+    assert service.get_blocking_count(profile1) == 0
 
     assert content["errors"][0]["message"] == "You cannot block yourself"
 

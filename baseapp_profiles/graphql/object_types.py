@@ -81,14 +81,7 @@ class ProfilesInterface(RelayNode):
         return Profile.objects.none()
 
 
-interfaces = []
 inheritances = tuple()
-
-
-if apps.is_installed("baseapp_blocks"):
-    from baseapp_blocks.graphql.object_types import BlocksInterface
-
-    interfaces.append(BlocksInterface)
 
 
 class BaseProfileObjectType(*inheritances, object):
@@ -103,11 +96,11 @@ class BaseProfileObjectType(*inheritances, object):
         interfaces = graphql_shared_interfaces.get(
             RelayNode,
             PermissionsInterface,
-            *interfaces,
             "ProfileActivityLogInterface",
             "PageInterface",
             "FollowsInterface",
             "ReportsInterface",
+            "BlocksInterface",
             "ChatRoomsInterface",
         )
         model = Profile

@@ -1,5 +1,4 @@
 import swapper
-from django.apps import apps
 from django.contrib.auth.backends import BaseBackend
 
 Block = swapper.load_model("baseapp_blocks", "Block")
@@ -7,11 +6,6 @@ Block = swapper.load_model("baseapp_blocks", "Block")
 
 class BlocksPermissionsBackend(BaseBackend):
     def has_perm(self, user_obj, perm, obj=None):
-        if apps.is_installed("baseapp_profiles"):
-            return self._has_perm_with_profiles(user_obj, perm, obj)
-        return self._has_perm_without_profiles(user_obj, perm, obj)
-
-    def _has_perm_with_profiles(self, user_obj, perm, obj=None):
         Profile = swapper.load_model("baseapp_profiles", "Profile")
 
         profile_app_label = Profile._meta.app_label
@@ -55,29 +49,5 @@ class BlocksPermissionsBackend(BaseBackend):
                 return True
             actor = getattr(obj, "actor", None)
             return (actor and user_obj.has_perm(use_profile_perm, actor)) or user_obj.has_perm(perm)
-
-        return False
-
-    def _has_perm_without_profiles(self, user_obj, perm, obj=None):
-        if perm == "baseapp_blocks.add_block":
-            return user_obj.is_authenticated
-
-        if (
-            perm
-            in ["baseapp_blocks.view_block-blockers_count", "baseapp_blocks.view_block-blockers"]
-            and obj
-        ):
-            return user_obj.has_perm(perm)
-
-        if perm in [
-            "baseapp_blocks.view_block-blocking_count",
-            "baseapp_blocks.view_block-blocking",
-        ] and isinstance(obj, Block):
-            return obj.user_id == user_obj.id or user_obj.has_perm(perm)
-
-        if perm == "baseapp_blocks.delete_block" and isinstance(obj, Block):
-            if obj.user_id == user_obj.id:
-                return True
-            return user_obj.has_perm(perm)
 
         return False

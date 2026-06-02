@@ -289,31 +289,40 @@ class TestApplyPgtriggerTracks:
         with patch.dict(_pgtrigger_registry, {}, clear=True):
             yield
 
-    def test_appends_triggers_to_model_meta(self):
+    def test_registers_triggers_via_pgtrigger_api(self):
+        """The helper must register through `pgtrigger.register` (not a raw
+        `_meta.triggers.append`) so pgtrigger syncs `_meta.triggers`,
+        `_meta.original_attrs["triggers"]` (read by the migration
+        autodetector) and its own registry in one shot."""
         model = _make_model(triggers=[])
         t1 = _make_trigger("t1")
         t2 = _make_trigger("t2")
         pgtrigger_register_default_track(model, [t1, t2])
 
-        apply_pgtrigger_tracks()
+        with patch.object(pghelpers, "pgtrigger") as mock_pgtrigger:
+            apply_pgtrigger_tracks()
 
-        assert model._meta.triggers == [t1, t2]
+        mock_pgtrigger.register.assert_called_once_with(t1, t2)
+        mock_pgtrigger.register.return_value.assert_called_once_with(model)
 
-    def test_initializes_triggers_attribute_when_missing(self):
+    def test_handles_missing_triggers_attribute(self):
         """Some Django Meta objects don't have `triggers` until pgtrigger
-        touches them — the helper must create the list defensively."""
+        touches them — the helper must read it defensively and still
+        register."""
         model = _make_model()  # No `triggers` attr set.
         t1 = _make_trigger("t1")
         pgtrigger_register_default_track(model, [t1])
 
-        apply_pgtrigger_tracks()
+        with patch.object(pghelpers, "pgtrigger") as mock_pgtrigger:
+            apply_pgtrigger_tracks()  # must not raise
 
-        assert model._meta.triggers == [t1]
+        mock_pgtrigger.register.assert_called_once_with(t1)
+        mock_pgtrigger.register.return_value.assert_called_once_with(model)
 
     def test_skips_triggers_with_duplicate_names(self):
-        """Idempotency guarantee — re-applying should NOT clobber an
-        existing trigger with the same name (e.g. one attached by
-        DocumentIdMixin's `class_prepared` handler)."""
+        """Idempotency guarantee — a trigger whose name already lives on
+        `_meta.triggers` (e.g. one attached by DocumentIdMixin's
+        `class_prepared` handler) must not be re-registered."""
         existing = _make_trigger("doc_id_insert")
         model = _make_model(triggers=[existing])
 
@@ -321,24 +330,41 @@ class TestApplyPgtriggerTracks:
         new_trigger = _make_trigger("new_trigger")
         pgtrigger_register_default_track(model, [replacement, new_trigger])
 
-        apply_pgtrigger_tracks()
+        with patch.object(pghelpers, "pgtrigger") as mock_pgtrigger:
+            apply_pgtrigger_tracks()
 
-        # Original `existing` retained; `replacement` dropped (same name);
-        # `new_trigger` appended.
-        assert len(model._meta.triggers) == 2
-        assert model._meta.triggers[0] is existing
-        assert model._meta.triggers[1] is new_trigger
+        # Only the non-duplicate trigger is registered; the duplicate-named
+        # `replacement` is filtered out before reaching pgtrigger.
+        mock_pgtrigger.register.assert_called_once_with(new_trigger)
+        mock_pgtrigger.register.return_value.assert_called_once_with(model)
 
     def test_is_idempotent_across_multiple_calls(self):
         model = _make_model(triggers=[])
-        pgtrigger_register_default_track(model, [_make_trigger("t1")])
+        t1 = _make_trigger("t1")
+        pgtrigger_register_default_track(model, [t1])
 
-        apply_pgtrigger_tracks()
-        apply_pgtrigger_tracks()
-        apply_pgtrigger_tracks()
+        def fake_register(*triggers):
+            # Mimic pgtrigger.register's side effect of syncing into
+            # `_meta.triggers`, so the helper's dedup guard sees it next call.
+            def decorator(m):
+                for trigger in triggers:
+                    if trigger not in m._meta.triggers:
+                        m._meta.triggers.append(trigger)
+                return m
 
-        names = [t.name for t in model._meta.triggers]
-        assert names == ["t1"]
+            return decorator
+
+        with patch.object(
+            pghelpers.pgtrigger, "register", side_effect=fake_register
+        ) as mock_register:
+            apply_pgtrigger_tracks()
+            apply_pgtrigger_tracks()
+            apply_pgtrigger_tracks()
+
+        # First call registers t1; the next two find it already on
+        # `_meta.triggers` and skip it.
+        mock_register.assert_called_once_with(t1)
+        assert [t.name for t in model._meta.triggers] == ["t1"]
 
     def test_skips_abstract_models(self):
         abstract_model = _make_model(triggers=[])

@@ -1,6 +1,5 @@
 import graphene
 import swapper
-from django.apps import apps
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from graphql_relay import offset_to_cursor
@@ -26,17 +25,10 @@ class BlockToggle(RelayMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        has_profiles = apps.is_installed("baseapp_profiles")
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
-        actor = (
-            get_obj_from_relay_id(info, input.get("actor_object_id"))
-            if has_profiles
-            else info.context.user
-        )
+        actor = get_obj_from_relay_id(info, input.get("actor_object_id"))
 
-        if has_profiles and not info.context.user.has_perm(
-            "baseapp_blocks.add_block_with_profile", actor
-        ):
+        if not info.context.user.has_perm("baseapp_blocks.add_block_with_profile", actor):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
@@ -54,11 +46,9 @@ class BlockToggle(RelayMutation):
                 extensions={"code": "invalid_action"},
             )
 
-        get_or_create_kwargs = {"target": target, "user": info.context.user}
-        if has_profiles:
-            get_or_create_kwargs["actor"] = actor
-
-        block, created = Block.objects.get_or_create(**get_or_create_kwargs)
+        block, created = Block.objects.get_or_create(
+            actor=actor, target=target, user=info.context.user
+        )
 
         if not created:
             if not info.context.user.has_perm("baseapp_blocks.delete_block", block):
