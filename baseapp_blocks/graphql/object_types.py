@@ -55,13 +55,13 @@ class BlocksInterface(RelayNode):
         if info.context.user.has_perm("baseapp_blocks.view_block-blockers_count", self):
             if service := shared_services.get("blockable_metadata"):
                 return service.get_blockers_count(self)
-            return 0
+            raise RuntimeError("blockable_metadata shared service is not registered")
 
     def resolve_blocking_count(self, info):
         if info.context.user.has_perm("baseapp_blocks.view_block-blocking_count", self):
             if service := shared_services.get("blockable_metadata"):
                 return service.get_blocking_count(self)
-            return 0
+            raise RuntimeError("blockable_metadata shared service is not registered")
 
     def resolve_blockers(self, info, **kwargs):
         if info.context.user.has_perm("baseapp_blocks.view_block-blockers", self):
