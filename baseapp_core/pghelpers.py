@@ -172,10 +172,19 @@ def apply_pgtrigger_tracks() -> None:
     """
     Apply registered pgtrigger triggers to their concrete models.
 
-    Mutates each model's `_meta.triggers` list, skipping triggers
-    whose `name` is already present (so re-applying is idempotent and
-    we don't clobber triggers attached by other paths — e.g. the
-    DocumentIdMixin `class_prepared` signal handler).
+    Registers each trigger through pgtrigger's own API
+    (`pgtrigger.register`) rather than appending to `_meta.triggers`
+    directly. That single call is what keeps the three sources of truth
+    in sync: `_meta.triggers`, `_meta.original_attrs["triggers"]` (which
+    Django's migration autodetector reads via `ModelState.from_model`),
+    and pgtrigger's global registry (used by `pgtrigger install` and the
+    `post_migrate` auto-install hook). A raw `_meta.triggers.append`
+    updates only the first, so the triggers become invisible to
+    migrations and to pgtrigger's installer — see BA-3263.
+
+    Triggers whose `name` is already present are skipped (so re-applying
+    is idempotent and we don't clobber triggers attached by other paths,
+    e.g. the DocumentIdMixin `class_prepared` signal handler).
 
     Called from `baseapp_core.apps.PackageConfig.ready()`. Decorator
     overrides take precedence over default registrations because the
@@ -185,12 +194,7 @@ def apply_pgtrigger_tracks() -> None:
         if model_cls._meta.abstract or model_cls._meta.swapped:
             continue
 
-        if not hasattr(model_cls._meta, "triggers"):
-            model_cls._meta.triggers = []
-
-        existing_names = {t.name for t in model_cls._meta.triggers}
-        for trigger in triggers:
-            if trigger.name in existing_names:
-                continue
-            model_cls._meta.triggers.append(trigger)
-            existing_names.add(trigger.name)
+        existing_names = {t.name for t in getattr(model_cls._meta, "triggers", [])}
+        new_triggers = [t for t in triggers if t.name not in existing_names]
+        if new_triggers:
+            pgtrigger.register(*new_triggers)(model_cls)
