@@ -96,6 +96,17 @@ Example:
 }
 ```
 
+## Settings
+
+You can customize the following settings, below are the default values:
+
+```python
+# Master switch for all reaction notifications (in-app, push and email).
+BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS = True
+# Whether the "reaction created" notification is also sent by email.
+BASEAPP_REACTIONS_NOTIFICATION_CREATED_EMAIL = True
+```
+
 ## How to to customize the Reaction model
 
 In some cases you may need to extend Reaction model, and we can do it following the next steps:
