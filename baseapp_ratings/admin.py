@@ -1,13 +1,14 @@
 import swapper
 from django.contrib import admin
 
+from baseapp_core.admin_helpers import ModelAdmin
 from baseapp_core.plugins import apply_if_installed
 
 RateModel = swapper.load_model("baseapp_ratings", "Rate")
 
 
 @admin.register(RateModel)
-class RatingAdmin(admin.ModelAdmin):
+class RatingAdmin(ModelAdmin):
     search_fields = (
         "user__first_name",
         "user__last_name",

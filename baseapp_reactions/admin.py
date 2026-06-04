@@ -1,13 +1,14 @@
 import swapper
 from django.contrib import admin
 
+from baseapp_core.admin_helpers import ModelAdmin
 from baseapp_core.plugins import apply_if_installed
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
 
 
 @admin.register(Reaction)
-class ReactionAdmin(admin.ModelAdmin):
+class ReactionAdmin(ModelAdmin):
     search_fields = (
         "reaction_type",
         "user__first_name",

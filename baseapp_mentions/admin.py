@@ -1,14 +1,7 @@
 import swapper
 from django.contrib import admin
 
-ModelAdmin = admin.ModelAdmin
-
-try:
-    from unfold import admin as unfold_admin
-
-    ModelAdmin = unfold_admin.ModelAdmin
-except ImportError:
-    pass
+from baseapp_core.admin_helpers import ModelAdmin
 
 Mention = swapper.load_model("baseapp_mentions", "Mention")
 

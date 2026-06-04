@@ -2,6 +2,7 @@ import swapper
 from django.contrib import admin
 from django.template.defaultfilters import truncatewords
 
+from baseapp_core.admin_helpers import ModelAdmin
 from baseapp_core.plugins import apply_if_installed
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
@@ -9,7 +10,7 @@ CommentableMetadata = swapper.load_model("baseapp_comments", "CommentableMetadat
 
 
 @admin.register(Comment)
-class CommentAdmin(admin.ModelAdmin):
+class CommentAdmin(ModelAdmin):
     search_fields = ("body",)
     raw_id_fields = ("user", *apply_if_installed("baseapp_profiles", ["profile"]), "in_reply_to")
     list_display = (
@@ -31,7 +32,7 @@ class CommentAdmin(admin.ModelAdmin):
 
 
 @admin.register(CommentableMetadata)
-class CommentableMetadataAdmin(admin.ModelAdmin):
+class CommentableMetadataAdmin(ModelAdmin):
     list_display = ("target", "is_comments_enabled", "comments_count")
     list_editable = ("is_comments_enabled",)
     search_fields = ("target__content_type__model",)
