@@ -1,7 +1,5 @@
 import logging
 import re
-import secrets
-import string
 
 import pghistory
 import pgtrigger
@@ -23,22 +21,20 @@ from baseapp_core.pghelpers import pghistory_register_default_track
 from baseapp_core.plugins import shared_services
 from baseapp_core.swapper import init_swapped_models
 from baseapp_profiles.managers import ProfileManager
+from baseapp_profiles.utils import pad_handle, to_ascii_handle
 
 logger = logging.getLogger(__name__)
 
 
-inheritances = [TimeStampedModel]
+inheritances = []
 
 if apps.is_installed("baseapp_pages"):
     from baseapp_pages.models import PageMixin
 
     inheritances.append(PageMixin)
 
-inheritances.append(DocumentIdMixin)
-inheritances.append(RelayModel)
 
-
-class AbstractProfile(*inheritances):
+class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedModel):
     class ProfileStatus(models.IntegerChoices):
         PUBLIC = 1, _("public")
         PRIVATE = 2, _("private")
@@ -106,37 +102,44 @@ class AbstractProfile(*inheritances):
 
     def create_url_path(self, profile_name: str | None = None):
         if service := shared_services.get("pages.url_path"):
-            path_string = self.generate_url_path_str(profile_name=profile_name or self.name)
+            # Build the handle (with owner-email fallback) then let the service
+            # resolve uniqueness against existing rows before persisting.
+            path_string = service.generate_url_path_str(self.generate_url_path(profile_name))
             service.create_url_path(
                 self, path_string, language=None, is_active=True, generate_path_str=False
             )
 
+    def generate_url_path(self, profile_name: str | None = None) -> str:
+        """
+        Build this profile's URL handle (with leading slash) from its display name.
+
+        Uses `profile_name` when provided, otherwise `self.name`. The name is
+        folded to a URL-safe ASCII handle (accents transliterated, emoji and other
+        non-alphanumerics dropped). When the name yields no usable characters
+        (e.g. an emoji-only name), it falls back to the local-part of the owner's
+        email so the handle stays meaningful. The result is NOT collision-checked —
+        `create_url_path` resolves uniqueness via the `pages.url_path` service.
+        """
+        name = profile_name if profile_name else (self.name or "")
+        slug = to_ascii_handle(name)
+
+        if not slug and self.owner_id:
+            owner_email = getattr(self.owner, "email", "") or ""
+            slug = to_ascii_handle(owner_email.split("@")[0])
+
+        return pad_handle(slug)
+
     @classmethod
     def generate_url_path_str(cls, profile_name: str | None = None) -> str | None:
+        """
+        Suggest a free URL handle for `profile_name` (collision-resolved).
+
+        Classmethod variant used to preview/validate a handle from an arbitrary
+        string — there is no owner context here, so no email fallback. Returns
+        `None` when the `pages.url_path` service is unavailable.
+        """
         if service := shared_services.get("pages.url_path"):
-            name = profile_name or ""
-
-            # Remove whitespaces
-            name = name.translate(str.maketrans("", "", string.whitespace))
-
-            # Make sure the name starts with a slash.
-            name = name if name.startswith("/") else f"/{name}"
-
-            # If name is an email (which would only occur if the user's first and last names are empty during user registration),
-            # we'll remove the email domain and check if it's less than 8 characters. If it is, we'll add random digits to make it 8 characters.
-            # OBS: We're not checking for any other special chars since we've blocked it in the RegisterSerializer in baseapp-auth. If
-            # that changes, we should add a check here.
-            name = name.split("@")[0]
-            if len(name) < 8:
-                path_string = (
-                    "/"
-                    + name
-                    + "".join(secrets.choice(string.digits) for _ in range(8 - len(name)))
-                )
-            else:
-                path_string = name
-
-            return service.generate_url_path_str(path_string)
+            return service.generate_url_path_str(pad_handle(to_ascii_handle(profile_name or "")))
 
         return None
 
@@ -544,4 +547,8 @@ pghistory_register_default_track(
     pghistory.InsertEvent(),
     pghistory.UpdateEvent(),
     pghistory.DeleteEvent(),
+    exclude=[
+        "modified",
+        "created",
+    ],
 )

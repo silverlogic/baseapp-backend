@@ -127,7 +127,7 @@ class TestAPIKeyAuthentication(APITestCase, URLPatternsTestCase):
         r = self.client.post(
             path=reverse("dummy-custom-action"),
             data={},
-            headers=dict(API_KEY=unencrypted_api_key),
+            headers={"API_KEY": unencrypted_api_key},
         )
         h.responseOk(r)
 
@@ -138,7 +138,7 @@ class TestAPIKeyAuthentication(APITestCase, URLPatternsTestCase):
         r = self.client.post(
             path=reverse("dummy-custom-action"),
             data={},
-            headers=dict(API_KEY=unencrypted_api_key),
+            headers={"API_KEY": unencrypted_api_key},
         )
         h.responseUnauthorized(r)
 
@@ -174,7 +174,7 @@ class TestHasAPIKeyPermission(APITestCase, URLPatternsTestCase):
         r = self.client.post(
             path=reverse("dummy-custom-action"),
             data={},
-            headers=dict(API_KEY=unencrypted_api_key),
+            headers={"API_KEY": unencrypted_api_key},
         )
         h.responseOk(r)
 
@@ -185,6 +185,6 @@ class TestHasAPIKeyPermission(APITestCase, URLPatternsTestCase):
         r = self.client.post(
             path=reverse("dummy-custom-action"),
             data={},
-            headers=dict(API_KEY=unencrypted_api_key),
+            headers={"API_KEY": unencrypted_api_key},
         )
         h.responseUnauthorized(r)

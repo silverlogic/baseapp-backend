@@ -297,10 +297,10 @@ class StripeService:
             product = stripe.Product.retrieve(product_id, expand=["default_price"])
             return product
         except stripe.error.InvalidRequestError as e:
-            logger.error(f"Failed to retrieve product: {str(e)}")
+            logger.exception(f"Failed to retrieve product: {str(e)}")
             return None
         except stripe.error.StripeError as e:
-            logger.error(f"Stripe API error: {str(e)}")
+            logger.exception(f"Stripe API error: {str(e)}")
             return None
 
     def retrieve_payment_method(self, payment_method_id):
@@ -379,7 +379,7 @@ class StripeService:
         except stripe.error.InvalidRequestError as e:
             if "No such PaymentIntent" in str(e):
                 return None
-            logger.error(f"Failed to retrieve PaymentIntent: {str(e)}")
+            logger.exception(f"Failed to retrieve PaymentIntent: {str(e)}")
             raise PaymentIntendNotFound("Error retrieving PaymentIntent in Stripe")
         except Exception as e:
             logger.exception(e)
@@ -402,12 +402,12 @@ class StripeService:
             return price
         except stripe.error.InvalidRequestError as e:
             if "No such price" in str(e):
-                logger.error(f"Price not found: {price_id}")
+                logger.exception(f"Price not found: {price_id}")
                 return None
-            logger.error(f"Invalid request for price {price_id}: {str(e)}")
+            logger.exception(f"Invalid request for price {price_id}: {str(e)}")
             return None
         except stripe.error.StripeError as e:
-            logger.error(f"Stripe API error retrieving price {price_id}: {str(e)}")
+            logger.exception(f"Stripe API error retrieving price {price_id}: {str(e)}")
             return None
         except Exception as e:
             logger.exception(f"Unexpected error retrieving price {price_id}: {str(e)}")
@@ -440,7 +440,7 @@ class StripeService:
         except stripe.error.InvalidRequestError as e:
             if "No such subscription" in str(e):
                 raise SubscriptionNotFound("Subscription not found in Stripe")
-            logger.error(f"Invalid request: {str(e)}")
+            logger.exception(f"Invalid request: {str(e)}")
             raise
         except Exception as e:
             logger.exception(e)

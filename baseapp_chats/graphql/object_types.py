@@ -1,3 +1,5 @@
+from typing import Any, List
+
 import graphene
 import swapper
 from django.db.models import Case, QuerySet, When
@@ -333,7 +335,9 @@ class BaseChatRoomObjectType:
         if other_participant and other_participant.profile:
             return other_participant.profile.image
 
-    def resolve_participant_ids(self, info, **kwargs):
+    def resolve_participant_ids(
+        self, info: graphene.ResolveInfo, **kwargs: Any
+    ) -> List[str]:  # NOSONAR
 
         profiles = Profile.objects.filter(
             id__in=self.participants.values_list("profile_id", flat=True)

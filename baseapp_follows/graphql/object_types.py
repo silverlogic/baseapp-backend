@@ -2,7 +2,8 @@ import django_filters
 import graphene
 import swapper
 from django.contrib.contenttypes.prefetch import GenericPrefetch
-from django.db.models import Prefetch
+from django.db.models import Prefetch, QuerySet
+from query_optimizer.compiler import OptimizationCompiler
 
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
@@ -38,14 +39,14 @@ class BaseFollowObjectType:
         interfaces = (RelayNode,)
         filterset_class = FollowsFilter
 
-    def resolve_actor_object(self, info):
+    def resolve_actor_object(self, info: graphene.ResolveInfo) -> object:
         return resolve_document_content_object(self.actor, info)
 
-    def resolve_target_object(self, info):
+    def resolve_target_object(self, info: graphene.ResolveInfo) -> object:
         return resolve_document_content_object(self.target, info)
 
     @classmethod
-    def pre_optimization_hook(cls, queryset, optimizer):
+    def pre_optimization_hook(cls, queryset: QuerySet, optimizer: OptimizationCompiler) -> QuerySet:
         queryset = super().pre_optimization_hook(queryset, optimizer)
 
         # Prefetch the actor / target DocumentId rows AND the GFK-pointed

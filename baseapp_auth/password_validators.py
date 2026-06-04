@@ -1,4 +1,5 @@
 import re
+from typing import Any, Optional
 
 from django.contrib.auth.password_validation import (
     get_password_validators,
@@ -14,7 +15,7 @@ class MustContainCapitalLetterValidator:
     def __init__(self, min_length=1):
         self.min_length = min_length
 
-    def validate(self, password, user=None):
+    def validate(self, password: str, user: Optional[Any] = None) -> None:  # NOSONAR
         if len(re.findall(r"[A-Z]", password)) < self.min_length:
             raise ValidationError(
                 _("This password must contain at least %(min_length)d capital letter characters."),
@@ -33,7 +34,7 @@ class MustContainSpecialCharacterValidator:
     def __init__(self, min_length=1):
         self.min_length = min_length
 
-    def validate(self, password, user=None):
+    def validate(self, password: str, user: Optional[Any] = None) -> None:  # NOSONAR
         if len(re.findall(r"[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?]", password)) < self.min_length:
             raise ValidationError(
                 _("This password must contain at least %(min_length)d special characters."),

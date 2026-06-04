@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from django.contrib.contenttypes.models import ContentType
 
@@ -296,3 +298,37 @@ class TestBackfillSingleInstance:
         )
 
         assert success is False
+
+    def test_handles_document_id_create_failure(self, dummy_instance):
+        """Test that DocumentId creation failure is handled gracefully."""
+        with patch.object(DocumentId.objects, "create", side_effect=Exception("DB write error")):
+            success = backfill_single_instance(
+                app_label="testapp",
+                model_name="DummyPublicIdModel",
+                pk=dummy_instance.pk,
+                dry_run=False,
+            )
+
+        assert success is False
+
+
+@pytest.mark.django_db
+class TestBackfillModelExceptionPaths:
+    @pytest.fixture
+    def dummy_instances(self):
+        DocumentId.objects.all().delete()
+        instances = [DummyPublicIdModelFactory() for _ in range(3)]
+        DocumentId.objects.filter(object_id__in=[i.pk for i in instances]).delete()
+        return instances
+
+    def test_handles_bulk_create_failure(self, dummy_instances):
+        """Test that bulk_create failures are handled gracefully (lines 143-148)."""
+        with patch.object(DocumentId.objects, "bulk_create", side_effect=Exception("DB error")):
+            created_count = backfill_model_document_ids(
+                model=DummyPublicIdModel,
+                DocumentId=DocumentId,
+                batch_size=10,
+                dry_run=False,
+            )
+
+        assert created_count == 0

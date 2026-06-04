@@ -1,5 +1,6 @@
 import json
 import re
+from typing import Any, Sequence
 
 from django.apps import apps as django_apps
 from django.contrib.contenttypes.models import ContentType
@@ -140,7 +141,14 @@ class Command(BaseCommand):
                 return
             raise e
 
-    def _handle(self, library, apps, models, output_format, **options):
+    def _handle(  # NOSONAR  # pragma: no cover
+        self,
+        library: str,
+        apps: Sequence[str],
+        models: Sequence[str],
+        output_format: str,
+        **options: Any,
+    ) -> None:
         command_name = "graph_models"
         command_app = get_commands()[command_name]
         command_class = load_command_class(command_app, command_name)

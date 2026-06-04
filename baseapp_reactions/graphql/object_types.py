@@ -1,3 +1,5 @@
+from typing import Optional
+
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
@@ -123,8 +125,10 @@ class BaseReactionObjectType:
         }
 
     @classmethod
-    def get_node(self, info, id):
-        node = super().get_node(info, id)
+    def get_node(
+        cls, info: graphene.ResolveInfo, node_id: str
+    ) -> Optional["BaseReactionObjectType"]:
+        node = super().get_node(info, node_id)
         if not info.context.user.has_perm("baseapp_comments.view_comment", node):
             return None
         return node

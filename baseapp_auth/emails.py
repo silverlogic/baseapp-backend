@@ -214,7 +214,7 @@ def remove_superuser_notification_email(non_superuser, assigner):
 def send_password_expired_email(user):
     token = ChangeExpiredPasswordTokenGenerator().make_token(user)
     url = settings.FRONT_CHANGE_EXPIRED_PASSWORD_URL.format(token=token)
-    context = dict(url=url)
+    context = {"url": url}
     subject = render_to_string("users/emails/password-expired-subject.txt.j2", context).strip()
     message = render_to_string("users/emails/password-expired-body.txt.j2", context)
     html_message = render_to_string("users/emails/password-expired-body.html.j2", context)

@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from channels.middleware import BaseMiddleware
-from rest_framework_simplejwt.exceptions import InvalidToken
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 
 from baseapp_core.channels import JWTAuthMiddleware
 
@@ -174,3 +174,10 @@ class TestJWTAuthMiddleware:
 
         with pytest.raises(ValueError, match="User inactive or deleted"):
             await middleware(scope, mock_receive, mock_send)
+
+    @pytest.mark.asyncio
+    @patch("rest_framework_simplejwt.tokens.RefreshToken.__init__")
+    async def test_refresh_access_token_logs_on_token_error(self, mock_refresh_init, middleware):
+        mock_refresh_init.side_effect = TokenError("Bad refresh token")
+        result = await middleware.refresh_access_token("bad_token")
+        assert result is None

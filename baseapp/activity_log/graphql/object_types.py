@@ -1,7 +1,10 @@
+from typing import Any, Optional
+
 import graphene
 import swapper
 from django.apps import apps
 from django.contrib.auth import get_user_model
+from django.db.models import QuerySet
 from graphene.types.generic import GenericScalar
 from graphene_django.filter import DjangoFilterConnectionField
 from pghistory.models import MiddlewareEvents
@@ -124,10 +127,10 @@ class BaseActivityLogObjectType:
         )
         filterset_class = ActivityLogFilter
 
-    def resolve_events(self, info, **kwargs):
+    def resolve_events(self, info: graphene.ResolveInfo, **kwargs: Any) -> QuerySet:  # NOSONAR
         return MiddlewareEvents.objects.filter(pgh_context_id=self.pk)
 
-    def resolve_user(self, info, **kwargs):
+    def resolve_user(self, info: graphene.ResolveInfo, **kwargs: Any) -> Optional[User]:  # NOSONAR
         user_id = getattr(self, "user_id", None)
         if user_id is not None:
             try:

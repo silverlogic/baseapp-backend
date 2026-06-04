@@ -50,11 +50,11 @@ class TestChangeExpiredPasswordCreate(TestChangeExpiredPasswordListMixin):
         user.password_changed_date = timezone.now() - timezone.timedelta(days=1)
         user.save()
         token = ChangeExpiredPasswordTokenGenerator().make_token(user)
-        data = dict(
-            current_password=user_data["password"],
-            new_password=user_data["password"] + "7",
-            token=token,
-        )
+        data = {
+            "current_password": user_data["password"],
+            "new_password": user_data["password"] + "7",
+            "token": token,
+        }
 
         assert User.objects.get(pk=user.pk).password_expired is True
         r = client.post(self.reverse(), data=data)
@@ -77,11 +77,11 @@ class TestChangeExpiredPasswordCreate(TestChangeExpiredPasswordListMixin):
         user_data = {"email": "john@doe.com", "password": "1234567890"}  # NOSONAR
         user = UserFactory(email=user_data["email"], password=user_data["password"])
         token = ChangeExpiredPasswordTokenGenerator().make_token(user)
-        data = dict(
-            current_password=user_data["password"] + "3",
-            new_password=user_data["password"] + "7",
-            token=token,
-        )
+        data = {
+            "current_password": user_data["password"] + "3",
+            "new_password": user_data["password"] + "7",
+            "token": token,
+        }
 
         r = client.post(self.reverse(), data=data)
         h.responseUnauthorized(r)
@@ -99,9 +99,11 @@ class TestChangeExpiredPasswordCreate(TestChangeExpiredPasswordListMixin):
         user_data = {"email": "john@doe.com", "password": "1234567890"}  # NOSONAR
         user = UserFactory(email=user_data["email"], password=user_data["password"])
         token = ChangeExpiredPasswordTokenGenerator().make_token(user)
-        data = dict(
-            current_password=user_data["password"], new_password=user_data["password"], token=token
-        )
+        data = {
+            "current_password": user_data["password"],
+            "new_password": user_data["password"],
+            "token": token,
+        }
 
         r = client.post(self.reverse(), data=data)
         h.responseBadRequest(r)
@@ -119,11 +121,11 @@ class TestChangeExpiredPasswordCreate(TestChangeExpiredPasswordListMixin):
         user_data = {"email": "john@doe.com", "password": "1234567890"}  # NOSONAR
         user = UserFactory(email=user_data["email"], password=user_data["password"])
         token = ChangeExpiredPasswordTokenGenerator().make_token(user)
-        data = dict(
-            current_password=user_data["password"],
-            new_password=user_data["password"] + "7",
-            token=token,
-        )
+        data = {
+            "current_password": user_data["password"],
+            "new_password": user_data["password"] + "7",
+            "token": token,
+        }
 
         time.sleep(1.1)
 

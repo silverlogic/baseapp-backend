@@ -3,6 +3,7 @@ import swapper
 from django.conf import settings
 from django.db import models
 from query_optimizer import DjangoConnectionField
+from query_optimizer.typing import GQLInfo
 
 from baseapp_auth.graphql import PermissionsInterface
 from baseapp_core.graphql import (
@@ -50,17 +51,17 @@ class CommentsInterface(RelayNode):
     class Meta:
         model = Comment
 
-    def resolve_comments_count(root, info, **kwargs):
+    def resolve_comments_count(root, info: GQLInfo, **kwargs) -> dict:
         if service := shared_services.get("commentable_metadata"):
             return service.get_comments_count(root)
         return default_comments_count()
 
-    def resolve_is_comments_enabled(root, info, **kwargs):
+    def resolve_is_comments_enabled(root, info: GQLInfo, **kwargs) -> bool:
         if service := shared_services.get("commentable_metadata"):
             return service.is_comments_enabled(root)
         return True
 
-    def resolve_comments(root, info, **kwargs):
+    def resolve_comments(root, info: GQLInfo, **kwargs) -> models.QuerySet:
         # if root is a comment and is attached to a target use root.comments so it can be filtered
         # by using ForeignKey related field
         # if not then assume its another object type, like a post
@@ -139,8 +140,8 @@ class BaseCommentObjectType:
         filterset_class = CommentFilter
 
     @classmethod
-    def get_node(self, info, id):
-        node = super().get_node(info, id)
+    def get_node(cls, info: GQLInfo, node_id: str) -> "Comment | None":
+        node = super().get_node(info, node_id)
         if not info.context.user.has_perm(f"{app_label}.view_comment", node):
             return None
         return node

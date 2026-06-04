@@ -93,7 +93,7 @@ class BaseBlockObjectType:
         interfaces = (RelayNode,)
 
     @classmethod
-    def get_node(self, info, id):
+    def get_node(cls, info, id):
         node = super().get_node(info, id)
         if info.context.user.has_perm("baseapp_blocks.view_block", node):
             return node

@@ -140,13 +140,11 @@ class DocumentIdBackfiller:
                                 to_create, batch_size=self.batch_size, ignore_conflicts=True
                             )
                         created_count += len(to_create)
-                    except Exception as exc:
-                        logger.error(
-                            "Partial failure creating batch for %s.%s: %s",
+                    except Exception:
+                        logger.exception(
+                            "Partial failure creating batch for %s.%s",
                             app_label,
                             model_name,
-                            exc,
-                            exc_info=True,
                         )
 
             logger.debug(
@@ -191,8 +189,8 @@ class DocumentIdBackfiller:
         # Get the model class
         try:
             model = self.apps.get_model(app_label, model_name)
-        except Exception as exc:
-            logger.error("Error getting model %s.%s: %s", app_label, model_name, exc)
+        except Exception:
+            logger.exception("Error getting model %s.%s", app_label, model_name)
             return False
 
         # Validate model has DocumentIdMixin
@@ -212,13 +210,12 @@ class DocumentIdBackfiller:
 
         try:
             pk = int(pk)
-        except (ValueError, TypeError) as exc:
-            logger.error(
-                "Invalid pk value '%s' for %s.%s (expected integer): %s",
+        except (ValueError, TypeError):
+            logger.exception(
+                "Invalid pk value '%s' for %s.%s (expected integer)",
                 pk,
                 app_label,
                 model_name,
-                exc,
             )
             return False
 
@@ -253,14 +250,12 @@ class DocumentIdBackfiller:
                 "Created document ID %s for %s.%s:%s", m.public_id, app_label, model_name, pk
             )
             return True
-        except Exception as exc:
-            logger.error(
-                "Failed to create document ID for %s.%s:%s: %s",
+        except Exception:
+            logger.exception(
+                "Failed to create document ID for %s.%s:%s",
                 app_label,
                 model_name,
                 pk,
-                exc,
-                exc_info=True,
             )
             return False
 

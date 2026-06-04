@@ -1,7 +1,11 @@
+import logging
+
 from django.contrib.auth.models import Group, Permission
 from django.db import models
 from django.db.models import Q
 from django.utils.functional import cached_property
+
+logger = logging.getLogger(__name__)
 
 
 class Role(models.Model):
@@ -25,7 +29,9 @@ class Role(models.Model):
     def permission_list(self):
         return self.get_permission_list()
 
-    def get_permission_list(self, user_exclude_perms=[]):
+    def get_permission_list(self, user_exclude_perms: list | None = None) -> set:
+        if user_exclude_perms is None:
+            user_exclude_perms = []
         perms = set()
         excluded_perms = user_exclude_perms + list(
             Permission.objects.filter(excluded_permission_roles__slug=self.slug).values_list(
@@ -37,16 +43,18 @@ class Role(models.Model):
                 group_perms = group.permissions.filter(~Q(codename__in=excluded_perms)).values_list(
                     "content_type__app_label", "codename"
                 )
-                perm_set = {"%s.%s" % (ct, name) for ct, name in group_perms}
-                perms = {*perms, *perm_set}
+                perms |= {"%s.%s" % (ct, name) for ct, name in group_perms}
 
             group_perms = self.permissions.filter(~Q(codename__in=excluded_perms)).values_list(
                 "content_type__app_label", "codename"
             )
-            perm_set = {"%s.%s" % (ct, name) for ct, name in group_perms}
-            perms = {*perms, *perm_set}
+            perms |= {"%s.%s" % (ct, name) for ct, name in group_perms}
         except Exception:
-            return perms
+            logger.exception(
+                "Failed to resolve permission list for role %r (id=%s)",
+                getattr(self, "name", None),
+                getattr(self, "pk", None),
+            )
         return perms
 
 

@@ -81,10 +81,7 @@ class ProfilesInterface(RelayNode):
         return Profile.objects.none()
 
 
-inheritances = tuple()
-
-
-class BaseProfileObjectType(*inheritances, object):
+class BaseProfileObjectType(object):
     target = graphene.Field(lambda: ProfileInterface)
     image = ThumbnailField(required=False)
     banner_image = ThumbnailField(required=False)
