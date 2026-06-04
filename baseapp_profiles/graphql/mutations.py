@@ -15,6 +15,7 @@ from baseapp_core.graphql import (
     login_required,
 )
 from baseapp_core.plugins import shared_services
+from baseapp_profiles.utils import to_ascii_handle
 
 from .object_types import ProfileRoleTypesEnum
 
@@ -42,9 +43,13 @@ class BaseProfileSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(_("Username can only contain letters and numbers."))
 
         if apps.is_installed("baseapp_pages"):
-            path_with_slash = value if value.startswith("/") else f"/{value}"
+            # Compare the *normalized* handle (ASCII-folded, as it will be stored)
+            # against its collision-resolved form. It's only "already in use" when
+            # collision resolution changes the path — not merely because normalization
+            # reshaped the input (e.g. stripping the hyphen from "my-organization").
+            normalized = f"/{to_ascii_handle(value)}"
             suggested_value = Profile.generate_url_path_str(value)
-            if suggested_value and path_with_slash != suggested_value:
+            if suggested_value and suggested_value != normalized:
                 raise serializers.ValidationError(
                     _("Username already in use, suggested username: %(suggested_username)s")
                     % {"suggested_username": suggested_value},

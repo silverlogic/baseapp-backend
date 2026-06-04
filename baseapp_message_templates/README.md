@@ -1,11 +1,28 @@
+# BaseApp Message Templates
 
-# BaseApp Message Templates - Django
+Reusable app for admin-managed email and SMS templates: edit content in the Django admin (Prose or CKEditor), render it through Jinja2, and send via SendGrid (template id or dynamic) or plain custom HTML.
 
-This app provides the integration of custom e-mail and sms template configuration with The SilverLogic's [BaseApp](https://bitbucket.org/silverlogic/baseapp-django-v2).
+`baseapp_message_templates` follows the [plugin architecture](../baseapp_core/plugins/README.md): it registers itself as a plugin so it participates in `INSTALLED_APPS` aggregation. It contributes no auth backends, GraphQL roots, or URLs, and its models (`EmailTemplate`, `Attachment`, `SmsTemplate`) are **concrete** (not swappable) — the package ships their migrations, so there's nothing to subclass.
 
-## How to install:
+## How to install
 
 Install the package with `pip install baseapp-backend[messagetemplates]`.
+
+If you want to develop, [install using this other guide](#how-to-develop).
+
+## How to setup
+
+1. Add `baseapp_message_templates` to `INSTALLED_APPS` and run `./manage.py migrate`:
+
+```python
+INSTALLED_APPS = [
+    # ...
+    "baseapp_message_templates",
+    # ...
+]
+```
+
+2. Configure the admin editor, Jinja2 `TEMPLATES`, and (optionally) SendGrid — see the sections below.
 
 ## Choose the editor (Prose or CKEditor)
 
@@ -402,3 +419,7 @@ context = {"some_variable": "some_value"}
 
 message = get_sms_message("First Template", context)
 ```
+
+## How to develop
+
+General development instructions can be found in the [main README](../README.md#how-to-develop).

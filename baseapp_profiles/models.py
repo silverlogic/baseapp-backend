@@ -135,11 +135,14 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
         Suggest a free URL handle for `profile_name` (collision-resolved).
 
         Classmethod variant used to preview/validate a handle from an arbitrary
-        string — there is no owner context here, so no email fallback. Returns
-        `None` when the `pages.url_path` service is unavailable.
+        string — there is no owner context here, so no email fallback, and no
+        random-digit padding (that is only for name-derived handles, where a
+        minimum length must be guaranteed). The returned path is the normalized
+        handle with collision resolution applied. Returns `None` when the
+        `pages.url_path` service is unavailable.
         """
         if service := shared_services.get("pages.url_path"):
-            return service.generate_url_path_str(pad_handle(to_ascii_handle(profile_name or "")))
+            return service.generate_url_path_str(f"/{to_ascii_handle(profile_name or '')}")
 
         return None
 
