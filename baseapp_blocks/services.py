@@ -29,14 +29,19 @@ class BlockLookupService(SharedServiceProvider):
     def exclude_blocked_from_foreign_queryset(
         self, queryset: models.QuerySet, info: GQLInfo
     ) -> models.QuerySet:
-        """Exclude comments from blocked/blocking profiles.
+        """
+        Exclude comments from blocked/blocking profiles.
 
         Must be called BEFORE evaluate_with_prefetch_hack / optimize
         so that .exclude() cloning doesn't destroy the result cache.
-        Sets ``_BLOCKED_PROFILES_FILTERED_HINT`` on the queryset so
-        ``get_queryset()`` knows filtering was already applied.
+        Sets `_BLOCKED_PROFILES_FILTERED_HINT` on the queryset so
+        `get_queryset()` knows filtering was already applied.
+
+        NULLs are filtered out of the id lists before they reach the
+        `IN (...)` subqueries: a profile owned by the user that has no blocks
+        would otherwise inject a NULL, which makes every row's membership test
+        evaluate to UNKNOWN under `exclude()` and be wrongly filtered out.
         """
-        # TODO (plugin-arch): Cover this with unit tests
         if queryset._hints.get(_BLOCKED_PROFILES_FILTERED_HINT):
             return queryset
 
@@ -47,20 +52,62 @@ class BlockLookupService(SharedServiceProvider):
 
         profile = getattr(user, "current_profile", None)
         if profile:
-            blocked_profile_ids = profile.blocking.values_list("target_id", flat=True)
-            blocker_profile_ids = profile.blockers.values_list("actor_id", flat=True)
+            blocked_profile_ids = profile.blocking.filter(target_id__isnull=False).values_list(
+                "target_id", flat=True
+            )
+            blocker_profile_ids = profile.blockers.filter(actor_id__isnull=False).values_list(
+                "actor_id", flat=True
+            )
         else:
             # Fallback for contexts where middleware did not set current_profile:
             # apply the union of block relations for all profiles owned by the user.
             owned_profiles = Profile.objects.filter(owner=user)
-            blocked_profile_ids = owned_profiles.values_list("blocking__target_id", flat=True)
-            blocker_profile_ids = owned_profiles.values_list("blockers__actor_id", flat=True)
+            blocked_profile_ids = owned_profiles.filter(
+                blocking__target_id__isnull=False
+            ).values_list("blocking__target_id", flat=True)
+            blocker_profile_ids = owned_profiles.filter(
+                blockers__actor_id__isnull=False
+            ).values_list("blockers__actor_id", flat=True)
 
         qs = queryset.exclude(
             Q(profile__id__in=blocked_profile_ids) | Q(profile__id__in=blocker_profile_ids)
         )
         qs._hints[_BLOCKED_PROFILES_FILTERED_HINT] = True
         return qs
+
+    def has_block_between(self, profile_ids_a, profile_ids_b) -> bool:
+        """Return True if any block exists between the two profile-id sets, in
+        either direction (a profile in A blocks one in B, or vice versa).
+
+        Lets other packages gate actions on blocks (e.g. chat creation /
+        messaging) without importing the Block model. Either argument may be a
+        list or a queryset of profile ids.
+        """
+        Block = swapper.load_model("baseapp_blocks", "Block")
+        return Block.objects.filter(
+            Q(actor_id__in=profile_ids_a, target_id__in=profile_ids_b)
+            | Q(actor_id__in=profile_ids_b, target_id__in=profile_ids_a)
+        ).exists()
+
+    def get_blocked_profile_ids(self, profile_id):
+        """Return a queryset of profile ids that `profile_id` blocks.
+
+        NULL targets are excluded so the result is safe to use inside an
+        `exclude(... __in=...)` subquery (a NULL would otherwise make the
+        membership test UNKNOWN and drop unrelated rows).
+        """
+        Block = swapper.load_model("baseapp_blocks", "Block")
+        return Block.objects.filter(actor_id=profile_id, target_id__isnull=False).values_list(
+            "target_id", flat=True
+        )
+
+    def get_blocker_profile_ids(self, profile_id):
+        """Return a queryset of profile ids that block `profile_id` (NULL-safe,
+        see :meth:`get_blocked_profile_ids`)."""
+        Block = swapper.load_model("baseapp_blocks", "Block")
+        return Block.objects.filter(target_id=profile_id, actor_id__isnull=False).values_list(
+            "actor_id", flat=True
+        )
 
 
 class BlockableMetadataService(SharedServiceProvider):

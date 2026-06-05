@@ -34,7 +34,6 @@ ChatRoomParticipantRoles = ChatRoomParticipant.ChatRoomParticipantRoles
 Message = swapper.load_model("baseapp_chats", "Message")
 MessageStatus = swapper.load_model("baseapp_chats", "MessageStatus")
 UnreadMessageCount = swapper.load_model("baseapp_chats", "UnreadMessageCount")
-Block = swapper.load_model("baseapp_blocks", "Block")
 User = get_user_model()
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 profile_app_label = Profile._meta.app_label
@@ -80,18 +79,16 @@ class ChatRoomCreate(RelayMutation):
         participants_ids = [participant.pk for participant in participants]
 
         # Check if participants are blocked
-        if Block.objects.filter(
-            Q(actor_id=profile.id, target_id__in=participants_ids)
-            | Q(actor_id__in=participants_ids, target_id=profile.id)
-        ).exists():
-            return ChatRoomCreate(
-                errors=[
-                    ErrorType(
-                        field="participants",
-                        messages=[_("You can't create a chatroom with those participants")],
-                    )
-                ]
-            )
+        if service := shared_services.get("blocks.lookup"):
+            if service.has_block_between([profile.id], participants_ids):
+                return ChatRoomCreate(
+                    errors=[
+                        ErrorType(
+                            field="participants",
+                            messages=[_("You can't create a chatroom with those participants")],
+                        )
+                    ]
+                )
 
         participants.append(profile)
 
@@ -288,18 +285,16 @@ class ChatRoomUpdate(RelayMutation):
             )
 
         # Check if added participants are blocked
-        if Block.objects.filter(
-            Q(actor_id=profile.id, target_id__in=add_participants_pks)
-            | Q(actor_id__in=add_participants_pks, target_id=profile.id)
-        ).exists():
-            return ChatRoomUpdate(
-                errors=[
-                    ErrorType(
-                        field="add_participants",
-                        messages=[_("You can't add those participants to a chatroom")],
-                    )
-                ]
-            )
+        if service := shared_services.get("blocks.lookup"):
+            if service.has_block_between([profile.id], add_participants_pks):
+                return ChatRoomUpdate(
+                    errors=[
+                        ErrorType(
+                            field="add_participants",
+                            messages=[_("You can't add those participants to a chatroom")],
+                        )
+                    ]
+                )
 
         if not info.context.user.has_perm(
             "baseapp_chats.modify_chatroom",

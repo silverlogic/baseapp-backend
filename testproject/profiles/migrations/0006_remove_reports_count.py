@@ -2,15 +2,22 @@
 
 import pgtrigger.compiler
 import pgtrigger.migrations
+from django.apps import apps as django_apps
 from django.db import migrations
-
-from baseapp_reports.migration_helpers.convert_legacy_reports_count_to_metadata_helper import (
-    migrate_legacy_reports_count_to_metadata,
-    reverse_migrate_legacy_reports_count_from_metadata,
-)
 
 
 def migrate_profile_reports_count(apps, schema_editor):
+    # ReportableMetadata only exists when baseapp_reports is installed; skip the
+    # backfill otherwise. The column removal / trigger regen below run regardless.
+    try:
+        apps.get_model("reports", "ReportableMetadata")
+    except LookupError:
+        return
+
+    from baseapp_reports.migration_helpers.convert_legacy_reports_count_to_metadata_helper import (
+        migrate_legacy_reports_count_to_metadata,
+    )
+
     migrate_legacy_reports_count_to_metadata(
         apps,
         schema_editor,
@@ -21,6 +28,15 @@ def migrate_profile_reports_count(apps, schema_editor):
 
 
 def reverse_migrate_profile_reports_count(apps, schema_editor):
+    try:
+        apps.get_model("reports", "ReportableMetadata")
+    except LookupError:
+        return
+
+    from baseapp_reports.migration_helpers.convert_legacy_reports_count_to_metadata_helper import (
+        reverse_migrate_legacy_reports_count_from_metadata,
+    )
+
     reverse_migrate_legacy_reports_count_from_metadata(
         apps,
         schema_editor,
@@ -30,12 +46,18 @@ def reverse_migrate_profile_reports_count(apps, schema_editor):
     )
 
 
-class Migration(migrations.Migration):
-
+def _dependencies():
     dependencies = [
         ("profiles", "0005_remove_profile_insert_insert_and_more"),
-        ("reports", "0002_reportablemetadata"),
     ]
+    if "reports" in django_apps.app_configs:
+        dependencies.append(("reports", "0002_reportablemetadata"))
+    return dependencies
+
+
+class Migration(migrations.Migration):
+
+    dependencies = _dependencies()
 
     operations = [
         pgtrigger.migrations.RemoveTrigger(

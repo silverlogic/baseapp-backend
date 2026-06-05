@@ -34,5 +34,9 @@ class ChatsPlugin(BaseAppPlugin):
             optional_packages=[
                 {"baseapp_notifications": "Push/email notifications on new messages."},
                 {"baseapp_mentions": "@-mentions inside message content."},
+                {
+                    "baseapp_blocks": "When installed, blocked profiles can't start/join "
+                    "chats or message each other (via the blocks.lookup service)."
+                },
             ],
         )

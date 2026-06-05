@@ -48,7 +48,12 @@ def use_profile_model():
                 abstract = True
 
         return UserProfilableModel
-    return object
+
+    class NoProfileModel(models.Model):
+        class Meta:
+            abstract = True
+
+    return NoProfileModel
 
 
 class AbstractUser(

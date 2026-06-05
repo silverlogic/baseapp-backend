@@ -521,7 +521,6 @@ class AbstractProfileUserRole(DocumentIdMixin, RelayModel, models.Model):
 
 
 def update_or_create_profile(instance, owner, profile_name):
-    # TODO (profile): Review myabe the instance type before doing the rest.
     Profile = swapper.load_model("baseapp_profiles", "Profile")
     target_content_type = ContentType.objects.get_for_model(instance)
 
@@ -532,7 +531,6 @@ def update_or_create_profile(instance, owner, profile_name):
         defaults={"name": profile_name},
     )
     if created:
-        # TODO (profile): Review if that's how we always connect instances to profiles.
         instance.profile = profile
         instance.save(update_fields=["profile"])
 

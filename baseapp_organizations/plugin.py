@@ -24,7 +24,7 @@ class OrganizationsPlugin(BaseAppPlugin):
                 "baseapp_organizations.graphql.mutations.OrganizationsMutations",
             ],
             required_packages=[
-                "baseapp_profiles",
+                {"baseapp_profiles": "Organizations are tied to a Profile."},
             ],
             optional_packages=[],
         )

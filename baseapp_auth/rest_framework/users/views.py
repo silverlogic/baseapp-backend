@@ -1,5 +1,3 @@
-import swapper
-from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.shortcuts import get_object_or_404
@@ -16,6 +14,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework_nested.viewsets import NestedViewSetMixin
 
 from baseapp_auth.utils.normalize_permission import normalize_permission
+from baseapp_core.plugins import shared_services
 from baseapp_core.rest_framework.decorators import action
 
 User = get_user_model()
@@ -96,16 +95,13 @@ class UsersViewSet(
         """
         user = request.user
 
-        if apps.is_installed("baseapp_organizations"):
-            # TODO (plugin-arch): This should be a service/signal handler in baseapp_organizations.
-            Organization = swapper.load_model("baseapp_organizations", "Organization")
-            if Organization.objects.filter(profile__owner_id=user.id).exists():
+        # Other packages can veto account deletion via the shared-service registry,
+        # so baseapp_auth stays decoupled from them. baseapp_organizations registers
+        # "organizations.account" to block owners of an organization.
+        if service := shared_services.get("organizations.account"):
+            if block_reason := service.get_account_deletion_block_reason(user):
                 return response.Response(
-                    data={
-                        "detail": _(
-                            "Account cannot be deleted because you're the owner of an organization. Transfer ownership or delete the organization first."
-                        )
-                    },
+                    data={"detail": block_reason},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 

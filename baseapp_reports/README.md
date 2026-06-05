@@ -145,6 +145,13 @@ migrate:
    `baseapp_reports.migration_helpers.convert_legacy_reports_count_to_metadata_helper`,
    passing your reportable model's app label and name. After the data is moved,
    `RemoveField` the legacy `reports_count` column.
+
+   If that app must also run with `baseapp_reports` uninstalled, keep the
+   migration graph optional: make the `("reports", "…reportablemetadata")`
+   dependency conditional (only add it when `"reports" in apps.app_configs`) and
+   guard the backfill (`apps.get_model("reports", "ReportableMetadata")` inside a
+   `try/except LookupError` that returns early). The `RemoveField` /
+   trigger-regen operations touch your own table, so they stay unconditional.
 3. Optionally re-seed any drift with
    `seed_reportable_metadata_from_reports(...)` from
    `baseapp_reports.migration_helpers.seed_reportable_metadata_from_reports_helper`.
