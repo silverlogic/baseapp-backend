@@ -16,10 +16,7 @@ from baseapp_core.graphql import (
     NestedConnectionInfoProxy,
 )
 from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.graphql import (
-    get_object_type_for_model,
-    skip_ast_walker,
-)
+from baseapp_core.graphql import get_object_type_for_model, skip_ast_walker
 from baseapp_core.graphql.optimizer import NESTED_INFO_PROXY_HINT
 from baseapp_reactions.graphql.object_types import ReactionsInterface
 

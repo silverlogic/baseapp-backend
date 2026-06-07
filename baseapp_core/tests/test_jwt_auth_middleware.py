@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from channels.middleware import BaseMiddleware
-from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.exceptions import InvalidToken
 
 from baseapp_core.channels import JWTAuthMiddleware
 
@@ -85,7 +85,7 @@ class TestJWTAuthMiddleware:
     @pytest.mark.asyncio
     @patch("rest_framework_simplejwt.authentication.JWTAuthentication.get_validated_token")
     @patch("rest_framework_simplejwt.authentication.JWTAuthentication.get_user")
-    @patch("baseapp_core.channels.JWTAuthMiddleware.refresh_access_token")
+    @patch("baseapp_core.authentication.refresh_access_token")
     async def test_jwt_auth_middleware_refresh_token(
         self, mock_refresh_access_token, mock_get_user, mock_get_validated_token, middleware
     ):
@@ -176,8 +176,50 @@ class TestJWTAuthMiddleware:
             await middleware(scope, mock_receive, mock_send)
 
     @pytest.mark.asyncio
-    @patch("rest_framework_simplejwt.tokens.RefreshToken.__init__")
-    async def test_refresh_access_token_logs_on_token_error(self, mock_refresh_init, middleware):
-        mock_refresh_init.side_effect = TokenError("Bad refresh token")
-        result = await middleware.refresh_access_token("bad_token")
-        assert result is None
+    async def test_jwt_auth_middleware_authorization_without_value(self, middleware):
+        """
+        Scenario:
+            - The 'Authorization' subprotocol key is present but has no value after it.
+        Expected behavior:
+            - No crash, and no user is set in the scope (treated as unauthenticated).
+        """
+        scope = {"subprotocols": ["Authorization"]}
+
+        async def mock_receive():
+            return {}
+
+        async def mock_send(message):
+            pass
+
+        await middleware(scope, mock_receive, mock_send)
+
+        assert "user" not in scope
+
+    @pytest.mark.asyncio
+    @patch("rest_framework_simplejwt.authentication.JWTAuthentication.get_validated_token")
+    @patch("baseapp_core.authentication.refresh_access_token")
+    async def test_jwt_auth_middleware_refresh_failure(
+        self, mock_refresh_access_token, mock_get_validated_token, middleware
+    ):
+        """
+        Scenario:
+            - The access token is invalid and the refresh attempt also fails.
+        Expected behavior:
+            - No user is set, and the subprotocols list is left unchanged.
+        """
+        mock_get_validated_token.side_effect = InvalidToken("Invalid token")
+        mock_refresh_access_token.return_value = None
+
+        scope = {"subprotocols": ["Authorization", "bad_access", "Refresh", "bad_refresh"]}
+
+        async def mock_receive():
+            return {}
+
+        async def mock_send(message):
+            pass
+
+        await middleware(scope, mock_receive, mock_send)
+
+        assert "user" not in scope
+        assert scope["subprotocols"] == ["Authorization", "bad_access", "Refresh", "bad_refresh"]
+        mock_refresh_access_token.assert_called_once_with("bad_refresh")
