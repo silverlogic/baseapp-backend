@@ -54,7 +54,10 @@ class JWTAuthMiddleware(BaseMiddleware):
         user, new_access_token = await authenticate_jwt_async(access_token, refresh_token)
         if new_access_token:
             value_index = subprotocols.index("Authorization") + 1
-            if value_index < len(subprotocols) and subprotocols[value_index] not in SUBPROTOCOL_KEYS:
+            if (
+                value_index < len(subprotocols)
+                and subprotocols[value_index] not in SUBPROTOCOL_KEYS
+            ):
                 subprotocols[value_index] = new_access_token
 
         if user and not user.is_active:
