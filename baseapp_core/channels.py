@@ -1,7 +1,11 @@
-import logging
-
 from channels.db import database_sync_to_async
 from channels.middleware import BaseMiddleware
+
+from baseapp_core.authentication import authenticate_jwt_async
+
+# WS auth subprotocols arrive as adjacent key/value pairs; these are the recognized keys,
+# used to tell a key apart from a value when a key is sent without one.
+SUBPROTOCOL_KEYS = ("Authorization", "Refresh")
 
 
 @database_sync_to_async
@@ -39,65 +43,22 @@ class TokenAuthMiddleware(BaseMiddleware):
 
 
 class JWTAuthMiddleware(BaseMiddleware):
-    def __init__(self, inner, *args, **kwargs):
-        from rest_framework_simplejwt.authentication import JWTAuthentication
-
-        super().__init__(inner, *args, **kwargs)
-        self._auth = JWTAuthentication()
-
-    @database_sync_to_async
-    def get_jwt_user_instance(self, token):
-        from rest_framework_simplejwt.exceptions import (
-            AuthenticationFailed,
-            InvalidToken,
-            TokenError,
-        )
-
-        if self._auth is None:
-            raise RuntimeError("JWTAuthMiddleware not initialized")
-
-        try:
-            validated_token = self._auth.get_validated_token(token)
-            return self._auth.get_user(validated_token)
-        except (InvalidToken, AuthenticationFailed, TokenError) as e:
-            logging.exception(e)
-            return None
-
-    @database_sync_to_async
-    def refresh_access_token(self, refresh_token):
-        from rest_framework_simplejwt.exceptions import TokenError
-        from rest_framework_simplejwt.tokens import RefreshToken
-
-        try:
-            refresh = RefreshToken(refresh_token)
-            return str(refresh.access_token)
-        except TokenError as e:
-            logging.exception(e)
-            return None
-
     async def __call__(self, scope, receive, send):
-        if "Authorization" not in scope["subprotocols"]:
+        subprotocols = scope["subprotocols"]
+        if "Authorization" not in subprotocols:
             raise ValueError("Missing token")
 
-        # handle token and user retrieval
-        token_index = scope["subprotocols"].index("Authorization")
-        try:
-            token = scope["subprotocols"][token_index + 1]
-        except IndexError:
-            token = ""
-        user = await self.get_jwt_user_instance(token)
+        access_token = self._subprotocol_value(subprotocols, "Authorization")
+        refresh_token = self._subprotocol_value(subprotocols, "Refresh")
 
-        # handle token refresh
-        if not user and "Refresh" in scope["subprotocols"]:
-            refresh_index = scope["subprotocols"].index("Refresh")
-            try:
-                refresh_token = scope["subprotocols"][refresh_index + 1]
-                new_access_token = await self.refresh_access_token(refresh_token)
-                if new_access_token:
-                    user = await self.get_jwt_user_instance(new_access_token)
-                    scope["subprotocols"][token_index + 1] = new_access_token
-            except IndexError:
-                refresh_token = ""
+        user, new_access_token = await authenticate_jwt_async(access_token, refresh_token)
+        if new_access_token:
+            value_index = subprotocols.index("Authorization") + 1
+            if (
+                value_index < len(subprotocols)
+                and subprotocols[value_index] not in SUBPROTOCOL_KEYS
+            ):
+                subprotocols[value_index] = new_access_token
 
         if user and not user.is_active:
             raise ValueError("User inactive or deleted")
@@ -105,3 +66,18 @@ class JWTAuthMiddleware(BaseMiddleware):
             scope["user"] = user
 
         return await super().__call__(scope, receive, send)
+
+    @staticmethod
+    def _subprotocol_value(subprotocols: list[str], key: str) -> str | None:
+        """Return the value paired with ``key`` in the WS subprotocols, or ``None``.
+
+        Subprotocols arrive as adjacent key/value pairs. Returns ``None`` when ``key`` is
+        absent, or when the item after it is another known key (i.e. ``key`` has no value).
+        """
+        if key not in subprotocols:
+            return None
+        value_index = subprotocols.index(key) + 1
+        if value_index >= len(subprotocols):
+            return None
+        value = subprotocols[value_index]
+        return None if value in SUBPROTOCOL_KEYS else value
