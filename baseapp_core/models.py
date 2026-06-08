@@ -181,6 +181,112 @@ class DocumentIdMixin(models.Model):
         return strategy.id_resolver.resolve_id(public_id, model_cls=cls)
 
 
+class DocumentIdUniqueTargetMixin(models.Model):
+    """
+    Base for models that hang a single row off a documentable object.
+
+    The primary key is a one-to-one `target` to `DocumentId`, so there is at
+    most one row per documentable object (one-to-one, unique per document).
+    Provides lookup/creation helpers keyed by the documentable object itself
+    rather than by its `DocumentId`.
+    """
+
+    target = models.OneToOneField(
+        DocumentId,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name="%(app_label)s_%(class)s",
+    )
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def get_for_object(cls, obj: models.Model | None) -> "DocumentIdUniqueTargetMixin | None":
+        """Return the row for the given object, or `None` if not found."""
+        if not obj or not getattr(obj, "pk", None):
+            return None
+        try:
+            ct = ContentType.objects.get_for_model(obj)
+            return cls.objects.get(target__content_type=ct, target__object_id=obj.pk)
+        except cls.DoesNotExist:
+            return None
+
+    @classmethod
+    def get_or_create_for_object(
+        cls, obj: models.Model | None
+    ) -> "DocumentIdUniqueTargetMixin | None":
+        """Return or create the row for the given object."""
+        if not obj or not getattr(obj, "pk", None):
+            return None
+        doc_id = DocumentId.get_or_create_for_object(obj)
+        if doc_id:
+            instance, _ = cls.objects.get_or_create(target=doc_id)
+            return instance
+        return None
+
+
+class DocumentIdTargetMixin(models.Model):
+    """
+    Base for models that point at a documentable object through a (non-unique)
+    `target_document` foreign key — many rows may share the same `DocumentId`.
+
+    Exposes a `target` property that transparently reads/writes the underlying
+    object (creating its `DocumentId` on assignment), plus shortcuts to the
+    target's content type and object id.
+    """
+
+    target_document = models.ForeignKey(
+        DocumentId,
+        verbose_name=_("target document"),
+        blank=False,
+        null=False,
+        related_name="%(app_label)s_%(class)s",
+        on_delete=models.CASCADE,
+    )
+
+    class Meta:
+        abstract = True
+
+    def _get_target(self):
+        if not self.target_document_id:
+            return None
+        if hasattr(self, "_target_object_cache"):
+            return self._target_object_cache
+        self._target_object_cache = self.target_document.content_object
+        return self._target_object_cache
+
+    _get_target.short_description = _("target")
+
+    def _set_target(self, value):
+        if not value:
+            self.target_document = None
+            self._target_object_cache = None
+            return
+        self.target_document = DocumentId.get_or_create_for_object(value)
+        self._target_object_cache = value
+
+    target = property(_get_target, _set_target)
+
+    @property
+    def target_content_type(self):
+        if self.target_document_id:
+            return self.target_document.content_type
+        return None
+
+    @property
+    def target_content_type_id(self):
+        if self.target_document_id:
+            return self.target_document.content_type_id
+        return None
+
+    @property
+    def target_object_id(self):
+        if self.target_document_id:
+            return self.target_document.object_id
+        return None
+
+
 class DocumentIdFunc(pgtrigger.Func):
     """
     Reusable pgtrigger function for creating document ID triggers.

@@ -10,7 +10,11 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql import RelayModel
-from baseapp_core.models import DocumentId, DocumentIdMixin
+from baseapp_core.models import (
+    DocumentIdMixin,
+    DocumentIdTargetMixin,
+    DocumentIdUniqueTargetMixin,
+)
 from baseapp_core.plugins import apply_if_installed
 
 
@@ -49,7 +53,9 @@ if apps.is_installed("baseapp_profiles"):
     inheritances.append(ProfileMixin)
 
 
-class AbstractReaction(*inheritances, TimeStampedModel, DocumentIdMixin, RelayModel):
+class AbstractReaction(
+    *inheritances, DocumentIdTargetMixin, TimeStampedModel, DocumentIdMixin, RelayModel
+):
     class ReactionTypes(models.IntegerChoices):
         LIKE = 1, _("like")
         DISLIKE = -1, _("dislike")
@@ -65,15 +71,6 @@ class AbstractReaction(*inheritances, TimeStampedModel, DocumentIdMixin, RelayMo
     )
 
     reaction_type = models.IntegerField(choices=ReactionTypes.choices, default=ReactionTypes.LIKE)
-
-    target_document = models.ForeignKey(
-        DocumentId,
-        verbose_name=_("target document"),
-        blank=False,
-        null=False,
-        related_name="reactions_inbox",
-        on_delete=models.CASCADE,
-    )
 
     class Meta:
         abstract = True
@@ -101,44 +98,6 @@ class AbstractReaction(*inheritances, TimeStampedModel, DocumentIdMixin, RelayMo
         target = self.target
         super().delete(*args, **kwargs)
         self.update_reactions_count(target)
-
-    def _get_target(self):
-        if not self.target_document_id:
-            return None
-        if hasattr(self, "_target_object_cache"):
-            return self._target_object_cache
-        self._target_object_cache = self.target_document.content_object
-        return self._target_object_cache
-
-    _get_target.short_description = _("target")
-
-    def _set_target(self, value):
-        if not value:
-            self.target_document = None
-            self._target_object_cache = None
-            return
-        self.target_document = DocumentId.get_or_create_for_object(value)
-        self._target_object_cache = value
-
-    target = property(_get_target, _set_target)
-
-    @property
-    def target_content_type(self):
-        if self.target_document_id:
-            return self.target_document.content_type
-        return None
-
-    @property
-    def target_content_type_id(self):
-        if self.target_document_id:
-            return self.target_document.content_type_id
-        return None
-
-    @property
-    def target_object_id(self):
-        if self.target_document_id:
-            return self.target_document.object_id
-        return None
 
     @classmethod
     def update_reactions_count(cls, target):
@@ -176,19 +135,13 @@ class AbstractReaction(*inheritances, TimeStampedModel, DocumentIdMixin, RelayMo
         return ReactionObjectType
 
 
-class AbstractReactableMetadata(TimeStampedModel):
+class AbstractReactableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
     """
     Stores reaction metadata (per-type counts dict + enabled flag) for any
     documentable object. Linked to `DocumentId` instead of adding columns to
     each reactable model, following the plugin architecture pattern.
     """
 
-    target = models.OneToOneField(
-        DocumentId,
-        on_delete=models.CASCADE,
-        primary_key=True,
-        related_name="reactable_metadata",
-    )
     reactions_count = models.JSONField(default=default_reactions_count, editable=False)
     is_reactions_enabled = models.BooleanField(default=True)
 
@@ -200,28 +153,6 @@ class AbstractReactableMetadata(TimeStampedModel):
 
     def __str__(self):
         return f"ReactableMetadata for {self.target}"
-
-    @classmethod
-    def get_for_object(cls, obj):
-        """Return the metadata for the given object, or `None` if not found."""
-        if not obj or not getattr(obj, "pk", None):
-            return None
-        try:
-            ct = ContentType.objects.get_for_model(obj)
-            return cls.objects.get(target__content_type=ct, target__object_id=obj.pk)
-        except cls.DoesNotExist:
-            return None
-
-    @classmethod
-    def get_or_create_for_object(cls, obj):
-        """Return or create the metadata for the given object."""
-        if not obj or not getattr(obj, "pk", None):
-            return None
-        doc_id = DocumentId.get_or_create_for_object(obj)
-        if doc_id:
-            metadata, _ = cls.objects.get_or_create(target=doc_id)
-            return metadata
-        return None
 
     @classmethod
     def annotate_queryset(cls, queryset):
