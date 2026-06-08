@@ -12,7 +12,12 @@ CommentableMetadata = swapper.load_model("baseapp_comments", "CommentableMetadat
 @admin.register(Comment)
 class CommentAdmin(ModelAdmin):
     search_fields = ("body",)
-    raw_id_fields = ("user", *apply_if_installed("baseapp_profiles", ["profile"]), "in_reply_to")
+    raw_id_fields = (
+        "user",
+        *apply_if_installed("baseapp_profiles", ["profile"]),
+        "in_reply_to",
+        "target_document",
+    )
     list_display = (
         "id",
         "user",
@@ -24,6 +29,19 @@ class CommentAdmin(ModelAdmin):
         "is_pinned",
         "created",
     )
+
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .select_related(
+                "user",
+                *apply_if_installed("baseapp_profiles", ["profile"]),
+                "in_reply_to",
+                "target_document__content_type",
+            )
+            .prefetch_related("target_document__content_object")
+        )
 
     def truncated_body(self, obj):
         return truncatewords(obj.body, 10)
