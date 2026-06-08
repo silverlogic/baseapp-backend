@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from channels.middleware import BaseMiddleware
@@ -223,3 +223,47 @@ class TestJWTAuthMiddleware:
         assert "user" not in scope
         assert scope["subprotocols"] == ["Authorization", "bad_access", "Refresh", "bad_refresh"]
         mock_refresh_access_token.assert_called_once_with("bad_refresh")
+
+    def test_subprotocol_value_treats_adjacent_key_as_missing_value(self):
+        """
+        Scenario:
+            - 'Authorization' is present but the next item is the 'Refresh' key, not a value.
+        Expected behavior:
+            - Parsing 'Authorization' returns None (no value); 'Refresh' returns its value.
+        """
+        subprotocols = ["Authorization", "Refresh", "refresh_token_value"]
+
+        assert JWTAuthMiddleware._subprotocol_value(subprotocols, "Authorization") is None
+        assert (
+            JWTAuthMiddleware._subprotocol_value(subprotocols, "Refresh") == "refresh_token_value"
+        )
+
+    @pytest.mark.asyncio
+    @patch("baseapp_core.channels.authenticate_jwt_async", new_callable=AsyncMock)
+    async def test_jwt_auth_middleware_keeps_pair_layout_when_authorization_has_no_value(
+        self, mock_authenticate, middleware
+    ):
+        """
+        Scenario:
+            - 'Authorization' has no value (next item is the 'Refresh' key); refresh succeeds.
+        Expected behavior:
+            - Access is parsed as None (auth falls back to the refresh token), and the
+              refreshed token does NOT overwrite the 'Refresh' key — pair layout preserved.
+        """
+        mock_user = MagicMock()
+        mock_user.is_active = True
+        mock_authenticate.return_value = (mock_user, "new_access_token")
+
+        scope = {"subprotocols": ["Authorization", "Refresh", "refresh_token_value"]}
+
+        async def mock_receive():
+            return {}
+
+        async def mock_send(message):
+            pass
+
+        await middleware(scope, mock_receive, mock_send)
+
+        mock_authenticate.assert_awaited_once_with(None, "refresh_token_value")
+        assert scope["subprotocols"] == ["Authorization", "Refresh", "refresh_token_value"]
+        assert scope["user"] == mock_user

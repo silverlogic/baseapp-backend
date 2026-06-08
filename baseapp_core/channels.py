@@ -3,6 +3,10 @@ from channels.middleware import BaseMiddleware
 
 from baseapp_core.authentication import authenticate_jwt_async
 
+# WS auth subprotocols arrive as adjacent key/value pairs; these are the recognized keys,
+# used to tell a key apart from a value when a key is sent without one.
+SUBPROTOCOL_KEYS = ("Authorization", "Refresh")
+
 
 @database_sync_to_async
 def get_token_from_db(token_str):
@@ -49,10 +53,9 @@ class JWTAuthMiddleware(BaseMiddleware):
 
         user, new_access_token = await authenticate_jwt_async(access_token, refresh_token)
         if new_access_token:
-            # propagate the refreshed token back to the negotiated subprotocols
-            auth_index = subprotocols.index("Authorization")
-            if auth_index + 1 < len(subprotocols):
-                subprotocols[auth_index + 1] = new_access_token
+            value_index = subprotocols.index("Authorization") + 1
+            if value_index < len(subprotocols) and subprotocols[value_index] not in SUBPROTOCOL_KEYS:
+                subprotocols[value_index] = new_access_token
 
         if user and not user.is_active:
             raise ValueError("User inactive or deleted")
@@ -63,10 +66,15 @@ class JWTAuthMiddleware(BaseMiddleware):
 
     @staticmethod
     def _subprotocol_value(subprotocols: list[str], key: str) -> str | None:
-        """Return the value following ``key`` in the WS subprotocols, or ``None``."""
+        """Return the value paired with ``key`` in the WS subprotocols, or ``None``.
+
+        Subprotocols arrive as adjacent key/value pairs. Returns ``None`` when ``key`` is
+        absent, or when the item after it is another known key (i.e. ``key`` has no value).
+        """
         if key not in subprotocols:
             return None
-        try:
-            return subprotocols[subprotocols.index(key) + 1]
-        except IndexError:
+        value_index = subprotocols.index(key) + 1
+        if value_index >= len(subprotocols):
             return None
+        value = subprotocols[value_index]
+        return None if value in SUBPROTOCOL_KEYS else value
