@@ -32,7 +32,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("content_feed", "0001_initial"),
-        ("reactions", "0002_reactablemetadata"),
+        ("reactions", "0002_plugin_arch_squashed"),
     ]
 
     operations = [
