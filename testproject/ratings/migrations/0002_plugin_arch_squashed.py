@@ -12,14 +12,6 @@ import baseapp_ratings.migration_helpers.convert_rates_gfk_into_document_id_help
 
 class Migration(migrations.Migration):
 
-    replaces = [
-        ("ratings", "0002_ratablemetadata"),
-        ("ratings", "0003_convert_target_to_document"),
-        ("ratings", "0004_remove_rate_insert_document_id_and_more"),
-        ("ratings", "0005_alter_ratablemetadata_target"),
-        ("ratings", "0006_alter_rate_target_document"),
-    ]
-
     dependencies = [
         ("baseapp_core", "0001_initial"),
         ("contenttypes", "0002_remove_content_type_name"),
@@ -61,6 +53,7 @@ class Migration(migrations.Migration):
                 "verbose_name": "ratable metadata",
                 "verbose_name_plural": "ratable metadata",
                 "abstract": False,
+                "swappable": "BASEAPP_RATINGS_RATABLEMETADATA_MODEL",
             },
         ),
         migrations.AddField(

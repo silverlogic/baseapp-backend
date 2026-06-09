@@ -105,26 +105,15 @@ def _dependencies():
         ("baseapp_core", "0001_initial"),
         ("comments", "0001_initial"),
         ("profiles", "__first__"),
-        ("reactions", "0002_reactablemetadata"),
+        ("reactions", "0002_plugin_arch_squashed"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
     if "reports" in django_apps.app_configs:
-        deps.append(("reports", "0002_reportablemetadata"))
+        deps.append(("reports", "0002_plugin_arch_squashed"))
     return deps
 
 
 class Migration(migrations.Migration):
-
-    replaces = [
-        ("comments", "0002_commentablemetadata"),
-        ("comments", "0003_migrate_comment_commentable_to_metadata_remove_comment_mixin"),
-        ("comments", "0004_remove_comment_insert_insert_and_more"),
-        ("comments", "0005_remove_reports_count"),
-        ("comments", "0006_remove_reactions_legacy_columns"),
-        ("comments", "0007_alter_comment_target_document_and_more"),
-        ("comments", "0008_alter_commentablemetadata_target"),
-        ("comments", "0009_alter_comment_target_document"),
-    ]
 
     dependencies = _dependencies()
 

@@ -6,11 +6,6 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    replaces = [
-        ("testapp", "0003_dummyuniquedocumenttarget"),
-        ("testapp", "0004_dummydocumenttarget"),
-    ]
-
     dependencies = [
         ("baseapp_core", "0001_initial"),
         ("testapp", "0002_dummylegacymodel_dummylegacywithpkmodel_and_more"),

@@ -96,22 +96,16 @@ def reverse_migrate_profile_block_counts(apps, schema_editor):
 def _dependencies():
     # reports is optional (app-disable support); depend on it only when installed.
     deps = [
-        ("blocks", "0002_blockablemetadata"),
-        ("comments", "0002_commentablemetadata"),
+        ("blocks", "0002_plugin_arch_squashed"),
+        ("comments", "0002_plugin_arch_squashed"),
         ("profiles", "0004_remove_profile_insert_insert_and_more"),
     ]
     if "reports" in django_apps.app_configs:
-        deps.append(("reports", "0002_reportablemetadata"))
+        deps.append(("reports", "0002_plugin_arch_squashed"))
     return deps
 
 
 class Migration(migrations.Migration):
-
-    replaces = [
-        ("profiles", "0005_remove_profile_insert_insert_and_more"),
-        ("profiles", "0006_remove_reports_count"),
-        ("profiles", "0007_remove_profile_insert_insert_and_more"),
-    ]
 
     dependencies = _dependencies()
 

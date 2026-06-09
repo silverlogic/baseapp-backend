@@ -11,13 +11,6 @@ import baseapp_reactions.models
 
 class Migration(migrations.Migration):
 
-    replaces = [
-        ("reactions", "0002_reactablemetadata"),
-        ("reactions", "0003_convert_target_to_document"),
-        ("reactions", "0004_alter_reactablemetadata_target"),
-        ("reactions", "0005_alter_reaction_target_document"),
-    ]
-
     dependencies = [
         ("baseapp_core", "0001_initial"),
         ("contenttypes", "0002_remove_content_type_name"),

@@ -32,15 +32,9 @@ def reverse_migrate_user_ratings(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    replaces = [
-        ("users", "0006_drop_legacy_ratings_columns"),
-        ("users", "0007_user_create_profile_drop_reports_count"),
-        ("users", "0008_remove_user_create_profile_user_create_profile"),
-    ]
-
     dependencies = [
-        ("profiles", "0006_remove_reports_count"),
-        ("ratings", "0002_ratablemetadata"),
+        ("profiles", "0005_plugin_arch_squashed"),
+        ("ratings", "0002_plugin_arch_squashed"),
         ("users", "0005_user_update_profile_name_user_create_profile"),
     ]
 

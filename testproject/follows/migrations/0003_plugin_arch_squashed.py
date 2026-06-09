@@ -11,12 +11,6 @@ import baseapp_follows.migration_helpers.seed_followable_metadata_from_follows_h
 
 class Migration(migrations.Migration):
 
-    replaces = [
-        ("follows", "0003_followablemetadata"),
-        ("follows", "0004_backfill_documentids_and_seed_followable_metadata"),
-        ("follows", "0005_alter_followablemetadata_target"),
-    ]
-
     dependencies = [
         ("baseapp_core", "0001_initial"),
         ("follows", "0002_alter_follow_actor_alter_follow_target"),

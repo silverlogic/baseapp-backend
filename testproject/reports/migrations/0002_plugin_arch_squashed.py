@@ -35,15 +35,6 @@ def forwards(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    replaces = [
-        ("reports", "0002_reportablemetadata"),
-        ("reports", "0003_seed_default_report_types"),
-        ("reports", "0004_convert_target_to_document"),
-        ("reports", "0005_remove_report_insert_document_id_and_more"),
-        ("reports", "0006_alter_reportablemetadata_target"),
-        ("reports", "0007_alter_report_target_document"),
-    ]
-
     dependencies = [
         ("baseapp_core", "0001_initial"),
         ("contenttypes", "0002_remove_content_type_name"),
@@ -89,6 +80,7 @@ class Migration(migrations.Migration):
                 "verbose_name": "reportable metadata",
                 "verbose_name_plural": "reportable metadata",
                 "abstract": False,
+                "swappable": "BASEAPP_REPORTS_REPORTABLEMETADATA_MODEL",
             },
         ),
         migrations.RunPython(

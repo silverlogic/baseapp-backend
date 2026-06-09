@@ -30,13 +30,8 @@ def reverse_migrate_page_commentable_fields(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    replaces = [
-        ("pages", "0002_remove_page_insert_insert_remove_page_update_update_and_more"),
-        ("pages", "0003_remove_page_insert_insert_remove_page_update_update_and_more"),
-    ]
-
     dependencies = [
-        ("comments", "0002_commentablemetadata"),
+        ("comments", "0002_plugin_arch_squashed"),
         ("pages", "0001_initial"),
     ]
 

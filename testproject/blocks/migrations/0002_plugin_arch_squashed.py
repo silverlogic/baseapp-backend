@@ -8,11 +8,6 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    replaces = [
-        ("blocks", "0002_blockablemetadata"),
-        ("blocks", "0003_alter_blockablemetadata_target"),
-    ]
-
     dependencies = [
         ("baseapp_core", "0001_initial"),
         ("blocks", "0001_initial"),
