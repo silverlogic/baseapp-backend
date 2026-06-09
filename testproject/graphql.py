@@ -35,4 +35,11 @@ class Subscription(
     pass
 
 
-schema = graphene.Schema(query=Query, mutation=Mutation, subscription=Subscription)
+# Subscriptions might be empty, therefore we should only attach the Subscription root type if
+# there are subscription fields. Graphene rejects a Mutation/Subscription type with zero fields
+# ("Type X must define one or more fields").
+schema_kwargs = {"query": Query, "mutation": Mutation}
+if subscriptions:
+    schema_kwargs["subscription"] = Subscription
+
+schema = graphene.Schema(**schema_kwargs)
