@@ -79,6 +79,10 @@ BASEAPP_COMMENTS_CAN_ANONYMOUS_VIEW_COMMENTS = True
 BASEAPP_COMMENTS_MAX_PINS_PER_THREAD = None
 BASEAPP_COMMENTS_ENABLE_GRAPHQL_SUBSCRIPTIONS = True
 BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = True
+# Whether the "comment created" notification is also sent by email.
+BASEAPP_COMMENTS_NOTIFICATION_CREATED_EMAIL = True
+# Whether the "reply created" notification is also sent by email.
+BASEAPP_COMMENTS_NOTIFICATION_REPLY_EMAIL = True
 ```
 
 You need to inherit `CommentableModel` in your model and make sure to add `CommentsInterface` to your ObjectType's interfaces like:
