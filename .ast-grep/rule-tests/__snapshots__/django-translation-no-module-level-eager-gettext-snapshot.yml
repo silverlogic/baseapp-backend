@@ -1,0 +1,26 @@
+id: django-translation-no-module-level-eager-gettext
+snapshots:
+  ? |
+    from django.utils.translation import gettext as _
+
+    MY_STRING = _("This is a translated string.")
+  : labels:
+    - source: MY_STRING = _("This is a translated string.")
+      style: primary
+      start: 51
+      end: 96
+    - source: |
+        from django.utils.translation import gettext as _
+
+        MY_STRING = _("This is a translated string.")
+      style: secondary
+      start: 0
+      end: 97
+    - source: from django.utils.translation import gettext as _
+      style: secondary
+      start: 0
+      end: 49
+    - source: MY_STRING = _("This is a translated string.")
+      style: secondary
+      start: 51
+      end: 96

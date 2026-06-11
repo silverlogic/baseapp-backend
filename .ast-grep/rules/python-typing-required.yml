@@ -1,0 +1,12 @@
+id: python-typing-required
+language: Python
+severity: warning
+message: "Functions and methods must have a return type annotation (use `-> None` when nothing is returned). See .claude/skills/backend-conventions/references/typing.md"
+ignores:
+  - "**/migrations/**"
+rule:
+  kind: function_definition
+  not:
+    has:
+      field: return_type
+      kind: type

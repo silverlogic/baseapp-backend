@@ -1,0 +1,15 @@
+id: django-translation-no-module-level-eager-gettext
+language: Python
+severity: error
+message: "Module-level translation with eager `gettext` freezes the string to the language active at import time. Use `gettext_lazy as _` for module-level strings. See .claude/skills/backend-conventions/references/translations.md"
+ignores:
+  - "**/migrations/**"
+rule:
+  pattern: $VAR = _($$$ARGS)
+  inside:
+    kind: expression_statement
+    inside:
+      kind: module
+    follows:
+      stopBy: end
+      pattern: from django.utils.translation import gettext as _

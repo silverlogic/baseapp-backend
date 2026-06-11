@@ -1,0 +1,16 @@
+id: drf-validation-error-format
+snapshots:
+  ? |
+    raise serializers.ValidationError("This email is already in use.")
+  : labels:
+    - source: raise serializers.ValidationError("This email is already in use.")
+      style: primary
+      start: 0
+      end: 66
+  ? |
+    raise serializers.ValidationError(_("This email is already in use."))
+  : labels:
+    - source: raise serializers.ValidationError(_("This email is already in use."))
+      style: primary
+      start: 0
+      end: 69

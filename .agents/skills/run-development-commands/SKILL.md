@@ -78,7 +78,7 @@ docker compose <run> web python manage.py showmigrations
 docker compose <run> web black .          # line-length=100
 docker compose <run> web isort .
 docker compose <run> web flake8 .
-docker compose <run> web ast-grep scan    # code-guideline rules (.ast-grep/rules/), if the project has them
+docker compose <run> web ast-grep scan --globs '!baseapp-backend'   # code-guideline rules (shared from baseapp-backend/.ast-grep/); the submodule is linted in its own CI
 docker compose <run> web ast-grep test    # test the ast-grep rules themselves
 docker compose <run> web pre-commit run --all-files
 ```

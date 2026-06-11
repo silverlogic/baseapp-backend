@@ -1,0 +1,15 @@
+id: drf-validation-error-format
+language: Python
+severity: warning
+message: "ValidationError must use a dict with messages wrapped in a list: `{\"field\": [_(\"msg\")]}` for field errors or `{\"non_field_errors\": [_(\"msg\")]}` for general ones. See .claude/skills/backend-conventions/references/error-shape.md"
+ignores:
+  - "**/migrations/**"
+rule:
+  pattern: raise serializers.ValidationError($MSG)
+constraints:
+  MSG:
+    any:
+      - kind: string
+      - pattern: _($$$)
+      - pattern: gettext($$$)
+      - pattern: gettext_lazy($$$)

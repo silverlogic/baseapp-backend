@@ -1,0 +1,17 @@
+id: django-translation-no-module-level-eager-gettext
+valid:
+  - |
+    from django.utils.translation import gettext_lazy as _
+
+    MY_STRING = _("This is a translated string.")
+  - |
+    from django.utils.translation import gettext as _
+
+    def handler():
+        message = _("Evaluated at request time.")
+        return message
+invalid:
+  - |
+    from django.utils.translation import gettext as _
+
+    MY_STRING = _("This is a translated string.")

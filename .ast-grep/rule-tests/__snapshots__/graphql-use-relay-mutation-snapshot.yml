@@ -1,0 +1,38 @@
+id: graphql-use-relay-mutation
+snapshots:
+  ? |
+    class CreateOrder(graphene.Mutation):
+        class Arguments:
+            amount = graphene.Int(required=True)
+  : labels:
+    - source: |-
+        class CreateOrder(graphene.Mutation):
+            class Arguments:
+                amount = graphene.Int(required=True)
+      style: primary
+      start: 0
+      end: 103
+  ? |
+    class CreateOrder(graphene.relay.ClientIDMutation):
+        class Input:
+            amount = graphene.Int(required=True)
+  : labels:
+    - source: |-
+        class CreateOrder(graphene.relay.ClientIDMutation):
+            class Input:
+                amount = graphene.Int(required=True)
+      style: primary
+      start: 0
+      end: 113
+  ? |
+    class CreateOrder(relay.ClientIDMutation):
+        class Input:
+            amount = graphene.Int(required=True)
+  : labels:
+    - source: |-
+        class CreateOrder(relay.ClientIDMutation):
+            class Input:
+                amount = graphene.Int(required=True)
+      style: primary
+      start: 0
+      end: 104

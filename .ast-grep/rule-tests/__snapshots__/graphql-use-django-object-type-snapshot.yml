@@ -1,0 +1,47 @@
+id: graphql-use-django-object-type
+snapshots:
+  ? |
+    from graphene_django import DjangoObjectType
+  : labels:
+    - source: from graphene_django import DjangoObjectType
+      style: primary
+      start: 0
+      end: 44
+    - source: graphene_django
+      style: secondary
+      start: 5
+      end: 20
+    - source: DjangoObjectType
+      style: secondary
+      start: 28
+      end: 44
+  ? |
+    from graphene_django.types import DjangoObjectType
+  : labels:
+    - source: from graphene_django.types import DjangoObjectType
+      style: primary
+      start: 0
+      end: 50
+    - source: graphene_django.types
+      style: secondary
+      start: 5
+      end: 26
+    - source: DjangoObjectType
+      style: secondary
+      start: 34
+      end: 50
+  ? |
+    from graphene_django.types import DjangoObjectType, ErrorType
+  : labels:
+    - source: from graphene_django.types import DjangoObjectType, ErrorType
+      style: primary
+      start: 0
+      end: 61
+    - source: graphene_django.types
+      style: secondary
+      start: 5
+      end: 26
+    - source: DjangoObjectType
+      style: secondary
+      start: 34
+      end: 50
