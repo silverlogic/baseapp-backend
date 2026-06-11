@@ -1,6 +1,6 @@
 ---
 name: run-development-commands
-version: 1.1.0
+version: 1.2.0
 description: Translate developer intent into the correct Docker Compose commands for this Django project. Always use this skill when the user wants to run tests, start the dev server, make or apply migrations, open a Django or database shell, lint or format code, run any manage.py command, install or add a Python dependency, audit dependencies, or execute any other development command — even when they don't mention Docker explicitly.
 triggers:
   - run tests
@@ -78,6 +78,8 @@ docker compose <run> web python manage.py showmigrations
 docker compose <run> web black .          # line-length=100
 docker compose <run> web isort .
 docker compose <run> web flake8 .
+docker compose <run> web ast-grep scan    # code-guideline rules (.ast-grep/rules/), if the project has them
+docker compose <run> web ast-grep test    # test the ast-grep rules themselves
 docker compose <run> web pre-commit run --all-files
 ```
 
