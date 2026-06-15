@@ -1,6 +1,3 @@
-from collections.abc import Iterable
-from typing import Any
-
 import swapper
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -72,13 +69,7 @@ def send_message(
     return message
 
 
-def send_system_message(
-    room: Any,
-    content: str,
-    actor: Any | None = None,
-    target: Any | None = None,
-    extra_data: dict[str, Any] | None = None,
-) -> Message | None:
+def send_system_message(room, content, actor=None, target=None, extra_data=None):
     """Create a SYSTEM_GENERATED message, wrapping the send_message boilerplate."""
     if not getattr(settings, "BASEAPP_CHATS_ENABLE_SYSTEM_MESSAGES", True):
         return None
@@ -95,16 +86,16 @@ def send_system_message(
 
 
 def send_chatroom_update_system_messages(
-    room: Any,
-    actor: Any,
+    room,
+    actor,
     *,
-    new_title: str | None = None,
-    title_changed: bool = False,
-    image_changed: bool = False,
-    added_participants: Iterable[Any] = (),
-    removed_participants: Iterable[Any] = (),
-    is_leaving: bool = False,
-) -> None:
+    new_title=None,
+    title_changed=False,
+    image_changed=False,
+    added_participants=(),
+    removed_participants=(),
+    is_leaving=False,
+):
     """Emit the SYSTEM_GENERATED messages describing what changed during a group update."""
     if title_changed:
         send_system_message(
