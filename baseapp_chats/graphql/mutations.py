@@ -16,10 +16,12 @@ from baseapp_chats.graphql.subscriptions import (
     ChatRoomOnRoomUpdate,
 )
 from baseapp_chats.utils import (
-    CONTENT_LINKED_PROFILE_ACTOR,
-    CONTENT_LINKED_PROFILE_TARGET,
+    SYSTEM_MESSAGE_GROUP_CREATED,
+    SYSTEM_MESSAGE_MADE_ADMIN,
+    send_chatroom_update_system_messages,
     send_message,
     send_new_chat_message_notification,
+    send_system_message,
 )
 from baseapp_core.graphql import (
     RelayMutation,
@@ -182,13 +184,10 @@ class ChatRoomCreate(RelayMutation):
         room.save()
 
         if is_group:
-            send_message(
-                message_type=Message.MessageType.SYSTEM_GENERATED,
-                room=room,
-                profile=None,
-                user=None,
-                content=CONTENT_LINKED_PROFILE_ACTOR + ' created group "' + title + '"',
-                content_linked_profile_actor=profile,
+            send_system_message(
+                room,
+                SYSTEM_MESSAGE_GROUP_CREATED.replace("{title}", title),
+                actor=profile,
             )
             ChatRoomOnRoomUpdate.room_updated(room)
 
@@ -328,6 +327,12 @@ class ChatRoomUpdate(RelayMutation):
                 errors=[ErrorType(field="image", messages=serializer.errors["image"])]
             )
 
+        # Capture pre-update state so we can emit accurate system messages below
+        previous_title = room.title
+        had_image = bool(room.image)
+        title_changed = title is not None and title != previous_title
+        image_changed = (image is not None) or (delete_image and had_image)
+
         with transaction.atomic():
             # Removing participants
             removed_participants = list(participants_to_remove)
@@ -379,6 +384,18 @@ class ChatRoomUpdate(RelayMutation):
 
         ChatRoomOnRoomUpdate.room_updated(
             room, removed_participants, added_participants=created_participants
+        )
+
+        # Emit the system messages describing what changed in the group
+        send_chatroom_update_system_messages(
+            room,
+            profile,
+            new_title=title,
+            title_changed=title_changed,
+            image_changed=image_changed,
+            added_participants=created_participants,
+            removed_participants=removed_participants,
+            is_leaving=is_leaving_chatroom,
         )
 
         return ChatRoomUpdate(
@@ -480,14 +497,11 @@ class ChatRoomToggleAdmin(RelayMutation):
                 target_participant.save(update_fields=["role"])
 
         if not participant_is_admin:
-            send_message(
-                room=room,
-                profile=None,
-                user=None,
-                message_type=Message.MessageType.SYSTEM_GENERATED,
-                content=CONTENT_LINKED_PROFILE_TARGET + " now an admin",
-                content_linked_profile_actor=profile,
-                content_linked_profile_target=target_participant.profile,
+            send_system_message(
+                room,
+                SYSTEM_MESSAGE_MADE_ADMIN,
+                actor=profile,
+                target=target_participant.profile,
                 extra_data={"include_verb": True},
             )
 

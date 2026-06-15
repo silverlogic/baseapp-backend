@@ -1673,3 +1673,197 @@ def test_chat_room_toggle_admin_cannot_remove_last_admin(django_user_client, gra
         content["data"]["chatRoomToggleAdmin"]["errors"][0]["messages"][0]
         == "The room must have at least one admin"
     )
+
+
+def _system_message_contents(room_data):
+    return [
+        edge["node"]["content"]
+        for edge in room_data["allMessages"]["edges"]
+        if edge["node"]["messageType"] == "SYSTEM_GENERATED"
+    ]
+
+
+def test_update_group_title_creates_system_message(django_user_client, graphql_user_client):
+    friend = ProfileFactory()
+
+    response = graphql_user_client(
+        CREATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "isGroup": True,
+                "title": "group",
+                "participants": [friend.relay_id],
+            }
+        },
+    )
+    room_id = response.json()["data"]["chatRoomCreate"]["room"]["node"]["id"]
+
+    graphql_user_client(
+        UPDATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "roomId": room_id,
+                "title": "new group",
+            }
+        },
+    )
+
+    response = graphql_user_client(
+        ROOM_GRAPHQL,
+        variables={"profileId": django_user_client.user.profile.relay_id, "roomId": room_id},
+    )
+    room_data = response.json()["data"]["chatRoom"]
+    assert 'You changed the group name to "new group"' in _system_message_contents(room_data)
+
+
+def test_add_participant_creates_system_message(django_user_client, graphql_user_client):
+    friend = ProfileFactory()
+    new_member = ProfileFactory()
+
+    response = graphql_user_client(
+        CREATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "isGroup": True,
+                "title": "group",
+                "participants": [friend.relay_id],
+            }
+        },
+    )
+    room_id = response.json()["data"]["chatRoomCreate"]["room"]["node"]["id"]
+
+    graphql_user_client(
+        UPDATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "roomId": room_id,
+                "addParticipants": [new_member.relay_id],
+            }
+        },
+    )
+
+    response = graphql_user_client(
+        ROOM_GRAPHQL,
+        variables={"profileId": django_user_client.user.profile.relay_id, "roomId": room_id},
+    )
+    room_data = response.json()["data"]["chatRoom"]
+    assert f"You added {new_member.name}" in _system_message_contents(room_data)
+
+
+def test_remove_participant_creates_system_message(django_user_client, graphql_user_client):
+    friend = ProfileFactory()
+    member_to_remove = ProfileFactory()
+
+    response = graphql_user_client(
+        CREATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "isGroup": True,
+                "title": "group",
+                "participants": [friend.relay_id, member_to_remove.relay_id],
+            }
+        },
+    )
+    room_id = response.json()["data"]["chatRoomCreate"]["room"]["node"]["id"]
+
+    graphql_user_client(
+        UPDATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "roomId": room_id,
+                "removeParticipants": [member_to_remove.relay_id],
+            }
+        },
+    )
+
+    response = graphql_user_client(
+        ROOM_GRAPHQL,
+        variables={"profileId": django_user_client.user.profile.relay_id, "roomId": room_id},
+    )
+    room_data = response.json()["data"]["chatRoom"]
+    assert f"You removed {member_to_remove.name}" in _system_message_contents(room_data)
+
+
+def test_leave_group_creates_system_message(django_user_client, graphql_user_client, django_client):
+    leaver = ProfileFactory()
+    other = ProfileFactory()
+
+    response = graphql_user_client(
+        CREATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "isGroup": True,
+                "title": "group",
+                "participants": [leaver.relay_id, other.relay_id],
+            }
+        },
+    )
+    room_id = response.json()["data"]["chatRoomCreate"]["room"]["node"]["id"]
+
+    django_client.force_login(leaver.owner)
+    graphql_query(
+        UPDATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": leaver.relay_id,
+                "roomId": room_id,
+                "removeParticipants": [leaver.relay_id],
+            }
+        },
+        client=django_client,
+    )
+
+    # Viewed by a remaining member, the actor is rendered by name
+    response = graphql_user_client(
+        ROOM_GRAPHQL,
+        variables={"profileId": django_user_client.user.profile.relay_id, "roomId": room_id},
+    )
+    room_data = response.json()["data"]["chatRoom"]
+    contents = _system_message_contents(room_data)
+    assert f"{leaver.name} left the group" in contents
+    assert f"You removed {leaver.name}" not in contents
+
+
+def test_change_group_image_creates_system_message(
+    django_user_client, graphql_user_client, image_djangofile
+):
+    friend = ProfileFactory()
+
+    response = graphql_user_client(
+        CREATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "isGroup": True,
+                "title": "group",
+                "participants": [friend.relay_id],
+            }
+        },
+    )
+    room_id = response.json()["data"]["chatRoomCreate"]["room"]["node"]["id"]
+
+    graphql_user_client(
+        UPDATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "roomId": room_id,
+            }
+        },
+        content_type=MULTIPART_CONTENT,
+        extra={"image": image_djangofile},
+    )
+
+    response = graphql_user_client(
+        ROOM_GRAPHQL,
+        variables={"profileId": django_user_client.user.profile.relay_id, "roomId": room_id},
+    )
+    room_data = response.json()["data"]["chatRoom"]
+    assert "You changed the group image" in _system_message_contents(room_data)

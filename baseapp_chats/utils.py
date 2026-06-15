@@ -8,6 +8,22 @@ from baseapp_notifications import send_notification
 CONTENT_LINKED_PROFILE_ACTOR = "{content_linked_profile_actor}"
 CONTENT_LINKED_PROFILE_TARGET = "{content_linked_profile_target}"
 
+# Templates for system (auto-generated) messages. The CONTENT_LINKED_* placeholders are
+# resolved per-viewer at query time (see MessageObjectType.resolve_content); the "{title}"
+# placeholder is substituted at creation time via str.replace so it does not collide with
+# the placeholders left for resolve_content.
+SYSTEM_MESSAGE_GROUP_CREATED = CONTENT_LINKED_PROFILE_ACTOR + ' created group "{title}"'
+SYSTEM_MESSAGE_GROUP_RENAMED = CONTENT_LINKED_PROFILE_ACTOR + ' changed the group name to "{title}"'
+SYSTEM_MESSAGE_GROUP_IMAGE_CHANGED = CONTENT_LINKED_PROFILE_ACTOR + " changed the group image"
+SYSTEM_MESSAGE_PARTICIPANT_ADDED = (
+    CONTENT_LINKED_PROFILE_ACTOR + " added " + CONTENT_LINKED_PROFILE_TARGET
+)
+SYSTEM_MESSAGE_PARTICIPANT_REMOVED = (
+    CONTENT_LINKED_PROFILE_ACTOR + " removed " + CONTENT_LINKED_PROFILE_TARGET
+)
+SYSTEM_MESSAGE_PARTICIPANT_LEFT = CONTENT_LINKED_PROFILE_ACTOR + " left the group"
+SYSTEM_MESSAGE_MADE_ADMIN = CONTENT_LINKED_PROFILE_TARGET + " now an admin"
+
 Message = swapper.load_model("baseapp_chats", "Message")
 MessageStatus = swapper.load_model("baseapp_chats", "MessageStatus")
 UnreadMessageCount = swapper.load_model("baseapp_chats", "UnreadMessageCount")
@@ -53,6 +69,54 @@ def send_message(
     ChatRoomOnMessage.new_message(room_id=room_id or room.relay_id, message=message)
 
     return message
+
+
+def send_system_message(room, content, actor=None, target=None, extra_data=None):
+    """Create a SYSTEM_GENERATED message, wrapping the send_message boilerplate."""
+    return send_message(
+        room=room,
+        profile=None,
+        user=None,
+        message_type=MessageType.SYSTEM_GENERATED,
+        content=content,
+        content_linked_profile_actor=actor,
+        content_linked_profile_target=target,
+        extra_data=extra_data,
+    )
+
+
+def send_chatroom_update_system_messages(
+    room,
+    actor,
+    *,
+    new_title=None,
+    title_changed=False,
+    image_changed=False,
+    added_participants=(),
+    removed_participants=(),
+    is_leaving=False,
+):
+    """Emit the SYSTEM_GENERATED messages describing what changed during a group update."""
+    if title_changed:
+        send_system_message(
+            room, SYSTEM_MESSAGE_GROUP_RENAMED.replace("{title}", new_title or ""), actor=actor
+        )
+
+    if image_changed:
+        send_system_message(room, SYSTEM_MESSAGE_GROUP_IMAGE_CHANGED, actor=actor)
+
+    for participant in added_participants:
+        send_system_message(
+            room, SYSTEM_MESSAGE_PARTICIPANT_ADDED, actor=actor, target=participant.profile
+        )
+
+    if is_leaving:
+        send_system_message(room, SYSTEM_MESSAGE_PARTICIPANT_LEFT, actor=actor)
+    else:
+        for participant in removed_participants:
+            send_system_message(
+                room, SYSTEM_MESSAGE_PARTICIPANT_REMOVED, actor=actor, target=participant.profile
+            )
 
 
 def send_new_chat_message_notification(room, message, info):
