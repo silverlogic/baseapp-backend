@@ -502,7 +502,6 @@ class ChatRoomToggleAdmin(RelayMutation):
                 SYSTEM_MESSAGE_MADE_ADMIN,
                 actor=profile,
                 target=target_participant.profile,
-                extra_data={"include_verb": True},
             )
 
         return ChatRoomToggleAdmin(

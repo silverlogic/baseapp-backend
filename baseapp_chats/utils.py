@@ -1,3 +1,6 @@
+from collections.abc import Iterable
+from typing import Any
+
 import swapper
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -8,10 +11,6 @@ from baseapp_notifications import send_notification
 CONTENT_LINKED_PROFILE_ACTOR = "{content_linked_profile_actor}"
 CONTENT_LINKED_PROFILE_TARGET = "{content_linked_profile_target}"
 
-# Templates for system (auto-generated) messages. The CONTENT_LINKED_* placeholders are
-# resolved per-viewer at query time (see MessageObjectType.resolve_content); the "{title}"
-# placeholder is substituted at creation time via str.replace so it does not collide with
-# the placeholders left for resolve_content.
 SYSTEM_MESSAGE_GROUP_CREATED = CONTENT_LINKED_PROFILE_ACTOR + ' created group "{title}"'
 SYSTEM_MESSAGE_GROUP_RENAMED = CONTENT_LINKED_PROFILE_ACTOR + ' changed the group name to "{title}"'
 SYSTEM_MESSAGE_GROUP_IMAGE_CHANGED = CONTENT_LINKED_PROFILE_ACTOR + " changed the group image"
@@ -21,8 +20,10 @@ SYSTEM_MESSAGE_PARTICIPANT_ADDED = (
 SYSTEM_MESSAGE_PARTICIPANT_REMOVED = (
     CONTENT_LINKED_PROFILE_ACTOR + " removed " + CONTENT_LINKED_PROFILE_TARGET
 )
-SYSTEM_MESSAGE_PARTICIPANT_LEFT = CONTENT_LINKED_PROFILE_ACTOR + " left the group"
-SYSTEM_MESSAGE_MADE_ADMIN = CONTENT_LINKED_PROFILE_TARGET + " now an admin"
+SYSTEM_MESSAGE_PARTICIPANT_LEFT = CONTENT_LINKED_PROFILE_ACTOR + " has left the group"
+SYSTEM_MESSAGE_MADE_ADMIN = (
+    CONTENT_LINKED_PROFILE_ACTOR + " made " + CONTENT_LINKED_PROFILE_TARGET + " an admin"
+)
 
 Message = swapper.load_model("baseapp_chats", "Message")
 MessageStatus = swapper.load_model("baseapp_chats", "MessageStatus")
@@ -71,8 +72,16 @@ def send_message(
     return message
 
 
-def send_system_message(room, content, actor=None, target=None, extra_data=None):
+def send_system_message(
+    room: Any,
+    content: str,
+    actor: Any | None = None,
+    target: Any | None = None,
+    extra_data: dict[str, Any] | None = None,
+) -> Message | None:
     """Create a SYSTEM_GENERATED message, wrapping the send_message boilerplate."""
+    if not getattr(settings, "BASEAPP_CHATS_ENABLE_SYSTEM_MESSAGES", True):
+        return None
     return send_message(
         room=room,
         profile=None,
@@ -86,16 +95,16 @@ def send_system_message(room, content, actor=None, target=None, extra_data=None)
 
 
 def send_chatroom_update_system_messages(
-    room,
-    actor,
+    room: Any,
+    actor: Any,
     *,
-    new_title=None,
-    title_changed=False,
-    image_changed=False,
-    added_participants=(),
-    removed_participants=(),
-    is_leaving=False,
-):
+    new_title: str | None = None,
+    title_changed: bool = False,
+    image_changed: bool = False,
+    added_participants: Iterable[Any] = (),
+    removed_participants: Iterable[Any] = (),
+    is_leaving: bool = False,
+) -> None:
     """Emit the SYSTEM_GENERATED messages describing what changed during a group update."""
     if title_changed:
         send_system_message(

@@ -1,6 +1,7 @@
 import pytest
 import swapper
 from django.test.client import MULTIPART_CONTENT
+from django.test.utils import override_settings
 
 from baseapp_blocks.tests.factories import BlockFactory
 from baseapp_core.graphql.testing.fixtures import graphql_query
@@ -1827,7 +1828,7 @@ def test_leave_group_creates_system_message(django_user_client, graphql_user_cli
     )
     room_data = response.json()["data"]["chatRoom"]
     contents = _system_message_contents(room_data)
-    assert f"{leaver.name} left the group" in contents
+    assert f"{leaver.name} has left the group" in contents
     assert f"You removed {leaver.name}" not in contents
 
 
@@ -1867,3 +1868,68 @@ def test_change_group_image_creates_system_message(
     )
     room_data = response.json()["data"]["chatRoom"]
     assert "You changed the group image" in _system_message_contents(room_data)
+
+
+def test_toggle_admin_creates_system_message(django_user_client, graphql_user_client):
+    friend = ProfileFactory()
+
+    response = graphql_user_client(
+        CREATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "isGroup": True,
+                "title": "group",
+                "participants": [friend.relay_id],
+            }
+        },
+    )
+    room_id = response.json()["data"]["chatRoomCreate"]["room"]["node"]["id"]
+
+    friend_participant = ChatRoomParticipant.objects.filter(profile=friend).latest("id")
+
+    graphql_user_client(
+        TOGGLE_ADMIN_GRAPHQL,
+        variables={
+            "input": {
+                "targetParticipantId": friend_participant.relay_id,
+                "profileId": django_user_client.user.profile.relay_id,
+                "roomId": room_id,
+            }
+        },
+    )
+
+    response = graphql_user_client(
+        ROOM_GRAPHQL,
+        variables={"profileId": django_user_client.user.profile.relay_id, "roomId": room_id},
+    )
+    room_data = response.json()["data"]["chatRoom"]
+    assert f"You made {friend.name} an admin" in _system_message_contents(room_data)
+
+
+@override_settings(BASEAPP_CHATS_ENABLE_SYSTEM_MESSAGES=False)
+def test_system_messages_disabled(django_user_client, graphql_user_client):
+    friend = ProfileFactory()
+
+    response = graphql_user_client(
+        CREATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": django_user_client.user.profile.relay_id,
+                "isGroup": True,
+                "title": "group",
+                "participants": [friend.relay_id],
+            }
+        },
+    )
+    room_id = response.json()["data"]["chatRoomCreate"]["room"]["node"]["id"]
+
+    response = graphql_user_client(
+        ROOM_GRAPHQL,
+        variables={
+            "profileId": django_user_client.user.profile.relay_id,
+            "roomId": room_id,
+        },
+    )
+    room_data = response.json()["data"]["chatRoom"]
+    assert _system_message_contents(room_data) == []
