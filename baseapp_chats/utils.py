@@ -98,8 +98,9 @@ def send_chatroom_update_system_messages(
 ):
     """Emit the SYSTEM_GENERATED messages describing what changed during a group update."""
     if title_changed:
+        safe_title = (new_title or "").replace("{", "{{").replace("}", "}}")
         send_system_message(
-            room, SYSTEM_MESSAGE_GROUP_RENAMED.replace("{title}", new_title or ""), actor=actor
+            room, SYSTEM_MESSAGE_GROUP_RENAMED.replace("{title}", safe_title), actor=actor
         )
 
     if image_changed:
