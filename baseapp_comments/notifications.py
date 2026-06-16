@@ -1,5 +1,6 @@
 import swapper
 from celery import shared_task
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext as _
 
@@ -16,7 +17,7 @@ def send_reply_created_notification(comment_pk):
     send_notification(
         add_to_history=True,
         send_push=True,
-        send_email=True,
+        send_email=getattr(settings, "BASEAPP_COMMENTS_NOTIFICATION_REPLY_EMAIL", True),
         sender=comment.profile or comment.user,
         recipient=comment.in_reply_to.user,
         verb="COMMENTS.COMMENT_REPLY_CREATED",
@@ -38,7 +39,7 @@ def send_comment_created_notification(comment_pk, recipient_id):
     send_notification(
         add_to_history=True,
         send_push=True,
-        send_email=True,
+        send_email=getattr(settings, "BASEAPP_COMMENTS_NOTIFICATION_CREATED_EMAIL", True),
         sender=comment.profile or comment.user,
         recipient=recipient,
         verb="COMMENTS.COMMENT_CREATED",

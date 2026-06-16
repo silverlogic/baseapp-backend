@@ -2,6 +2,7 @@ import logging
 import re
 import secrets
 import string
+import unicodedata
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,17 @@ if apps.is_installed("baseapp_pages"):
     inheritances.append(PageMixin)
 
 inheritances.append(RelayModel)
+
+
+def _to_ascii_handle(value: str) -> str:
+    """Fold ``value`` to a URL-safe ASCII handle, keeping its existing case.
+
+    Transliterates accents to their base letters and drops emoji and any other
+    non-alphanumeric characters. It does NOT change case — the result mirrors the
+    input casing (e.g. "Jön Doe" -> "JonDoe", but "jön doe" -> "jondoe").
+    """
+    folded = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^A-Za-z0-9]", "", folded)
 
 
 class AbstractProfile(*inheritances):
@@ -115,6 +127,12 @@ class AbstractProfile(*inheritances):
         ).distinct()
 
     def generate_url_path(self, increase_path_string: str | None = None) -> str | None:
+        """Generate a unique, URL-safe ASCII handle for this profile.
+
+        Folds the name to ASCII while keeping its case (e.g. "Jonathan Döe" ->
+        "/JonathanDoe"), falling back to the owner's email and then random digits,
+        and appending a numeric suffix to avoid collisions with existing paths.
+        """
         if apps.is_installed("baseapp_pages"):
             from baseapp_pages.models import URLPath
 
@@ -135,22 +153,29 @@ class AbstractProfile(*inheritances):
                 return path_string
 
             name = self.name or ""
-            # Remove whitespaces
-            name = name.translate(str.maketrans("", "", string.whitespace))
-
-            # If name is an email (which would only occur if the user's first and last names are empty during user registration),
-            # we'll remove the email domain and check if it's less than 8 characters. If it is, we'll add random digits to make it 8 characters.
-            # OBS: We're not checking for any other special chars since we've blocked it in the RegisterSerializer in baseapp-auth. If
-            # that changes, we should add a check here.
+            # Drop the domain part in case the name happens to be an email (e.g. when
+            # the user registered without a first/last name).
             name = name.split("@")[0]
-            if len(name) < 8:
-                path_string = (
-                    "/"
-                    + name
-                    + "".join(secrets.choice(string.digits) for _ in range(8 - len(name)))
-                )
-            else:
-                path_string = f"/{name}"
+
+            # Build a URL-safe ASCII handle while preserving capitalization:
+            # transliterate accents ("Döe" -> "Doe") and drop emoji and any other
+            # non-alphanumeric characters, so the path never requires percent-encoding.
+            # Names from social-auth providers are otherwise unsanitized, and the email
+            # register flow does not sanitize them either.
+            slug = _to_ascii_handle(name)
+
+            # If the name has no usable characters (e.g. an emoji-only or fully non-latin
+            # name), fall back to the local-part of the owner's email so the handle stays
+            # meaningful instead of becoming a string of random digits.
+            if not slug and self.owner_id:
+                owner_email = getattr(self.owner, "email", "") or ""
+                slug = _to_ascii_handle(owner_email.split("@")[0])
+
+            # Last resort (no slug-able name and no usable email): pad to a minimum
+            # length with random digits so the handle is still non-empty.
+            if len(slug) < 8:
+                slug = slug + "".join(secrets.choice(string.digits) for _ in range(8 - len(slug)))
+            path_string = f"/{slug}"
             if URLPath.objects.filter(path=path_string).exists():
                 return self.generate_url_path(increase_path_string=path_string)
             return path_string
