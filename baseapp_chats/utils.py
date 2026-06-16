@@ -1,6 +1,10 @@
+from collections.abc import Iterable
+from typing import Any
+
 import swapper
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db.models import Model
 from django.utils.translation import gettext_lazy as _
 
 from baseapp_notifications import send_notification
@@ -69,7 +73,13 @@ def send_message(
     return message
 
 
-def send_system_message(room, content, actor=None, target=None, extra_data=None):
+def send_system_message(
+    room: Model,
+    content: str,
+    actor: Model | None = None,
+    target: Model | None = None,
+    extra_data: dict[str, Any] | None = None,
+) -> Any:
     """Create a SYSTEM_GENERATED message, wrapping the send_message boilerplate."""
     if not getattr(settings, "BASEAPP_CHATS_ENABLE_SYSTEM_MESSAGES", True):
         return None
@@ -86,16 +96,16 @@ def send_system_message(room, content, actor=None, target=None, extra_data=None)
 
 
 def send_chatroom_update_system_messages(
-    room,
-    actor,
+    room: Model,
+    actor: Model,
     *,
-    new_title=None,
-    title_changed=False,
-    image_changed=False,
-    added_participants=(),
-    removed_participants=(),
-    is_leaving=False,
-):
+    new_title: str | None = None,
+    title_changed: bool = False,
+    image_changed: bool = False,
+    added_participants: Iterable[Any] = (),
+    removed_participants: Iterable[Any] = (),
+    is_leaving: bool = False,
+) -> None:
     """Emit the SYSTEM_GENERATED messages describing what changed during a group update."""
     if title_changed:
         safe_title = (new_title or "").replace("{", "{{").replace("}", "}}")
