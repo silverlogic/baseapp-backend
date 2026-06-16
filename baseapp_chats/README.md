@@ -64,6 +64,12 @@ Those will expose the following queries, mutations and subscriptions:
 - `chatRoomOnMessagesCountUpdate(profileId: ID!)`: Subscribe to unread/read messages count updates under your current profile
 - `chatRoomOnMessage(roomId: ID!)`: Subscribe to new messages in a specific room
 
+## Settings
+
+| Setting | Default | Description |
+|---|---|---|
+| `BASEAPP_CHATS_ENABLE_SYSTEM_MESSAGES` | `True` | When `False`, suppresses all system-generated messages (group created/renamed, participant added/removed, etc.). Useful for projects that want chat rooms without automated activity messages. |
+
 ## How to develop
 
 Clone the project inside your project's backend dir:
