@@ -18,6 +18,7 @@ from baseapp_chats.graphql.subscriptions import (
 from baseapp_chats.utils import (
     SYSTEM_MESSAGE_GROUP_CREATED,
     SYSTEM_MESSAGE_MADE_ADMIN,
+    escape_format_braces,
     send_chatroom_update_system_messages,
     send_message,
     send_new_chat_message_notification,
@@ -184,9 +185,10 @@ class ChatRoomCreate(RelayMutation):
         room.save()
 
         if is_group:
+            safe_title = escape_format_braces(title)
             send_system_message(
                 room,
-                SYSTEM_MESSAGE_GROUP_CREATED.replace("{title}", title),
+                SYSTEM_MESSAGE_GROUP_CREATED.replace("{title}", safe_title),
                 actor=profile,
             )
             ChatRoomOnRoomUpdate.room_updated(room)

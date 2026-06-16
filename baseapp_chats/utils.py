@@ -73,6 +73,11 @@ def send_message(
     return message
 
 
+def escape_format_braces(value: str) -> str:
+    """Escape { and } so value is safe to embed in a str.format() template."""
+    return value.replace("{", "{{").replace("}", "}}")
+
+
 def send_system_message(
     room: Model,
     content: str,
@@ -107,8 +112,8 @@ def send_chatroom_update_system_messages(
     is_leaving: bool = False,
 ) -> None:
     """Emit the SYSTEM_GENERATED messages describing what changed during a group update."""
-    if title_changed:
-        safe_title = (new_title or "").replace("{", "{{").replace("}", "}}")
+    if title_changed and new_title:
+        safe_title = escape_format_braces(new_title)
         send_system_message(
             room, SYSTEM_MESSAGE_GROUP_RENAMED.replace("{title}", safe_title), actor=actor
         )
