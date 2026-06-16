@@ -9,6 +9,7 @@ Profile = swapper.load_model("baseapp_profiles", "Profile")
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
 Message = swapper.load_model("baseapp_chats", "Message")
+profile_app_label = Profile._meta.app_label
 MessageObjectType = Message.get_graphql_object_type()
 ProfileObjectType = Profile.get_graphql_object_type()
 ChatRoomObjectType = ChatRoom.get_graphql_object_type()
@@ -30,7 +31,7 @@ class ChatRoomOnRoomUpdate(channels_graphql_ws.Subscription):
         if not user.is_authenticated or not profile:
             return []
         has_permission = await database_sync_to_async(user.has_perm)(
-            "baseapp_profiles.use_profile", profile
+            f"{profile_app_label}.use_profile", profile
         )
         if not has_permission:
             return []
@@ -78,7 +79,7 @@ class ChatRoomOnMessagesCountUpdate(channels_graphql_ws.Subscription):
         if not user.is_authenticated or not profile:
             return []
         has_permission = await database_sync_to_async(user.has_perm)(
-            "baseapp_profiles.use_profile", profile
+            f"{profile_app_label}.use_profile", profile
         )
         if not has_permission:
             return []
@@ -115,7 +116,7 @@ class ChatRoomOnMessage(channels_graphql_ws.Subscription):
             return []
 
         has_profile_permission = await database_sync_to_async(user.has_perm)(
-            "baseapp_profiles.use_profile", profile
+            f"{profile_app_label}.use_profile", profile
         )
         if not has_profile_permission:
             return []
