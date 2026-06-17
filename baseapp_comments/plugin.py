@@ -23,6 +23,8 @@ class CommentsPlugin(BaseAppPlugin):
                 "BASEAPP_COMMENTS_ENABLE_GRAPHQL_SUBSCRIPTIONS": True,
                 "BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS": True,
                 "BASEAPP_COMMENTS_MAX_PINS_PER_THREAD": None,
+                "BASEAPP_COMMENTS_NOTIFICATION_CREATED_EMAIL": True,
+                "BASEAPP_COMMENTS_NOTIFICATION_REPLY_EMAIL": True,
             },
             # GraphQL
             graphql_queries=[

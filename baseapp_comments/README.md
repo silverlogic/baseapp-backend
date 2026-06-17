@@ -58,6 +58,10 @@ BASEAPP_COMMENTS_CAN_ANONYMOUS_VIEW_COMMENTS = True  # default True
 BASEAPP_COMMENTS_ENABLE_GRAPHQL_SUBSCRIPTIONS = True  # default True
 BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = True  # default True
 BASEAPP_COMMENTS_MAX_PINS_PER_THREAD = None  # default None
+# Whether the "comment created" notification is also sent by email.
+BASEAPP_COMMENTS_NOTIFICATION_CREATED_EMAIL = True  # default True
+# Whether the "reply created" notification is also sent by email.
+BASEAPP_COMMENTS_NOTIFICATION_REPLY_EMAIL = True  # default True
 ```
 
 You need to make sure to add `CommentsInterface` to your ObjectType's interfaces like:

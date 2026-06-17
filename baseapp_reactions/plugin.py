@@ -24,6 +24,9 @@ class ReactionsPlugin(BaseAppPlugin):
                 # When True (and `baseapp_notifications` is installed), `Reaction.save`
                 # fires a celery task that notifies the target's owner.
                 "BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS": True,
+                # When True, sends an email notification on reaction creation if
+                # notifications are enabled and the recipient has email notifications enabled.
+                "BASEAPP_REACTIONS_NOTIFICATION_CREATED_EMAIL": True,
             },
             # Graphql
             graphql_queries=[

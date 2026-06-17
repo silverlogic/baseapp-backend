@@ -2,6 +2,7 @@ import logging
 
 import swapper
 from celery import shared_task
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext as _
 
@@ -29,7 +30,7 @@ def send_reaction_created_notification(reaction_pk, recipient_id):
     service.send_notification(
         add_to_history=True,
         send_push=True,
-        send_email=True,
+        send_email=getattr(settings, "BASEAPP_REACTIONS_NOTIFICATION_CREATED_EMAIL", True),
         sender=sender,
         recipient=recipient,
         verb="REACTIONS.REACTION_CREATED",

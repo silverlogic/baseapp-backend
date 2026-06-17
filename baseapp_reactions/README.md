@@ -122,6 +122,7 @@ removed, or toggled.
 | `BASEAPP_REACTIONS_REACTABLEMETADATA_MODEL` | `baseapp_reactions.ReactableMetadata` | Swappable concrete metadata model. |
 | `BASEAPP_REACTIONS_CAN_ANONYMOUS_VIEW_REACTIONS` | `True` | When `False`, `view_reaction` denies unauthenticated users. The legacy double-S typo `BASEAPP_REACTIONS_CAN_ANONYMOUS_VIEW_REACTIONSS` is honoured as a fallback for one release; please rename. |
 | `BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS` | `True` | When `True` (and `baseapp_notifications` is installed), `Reaction.save` fires a celery task that notifies the target's owner. |
+| `BASEAPP_REACTIONS_NOTIFICATION_CREATED_EMAIL` | `True` | When `True` (and `baseapp_notifications` is installed), send_reaction_created_notification fires a created reaction email. |
 
 ## How to customise the Reaction / ReactableMetadata models
 
