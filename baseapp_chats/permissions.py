@@ -2,10 +2,11 @@ import swapper
 from django.contrib.auth.backends import BaseBackend
 from django.db import models
 
+from baseapp_core.plugins import shared_services
+
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 Message = swapper.load_model("baseapp_chats", "Message")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
-Block = swapper.load_model("baseapp_blocks", "Block")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 profile_app_label = Profile._meta.app_label
 
@@ -28,13 +29,9 @@ class ChatsPermissionsBackend(BaseBackend):
 
             participant_profile_ids = [participant.pk for participant in participants]
 
-            blocks_qs = Block.objects.filter(
-                models.Q(actor_id__in=my_profile_ids, target_id__in=participant_profile_ids)
-                | models.Q(actor_id__in=participant_profile_ids, target_id__in=my_profile_ids)
-            )
-
-            if blocks_qs.exists():
-                return False
+            if service := shared_services.get("blocks.lookup"):
+                if service.has_block_between(my_profile_ids, participant_profile_ids):
+                    return False
 
             return True
 
@@ -92,13 +89,9 @@ class ChatsPermissionsBackend(BaseBackend):
 
             participant_profile_ids = obj.participants.values_list("profile_id", flat=True)
 
-            blocks_qs = Block.objects.filter(
-                models.Q(actor_id__in=my_profile_ids, target_id__in=participant_profile_ids)
-                | models.Q(actor_id__in=participant_profile_ids, target_id__in=my_profile_ids)
-            )
-
-            if blocks_qs.exists():
-                return False
+            if service := shared_services.get("blocks.lookup"):
+                if service.has_block_between(my_profile_ids, participant_profile_ids):
+                    return False
 
             return obj.participants.filter(profile_id__in=my_profile_ids).exists()
 
@@ -118,13 +111,9 @@ class ChatsPermissionsBackend(BaseBackend):
 
             participant_profile_ids = room.participants.values_list("profile_id", flat=True)
 
-            blocks_qs = Block.objects.filter(
-                models.Q(actor_id__in=my_profile_ids, target_id__in=participant_profile_ids)
-                | models.Q(actor_id__in=participant_profile_ids, target_id__in=my_profile_ids)
-            )
-
-            if blocks_qs.exists():
-                return False
+            if service := shared_services.get("blocks.lookup"):
+                if service.has_block_between(my_profile_ids, participant_profile_ids):
+                    return False
 
             return room.participants.filter(profile_id__in=my_profile_ids).exists()
 

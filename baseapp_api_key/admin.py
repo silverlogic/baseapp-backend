@@ -2,14 +2,8 @@ from django.apps import apps
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 
-ModelAdmin = admin.ModelAdmin
+from baseapp_core.admin_helpers import ModelAdmin
 
-try:
-    from unfold import admin as unfold_admin
-
-    ModelAdmin = unfold_admin.ModelAdmin
-except ImportError:
-    pass
 from .models import BaseAPIKey
 
 User = get_user_model()

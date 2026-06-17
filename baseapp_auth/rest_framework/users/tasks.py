@@ -1,8 +1,6 @@
 import logging
 
-import swapper
 from celery import shared_task
-from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
@@ -11,6 +9,7 @@ from baseapp_auth.emails import (
     send_anonymize_user_error_email,
     send_anonymize_user_success_email,
 )
+from baseapp_core.plugins import shared_services
 
 
 @shared_task
@@ -23,17 +22,9 @@ def anonymize_and_delete_user_task(user_id):
         with transaction.atomic():
             anonymize_activitylog(user)
 
-            if apps.is_installed("baseapp_chats"):
-                ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
-                ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
-                participant_qs = ChatRoomParticipant.objects.filter(profile__user=user)
-                room_ids = list(participant_qs.values_list("room_id", flat=True).distinct())
-                participant_qs.delete()
+            if service := shared_services.get("chats_participation"):
+                service.cleanup_user_participation(user)
 
-                for room_id in room_ids:
-                    room = ChatRoom.objects.get(id=room_id)
-                    room.participants_count = ChatRoomParticipant.objects.filter(room=room).count()
-                    room.save(update_fields=["participants_count"])
             user.delete()
         send_anonymize_user_success_email(user_email)
     except Exception as e:

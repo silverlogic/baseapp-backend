@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 import graphene
 import swapper
 from django.apps import apps
@@ -8,7 +10,7 @@ from baseapp_auth.graphql import PermissionsInterface
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import ThumbnailField, get_object_type_for_model
-from baseapp_pages.meta import AbstractMetadataObjectType
+from baseapp_core.plugins import graphql_shared_interfaces, shared_services
 
 from .filters import MemberFilter, ProfileFilter
 
@@ -19,6 +21,33 @@ profile_app_label = Profile._meta.app_label
 
 ProfileRoleTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoles)
 ProfileRoleStatusTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoleStatus)
+
+
+@lru_cache(maxsize=1)
+def get_profile_metadata_type() -> type[object] | None:
+    if not apps.is_installed("baseapp_pages"):
+        return None
+
+    from baseapp_pages.graphql.object_types import AbstractMetadataObjectType
+
+    class ProfileMetadata(AbstractMetadataObjectType):
+        @property
+        def meta_title(self):
+            return self.instance.name
+
+        @property
+        def meta_description(self):
+            return None
+
+        @property
+        def meta_og_type(self):
+            return "profile"
+
+        @property
+        def meta_og_image(self):
+            return self.instance.image
+
+    return ProfileMetadata
 
 
 class BaseProfileUserRoleObjectType:
@@ -52,63 +81,7 @@ class ProfilesInterface(RelayNode):
         return Profile.objects.none()
 
 
-class ProfileMetadata(AbstractMetadataObjectType):
-    @property
-    def meta_title(self):
-        return self.instance.name
-
-    @property
-    def meta_description(self):
-        return None
-
-    @property
-    def meta_og_type(self):
-        return "profile"
-
-    @property
-    def meta_og_image(self):
-        return self.instance.image
-
-
-interfaces = [RelayNode, PermissionsInterface]
-inheritances = ()
-
-if apps.is_installed("baseapp_pages"):
-    from baseapp_pages.graphql import PageInterface
-
-    interfaces.append(PageInterface)
-
-
-if apps.is_installed("baseapp_follows"):
-    from baseapp_follows.graphql.interfaces import FollowsInterface
-
-    interfaces.append(FollowsInterface)
-
-
-if apps.is_installed("baseapp_blocks"):
-    from baseapp_blocks.graphql.object_types import BlocksInterface
-
-    interfaces.append(BlocksInterface)
-
-
-if apps.is_installed("baseapp_chats"):
-    from baseapp_chats.graphql.interfaces import ChatRoomsInterface
-
-    interfaces.append(ChatRoomsInterface)
-
-
-if apps.is_installed("baseapp.activity_log"):
-    from baseapp.activity_log.graphql.interfaces import ProfileActivityLog
-
-    inheritances += (ProfileActivityLog,)
-
-if apps.is_installed("baseapp_reports"):
-    from baseapp_reports.graphql.object_types import ReportsInterface
-
-    interfaces.append(ReportsInterface)
-
-
-class BaseProfileObjectType(*inheritances, object):
+class BaseProfileObjectType(object):
     target = graphene.Field(lambda: ProfileInterface)
     image = ThumbnailField(required=False)
     banner_image = ThumbnailField(required=False)
@@ -117,7 +90,16 @@ class BaseProfileObjectType(*inheritances, object):
     )
 
     class Meta:
-        interfaces = interfaces
+        interfaces = graphql_shared_interfaces.get(
+            RelayNode,
+            PermissionsInterface,
+            "ProfileActivityLogInterface",
+            "PageInterface",
+            "FollowsInterface",
+            "ReportsInterface",
+            "BlocksInterface",
+            "ChatRoomsInterface",
+        )
         model = Profile
         fields = "__all__"
         filterset_class = ProfileFilter
@@ -128,6 +110,17 @@ class BaseProfileObjectType(*inheritances, object):
         if not info.context.user.has_perm(f"{profile_app_label}.view_profile", node):
             return None
         return node
+
+    @classmethod
+    def pre_optimization_hook(cls, queryset, optimizer):
+        queryset = super().pre_optimization_hook(queryset, optimizer)
+        if service := shared_services.get("commentable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+        if service := shared_services.get("followable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+        if service := shared_services.get("reportable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+        return queryset
 
     @classmethod
     def get_queryset(cls, queryset, info):
@@ -143,7 +136,11 @@ class BaseProfileObjectType(*inheritances, object):
 
     @classmethod
     def resolve_metadata(cls, instance, info):
-        return ProfileMetadata(instance, info)
+        ProfileMetadataType = get_profile_metadata_type()
+        if ProfileMetadataType is None:
+            return None
+
+        return ProfileMetadataType(instance, info)
 
     @classmethod
     def resolve_members(cls, instance, info, **kwargs):
@@ -153,6 +150,6 @@ class BaseProfileObjectType(*inheritances, object):
         return instance.members.all()
 
 
-class ProfileObjectType(DjangoObjectType, BaseProfileObjectType):
+class ProfileObjectType(BaseProfileObjectType, DjangoObjectType):
     class Meta(BaseProfileObjectType.Meta):
         model = Profile

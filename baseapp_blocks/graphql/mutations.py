@@ -47,9 +47,7 @@ class BlockToggle(RelayMutation):
             )
 
         block, created = Block.objects.get_or_create(
-            actor=actor,
-            target=target,
-            user=info.context.user,
+            actor=actor, target=target, user=info.context.user
         )
 
         if not created:

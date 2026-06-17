@@ -14,7 +14,8 @@ from baseapp_core.graphql import (
     get_pk_from_relay_id,
     login_required,
 )
-from baseapp_pages.models import URLPath
+from baseapp_core.plugins import shared_services
+from baseapp_profiles.utils import to_ascii_handle
 
 from .object_types import ProfileRoleTypesEnum
 
@@ -40,13 +41,19 @@ class BaseProfileSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(_("Username must be at least 8 characters long."))
         if value in string.punctuation:
             raise serializers.ValidationError(_("Username can only contain letters and numbers."))
-        value_with_slash = value if value.startswith("/") else f"/{value}"
-        if URLPath.objects.filter(path=value_with_slash).exists():
-            suggested_value = self.instance.generate_url_path(increase_path_string=value)
-            raise serializers.ValidationError(
-                _(f"Username already in use, suggested username: {suggested_value}"),
-            )
 
+        if apps.is_installed("baseapp_pages"):
+            # Compare the *normalized* handle (ASCII-folded, as it will be stored)
+            # against its collision-resolved form. It's only "already in use" when
+            # collision resolution changes the path — not merely because normalization
+            # reshaped the input (e.g. stripping the hyphen from "my-organization").
+            normalized = f"/{to_ascii_handle(value)}"
+            suggested_value = Profile.generate_url_path_str(value)
+            if suggested_value and suggested_value != normalized:
+                raise serializers.ValidationError(
+                    _("Username already in use, suggested username: %(suggested_username)s")
+                    % {"suggested_username": suggested_value},
+                )
         return value
 
 
@@ -64,8 +71,8 @@ class ProfileCreateSerializer(BaseProfileSerializer):
     def create(self, validated_data):
         url_path = validated_data.pop("url_path", None)
         instance = super().create(validated_data)
-        if url_path:
-            URLPath.objects.create(path=url_path, target=instance, is_active=True)
+        if apps.is_installed("baseapp_pages") and url_path:
+            instance.create_url_path(profile_name=url_path)
         return instance
 
 
@@ -90,10 +97,9 @@ class ProfileUpdateSerializer(BaseProfileSerializer):
         if phone_number and hasattr(instance.owner, "phone_number"):
             instance.owner.phone_number = phone_number
             instance.owner.save(update_fields=["phone_number"])
-        if url_path:
+        if apps.is_installed("baseapp_pages") and url_path:
             instance.url_paths.all().delete()
-            path_with_slash = url_path if url_path.startswith("/") else f"/{url_path}"
-            URLPath.objects.create(path=path_with_slash, target=instance, is_active=True)
+            instance.create_url_path(profile_name=url_path)
         if self.should_delete_field(original_data, "image"):
             instance.image.delete()
         elif "image" in original_data:
@@ -249,10 +255,8 @@ class ProfileUpdate(SerializerMutation):
     def mutate_and_get_payload(cls, root, info, **input):
         activity_name = "baseapp_profiles.update_profile"
 
-        if apps.is_installed("baseapp.activity_log"):
-            from baseapp.activity_log.context import set_public_activity
-
-            set_public_activity(verb=activity_name)
+        if service := shared_services.get("activity_log"):
+            service.set_public_activity(verb=activity_name)
 
         return super().mutate_and_get_payload(root, info, **input)
 

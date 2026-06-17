@@ -1,8 +1,9 @@
 """End-to-end tests for `mentioned_profile_ids` on `ContentPostCreate`.
 
 Mentions live in `baseapp_mentions.Mention` — the ContentPost model no longer
-carries a `mentioned_profiles` M2M. The GraphQL `mentionedProfiles` connection
-on `ContentPostObjectType` is provided by `MentionsInterface`.
+carries a `mentioned_profiles` M2M. The GraphQL `mentions` connection on
+`ContentPostObjectType` is provided by `MentionsInterface` and returns
+`Mention` nodes that expose the related `profile`.
 
 `baseapp.content_feed` only ships a Create mutation upstream. The cases below
 cover the create-time contract:
@@ -31,10 +32,13 @@ CONTENT_POST_CREATE_GRAPHQL = """
                 node {
                     id
                     content
-                    mentionedProfiles(first: 10) {
+                    mentions(first: 10) {
                         edges {
                             node {
                                 id
+                                profile {
+                                    id
+                                }
                             }
                         }
                     }
@@ -70,7 +74,7 @@ def test_content_post_create_persists_mentioned_profiles(django_user_client, gra
     assert mentioned_profile_ids(post) == {a.pk, b.pk}
 
     payload = content["data"]["contentPostCreate"]["contentPost"]["node"]
-    assert {edge["node"]["id"] for edge in payload["mentionedProfiles"]["edges"]} == {
+    assert {edge["node"]["profile"]["id"] for edge in payload["mentions"]["edges"]} == {
         a.relay_id,
         b.relay_id,
     }

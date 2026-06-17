@@ -1,12 +1,28 @@
-# Django Cloudflare Stream Field
+# BaseApp Cloudflare Stream Field
 
-This app provides integration with Cloudflare Stream, where you can upload [directly to Cloudflare](https://developers.cloudflare.com/stream/uploading-videos/direct-creator-uploads/) using [TUS protocol](https://tus.io/).
+Integration with Cloudflare Stream: a `CloudflareStreamField` model field (a `JSONField` that mirrors the video's Cloudflare metadata) plus a TUS-proxy endpoint so clients can upload [directly to Cloudflare](https://developers.cloudflare.com/stream/uploading-videos/direct-creator-uploads/) using the [TUS protocol](https://tus.io/).
 
-## How to install:
+`baseapp_cloudflare_stream_field` follows the [plugin architecture](../baseapp_core/plugins/README.md): it registers itself as a plugin so it participates in `INSTALLED_APPS` aggregation. It contributes no settings of its own — the upload URLs / DRF viewset are wired manually (see below), and there are no swappable models (it ships a model *field*, not a model).
 
-And install the package with `pip install baseapp-backend`.
+## How to install
 
-Add the following to your `settings/base.py`:
+Install the package with `pip install baseapp-backend`.
+
+If you want to develop, [install using this other guide](#how-to-develop).
+
+## How to setup
+
+Add `baseapp_cloudflare_stream_field` to `INSTALLED_APPS`:
+
+```python
+INSTALLED_APPS = [
+    # ...
+    "baseapp_cloudflare_stream_field",
+    # ...
+]
+```
+
+Then add the following to your `settings/base.py`:
 
 ```python
 # Cloudflare
@@ -126,4 +142,8 @@ Example:
 Model.objects.create(video=uid)
 ````
 
-This step ensures that your server's records are updated and in sync with the video's status on Cloudflare. 
+This step ensures that your server's records are updated and in sync with the video's status on Cloudflare.
+
+## How to develop
+
+General development instructions can be found in the [main README](../README.md#how-to-develop). 

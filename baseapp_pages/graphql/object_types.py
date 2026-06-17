@@ -7,17 +7,20 @@ from django.utils.translation import get_language
 from query_optimizer import optimize
 
 from baseapp_auth.graphql import PermissionsInterface
-from baseapp_comments.graphql.object_types import CommentsInterface
 from baseapp_core.graphql import DjangoObjectType, LanguagesEnum
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import ThumbnailField
+from baseapp_core.plugins import graphql_shared_interfaces, shared_services
 from baseapp_pages.models import AbstractPage, Metadata, URLPath
-
-from ..meta import AbstractMetadataObjectType
 
 Page = swapper.load_model("baseapp_pages", "Page")
 page_app_label = Page._meta.app_label
 PageStatusEnum = graphene.Enum.from_enum(Page.PageStatus)
+
+
+# ================================
+# URL Path Object Types/Interfaces
+# ================================
 
 
 class PageInterface(RelayNode):
@@ -75,6 +78,38 @@ class URLPathNode(DjangoObjectType):
         return optimize(queryset, info, max_complexity=MAX_COMPLEXITY)
 
 
+# =====================
+# Metadata Object Types
+# =====================
+
+
+class AbstractMetadataObjectType:
+    def __init__(self, instance, info):
+        self.instance = instance
+        self.info = info
+
+
+class MetadataObjectType(DjangoObjectType):
+    language = graphene.Field(LanguagesEnum)
+    meta_og_image = ThumbnailField(required=False)
+
+    class Meta:
+        interfaces = []
+        model = Metadata
+        exclude = ("id",)
+
+    @classmethod
+    def is_type_of(cls, root, info):
+        if isinstance(root, AbstractMetadataObjectType):
+            return True
+        return super().is_type_of(root, info)
+
+
+# =================
+# Page Object Types
+# =================
+
+
 class PageFilter(django_filters.FilterSet):
     class Meta:
         model = Page
@@ -88,7 +123,9 @@ class BasePageObjectType:
     body = graphene.String()
 
     class Meta:
-        interfaces = (RelayNode, PageInterface, PermissionsInterface, CommentsInterface)
+        interfaces = graphql_shared_interfaces.get(
+            RelayNode, PageInterface, PermissionsInterface, "CommentsInterface"
+        )
         model = Page
         fields = ("pk", "user", "title", "body", "status", "created", "modified")
         filterset_class = PageFilter
@@ -121,6 +158,13 @@ class BasePageObjectType:
             )
 
     @classmethod
+    def pre_optimization_hook(cls, queryset, optimizer):
+        queryset = super().pre_optimization_hook(queryset, optimizer)
+        if service := shared_services.get("commentable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+        return queryset
+
+    @classmethod
     def resolve_body(cls, instance, info, **kwargs):
         return instance.body.html
 
@@ -146,19 +190,3 @@ class BasePageObjectType:
 class PageObjectType(BasePageObjectType, DjangoObjectType):
     class Meta(BasePageObjectType.Meta):
         pass
-
-
-class MetadataObjectType(DjangoObjectType):
-    language = graphene.Field(LanguagesEnum)
-    meta_og_image = ThumbnailField(required=False)
-
-    class Meta:
-        interfaces = []
-        model = Metadata
-        exclude = ("id",)
-
-    @classmethod
-    def is_type_of(cls, root, info):
-        if isinstance(root, AbstractMetadataObjectType):
-            return True
-        return super().is_type_of(root, info)

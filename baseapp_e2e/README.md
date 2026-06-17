@@ -1,5 +1,9 @@
 # BaseApp E2E
 
+Utilities for database initialization and seeding from a frontend End-To-End test client (typically Cypress): a DRF `E2EViewSet` to load/flush data and set passwords during tests.
+
+`baseapp_e2e` follows the [plugin architecture](../baseapp_core/plugins/README.md): it registers itself as a plugin and contributes the `E2E` settings scaffold (defaulting to `{"ENABLED": False}`) via the registry. The DRF viewset is wired manually (see [installation](#installation)), and every endpoint is guarded by the `E2eEnabled` permission, so the API is inert unless you explicitly set `E2E["ENABLED"] = True` — keep it disabled in production.
+
 ## Usage
 
 This project includes utilities for database initialization and seeding when performing End-To-End tests.
@@ -88,7 +92,7 @@ INSTALLED_APPS = [
 ]
 ```
 
-Add E2E settings to Django settings file of your application:
+Enable E2E and point it at your scripts module (the plugin ships this setting defaulting to `{"ENABLED": False}`, so you override it to switch the endpoints on):
 
 ```py
 E2E = {
@@ -97,6 +101,16 @@ E2E = {
 }
 ```
 
-## How to delevop
+Register the viewset on a DRF router (the package does not contribute URLs itself), e.g. in your `urls.py`:
 
-General development instructions can be found in [main README](..#testing)
+```py
+from baseapp_e2e.rest_framework.views import E2EViewSet
+
+router.register(r"e2e", E2EViewSet, basename="e2e")
+```
+
+The endpoints above are then served under that prefix (e.g. `e2e/load-data`, `e2e/flush-data`, `e2e/load-script`, `e2e/set-password`).
+
+## How to develop
+
+General development instructions can be found in the [main README](../README.md#how-to-develop).

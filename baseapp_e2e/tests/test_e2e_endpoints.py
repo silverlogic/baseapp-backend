@@ -2,14 +2,15 @@ import json
 
 import pytest
 import swapper
-import tests.helpers as h
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.core.serializers import serialize
 from django.test import TransactionTestCase, override_settings
-from tests.mixins import ApiMixin
 
 from baseapp_core.tests.factories import UserFactory
+
+from . import helpers as h
+from .mixins import ApiMixin
 
 User = get_user_model()
 Profile = swapper.load_model("baseapp_profiles", "Profile")

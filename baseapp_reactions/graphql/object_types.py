@@ -3,16 +3,18 @@ from typing import Optional
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
-from django.conf import settings
+from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
 from graphene_django.filter import DjangoFilterConnectionField
 
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
+from baseapp_core.plugins import apply_if_installed, shared_services
+
+from ..permissions import can_anonymous_view_reactions
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
-Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 ReactionTypesEnum = graphene.Enum.from_enum(Reaction.ReactionTypes)
 
@@ -35,39 +37,71 @@ class ReactionsInterface(RelayNode):
     my_reaction = graphene.Field(
         get_object_type_for_model(Reaction),
         required=False,
-        profile_id=graphene.ID(required=False),
+        **apply_if_installed("baseapp_profiles", {"profile_id": graphene.ID(required=False)}),
     )
 
+    def resolve_reactions_count(self, info):
+        if service := shared_services.get("reactable_metadata"):
+            return service.get_reactions_count(self)
+        from baseapp_reactions.models import default_reactions_count
+
+        return default_reactions_count()
+
+    def resolve_is_reactions_enabled(self, info):
+        if service := shared_services.get("reactable_metadata"):
+            return service.is_reactions_enabled(self)
+        return True
+
     def resolve_reactions(self, info, **kwargs):
-        if not getattr(self, "is_reactions_enabled", True):
+        service = shared_services.get("reactable_metadata")
+        if service is not None and not service.is_reactions_enabled(self):
             return Reaction.objects.none()
 
-        CAN_ANONYMOUS_VIEW_REACTIONS = getattr(
-            settings, "BASEAPP_REACTIONS_CAN_ANONYMOUS_VIEW_REACTIONSS", True
-        )
-        if not CAN_ANONYMOUS_VIEW_REACTIONS and not info.context.user.is_authenticated:
+        if not can_anonymous_view_reactions() and not info.context.user.is_authenticated:
             return Reaction.objects.none()
 
         target_content_type = ContentType.objects.get_for_model(self)
         return Reaction.objects.filter(
-            target_content_type=target_content_type,
-            target_object_id=self.pk,
+            target_document__content_type=target_content_type,
+            target_document__object_id=self.pk,
         ).order_by("-created")
 
-    def resolve_my_reaction(self, info, profile_id=None, **kwargs):
-        if info.context.user.is_authenticated:
-            if profile_id:
-                pk = get_pk_from_relay_id(profile_id)
-                profile = Profile.objects.get_if_member(pk=pk, user=info.context.user)
-            else:
-                profile = info.context.user.current_profile
-            if not profile:
-                return None
-            return Reaction.objects.filter(
-                target_content_type=ContentType.objects.get_for_model(self),
-                target_object_id=self.pk,
-                profile_id=profile.pk,
-            ).first()
+    def resolve_my_reaction(root, info, profile_id=None, **kwargs):
+        if not info.context.user.is_authenticated:
+            return None
+
+        if apps.is_installed("baseapp_profiles"):
+            return ReactionsInterface._resolve_my_reaction_with_profiles(
+                root, info, profile_id=profile_id
+            )
+        return ReactionsInterface._resolve_my_reaction_with_current_user(root, info)
+
+    @staticmethod
+    def _resolve_my_reaction_with_profiles(root, info, profile_id=None):
+        Profile = swapper.load_model("baseapp_profiles", "Profile")
+
+        if profile_id:
+            pk = get_pk_from_relay_id(profile_id)
+            profile = Profile.objects.get_if_member(pk=pk, user=info.context.user)
+        else:
+            profile = info.context.user.current_profile
+
+        if not profile:
+            return None
+
+        return Reaction.objects.filter(
+            target_document__content_type=ContentType.objects.get_for_model(root),
+            target_document__object_id=root.pk,
+            profile_id=profile.pk,
+        ).first()
+
+    @staticmethod
+    def _resolve_my_reaction_with_current_user(root, info):
+        return Reaction.objects.filter(
+            target_document__content_type=ContentType.objects.get_for_model(root),
+            target_document__object_id=root.pk,
+            user_id=info.context.user.id,
+        ).first()
 
 
 class BaseReactionObjectType:
@@ -80,6 +114,7 @@ class BaseReactionObjectType:
         fields = (
             "id",
             "user",
+            *apply_if_installed("baseapp_profiles", ["profile"]),
             "reaction_type",
             "created",
             "modified",

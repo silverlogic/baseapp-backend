@@ -2,9 +2,9 @@
 
 Mentions live in the standalone `baseapp_mentions.Mention` through-table — the
 consuming Comment model no longer carries a `mentioned_profiles` field. The
-GraphQL surface (`mentionedProfiles` connection on `CommentObjectType`) is
-provided by `MentionsInterface` and remains contract-compatible with the
-frontend.
+GraphQL surface (`mentions` connection on `CommentObjectType`) is provided by
+`MentionsInterface` and returns `Mention` nodes that expose the related
+`profile`.
 
 Semantics under test:
 
@@ -14,8 +14,8 @@ Semantics under test:
   the list is given (including an empty list, which clears all mentions) and
   preserves existing mentions when the field is omitted (`None`).
 - The current profile is excluded from both create and update payloads.
-- The `mentionedProfiles` connection on `CommentObjectType` returns the
-  persisted mentions via the through-table.
+- The `mentions` connection on `CommentObjectType` returns the persisted
+  mentions via the through-table.
 """
 
 import pytest
@@ -42,10 +42,13 @@ COMMENT_CREATE_GRAPHQL = """
                 node {
                     id
                     body
-                    mentionedProfiles(first: 10) {
+                    mentions(first: 10) {
                         edges {
                             node {
                                 id
+                                profile {
+                                    id
+                                }
                             }
                         }
                     }
@@ -66,10 +69,13 @@ COMMENT_UPDATE_GRAPHQL = """
             comment {
                 id
                 body
-                mentionedProfiles(first: 10) {
+                mentions(first: 10) {
                     edges {
                         node {
                             id
+                            profile {
+                                id
+                            }
                         }
                     }
                 }
@@ -84,7 +90,7 @@ COMMENT_UPDATE_GRAPHQL = """
 
 
 def _profile_node_ids(payload):
-    return {edge["node"]["id"] for edge in payload["mentionedProfiles"]["edges"]}
+    return {edge["node"]["profile"]["id"] for edge in payload["mentions"]["edges"]}
 
 
 def test_comment_create_persists_mentioned_profiles(django_user_client, graphql_user_client):

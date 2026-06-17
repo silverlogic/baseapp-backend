@@ -1,111 +1,124 @@
 # BaseApp Reports
 
-Reusable app to enable User's reports any model, customizable for project's needs.
+Reusable app that lets users report any model, customisable for the project's needs.
 
-## How to install:
+## How to install
 
 ```bash
 pip install baseapp-backend
 ```
 
-If you want to develop, [install using this other guide](#how-to-develop).
+Add `baseapp_reports` to `INSTALLED_APPS`. The package registers itself as a plugin
+(see `baseapp_reports.plugin:ReportsPlugin`), so:
+
+- `ReportsQueries` / `ReportsMutations` are contributed via
+  `plugin_registry.get_all_graphql_queries()` / `get_all_graphql_mutations()`.
+- `ReportsPermissionsBackend` is contributed via
+  `plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_reports")`.
+- The `ReportsInterface` GraphQL interface is registered by name; consumers fetch
+  it from `graphql_shared_interfaces` instead of importing it directly.
+- A `reportable_metadata` shared service exposes `get_reports_count(obj)` and
+  `annotate_queryset(qs)` for any object with a `DocumentId`. Consumers should
+  use this service instead of inheriting from a mixin.
 
 ## How to use
 
-Add `baseapp_reports` to your project's `INSTALLED_APPS`
+### GraphQL — opt a type into reports
 
-Now make sure all models you'd like to get reports also inherits `ReactableModel`, like:
-
-```python
-from baseapp_reports.models import ReactableModel
-
-class Comment(models.Model, ReactableModel):
-    body = models.Textfield()
-```
-
-Also make sure your GraphQL object types extends `ReportsInterface` interface:
+Request the interface by name in your object type's `Meta.interfaces`:
 
 ```python
 from baseapp_core.graphql import Node as RelayNode
-from baseapp_reports.graphql.object_types import ReportsInterface
+from baseapp_core.plugins import graphql_shared_interfaces
+
 
 class UserNode(DjangoObjectType):
     class Meta:
-        interfaces = (RelayNode, ReportsInterface)
+        interfaces = graphql_shared_interfaces.get(RelayNode, "ReportsInterface")
 ```
 
-Expose `ReportsMutations` and `ReportsQuery` in your GraphQL/graphene endpoint, like:
+When `baseapp_reports` is installed the registry returns the real
+`ReportsInterface`; when it is not, the call falls back to the defaults so the
+type still works.
+
+### GraphQL — exposing the schema
+
+Nothing to do. The plugin entry-point in `pyproject.toml` registers
+`ReportsQueries` and `ReportsMutations`, and the project's root `Query` /
+`Mutation` should already spread `*plugin_registry.get_all_graphql_queries()`
+and `*plugin_registry.get_all_graphql_mutations()`. `reportCreate` and
+`allReportTypes` show up automatically.
+
+### Reporting counts on a model
+
+Reports counts are stored in `ReportableMetadata` (one row per `DocumentId`),
+not on the reportable model itself. Read counts via the shared service:
 
 ```python
-from baseapp_reports.graphql.mutations import ReportsMutations
-from baseapp_reports.graphql.queries import ReportsQuery
+from baseapp_core.plugins import shared_services
 
-class Query(graphene.ObjectType, ReportsQuery):
-    pass
 
-class Mutation(graphene.ObjectType, ReportsMutations):
-    pass
-
-schema = graphene.Schema(query=Query, mutation=Mutation)
+service = shared_services.get("reportable_metadata")
+reports_count = service.get_reports_count(my_obj)  # dict like {"total": 0, "spam": 0, ...}
 ```
 
-This will expose `reportCreate` mutation and add fields and connections to all your GraphqlQL Object Types using interface `ReportsInterface`.
-
-Example:
-
-```graphql
-{
-    ...
-}
-```
-
-## How to to customize the Report model
-
-<!-- In some cases you may need to extend Report model, and we can do it following the next steps:
-
-Start by creating a barebones django app:
-
-```
-mkdir my_project/reports
-touch my_project/reports/__init__.py
-touch my_project/reports/models.py
-``` -->
-
-Your `models.py` will look something like this:
+For querysets that will resolve `reportsCount` for many rows, annotate up front to
+avoid N+1:
 
 ```python
-from django.db import models
-from django.utils.translation import gettext_lazy as _
-
-from baseapp_reports.models import AbstractBaseReport
-
-class Report(AbstractBaseReport):
-    custom_field = models.CharField(null=True)
-
-    class ReportTypes(models.IntegerChoices):
-        LIKE = 1, _("like")
-        DISLIKE = -1, _("dislike")
-
-        @property
-        def description(self):
-            return self.label
+qs = service.annotate_queryset(qs)
 ```
 
-Now make your to add your new app to your `INSTALLED_APPS` and run `makemigrations` and `migrate` like any normal django app.
+The `Report.save()` / `Report.delete()` hooks already maintain
+`ReportableMetadata.reports_count` for you whenever a report is added or
+removed.
 
-Now in your `settings/base.py` make sure to tell baseapp-reports what is your custom model for Report:
+## How to customise the Report model
+
+Define a concrete model that subclasses the abstracts in your project:
 
 ```python
-BASEAPP_REPORTS_REPORT_MODEL = 'reports.Report'
+# myproject/reports/models.py
+from baseapp_reports.models import (
+    AbstractReport,
+    AbstractReportType,
+    AbstractReportableMetadata,
+)
+
+
+class ReportType(AbstractReportType):
+    class Meta(AbstractReportType.Meta):
+        pass
+
+
+class Report(AbstractReport):
+    class Meta(AbstractReport.Meta):
+        pass
+
+
+class ReportableMetadata(AbstractReportableMetadata):
+    class Meta(AbstractReportableMetadata.Meta):
+        pass
+```
+
+Add the new app to `INSTALLED_APPS`, run `makemigrations` / `migrate`, and point
+the swapper settings at it:
+
+```python
+# settings.py
+BASEAPP_REPORTS_REPORT_MODEL = "reports.Report"
+BASEAPP_REPORTS_REPORTTYPE_MODEL = "reports.ReportType"
+BASEAPP_REPORTS_REPORTABLEMETADATA_MODEL = "reports.ReportableMetadata"
 ```
 
 ## Writing test cases in your project
 
-There is a `AbstractReportFactory` which helps you write other factories:
+`AbstractReportFactory` helps you build factories for the swapped Report model:
 
-```
+```python
 import factory
 from baseapp_reports.tests.factories import AbstractReportFactory
+
 
 class CommentFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -116,25 +129,43 @@ class CommentReportFactory(AbstractReportFactory):
     target = factory.SubFactory(CommentFactory)
 
     class Meta:
-        model = "baseapp_reports.Report"
-        # OR if you have a custom model, point to it:
-        model = "reports.Report"
+        model = "reports.Report"  # or "baseapp_reports.Report" if you didn't swap
 ```
 
-In the above example we have a easy way to make reports to any comment into the database for testing proporses using `CommentReportFactory`.
+## Migrating an existing project to ReportableMetadata
+
+Older projects inherited a `ReportableModel` mixin that added a `reports_count`
+JSONField directly on the reportable model. That mixin has been removed. To
+migrate:
+
+1. Add a migration that creates the `ReportableMetadata` table for your project
+   (mirror `baseapp_reports/migrations/0007_reportablemetadata.py`).
+2. Add a follow-up migration that calls
+   `migrate_legacy_reports_count_to_metadata(...)` from
+   `baseapp_reports.migration_helpers.convert_legacy_reports_count_to_metadata_helper`,
+   passing your reportable model's app label and name. After the data is moved,
+   `RemoveField` the legacy `reports_count` column.
+
+   If that app must also run with `baseapp_reports` uninstalled, keep the
+   migration graph optional: make the `("reports", "…reportablemetadata")`
+   dependency conditional (only add it when `"reports" in apps.app_configs`) and
+   guard the backfill (`apps.get_model("reports", "ReportableMetadata")` inside a
+   `try/except LookupError` that returns early). The `RemoveField` /
+   trigger-regen operations touch your own table, so they stay unconditional.
+3. Optionally re-seed any drift with
+   `seed_reportable_metadata_from_reports(...)` from
+   `baseapp_reports.migration_helpers.seed_reportable_metadata_from_reports_helper`.
 
 ## How to develop
 
-Clone the project inside your project's backend dir:
+Clone the monorepo into your backend directory:
 
-```
+```bash
 git clone git@github.com:silverlogic/baseapp-backend.git
 ```
 
-And manually install the package:
+Then install editable:
 
+```bash
+pip install -e baseapp-backend
 ```
-pip install -e baseapp-backend/baseapp-reports
-```
-
-The `-e` flag will make it like any change you make in the cloned repo files will effect into the project.
