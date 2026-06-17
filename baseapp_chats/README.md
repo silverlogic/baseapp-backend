@@ -141,6 +141,12 @@ Chats consumes the following services lazily via `shared_services.get(...)` — 
 - `notifications` — push / email notification of new messages.
 - `mentions` — persisting `@mention` references on `chatRoomSendMessage` / `chatRoomEditMessage`.
 
+## Settings
+
+| Setting | Default | Description |
+|---|---|---|
+| `BASEAPP_CHATS_ENABLE_SYSTEM_MESSAGES` | `True` | When `False`, suppresses all system-generated messages (group created/renamed, participant added/removed, etc.). Useful for projects that want chat rooms without automated activity messages. |
+
 ## How to develop
 
 Clone the project inside your project's backend dir:
