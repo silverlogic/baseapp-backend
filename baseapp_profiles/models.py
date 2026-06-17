@@ -1,11 +1,7 @@
 import logging
 import re
-import secrets
-import string
-import unicodedata
 
-logger = logging.getLogger(__name__)
-
+import pghistory
 import pgtrigger
 import swapper
 from django.apps import apps
@@ -20,46 +16,25 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql.models import RelayModel
-from baseapp_core.models import random_name_in
+from baseapp_core.models import DocumentIdMixin, random_name_in
+from baseapp_core.pghelpers import pghistory_register_default_track
+from baseapp_core.plugins import shared_services
+from baseapp_core.swapper import init_swapped_models
 from baseapp_profiles.managers import ProfileManager
+from baseapp_profiles.utils import pad_handle, to_ascii_handle
 
-inheritances = [TimeStampedModel]
-if apps.is_installed("baseapp_blocks"):
-    from baseapp_blocks.models import BlockableModel
-
-    inheritances.append(BlockableModel)
+logger = logging.getLogger(__name__)
 
 
-if apps.is_installed("baseapp_reports"):
-    from baseapp_reports.models import ReportableModel
-
-    inheritances.append(ReportableModel)
-
-if apps.is_installed("baseapp_comments"):
-    from baseapp_comments.models import CommentableModel
-
-    inheritances.append(CommentableModel)
+inheritances = []
 
 if apps.is_installed("baseapp_pages"):
     from baseapp_pages.models import PageMixin
 
     inheritances.append(PageMixin)
 
-inheritances.append(RelayModel)
 
-
-def _to_ascii_handle(value: str) -> str:
-    """Fold ``value`` to a URL-safe ASCII handle, keeping its existing case.
-
-    Transliterates accents to their base letters and drops emoji and any other
-    non-alphanumeric characters. It does NOT change case — the result mirrors the
-    input casing (e.g. "Jön Doe" -> "JonDoe", but "jön doe" -> "jondoe").
-    """
-    folded = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
-    return re.sub(r"[^A-Za-z0-9]", "", folded)
-
-
-class AbstractProfile(*inheritances):
+class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedModel):
     class ProfileStatus(models.IntegerChoices):
         PUBLIC = 1, _("public")
         PRIVATE = 2, _("private")
@@ -76,7 +51,15 @@ class AbstractProfile(*inheritances):
         _("banner image"), upload_to=random_name_in("profile_banner_images"), blank=True, null=True
     )
     biography = models.TextField(_("biography"), blank=True, null=True)
+    status = models.IntegerField(choices=ProfileStatus.choices, default=ProfileStatus.PUBLIC)
 
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="profiles_owner",
+        on_delete=models.CASCADE,
+        verbose_name=_("owner"),
+        db_constraint=False,
+    )
     target_content_type = models.ForeignKey(
         ContentType,
         verbose_name=_("target content type"),
@@ -91,16 +74,6 @@ class AbstractProfile(*inheritances):
     target = GenericForeignKey("target_content_type", "target_object_id")
     target.short_description = _("target")  # because GenericForeignKey doens't have verbose_name
 
-    status = models.IntegerField(choices=ProfileStatus.choices, default=ProfileStatus.PUBLIC)
-
-    owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        related_name="profiles_owner",
-        on_delete=models.CASCADE,
-        verbose_name=_("owner"),
-        db_constraint=False,
-    )
-
     objects = ProfileManager()
 
     class Meta:
@@ -109,6 +82,7 @@ class AbstractProfile(*inheritances):
         permissions = [
             ("use_profile", _("can use profile")),
         ]
+        swappable = swapper.swappable_setting("baseapp_profiles", "Profile")
 
     def __str__(self):
         return self.name or str(self.pk)
@@ -126,64 +100,51 @@ class AbstractProfile(*inheritances):
             models.Q(profiles_owner=self) | models.Q(profile_members__profile=self)
         ).distinct()
 
-    def generate_url_path(self, increase_path_string: str | None = None) -> str | None:
-        """Generate a unique, URL-safe ASCII handle for this profile.
+    def create_url_path(self, profile_name: str | None = None):
+        if service := shared_services.get("pages.url_path"):
+            # Build the handle (with owner-email fallback) then let the service
+            # resolve uniqueness against existing rows before persisting.
+            path_string = service.generate_url_path_str(self.generate_url_path(profile_name))
+            service.create_url_path(
+                self, path_string, language=None, is_active=True, generate_path_str=False
+            )
 
-        Folds the name to ASCII while keeping its case (e.g. "Jonathan Döe" ->
-        "/JonathanDoe"), falling back to the owner's email and then random digits,
-        and appending a numeric suffix to avoid collisions with existing paths.
+    def generate_url_path(self, profile_name: str | None = None) -> str:
         """
-        if apps.is_installed("baseapp_pages"):
-            from baseapp_pages.models import URLPath
+        Build this profile's URL handle (with leading slash) from its display name.
 
-            # In case a path already exists, we'll increase the last digit by 1
-            if increase_path_string:
-                path_string = (
-                    increase_path_string
-                    if increase_path_string.startswith("/")
-                    else f"/{increase_path_string}"
-                )
-                last_char = path_string[-1]
-                if last_char.isdigit():
-                    path_string = path_string[:-1] + str(int(last_char) + 1)
-                else:
-                    path_string = path_string + "1"
-                if URLPath.objects.filter(path=path_string).exists():
-                    return self.generate_url_path(increase_path_string=path_string)
-                return path_string
+        Uses `profile_name` when provided, otherwise `self.name`. The name is
+        folded to a URL-safe ASCII handle (accents transliterated, emoji and other
+        non-alphanumerics dropped). When the name yields no usable characters
+        (e.g. an emoji-only name), it falls back to the local-part of the owner's
+        email so the handle stays meaningful. The result is NOT collision-checked —
+        `create_url_path` resolves uniqueness via the `pages.url_path` service.
+        """
+        name = profile_name if profile_name else (self.name or "")
+        slug = to_ascii_handle(name)
 
-            name = self.name or ""
-            # Drop the domain part in case the name happens to be an email (e.g. when
-            # the user registered without a first/last name).
-            name = name.split("@")[0]
+        if not slug and self.owner_id:
+            owner_email = getattr(self.owner, "email", "") or ""
+            slug = to_ascii_handle(owner_email.split("@")[0])
 
-            # Build a URL-safe ASCII handle while preserving capitalization:
-            # transliterate accents ("Döe" -> "Doe") and drop emoji and any other
-            # non-alphanumeric characters, so the path never requires percent-encoding.
-            # Names from social-auth providers are otherwise unsanitized, and the email
-            # register flow does not sanitize them either.
-            slug = _to_ascii_handle(name)
+        return pad_handle(slug)
 
-            # If the name has no usable characters (e.g. an emoji-only or fully non-latin
-            # name), fall back to the local-part of the owner's email so the handle stays
-            # meaningful instead of becoming a string of random digits.
-            if not slug and self.owner_id:
-                owner_email = getattr(self.owner, "email", "") or ""
-                slug = _to_ascii_handle(owner_email.split("@")[0])
+    @classmethod
+    def generate_url_path_str(cls, profile_name: str | None = None) -> str | None:
+        """
+        Suggest a free URL handle for `profile_name` (collision-resolved).
 
-            # Last resort (no slug-able name and no usable email): pad to a minimum
-            # length with random digits so the handle is still non-empty.
-            if len(slug) < 8:
-                slug = slug + "".join(secrets.choice(string.digits) for _ in range(8 - len(slug)))
-            path_string = f"/{slug}"
-            if URLPath.objects.filter(path=path_string).exists():
-                return self.generate_url_path(increase_path_string=path_string)
-            return path_string
+        Classmethod variant used to preview/validate a handle from an arbitrary
+        string — there is no owner context here, so no email fallback, and no
+        random-digit padding (that is only for name-derived handles, where a
+        minimum length must be guaranteed). The returned path is the normalized
+        handle with collision resolution applied. Returns `None` when the
+        `pages.url_path` service is unavailable.
+        """
+        if service := shared_services.get("pages.url_path"):
+            return service.generate_url_path_str(f"/{to_ascii_handle(profile_name or '')}")
 
-    def create_url_path(self):
-        if apps.is_installed("baseapp_pages"):
-            url_path = self.generate_url_path()
-            self.url_paths.create(path=url_path, language=None, is_active=True)
+        return None
 
     def check_if_member(self, user):
         return (
@@ -309,8 +270,8 @@ class CreateProfileFunc(pgtrigger.Func):
     SQL values are captured at class_prepared time so that render() works with state models.
 
     render() dynamically builds the INSERT column list from the live Profile model so that
-    extra NOT NULL fields added by optional mixins (e.g. BlockableModel, CommentableModel)
-    are included with their Python defaults — no manual maintenance required.
+    extra NOT NULL fields added by optional mixins (e.g. CommentableModel) are included with
+    their Python defaults — no manual maintenance required.
     """
 
     def __init__(
@@ -358,7 +319,7 @@ class CreateProfileFunc(pgtrigger.Func):
         }
 
         # Dynamically add any extra NOT NULL columns that have Python-level defaults
-        # (e.g. blockers_count, reports_count from optional mixins).
+        # (e.g. blockers_count from optional mixins).
         for field in Profile._meta.fields:
             col = field.column
             if col in explicit or field.primary_key or field.null:
@@ -509,12 +470,7 @@ def add_profilable_triggers(sender, **kwargs):
             )
 
 
-class Profile(AbstractProfile):
-    class Meta(AbstractProfile.Meta):
-        swappable = swapper.swappable_setting("baseapp_profiles", "Profile")
-
-
-class AbstractProfileUserRole(RelayModel, models.Model):
+class AbstractProfileUserRole(DocumentIdMixin, RelayModel, models.Model):
     class ProfileRoles(models.IntegerChoices):
         ADMIN = 1, _("admin")
         MANAGER = 2, _("manager")
@@ -552,6 +508,7 @@ class AbstractProfileUserRole(RelayModel, models.Model):
     class Meta:
         abstract = True
         unique_together = [("user", "profile")]
+        swappable = swapper.swappable_setting("baseapp_profiles", "ProfileUserRole")
 
     def __str__(self):
         return f"{self.user} as {self.role} in {self.profile}"
@@ -561,11 +518,6 @@ class AbstractProfileUserRole(RelayModel, models.Model):
         from .graphql.object_types import ProfileUserRoleObjectType
 
         return ProfileUserRoleObjectType
-
-
-class ProfileUserRole(AbstractProfileUserRole):
-    class Meta(AbstractProfileUserRole.Meta):
-        swappable = swapper.swappable_setting("baseapp_profiles", "ProfileUserRole")
 
 
 def update_or_create_profile(instance, owner, profile_name):
@@ -581,3 +533,23 @@ def update_or_create_profile(instance, owner, profile_name):
     if created:
         instance.profile = profile
         instance.save(update_fields=["profile"])
+
+
+Profile, ProfileUserRole = init_swapped_models(
+    [
+        ("baseapp_profiles", "Profile"),
+        ("baseapp_profiles", "ProfileUserRole"),
+    ]
+)
+
+
+pghistory_register_default_track(
+    Profile,
+    pghistory.InsertEvent(),
+    pghistory.UpdateEvent(),
+    pghistory.DeleteEvent(),
+    exclude=[
+        "modified",
+        "created",
+    ],
+)

@@ -76,11 +76,9 @@ class OnCommentChange(channels_graphql_ws.Subscription):
         # with this we don't send replies if the user don't have replies open
         if comment.in_reply_to_id:
             groups.append(comment.in_reply_to.relay_id)
-        elif comment.target_object_id:
+        elif comment.target_document_id:
             try:
-                target = comment.target_content_type.get_object_for_this_type(
-                    pk=comment.target_object_id
-                )
+                target = comment.target
                 groups.append(target.relay_id)
             except ObjectDoesNotExist:
                 pass
@@ -98,7 +96,7 @@ class OnCommentChange(channels_graphql_ws.Subscription):
         # comment._sent_updated_comment_subscription_event = True
 
         groups = ["all"]
-        if comment.target_object_id and comment.target and comment.target.relay_id:
+        if comment.target_document_id and comment.target and comment.target.relay_id:
             groups.append(comment.target.relay_id)
 
         if comment.in_reply_to_id:

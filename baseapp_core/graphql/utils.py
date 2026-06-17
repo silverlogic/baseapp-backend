@@ -63,6 +63,51 @@ def get_object_type_for_model(model):
     return get_object_type
 
 
+def resolve_document_content_object(
+    document,
+    info: "graphene.ResolveInfo",
+    *,
+    cache_attr: str = "_document_content_object_cache",
+):
+    """
+    Resolve a `DocumentId.content_object` through a request-scoped cache so a
+    connection of objects (each pointing at a `DocumentId`) doesn't hit the DB once
+    per row to fetch the same kind of target.
+
+    Two callers fan out from this helper:
+
+    - `baseapp_follows` resolves `Follow.actor` / `Follow.target` (both FKs to
+      `DocumentId`) into the underlying `Profile` (or any other model).
+    - `baseapp_comments` resolves `Comment.target_document` into the model the
+      comment was attached to.
+
+    When the parent queryset prefetched the GFK via `GenericPrefetch`, accessing
+    `document.content_object` returns the prefetched instance with no extra DB hit.
+    The fallback path only fires for content types that weren't pre-warmed; even then,
+    the request cache collapses calls to the same `(content_type_id, object_id)`
+    pair into a single fetch per request.
+
+    Pass a unique `cache_attr` if you need to keep follow / comment caches separate
+    on the same request — but a shared cache across packages is also fine since the
+    cache key is `(content_type_id, object_id)`.
+    """
+    if document is None:
+        return None
+
+    request_cache = getattr(info.context, cache_attr, None)
+    if request_cache is None:
+        request_cache = {}
+        setattr(info.context, cache_attr, request_cache)
+
+    cache_key = (document.content_type_id, document.object_id)
+    if cache_key in request_cache:
+        return request_cache[cache_key]
+
+    obj = document.content_object
+    request_cache[cache_key] = obj
+    return obj
+
+
 BASE_PATH = str(Path(__file__).parent.parent.parent.resolve())
 SKIP_PATHS = [
     str(Path(_query.__file__).resolve()),

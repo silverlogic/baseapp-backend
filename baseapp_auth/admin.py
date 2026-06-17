@@ -43,7 +43,7 @@ class AbstractUserAdmin(UserAdmin):
                 ),
             },
         ),
-        (_("Profile"), {"fields": (("first_name", "last_name", "phone_number"),)}),
+        (_("Details"), {"fields": (("first_name", "last_name", "phone_number"),)}),
     )
     add_fieldsets = (
         (

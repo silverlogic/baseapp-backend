@@ -23,5 +23,6 @@ from .utils import (  # noqa
     get_obj_relay_id,
     get_object_type_for_model,
     get_pk_from_relay_id,
+    resolve_document_content_object,
 )
 from .views import GraphQLView  # noqa

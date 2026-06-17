@@ -1,8 +1,9 @@
 """End-to-end tests for `mentioned_profile_ids` on chat send/edit message mutations.
 
 Mentions live in `baseapp_mentions.Mention` — the chat Message model no longer
-carries a `mentioned_profiles` M2M. The GraphQL `mentionedProfiles` connection
-on `MessageObjectType` is provided by `MentionsInterface`.
+carries a `mentioned_profiles` M2M. The GraphQL `mentions` connection on
+`MessageObjectType` is provided by `MentionsInterface` and returns `Mention`
+nodes that expose the related `profile`.
 
 The chat mutations follow the same contract as comments:
 
@@ -39,10 +40,13 @@ SEND_MESSAGE_WITH_MENTIONS_GRAPHQL = """
                 node {
                     id
                     content
-                    mentionedProfiles(first: 10) {
+                    mentions(first: 10) {
                         edges {
                             node {
                                 id
+                                profile {
+                                    id
+                                }
                             }
                         }
                     }
@@ -63,10 +67,13 @@ EDIT_MESSAGE_WITH_MENTIONS_GRAPHQL = """
                 node {
                     id
                     content
-                    mentionedProfiles(first: 10) {
+                    mentions(first: 10) {
                         edges {
                             node {
                                 id
+                                profile {
+                                    id
+                                }
                             }
                         }
                     }
@@ -116,7 +123,7 @@ def test_send_message_persists_mentioned_profiles(
     assert mentioned_profile_ids(message) == {a.pk, b.pk}
 
     payload = content["data"]["chatRoomSendMessage"]["message"]["node"]
-    assert {edge["node"]["id"] for edge in payload["mentionedProfiles"]["edges"]} == {
+    assert {edge["node"]["profile"]["id"] for edge in payload["mentions"]["edges"]} == {
         a.relay_id,
         b.relay_id,
     }

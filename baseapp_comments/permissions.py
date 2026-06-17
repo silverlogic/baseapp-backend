@@ -1,18 +1,25 @@
 import swapper
+from django.apps import apps
 from django.contrib.auth.backends import BaseBackend
 
 from .models import CommentStatus
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
 app_label = Comment._meta.app_label
-Profile = swapper.load_model("baseapp_profiles", "Profile")
-profile_app_label = Profile._meta.app_label
+
+
+def _is_comments_enabled(obj):
+    from baseapp_core.plugins import shared_services
+
+    if service := shared_services.get("commentable_metadata"):
+        return service.is_comments_enabled(obj)
+    return False
 
 
 class CommentsPermissionsBackend(BaseBackend):
     def has_perm(self, user_obj, perm, obj=None):
         if perm in [f"{app_label}.add_comment", f"{app_label}.reply_comment"]:
-            return user_obj.is_authenticated and getattr(obj, "is_comments_enabled", False)
+            return user_obj.is_authenticated and _is_comments_enabled(obj)
 
         if perm == f"{app_label}.view_comment":
             if not obj:
@@ -27,7 +34,7 @@ class CommentsPermissionsBackend(BaseBackend):
 
         if perm in [f"{app_label}.change_comment", f"{app_label}.delete_comment"]:
             if isinstance(obj, Comment):
-                if obj.target and not getattr(obj.target, "is_comments_enabled", True):
+                if obj.target and not _is_comments_enabled(obj.target):
                     return False
 
                 if user_obj.is_authenticated:
@@ -42,5 +49,8 @@ class CommentsPermissionsBackend(BaseBackend):
             # Anyone with permission can pin any comment
             return user_obj.has_perm(perm)
 
-        if perm == f"{app_label}.add_comment_with_profile" and obj:
-            return user_obj.has_perm(f"{profile_app_label}.use_profile", obj)
+        if apps.is_installed("baseapp_profiles"):
+            Profile = swapper.load_model("baseapp_profiles", "Profile")
+            profile_app_label = Profile._meta.app_label
+            if perm == f"{app_label}.add_comment_with_profile" and obj:
+                return user_obj.has_perm(f"{profile_app_label}.use_profile", obj)

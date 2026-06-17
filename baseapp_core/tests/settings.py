@@ -228,7 +228,3 @@ REST_FRAMEWORK = {
 }
 
 BASEAPP_AUTH_USER_FACTORY = "baseapp_core.tests.factories.UserFactory"
-
-# Notifications
-DJANGO_NOTIFICATIONS_CONFIG = {"USE_JSONFIELD": True}
-NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"

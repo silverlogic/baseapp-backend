@@ -1,148 +1,164 @@
-# BaseApp Payments - Django
+# BaseApp Payments
 
-This app integrates Stripe with your Django project using Django REST Framework.
+Integrates Stripe with your Django project over Django REST Framework. It exposes API endpoints to manage Stripe customers, subscriptions, products and payment methods, and a webhook endpoint that keeps your local `Customer` / `Subscription` records in sync with Stripe.
 
-It provides API endpoints to manage Stripe customers and subscriptions, while also handling webhooks for real-time synchronization between Stripe and your system.
+Unlike most BaseApp packages, payments is a **REST** surface (no GraphQL). It follows the [plugin architecture](../baseapp_core/plugins/README.md): it registers itself as a plugin and contributes its URL patterns through the registry — you do not wire the router by hand.
 
-## How to install:
+## How to install
 
 Install the package with `pip install baseapp-backend[payments]`.
 
-## Setup Stripe Credentials
+If you want to develop, [install using this other guide](#how-to-develop).
 
-Add your Stripe credentials to your settings/base.py:
+## How to setup
+
+The package registers itself as a plugin (see `baseapp_payments.plugin:PaymentsPlugin`).
+
+1. Add `baseapp_payments` to `INSTALLED_APPS`:
+
+```python
+INSTALLED_APPS = [
+    # ...
+    "baseapp_payments",
+    # ...
+]
+```
+
+2. Add your Stripe credentials to settings:
 
 ```python
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET")
 ```
 
-## Customer Integration
-
-A Customer represents any entity (such as a User, Organization, or any model with an email attribute) that will be billed through Stripe. You can configure the customer entity model by setting the corresponding value in your settings:
+3. The plugin contributes its routes via `v1_urlpatterns`, so make sure your project's `urls.py` composes them through the registry (it does not need a manual `include` of the payments router):
 
 ```python
-# This can be updated in the Constance config
-STRIPE_CUSTOMER_ENTITY_MODEL = "profiles.Profile"
-```
+from baseapp_core.plugins import plugin_registry
 
-When a customer is created via the API, the `StripeCustomerSerializer` will use the authenticated user (or a provided `user_id`) to retrieve the appropriate entity from your customer model. This entity is then linked to the Stripe customer record via the `remote_customer_id`.
-
-## Subscription Management
-
-The Subscription model stores Stripe subscription details including:
-
-`remote_customer_id`
-`remote_subscription_id`
-
-## Creating a Subscription
-
-To create a subscription, use the `payments/stripe/customer/` (assuming your route is registered at `payments/`) endpoint. A validation will check that no active subscription exists for the same product and price id, to redduce duplicate subscriptions, and then creates a new subscription through the Stripe API. It returns the new `remote_subscription_id` upon success.
-
-## Configure URL Patterns
-
-Include the payments router in your URL configuration. For example, in your main `urls.py`:
-
-```python
-from django.urls import include, path
-from baseapp_payments.router import payments_router
+v1_urlpatterns = [
+    # ... project v1 patterns ...
+    *plugin_registry.get_all_v1_urlpatterns(),
+]
 
 urlpatterns = [
-# ... your other URL patterns
-path('payments/', include(payments_router.urls)),
+    path("v1/", include((v1_urlpatterns, "v1"), namespace="v1")),
+    # ...
 ]
 ```
 
-## API Endpoints
+This mounts the payments router under `v1/payments/` (see [API endpoints](#api-endpoints)).
 
-The following endpoints are provided via the payments router:
-
-`POST payments/stripe/`: Create a new Stripe subscription.
-`GET payments/stripe/{remote_subscription_id}`: Retrieve subscription details from Stripe.
-`DELETE payments/stripe/`: Delete a subscription.
-`GET/POST payments/stripe/customer/`: Retrieve or create a customer.
-`GET payments/stripe/products/`: List available Stripe products.
-`POST payments/stripe/webhook/`: Endpoint for handling Stripe webhook events.
-`GET payments/stripe/payment-methods`: List available payment methods for the requesting user or provided id 
-`POST payments/stripe/payment-methods`: Create or update payment methods
-`DELETE payments/stripe/payment-methods`: Delete existing payment methods
-
-## Stripe Webhooks
-
-The app includes a `StripeWebhookHandler` to process various Stripe events:
-
-`customer.created`: Automatically creates a new customer in your system.
-`customer.deleted`: Deletes the corresponding customer record.
-`customer.subscription.created`: Creates a new subscription record.
-`customer.subscription.deleted`: Deletes a subscription record.
-These handlers ensure that any changes in Stripe are reflected in your local database, keeping your system in sync.
-
-### Stripe Webhook Configuration
-
-For the integration to work properly, you must configure webhooks in your Stripe dashboard:
-
-#### Production Setup
-
-1. Log into your [Stripe Dashboard](https://dashboard.stripe.com)
-2. Navigate to **Developers → Webhooks → Add endpoint**
-3. Add your webhook URL: `https://yourdomain.com/payments/stripe/webhooks`
-4. Select the following events to listen for:
-   - `customer.created`
-   - `customer.deleted`
-   - `customer.subscription.created`
-   - `customer.subscription.deleted`
-   - `customer.subscription.updated`
-   - `invoice.payment_succeeded`
-   - `invoice.payment_failed`
-5. After creating the webhook, copy the **Signing Secret** and add it to your environment variables:
-   ```
-   STRIPE_WEBHOOK_SECRET=whsec_...
-   ```
-
-#### Local Development
-
-For local testing, use the [Stripe CLI](https://stripe.com/docs/stripe-cli):
-
-1. Install the Stripe CLI
-2. Log in with `stripe login`
-3. Forward events to your local server:
-   ```
-   stripe listen --forward-to localhost:8000/payments/stripe/webhooks
-   ```
-4. The CLI will display a webhook secret. Add this to your local environment:
-   ```
-   STRIPE_WEBHOOK_SECRET=whsec_...
-   ```
-
-
-## Stripe Service
-
-The StripeService class encapsulates all interactions with the Stripe API. It provides methods to:
-
-Create, retrieve, and delete customers
-Create, retrieve, and delete subscriptions
-List subscriptions and products
-This service is used internally by serializers, viewsets, and the webhook handler to standardize communication with Stripe.
-
-## Admin Integration
-
-Both the Customer and Subscription models are registered with the Django admin interface for easy management of Stripe-related data:
+4. Define the concrete `Customer` / `Subscription` models (see [models](#models)) and point the swapper settings at them:
 
 ```python
-from django.contrib import admin
-import swapper
-Customer = swapper.load_model("baseapp_payments", "Customer")
-Subscription = swapper.load_model("baseapp_payments", "Subscription")
+BASEAPP_PAYMENTS_CUSTOMER_MODEL = "payments.Customer"
+BASEAPP_PAYMENTS_SUBSCRIPTION_MODEL = "payments.Subscription"
+```
 
-@admin.register(Customer)
-class CustomerAdmin(admin.ModelAdmin):
-list_display = ("entity", "remote_customer_id")
-search_fields = ("entity", "remote_customer_id")
-readonly_fields = ("remote_customer_id",)
+## Customer entity model
 
-@admin.register(Subscription)
-class SubscriptionAdmin(admin.ModelAdmin):
-list_display = ("id", "remote_customer_id", "remote_subscription_id")
-search_fields = ("remote_customer_id", "remote_subscription_id")
-readonly_fields = ("remote_subscription_id", "remote_customer_id")
+A `Customer` links any local entity (a `Profile`, `User`, `Organization`, or any model with an `email`) to its Stripe customer record via `remote_customer_id`. Which model is treated as the billable entity is a **Constance** setting (changeable at runtime), defaulting to `profiles.Profile`:
+
+```python
+# Constance config — default "profiles.Profile"
+STRIPE_CUSTOMER_ENTITY_MODEL = "profiles.Profile"
+```
+
+When a customer is created (via the API or the `customer.created` webhook), the entity is resolved from this model and linked to the Stripe customer.
+
+## Models
+
+`BaseCustomer` and `BaseSubscription` are abstract + swappable, and the package ships **no** concrete models or migrations — your project must subclass them and point the swapper settings at the concrete models (see [How to develop](#how-to-develop)).
+
+| Abstract | Concrete reference | Purpose |
+|---|---|---|
+| `BaseCustomer` | `Customer` | Generic-FK `entity` (the billable model) + `remote_customer_id`. Unique per entity. |
+| `BaseSubscription` | `Subscription` | `remote_customer_id` + `remote_subscription_id`. Unique together. |
+
+> **Important:** `BaseCustomer.save()` requires the concrete model to declare `tracker = FieldTracker(["entity"])` (from `model_utils`) — it uses the tracker to populate `entity_type` / `entity_id` when the generic `entity` changes, and raises a `RuntimeError` if it's missing.
+
+## API Endpoints
+
+All routes are mounted under `v1/payments/` (router uses no trailing slash). Authenticated endpoints require `IsAuthenticated`; the webhook is unauthenticated (verified by Stripe signature instead).
+
+| Method & path | Action |
+|---|---|
+| `POST v1/payments/stripe/subscriptions` | Create a subscription (rejects a duplicate active subscription for the same product/price). |
+| `GET v1/payments/stripe/subscriptions/{remote_subscription_id}` | Retrieve subscription details from Stripe. |
+| `PATCH v1/payments/stripe/subscriptions/{remote_subscription_id}` | Update a subscription. |
+| `DELETE v1/payments/stripe/subscriptions?remote_subscription_id=...` | Delete a subscription. |
+| `POST v1/payments/stripe/customers` | Create a customer. |
+| `GET v1/payments/stripe/customers/{pk}` | Retrieve a customer by `remote_customer_id`, or `me` to resolve the current user's customer (creating the local record from Stripe if needed). |
+| `GET v1/payments/stripe/products` | List Stripe products. |
+| `GET v1/payments/stripe/products/{remote_product_id}` | Retrieve a product. |
+| `GET v1/payments/stripe/payment-methods?customer_id=...` | List a customer's payment methods. |
+| `POST v1/payments/stripe/payment-methods` | Create a `SetupIntent` / attach a payment method. |
+| `PATCH v1/payments/stripe/payment-methods/{pk}` | Update a payment method. |
+| `DELETE v1/payments/stripe/payment-methods/{pk}?customer_id=...` | Delete a payment method. |
+| `POST v1/payments/stripe/webhooks` | Stripe webhook receiver. |
+
+Payment-method endpoints verify the supplied `customer_id` belongs to the authenticated user (`StripeService.checkCustomerIdForUser`) and return `401` otherwise.
+
+## Stripe webhooks
+
+`StripeWebhookViewset` verifies the Stripe signature against `STRIPE_WEBHOOK_SECRET` and dispatches to `StripeWebhookHandler`, which handles:
+
+- `customer.created` — create the local `Customer` (resolving the entity from `STRIPE_CUSTOMER_ENTITY_MODEL`).
+- `customer.deleted` — delete the local `Customer`.
+- `customer.subscription.created` — create the local `Subscription`.
+- `customer.subscription.deleted` — delete the local `Subscription`.
+
+### Stripe dashboard configuration
+
+**Production:** In your [Stripe Dashboard](https://dashboard.stripe.com) → **Developers → Webhooks → Add endpoint**, point the endpoint at `https://yourdomain.com/v1/payments/stripe/webhooks`, subscribe to at least the four events above, then copy the **Signing secret** into `STRIPE_WEBHOOK_SECRET`.
+
+**Local development:** Use the [Stripe CLI](https://stripe.com/docs/stripe-cli):
+
+```bash
+stripe login
+stripe listen --forward-to localhost:8000/v1/payments/stripe/webhooks
+```
+
+The CLI prints a `whsec_...` secret — set it as `STRIPE_WEBHOOK_SECRET` locally.
+
+## StripeService
+
+`StripeService` (in `baseapp_payments.utils`) encapsulates all Stripe API calls — customers, subscriptions (including incomplete subscriptions), products, payment methods, setup/payment intents, prices and invoices — and is used internally by the serializers, viewsets and webhook handler so Stripe communication stays in one place.
+
+## Admin
+
+Both swapped models are registered in the Django admin (`CustomerAdmin`, `SubscriptionAdmin`) with `remote_*` ids read-only, for easy inspection of Stripe-linked records.
+
+## How to develop
+
+General development instructions can be found in the [main README](../README.md#how-to-develop).
+
+### Prerequisites when activating `baseapp_payments`
+
+Because the models are abstract + swappable with no concrete models shipped, create a local app (we suggest `apps/payments/`) implementing the concrete models — note the required `FieldTracker` on `Customer`:
+
+```python
+from model_utils import FieldTracker
+
+from baseapp_payments.models import BaseCustomer, BaseSubscription
+
+
+class Customer(BaseCustomer):
+    tracker = FieldTracker(["entity"])
+
+    class Meta(BaseCustomer.Meta):
+        pass
+
+
+class Subscription(BaseSubscription):
+    class Meta(BaseSubscription.Meta):
+        pass
+```
+
+Then point swapper at them and run `makemigrations` / `migrate`:
+
+```python
+BASEAPP_PAYMENTS_CUSTOMER_MODEL = "payments.Customer"
+BASEAPP_PAYMENTS_SUBSCRIPTION_MODEL = "payments.Subscription"
 ```

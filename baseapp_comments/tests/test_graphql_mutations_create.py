@@ -1,6 +1,7 @@
 import pytest
 import swapper
 
+from baseapp_core.plugins import shared_services
 from baseapp_profiles.tests.factories import ProfileFactory
 
 from .factories import CommentFactory
@@ -51,11 +52,11 @@ def test_user_can_comment(graphql_user_client):
         COMMENT_CREATE_GRAPHQL,
         variables={"input": {"targetObjectId": target.relay_id, "body": "my comment"}},
     )
+    service = shared_services.get("commentable_metadata")
     comment = Comment.objects.exclude(pk=target.pk).get()
-    target.refresh_from_db()
     assert comment.body == "my comment"
-    assert target.comments_count["total"] == 1
-    assert target.comments_count["main"] == 1
+    assert service.get_comments_count(target)["total"] == 1
+    assert service.get_comments_count(target)["main"] == 1
 
 
 def test_user_cant_comment_if_disabled(graphql_user_client):
@@ -84,19 +85,18 @@ def test_user_can_reply(graphql_user_client):
             }
         },
     )
+    service = shared_services.get("commentable_metadata")
     comment = Comment.objects.filter(in_reply_to=parent).get()
-    target.refresh_from_db()
-    parent.refresh_from_db()
 
     assert comment.body == "my reply"
 
-    assert target.comments_count["total"] == 2
-    assert target.comments_count["main"] == 1
-    assert target.comments_count["replies"] == 1
+    assert service.get_comments_count(target)["total"] == 2
+    assert service.get_comments_count(target)["main"] == 1
+    assert service.get_comments_count(target)["replies"] == 1
 
-    assert parent.comments_count["total"] == 1
-    assert parent.comments_count["main"] == 1
-    assert parent.comments_count["replies"] == 1
+    assert service.get_comments_count(parent)["total"] == 1
+    assert service.get_comments_count(parent)["main"] == 1
+    assert service.get_comments_count(parent)["replies"] == 1
 
 
 def test_user_can_comment_with_profile(django_user_client, graphql_user_client):

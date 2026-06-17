@@ -11,12 +11,13 @@ from django_quill.fields import QuillField
 from model_utils.models import TimeStampedModel
 from translated_fields import TranslatedField
 
-from baseapp_comments.models import CommentableModel
 from baseapp_core.graphql.models import RelayModel
-from baseapp_core.models import random_name_in
+from baseapp_core.models import DocumentIdMixin, random_name_in
+from baseapp_core.pghelpers import pghistory_register_default_track
+from baseapp_core.swapper import init_swapped_models
 
 
-class URLPath(TimeStampedModel, RelayModel):
+class URLPath(DocumentIdMixin, RelayModel, TimeStampedModel):
     path = models.CharField(max_length=500, unique=True)
     language = models.CharField(max_length=10, choices=settings.LANGUAGES, null=True, blank=True)
     is_active = models.BooleanField(default=False)
@@ -54,7 +55,7 @@ class URLPath(TimeStampedModel, RelayModel):
     pghistory.UpdateEvent(),
     pghistory.DeleteEvent(),
 )
-class Metadata(TimeStampedModel, RelayModel):
+class Metadata(TimeStampedModel, DocumentIdMixin, RelayModel):
     target_content_type = models.ForeignKey(
         ContentType,
         blank=True,
@@ -82,6 +83,11 @@ class Metadata(TimeStampedModel, RelayModel):
 
 
 class PageMixin(models.Model):
+    """
+    This mixin doesn't add any fields in the database level, it creates reverse ORM relation to
+    rows stored in the target tables.
+    """
+
     url_paths = GenericRelation(
         URLPath,
         content_type_field="target_content_type",
@@ -105,7 +111,15 @@ class PageMixin(models.Model):
         ).first()
 
 
-class AbstractPage(PageMixin, TimeStampedModel, RelayModel, CommentableModel):
+class AbstractPage(PageMixin, DocumentIdMixin, RelayModel, TimeStampedModel):
+    class PageStatus(models.IntegerChoices):
+        DRAFT = 1, _("Draft")
+        PUBLISHED = 2, _("Published")
+
+        @property
+        def description(self):
+            return self.label
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="pages",
@@ -117,42 +131,34 @@ class AbstractPage(PageMixin, TimeStampedModel, RelayModel, CommentableModel):
 
     title = TranslatedField(models.CharField(_("title"), max_length=255, blank=True, null=True))
     body = TranslatedField(QuillField(_("body"), blank=True, null=True))
-
-    class PageStatus(models.IntegerChoices):
-        DRAFT = 1, _("Draft")
-        PUBLISHED = 2, _("Published")
-
-        @property
-        def description(self):
-            return self.label
-
     status = models.IntegerField(
         choices=PageStatus.choices, default=PageStatus.PUBLISHED, db_index=True
     )
 
     class Meta:
         abstract = True
+        swappable = swapper.swappable_setting("baseapp_pages", "Page")
 
     def __str__(self):
         return self.title or str(self.pk)
-
-
-def conditional_decorator(dec, condition):
-    def decorator(func):
-        if not condition:
-            # Return the function unchanged, not decorated.
-            return func
-        return dec(func)
-
-    return decorator
-
-
-class Page(AbstractPage):
-    class Meta:
-        swappable = swapper.swappable_setting("baseapp_pages", "Page")
 
     @classmethod
     def get_graphql_object_type(cls):
         from .graphql.object_types import PageObjectType
 
         return PageObjectType
+
+
+Page = init_swapped_models(
+    [
+        ("baseapp_pages", "Page"),
+    ]
+)
+
+
+pghistory_register_default_track(
+    Page,
+    pghistory.InsertEvent(),
+    pghistory.UpdateEvent(),
+    pghistory.DeleteEvent(),
+)

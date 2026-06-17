@@ -7,3 +7,13 @@ class PackageConfig(AppConfig):
     label = "baseapp_core"
     verbose_name = "BaseApp Core"
     default_auto_field = "django.db.models.BigAutoField"
+
+    def ready(self):
+        from .pghelpers import apply_pghistory_tracks, apply_pgtrigger_tracks
+
+        # Apply all registered pghistory tracks
+        apply_pghistory_tracks()
+
+        # Apply all registered pgtrigger domain triggers (chats, etc.).
+        # Runs before makemigrations autodetection sees `_meta.triggers`.
+        apply_pgtrigger_tracks()

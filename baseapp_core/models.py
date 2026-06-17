@@ -2,7 +2,7 @@ import os
 import uuid
 
 import pgtrigger
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models.signals import class_prepared
@@ -10,6 +10,9 @@ from django.dispatch import receiver
 from django.utils.deconstruct import deconstructible
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
+
+from baseapp_core.hashids.models import *  # noqa
+from baseapp_core.models import *  # noqa
 
 
 class CaseInsensitiveCharField(models.CharField):
@@ -120,13 +123,21 @@ class DocumentId(TimeStampedModel):
 
     @classmethod
     def get_or_create_for_object(cls, obj):
-        """Get or create the DocumentId for a model instance."""
+        """
+        Return the DocumentId for the given object, creating it if it does not exist.
+
+        When a new row is created, the document_created signal is sent (via post_save).
+        """
+        # TODO (plugin-arch): Cover with unit tests.
+        if not obj or not obj.pk:
+            return None
+
         ct = ContentType.objects.get_for_model(obj)
         doc, _ = cls.objects.get_or_create(content_type=ct, object_id=obj.pk)
         return doc
 
 
-class DocumentIdMixin:
+class DocumentIdMixin(models.Model):
     """
     Mixin to add document ID functionality to any model.
 
@@ -135,6 +146,21 @@ class DocumentIdMixin:
 
     By extending this mixin, a new migration will be created to add the required pgtriggers to the model.
     """
+
+    # Reverse-GFK to this object's row in the DocumentId registry. Lets downstream
+    # packages that key off DocumentId (mentions, follows, reactions, …) be
+    # walked as standard `prefetch_related("document__<relation>")` chains
+    # by the query optimizer, instead of falling back to per-row fetches.
+    # Carries no DB column on this model, the join goes through DocumentId's
+    # `(content_type, object_id)` GFK.
+    document = GenericRelation(
+        DocumentId,
+        content_type_field="content_type",
+        object_id_field="object_id",
+    )
+
+    class Meta:
+        abstract = True
 
     @property
     def public_id(self):
@@ -153,6 +179,112 @@ class DocumentIdMixin:
 
         strategy = get_hashids_strategy_from_instance_or_cls(cls)
         return strategy.id_resolver.resolve_id(public_id, model_cls=cls)
+
+
+class DocumentIdUniqueTargetMixin(models.Model):
+    """
+    Base for models that hang a single row off a documentable object.
+
+    The primary key is a one-to-one `target` to `DocumentId`, so there is at
+    most one row per documentable object (one-to-one, unique per document).
+    Provides lookup/creation helpers keyed by the documentable object itself
+    rather than by its `DocumentId`.
+    """
+
+    target = models.OneToOneField(
+        DocumentId,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name="%(app_label)s_%(class)s",
+    )
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def get_for_object(cls, obj: models.Model | None) -> "DocumentIdUniqueTargetMixin | None":
+        """Return the row for the given object, or `None` if not found."""
+        if not obj or not getattr(obj, "pk", None):
+            return None
+        try:
+            ct = ContentType.objects.get_for_model(obj)
+            return cls.objects.get(target__content_type=ct, target__object_id=obj.pk)
+        except cls.DoesNotExist:
+            return None
+
+    @classmethod
+    def get_or_create_for_object(
+        cls, obj: models.Model | None
+    ) -> "DocumentIdUniqueTargetMixin | None":
+        """Return or create the row for the given object."""
+        if not obj or not getattr(obj, "pk", None):
+            return None
+        doc_id = DocumentId.get_or_create_for_object(obj)
+        if doc_id:
+            instance, _ = cls.objects.get_or_create(target=doc_id)
+            return instance
+        return None
+
+
+class DocumentIdTargetMixin(models.Model):
+    """
+    Base for models that point at a documentable object through a (non-unique)
+    `target_document` foreign key — many rows may share the same `DocumentId`.
+
+    Exposes a `target` property that transparently reads/writes the underlying
+    object (creating its `DocumentId` on assignment), plus shortcuts to the
+    target's content type and object id.
+    """
+
+    target_document = models.ForeignKey(
+        DocumentId,
+        verbose_name=_("target document"),
+        blank=False,
+        null=False,
+        related_name="%(app_label)s_%(class)s",
+        on_delete=models.CASCADE,
+    )
+
+    class Meta:
+        abstract = True
+
+    def _get_target(self):
+        if not self.target_document_id:
+            return None
+        if hasattr(self, "_target_object_cache"):
+            return self._target_object_cache
+        self._target_object_cache = self.target_document.content_object
+        return self._target_object_cache
+
+    _get_target.short_description = _("target")
+
+    def _set_target(self, value):
+        if not value:
+            self.target_document = None
+            self._target_object_cache = None
+            return
+        self.target_document = DocumentId.get_or_create_for_object(value)
+        self._target_object_cache = value
+
+    target = property(_get_target, _set_target)
+
+    @property
+    def target_content_type(self):
+        if self.target_document_id:
+            return self.target_document.content_type
+        return None
+
+    @property
+    def target_content_type_id(self):
+        if self.target_document_id:
+            return self.target_document.content_type_id
+        return None
+
+    @property
+    def target_object_id(self):
+        if self.target_document_id:
+            return self.target_document.object_id
+        return None
 
 
 class DocumentIdFunc(pgtrigger.Func):

@@ -1,7 +1,7 @@
-from django.apps import AppConfig
+from baseapp_core.plugins import BaseAppConfig
 
 
-class ContentFeedConfig(AppConfig):
+class ContentFeedConfig(BaseAppConfig):
     default = True
     name = "baseapp.content_feed"
     label = "baseapp_content_feed"

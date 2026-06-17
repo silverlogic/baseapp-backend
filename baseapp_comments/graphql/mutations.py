@@ -14,6 +14,7 @@ from baseapp_core.graphql import (
     get_pk_from_relay_id,
     login_required,
 )
+from baseapp_core.plugins import shared_services
 
 from .object_types import CommentsInterface
 
@@ -34,20 +35,19 @@ class CommentCreate(RelayMutation):
     class Input:
         target_object_id = graphene.ID(required=True)
         in_reply_to_id = graphene.ID(required=False)
-        profile_id = graphene.ID(required=False)
         body = graphene.String(required=True)
         mentioned_profile_ids = graphene.List(graphene.ID, required=False)
+
+        if apps.is_installed("baseapp_profiles"):
+            profile_id = graphene.ID(required=False)
 
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input):
-        mentioned_profile_ids = input.pop("mentioned_profile_ids", None) or []
         activity_name = f"{app_label}.add_comment"
 
-        if apps.is_installed("baseapp.activity_log"):
-            from baseapp.activity_log.context import set_public_activity
-
-            set_public_activity(verb=activity_name)
+        if service := shared_services.get("activity_log"):
+            service.set_public_activity(verb=activity_name)
 
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
 
@@ -59,20 +59,21 @@ class CommentCreate(RelayMutation):
 
         comment = Comment(user=info.context.user, target=target, body=input.get("body"))
 
-        if input.get("profile_id") or info.context.user.current_profile:
-            comment.profile = (
-                get_obj_from_relay_id(info, input.get("profile_id"))
-                if input.get("profile_id")
-                else info.context.user.current_profile
-            )
-
-            if not info.context.user.has_perm(
-                f"{app_label}.add_comment_with_profile", comment.profile
-            ):
-                raise GraphQLError(
-                    str(_("You don't have permission to perform this action")),
-                    extensions={"code": "permission_required"},
+        if apps.is_installed("baseapp_profiles"):
+            if input.get("profile_id") or info.context.user.current_profile:
+                comment.profile = (
+                    get_obj_from_relay_id(info, input.get("profile_id"))
+                    if input.get("profile_id")
+                    else info.context.user.current_profile
                 )
+
+                if not info.context.user.has_perm(
+                    f"{app_label}.add_comment_with_profile", comment.profile
+                ):
+                    raise GraphQLError(
+                        str(_("You don't have permission to perform this action")),
+                        extensions={"code": "permission_required"},
+                    )
 
         if input.get("in_reply_to_id"):
             comment.in_reply_to = get_obj_from_relay_id(info, input.get("in_reply_to_id"))
@@ -83,25 +84,23 @@ class CommentCreate(RelayMutation):
                     extensions={"code": "permission_required"},
                 )
 
+        mentioned_profile_ids = input.pop("mentioned_profile_ids", None) or []
         form = CommentForm(instance=comment, data=input)
         if form.is_valid():
             form.save()
 
-            # Need to refresh to update comments_count
-            target.refresh_from_db()
-            if comment.profile:
+            if hasattr(comment, "profile") and comment.profile:
                 comment.profile.refresh_from_db()
             if comment.in_reply_to:
                 comment.in_reply_to.refresh_from_db()
 
-            if mentioned_profile_ids and apps.is_installed("baseapp_mentions"):
-                from baseapp_mentions.services import update_mentions
-
-                update_mentions(
-                    comment,
-                    mentioned_profile_ids,
-                    exclude_profile=getattr(info.context.user, "current_profile", None),
-                )
+            if mentioned_profile_ids:
+                if service := shared_services.get("mentions"):
+                    service.update_mentions(
+                        comment,
+                        mentioned_profile_ids,
+                        exclude_profile=getattr(info.context.user, "current_profile", None),
+                    )
 
             return cls(
                 comment=CommentObjectType._meta.connection.Edge(node=comment),
@@ -135,10 +134,8 @@ class CommentUpdate(RelayMutation):
                 extensions={"code": "permission_required"},
             )
 
-        if apps.is_installed("baseapp.activity_log"):
-            from baseapp.activity_log.context import set_public_activity
-
-            set_public_activity(verb=activity_name)
+        if service := shared_services.get("activity_log"):
+            service.set_public_activity(verb=activity_name)
 
         comment.is_edited = True
 
@@ -146,14 +143,13 @@ class CommentUpdate(RelayMutation):
         if form.is_valid():
             comment = form.save()
 
-            if mentioned_profile_ids is not None and apps.is_installed("baseapp_mentions"):
-                from baseapp_mentions.services import update_mentions
-
-                update_mentions(
-                    comment,
-                    mentioned_profile_ids,
-                    exclude_profile=getattr(info.context.user, "current_profile", None),
-                )
+            if mentioned_profile_ids is not None:
+                if service := shared_services.get("mentions"):
+                    service.update_mentions(
+                        comment,
+                        mentioned_profile_ids,
+                        exclude_profile=getattr(info.context.user, "current_profile", None),
+                    )
 
             return cls(
                 comment=comment,
@@ -184,10 +180,8 @@ class CommentPin(RelayMutation):
                 extensions={"code": "permission_required"},
             )
 
-        if apps.is_installed("baseapp.activity_log"):
-            from baseapp.activity_log.context import set_public_activity
-
-            set_public_activity(verb=activity_name)
+        if service := shared_services.get("activity_log"):
+            service.set_public_activity(verb=activity_name)
 
         MAX_PINS_PER_THREAD = getattr(settings, "BASEAPP_COMMENTS_MAX_PINS_PER_THREAD", None)
         if MAX_PINS_PER_THREAD is not None:
@@ -195,8 +189,7 @@ class CommentPin(RelayMutation):
                 qs = Comment.objects_visible.filter(in_reply_to_id=comment.in_reply_to_id)
             else:
                 qs = Comment.objects_visible.filter(
-                    target_object_id=comment.target_object_id,
-                    target_content_type_id=comment.target_content_type_id,
+                    target_document_id=comment.target_document_id,
                     in_reply_to__isnull=True,
                 )
 
