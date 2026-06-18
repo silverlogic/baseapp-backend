@@ -25,6 +25,7 @@ class AbstractUserAdmin(UserAdmin):
                     "email",
                     "password",
                     "preferred_language",
+                    "timezone",
                     "date_joined",
                     "last_login",
                     "password_changed_date",
@@ -61,12 +62,14 @@ class AbstractUserAdmin(UserAdmin):
         "email",
         "first_name",
         "last_name",
+        "preferred_language",
+        "timezone",
         "date_joined",
         "is_active",
         "is_superuser",
         "is_password_expired",
     )
-    list_filter = ("date_joined", "is_superuser", "is_active")
+    list_filter = ("date_joined", "is_superuser", "is_active", "preferred_language")
     search_fields = ("first_name", "last_name", "email", "phone_number")
     ordering = ("id",)
     filter_horizontal = ()
