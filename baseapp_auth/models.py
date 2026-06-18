@@ -1,3 +1,4 @@
+import zoneinfo
 from datetime import timedelta
 
 import swapper
@@ -5,6 +6,7 @@ from constance import config
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import TextChoices
 from django.utils import timezone
@@ -56,6 +58,15 @@ def use_profile_model():
     return NoProfileModel
 
 
+def validate_timezone(value: str) -> None:
+    """Reject values that aren't valid IANA timezone names (blank is allowed)."""
+    if value and value not in zoneinfo.available_timezones():
+        raise ValidationError(
+            _("%(value)s is not a valid IANA timezone name."),
+            params={"value": value},
+        )
+
+
 class AbstractUser(
     use_profile_model(),
     PermissionsMixin,
@@ -105,6 +116,7 @@ class AbstractUser(
         max_length=64,
         blank=True,
         default="",
+        validators=[validate_timezone],
         help_text=_("IANA timezone name used to display dates and times for this user."),
     )
 
