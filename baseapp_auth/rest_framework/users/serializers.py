@@ -45,6 +45,7 @@ class UserBaseSerializer(ModelSerializer):
             "referred_by_code",
             "phone_number",
             "preferred_language",
+            "timezone",
             "is_superuser",
         )
         private_fields = (
@@ -55,6 +56,7 @@ class UserBaseSerializer(ModelSerializer):
             "is_new_email_confirmed",
             "referral_code",
             "preferred_language",
+            "timezone",
             "is_superuser",
         )
         read_only_fields = (

@@ -68,6 +68,7 @@ class TestUsersRetrieve(ApiMixin):
             "referral_code",
             "phone_number",
             "preferred_language",
+            "timezone",
             "is_superuser",
         }
         actual = set(r.data.keys())
@@ -143,6 +144,13 @@ class TestUsersUpdate(ApiMixin):
         h.responseOk(r)
         user_client.user.refresh_from_db()
         assert user_client.user.preferred_language == "pt"
+
+    def test_can_update_timezone(self, user_client):
+        data = {"timezone": "America/Sao_Paulo"}
+        r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.pk}), data)
+        h.responseOk(r)
+        user_client.user.refresh_from_db()
+        assert user_client.user.timezone == "America/Sao_Paulo"
 
     @skip_if_no_referrals
     def test_can_update_referred_by_code_on_the_same_day_user_registered(self, user_client):

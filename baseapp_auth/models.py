@@ -100,6 +100,13 @@ class AbstractUser(
     objects = UserManager()
 
     preferred_language = models.CharField(max_length=9, choices=settings.LANGUAGES, default="en")
+    timezone = models.CharField(
+        _("timezone"),
+        max_length=64,
+        blank=True,
+        default="",
+        help_text=_("IANA timezone name used to display dates and times for this user."),
+    )
 
     USERNAME_FIELD = "email"
 
