@@ -153,11 +153,12 @@ class TestUsersUpdate(ApiMixin):
         assert user_client.user.timezone == "America/Sao_Paulo"
 
     def test_cant_update_timezone_with_invalid_value(self, user_client):
+        previous_timezone = user_client.user.timezone
         data = {"timezone": "foo/bar"}
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.pk}), data)
         h.responseBadRequest(r)
         user_client.user.refresh_from_db()
-        assert user_client.user.timezone != "foo/bar"
+        assert user_client.user.timezone == previous_timezone
 
     @skip_if_no_referrals
     def test_can_update_referred_by_code_on_the_same_day_user_registered(self, user_client):
