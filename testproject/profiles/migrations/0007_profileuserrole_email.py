@@ -11,8 +11,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="profileuserrole",
             name="email",
-            field=models.EmailField(
-                blank=True, max_length=254, null=True, verbose_name="email"
-            ),
+            field=models.EmailField(blank=True, max_length=254, null=True, verbose_name="email"),
         ),
     ]
