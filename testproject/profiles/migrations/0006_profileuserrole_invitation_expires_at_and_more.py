@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("profiles", "0004_add_email_to_profileuserrole"),
+        ("profiles", "0005_plugin_arch_squashed"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
