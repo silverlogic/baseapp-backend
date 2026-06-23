@@ -2,7 +2,6 @@
 
 import django.db.models.deletion
 import django.utils.timezone
-import jsonfield.fields
 import model_utils.fields
 import pgtrigger.compiler
 import pgtrigger.migrations
@@ -80,10 +79,10 @@ class Migration(migrations.Migration):
                     "level",
                     models.CharField(
                         choices=[
-                            ("success", "success"),
-                            ("info", "info"),
-                            ("warning", "warning"),
-                            ("error", "error"),
+                            ("success", "Success"),
+                            ("info", "Info"),
+                            ("warning", "Warning"),
+                            ("error", "Error"),
                         ],
                         default="info",
                         max_length=20,
@@ -130,7 +129,7 @@ class Migration(migrations.Migration):
                     "emailed",
                     models.BooleanField(db_index=True, default=False, verbose_name="emailed"),
                 ),
-                ("data", jsonfield.fields.JSONField(blank=True, null=True, verbose_name="data")),
+                ("data", models.JSONField(blank=True, null=True, verbose_name="data")),
                 (
                     "action_object_content_type",
                     models.ForeignKey(
@@ -181,7 +180,19 @@ class Migration(migrations.Migration):
                 "indexes": [
                     models.Index(
                         fields=["recipient", "unread"], name="notificatio_recipie_8bedf2_idx"
-                    )
+                    ),
+                    models.Index(
+                        fields=["actor_content_type", "actor_object_id"],
+                        name="notificatio_actor_c_4f870b_idx",
+                    ),
+                    models.Index(
+                        fields=["target_content_type", "target_object_id"],
+                        name="notificatio_target__dfbaf5_idx",
+                    ),
+                    models.Index(
+                        fields=["action_object_content_type", "action_object_object_id"],
+                        name="notificatio_action__6e12f7_idx",
+                    ),
                 ],
             },
             bases=(baseapp_core.models.DocumentIdMixin, models.Model),

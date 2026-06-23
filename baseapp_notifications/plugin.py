@@ -6,7 +6,7 @@ from baseapp_core.plugins.base import BaseAppPlugin, PackageSettings
 class NotificationsPlugin(BaseAppPlugin):
     """
     The Notifications plugin is used to send notifications to users.
-    It depends on the django-notifications-hq package. But it must not activate the "notifications" app.
+    It depends on the django-notifications-community package. But it must not activate the "notifications" app.
     """
 
     @property
