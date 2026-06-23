@@ -11,8 +11,6 @@ from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from rest_framework import serializers
 
-logger = logging.getLogger(__name__)
-
 from baseapp_core.graphql import (
     RelayMutation,
     SerializerMutation,
@@ -21,11 +19,12 @@ from baseapp_core.graphql import (
     login_required,
 )
 from baseapp_core.plugins import shared_services
-from baseapp_pages.models import URLPath
 from baseapp_profiles.constants import INVITATION_EXPIRATION_DAYS
 from baseapp_profiles.utils import to_ascii_handle
 
 from .object_types import ProfileRoleTypesEnum
+
+logger = logging.getLogger(__name__)
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 profile_app_label = Profile._meta.app_label
@@ -442,7 +441,13 @@ class ProfileSendInvitation(RelayMutation):
         role = input.get("role")
 
         profile_pk = get_pk_from_relay_id(profile_id)
-        profile = Profile.objects.get(pk=profile_pk)
+        try:
+            profile = Profile.objects.get(pk=profile_pk)
+        except Profile.DoesNotExist:
+            raise GraphQLError(
+                str(_("Profile not found")),
+                extensions={"code": "not_found"},
+            )
 
         if not info.context.user.has_perm(
             f"{profile_user_role_app_label}.add_profileuserrole", profile
@@ -647,10 +652,81 @@ class ProfileResendInvitation(RelayMutation):
         return ProfileResendInvitation(profile_user_role=invitation, email_sent=email_sent)
 
 
+class RoleUpdate(RelayMutation):
+    profile_user_role = graphene.Field(get_object_type_for_model(ProfileUserRole))
+
+    class Input:
+        profile_id = graphene.ID(required=True)
+        user_id = graphene.ID(required=True)
+        role_type = graphene.Field(ProfileRoleTypesEnum)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        user_id = input.get("user_id")
+        profile_id = input.get("profile_id")
+        role_type = input.get("role_type")
+        user_pk = get_pk_from_relay_id(user_id)
+        profile_pk = get_pk_from_relay_id(profile_id)
+
+        try:
+            obj = ProfileUserRole.objects.get(user_id=user_pk, profile_id=profile_pk)
+        except ProfileUserRole.DoesNotExist:
+            raise GraphQLError(_("Role not found"))
+
+        if not info.context.user.has_perm(
+            f"{profile_user_role_app_label}.change_profileuserrole", obj.profile
+        ):
+            raise GraphQLError(
+                str(_("You don't have permission to perform this action")),
+                extensions={"code": "permission_required"},
+            )
+
+        obj.role = role_type
+        obj.save()
+
+        return RoleUpdate(profile_user_role=obj)
+
+
+class ProfileRemoveMember(RelayMutation):
+    deleted_id = graphene.ID()
+
+    class Input:
+        profile_id = graphene.ID(required=True)
+        user_id = graphene.ID(required=True)
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, **input):
+        profile_id = input.get("profile_id")
+        user_id = input.get("user_id")
+        profile_pk = get_pk_from_relay_id(profile_id)
+        user_pk = get_pk_from_relay_id(user_id)
+        obj = ProfileUserRole.objects.get(user_id=user_pk, profile_id=profile_pk)
+
+        if not obj:
+            raise GraphQLError(_("User role not found"))
+
+        if not info.context.user.has_perm(
+            f"{profile_user_role_app_label}.delete_profileuserrole", obj.profile
+        ):
+            raise GraphQLError(
+                str(_("You don't have permission to perform this action")),
+                extensions={"code": "permission_required"},
+            )
+
+        id_to_return = obj.relay_id
+        obj.delete()
+
+        return ProfileRemoveMember(deleted_id=id_to_return)
+
+
 class ProfilesMutations(object):
     profile_create = ProfileCreate.Field()
     profile_update = ProfileUpdate.Field()
     profile_delete = ProfileDelete.Field()
+    profile_role_update = RoleUpdate.Field()
+    profile_remove_member = ProfileRemoveMember.Field()
     profile_user_role_create = ProfileUserRoleCreate.Field()
     profile_user_role_update = ProfileUserRoleUpdate.Field()
     profile_user_role_delete = ProfileUserRoleDelete.Field()
