@@ -658,7 +658,7 @@ class RoleUpdate(RelayMutation):
     class Input:
         profile_id = graphene.ID(required=True)
         user_id = graphene.ID(required=True)
-        role_type = graphene.Field(ProfileRoleTypesEnum)
+        role_type = graphene.Field(ProfileRoleTypesEnum, required=True)
 
     @classmethod
     @login_required
@@ -666,6 +666,11 @@ class RoleUpdate(RelayMutation):
         user_id = input.get("user_id")
         profile_id = input.get("profile_id")
         role_type = input.get("role_type")
+        if role_type is None:
+            raise GraphQLError(
+                str(_("Role is required")),
+                extensions={"code": "invalid_input"},
+            )
         user_pk = get_pk_from_relay_id(user_id)
         profile_pk = get_pk_from_relay_id(profile_id)
 
