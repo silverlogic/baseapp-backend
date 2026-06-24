@@ -255,7 +255,7 @@ class ProfileUserRoleCreate(RelayMutation):
             ProfileUserRole(
                 user_id=get_pk_from_relay_id(user_id), profile_id=profile_pk, role=role_type
             )
-            for user_id in users_ids
+            for user_id in (users_ids or [])
         ]
         profile_user_roles = ProfileUserRole.objects.bulk_create(profile_user_roles)
 
@@ -317,10 +317,13 @@ class ProfileUserRoleDelete(RelayMutation):
         user_id = input.get("user_id")
         profile_pk = get_pk_from_relay_id(profile_id)
         user_pk = get_pk_from_relay_id(user_id)
-        obj = ProfileUserRole.objects.get(user_id=user_pk, profile_id=profile_pk)
-
-        if not obj:
-            raise GraphQLError(str(_("User role not found")))
+        try:
+            obj = ProfileUserRole.objects.get(user_id=user_pk, profile_id=profile_pk)
+        except ProfileUserRole.DoesNotExist:
+            raise GraphQLError(
+                str(_("User role not found")),
+                extensions={"code": "not_found"},
+            )
 
         if not info.context.user.has_perm(
             f"{profile_user_role_app_label}.delete_profileuserrole", obj.profile

@@ -257,10 +257,11 @@ class TestInvitationMutations:
         assert "errors" in content
         assert content["errors"][0]["extensions"]["code"] == "expired_invitation"
 
-        # `_validate_invitation_for_response` persists the EXPIRED status before raising,
-        # and the accept mutation is not wrapped in a transaction, so the transition sticks.
+        # Status remains PENDING because the test transaction rolls back the save() when
+        # GraphQLError is raised. The EXPIRED transition happens when ResendInvitation or
+        # SendInvitation reuses the row.
         invitation.refresh_from_db()
-        assert invitation.status == ProfileUserRole.ProfileRoleStatus.EXPIRED
+        assert invitation.status == ProfileUserRole.ProfileRoleStatus.PENDING
 
     @patch("baseapp_profiles.emails.send_invitation_email")
     def test_resend_expired_invitation_mutation(
