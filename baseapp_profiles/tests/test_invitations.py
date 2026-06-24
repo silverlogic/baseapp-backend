@@ -944,7 +944,7 @@ class TestInvitationPIIFieldPermissions:
         assert content["data"]["node"]["invitedAt"] is not None
         assert content["data"]["node"]["invitationExpiresAt"] is not None
 
-    def test_unauthorized_user_sees_null_pii_fields(self):
+    def test_unauthorized_user_cannot_fetch_role_via_node(self):
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
         unauthorized_user = UserFactory()
@@ -958,9 +958,6 @@ class TestInvitationPIIFieldPermissions:
                 node(id: $id) {
                     ... on ProfileUserRole {
                         invitedEmail
-                        invitedAt
-                        invitationExpiresAt
-                        respondedAt
                     }
                 }
             }
@@ -973,11 +970,10 @@ class TestInvitationPIIFieldPermissions:
         response = graphql_query(query, variables=variables, client=client)
         content = response.json()
 
+        # get_node gates ProfileUserRole to members of the profile, so a non-member resolves
+        # the node to null entirely (not just the PII fields).
         assert "errors" not in content
-        assert content["data"]["node"]["invitedEmail"] is None
-        assert content["data"]["node"]["invitedAt"] is None
-        assert content["data"]["node"]["invitationExpiresAt"] is None
-        assert content["data"]["node"]["respondedAt"] is None
+        assert content["data"]["node"] is None
 
 
 @pytest.mark.django_db
@@ -1028,7 +1024,8 @@ class TestProfileInvitationQuery:
         content = response.json()
 
         assert "errors" not in content
-        assert content["data"]["profileInvitation"]["status"] == "EXPIRED"
+        # status reflects the stored value (PENDING); isExpired conveys the lapsed window.
+        assert content["data"]["profileInvitation"]["status"] == "PENDING"
         assert content["data"]["profileInvitation"]["isExpired"] is True
         # The profile is never exposed for an expired invitation.
         assert content["data"]["profileInvitation"]["profile"] is None
@@ -1059,6 +1056,9 @@ class TestProfileInvitationQuery:
         assert "errors" not in content
         assert content["data"]["profileInvitation"]["status"] == "DECLINED"
         assert content["data"]["profileInvitation"]["isExpired"] is False
+        # The profile is only exposed for a still-actionable (pending) invitation, so a
+        # declined/accepted invitation never exposes it.
+        assert content["data"]["profileInvitation"]["profile"] is None
 
     def test_token_is_authorization_for_non_member(self):
         # A user who is not a member of the profile can still read the invitation's state by

@@ -29,20 +29,9 @@ ProfileRoleTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoles)
 ProfileRoleStatusTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoleStatus)
 
 
-class ProfileInvitationObjectType(graphene.ObjectType):
-    """Token-authorized, read-only view of an invitation's current state.
-
-    Possession of the invitation token is the authorization (mirroring the accept/decline
-    mutations), so this intentionally avoids the member-only field permission checks on
-    ``ProfileUserRoleObjectType`` and exposes only non-sensitive invitation state.
-    """
-
-    class Meta:
-        name = "ProfileInvitation"
-
-    status = graphene.Field(ProfileRoleStatusTypesEnum)
-    is_expired = graphene.Boolean()
-    profile = graphene.Field(get_object_type_for_model(Profile))
+def is_expired_invitation(role) -> bool:
+    """True when a pending invitation has passed its expiration date."""
+    return role.status == ProfileUserRole.ProfileRoleStatus.PENDING and role.is_invitation_expired()
 
 
 @lru_cache(maxsize=1)
@@ -79,6 +68,8 @@ class BaseProfileUserRoleObjectType:
     invited_at = graphene.DateTime()
     invitation_expires_at = graphene.DateTime()
     responded_at = graphene.DateTime()
+    is_expired = graphene.Boolean()
+    profile = graphene.Field(get_object_type_for_model(Profile))
 
     class Meta:
         model = ProfileUserRole
@@ -122,10 +113,33 @@ class BaseProfileUserRoleObjectType:
             return None
         return self.responded_at
 
+    def resolve_is_expired(self, info):
+        return is_expired_invitation(self)
+
+    def resolve_profile(self, info):
+        # Only expose the org profile while the invitation is still actionable — pending and
+        # not yet expired (never for accepted/declined/expired roles).
+        is_actionable = (
+            self.status == ProfileUserRole.ProfileRoleStatus.PENDING
+            and not self.is_invitation_expired()
+        )
+        return self.profile if is_actionable else None
+
 
 class ProfileUserRoleObjectType(DjangoObjectType, BaseProfileUserRoleObjectType):
     class Meta(BaseProfileUserRoleObjectType.Meta):
         model = ProfileUserRole
+
+    @classmethod
+    def get_node(cls, info, id):
+        # Relay `node(id: ...)` bypasses every other resolver, so gate it here: only members
+        # of the role's profile may fetch a ProfileUserRole by node id.
+        node = super().get_node(info, id)
+        if node is None:
+            return None
+        if not can_view_profile_members(info.context.user, node.profile):
+            return None
+        return node
 
 
 class ProfileInterface(RelayNode):
