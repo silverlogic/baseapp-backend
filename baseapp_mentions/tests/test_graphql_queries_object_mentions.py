@@ -181,7 +181,7 @@ def test_is_mentioning_profile_is_flat_across_paginated_parents(graphql_user_cli
 
 def test_mentions_connection_stays_flat_across_paginated_parents(graphql_user_client):
     """`mentions` is wired into the optimizer via `MentionsInterface.mentions.optimizer_hook`,
-    which promotes the field to a real `prefetch_related('document__mentions')`
+    which promotes the field to a real `prefetch_related('document__<reverse>')`
     chain on the consumer's queryset. With that prefetch in place the entire
     mention set is loaded in one batched SELECT per page of consumers
     (plus one batched SELECT for the referenced Profiles), so the cost
@@ -216,7 +216,7 @@ def test_mentions_connection_stays_flat_across_paginated_parents(graphql_user_cl
     assert "errors" not in response_big.json(), response_big.json()
 
     # With the optimizer hook in place, mentions for all children are
-    # loaded in a single batched SELECT (`target_id IN (...)`), so the
+    # loaded in a single batched SELECT (`target_document_id IN (...)`), so the
     # delta is zero — the connection cost is independent of child count.
     # If this becomes positive again, the prefetch chain has been
     # broken; see `MentionsInterface.mentions.optimizer_hook` and

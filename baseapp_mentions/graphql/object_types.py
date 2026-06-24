@@ -10,7 +10,7 @@ Mention = swapper.load_model("baseapp_mentions", "Mention")
 class BaseMentionObjectType:
     class Meta:
         model = Mention
-        fields = ("id", "profile", "target", "created", "modified")
+        fields = ("id", "profile", "target_document", "created", "modified")
         interfaces = (RelayNode,)
 
 

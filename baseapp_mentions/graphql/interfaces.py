@@ -7,6 +7,8 @@ from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
 from baseapp_core.models import DocumentId
 from baseapp_core.plugins import shared_services
 
+from ..services import mentions_reverse_name
+
 Mention = swapper.load_model("baseapp_mentions", "Mention")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
@@ -30,7 +32,7 @@ def _resolve_target_doc_pk(obj) -> int | None:
 
 
 def _mentions_optimizer_hook(compiler) -> None:
-    """Walk the parent optimizer through `document__mentions` so the
+    """Walk the parent optimizer through `document__<reverse>` so the
     `mentions` connection is loaded via a real `prefetch_related` chain.
     """
     if service := shared_services.get("mentionable_metadata"):
@@ -63,7 +65,7 @@ class MentionsInterface(RelayNode):
         interfaces = graphql_shared_interfaces.get(RelayNode, "MentionsInterface")
 
     The consuming model must expose a `document` `GenericRelation` to
-    `baseapp_core.DocumentId` so the optimizer can walk `document__mentions`
+    `baseapp_core.DocumentId` so the optimizer can walk `document__<reverse>`
     as a real Django prefetch path. (`DocumentIdMixin` already declares it,
     so any consumer that inherits the mixin gets this for free.)
 
@@ -89,13 +91,13 @@ class MentionsInterface(RelayNode):
         if docs is not None:
             doc = next(iter(docs), None)
             if doc is not None:
-                return doc.mentions.all()
+                return getattr(doc, mentions_reverse_name()).all()
 
         # Fallback for unannotated calls
         doc_pk = _resolve_target_doc_pk(root)
         if doc_pk is None:
             return Mention.objects.none()
-        return Mention.objects.filter(target_id=doc_pk).select_related("profile")
+        return Mention.objects.filter(target_document_id=doc_pk).select_related("profile")
 
     def resolve_mentions_count(root, info):
         if service := shared_services.get("mentionable_metadata"):
@@ -112,4 +114,4 @@ class MentionsInterface(RelayNode):
         doc_pk = _resolve_target_doc_pk(root)
         if doc_pk is None:
             return False
-        return Mention.objects.filter(target_id=doc_pk, profile_id=pk).exists()
+        return Mention.objects.filter(target_document_id=doc_pk, profile_id=pk).exists()

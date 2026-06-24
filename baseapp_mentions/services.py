@@ -19,6 +19,25 @@ from .signals import mentions_changed
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
+def mentions_reverse_name() -> str:
+    """Reverse accessor from ``DocumentId`` to the swapped Mention model.
+
+    ``DocumentIdTargetMixin.target_document`` declares
+    ``related_name="%(app_label)s_%(class)s"``, so the concrete accessor is
+    project-specific (e.g. ``mentions_mention`` in the template,
+    ``social_mentions_mention`` in the test project). Computing it from the
+    swapped model's meta keeps the optimizer's ``document__<reverse>`` prefetch
+    path portable across consuming projects.
+    """
+    Mention = swapper.load_model("baseapp_mentions", "Mention")
+    return "{}_{}".format(Mention._meta.app_label, Mention._meta.model_name)
+
+
+def mentions_prefetch_path() -> str:
+    """``document__<reverse>`` lookup path used by the optimizer prefetch."""
+    return "document__{}".format(mentions_reverse_name())
+
+
 class MentionsService(SharedServiceProvider):
     """Shared service exposing `update_mentions` for cross-package consumers.
 
@@ -63,15 +82,17 @@ class MentionsService(SharedServiceProvider):
         with transaction.atomic():
             DocumentId.objects.select_for_update().filter(pk=doc.pk).first()
 
-            existing = set(Mention.objects.filter(target=doc).values_list("profile_id", flat=True))
+            existing = set(
+                Mention.objects.filter(target_document=doc).values_list("profile_id", flat=True)
+            )
             to_remove = existing - new_pks
             to_add = new_pks - existing
 
             if to_remove:
-                Mention.objects.filter(target=doc, profile_id__in=to_remove).delete()
+                Mention.objects.filter(target_document=doc, profile_id__in=to_remove).delete()
             if to_add:
                 Mention.objects.bulk_create(
-                    [Mention(target=doc, profile_id=pk) for pk in to_add],
+                    [Mention(target_document=doc, profile_id=pk) for pk in to_add],
                     ignore_conflicts=True,
                 )
 
@@ -85,7 +106,7 @@ class MentionsService(SharedServiceProvider):
                     )
                 )
 
-        return list(Mention.objects.filter(target=doc).select_related("profile"))
+        return list(Mention.objects.filter(target_document=doc).select_related("profile"))
 
     def resolve_mentioned_profiles(
         self,
@@ -157,7 +178,7 @@ class MentionableMetadataService(SharedServiceProvider):
         doc = DocumentId.get_or_create_for_object(obj)
         if doc is None:
             return 0
-        return self._mention_model().objects.filter(target=doc).count()
+        return self._mention_model().objects.filter(target_document=doc).count()
 
     def _mentions_count_subquery(self, model_cls):
         """Correlated subquery that produces the mentions count for a row of `model_cls`."""
@@ -165,11 +186,11 @@ class MentionableMetadataService(SharedServiceProvider):
         ct_id = ContentType.objects.get_for_model(model_cls).pk
         count_qs = (
             Mention.objects.filter(
-                target__content_type_id=ct_id,
-                target__object_id=OuterRef("pk"),
+                target_document__content_type_id=ct_id,
+                target_document__object_id=OuterRef("pk"),
             )
             .order_by()
-            .values("target")
+            .values("target_document")
             .annotate(c=Count("id"))
             .values("c")
         )
@@ -216,7 +237,7 @@ class MentionableMetadataService(SharedServiceProvider):
         """Attach `_mention_target_doc_id` to the parent optimizer's annotations.
 
         Wired from `MentionsInterface.is_mentioning_profile.optimizer_hook` so
-        the per-row `Mention.objects.filter(target_id=…, profile_id=…).exists()`
+        the per-row `Mention.objects.filter(target_document_id=…, profile_id=…).exists()`
         in the resolver can read the doc pk off the row instead of issuing a
         `DocumentId.get_or_create_for_object` per parent. `setdefault` so
         sibling hooks that need the same annotation don't overwrite it.
@@ -230,16 +251,17 @@ class MentionableMetadataService(SharedServiceProvider):
 
     def prefetch_mentions_in_optimizer_compiler(self, compiler: OptimizationCompiler):
         """
-        Walks the parent optimizer through document__mentions.
+        Walks the parent optimizer through ``document__<reverse>`` (the
+        project-specific reverse accessor; see ``mentions_prefetch_path``).
 
         The mentions connection is a "virtual relation" on the consuming
         model — there's no direct FK or M2M from the consumer to Mention;
         the link runs through DocumentId (consumer → document via
-        GenericRelation → mentions reverse-FK on the through-table).
+        GenericRelation → target_document reverse-FK on the through-table).
         Without a hint, the optimizer treats the field as opaque and falls back
         to a per-parent fetch, producing an N+1.
 
-        Registering a child QueryOptimizer keyed on document__mentions
+        Registering a child QueryOptimizer keyed on that path
         promotes the field to a regular Django prefetch_related: one batched
         SELECT for the parents' DocumentId rows, one batched SELECT for the
         mentions, joined to Profile via select_related. The resolver
@@ -250,7 +272,8 @@ class MentionableMetadataService(SharedServiceProvider):
         if parent_optimizer is None or parent_optimizer.model is None:
             return
 
-        if "document__mentions" in parent_optimizer.prefetch_related:
+        prefetch_path = mentions_prefetch_path()
+        if prefetch_path in parent_optimizer.prefetch_related:
             return
 
         Mention = swapper.load_model("baseapp_mentions", "Mention")
@@ -258,7 +281,7 @@ class MentionableMetadataService(SharedServiceProvider):
         mentions_opt = QueryOptimizer(
             model=Mention,
             info=compiler.info,
-            name="document__mentions",
+            name=prefetch_path,
             parent=parent_optimizer,
         )
 
@@ -267,7 +290,7 @@ class MentionableMetadataService(SharedServiceProvider):
         # Profile prefetch below would NOT receive its `mapped_public_id` annotation
         # and the relay-id resolver would fall back to a per-row `DocumentId` lookup.
         mentions_opt.only_fields.append("id")
-        mentions_opt.related_fields.extend(["target_id", "profile_id"])
+        mentions_opt.related_fields.extend(["target_document_id", "profile_id"])
 
         profile_opt = QueryOptimizer(
             model=Profile,
@@ -284,4 +307,4 @@ class MentionableMetadataService(SharedServiceProvider):
         # the promotion happens automatically inside `QueryOptimizer.process`.
         mentions_opt.select_related["profile"] = profile_opt
 
-        parent_optimizer.prefetch_related["document__mentions"] = mentions_opt
+        parent_optimizer.prefetch_related[prefetch_path] = mentions_opt

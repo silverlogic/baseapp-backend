@@ -19,7 +19,7 @@ def seed_mentions(target_obj, profiles):
     Mention = _mention_model()
     doc = DocumentId.get_or_create_for_object(target_obj)
     Mention.objects.bulk_create(
-        [Mention(target=doc, profile_id=p.pk) for p in profiles],
+        [Mention(target_document=doc, profile_id=p.pk) for p in profiles],
         ignore_conflicts=True,
     )
 
@@ -28,10 +28,10 @@ def mentioned_profile_ids(target_obj):
     """Return the set of profile pks mentioned in ``target_obj``."""
     Mention = _mention_model()
     doc = DocumentId.get_or_create_for_object(target_obj)
-    return set(Mention.objects.filter(target=doc).values_list("profile_id", flat=True))
+    return set(Mention.objects.filter(target_document=doc).values_list("profile_id", flat=True))
 
 
 def mention_count(target_obj):
     Mention = _mention_model()
     doc = DocumentId.get_or_create_for_object(target_obj)
-    return Mention.objects.filter(target=doc).count()
+    return Mention.objects.filter(target_document=doc).count()

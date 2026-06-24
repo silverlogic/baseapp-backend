@@ -7,14 +7,15 @@ Mention = swapper.load_model("baseapp_mentions", "Mention")
 
 
 class BaseMentionAdmin(ModelAdmin):
-    raw_id_fields = ("profile", "target")
+    raw_id_fields = ("profile", "target_document")
     list_display = ("id", "profile", "get_target_object", "created")
     list_filter = ("created",)
 
     @admin.display(description="Target")
     def get_target_object(self, obj):
-        content_obj = obj.target.content_object
-        return str(content_obj) if content_obj else f"DocumentId:{obj.target_id}"
+        # `DocumentIdTargetMixin.target` resolves the underlying content object.
+        content_obj = obj.target
+        return str(content_obj) if content_obj else f"DocumentId:{obj.target_document_id}"
 
 
 @admin.register(Mention)
