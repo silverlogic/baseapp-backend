@@ -257,11 +257,10 @@ class TestInvitationMutations:
         assert "errors" in content
         assert content["errors"][0]["extensions"]["code"] == "expired_invitation"
 
-        # Status remains PENDING because Django's transaction handling rolls back
-        # the save() when GraphQLError is raised. The EXPIRED transition happens
-        # when ResendInvitation or SendInvitation reuses the row.
+        # `_validate_invitation_for_response` persists the EXPIRED status before raising,
+        # and the accept mutation is not wrapped in a transaction, so the transition sticks.
         invitation.refresh_from_db()
-        assert invitation.status == ProfileUserRole.ProfileRoleStatus.PENDING
+        assert invitation.status == ProfileUserRole.ProfileRoleStatus.EXPIRED
 
     @patch("baseapp_profiles.emails.send_invitation_email")
     def test_resend_expired_invitation_mutation(
@@ -978,3 +977,104 @@ class TestInvitationPIIFieldPermissions:
         assert content["data"]["node"]["invitedAt"] is None
         assert content["data"]["node"]["invitationExpiresAt"] is None
         assert content["data"]["node"]["respondedAt"] is None
+
+
+@pytest.mark.django_db
+class TestProfileInvitationQuery:
+    QUERY = """
+        query GetInvitation($token: String!) {
+            profileInvitation(token: $token) {
+                status
+                isExpired
+                profile {
+                    id
+                    name
+                }
+            }
+        }
+    """
+
+    def test_pending_invitation_reports_pending_with_profile(
+        self, django_user_client, graphql_user_client
+    ):
+        owner = UserFactory()
+        profile = ProfileFactory(owner=owner, name="Acme Org")
+        invitation = create_invitation(
+            profile=profile, inviter=owner, invited_email="test@test.com"
+        )
+
+        response = graphql_user_client(self.QUERY, variables={"token": invitation.invitation_token})
+        content = response.json()
+
+        assert "errors" not in content
+        assert content["data"]["profileInvitation"]["status"] == "PENDING"
+        assert content["data"]["profileInvitation"]["isExpired"] is False
+        # A valid invitation exposes the org profile for the acceptance page.
+        assert content["data"]["profileInvitation"]["profile"]["name"] == "Acme Org"
+
+    def test_expired_invitation_reports_expired_without_persisting(
+        self, django_user_client, graphql_user_client
+    ):
+        owner = UserFactory()
+        profile = ProfileFactory(owner=owner)
+        invitation = create_invitation(
+            profile=profile, inviter=owner, invited_email="test@test.com"
+        )
+        invitation.invitation_expires_at = timezone.now() - timedelta(days=1)
+        invitation.save()
+
+        response = graphql_user_client(self.QUERY, variables={"token": invitation.invitation_token})
+        content = response.json()
+
+        assert "errors" not in content
+        assert content["data"]["profileInvitation"]["status"] == "EXPIRED"
+        assert content["data"]["profileInvitation"]["isExpired"] is True
+        # The profile is never exposed for an expired invitation.
+        assert content["data"]["profileInvitation"]["profile"] is None
+
+        # The query must stay side-effect free — the stored status is left untouched.
+        invitation.refresh_from_db()
+        assert invitation.status == ProfileUserRole.ProfileRoleStatus.PENDING
+
+    def test_invalid_token_returns_null(self, django_user_client, graphql_user_client):
+        response = graphql_user_client(self.QUERY, variables={"token": "does-not-exist"})
+        content = response.json()
+
+        assert "errors" not in content
+        assert content["data"]["profileInvitation"] is None
+
+    def test_responded_invitation_reports_its_status(self, django_user_client, graphql_user_client):
+        owner = UserFactory()
+        profile = ProfileFactory(owner=owner)
+        invitation = create_invitation(
+            profile=profile, inviter=owner, invited_email="test@test.com"
+        )
+        invitation.status = ProfileUserRole.ProfileRoleStatus.DECLINED
+        invitation.save()
+
+        response = graphql_user_client(self.QUERY, variables={"token": invitation.invitation_token})
+        content = response.json()
+
+        assert "errors" not in content
+        assert content["data"]["profileInvitation"]["status"] == "DECLINED"
+        assert content["data"]["profileInvitation"]["isExpired"] is False
+
+    def test_token_is_authorization_for_non_member(self):
+        # A user who is not a member of the profile can still read the invitation's state by
+        # presenting the token — the token is the authorization (mirrors accept/decline).
+        owner = UserFactory()
+        profile = ProfileFactory(owner=owner)
+        non_member = UserFactory()
+        invitation = create_invitation(
+            profile=profile, inviter=owner, invited_email="invitee@test.com"
+        )
+
+        client = Client()
+        client.force_login(non_member)
+        response = graphql_query(
+            self.QUERY, variables={"token": invitation.invitation_token}, client=client
+        )
+        content = response.json()
+
+        assert "errors" not in content
+        assert content["data"]["profileInvitation"]["status"] == "PENDING"

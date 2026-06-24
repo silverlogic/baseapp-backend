@@ -29,6 +29,22 @@ ProfileRoleTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoles)
 ProfileRoleStatusTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoleStatus)
 
 
+class ProfileInvitationObjectType(graphene.ObjectType):
+    """Token-authorized, read-only view of an invitation's current state.
+
+    Possession of the invitation token is the authorization (mirroring the accept/decline
+    mutations), so this intentionally avoids the member-only field permission checks on
+    ``ProfileUserRoleObjectType`` and exposes only non-sensitive invitation state.
+    """
+
+    class Meta:
+        name = "ProfileInvitation"
+
+    status = graphene.Field(ProfileRoleStatusTypesEnum)
+    is_expired = graphene.Boolean()
+    profile = graphene.Field(get_object_type_for_model(Profile))
+
+
 @lru_cache(maxsize=1)
 def get_profile_metadata_type() -> type[object] | None:
     if not apps.is_installed("baseapp_pages"):
