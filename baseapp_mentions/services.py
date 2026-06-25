@@ -19,25 +19,6 @@ from .signals import mentions_changed
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
-def mentions_reverse_name() -> str:
-    """Reverse accessor from ``DocumentId`` to the swapped Mention model.
-
-    ``DocumentIdTargetMixin.target_document`` declares
-    ``related_name="%(app_label)s_%(class)s"``, so the concrete accessor is
-    project-specific (e.g. ``mentions_mention`` in the template,
-    ``social_mentions_mention`` in the test project). Computing it from the
-    swapped model's meta keeps the optimizer's ``document__<reverse>`` prefetch
-    path portable across consuming projects.
-    """
-    Mention = swapper.load_model("baseapp_mentions", "Mention")
-    return "{}_{}".format(Mention._meta.app_label, Mention._meta.model_name)
-
-
-def mentions_prefetch_path() -> str:
-    """``document__<reverse>`` lookup path used by the optimizer prefetch."""
-    return "document__{}".format(mentions_reverse_name())
-
-
 class MentionsService(SharedServiceProvider):
     """Shared service exposing `update_mentions` for cross-package consumers.
 
@@ -252,7 +233,8 @@ class MentionableMetadataService(SharedServiceProvider):
     def prefetch_mentions_in_optimizer_compiler(self, compiler: OptimizationCompiler):
         """
         Walks the parent optimizer through ``document__<reverse>`` (the
-        project-specific reverse accessor; see ``mentions_prefetch_path``).
+        project-specific reverse accessor; see
+        ``DocumentIdTargetMixin.document_prefetch_path``).
 
         The mentions connection is a "virtual relation" on the consuming
         model — there's no direct FK or M2M from the consumer to Mention;
@@ -272,11 +254,11 @@ class MentionableMetadataService(SharedServiceProvider):
         if parent_optimizer is None or parent_optimizer.model is None:
             return
 
-        prefetch_path = mentions_prefetch_path()
+        Mention = swapper.load_model("baseapp_mentions", "Mention")
+
+        prefetch_path = Mention.document_prefetch_path()
         if prefetch_path in parent_optimizer.prefetch_related:
             return
-
-        Mention = swapper.load_model("baseapp_mentions", "Mention")
 
         mentions_opt = QueryOptimizer(
             model=Mention,

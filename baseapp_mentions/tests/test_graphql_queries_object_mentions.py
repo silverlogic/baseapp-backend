@@ -192,6 +192,7 @@ def test_mentions_connection_stays_flat_across_paginated_parents(graphql_user_cl
     its `document = GenericRelation(DocumentId)`), the resolver falls
     back to per-parent fan-out and this test trips.
     """
+    from django.contrib.contenttypes.models import ContentType
     from django.db import connection
     from django.test.utils import CaptureQueriesContext
 
@@ -199,6 +200,11 @@ def test_mentions_connection_stays_flat_across_paginated_parents(graphql_user_cl
 
     parent_small = CommentFactory()
     _make_mentioned_comments(parent_small, 3, profiles)
+    # Reset the ContentType cache before each capture so both runs pay the same
+    # fixed `get_for_model` lookups — otherwise whichever runs first warms the
+    # cache process-wide and the delta picks up that one-off jitter (the cache
+    # state also depends on test ordering, e.g. baseapp_follows clearing it).
+    ContentType.objects.clear_cache()
     with CaptureQueriesContext(connection) as ctx_small:
         response_small = graphql_user_client(
             MENTIONS_QUERY, variables={"targetId": parent_small.relay_id}
@@ -209,6 +215,7 @@ def test_mentions_connection_stays_flat_across_paginated_parents(graphql_user_cl
     parent_big = CommentFactory()
     extra = 5
     _make_mentioned_comments(parent_big, 3 + extra, profiles)
+    ContentType.objects.clear_cache()
     with CaptureQueriesContext(connection) as ctx_big:
         response_big = graphql_user_client(
             MENTIONS_QUERY, variables={"targetId": parent_big.relay_id}

@@ -7,8 +7,6 @@ from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
 from baseapp_core.models import DocumentId
 from baseapp_core.plugins import shared_services
 
-from ..services import mentions_reverse_name
-
 Mention = swapper.load_model("baseapp_mentions", "Mention")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
@@ -91,7 +89,7 @@ class MentionsInterface(RelayNode):
         if docs is not None:
             doc = next(iter(docs), None)
             if doc is not None:
-                return getattr(doc, mentions_reverse_name()).all()
+                return getattr(doc, Mention.target_document_accessor()).all()
 
         # Fallback for unannotated calls
         doc_pk = _resolve_target_doc_pk(root)

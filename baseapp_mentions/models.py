@@ -28,7 +28,7 @@ class AbstractBaseMention(TimeStampedModel, DocumentIdTargetMixin, DocumentIdMix
         unique_together = [("profile", "target_document")]
         swappable = swapper.swappable_setting("baseapp_mentions", "Mention")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{} mentioned in {}".format(self.profile, self.target_document)
 
     @classmethod

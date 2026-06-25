@@ -7,10 +7,34 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def backfill_mention_document_ids(apps, schema_editor):
+    """Register existing Mention rows in the DocumentId registry.
+
+    The triggers below only cover future INSERT/DELETE. Rows that already exist
+    when this migration runs predate the trigger, so backfill their DocumentId
+    entries with the shared helper (same approach the other plugin-arch apps use).
+    """
+    from baseapp_core.backfill import backfill_model_document_ids
+
+    Mention = apps.get_model("social_mentions", "Mention")
+    DocumentId = apps.get_model("baseapp_core", "DocumentId")
+    backfill_model_document_ids(model=Mention, DocumentId=DocumentId)
+
+
+def remove_mention_document_ids(apps, schema_editor):
+    """Reverse of the backfill — drop the Mention DocumentId rows."""
+    DocumentId = apps.get_model("baseapp_core", "DocumentId")
+    ContentType = apps.get_model("contenttypes", "ContentType")
+    ct = ContentType.objects.filter(app_label="social_mentions", model="mention").first()
+    if ct is not None:
+        DocumentId.objects.filter(content_type=ct).delete()
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
         ("baseapp_core", "0001_initial"),
+        ("contenttypes", "0002_remove_content_type_name"),
         ("social_mentions", "0001_initial"),
         migrations.swappable_dependency(settings.BASEAPP_PROFILES_PROFILE_MODEL),
     ]
@@ -64,5 +88,9 @@ class Migration(migrations.Migration):
                     when="AFTER",
                 ),
             ),
+        ),
+        migrations.RunPython(
+            backfill_mention_document_ids,
+            reverse_code=remove_mention_document_ids,
         ),
     ]

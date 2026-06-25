@@ -12,7 +12,7 @@ class BaseMentionAdmin(ModelAdmin):
     list_filter = ("created",)
 
     @admin.display(description="Target")
-    def get_target_object(self, obj):
+    def get_target_object(self, obj) -> str:
         # `DocumentIdTargetMixin.target` resolves the underlying content object.
         content_obj = obj.target
         return str(content_obj) if content_obj else f"DocumentId:{obj.target_document_id}"
