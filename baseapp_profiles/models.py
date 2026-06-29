@@ -551,7 +551,7 @@ class AbstractProfileUserRole(DocumentIdMixin, RelayModel, models.Model):
             models.UniqueConstraint(
                 fields=["profile", "invited_email"],
                 name="unique_profile_invited_email",
-                condition=models.Q(invited_email__isnull=False),
+                condition=models.Q(invited_email__isnull=False) & ~models.Q(invited_email=""),
             ),
         ]
 

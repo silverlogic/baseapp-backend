@@ -82,7 +82,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="profileuserrole",
             constraint=models.UniqueConstraint(
-                condition=models.Q(("invited_email__isnull", False)),
+                condition=models.Q(invited_email__isnull=False) & ~models.Q(invited_email=""),
                 fields=("profile", "invited_email"),
                 name="unique_profile_invited_email",
             ),
