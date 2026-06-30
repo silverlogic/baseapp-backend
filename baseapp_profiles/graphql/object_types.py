@@ -151,9 +151,16 @@ class ProfilesInterface(RelayNode):
 
     def resolve_profiles(self, info, **kwargs):
         if info.context.user.is_authenticated and info.context.user == self:
-            return Profile.objects.filter(
-                Q(owner_id=info.context.user.id) | Q(members__user_id=info.context.user.id)
-            ).order_by("name")
+            # distinct() is required: the OR spans the to-many `members` relation, so the
+            # JOIN returns one row per member and would otherwise duplicate an owned profile
+            # once per member (e.g. every time someone is invited).
+            return (
+                Profile.objects.filter(
+                    Q(owner_id=info.context.user.id) | Q(members__user_id=info.context.user.id)
+                )
+                .distinct()
+                .order_by("name")
+            )
         return Profile.objects.none()
 
 
