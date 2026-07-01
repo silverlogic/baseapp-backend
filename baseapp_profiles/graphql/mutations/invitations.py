@@ -89,13 +89,80 @@ def _reset_invitation_for_send(invitation, role=None, user=None) -> None:
         invitation.user = user
 
 
+def _create_or_reset_invitation(profile, normalized_email: str, role, invited_user):
+    """Create a fresh invitation for ``normalized_email`` on ``profile`` (or revive an
+    existing declined/inactive/expired one). Must run inside a transaction — it takes a
+    ``select_for_update`` lock. Raises ``GraphQLError`` on a hard conflict (the email is
+    already an active member, or has a still-valid pending invitation)."""
+    existing_role = (
+        ProfileUserRole.objects.select_for_update()
+        .filter(profile=profile, invited_email__iexact=normalized_email)
+        .first()
+    )
+
+    if existing_role:
+        if existing_role.status == ProfileUserRole.ProfileRoleStatus.ACTIVE:
+            raise GraphQLError(
+                str(
+                    _("%(email)s is already a member of this profile") % {"email": normalized_email}
+                ),
+                extensions={"code": "already_member"},
+            )
+
+        if existing_role.status == ProfileUserRole.ProfileRoleStatus.PENDING:
+            if not existing_role.is_invitation_expired():
+                raise GraphQLError(
+                    str(
+                        _("An invitation has already been sent to %(email)s")
+                        % {"email": normalized_email}
+                    ),
+                    extensions={"code": "duplicate_invitation"},
+                )
+            existing_role.status = ProfileUserRole.ProfileRoleStatus.EXPIRED
+
+        if existing_role.status in [
+            ProfileUserRole.ProfileRoleStatus.DECLINED,
+            ProfileUserRole.ProfileRoleStatus.INACTIVE,
+            ProfileUserRole.ProfileRoleStatus.EXPIRED,
+        ]:
+            _reset_invitation_for_send(existing_role, role=role, user=invited_user)
+            existing_role.save()
+            return existing_role
+
+        raise GraphQLError(
+            str(_("Cannot send invitation in current state")),
+            extensions={"code": "invalid_status"},
+        )
+
+    try:
+        invitation = ProfileUserRole.objects.create(
+            profile=profile,
+            user=invited_user,
+            invited_email=normalized_email,
+            role=role,
+            status=ProfileUserRole.ProfileRoleStatus.PENDING,
+            invited_at=timezone.now(),
+            invitation_expires_at=(timezone.now() + timedelta(days=INVITATION_EXPIRATION_DAYS)),
+        )
+        invitation.generate_invitation_token()
+        invitation.save()
+        return invitation
+    except IntegrityError:
+        raise GraphQLError(
+            str(
+                _("An invitation has already been sent to %(email)s") % {"email": normalized_email}
+            ),
+            extensions={"code": "duplicate_invitation"},
+        )
+
+
 class ProfileSendInvitation(RelayMutation):
-    profile_user_role = graphene.Field(get_object_type_for_model(ProfileUserRole))
-    email_sent = graphene.Boolean()
+    profile_user_roles = graphene.List(get_object_type_for_model(ProfileUserRole))
+    emails_sent = graphene.Int()
 
     class Input:
         profile_id = graphene.ID(required=True)
-        email = graphene.String(required=True)
+        emails = graphene.List(graphene.NonNull(graphene.String), required=True)
         role = graphene.Field(ProfileRoleTypesEnum, required=True)
 
     @classmethod
@@ -106,7 +173,7 @@ class ProfileSendInvitation(RelayMutation):
         from baseapp_profiles.emails import send_invitation_email
 
         profile_id = input.get("profile_id")
-        email = input.get("email")
+        emails = input.get("emails") or []
         role = input.get("role")
 
         profile_pk = get_pk_from_relay_id(profile_id)
@@ -126,78 +193,45 @@ class ProfileSendInvitation(RelayMutation):
                 extensions={"code": "permission_required"},
             )
 
-        normalized_email = email.lower()
-        User = get_user_model()
+        # Normalize + de-duplicate the emails, preserving order.
+        normalized_emails = []
+        seen = set()
+        for email in emails:
+            normalized = (email or "").strip().lower()
+            if normalized and normalized not in seen:
+                seen.add(normalized)
+                normalized_emails.append(normalized)
 
-        try:
-            invited_user = User.objects.get(email__iexact=normalized_email)
-        except User.DoesNotExist:
-            invited_user = None
-
-        with transaction.atomic():
-            existing_role = (
-                ProfileUserRole.objects.select_for_update()
-                .filter(profile=profile, invited_email__iexact=normalized_email)
-                .first()
+        if not normalized_emails:
+            raise GraphQLError(
+                str(_("At least one email is required")),
+                extensions={"code": "invalid_input"},
             )
 
-            if existing_role:
-                if existing_role.status == ProfileUserRole.ProfileRoleStatus.ACTIVE:
-                    raise GraphQLError(
-                        str(_("This user is already a member of this profile")),
-                        extensions={"code": "already_member"},
-                    )
+        User = get_user_model()
 
-                if existing_role.status == ProfileUserRole.ProfileRoleStatus.PENDING:
-                    if not existing_role.is_invitation_expired():
-                        raise GraphQLError(
-                            str(_("An invitation has already been sent to this email")),
-                            extensions={"code": "duplicate_invitation"},
-                        )
-                    existing_role.status = ProfileUserRole.ProfileRoleStatus.EXPIRED
-
-                if existing_role.status in [
-                    ProfileUserRole.ProfileRoleStatus.DECLINED,
-                    ProfileUserRole.ProfileRoleStatus.INACTIVE,
-                    ProfileUserRole.ProfileRoleStatus.EXPIRED,
-                ]:
-                    _reset_invitation_for_send(existing_role, role=role, user=invited_user)
-                    existing_role.save()
-                    invitation = existing_role
-                else:
-                    raise GraphQLError(
-                        str(_("Cannot send invitation in current state")),
-                        extensions={"code": "invalid_status"},
-                    )
-            else:
+        # Create/revive every invitation in one transaction — a hard conflict on any
+        # email rolls back the whole batch so the caller can fix it and retry.
+        invitations = []
+        with transaction.atomic():
+            for normalized_email in normalized_emails:
                 try:
-                    invitation = ProfileUserRole.objects.create(
-                        profile=profile,
-                        user=invited_user,
-                        invited_email=normalized_email,
-                        role=role,
-                        status=ProfileUserRole.ProfileRoleStatus.PENDING,
-                        invited_at=timezone.now(),
-                        invitation_expires_at=(
-                            timezone.now() + timedelta(days=INVITATION_EXPIRATION_DAYS)
-                        ),
-                    )
-                    invitation.generate_invitation_token()
-                    invitation.save()
-                except IntegrityError:
-                    raise GraphQLError(
-                        str(_("An invitation has already been sent to this email")),
-                        extensions={"code": "duplicate_invitation"},
-                    )
+                    invited_user = User.objects.get(email__iexact=normalized_email)
+                except User.DoesNotExist:
+                    invited_user = None
+                invitations.append(
+                    _create_or_reset_invitation(profile, normalized_email, role, invited_user)
+                )
 
-        email_sent = True
-        try:
-            send_invitation_email(invitation, info.context.user)
-        except Exception:
-            logger.exception("Failed to send invitation email to %s", normalized_email)
-            email_sent = False
+        emails_sent = 0
+        for invitation in invitations:
+            try:
+                send_invitation_email(invitation, info.context.user)
+                emails_sent += 1
+            except Exception:
+                logger.exception("Failed to send invitation email to %s", invitation.invited_email)
 
-        return ProfileSendInvitation(profile_user_role=invitation, email_sent=email_sent)
+        return cls(profile_user_roles=invitations, emails_sent=emails_sent)
 
 
 class ProfileAcceptInvitation(RelayMutation):

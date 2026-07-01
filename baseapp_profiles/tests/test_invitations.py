@@ -104,8 +104,8 @@ class TestInvitationMutations:
         mutation = """
             mutation SendInvitation($input: ProfileSendInvitationInput!) {
                 profileSendInvitation(input: $input) {
-                    emailSent
-                    profileUserRole {
+                    emailsSent
+                    profileUserRoles {
                         id
                         invitedEmail
                         role
@@ -118,7 +118,7 @@ class TestInvitationMutations:
         variables = {
             "input": {
                 "profileId": profile.relay_id,
-                "email": "newmember@test.com",
+                "emails": ["newmember@test.com"],
                 "role": "MANAGER",
             }
         }
@@ -130,13 +130,52 @@ class TestInvitationMutations:
             print(f"GraphQL Errors: {content['errors']}")
 
         assert "data" in content
-        assert content["data"]["profileSendInvitation"]["emailSent"] is True
-        assert (
-            content["data"]["profileSendInvitation"]["profileUserRole"]["invitedEmail"]
-            == "newmember@test.com"
-        )
-        assert content["data"]["profileSendInvitation"]["profileUserRole"]["status"] == "PENDING"
+        assert content["data"]["profileSendInvitation"]["emailsSent"] == 1
+        roles = content["data"]["profileSendInvitation"]["profileUserRoles"]
+        assert len(roles) == 1
+        assert roles[0]["invitedEmail"] == "newmember@test.com"
+        assert roles[0]["status"] == "PENDING"
         assert mock_send_email.called
+
+    @patch("baseapp_profiles.emails.send_invitation_email")
+    def test_send_profile_invitation_mutation_batch(
+        self, mock_send_email, django_user_client, graphql_user_client
+    ):
+        profile = ProfileFactory(owner=django_user_client.user)
+
+        mutation = """
+            mutation SendInvitation($input: ProfileSendInvitationInput!) {
+                profileSendInvitation(input: $input) {
+                    emailsSent
+                    profileUserRoles {
+                        invitedEmail
+                        status
+                    }
+                }
+            }
+        """
+
+        variables = {
+            "input": {
+                "profileId": profile.relay_id,
+                # Duplicate + mixed-case emails should be de-duplicated to two invitations.
+                "emails": ["a@test.com", "b@test.com", "A@test.com"],
+                "role": "MANAGER",
+            }
+        }
+
+        response = graphql_user_client(mutation, variables=variables)
+        content = response.json()
+
+        assert "errors" not in content, content.get("errors")
+        data = content["data"]["profileSendInvitation"]
+        assert data["emailsSent"] == 2
+        assert sorted(role["invitedEmail"] for role in data["profileUserRoles"]) == [
+            "a@test.com",
+            "b@test.com",
+        ]
+        assert all(role["status"] == "PENDING" for role in data["profileUserRoles"])
+        assert mock_send_email.call_count == 2
 
     def test_accept_profile_invitation_mutation(self, django_user_client, graphql_user_client):
         owner = UserFactory()
@@ -409,8 +448,8 @@ class TestInvitationMutations:
         mutation = """
             mutation SendInvitation($input: ProfileSendInvitationInput!) {
                 profileSendInvitation(input: $input) {
-                    emailSent
-                    profileUserRole {
+                    emailsSent
+                    profileUserRoles {
                         id
                         invitedEmail
                         status
@@ -422,7 +461,7 @@ class TestInvitationMutations:
         variables = {
             "input": {
                 "profileId": profile.relay_id,
-                "email": "newmember@test.com",
+                "emails": ["newmember@test.com"],
                 "role": "MANAGER",
             }
         }
@@ -431,12 +470,14 @@ class TestInvitationMutations:
         content = response.json()
 
         assert "errors" not in content
-        assert content["data"]["profileSendInvitation"]["emailSent"] is False
+        assert content["data"]["profileSendInvitation"]["emailsSent"] == 0
         assert (
-            content["data"]["profileSendInvitation"]["profileUserRole"]["invitedEmail"]
+            content["data"]["profileSendInvitation"]["profileUserRoles"][0]["invitedEmail"]
             == "newmember@test.com"
         )
-        assert content["data"]["profileSendInvitation"]["profileUserRole"]["status"] == "PENDING"
+        assert (
+            content["data"]["profileSendInvitation"]["profileUserRoles"][0]["status"] == "PENDING"
+        )
 
         assert ProfileUserRole.objects.filter(
             profile=profile, invited_email="newmember@test.com"
@@ -634,7 +675,7 @@ class TestInvitationStateMachine:
         mutation = """
             mutation SendInvitation($input: ProfileSendInvitationInput!) {
                 profileSendInvitation(input: $input) {
-                    profileUserRole {
+                    profileUserRoles {
                         id
                         status
                         invitedEmail
@@ -643,13 +684,15 @@ class TestInvitationStateMachine:
             }
         """
 
-        variables = {"input": {"profileId": profile.relay_id, "email": email, "role": "MANAGER"}}
+        variables = {"input": {"profileId": profile.relay_id, "emails": [email], "role": "MANAGER"}}
 
         response = graphql_user_client(mutation, variables=variables)
         content = response.json()
 
         assert "data" in content
-        assert content["data"]["profileSendInvitation"]["profileUserRole"]["status"] == "PENDING"
+        assert (
+            content["data"]["profileSendInvitation"]["profileUserRoles"][0]["status"] == "PENDING"
+        )
         assert ProfileUserRole.objects.filter(profile=profile, invited_email=email).count() == 1
 
         invitation.refresh_from_db()
@@ -674,19 +717,21 @@ class TestInvitationStateMachine:
         mutation = """
             mutation SendInvitation($input: ProfileSendInvitationInput!) {
                 profileSendInvitation(input: $input) {
-                    profileUserRole {
+                    profileUserRoles {
                         status
                     }
                 }
             }
         """
 
-        variables = {"input": {"profileId": profile.relay_id, "email": email, "role": "ADMIN"}}
+        variables = {"input": {"profileId": profile.relay_id, "emails": [email], "role": "ADMIN"}}
 
         response = graphql_user_client(mutation, variables=variables)
         content = response.json()
 
-        assert content["data"]["profileSendInvitation"]["profileUserRole"]["status"] == "PENDING"
+        assert (
+            content["data"]["profileSendInvitation"]["profileUserRoles"][0]["status"] == "PENDING"
+        )
         assert ProfileUserRole.objects.filter(profile=profile, invited_email=email).count() == 1
 
         invitation.refresh_from_db()
@@ -712,19 +757,21 @@ class TestInvitationStateMachine:
         mutation = """
             mutation SendInvitation($input: ProfileSendInvitationInput!) {
                 profileSendInvitation(input: $input) {
-                    profileUserRole {
+                    profileUserRoles {
                         status
                     }
                 }
             }
         """
 
-        variables = {"input": {"profileId": profile.relay_id, "email": email, "role": "MANAGER"}}
+        variables = {"input": {"profileId": profile.relay_id, "emails": [email], "role": "MANAGER"}}
 
         response = graphql_user_client(mutation, variables=variables)
         content = response.json()
 
-        assert content["data"]["profileSendInvitation"]["profileUserRole"]["status"] == "PENDING"
+        assert (
+            content["data"]["profileSendInvitation"]["profileUserRoles"][0]["status"] == "PENDING"
+        )
         assert ProfileUserRole.objects.filter(profile=profile, invited_email=email).count() == 1
 
         invitation.refresh_from_db()
@@ -743,14 +790,14 @@ class TestInvitationStateMachine:
         mutation = """
             mutation SendInvitation($input: ProfileSendInvitationInput!) {
                 profileSendInvitation(input: $input) {
-                    profileUserRole {
+                    profileUserRoles {
                         status
                     }
                 }
             }
         """
 
-        variables = {"input": {"profileId": profile.relay_id, "email": email, "role": "MANAGER"}}
+        variables = {"input": {"profileId": profile.relay_id, "emails": [email], "role": "MANAGER"}}
 
         response = graphql_user_client(mutation, variables=variables)
         content = response.json()
@@ -771,14 +818,14 @@ class TestInvitationStateMachine:
         mutation = """
             mutation SendInvitation($input: ProfileSendInvitationInput!) {
                 profileSendInvitation(input: $input) {
-                    profileUserRole {
+                    profileUserRoles {
                         status
                     }
                 }
             }
         """
 
-        variables = {"input": {"profileId": profile.relay_id, "email": email, "role": "MANAGER"}}
+        variables = {"input": {"profileId": profile.relay_id, "emails": [email], "role": "MANAGER"}}
 
         response = graphql_user_client(mutation, variables=variables)
         content = response.json()
@@ -803,19 +850,21 @@ class TestInvitationStateMachine:
         mutation = """
             mutation SendInvitation($input: ProfileSendInvitationInput!) {
                 profileSendInvitation(input: $input) {
-                    profileUserRole {
+                    profileUserRoles {
                         status
                     }
                 }
             }
         """
 
-        variables = {"input": {"profileId": profile.relay_id, "email": email, "role": "MANAGER"}}
+        variables = {"input": {"profileId": profile.relay_id, "emails": [email], "role": "MANAGER"}}
 
         response = graphql_user_client(mutation, variables=variables)
         content = response.json()
 
-        assert content["data"]["profileSendInvitation"]["profileUserRole"]["status"] == "PENDING"
+        assert (
+            content["data"]["profileSendInvitation"]["profileUserRoles"][0]["status"] == "PENDING"
+        )
         assert ProfileUserRole.objects.filter(profile=profile, invited_email=email).count() == 1
         invitation.refresh_from_db()
         assert invitation.pk == original_pk
