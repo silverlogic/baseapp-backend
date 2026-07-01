@@ -8,6 +8,19 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
     verbose_name = "BaseApp Notifications"
     default_auto_field = "django.db.models.AutoField"
 
+    def ready(self) -> None:
+        super().ready()
+
+        # django-notifications-community connects its ``notify_handler`` in the library
+        # app's ``AppConfig.ready()``. That app is intentionally not in INSTALLED_APPS here
+        # (its "notifications" label is taken by the project's concrete notifications app),
+        # so we connect the handler ourselves. The shared dispatch_uid keeps this idempotent
+        # if the library app ever is installed alongside us.
+        from notifications.base.models import notify_handler
+        from notifications.signals import notify
+
+        notify.connect(notify_handler, dispatch_uid="notifications.models.notification")
+
     def register_shared_services(self, registry):
         from .services import NotificationService
 

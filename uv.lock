@@ -330,7 +330,7 @@ messagetemplates = [
     { name = "sendgrid" },
 ]
 notifications = [
-    { name = "django-notifications-hq" },
+    { name = "django-notifications-community" },
     { name = "django-push-notifications", extra = ["apns-async", "fcm", "wp"] },
     { name = "firebase-admin" },
 ]
@@ -367,7 +367,7 @@ dev = [
     { name = "black" },
     { name = "channels" },
     { name = "channels-redis" },
-    { name = "django-notifications-hq" },
+    { name = "django-notifications-community" },
     { name = "django-push-notifications", extra = ["apns-async", "fcm", "wp"] },
     { name = "djangorestframework" },
     { name = "djangorestframework-simplejwt", extra = ["crypto"] },
@@ -393,7 +393,7 @@ testproject = [
     { name = "black" },
     { name = "channels" },
     { name = "channels-redis" },
-    { name = "django-notifications-hq" },
+    { name = "django-notifications-community" },
     { name = "django-push-notifications", extra = ["apns-async", "fcm", "wp"] },
     { name = "djangorestframework" },
     { name = "djangorestframework-simplejwt", extra = ["crypto"] },
@@ -432,7 +432,7 @@ requires-dist = [
     { name = "django-jinja", specifier = ">=2.11" },
     { name = "django-model-utils", specifier = ">=5.0.0" },
     { name = "django-nested-admin", marker = "extra == 'messagetemplates'", specifier = ">=3.3" },
-    { name = "django-notifications-hq", marker = "extra == 'notifications'", git = "https://github.com/openwisp/django-notifications.git?rev=f4918c2409a734ec1aa9798d86c3a729b505f753" },
+    { name = "django-notifications-community", marker = "extra == 'notifications'", specifier = ">=1.10" },
     { name = "django-pghistory", specifier = "==3.9.1" },
     { name = "django-pgtrigger", specifier = "==4.17.0" },
     { name = "django-phonenumber-field", specifier = ">=8.1.0" },
@@ -485,7 +485,7 @@ dev = [
     { name = "black", specifier = "==26.3.1" },
     { name = "channels", specifier = "==4.3.1" },
     { name = "channels-redis", specifier = "==4.3.0" },
-    { name = "django-notifications-hq", git = "https://github.com/openwisp/django-notifications.git?rev=f4918c2409a734ec1aa9798d86c3a729b505f753" },
+    { name = "django-notifications-community" },
     { name = "django-push-notifications", extras = ["apns-async", "fcm", "wp"], specifier = "==3.3.0" },
     { name = "djangorestframework", specifier = "==3.16.1" },
     { name = "djangorestframework-simplejwt", extras = ["crypto"], specifier = "==5.5.1" },
@@ -511,7 +511,7 @@ testproject = [
     { name = "black", specifier = "==26.3.1" },
     { name = "channels", specifier = "==4.3.1" },
     { name = "channels-redis", specifier = "==4.3.0" },
-    { name = "django-notifications-hq", git = "https://github.com/openwisp/django-notifications.git?rev=f4918c2409a734ec1aa9798d86c3a729b505f753" },
+    { name = "django-notifications-community" },
     { name = "django-push-notifications", extras = ["apns-async", "fcm", "wp"], specifier = "==3.3.0" },
     { name = "djangorestframework", specifier = "==3.16.1" },
     { name = "djangorestframework-simplejwt", extras = ["crypto"], specifier = "==5.5.1" },
@@ -1317,15 +1317,15 @@ wheels = [
 ]
 
 [[package]]
-name = "django-notifications-hq"
-version = "1.8.3"
-source = { git = "https://github.com/openwisp/django-notifications.git?rev=f4918c2409a734ec1aa9798d86c3a729b505f753#f4918c2409a734ec1aa9798d86c3a729b505f753" }
+name = "django-notifications-community"
+version = "1.12.1"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
-    { name = "django-model-utils" },
-    { name = "jsonfield" },
-    { name = "packaging" },
-    { name = "swapper" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/51/d8/bb849a4d107e58776e66547f03b0a529e1007d4e9a02f3c9808e6b9c39a8/django_notifications_community-1.12.1.tar.gz", hash = "sha256:dc6d5a6e26d51dd4df5993c47fb650941c0b7cb7433558ccce432fd4cd555ac6", size = 52129, upload-time = "2026-04-30T17:46:36.905Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3c/46/273a621924cd6fc07efbbd56bd58d502b563ea177531b641a838a06baa1d/django_notifications_community-1.12.1-py3-none-any.whl", hash = "sha256:f7dbf933a9147327ac4a0c711d6c5af9f549f511a4707ac268de052a69369080", size = 38448, upload-time = "2026-04-30T17:46:35.252Z" },
 ]
 
 [[package]]
@@ -2305,18 +2305,6 @@ name = "json-log-formatter"
 version = "1.1.1"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e8/ef/324f4a28ed0152a32b80685b26316b604218e4ac77487ea82719c3c28bc6/json_log_formatter-1.1.1.tar.gz", hash = "sha256:0815e3b4469e5c79cf3f6dc8a0613ba6601f4a7464f85ba03655cfa6e3e17d10", size = 5896, upload-time = "2025-02-27T22:56:15.643Z" }
-
-[[package]]
-name = "jsonfield"
-version = "3.2.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "django" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/fa/e9/537e105246dba81d898853dbbe17eb3edd23d47a35074b99fd4add6f1662/jsonfield-3.2.0.tar.gz", hash = "sha256:ca53871bc3308ae4f4cddc3b4f99ed5c6fc6abb1832fbfb499bc6da566c70e4a", size = 17156, upload-time = "2025-07-04T23:06:24.883Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0a/22/2e08e7b957f50e5eceefde018ce9ee88aceb5126231128d9c1cb8167c1c8/jsonfield-3.2.0-py3-none-any.whl", hash = "sha256:ca4f6bf89c819f293e77074d613c0021e3c4e8521be95c73d03caecb4372e1ee", size = 8316, upload-time = "2025-07-04T23:06:23.588Z" },
-]
 
 [[package]]
 name = "jsonschema"

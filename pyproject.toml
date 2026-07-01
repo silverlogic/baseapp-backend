@@ -67,7 +67,7 @@ pages = [
 ]
 payments = ["stripe>=11.5.0"]
 notifications = [
-    "django-notifications-hq>=1.8",
+    "django-notifications-community>=1.10",
     "firebase-admin>=6.5.0",
     "django-push-notifications[WP,apns-async,FCM]>=3.2",
 ]
@@ -117,7 +117,7 @@ dev = [
     "urllib3==2.7.0",
     "twisted==26.4.0",
     "channels==4.3.1",
-    "django-notifications-hq",
+    "django-notifications-community",
     "django-push-notifications[apns-async,fcm,wp]==3.3.0",
     "baseapp-backend[auth,graphql,messagetemplates,notifications,pages,payments,pdf,referrals,socialauth,urlshortening,wagtail]",
     "testproject",
@@ -128,7 +128,7 @@ testproject = [
     "black==26.3.1",
     "channels==4.3.1",
     "channels-redis==4.3.0",
-    "django-notifications-hq",
+    "django-notifications-community",
     "django-push-notifications[apns-async,fcm,wp]==3.3.0",
     "djangorestframework==3.16.1",
     "djangorestframework-simplejwt[crypto]==5.5.1",
@@ -151,7 +151,6 @@ testproject = [
 ]
 
 [tool.uv.sources]
-django-notifications-hq = { git = "https://github.com/openwisp/django-notifications.git", rev = "f4918c2409a734ec1aa9798d86c3a729b505f753" }
 baseapp-backend = { workspace = true }
 testproject = { path = "testproject", editable = true }
 
