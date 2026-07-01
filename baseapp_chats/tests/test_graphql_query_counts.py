@@ -180,7 +180,7 @@ def test_mentions_interface_on_messages_rides_optimizer_prefetch(
     graphql_user_client, django_user_client
 ):
     """Regression guard: the `MentionsInterface` optimizer hook on
-    `MessageObjectType` must batch the `document__mentions` prefetch,
+    `MessageObjectType` must batch the `document__<reverse>` mentions prefetch,
     and the chats-side `pre_optimization_hook` must keep `room_id`,
     `deleted`, and `message_type` in `only_fields`.
 
@@ -191,7 +191,7 @@ def test_mentions_interface_on_messages_rides_optimizer_prefetch(
        so the optimizer compiler actually runs and fires the mentions
        hook.
     2. `MentionsInterface.mentions.optimizer_hook` is intact (walks
-       `document__mentions` through the parent optimizer).
+       `document__<reverse>` through the parent optimizer).
     3. `BaseMessageObjectType.pre_optimization_hook` adds `room_id`,
        `deleted`, and `message_type` to `only_fields` so neither the
        prefetch pipeline nor `resolve_content` triggers per-message
