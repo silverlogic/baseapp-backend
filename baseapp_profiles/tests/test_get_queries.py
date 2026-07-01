@@ -266,6 +266,38 @@ def test_search_profiles(graphql_user_client):
     assert profile5.relay_id not in profiles
 
 
+def test_me_profiles_not_duplicated_by_members(django_user_client, graphql_user_client):
+    # Regression: an owned profile must appear exactly once in `me.profiles` even when it
+    # has several members. resolve_profiles ORs owner_id with the to-many `members` relation,
+    # so without distinct() the owned profile was returned once per member row (it grew by one
+    # every time a person was invited).
+    user = django_user_client.user
+    profile = ProfileFactory(owner=user)
+    ProfileUserRoleFactory(profile=profile, user=UserFactory())
+    ProfileUserRoleFactory(profile=profile, user=UserFactory())
+
+    response = graphql_user_client(
+        query="""
+            query MyProfiles {
+                me {
+                    profiles {
+                        edges {
+                            node {
+                                id
+                            }
+                        }
+                    }
+                }
+            }
+        """,
+    )
+    content = response.json()
+    ids = [edge["node"]["id"] for edge in content["data"]["me"]["profiles"]["edges"]]
+
+    assert ids.count(profile.relay_id) == 1
+    assert len(ids) == len(set(ids))
+
+
 def test_search_members_filters_by_name(django_user_client, graphql_user_client):
     user = django_user_client.user
     profile = ProfileFactory(owner=user)
