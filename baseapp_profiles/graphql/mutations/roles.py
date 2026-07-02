@@ -1,6 +1,8 @@
+import logging
+
 import graphene
 import swapper
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 
@@ -16,6 +18,8 @@ from ..object_types import ProfileRoleTypesEnum
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 profile_user_role_app_label = ProfileUserRole._meta.app_label
+
+logger = logging.getLogger(__name__)
 
 
 class ProfileUserRoleCreate(RelayMutation):
@@ -57,15 +61,33 @@ class ProfileUserRoleCreate(RelayMutation):
         if emails_to_invite:
             pass
 
-        profile_user_roles = [
-            ProfileUserRole(
-                user_id=get_pk_from_relay_id(user_id), profile_id=profile_pk, role=role_type
+        # De-duplicate the requested users, then reject any that are already members so the
+        # client gets a clear message instead of a raw unique-constraint (IntegrityError).
+        requested_user_pks = list(
+            dict.fromkeys(get_pk_from_relay_id(user_id) for user_id in (users_ids or []))
+        )
+        if ProfileUserRole.objects.filter(
+            profile_id=profile_pk, user_id__in=requested_user_pks
+        ).exists():
+            raise GraphQLError(
+                str(_("One or more of the selected users are already members of this profile")),
+                extensions={"code": "already_member"},
             )
-            for user_id in (users_ids or [])
-        ]
-        profile_user_roles = ProfileUserRole.objects.bulk_create(profile_user_roles)
 
-        # TODO on BA-2426: send invitation to existing users
+        try:
+            profile_user_roles = ProfileUserRole.objects.bulk_create(
+                [
+                    ProfileUserRole(user_id=user_pk, profile_id=profile_pk, role=role_type)
+                    for user_pk in requested_user_pks
+                ]
+            )
+        except IntegrityError:
+            # Safety net for a race between the check above and the insert.
+            logger.exception("Failed to add members to profile %s", profile_pk)
+            raise GraphQLError(
+                str(_("One or more of the selected users are already members of this profile")),
+                extensions={"code": "already_member"},
+            )
 
         return cls(
             errors=None,
