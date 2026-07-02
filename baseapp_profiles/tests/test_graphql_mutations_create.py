@@ -139,3 +139,24 @@ def test_integrity_error_that_is_not_a_duplicate_returns_a_generic_error(
 
     assert content["errors"][0]["extensions"]["code"] == "add_member_failed"
     assert not ProfileUserRole.objects.filter(profile=profile, user=new_member).exists()
+
+
+def test_cannot_add_the_owner_as_a_member(django_user_client, graphql_user_client):
+    user = django_user_client.user
+    _add_member_permission(user)
+    profile = ProfileFactory(owner=user)
+
+    response = graphql_user_client(
+        PROFILE_USER_ROLE_CREATE_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": profile.relay_id,
+                "usersIds": [user.relay_id],
+                "roleType": "MANAGER",
+            }
+        },
+    )
+    content = response.json()
+
+    assert content["errors"][0]["extensions"]["code"] == "cannot_add_owner"
+    assert not ProfileUserRole.objects.filter(profile=profile, user=user).exists()

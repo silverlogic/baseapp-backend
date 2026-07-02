@@ -66,6 +66,11 @@ class ProfileUserRoleCreate(RelayMutation):
         requested_user_pks = list(
             dict.fromkeys(get_pk_from_relay_id(user_id) for user_id in (users_ids or []))
         )
+        if str(profile.owner_id) in {str(pk) for pk in requested_user_pks}:
+            raise GraphQLError(
+                str(_("The profile owner cannot be added as a member")),
+                extensions={"code": "cannot_add_owner"},
+            )
         if ProfileUserRole.objects.filter(
             profile_id=profile_pk, user_id__in=requested_user_pks
         ).exists():
