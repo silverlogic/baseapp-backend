@@ -75,19 +75,28 @@ class ProfileUserRoleCreate(RelayMutation):
             )
 
         try:
-            profile_user_roles = ProfileUserRole.objects.bulk_create(
-                [
-                    ProfileUserRole(user_id=user_pk, profile_id=profile_pk, role=role_type)
-                    for user_pk in requested_user_pks
-                ]
-            )
-        except IntegrityError:
-            # Safety net for a race between the check above and the insert.
+            with transaction.atomic():
+                profile_user_roles = ProfileUserRole.objects.bulk_create(
+                    [
+                        ProfileUserRole(user_id=user_pk, profile_id=profile_pk, role=role_type)
+                        for user_pk in requested_user_pks
+                    ]
+                )
+        except IntegrityError as error:
             logger.exception("Failed to add members to profile %s", profile_pk)
+            # Only report "already_member" if a membership actually exists now (race with the
+            # pre-check); any other integrity failure returns a generic error.
+            if ProfileUserRole.objects.filter(
+                profile_id=profile_pk, user_id__in=requested_user_pks
+            ).exists():
+                raise GraphQLError(
+                    str(_("One or more of the selected users are already members of this profile")),
+                    extensions={"code": "already_member"},
+                ) from error
             raise GraphQLError(
-                str(_("One or more of the selected users are already members of this profile")),
-                extensions={"code": "already_member"},
-            )
+                str(_("Unable to add the selected members")),
+                extensions={"code": "add_member_failed"},
+            ) from error
 
         return cls(
             errors=None,
