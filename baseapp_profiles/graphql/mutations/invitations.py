@@ -249,6 +249,12 @@ class ProfileAcceptInvitation(RelayMutation):
         invitation = _get_invitation_by_token(token)
         _validate_invitation_for_response(invitation, info.context.user)
 
+        if invitation.profile.owner_id == info.context.user.id:
+            raise GraphQLError(
+                str(_("The profile owner cannot accept an invitation to their own profile")),
+                extensions={"code": "cannot_add_owner"},
+            )
+
         invitation.status = ProfileUserRole.ProfileRoleStatus.ACTIVE
         invitation.responded_at = timezone.now()
         invitation.save()

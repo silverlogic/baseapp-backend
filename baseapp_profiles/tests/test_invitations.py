@@ -215,6 +215,40 @@ class TestInvitationMutations:
         assert invitation.status == ProfileUserRole.ProfileRoleStatus.ACTIVE
         assert invitation.responded_at is not None
 
+    def test_owner_cannot_accept_invitation_to_their_own_profile(
+        self, django_user_client, graphql_user_client
+    ):
+        owner = django_user_client.user
+        profile = ProfileFactory(owner=owner)
+
+        invitation = create_invitation(
+            profile=profile,
+            inviter=owner,
+            invited_email=owner.email,
+            role=ProfileUserRole.ProfileRoles.MANAGER,
+        )
+
+        mutation = """
+            mutation AcceptInvitation($input: ProfileAcceptInvitationInput!) {
+                profileAcceptInvitation(input: $input) {
+                    profileUserRole {
+                        id
+                        status
+                    }
+                }
+            }
+        """
+
+        variables = {"input": {"token": invitation.invitation_token}}
+
+        response = graphql_user_client(mutation, variables=variables)
+        content = response.json()
+
+        assert content["errors"][0]["extensions"]["code"] == "cannot_add_owner"
+
+        invitation.refresh_from_db()
+        assert invitation.status == ProfileUserRole.ProfileRoleStatus.PENDING
+
     def test_decline_profile_invitation_mutation(self, django_user_client, graphql_user_client):
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
