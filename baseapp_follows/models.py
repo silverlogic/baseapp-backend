@@ -2,32 +2,57 @@ import swapper
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
+from django.db.models import F, OuterRef, Subquery, Value
+from django.db.models.functions import Coalesce
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql.models import RelayModel
-from baseapp_core.models import DocumentId
+from baseapp_core.models import DocumentId, DocumentIdMixin, DocumentIdUniqueTargetMixin
 
 
-class FollowStats(models.Model):
-    target = models.OneToOneField(
-        DocumentId,
-        on_delete=models.CASCADE,
-        primary_key=True,
-        related_name="follow_stats",
-    )
+class AbstractFollowableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
     followers_count = models.PositiveIntegerField(default=0, editable=False)
     following_count = models.PositiveIntegerField(default=0, editable=False)
 
     class Meta:
-        verbose_name = "Follow Stats"
-        verbose_name_plural = "Follow Stats"
+        abstract = True
+        swappable = swapper.swappable_setting("baseapp_follows", "FollowableMetadata")
+        verbose_name = _("followable metadata")
+        verbose_name_plural = _("followable metadata")
 
     def __str__(self):
-        return f"FollowStats for {self.target}"
+        return f"{self.target} followable metadata"
+
+    @classmethod
+    def annotate_queryset(cls, queryset):
+        """
+        Annotate a queryset with followable metadata to prevent N+1 queries when resolving
+        `followers_count` / `following_count` for many rows of the same model.
+        Adds `_followable_followers_count` and `_followable_following_count` (zero when
+        no metadata row exists yet).
+        Resolves the model ContentType id once per call (Django's ContentType manager
+        caches until `ContentType.objects.clear_cache()`).
+        """
+        model_cls = queryset.model
+        ct_id = ContentType.objects.get_for_model(model_cls).pk
+        metadata_qs = cls.objects.filter(
+            target__content_type_id=ct_id,
+            target__object_id=OuterRef("pk"),
+        )
+        return queryset.annotate(
+            _followable_followers_count=Coalesce(
+                Subquery(metadata_qs.values("followers_count")[:1]),
+                Value(0),
+            ),
+            _followable_following_count=Coalesce(
+                Subquery(metadata_qs.values("following_count")[:1]),
+                Value(0),
+            ),
+        )
 
 
-class AbstractBaseFollow(TimeStampedModel, RelayModel):
+class AbstractFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name=_("user"),
@@ -54,6 +79,8 @@ class AbstractBaseFollow(TimeStampedModel, RelayModel):
 
     class Meta:
         abstract = True
+        swappable = swapper.swappable_setting("baseapp_follows", "Follow")
+        unique_together = [("actor", "target")]
 
     def __str__(self):
         return "{} followed {}".format(self.actor, self.target)
@@ -66,62 +93,108 @@ class AbstractBaseFollow(TimeStampedModel, RelayModel):
         super().save(*args, **kwargs)  # Save the instance first
 
         if created:
-            self.update_followers_count(self.target)
-            self.update_following_count(self.actor)
+            self._adjust_followable_metadata(self.target_id, "followers_count", 1)
+            self._adjust_followable_metadata(self.actor_id, "following_count", 1)
             if self._is_profile_to_profile():
-                self.update_target_is_following_back()
+                self._sync_target_is_following_back_on_create()
 
-    def update_target_is_following_back(self):
-        # Check if the target is following the actor
-        reciprocal_follow_exists = self.__class__.objects.filter(
+    def delete(self, *args, **kwargs):
+        actor_id = self.actor_id
+        target_id = self.target_id
+        # Resolve _is_profile_to_profile() while the FK descriptor cache is still warm —
+        # accessing self.actor / self.target after super().delete() would trigger a
+        # fresh fetch on a row whose FK referent could in principle be gone.
+        is_p2p = self._is_profile_to_profile()
+        super().delete(*args, **kwargs)
+
+        self._adjust_followable_metadata(target_id, "followers_count", -1)
+        self._adjust_followable_metadata(actor_id, "following_count", -1)
+        if is_p2p:
+            self._clear_reciprocal_target_is_following_back(actor_id, target_id)
+
+    @classmethod
+    def _adjust_followable_metadata(cls, doc_id, field, delta):
+        """
+        Atomically increment / decrement a `FollowableMetadata` counter via
+        `F` expression. Live path — keeps follow / unfollow O(1) per write,
+        regardless of how many follows the target / actor already has.
+
+        Use `recount_followers_count` / `recount_following_count` for periodic
+        reconciliation that re-derives the counter from the live row count; that
+        path SELECT FOR UPDATEs and runs a full COUNT(*), so it serializes writers
+        on hot rows and must NOT be on the live save / delete path.
+        """
+        FollowableMetadata = swapper.load_model("baseapp_follows", "FollowableMetadata")
+        affected = FollowableMetadata.objects.filter(target_id=doc_id).update(
+            **{field: F(field) + delta}
+        )
+        if affected == 0 and delta > 0:
+            # First adjustment for this target / actor — seed the row at the right
+            # starting count. `update_or_create` is idempotent under concurrent
+            # writers thanks to the unique target_id constraint.
+            FollowableMetadata.objects.update_or_create(target_id=doc_id, defaults={field: delta})
+
+    def _sync_target_is_following_back_on_create(self):
+        """
+        When a Follow is created and a reciprocal Follow already exists, flip
+        `target_is_following_back` on BOTH rows via single-row UPDATEs instead of
+        re-entering `save()` — the previous implementation called
+        `self.save(update_fields=[...])` which is fragile (the second save triggers
+        the post-create branch again, and only avoided infinite recursion because
+        `created` was False the second time around).
+        """
+        cls = self.__class__
+        reciprocal_exists = cls.objects.filter(
             actor_id=self.target_id,
             target_id=self.actor_id,
         ).exists()
-
-        self.target_is_following_back = reciprocal_follow_exists
-        self.save(update_fields=["target_is_following_back"])
-
-        if reciprocal_follow_exists:
-            # Update the reciprocal follow instance
-            reciprocal_follow = self.__class__.objects.get(
-                actor_id=self.target_id,
-                target_id=self.actor_id,
-            )
-            reciprocal_follow.target_is_following_back = True
-            reciprocal_follow.save(update_fields=["target_is_following_back"])
-
-    def delete(self, *args, **kwargs):
-        actor = self.actor
-        target = self.target
-        super().delete(*args, **kwargs)
-
-        self.update_followers_count(target)
-        self.update_following_count(actor)
-        if self._is_profile_to_profile():
-            self.update_target_is_following_back_on_delete()
-
-    def update_target_is_following_back_on_delete(self):
-        # Check if the target is following the actor
-        reciprocal_follow = self.__class__.objects.filter(
+        if not reciprocal_exists:
+            return
+        cls.objects.filter(pk=self.pk).update(target_is_following_back=True)
+        cls.objects.filter(
             actor_id=self.target_id,
             target_id=self.actor_id,
-        ).first()
+        ).update(target_is_following_back=True)
+        # In-memory consistency for callers who hold this instance.
+        self.target_is_following_back = True
 
-        if reciprocal_follow:
-            reciprocal_follow.target_is_following_back = False
-            reciprocal_follow.save(update_fields=["target_is_following_back"])
+    @classmethod
+    def _clear_reciprocal_target_is_following_back(cls, actor_id, target_id):
+        """
+        When a Follow is deleted, flip `target_is_following_back` on the
+        reciprocal Follow (if any) back to False via a single UPDATE — same
+        no-recursive-save reasoning as the create path.
+        """
+        cls.objects.filter(
+            actor_id=target_id,
+            target_id=actor_id,
+        ).update(target_is_following_back=False)
 
-    def update_followers_count(self, target_doc_id):
+    @classmethod
+    def recount_followers_count(cls, target):
+        """
+        Periodic-reconciliation helper: recompute `followers_count` from the
+        live follow rows under a row lock. Use this from a Celery beat task, NOT
+        from the live save / delete path (the live path uses
+        :meth:`_adjust_followable_metadata`, which is O(1) and lock-free).
+        """
+        cls._recount(target, "followers_count", "target_id")
+
+    @classmethod
+    def recount_following_count(cls, actor):
+        cls._recount(actor, "following_count", "actor_id")
+
+    @classmethod
+    def _recount(cls, doc_or_id, metadata_field, follow_field):
+        doc_id = doc_or_id.pk if hasattr(doc_or_id, "pk") else doc_or_id
+        FollowableMetadata = swapper.load_model("baseapp_follows", "FollowableMetadata")
         with transaction.atomic():
-            stats, _ = FollowStats.objects.select_for_update().get_or_create(target=target_doc_id)
-            stats.followers_count = self.__class__.objects.filter(target=target_doc_id).count()
-            stats.save(update_fields=["followers_count"])
-
-    def update_following_count(self, actor_doc_id):
-        with transaction.atomic():
-            stats, _ = FollowStats.objects.select_for_update().get_or_create(target=actor_doc_id)
-            stats.following_count = self.__class__.objects.filter(actor=actor_doc_id).count()
-            stats.save(update_fields=["following_count"])
+            stats, _ = FollowableMetadata.objects.select_for_update().get_or_create(
+                target_id=doc_id
+            )
+            count = cls.objects.filter(**{follow_field: doc_id}).count()
+            setattr(stats, metadata_field, count)
+            stats.save(update_fields=[metadata_field])
 
     @classmethod
     def is_following(cls, actor, target):
@@ -140,10 +213,3 @@ class AbstractBaseFollow(TimeStampedModel, RelayModel):
         from .graphql.object_types import FollowObjectType
 
         return FollowObjectType
-
-
-class Follow(AbstractBaseFollow):
-    class Meta:
-        unique_together = [("actor", "target")]
-
-        swappable = swapper.swappable_setting("baseapp_follows", "Follow")

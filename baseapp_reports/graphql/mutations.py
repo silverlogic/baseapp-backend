@@ -1,11 +1,12 @@
 import graphene
 import swapper
-from django.contrib.contenttypes.models import ContentType
+from django.apps import apps
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 from graphql_relay.connection.arrayconnection import offset_to_cursor
 
 from baseapp_core.graphql import RelayMutation, get_obj_from_relay_id, login_required
+from baseapp_core.models import DocumentId
 
 from ..permissions import ADD_REPORT_PERMISSION
 from .object_types import ReportsInterface
@@ -37,18 +38,23 @@ class ReportCreate(RelayMutation):
                 extensions={"code": "permission_required"},
             )
 
-        if info.context.user.current_profile.relay_id == target.relay_id:
+        if apps.is_installed("baseapp_profiles"):
+            current_profile = getattr(info.context.user, "current_profile", None)
+            is_self_report = bool(current_profile and current_profile.relay_id == target.relay_id)
+        else:
+            is_self_report = getattr(target, "user_id", None) == info.context.user.id or (
+                getattr(target, "pk", None) == info.context.user.id
+            )
+
+        if is_self_report:
             raise GraphQLError(
                 str(_("You cannot report yourself")),
                 extensions={"code": "invalid_action"},
             )
 
-        content_type = ContentType.objects.get_for_model(target)
-
         report = Report.objects.create(
             user=info.context.user,
-            target_object_id=target.pk,
-            target_content_type=content_type,
+            target_document=DocumentId.get_or_create_for_object(target),
             report_type=report_type,
             report_subject=report_subject,
         )

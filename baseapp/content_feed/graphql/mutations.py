@@ -8,22 +8,20 @@ from graphene_django.types import ErrorType
 from rest_framework import serializers
 
 from baseapp_core.graphql import RelayMutation, login_required
+from baseapp_core.plugins import shared_services
 
 ContentPost = swapper.load_model(
     "baseapp_content_feed", "ContentPost", required=False, require_ready=False
 )
-app_label = ContentPost._meta.app_label
 ContentPostImage = swapper.load_model("baseapp_content_feed", "ContentPostImage")
 
 ContentPostObjectType = ContentPost.get_graphql_object_type()
-
-ContentPostImageType = ContentPostImage.get_graphql_object_type()
 
 
 class ContentPostForm(forms.ModelForm):
     class Meta:
         model = ContentPost
-        fields = ("content", "is_reactions_enabled")
+        fields = ("content",)
 
 
 class ImageSerializer(serializers.Serializer):
@@ -49,8 +47,12 @@ class ContentPostCreate(RelayMutation):
             with transaction.atomic():
                 instance = form.save(commit=False)
                 instance.user = info.context.user
-                instance.profile = info.context.user.current_profile
+                if apps.is_installed("baseapp_profiles") and hasattr(instance, "profile"):
+                    instance.profile = info.context.user.current_profile
                 instance.save()
+
+                if (service := shared_services.get("reactable_metadata")) is not None:
+                    service.set_is_reactions_enabled(instance, input["is_reactions_enabled"])
 
                 created_images_list = []
 
@@ -67,14 +69,13 @@ class ContentPostCreate(RelayMutation):
                         )
                     )
 
-                if mentioned_profile_ids and apps.is_installed("baseapp_mentions"):
-                    from baseapp_mentions.services import update_mentions
-
-                    update_mentions(
-                        instance,
-                        mentioned_profile_ids,
-                        exclude_profile=getattr(info.context.user, "current_profile", None),
-                    )
+                if mentioned_profile_ids:
+                    if service := shared_services.get("mentions"):
+                        service.update_mentions(
+                            instance,
+                            mentioned_profile_ids,
+                            exclude_profile=getattr(info.context.user, "current_profile", None),
+                        )
 
                 instance.refresh_from_db()
 

@@ -41,11 +41,15 @@ RUN apt-get update -qq && \
 
 RUN mkdir -p /usr/src/app
 
+# Trust all repo paths for git, using '*' so it covers the submodule case. Run it BEFORE
+# the COPY so it executes on a clean working dir: when this repo is built as a submodule,
+# the copied /usr/src/app/.git is a gitlink file pointing outside the build context, which
+# makes git abort repo discovery (even for `config --global`) if run from /usr/src/app.
+RUN git config --global --add safe.directory '*'
+
 COPY . /usr/src/app
 
 WORKDIR /usr/src/app
-
-RUN git config --global --add safe.directory /usr/src/app
 
 # Install uv and sync dependencies (all extras + dev for tests)
 COPY --from=ghcr.io/astral-sh/uv:0.10.9 /uv /uvx /bin/

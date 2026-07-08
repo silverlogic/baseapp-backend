@@ -60,14 +60,20 @@ baseapp_<package>/tests/
 
 ## Commands
 
-Run from the consuming project root via Docker Compose:
+Run these from **this submodule's** root (`baseapp-backend/`) using its own `docker-compose.yml`.
+Do **not** use a consuming template's container: it runs the template's `settings.*` (not
+`testproject.settings`) and its pytest config ignores `baseapp-backend`, so package tests won't run
+there. Paths below are relative to the submodule root.
 
 ```bash
 # All tests
 docker compose run --rm web pytest
 
 # Specific package
-docker compose run --rm web pytest baseapp-backend/baseapp_auth/
+docker compose run --rm web pytest baseapp_profiles/tests/
+
+# Reuse the test DB across runs (skips the slow migrate/setup step)
+docker compose run --rm web pytest baseapp_profiles/tests/ --reuse-db
 
 # With coverage
 docker compose run --rm web pytest --cov --cov-report=term-missing

@@ -1,6 +1,7 @@
 from celery.schedules import crontab
 from django.utils.translation import gettext_lazy as _
 
+from baseapp_core.plugins import plugin_registry
 from baseapp_core.tests.settings import *  # noqa
 from baseapp_wagtail.settings import *  # noqa
 from baseapp_wagtail.settings import (
@@ -13,13 +14,12 @@ from baseapp_wagtail.settings import (
 INSTALLED_APPS += [
     "channels",
     "graphene_django",
-    "notifications",
-    "push_notifications",
     "django_quill",
     "social_django",
     "rest_social_auth",
     "trench",
     "rest_framework_simplejwt",
+    "push_notifications",
     "baseapp_profiles",
     "baseapp_reactions",
     "baseapp_reports",
@@ -41,9 +41,14 @@ INSTALLED_APPS += [
     "baseapp_e2e",
     "baseapp_social_auth",
     "baseapp_social_auth.cache",
-    "testproject.users",
     "baseapp.content_feed",
+    "baseapp_pdf",
+    "baseapp_api_key",
+    *WAGTAIL_INSTALLED_APPS,
+    *WAGTAIL_INSTALLED_INTERNAL_APPS,
+    "testproject.users",
     "testproject.testapp",
+    "testproject.plugin_test_app",
     "testproject.comments",
     "testproject.profiles",
     "testproject.reactions",
@@ -56,23 +61,28 @@ INSTALLED_APPS += [
     "testproject.reports",
     "testproject.pages",
     "testproject.organizations",
-    "testproject.chats",
-    *WAGTAIL_INSTALLED_INTERNAL_APPS,
-    *WAGTAIL_INSTALLED_APPS,
+    "testproject.payments",
+    "testproject.referrals",
+    "testproject.notifications",
+    "testproject.social.chats",
+    "testproject.social.mentions",
     "baseapp_wagtail.tests",
-    "baseapp_pdf",
-    "baseapp_api_key",
 ]
 
-MIDDLEWARE.remove("baseapp_core.middleware.HistoryMiddleware")
+plugin_registry.load_from_installed_apps(installed_apps=INSTALLED_APPS)
+
+INSTALLED_APPS += plugin_registry.get("INSTALLED_APPS")
+
 MIDDLEWARE += [
-    "baseapp_profiles.middleware.CurrentProfileMiddleware",
+    # Slotted: use get("MIDDLEWARE", "slot_name") for explicit order; if plugin disabled, [].
+    *plugin_registry.get("MIDDLEWARE", "baseapp_profiles"),
     "baseapp_core.middleware.HistoryMiddleware",
     *WAGTAIL_MIDDLEWARE,
 ]
 
 GRAPHENE["MIDDLEWARE"] = (
-    "baseapp_profiles.graphql.middleware.CurrentProfileMiddleware",
+    # Slotted: use get("GRAPHENE__MIDDLEWARE", "slot_name") for explicit order; if plugin disabled, [].
+    *plugin_registry.get("GRAPHENE__MIDDLEWARE", "baseapp_profiles"),
 ) + GRAPHENE["MIDDLEWARE"]
 
 ROOT_URLCONF = "testproject.urls"
@@ -114,19 +124,20 @@ CLOUDFLARE_VIDEO_AUTOMATIC_TRIM = True
 CLOUDFLARE_VIDEO_TRIM_DURATION_SECONDS = 10
 
 AUTHENTICATION_BACKENDS = [
+    # Slotted: use get("AUTHENTICATION_BACKENDS", "slot_name") for explicit order; if plugin disabled, [].
     "django.contrib.auth.backends.ModelBackend",
     "baseapp_auth.permissions.UsersPermissionsBackend",
-    "baseapp_profiles.permissions.ProfilesPermissionsBackend",
-    "baseapp_comments.permissions.CommentsPermissionsBackend",
-    "baseapp.activity_log.permissions.ActivityLogPermissionsBackend",
-    "baseapp_reactions.permissions.ReactionsPermissionsBackend",
-    "baseapp_reports.permissions.ReportsPermissionsBackend",
-    "baseapp_ratings.permissions.RatingsPermissionsBackend",
-    "baseapp_follows.permissions.FollowsPermissionsBackend",
-    "baseapp_blocks.permissions.BlocksPermissionsBackend",
-    "baseapp_pages.permissions.PagesPermissionsBackend",
-    "baseapp_organizations.permissions.OrganizationsPermissionsBackend",
-    "baseapp_chats.permissions.ChatsPermissionsBackend",
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_pages"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_profiles"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_comments"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp.activity_log"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_reactions"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_reports"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_ratings"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_follows"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_blocks"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_chats"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_organizations"),
 ]
 
 ADMIN_TIME_ZONE = "UTC"
@@ -173,6 +184,7 @@ CONSTANCE_CONFIG = OrderedDict(
             (False, "Whether to send anonymize/delete user notification emails to superusers"),
         ),
     ]
+    + plugin_registry.get_all_constance_config(),
 )
 
 # Stripe
@@ -185,9 +197,12 @@ BASEAPP_PROFILES_PROFILEUSERROLE_MODEL = "profiles.ProfileUserRole"
 
 # Reactions
 BASEAPP_REACTIONS_REACTION_MODEL = "reactions.Reaction"
+BASEAPP_REACTIONS_REACTABLEMETADATA_MODEL = "reactions.ReactableMetadata"
+BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS = False
 
 # Comments
 BASEAPP_COMMENTS_COMMENT_MODEL = "comments.Comment"
+BASEAPP_COMMENTS_COMMENTABLEMETADATA_MODEL = "comments.CommentableMetadata"
 
 # Content Feed
 BASEAPP_CONTENT_FEED_CONTENTPOST_MODEL = "content_feed.ContentPost"
@@ -195,16 +210,20 @@ BASEAPP_CONTENT_FEED_CONTENTPOSTIMAGE_MODEL = "content_feed.ContentPostImage"
 
 # Follows
 BASEAPP_FOLLOWS_FOLLOW_MODEL = "follows.Follow"
+BASEAPP_FOLLOWS_FOLLOWABLEMETADATA_MODEL = "follows.FollowableMetadata"
 
 # Blocks
 BASEAPP_BLOCKS_BLOCK_MODEL = "blocks.Block"
+BASEAPP_BLOCKS_BLOCKABLEMETADATA_MODEL = "blocks.BlockableMetadata"
 
 # Ratings
 BASEAPP_RATINGS_RATE_MODEL = "ratings.Rate"
+BASEAPP_RATINGS_RATABLEMETADATA_MODEL = "ratings.RatableMetadata"
 
 # Reports
 BASEAPP_REPORTS_REPORT_MODEL = "reports.Report"
 BASEAPP_REPORTS_REPORTTYPE_MODEL = "reports.ReportType"
+BASEAPP_REPORTS_REPORTABLEMETADATA_MODEL = "reports.ReportableMetadata"
 
 # Pages
 BASEAPP_PAGES_PAGE_MODEL = "pages.Page"
@@ -213,30 +232,29 @@ BASEAPP_PAGES_PAGE_MODEL = "pages.Page"
 BASEAPP_ORGANIZATIONS_ORGANIZATION_MODEL = "organizations.Organization"
 
 # Chats
-BASEAPP_CHATS_CHATROOM_MODEL = "chats.ChatRoom"
-BASEAPP_CHATS_CHATROOMPARTICIPANT_MODEL = "chats.ChatRoomParticipant"
-BASEAPP_CHATS_UNREADMESSAGECOUNT_MODEL = "chats.UnreadMessageCount"
-BASEAPP_CHATS_MESSAGE_MODEL = "chats.Message"
-BASEAPP_CHATS_MESSAGESTATUS_MODEL = "chats.MessageStatus"
+BASEAPP_CHATS_CHATROOM_MODEL = "social_chats.ChatRoom"
+BASEAPP_CHATS_CHATROOMPARTICIPANT_MODEL = "social_chats.ChatRoomParticipant"
+BASEAPP_CHATS_UNREADMESSAGECOUNT_MODEL = "social_chats.UnreadMessageCount"
+BASEAPP_CHATS_MESSAGE_MODEL = "social_chats.Message"
+BASEAPP_CHATS_MESSAGESTATUS_MODEL = "social_chats.MessageStatus"
 
 # Notifications
-NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"
-BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False
-BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS = False
+NOTIFICATIONS_NOTIFICATION_MODEL = "notifications.Notification"
+BASEAPP_NOTIFICATIONS_NOTIFICATIONSETTING_MODEL = "notifications.NotificationSetting"
 
-# API Key
-BA_API_KEY_REQUEST_HEADER = env("BA_API_KEY_REQUEST_HEADER", default="HTTP_API_KEY")
-BA_API_KEY_ENCRYPTION_KEY = env("BA_API_KEY_ENCRYPTION_KEY", default=None)
+# Payments
+BASEAPP_PAYMENTS_CUSTOMER_MODEL = "payments.Customer"
+BASEAPP_PAYMENTS_SUBSCRIPTION_MODEL = "payments.Subscription"
+
+# Referrals
+BASEAPP_REFERRALS_USERREFERRAL_MODEL = "referrals.UserReferral"
+
+# Mentions
+BASEAPP_MENTIONS_MENTION_MODEL = "social_mentions.Mention"
 
 # Graphene query optimizer
 GRAPHQL_QUERY_OPTIMIZER = {
     "ALLOW_CONNECTION_AS_DEFAULT_NESTED_TO_MANY_FIELD": True,
-}
-
-# End-to-end tests
-E2E = {
-    "ENABLED": True,
-    "SCRIPTS_PACKAGE": "testproject.e2e.scripts",
 }
 
 # Social auth
@@ -292,22 +310,32 @@ SIMPLE_JWT = {
 }
 JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
 
+# Swagger docs (drf-spectacular)
+PUBLISH_SWAGGER_DOC = env("PUBLISH_SWAGGER_DOC", default=True, required=False)
+
+if PUBLISH_SWAGGER_DOC:
+    INSTALLED_APPS += ["drf_spectacular"]
+    REST_FRAMEWORK["DEFAULT_SCHEMA_CLASS"] = "drf_spectacular.openapi.AutoSchema"
+
 # Sites
 FRONT_CONFIRM_EMAIL_URL = FRONT_URL + "/confirm-email/{id}/{token}"
 FRONT_FORGOT_PASSWORD_URL = FRONT_URL + "/forgot-password/{token}"
 FRONT_CHANGE_EMAIL_CONFIRM_URL = FRONT_URL + "/change-email/{id}/{token}"
 FRONT_CHANGE_EMAIL_VERIFY_URL = FRONT_URL + "/change-email-verify/{id}/{token}"
 FRONT_CHANGE_EXPIRED_PASSWORD_URL = FRONT_URL + "/change-expired-password/{token}"
+FRONT_ACCEPT_INVITATION_URL = FRONT_URL + "/accept-invitation/{token}"
 
 # IOS Deep Links
 IOS_CONFIRM_EMAIL_DEEP_LINK = False
 IOS_FORGOT_PASSWORD_DEEP_LINK = False
 IOS_CHANGE_EMAIL_DEEP_LINK = False
+IOS_ACCEPT_INVITATION_DEEP_LINK = False
 
 # Android Deep Links
 ANDROID_CONFIRM_EMAIL_DEEP_LINK = False
 ANDROID_FORGOT_PASSWORD_DEEP_LINK = False
 ANDROID_CHANGE_EMAIL_DEEP_LINK = False
+ANDROID_ACCEPT_INVITATION_DEEP_LINK = False
 
 # Phone Numbers
 PHONENUMBER_DB_FORMAT = "E164"
@@ -317,3 +345,19 @@ BRANCHIO_KEY = env("BRANCHIO_KEY", "N/A")
 
 # AUTOFIELD
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+
+# Register the extra settings from the BaseApp apps
+plugin_settings = plugin_registry.get_all_django_extra_settings()
+for key, value in plugin_settings.items():
+    if key not in globals():
+        globals()[key] = value
+
+# Anything after this line will override the plugin settings, so you can customize them.
+
+E2E = {
+    "ENABLED": True,
+    "SCRIPTS_PACKAGE": "testproject.e2e.scripts",
+}
+
+# Comments
+BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS = False

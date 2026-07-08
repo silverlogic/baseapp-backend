@@ -1,6 +1,7 @@
 from celery import current_app
 
 from baseapp_core.graphql.testing.fixtures import *  # noqa
+from baseapp_core.plugins.tests.fixtures import with_disabled_apps  # noqa: F401
 from baseapp_core.tests.fixtures import *  # noqa
 
 # Apply Django's CELERY_* settings (including CELERY_TASK_ALWAYS_EAGER=True) to the

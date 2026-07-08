@@ -1,5 +1,4 @@
 import swapper
-from django.apps import apps
 from graphene_django.filter import DjangoFilterConnectionField
 
 from baseapp.content_feed.graphql.filters import (
@@ -9,7 +8,11 @@ from baseapp.content_feed.graphql.filters import (
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql.fields import ThumbnailField
-from baseapp_reactions.graphql.object_types import ReactionsInterface
+from baseapp_core.plugins import (
+    apply_if_installed,
+    graphql_shared_interfaces,
+    shared_services,
+)
 
 ContentPost = swapper.load_model(
     "baseapp_content_feed", "ContentPost", required=False, require_ready=False
@@ -18,17 +21,6 @@ ContentPost = swapper.load_model(
 ContentPostImage = swapper.load_model(
     "baseapp_content_feed", "ContentPostImage", required=False, require_ready=False
 )
-
-
-content_post_interfaces = (
-    RelayNode,
-    ReactionsInterface,
-)
-
-if apps.is_installed("baseapp_mentions"):
-    from baseapp_mentions.graphql.interfaces import MentionsInterface
-
-    content_post_interfaces += (MentionsInterface,)
 
 
 class ContentPostImageObjectType(DjangoObjectType):
@@ -45,19 +37,28 @@ class ContentPostObjectType(DjangoObjectType):
     images = DjangoFilterConnectionField(lambda: ContentPostImageObjectType)
 
     class Meta:
-        interfaces = content_post_interfaces
+        interfaces = graphql_shared_interfaces.get(
+            RelayNode, "MentionsInterface", "ReactionsInterface"
+        )
         model = ContentPost
         fields = (
             "pk",
             "user",
-            "profile",
+            *apply_if_installed("baseapp_profiles", ["profile"]),
             "content",
             "images",
             "created",
             "modified",
-            "is_reactions_enabled",
         )
         filterset_class = ContentPostFilter
 
     def resolve_images(self, info, **kwargs):
         return ContentPostImage.objects.filter(post=self.pk)
+
+    @classmethod
+    def get_queryset(cls, queryset, info):
+        # Annotate reactable metadata so the ReactionsInterface resolvers
+        # (`reactions_count`, `is_reactions_enabled`) don't N+1 per post.
+        if service := shared_services.get("reactable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+        return queryset

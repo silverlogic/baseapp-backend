@@ -5,14 +5,12 @@ import swapper
 
 from baseapp_core.tests.factories import UserFactory
 
-from ..utils import send_notification
-
 pytestmark = pytest.mark.django_db
 
 Notification = swapper.load_model("notifications", "Notification")
 
 
-def test_send_notification_add_to_history():
+def test_send_notification_add_to_history(send_notification):
     user = UserFactory()
 
     send_notification(
@@ -28,7 +26,7 @@ def test_send_notification_add_to_history():
     assert notification.verb == "added to history"
 
 
-def test_send_email_notification(outbox):
+def test_send_email_notification(outbox, send_notification):
     user = UserFactory()
 
     description = "this is my description"
@@ -50,7 +48,7 @@ def test_send_email_notification(outbox):
     assert description in outbox[0].alternatives[0][0]
 
 
-def test_send_email_notification_can_customize_templates(outbox):
+def test_send_email_notification_can_customize_templates(outbox, send_notification):
     user = UserFactory()
 
     send_notification(
@@ -71,7 +69,7 @@ def test_send_email_notification_can_customize_templates(outbox):
     assert "custom html message" in outbox[0].alternatives[0][0]
 
 
-def test_send_email_and_add_to_history_mark_notification_as_emailed(outbox):
+def test_send_email_and_add_to_history_mark_notification_as_emailed(outbox, send_notification):
     user = UserFactory()
 
     send_notification(
@@ -91,10 +89,10 @@ def test_send_email_and_add_to_history_mark_notification_as_emailed(outbox):
     assert len(outbox) == 1
 
 
-def test_send_push_notification():
+def test_send_push_notification(send_notification):
     user = UserFactory()
 
-    with patch("baseapp_notifications.utils.send_push_notification.delay") as mock:
+    with patch("baseapp_notifications.tasks.send_push_notification.delay") as mock:
         send_notification(
             sender=user,
             recipient=user,
@@ -106,7 +104,7 @@ def test_send_push_notification():
         assert mock.called
 
 
-def test_can_override_email_subject(outbox):
+def test_can_override_email_subject(outbox, send_notification):
     user = UserFactory()
 
     send_notification(
@@ -122,7 +120,7 @@ def test_can_override_email_subject(outbox):
     assert outbox[0].subject == "custom subject"
 
 
-def test_can_override_email_message(outbox):
+def test_can_override_email_message(outbox, send_notification):
     user = UserFactory()
 
     send_notification(

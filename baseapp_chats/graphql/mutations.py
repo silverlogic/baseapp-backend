@@ -1,6 +1,5 @@
 import graphene
 import swapper
-from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Count, Q
@@ -16,10 +15,13 @@ from baseapp_chats.graphql.subscriptions import (
     ChatRoomOnRoomUpdate,
 )
 from baseapp_chats.utils import (
-    CONTENT_LINKED_PROFILE_ACTOR,
-    CONTENT_LINKED_PROFILE_TARGET,
+    SYSTEM_MESSAGE_GROUP_CREATED,
+    SYSTEM_MESSAGE_MADE_ADMIN,
+    escape_format_braces,
+    send_chatroom_update_system_messages,
     send_message,
     send_new_chat_message_notification,
+    send_system_message,
 )
 from baseapp_core.graphql import (
     RelayMutation,
@@ -27,6 +29,7 @@ from baseapp_core.graphql import (
     get_pk_from_relay_id,
     login_required,
 )
+from baseapp_core.plugins import shared_services
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
@@ -34,7 +37,6 @@ ChatRoomParticipantRoles = ChatRoomParticipant.ChatRoomParticipantRoles
 Message = swapper.load_model("baseapp_chats", "Message")
 MessageStatus = swapper.load_model("baseapp_chats", "MessageStatus")
 UnreadMessageCount = swapper.load_model("baseapp_chats", "UnreadMessageCount")
-Block = swapper.load_model("baseapp_blocks", "Block")
 User = get_user_model()
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 profile_app_label = Profile._meta.app_label
@@ -80,18 +82,16 @@ class ChatRoomCreate(RelayMutation):
         participants_ids = [participant.pk for participant in participants]
 
         # Check if participants are blocked
-        if Block.objects.filter(
-            Q(actor_id=profile.id, target_id__in=participants_ids)
-            | Q(actor_id__in=participants_ids, target_id=profile.id)
-        ).exists():
-            return ChatRoomCreate(
-                errors=[
-                    ErrorType(
-                        field="participants",
-                        messages=[_("You can't create a chatroom with those participants")],
-                    )
-                ]
-            )
+        if service := shared_services.get("blocks.lookup"):
+            if service.has_block_between([profile.id], participants_ids):
+                return ChatRoomCreate(
+                    errors=[
+                        ErrorType(
+                            field="participants",
+                            messages=[_("You can't create a chatroom with those participants")],
+                        )
+                    ]
+                )
 
         participants.append(profile)
 
@@ -182,13 +182,11 @@ class ChatRoomCreate(RelayMutation):
         room.save()
 
         if is_group:
-            send_message(
-                message_type=Message.MessageType.SYSTEM_GENERATED,
-                room=room,
-                profile=None,
-                user=None,
-                content=CONTENT_LINKED_PROFILE_ACTOR + ' created group "' + title + '"',
-                content_linked_profile_actor=profile,
+            safe_title = escape_format_braces(title)
+            send_system_message(
+                room,
+                SYSTEM_MESSAGE_GROUP_CREATED.replace("{title}", safe_title),
+                actor=profile,
             )
             ChatRoomOnRoomUpdate.room_updated(room)
 
@@ -288,18 +286,16 @@ class ChatRoomUpdate(RelayMutation):
             )
 
         # Check if added participants are blocked
-        if Block.objects.filter(
-            Q(actor_id=profile.id, target_id__in=add_participants_pks)
-            | Q(actor_id__in=add_participants_pks, target_id=profile.id)
-        ).exists():
-            return ChatRoomUpdate(
-                errors=[
-                    ErrorType(
-                        field="add_participants",
-                        messages=[_("You can't add those participants to a chatroom")],
-                    )
-                ]
-            )
+        if service := shared_services.get("blocks.lookup"):
+            if service.has_block_between([profile.id], add_participants_pks):
+                return ChatRoomUpdate(
+                    errors=[
+                        ErrorType(
+                            field="add_participants",
+                            messages=[_("You can't add those participants to a chatroom")],
+                        )
+                    ]
+                )
 
         if not info.context.user.has_perm(
             "baseapp_chats.modify_chatroom",
@@ -327,6 +323,12 @@ class ChatRoomUpdate(RelayMutation):
             return ChatRoomUpdate(
                 errors=[ErrorType(field="image", messages=serializer.errors["image"])]
             )
+
+        # Capture pre-update state so we can emit accurate system messages below
+        previous_title = room.title
+        had_image = bool(room.image)
+        title_changed = title is not None and title != previous_title
+        image_changed = (image is not None) or (delete_image and had_image)
 
         with transaction.atomic():
             # Removing participants
@@ -379,6 +381,18 @@ class ChatRoomUpdate(RelayMutation):
 
         ChatRoomOnRoomUpdate.room_updated(
             room, removed_participants, added_participants=created_participants
+        )
+
+        # Emit the system messages describing what changed in the group
+        send_chatroom_update_system_messages(
+            room,
+            profile,
+            new_title=title,
+            title_changed=title_changed,
+            image_changed=image_changed,
+            added_participants=created_participants,
+            removed_participants=removed_participants,
+            is_leaving=is_leaving_chatroom,
         )
 
         return ChatRoomUpdate(
@@ -480,15 +494,11 @@ class ChatRoomToggleAdmin(RelayMutation):
                 target_participant.save(update_fields=["role"])
 
         if not participant_is_admin:
-            send_message(
-                room=room,
-                profile=None,
-                user=None,
-                message_type=Message.MessageType.SYSTEM_GENERATED,
-                content=CONTENT_LINKED_PROFILE_TARGET + " now an admin",
-                content_linked_profile_actor=profile,
-                content_linked_profile_target=target_participant.profile,
-                extra_data={"include_verb": True},
+            send_system_message(
+                room,
+                SYSTEM_MESSAGE_MADE_ADMIN,
+                actor=profile,
+                target=target_participant.profile,
             )
 
         return ChatRoomToggleAdmin(
@@ -513,7 +523,6 @@ class ChatRoomSendMessage(RelayMutation):
     def mutate_and_get_payload(
         cls, root, info, room_id, content, profile_id, in_reply_to_id=None, **input
     ):
-        mentioned_profile_ids = input.pop("mentioned_profile_ids", None) or []
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 
@@ -577,14 +586,14 @@ class ChatRoomSendMessage(RelayMutation):
             in_reply_to=in_reply_to,
         )
 
-        if mentioned_profile_ids and apps.is_installed("baseapp_mentions"):
-            from baseapp_mentions.services import update_mentions
-
-            update_mentions(
-                message,
-                mentioned_profile_ids,
-                exclude_profile=profile,
-            )
+        mentioned_profile_ids = input.pop("mentioned_profile_ids", None) or []
+        if mentioned_profile_ids:
+            if service := shared_services.get("mentions"):
+                service.update_mentions(
+                    message,
+                    mentioned_profile_ids,
+                    exclude_profile=profile,
+                )
 
         send_new_chat_message_notification(room, message, info)
         ChatRoomReadMessages.read_messages(room, profile)
@@ -666,14 +675,13 @@ class ChatRoomEditMessage(RelayMutation):
         message.content = content
         message.save(update_fields=["content"])
 
-        if mentioned_profile_ids is not None and apps.is_installed("baseapp_mentions"):
-            from baseapp_mentions.services import update_mentions
-
-            update_mentions(
-                message,
-                mentioned_profile_ids,
-                exclude_profile=profile,
-            )
+        if mentioned_profile_ids is not None:
+            if service := shared_services.get("mentions"):
+                service.update_mentions(
+                    message,
+                    mentioned_profile_ids,
+                    exclude_profile=profile,
+                )
 
         ChatRoomOnMessage.edit_message(room_id=message.room.relay_id, message=message)
 

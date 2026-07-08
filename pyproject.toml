@@ -40,6 +40,9 @@ dependencies = [
     "django-ipware>=7.0.1",
     "python-ipware>=3.0.0",
     "requests>=2.33.0",
+    "stevedore>=5.7.0",
+    "pydantic>=2.12.5",
+    "drf-spectacular==0.29.0",
     "json-log-formatter>=1.1.1",
 ]
 
@@ -64,7 +67,7 @@ pages = [
 ]
 payments = ["stripe>=11.5.0"]
 notifications = [
-    "django-notifications-hq>=1.8",
+    "django-notifications-community>=1.10",
     "firebase-admin>=6.5.0",
     "django-push-notifications[WP,apns-async,FCM]>=3.2",
 ]
@@ -114,17 +117,19 @@ dev = [
     "urllib3==2.7.0",
     "twisted==26.4.0",
     "channels==4.3.1",
-    "django-notifications-hq",
+    "django-notifications-community",
     "django-push-notifications[apns-async,fcm,wp]==3.3.0",
     "baseapp-backend[auth,graphql,messagetemplates,notifications,pages,payments,pdf,referrals,socialauth,urlshortening,wagtail]",
     "ast-grep-cli>=0.42.3",
+    "testproject",
 ]
+
 testproject = [
     "baseapp-backend[auth,graphql,messagetemplates,notifications,pages,payments,pdf,referrals,socialauth,urlshortening,wagtail]",
     "black==26.3.1",
     "channels==4.3.1",
     "channels-redis==4.3.0",
-    "django-notifications-hq",
+    "django-notifications-community",
     "django-push-notifications[apns-async,fcm,wp]==3.3.0",
     "djangorestframework==3.16.1",
     "djangorestframework-simplejwt[crypto]==5.5.1",
@@ -143,11 +148,12 @@ testproject = [
     "rest-social-auth==9.0.0",
     "twisted==26.4.0",
     "urllib3==2.7.0",
+    "testproject",
 ]
 
 [tool.uv.sources]
-django-notifications-hq = { git = "https://github.com/openwisp/django-notifications.git", rev = "f4918c2409a734ec1aa9798d86c3a729b505f753" }
 baseapp-backend = { workspace = true }
+testproject = { path = "testproject", editable = true }
 
 [tool.setuptools_scm]
 fallback_version = "0.0.0.dev"
@@ -171,6 +177,7 @@ baseapp_pages = ["*.j2", "*.html", "*.png"]
 baseapp_payments = ["*.j2", "*.html", "*.png"]
 baseapp_notifications = ["*.j2", "*.html", "*.png"]
 baseapp_comments = ["*.j2", "*.html", "*.png"]
+baseapp_mentions = ["*.j2", "*.html", "*.png"]
 baseapp_cloudflare_stream_field = ["*.html", "*.js", "*.map"]
 baseapp_url_shortening = ["*.html", "*.js", "*.map"]
 baseapp_organizations = ["*.j2", "*.html", "*.png"]
@@ -185,6 +192,31 @@ baseapp_auth = ["*.j2", "*.html", "*.png"]
 baseapp_referrals = ["*.j2", "*.html", "*.png"]
 baseapp_pdf = ["*.j2", "*.html", "*.png"]
 baseapp_api_key = ["*.j2", "*.html"]
+
+[project.entry-points."baseapp.plugins"]
+baseapp_auth = "baseapp_auth.plugin:AuthPlugin"
+baseapp_api_key = "baseapp_api_key.plugin:ApiKeyPlugin"
+baseapp_profiles = "baseapp_profiles.plugin:ProfilesPlugin"
+baseapp_activity_log = "baseapp.activity_log.plugin:ActivityLogPlugin"
+baseapp_pages = "baseapp_pages.plugin:PagesPlugin"
+baseapp_organizations = "baseapp_organizations.plugin:OrganizationsPlugin"
+baseapp_payments = "baseapp_payments.plugin:PaymentsPlugin"
+baseapp_referrals = "baseapp_referrals.plugin:ReferralsPlugin"
+baseapp_pdf = "baseapp_pdf.plugin:PDFPlugin"
+baseapp_message_templates = "baseapp_message_templates.plugin:MessageTemplatesPlugin"
+baseapp_cloudflare_stream_field = "baseapp_cloudflare_stream_field.plugin:CloudflareStreamFieldPlugin"
+baseapp_e2e = "baseapp_e2e.plugin:E2EPlugin"
+baseapp_notifications = "baseapp_notifications.plugin:NotificationsPlugin"
+baseapp_url_shortening = "baseapp_url_shortening.plugin:UrlShorteningPlugin"
+baseapp_comments = "baseapp_comments.plugin:CommentsPlugin"
+baseapp_mentions = "baseapp_mentions.plugin:MentionsPlugin"
+baseapp_follows = "baseapp_follows.plugin:FollowsPlugin"
+baseapp_reports = "baseapp_reports.plugin:ReportsPlugin"
+baseapp_ratings = "baseapp_ratings.plugin:RatingsPlugin"
+baseapp_reactions = "baseapp_reactions.plugin:ReactionsPlugin"
+baseapp_blocks = "baseapp_blocks.plugin:BlocksPlugin"
+baseapp_content_feed = "baseapp.content_feed.plugin:ContentFeedPlugin"
+baseapp_chats = "baseapp_chats.plugin:ChatsPlugin"
 
 [tool.black]
 line-length = 100

@@ -16,6 +16,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+        ("baseapp_core", "0001_initial"),
         migrations.swappable_dependency(settings.BASEAPP_PROFILES_PROFILE_MODEL),
     ]
 

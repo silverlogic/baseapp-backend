@@ -1,18 +1,18 @@
 import graphene
 import swapper
 from django.db.models import Q, Sum
-from graphene_django.filter import DjangoFilterConnectionField
+from query_optimizer import DjangoConnectionField
 
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model
+from baseapp_core.plugins import shared_services
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 UnreadMessageCount = swapper.load_model("baseapp_chats", "UnreadMessageCount")
-Block = swapper.load_model("baseapp_blocks", "Block")
 
 
 class ChatRoomsInterface(RelayNode):
-    chat_rooms = DjangoFilterConnectionField(get_object_type_for_model(ChatRoom))
+    chat_rooms = DjangoConnectionField(get_object_type_for_model(ChatRoom))
     unread_messages_count = graphene.Int()
 
     def resolve_chat_rooms(self, info, **kwargs):
@@ -23,17 +23,18 @@ class ChatRoomsInterface(RelayNode):
             participants__profile_id=self.pk,
         ).order_by("-last_message_time", "-created")
 
-        # Exclude rooms with any blocked participant
-        blocking_profile_ids = Block.objects.filter(actor_id=self.pk).values_list(
-            "target_id", flat=True
-        )
-        qs = qs.exclude(participants__profile_id__in=blocking_profile_ids)
-
-        # Exclude rooms with any participant that blocks the profile (self)
-        blocker_profile_ids = Block.objects.filter(target_id=self.pk).values_list(
-            "actor_id", flat=True
-        )
-        qs = qs.exclude(participants__profile_id__in=blocker_profile_ids)
+        # Exclude rooms involving profiles blocked by / blocking self, via the
+        # optional blocks.lookup service. When baseapp_blocks isn't installed
+        # there are no blocks, so nothing is excluded here.
+        if blocks_service := shared_services.get("blocks.lookup"):
+            # Rooms with a participant that self blocks.
+            qs = qs.exclude(
+                participants__profile_id__in=blocks_service.get_blocked_profile_ids(self.pk)
+            )
+            # Rooms with a participant that blocks self.
+            qs = qs.exclude(
+                participants__profile_id__in=blocks_service.get_blocker_profile_ids(self.pk)
+            )
 
         # Exclude empty 1-on-1 chat rooms where current profile is not the creator
         # Recipients should only see 1-on-1 chats if they have at least one message

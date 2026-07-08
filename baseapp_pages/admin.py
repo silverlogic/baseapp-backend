@@ -3,12 +3,13 @@ from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline, GenericTabularInline
 from translated_fields import TranslatedFieldAdmin
 
+from baseapp_core.admin_helpers import ModelAdmin, StackedInline, TabularInline
 from baseapp_pages.models import Metadata, URLPath
 
 Page = swapper.load_model("baseapp_pages", "Page")
 
 
-class URLPathAdminInline(GenericTabularInline):
+class URLPathAdminInline(GenericTabularInline, TabularInline):
     model = URLPath
     extra = 0
     ct_field = "target_content_type"
@@ -16,7 +17,7 @@ class URLPathAdminInline(GenericTabularInline):
 
 
 @admin.register(URLPath)
-class URLPathAdmin(admin.ModelAdmin):
+class URLPathAdmin(ModelAdmin):
     search_fields = ("path",)
     list_display = ("id", "path", "language", "is_active", "view_target", "created")
     list_filter = ("target_content_type", "language", "is_active")
@@ -29,7 +30,14 @@ class URLPathAdmin(admin.ModelAdmin):
             return "-"
 
 
-class MetadataAdminInline(GenericStackedInline):
+@admin.register(Metadata)
+class MetadataAdmin(ModelAdmin):
+    search_fields = ("meta_title", "meta_description")
+    list_display = ("target", "meta_title", "language", "created", "modified")
+    list_filter = ("target_content_type", "language")
+
+
+class MetadataAdminInline(GenericStackedInline, StackedInline):
     model = Metadata
     extra = 0
     ct_field = "target_content_type"
@@ -37,15 +45,9 @@ class MetadataAdminInline(GenericStackedInline):
 
 
 @admin.register(Page)
-class PageAdmin(TranslatedFieldAdmin, admin.ModelAdmin):
+class PageAdmin(TranslatedFieldAdmin, ModelAdmin):
     search_fields = ("title", "body")
     raw_id_fields = ("user",)
     list_display = ("id", "title", "created", "modified")
+    list_filter = ("status",)
     inlines = [URLPathAdminInline, MetadataAdminInline]
-
-
-@admin.register(Metadata)
-class MetadataAdmin(admin.ModelAdmin):
-    search_fields = ("meta_title", "meta_description")
-    list_display = ("target", "meta_title", "language", "created", "modified")
-    list_filter = ("target_content_type", "language")

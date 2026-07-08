@@ -1,27 +1,61 @@
 import swapper
+from django.apps import apps
 from django.conf import settings
-from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.db.models import Count
+from django.db.models import Count, IntegerField, OuterRef, Subquery, Value
+from django.db.models.fields.json import KeyTextTransform
+from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql import RelayModel
+from baseapp_core.models import (
+    DocumentIdMixin,
+    DocumentIdTargetMixin,
+    DocumentIdUniqueTargetMixin,
+)
+from baseapp_core.plugins import apply_if_installed
 
 
 def default_reactions_count():
-    ReactionModel = swapper.load_model("baseapp_reactions", "Reaction")
+    """Default value for `ReactableMetadata.reactions_count`. Returns a fresh dict
+    keyed by `Reaction.ReactionTypes` enum names plus a `total` slot, all zero."""
+    ReactionModel = swapper.load_model(
+        "baseapp_reactions", "Reaction", required=False, require_ready=False
+    )
 
     d = {"total": 0}
-
-    for reaction_type in ReactionModel.ReactionTypes:
-        d[reaction_type.name] = 0
+    if ReactionModel is not None:
+        for reaction_type in ReactionModel.ReactionTypes:
+            d[reaction_type.name] = 0
 
     return d
 
 
-class AbstractBaseReaction(TimeStampedModel, RelayModel):
+inheritances = []
+
+if apps.is_installed("baseapp_profiles"):
+
+    class ProfileMixin(models.Model):
+        profile = models.ForeignKey(
+            swapper.get_model_name("baseapp_profiles", "Profile"),
+            verbose_name=_("profile"),
+            related_name="reactions",
+            on_delete=models.CASCADE,
+            null=True,
+            blank=True,
+        )
+
+        class Meta:
+            abstract = True
+
+    inheritances.append(ProfileMixin)
+
+
+class AbstractReaction(
+    *inheritances, DocumentIdTargetMixin, TimeStampedModel, DocumentIdMixin, RelayModel
+):
     class ReactionTypes(models.IntegerChoices):
         LIKE = 1, _("like")
         DISLIKE = -1, _("dislike")
@@ -36,33 +70,18 @@ class AbstractBaseReaction(TimeStampedModel, RelayModel):
         on_delete=models.CASCADE,
     )
 
-    profile = models.ForeignKey(
-        swapper.get_model_name("baseapp_profiles", "Profile"),
-        verbose_name=_("profile"),
-        related_name="reactions",
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-    )
-
     reaction_type = models.IntegerField(choices=ReactionTypes.choices, default=ReactionTypes.LIKE)
-
-    target_content_type = models.ForeignKey(
-        ContentType,
-        blank=True,
-        null=True,
-        on_delete=models.CASCADE,
-        db_index=True,
-    )
-    target_object_id = models.PositiveIntegerField(blank=True, null=True, db_index=True)
-    target = GenericForeignKey("target_content_type", "target_object_id")
 
     class Meta:
         abstract = True
-        indexes = [
-            models.Index(fields=["target_content_type", "target_object_id"]),
+        swappable = swapper.swappable_setting("baseapp_reactions", "Reaction")
+        unique_together = [
+            apply_if_installed(
+                "baseapp_profiles",
+                ["profile", "target_document"],
+                ["user", "target_document"],
+            )
         ]
-        unique_together = [["profile", "target_content_type", "target_object_id"]]
 
     def __str__(self):
         return "Reaction (%s) #%s by %s" % (
@@ -73,49 +92,41 @@ class AbstractBaseReaction(TimeStampedModel, RelayModel):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-
         self.update_reactions_count(self.target)
 
     def delete(self, *args, **kwargs):
+        target = self.target
         super().delete(*args, **kwargs)
+        self.update_reactions_count(target)
 
-        self.update_reactions_count(self.target)
-
-    def update_reactions_count(self, target):
+    @classmethod
+    def update_reactions_count(cls, target):
+        """Recompute per-type reaction counts for `target` on its `ReactableMetadata` row."""
         if not target:
             return
 
         ReactionModel = swapper.load_model("baseapp_reactions", "Reaction")
-        target_content_type = ContentType.objects.get_for_model(target)
+        ReactableMetadata = swapper.load_model("baseapp_reactions", "ReactableMetadata")
+        metadata = ReactableMetadata.get_or_create_for_object(target)
+        if metadata is None:
+            return
 
-        # Annotate and group by reaction_type
-        reaction_counts = (
-            ReactionModel.objects.filter(
-                target_content_type=target_content_type, target_object_id=target.pk
-            )
+        # Single GROUP BY across all reactions for this target_document, then map
+        # the integer reaction_type values back to enum names.
+        rows = (
+            ReactionModel.objects.filter(target_document_id=metadata.target_id)
             .values("reaction_type")
-            .annotate(count=Count("id"))
+            .annotate(n=Count("id"))
         )
-
-        # Initialize the counts dictionary
-        counts = {str(reaction_type.name): 0 for reaction_type in ReactionModel.ReactionTypes}
+        counts = {rt.name: 0 for rt in ReactionModel.ReactionTypes}
         counts["total"] = 0
+        for row in rows:
+            name = ReactionModel.ReactionTypes(row["reaction_type"]).name
+            counts[name] = row["n"]
+            counts["total"] += row["n"]
 
-        # Update the counts dictionary with the results from the query
-        for reaction_count in reaction_counts:
-            reaction_type_value = reaction_count["reaction_type"]
-            reaction_type_name = ReactionModel.ReactionTypes(reaction_type_value).name
-            counts[reaction_type_name] = reaction_count["count"]
-            counts["total"] += reaction_count["count"]
-
-        # Assuming `target` has a `reactions_count` field of type JSONField or similar
-        target.reactions_count = counts
-        target.save(update_fields=["reactions_count"])
-
-
-class Reaction(AbstractBaseReaction):
-    class Meta(AbstractBaseReaction.Meta):
-        swappable = swapper.swappable_setting("baseapp_reactions", "Reaction")
+        metadata.reactions_count = counts
+        metadata.save(update_fields=["reactions_count", "modified"])
 
     @classmethod
     def get_graphql_object_type(cls):
@@ -124,19 +135,57 @@ class Reaction(AbstractBaseReaction):
         return ReactionObjectType
 
 
-SwappedReaction = swapper.load_model(
-    "baseapp_reactions", "Reaction", required=False, require_ready=False
-)
+class AbstractReactableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
+    """
+    Stores reaction metadata (per-type counts dict + enabled flag) for any
+    documentable object. Linked to `DocumentId` instead of adding columns to
+    each reactable model, following the plugin architecture pattern.
+    """
 
-
-class ReactableModel(models.Model):
     reactions_count = models.JSONField(default=default_reactions_count, editable=False)
-    reactions = GenericRelation(
-        SwappedReaction,
-        content_type_field="target_content_type",
-        object_id_field="target_object_id",
-    )
     is_reactions_enabled = models.BooleanField(default=True)
 
     class Meta:
         abstract = True
+        swappable = swapper.swappable_setting("baseapp_reactions", "ReactableMetadata")
+        verbose_name = _("reactable metadata")
+        verbose_name_plural = _("reactable metadata")
+
+    def __str__(self):
+        return f"ReactableMetadata for {self.target}"
+
+    @classmethod
+    def annotate_queryset(cls, queryset):
+        """
+        Annotate `queryset` with reactable metadata so resolvers don't N+1.
+        Adds `_reactable_reactions_count`, `_reactable_is_reactions_enabled`,
+        and a flat public `reactions_count_total` (integer cast of the
+        `reactions_count->total` JSON key) so consumer-side ORDER BY can
+        sort on a real expression. Mirrors the public-name pattern
+        `CommentableMetadata.annotate_queryset` uses for `replies_count_total`.
+        """
+        model_cls = queryset.model
+        ct_id = ContentType.objects.get_for_model(model_cls).pk
+        metadata_qs = cls.objects.filter(
+            target__content_type_id=ct_id,
+            target__object_id=OuterRef("pk"),
+        )
+        total_subq = Subquery(
+            metadata_qs.annotate(total=KeyTextTransform("total", "reactions_count")).values(
+                "total"
+            )[:1]
+        )
+        return queryset.annotate(
+            _reactable_reactions_count=Subquery(metadata_qs.values("reactions_count")[:1]),
+            _reactable_is_reactions_enabled=Coalesce(
+                Subquery(
+                    metadata_qs.values("is_reactions_enabled")[:1],
+                    output_field=models.BooleanField(),
+                ),
+                Value(True),
+            ),
+            reactions_count_total=Coalesce(
+                Cast(total_subq, output_field=IntegerField()),
+                Value(0),
+            ),
+        )

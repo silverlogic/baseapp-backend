@@ -2,6 +2,7 @@ import factory
 import swapper
 from django.contrib.contenttypes.models import ContentType
 
+from baseapp_core.models import DocumentId
 from baseapp_core.tests.factories import UserFactory
 
 Report = swapper.load_model("baseapp_reports", "Report")
@@ -9,7 +10,7 @@ ReportType = swapper.load_model("baseapp_reports", "ReportType")
 
 
 class ReportTypeFactory(factory.django.DjangoModelFactory):
-    key = factory.Faker("word")
+    key = factory.Sequence(lambda n: f"report_type_{n}")
     label = factory.Faker("word")
 
     class Meta:
@@ -26,10 +27,7 @@ class ReportTypeFactory(factory.django.DjangoModelFactory):
 class AbstractReportFactory(factory.django.DjangoModelFactory):
     user = factory.SubFactory(UserFactory)
     report_type = factory.SubFactory(ReportTypeFactory)
-    target_object_id = factory.SelfAttribute("target.id")
-    target_content_type = factory.LazyAttribute(
-        lambda o: ContentType.objects.get_for_model(o.target)
-    )
+    target_document = factory.LazyAttribute(lambda o: DocumentId.get_or_create_for_object(o.target))
 
     class Meta:
         exclude = ["target"]

@@ -9,6 +9,7 @@ Profile = swapper.load_model("baseapp_profiles", "Profile")
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
 Message = swapper.load_model("baseapp_chats", "Message")
+profile_app_label = Profile._meta.app_label
 MessageObjectType = Message.get_graphql_object_type()
 ProfileObjectType = Profile.get_graphql_object_type()
 ChatRoomObjectType = ChatRoom.get_graphql_object_type()
@@ -27,9 +28,12 @@ class ChatRoomOnRoomUpdate(channels_graphql_ws.Subscription):
     async def subscribe(root, info, profile_id):
         user = info.context.channels_scope["user"]
         profile = await database_sync_to_async(get_obj_from_relay_id)(info, profile_id)
-        if not user.is_authenticated or not database_sync_to_async(user.has_perm)(
-            "baseapp_profiles.use_profile", profile
-        ):
+        if not user.is_authenticated or not profile:
+            return []
+        has_permission = await database_sync_to_async(user.has_perm)(
+            f"{profile_app_label}.use_profile", profile
+        )
+        if not has_permission:
             return []
         return [str(profile.pk)]
 
@@ -67,14 +71,17 @@ class ChatRoomOnMessagesCountUpdate(channels_graphql_ws.Subscription):
         profile_id = graphene.ID(required=True)
 
     @staticmethod
-    def subscribe(root, info, profile_id):
+    async def subscribe(root, info, profile_id):
         user = info.context.channels_scope["user"]
-        profile = database_sync_to_async(get_obj_from_relay_id)(info, profile_id)
+        profile = await database_sync_to_async(get_obj_from_relay_id)(info, profile_id)
 
         # TO DO: change to a better permission check, maybe baseapp_chats.view_chatroom
-        if not user.is_authenticated or not database_sync_to_async(user.has_perm)(
-            "baseapp_profiles.use_profile", profile
-        ):
+        if not user.is_authenticated or not profile:
+            return []
+        has_permission = await database_sync_to_async(user.has_perm)(
+            f"{profile_app_label}.use_profile", profile
+        )
+        if not has_permission:
             return []
         return [profile_id]
 
@@ -105,15 +112,25 @@ class ChatRoomOnMessage(channels_graphql_ws.Subscription):
         user = info.context.channels_scope["user"]
         profile = await database_sync_to_async(get_obj_from_relay_id)(info, profile_id)
 
-        if not user.is_authenticated or not database_sync_to_async(user.has_perm)(
-            "baseapp_profiles.use_profile", profile
-        ):
+        if not user.is_authenticated or not profile or not room:
             return []
 
-        if not database_sync_to_async(room.participants.filter(profile=profile).exists)():
+        has_profile_permission = await database_sync_to_async(user.has_perm)(
+            f"{profile_app_label}.use_profile", profile
+        )
+        if not has_profile_permission:
             return []
 
-        if not database_sync_to_async(user.has_perm)("baseapp_chats.view_chatroom", room):
+        is_participant = await database_sync_to_async(
+            room.participants.filter(profile=profile).exists
+        )()
+        if not is_participant:
+            return []
+
+        can_view_room = await database_sync_to_async(user.has_perm)(
+            "baseapp_chats.view_chatroom", room
+        )
+        if not can_view_room:
             return []
         return [room_id]
 
@@ -124,7 +141,7 @@ class ChatRoomOnMessage(channels_graphql_ws.Subscription):
 
         if not user.is_authenticated:
             return None
-        if str(message.profile_id) == get_pk_from_relay_id(profile_id):
+        if str(message.profile_id) == str(get_pk_from_relay_id(profile_id)):
             return None
 
         return ChatRoomOnMessage(message=MessageObjectType._meta.connection.Edge(node=message))

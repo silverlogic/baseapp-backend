@@ -1,3 +1,4 @@
+import zoneinfo
 from datetime import timedelta
 
 import swapper
@@ -5,6 +6,7 @@ from constance import config
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import TextChoices
 from django.utils import timezone
@@ -12,7 +14,8 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 from phonenumber_field.modelfields import PhoneNumberField
 
-from baseapp_core.models import CaseInsensitiveEmailField
+from baseapp_core.graphql.models import RelayModel
+from baseapp_core.models import CaseInsensitiveEmailField, DocumentIdMixin
 
 from .managers import UserManager
 
@@ -47,10 +50,30 @@ def use_profile_model():
                 abstract = True
 
         return UserProfilableModel
-    return object
+
+    class NoProfileModel(models.Model):
+        class Meta:
+            abstract = True
+
+    return NoProfileModel
 
 
-class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_profile_model()):
+def validate_timezone(value: str) -> None:
+    """Reject values that aren't valid IANA timezone names (blank is allowed)."""
+    if value and value not in zoneinfo.available_timezones():
+        raise ValidationError(
+            _("%(value)s is not a valid IANA timezone name."),
+            params={"value": value},
+        )
+
+
+class AbstractUser(
+    use_profile_model(),
+    PermissionsMixin,
+    DocumentIdMixin,
+    RelayModel,
+    AbstractBaseUser,
+):
     email = CaseInsensitiveEmailField(unique=True, db_index=True)
     is_email_verified = models.BooleanField(default=False)
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
@@ -65,7 +88,7 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_pr
         help_text="Has the user confirmed they want an email change?",
     )
 
-    # Profile
+    # Details
     first_name = models.CharField(max_length=100, blank=True)
     last_name = models.CharField(max_length=100, blank=True)
     phone_number = PhoneNumberField(blank=True, null=True, unique=True)
@@ -88,6 +111,14 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_pr
     objects = UserManager()
 
     preferred_language = models.CharField(max_length=9, choices=settings.LANGUAGES, default="en")
+    timezone = models.CharField(
+        _("timezone"),
+        max_length=64,
+        blank=True,
+        default="",
+        validators=[validate_timezone],
+        help_text=_("IANA timezone name used to display dates and times for this user."),
+    )
 
     USERNAME_FIELD = "email"
 
@@ -118,7 +149,9 @@ class AbstractUser(PermissionsMixin, AbstractBaseUser, use_relay_model(), use_pr
     @property
     def avatar(self):
         # TODO: deprecate
-        return self.profile.image if self.profile_id else None
+        if profile := getattr(self, "profile", None):
+            return profile.image
+        return None
 
     @property
     def password_expired(self) -> bool:
