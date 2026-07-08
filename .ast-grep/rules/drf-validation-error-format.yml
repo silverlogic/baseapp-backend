@@ -5,7 +5,10 @@ message: "ValidationError must use a dict with messages wrapped in a list: `{\"f
 ignores:
   - "**/migrations/**"
 rule:
-  pattern: raise serializers.ValidationError($MSG)
+  any:
+    - pattern: raise serializers.ValidationError($MSG)
+    - pattern: raise exceptions.ValidationError($MSG)
+    - pattern: raise ValidationError($MSG)
 constraints:
   MSG:
     any:
@@ -13,3 +16,14 @@ constraints:
       - pattern: _($$$)
       - pattern: gettext($$$)
       - pattern: gettext_lazy($$$)
+      - all:
+          - kind: dictionary
+          - has:
+              kind: pair
+              has:
+                field: value
+                any:
+                  - kind: string
+                  - pattern: _($$$)
+                  - pattern: gettext($$$)
+                  - pattern: gettext_lazy($$$)

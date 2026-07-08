@@ -9,3 +9,11 @@ invalid:
     raise serializers.ValidationError("This email is already in use.")
   - |
     raise serializers.ValidationError(_("This email is already in use."))
+  - |
+    raise ValidationError("This email is already in use.")
+  - |
+    raise exceptions.ValidationError(_("This email is already in use."))
+  - |
+    raise serializers.ValidationError({"email": "not wrapped in a list"})
+  - |
+    raise serializers.ValidationError({"email": _("not wrapped in a list")})

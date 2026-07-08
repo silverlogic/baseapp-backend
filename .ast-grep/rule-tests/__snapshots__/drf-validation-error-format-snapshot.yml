@@ -1,6 +1,20 @@
 id: drf-validation-error-format
 snapshots:
   ? |
+    raise ValidationError("This email is already in use.")
+  : labels:
+    - source: raise ValidationError("This email is already in use.")
+      style: primary
+      start: 0
+      end: 54
+  ? |
+    raise exceptions.ValidationError(_("This email is already in use."))
+  : labels:
+    - source: raise exceptions.ValidationError(_("This email is already in use."))
+      style: primary
+      start: 0
+      end: 68
+  ? |
     raise serializers.ValidationError("This email is already in use.")
   : labels:
     - source: raise serializers.ValidationError("This email is already in use.")
@@ -14,3 +28,33 @@ snapshots:
       style: primary
       start: 0
       end: 69
+  ? |
+    raise serializers.ValidationError({"email": "not wrapped in a list"})
+  : labels:
+    - source: 'raise serializers.ValidationError({"email": "not wrapped in a list"})'
+      style: primary
+      start: 0
+      end: 69
+    - source: '"not wrapped in a list"'
+      style: secondary
+      start: 44
+      end: 67
+    - source: '"email": "not wrapped in a list"'
+      style: secondary
+      start: 35
+      end: 67
+  ? |
+    raise serializers.ValidationError({"email": _("not wrapped in a list")})
+  : labels:
+    - source: 'raise serializers.ValidationError({"email": _("not wrapped in a list")})'
+      style: primary
+      start: 0
+      end: 72
+    - source: _("not wrapped in a list")
+      style: secondary
+      start: 44
+      end: 70
+    - source: '"email": _("not wrapped in a list")'
+      style: secondary
+      start: 35
+      end: 70

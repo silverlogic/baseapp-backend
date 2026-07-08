@@ -33,12 +33,12 @@ docker compose run --rm --no-deps web uv run ast-grep test
 From **this repo's** root:
 
 ```bash
-docker compose exec -T web uv run ast-grep scan
-docker compose exec -T web uv run ast-grep test
+docker compose run --rm --no-deps web uv run ast-grep scan
+docker compose run --rm --no-deps web uv run ast-grep test
 ```
 
 Run a single rule with `--filter <rule-id>`. If the `web` container is already
-running in the template, use `docker compose exec web ...` (see the
+running, use `docker compose exec web ...` instead of `run` (see the
 `run-development-commands` skill).
 
 `ast-grep scan` exits non-zero only when a **severity: error** rule matches —
@@ -80,8 +80,8 @@ Every rule has a test file in `rule-tests/` with `valid:` (must not match) and
 `invalid:` (must match) snippets, plus accepted snapshots in `rule-tests/__snapshots__/`.
 
 ```bash
-docker compose exec -T web uv run ast-grep test       # verify
-docker compose exec -T web uv run ast-grep test -U    # accept new/changed snapshots
+docker compose run --rm --no-deps web uv run ast-grep test       # verify
+docker compose run --rm --no-deps web uv run ast-grep test -U    # accept new/changed snapshots
 ```
 
 ## Limitations

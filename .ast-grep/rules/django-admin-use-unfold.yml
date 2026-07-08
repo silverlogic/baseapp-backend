@@ -14,16 +14,21 @@ rule:
       has:
         field: superclasses
         has:
-          any:
-            - pattern: admin.ModelAdmin
-            - pattern: admin.TabularInline
-            - pattern: admin.StackedInline
-            - pattern: django.contrib.admin.ModelAdmin
+          kind: attribute
+          regex: ^(django\.contrib\.)?admin\.(ModelAdmin|TabularInline|StackedInline)$
+      not:
+        inside:
+          stopBy: end
+          kind: module
+          has:
+            stopBy: end
+            pattern: from unfold import admin
     - kind: import_from_statement
       all:
         - has:
             field: module_name
             regex: ^django\.contrib\.admin$
         - has:
+            stopBy: end
             kind: dotted_name
             regex: ^(ModelAdmin|TabularInline|StackedInline)$

@@ -56,12 +56,63 @@ snapshots:
       start: 20
       end: 39
   ? |
+    class CommentInline(django.contrib.admin.StackedInline):
+        model = Comment
+  : labels:
+    - source: |-
+        class CommentInline(django.contrib.admin.StackedInline):
+            model = Comment
+      style: primary
+      start: 0
+      end: 76
+    - source: django.contrib.admin.StackedInline
+      style: secondary
+      start: 20
+      end: 54
+    - source: django.contrib.admin.StackedInline
+      style: secondary
+      start: 20
+      end: 54
+  ? |
+    class CommentInline(django.contrib.admin.TabularInline):
+        model = Comment
+  : labels:
+    - source: |-
+        class CommentInline(django.contrib.admin.TabularInline):
+            model = Comment
+      style: primary
+      start: 0
+      end: 76
+    - source: django.contrib.admin.TabularInline
+      style: secondary
+      start: 20
+      end: 54
+    - source: django.contrib.admin.TabularInline
+      style: secondary
+      start: 20
+      end: 54
+  ? |
     from django.contrib.admin import ModelAdmin
   : labels:
     - source: from django.contrib.admin import ModelAdmin
       style: primary
       start: 0
       end: 43
+    - source: django.contrib.admin
+      style: secondary
+      start: 5
+      end: 25
+    - source: ModelAdmin
+      style: secondary
+      start: 33
+      end: 43
+  ? |
+    from django.contrib.admin import ModelAdmin as DjangoModelAdmin
+  : labels:
+    - source: from django.contrib.admin import ModelAdmin as DjangoModelAdmin
+      style: primary
+      start: 0
+      end: 63
     - source: django.contrib.admin
       style: secondary
       start: 5

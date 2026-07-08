@@ -16,6 +16,21 @@ snapshots:
       start: 28
       end: 44
   ? |
+    from graphene_django import DjangoObjectType as DOT
+  : labels:
+    - source: from graphene_django import DjangoObjectType as DOT
+      style: primary
+      start: 0
+      end: 51
+    - source: graphene_django
+      style: secondary
+      start: 5
+      end: 20
+    - source: DjangoObjectType
+      style: secondary
+      start: 28
+      end: 44
+  ? |
     from graphene_django.types import DjangoObjectType
   : labels:
     - source: from graphene_django.types import DjangoObjectType
@@ -45,3 +60,13 @@ snapshots:
       style: secondary
       start: 34
       end: 50
+  ? |
+    import graphene_django
+
+    class UserObjectType(graphene_django.DjangoObjectType):
+        pass
+  : labels:
+    - source: graphene_django.DjangoObjectType
+      style: primary
+      start: 45
+      end: 77

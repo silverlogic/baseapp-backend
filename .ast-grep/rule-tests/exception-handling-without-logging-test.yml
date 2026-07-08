@@ -22,6 +22,18 @@ valid:
         value = int(raw)
     except ValueError:
         value = None
+  - |
+    try:
+        order.save()
+    except Exception:
+        log.exception("Failed to create order")
+        return None
+  - |
+    try:
+        order.save()
+    except Exception as exc:
+        sentry_sdk.capture_exception(exc)
+        return None
 invalid:
   - |
     try:
@@ -33,3 +45,13 @@ invalid:
         order.save()
     except Exception as exc:
         return Response({"error": str(exc)}, status=500)
+  - |
+    try:
+        order.save()
+    except (ValueError, Exception):
+        pass
+  - |
+    try:
+        order.save()
+    except (ValueError, Exception) as exc:
+        return None

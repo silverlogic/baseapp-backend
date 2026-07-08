@@ -11,3 +11,10 @@ invalid:
     from graphene_django import DjangoObjectType
   - |
     from graphene_django.types import DjangoObjectType, ErrorType
+  - |
+    from graphene_django import DjangoObjectType as DOT
+  - |
+    import graphene_django
+
+    class UserObjectType(graphene_django.DjangoObjectType):
+        pass

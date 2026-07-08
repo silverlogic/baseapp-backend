@@ -5,11 +5,16 @@ message: "Module-level translation with eager `gettext` freezes the string to th
 ignores:
   - "**/migrations/**"
 rule:
-  pattern: $VAR = _($$$ARGS)
-  inside:
-    kind: expression_statement
+  pattern: _($$$ARGS)
+  not:
     inside:
-      kind: module
-    follows:
+      stopBy: end
+      any:
+        - kind: function_definition
+        - kind: lambda
+  inside:
+    stopBy: end
+    kind: module
+    has:
       stopBy: end
       pattern: from django.utils.translation import gettext as _

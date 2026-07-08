@@ -1,7 +1,7 @@
 from urllib.parse import urlparse
 
 from django.conf import settings
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 from wagtail.admin.panels import FieldPanel
 from wagtail.api import APIField
 from wagtail.models import Page, PageBase

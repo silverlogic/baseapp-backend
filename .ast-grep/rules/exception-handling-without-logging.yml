@@ -7,21 +7,25 @@ ignores:
 rule:
   kind: except_clause
   all:
-    - any:
-        - has:
-            pattern: Exception
-        - has:
-            kind: as_pattern
+    - has:
+        any:
+          - pattern: Exception
+          - kind: tuple
             has:
               pattern: Exception
+          - kind: as_pattern
+            has:
+              any:
+                - pattern: Exception
+                - kind: tuple
+                  has:
+                    pattern: Exception
     - not:
         has:
           stopBy: end
           any:
-            - pattern: logger.exception($$$)
-            - pattern: logger.error($$$)
-            - pattern: logging.exception($$$)
-            - pattern: logging.error($$$)
-            - pattern: self.logger.exception($$$)
-            - pattern: self.logger.error($$$)
+            - kind: call
+              has:
+                field: function
+                regex: (^|\.)((logger|log|logging)\.(exception|error)|capture_exception)$
             - kind: raise_statement

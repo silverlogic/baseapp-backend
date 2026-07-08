@@ -5,11 +5,15 @@ message: "ObjectTypes must use `baseapp_core.graphql.DjangoObjectType` (project 
 ignores:
   - "**/migrations/**"
 rule:
-  kind: import_from_statement
-  all:
-    - has:
-        field: module_name
-        regex: ^graphene_django(\.types)?$
-    - has:
-        kind: dotted_name
-        regex: ^DjangoObjectType$
+  any:
+    - kind: import_from_statement
+      all:
+        - has:
+            field: module_name
+            regex: ^graphene_django(\.types)?$
+        - has:
+            stopBy: end
+            kind: dotted_name
+            regex: ^DjangoObjectType$
+    - pattern: graphene_django.DjangoObjectType
+    - pattern: graphene_django.types.DjangoObjectType
