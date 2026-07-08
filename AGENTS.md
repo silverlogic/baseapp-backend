@@ -82,7 +82,7 @@ docker compose run --rm web pytest --cov --cov-report=term-missing
 docker compose run --rm web black .
 docker compose run --rm web isort .
 docker compose run --rm web flake8
-docker compose run --rm web ast-grep scan    # code-guideline rules (.ast-grep/rules/), if the project has them
+docker compose run --rm web uv run ast-grep scan    # code-guideline rules (.ast-grep/rules/), if the project has them
 docker compose run --rm web pre-commit run --all-files
 ```
 

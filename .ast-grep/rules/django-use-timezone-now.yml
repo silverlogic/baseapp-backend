@@ -1,7 +1,7 @@
 id: django-use-timezone-now
 language: Python
 severity: warning
-message: "Naive datetimes break UTC storage (`USE_TZ=True`). Use `django.utils.timezone.now()` instead of `datetime.now()` / `utcnow()` / `date.today()`. See .claude/skills/backend-conventions/references/datetime.md"
+message: "Naive datetimes break UTC storage (`USE_TZ=True`). Use `django.utils.timezone.now()` instead of naive `datetime.now()` / `utcnow()` / `date.today()`; timezone-aware calls like `datetime.now(timezone.utc)` are acceptable. See .claude/skills/backend-conventions/references/datetime.md"
 ignores:
   - "**/migrations/**"
 rule:
