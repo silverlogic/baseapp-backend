@@ -12,12 +12,12 @@ def default_files_count():
 
 
 def get_or_create_file_target(target_obj):
-    """Get or create a FileTarget for the given object."""
-    FileTarget = swapper.load_model("baseapp_files", "FileTarget")
+    """Get or create a FileTarget for the given object.
 
-    document_id = DocumentId.get_or_create_for_object(target_obj)
-    file_target, created = FileTarget.objects.get_or_create(target=document_id)
-    return file_target
+    Returns None for an unsaved/None object (the mixin guards against a NULL
+    primary key rather than raising IntegrityError)."""
+    FileTarget = swapper.load_model("baseapp_files", "FileTarget")
+    return FileTarget.get_or_create_for_object(target_obj)
 
 
 def recalculate_files_count(parent):

@@ -144,3 +144,23 @@ def test_without_user_skips_ownership_check(user):
 
     file_obj.refresh_from_db()
     assert file_obj.parent == DocumentId.get_or_create_for_object(comment)
+
+
+def test_non_owner_cannot_attach_null_creator_file(user):
+    """A NULL creator is not an implicit grant — a non-owner cannot re-parent
+    (steal) a system/orphan file whose created_by is NULL."""
+    comment = CommentFactory(user=user)
+    other_parent = CommentFactory(user=user)
+    orphan = File.objects.create(
+        file_name="orphan.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=None,
+        parent=DocumentId.get_or_create_for_object(other_parent),
+    )
+
+    with pytest.raises(GraphQLError) as exc_info:
+        attach_files_from_relay_ids(comment, [orphan.relay_id], user)
+
+    assert exc_info.value.extensions["code"] == "permission_required"
+    orphan.refresh_from_db()
+    assert orphan.parent == DocumentId.get_or_create_for_object(other_parent)

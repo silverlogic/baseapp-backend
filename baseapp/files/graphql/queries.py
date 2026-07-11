@@ -18,4 +18,6 @@ class FilesQueries:
     def resolve_my_files(self, info: graphene.ResolveInfo, **kwargs) -> models.QuerySet:
         if not info.context.user.is_authenticated:
             return File.objects.none()
-        return File.objects.filter(created_by=info.context.user)
+        # Explicit total ordering — AbstractFile has no Meta.ordering, and cursor
+        # pagination over an unordered queryset yields duplicated/missing rows.
+        return File.objects.filter(created_by=info.context.user).order_by("-created", "-pk")

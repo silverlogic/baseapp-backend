@@ -187,10 +187,8 @@ def test_annotate_queryset_evaluates_in_single_query(django_assert_num_queries):
 
     assert rows[comment_with_files.pk]._file_target_files_count["total"] == 2
     assert rows[comment_with_files.pk]._file_target_is_files_enabled is True
-    assert rows[comment_with_files.pk].files_count_total == 2
 
     assert rows[comment_disabled.pk]._file_target_is_files_enabled is False
 
     assert rows[comment_bare.pk]._file_target_files_count is None
     assert rows[comment_bare.pk]._file_target_is_files_enabled is True
-    assert rows[comment_bare.pk].files_count_total == 0

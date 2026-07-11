@@ -11,6 +11,18 @@ class FilesPermissionsBackend(BaseBackend):
         return None
 
     def has_perm(self, user_obj, perm, obj=None):
+        if perm == f"{file_app_label}.add_{file_model_name}":
+            # Target-level: may this user attach files to `obj`? Default policy
+            # mirrors comments' add_comment — authenticated and files enabled.
+            # Projects can override this backend to enforce target ownership.
+            if not obj:
+                return False
+            from baseapp_core.plugins import shared_services
+
+            service = shared_services.get("files_metadata")
+            enabled = service.is_files_enabled(obj) if service else True
+            return user_obj.is_authenticated and enabled
+
         if perm == f"{file_app_label}.attach_{file_model_name}":
             if obj:
                 return obj.created_by == user_obj

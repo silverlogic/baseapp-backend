@@ -286,6 +286,57 @@ def test_file_attach_to_target_single_file(graphql_user_client, django_user_clie
     assert data["target"]["filesCount"]["total"] == 1
 
 
+def test_file_attach_to_target_rejects_non_file_relay_id(graphql_user_client, django_user_client):
+    """Passing a non-File relay id (e.g. a Comment) is rejected as not_found
+    rather than crashing on the permission check / parent assignment."""
+    user = django_user_client.user
+    comment = CommentFactory(user=user)
+    not_a_file = CommentFactory(user=user)
+
+    response = graphql_user_client(
+        FILE_ATTACH_TO_TARGET_MUTATION,
+        variables={
+            "fileRelayIds": [not_a_file.relay_id],
+            "targetObjectId": comment.relay_id,
+        },
+    )
+    content = response.json()
+
+    assert "errors" in content
+    assert content["errors"][0]["extensions"]["code"] == "not_found"
+
+
+def test_file_attach_to_target_rejects_non_fileable_target(graphql_user_client, django_user_client):
+    """A target that does not opt into files (not a FileableModel) is rejected
+    with invalid_target instead of committing writes then erroring on the
+    FilesInterface payload."""
+    from baseapp_profiles.tests.factories import ProfileFactory
+
+    user = django_user_client.user
+    # A Profile is a resolvable node but not a FileableModel, so it cannot be a
+    # files target.
+    profile = ProfileFactory()
+    file = File.objects.create(
+        file_name="test.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=user,
+    )
+
+    response = graphql_user_client(
+        FILE_ATTACH_TO_TARGET_MUTATION,
+        variables={
+            "fileRelayIds": [file.relay_id],
+            "targetObjectId": profile.relay_id,
+        },
+    )
+    content = response.json()
+
+    assert "errors" in content
+    assert content["errors"][0]["extensions"]["code"] == "invalid_target"
+    file.refresh_from_db()
+    assert file.parent_id is None
+
+
 def test_file_attach_to_target_requires_authentication(graphql_client):
     comment = CommentFactory()
     file = File.objects.create(file_name="test.txt")

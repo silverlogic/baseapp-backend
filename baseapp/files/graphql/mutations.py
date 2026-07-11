@@ -9,6 +9,7 @@ from baseapp_core.graphql import RelayMutation, get_obj_from_relay_id, login_req
 from baseapp_core.models import DocumentId
 from baseapp_core.plugins import shared_services
 
+from ..base import FileableModel
 from .interfaces import FilesInterface
 
 File = swapper.load_model("baseapp_files", "File")
@@ -74,22 +75,35 @@ class FileAttachToTarget(RelayMutation):
                 extensions={"code": "not_found"},
             )
 
-        # Get or create DocumentId for the target
-        target_document_id = DocumentId.get_or_create_for_object(target)
+        # Only objects that opt into files (FileableModel) can be targets — this
+        # also guarantees the payload's `target` field resolves as FilesInterface.
+        if not isinstance(target, FileableModel):
+            raise GraphQLError(
+                str(_("This object does not support file attachments")),
+                extensions={"code": "invalid_target"},
+            )
 
-        # Check if files are enabled for this target
+        # Target-level authorization: whether this user may attach files to this
+        # object is delegated to the permission backend so projects can override
+        # it (default: authenticated + files enabled). Keep the explicit enabled
+        # check for a precise error code.
         if service := shared_services.get("files_metadata"):
             if not service.is_files_enabled(target):
                 raise GraphQLError(
                     str(_("Files are not enabled for this target")),
                     extensions={"code": "files_disabled"},
                 )
+        if not info.context.user.has_perm(f"{app_label}.add_{file_model_name}", target):
+            raise GraphQLError(
+                str(_("You don't have permission to attach files to this object")),
+                extensions={"code": "permission_required"},
+            )
 
-        # Get all files and verify the attach permission
+        # Get all files and verify each is a File the user is allowed to attach.
         files = []
         for file_relay_id in file_relay_ids:
             file_obj = get_obj_from_relay_id(info, file_relay_id)
-            if not file_obj:
+            if not isinstance(file_obj, File):
                 raise GraphQLError(
                     str(_("File not found: {file_id}")).format(file_id=file_relay_id),
                     extensions={"code": "not_found"},
@@ -113,7 +127,8 @@ class FileAttachToTarget(RelayMutation):
 
             files.append(file_obj)
 
-        # Attach all files to the target
+        # All validation passed — now materialize the target DocumentId and attach.
+        target_document_id = DocumentId.get_or_create_for_object(target)
         for file_obj in files:
             file_obj.parent = target_document_id
             file_obj.save(update_fields=["parent"])

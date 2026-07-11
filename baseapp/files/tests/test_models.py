@@ -188,6 +188,15 @@ class FileUtilsTest(TestCase):
         self.assertEqual(file_target1.pk, file_target2.pk)
         self.assertEqual(FileTarget.objects.count(), 1)
 
+    def test_get_or_create_file_target_returns_none_for_unsaved_object(self):
+        """An unsaved object has no pk, so the mixin guards against a NULL
+        primary key instead of raising IntegrityError."""
+        Comment = CommentFactory._meta.model
+
+        self.assertIsNone(get_or_create_file_target(Comment()))
+        self.assertIsNone(get_or_create_file_target(None))
+        self.assertEqual(FileTarget.objects.count(), 0)
+
     def test_recalculate_files_count_with_none(self):
         recalculate_files_count(None)
 
