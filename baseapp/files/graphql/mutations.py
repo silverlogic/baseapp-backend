@@ -7,6 +7,7 @@ from graphql_relay.connection.arrayconnection import offset_to_cursor
 
 from baseapp_core.graphql import RelayMutation, get_obj_from_relay_id, login_required
 from baseapp_core.models import DocumentId
+from baseapp_core.plugins import shared_services
 
 from .interfaces import FilesInterface
 
@@ -56,8 +57,6 @@ class FileAttachToTarget(RelayMutation):
     @login_required
     @transaction.atomic
     def mutate_and_get_payload(cls, root, info, **input):
-        from django.contrib.contenttypes.models import ContentType
-
         file_relay_ids = input.get("file_relay_ids", [])
         target_object_id = input.get("target_object_id")
 
@@ -76,22 +75,17 @@ class FileAttachToTarget(RelayMutation):
             )
 
         # Get or create DocumentId for the target
-        target_content_type = ContentType.objects.get_for_model(target)
-        target_document_id, created = DocumentId.objects.get_or_create(
-            content_type=target_content_type,
-            object_id=target.pk,
-        )
+        target_document_id = DocumentId.get_or_create_for_object(target)
 
         # Check if files are enabled for this target
-        if hasattr(target, "get_file_target"):
-            file_target = target.get_file_target()
-            if not file_target.is_files_enabled:
+        if service := shared_services.get("files_metadata"):
+            if not service.is_files_enabled(target):
                 raise GraphQLError(
                     str(_("Files are not enabled for this target")),
                     extensions={"code": "files_disabled"},
                 )
 
-        # Get all files and verify ownership
+        # Get all files and verify the attach permission
         files = []
         for file_relay_id in file_relay_ids:
             file_obj = get_obj_from_relay_id(info, file_relay_id)
@@ -101,8 +95,10 @@ class FileAttachToTarget(RelayMutation):
                     extensions={"code": "not_found"},
                 )
 
-            # Check ownership - only file owner can attach it
-            if file_obj.created_by != info.context.user:
+            # Object-level permission (FilesPermissionsBackend grants the owner)
+            if not info.context.user.has_perm(
+                f"{app_label}.attach_{file_model_name}", file_obj
+            ):
                 raise GraphQLError(
                     str(_("You don't have permission to attach this file")),
                     extensions={"code": "permission_required"},
@@ -121,8 +117,6 @@ class FileAttachToTarget(RelayMutation):
 
         # Attach all files to the target
         for file_obj in files:
-            # TO DO: Check permission
-            # if not info.context.user.has_perm("baseapp_files.attach_file", file_obj):
             file_obj.parent = target_document_id
             file_obj.save(update_fields=["parent"])
 

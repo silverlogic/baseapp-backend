@@ -331,6 +331,65 @@ def test_file_attach_to_target_requires_ownership(graphql_user_client, django_us
     assert content["errors"][0]["extensions"]["code"] == "permission_required"
 
 
+def test_file_attach_to_target_superuser_can_attach_any_file(
+    graphql_user_client, django_user_client
+):
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    other_user = User.objects.create_user(email="other@test.com", password="pass123")
+
+    django_user_client.user.is_superuser = True
+    django_user_client.user.save()
+
+    comment = CommentFactory(user=other_user)
+    file = File.objects.create(
+        file_name="test.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=other_user,
+    )
+
+    response = graphql_user_client(
+        FILE_ATTACH_TO_TARGET_MUTATION,
+        variables={
+            "fileRelayIds": [file.relay_id],
+            "targetObjectId": comment.relay_id,
+        },
+    )
+    content = response.json()
+
+    assert "errors" not in content
+    assert len(content["data"]["fileAttachToTarget"]["attachedFiles"]) == 1
+
+
+def test_file_attach_to_target_files_disabled(graphql_user_client, django_user_client):
+    user = django_user_client.user
+    comment = CommentFactory(user=user)
+    file_target = comment.get_file_target()
+    file_target.is_files_enabled = False
+    file_target.save()
+
+    file = File.objects.create(
+        file_name="test.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=user,
+    )
+
+    response = graphql_user_client(
+        FILE_ATTACH_TO_TARGET_MUTATION,
+        variables={
+            "fileRelayIds": [file.relay_id],
+            "targetObjectId": comment.relay_id,
+        },
+    )
+    content = response.json()
+
+    assert "errors" in content
+    assert content["errors"][0]["extensions"]["code"] == "files_disabled"
+    file.refresh_from_db()
+    assert file.parent_id is None
+
+
 def test_file_attach_to_target_already_attached(graphql_user_client, django_user_client):
     user = django_user_client.user
     comment1 = CommentFactory(user=user)
