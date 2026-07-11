@@ -286,6 +286,28 @@ class DocumentIdTargetMixin(models.Model):
             return self.target_document.object_id
         return None
 
+    @classmethod
+    def target_document_accessor(cls) -> str:
+        """Reverse accessor name from ``DocumentId`` back to this model's rows.
+
+        The FK uses the project-specific ``related_name`` template
+        ``%(app_label)s_%(class)s`` (so the concrete name differs per consuming
+        app, e.g. ``mentions_mention`` vs ``social_mentions_mention``). Resolve
+        it from the field itself rather than reconstructing the string by hand,
+        so it stays correct for any swapped model.
+        """
+        return cls._meta.get_field("target_document").remote_field.get_accessor_name()
+
+    @classmethod
+    def document_prefetch_path(cls) -> str:
+        """``document__<reverse>`` lookup path for prefetching these rows through a
+        consuming object's ``DocumentId`` ``GenericRelation`` (from ``DocumentIdMixin``).
+
+        Lets the query optimizer batch e.g. mentions/reactions for a page of
+        consumers in one SELECT instead of fanning out per parent.
+        """
+        return "document__{}".format(cls.target_document_accessor())
+
 
 class DocumentIdFunc(pgtrigger.Func):
     """

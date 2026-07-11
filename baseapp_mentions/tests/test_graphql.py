@@ -11,6 +11,7 @@ Two concerns:
 """
 
 import pytest
+from django.contrib.contenttypes.models import ContentType
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
@@ -116,6 +117,12 @@ def test_paginated_comments_with_mentions_does_not_explode_query_count(
     for child in children:
         seed_mentions(child, profiles)
 
+    # Reset the ContentType cache so the count is deterministic regardless of
+    # test ordering. A warm cache drops the per-model `get_for_model` lookups
+    # (Comment, Mention, Profile) and lands at 16; a cold cache (e.g. after
+    # baseapp_follows clears it) adds those 3 and lands at 19. We assert the
+    # cold figure so the bound is stable in any ordering.
+    ContentType.objects.clear_cache()
     with CaptureQueriesContext(connection) as ctx:
         response = graphql_user_client(
             COMMENTS_LIST_WITH_MENTIONS, variables={"targetId": target.relay_id}
@@ -127,7 +134,7 @@ def test_paginated_comments_with_mentions_does_not_explode_query_count(
     # 9 queries: DocumentId lookup + Mention COUNT + page + 3 Mention
     # node fetches + 3 Profile DocumentId lookups → 45 queries for 5
     # comments). If this trips, inspect the captured SQL before bumping.
-    assert len(ctx.captured_queries) <= 16, (
+    assert len(ctx.captured_queries) <= 19, (
         f"Mentions connection issued {len(ctx.captured_queries)} queries. "
         "Likely cause: resolver dropped the optimizer hook, "
         "the Profile prefetch lost its `mapped_public_id` annotation, "

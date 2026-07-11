@@ -17,12 +17,8 @@ from baseapp_core.graphql import (
 from baseapp_core.plugins import shared_services
 from baseapp_profiles.utils import to_ascii_handle
 
-from .object_types import ProfileRoleTypesEnum
-
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 profile_app_label = Profile._meta.app_label
-ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
-profile_user_role_app_label = ProfileUserRole._meta.app_label
 
 
 class BaseProfileSerializer(serializers.ModelSerializer):
@@ -140,75 +136,6 @@ class ProfileCreate(SerializerMutation):
         )
 
 
-class RoleUpdate(RelayMutation):
-    profile_user_role = graphene.Field(get_object_type_for_model(ProfileUserRole))
-
-    class Input:
-        profile_id = graphene.ID(required=True)
-        user_id = graphene.ID(required=True)
-        role_type = graphene.Field(ProfileRoleTypesEnum)
-
-    @classmethod
-    @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
-        user_id = input.get("user_id")
-        profile_id = input.get("profile_id")
-        role_type = input.get("role_type")
-        user_pk = get_pk_from_relay_id(user_id)
-        profile_pk = get_pk_from_relay_id(profile_id)
-
-        try:
-            obj = ProfileUserRole.objects.get(user_id=user_pk, profile_id=profile_pk)
-        except ProfileUserRole.DoesNotExist:
-            raise GraphQLError(_("Role not found"))
-
-        if not info.context.user.has_perm(
-            f"{profile_user_role_app_label}.change_profileuserrole", obj.profile
-        ):
-            raise GraphQLError(
-                str(_("You don't have permission to perform this action")),
-                extensions={"code": "permission_required"},
-            )
-
-        obj.role = role_type
-        obj.save()
-
-        return RoleUpdate(profile_user_role=obj)
-
-
-class ProfileRemoveMember(RelayMutation):
-    deleted_id = graphene.ID()
-
-    class Input:
-        profile_id = graphene.ID(required=True)
-        user_id = graphene.ID(required=True)
-
-    @classmethod
-    @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
-        profile_id = input.get("profile_id")
-        user_id = input.get("user_id")
-        profile_pk = get_pk_from_relay_id(profile_id)
-        user_pk = get_pk_from_relay_id(user_id)
-        obj = ProfileUserRole.objects.get(user_id=user_pk, profile_id=profile_pk)
-
-        if not obj:
-            raise GraphQLError(_("User role not found"))
-
-        if not info.context.user.has_perm(
-            f"{profile_user_role_app_label}.delete_profileuserrole", obj.profile
-        ):
-            raise GraphQLError(
-                str(_("You don't have permission to perform this action")),
-                extensions={"code": "permission_required"},
-            )
-
-        id_to_return = obj.relay_id
-        obj.delete()
-
-        return ProfileRemoveMember(deleted_id=id_to_return)
-
-
 class ProfileUpdate(SerializerMutation):
     profile = graphene.Field(get_object_type_for_model(Profile))
 
@@ -227,7 +154,7 @@ class ProfileUpdate(SerializerMutation):
             pk = get_pk_from_relay_id(id)
             instance = Profile.objects.get(pk=pk)
         except Profile.DoesNotExist:
-            raise ValueError(_("Profile not found"))
+            raise ValueError(str(_("Profile not found")))
 
         if not info.context.user.has_perm(f"{profile_app_label}.change_profile", instance):
             raise GraphQLError(
@@ -290,12 +217,4 @@ class ProfileDelete(RelayMutation):
 
         obj.delete()
 
-        return ProfileDelete(deleted_id=relay_id)
-
-
-class ProfilesMutations(object):
-    profile_create = ProfileCreate.Field()
-    profile_update = ProfileUpdate.Field()
-    profile_delete = ProfileDelete.Field()
-    profile_role_update = RoleUpdate.Field()
-    profile_remove_member = ProfileRemoveMember.Field()
+        return cls(deleted_id=relay_id)

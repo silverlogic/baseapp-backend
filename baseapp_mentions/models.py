@@ -4,15 +4,16 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql.models import RelayModel
-from baseapp_core.models import DocumentId
+from baseapp_core.models import DocumentIdMixin, DocumentIdTargetMixin
 
 
-class AbstractBaseMention(TimeStampedModel, RelayModel):
+class AbstractBaseMention(TimeStampedModel, DocumentIdTargetMixin, DocumentIdMixin, RelayModel):
     """A profile mentioned inside a target document.
 
-    `target` is a `DocumentId` so any model registered with the DocumentId
-    registry can be a mention target without adding fields or migrations of
-    its own — mirrors the `baseapp_follows.Follow` pattern.
+    The mention target is a `DocumentId`, provided by
+    `DocumentIdTargetMixin.target_document`, so any model registered with the
+    DocumentId registry can be a mention target without adding fields or
+    migrations of its own — mirrors the `baseapp_reactions.Reaction` pattern.
     """
 
     profile = models.ForeignKey(
@@ -21,20 +22,14 @@ class AbstractBaseMention(TimeStampedModel, RelayModel):
         related_name="mentions_received",
         on_delete=models.CASCADE,
     )
-    target = models.ForeignKey(
-        DocumentId,
-        verbose_name=_("target"),
-        related_name="mentions",
-        on_delete=models.CASCADE,
-    )
 
     class Meta:
         abstract = True
-        unique_together = [("profile", "target")]
+        unique_together = [("profile", "target_document")]
         swappable = swapper.swappable_setting("baseapp_mentions", "Mention")
 
-    def __str__(self):
-        return "{} mentioned in {}".format(self.profile, self.target)
+    def __str__(self) -> str:
+        return "{} mentioned in {}".format(self.profile, self.target_document)
 
     @classmethod
     def get_graphql_object_type(cls):

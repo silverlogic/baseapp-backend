@@ -1,0 +1,16 @@
+{% extends 'emails/base.html.j2' %}
+
+{% block content %}
+<p class="t-h5">{% trans %}You've been invited!{% endtrans %}</p>
+<p class="t-body2 gap-top-3">
+    {% trans inviter=inviter_name, profile=profile_name, role=role %}{{ inviter }} has invited you to join <strong>{{ profile }}</strong> as a <strong>{{ role }}</strong>.{% endtrans %}
+</p>
+<a href="{{ accept_url }}" class="button t-button gap-top-3 margin-center">{% trans %}Accept Invitation{% endtrans %}</a>
+<p class="t-caption gap-top-3 text-center">
+    {% trans expiration=expiration_date %}This invitation will expire on {{ expiration }}.{% endtrans %}
+</p>
+<p class="t-caption gap-top-3 text-center">
+    {% trans %}Didn't expect this invitation?<br />{% endtrans %}
+    {% trans %}No worries, you can safely ignore this email.{% endtrans %}
+</p>
+{% endblock %}
