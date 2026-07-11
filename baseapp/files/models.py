@@ -2,8 +2,12 @@ import pgtrigger
 import swapper
 from django.apps import apps
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import IntegerField, OuterRef, Subquery, Value
+from django.db.models.fields.json import KeyTextTransform
+from django.db.models.functions import Cast, Coalesce
 from django.db.models.signals import class_prepared
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
@@ -227,6 +231,52 @@ class AbstractFileTarget(models.Model):
 
     def __str__(self):
         return f"FileTarget for {self.target}"
+
+    @classmethod
+    def get_for_object(cls, obj: models.Model | None) -> "AbstractFileTarget | None":
+        """Return the FileTarget for the given object, or `None` if not found."""
+        if not obj or not getattr(obj, "pk", None):
+            return None
+        try:
+            ct = ContentType.objects.get_for_model(obj)
+            return cls.objects.get(target__content_type=ct, target__object_id=obj.pk)
+        except cls.DoesNotExist:
+            return None
+
+    @classmethod
+    def annotate_queryset(cls, queryset: models.QuerySet) -> models.QuerySet:
+        """
+        Annotate `queryset` with file-target metadata so resolvers don't N+1.
+        Adds `_file_target_files_count`, `_file_target_is_files_enabled`, and a
+        flat public `files_count_total` (integer cast of the `files_count->total`
+        JSON key) so consumer-side filtering/ORDER BY can use a real expression.
+        Mirrors `ReactableMetadata.annotate_queryset`.
+        """
+        model_cls = queryset.model
+        ct_id = ContentType.objects.get_for_model(model_cls).pk
+        file_target_qs = cls.objects.filter(
+            target__content_type_id=ct_id,
+            target__object_id=OuterRef("pk"),
+        )
+        total_subq = Subquery(
+            file_target_qs.annotate(total=KeyTextTransform("total", "files_count")).values(
+                "total"
+            )[:1]
+        )
+        return queryset.annotate(
+            _file_target_files_count=Subquery(file_target_qs.values("files_count")[:1]),
+            _file_target_is_files_enabled=Coalesce(
+                Subquery(
+                    file_target_qs.values("is_files_enabled")[:1],
+                    output_field=models.BooleanField(),
+                ),
+                Value(True),
+            ),
+            files_count_total=Coalesce(
+                Cast(total_subq, output_field=IntegerField()),
+                Value(0),
+            ),
+        )
 
 
 file_inheritances = []

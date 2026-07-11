@@ -15,11 +15,7 @@ def get_or_create_file_target(target_obj):
     """Get or create a FileTarget for the given object."""
     FileTarget = swapper.load_model("baseapp_files", "FileTarget")
 
-    content_type = ContentType.objects.get_for_model(target_obj, for_concrete_model=False)
-    document_id, created = DocumentId.objects.get_or_create(
-        content_type=content_type,
-        object_id=target_obj.pk,
-    )
+    document_id = DocumentId.get_or_create_for_object(target_obj)
     file_target, created = FileTarget.objects.get_or_create(target=document_id)
     return file_target
 
@@ -45,11 +41,8 @@ def set_files_parent(parent, files: Iterable):
     if not files:
         return
 
-    parent_content_type = ContentType.objects.get_for_model(parent, for_concrete_model=False)
-    parent_document_id, created = DocumentId.objects.get_or_create(
-        content_type=parent_content_type,
-        object_id=parent.pk,
-    )
+    parent_content_type = ContentType.objects.get_for_model(parent)
+    parent_document_id = DocumentId.get_or_create_for_object(parent)
     previous_parents = {}
 
     for file_obj in files:

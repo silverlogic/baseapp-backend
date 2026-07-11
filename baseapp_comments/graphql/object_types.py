@@ -181,6 +181,10 @@ class BaseCommentObjectType:
         if service := shared_services.get("reactable_metadata"):
             queryset = service.annotate_queryset(queryset)
 
+        # Annotate files metadata so FilesInterface resolvers don't N+1.
+        if service := shared_services.get("files_metadata"):
+            queryset = service.annotate_queryset(queryset)
+
         return queryset
 
     @classmethod
