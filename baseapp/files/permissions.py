@@ -10,58 +10,39 @@ class FilesPermissionsBackend(BaseBackend):
     def authenticate(self, request, **kwargs):
         return None
 
+    @staticmethod
+    def _can_add_to_target(user_obj, obj):
+        """Target-level: may this user attach files to `obj`? Default policy
+        mirrors comments' add_comment — authenticated and files enabled.
+        Projects can override this backend to enforce target ownership."""
+        if not obj:
+            return False
+        from baseapp_core.plugins import shared_services
+
+        service = shared_services.get("files_metadata")
+        enabled = service.is_files_enabled(obj) if service else True
+        return user_obj.is_authenticated and enabled
+
+    @staticmethod
+    def _is_owner_or_has_global(user_obj, perm, obj):
+        """Owner acts on their own file; otherwise fall back to the global perm
+        (ModelBackend doesn't grant global perms when an obj is passed)."""
+        if not obj:
+            return False
+        return obj.created_by == user_obj or user_obj.has_perm(perm)
+
     def has_perm(self, user_obj, perm, obj=None):
         if perm == f"{file_app_label}.add_{file_model_name}":
-            # Target-level: may this user attach files to `obj`? Default policy
-            # mirrors comments' add_comment — authenticated and files enabled.
-            # Projects can override this backend to enforce target ownership.
-            if not obj:
-                return False
-            from baseapp_core.plugins import shared_services
-
-            service = shared_services.get("files_metadata")
-            enabled = service.is_files_enabled(obj) if service else True
-            return user_obj.is_authenticated and enabled
+            return self._can_add_to_target(user_obj, obj)
 
         if perm == f"{file_app_label}.attach_{file_model_name}":
-            if obj:
-                return obj.created_by == user_obj
-            return False
+            return bool(obj) and obj.created_by == user_obj
 
-        if perm == f"{file_app_label}.view_{file_model_name}":
-            if obj:
-                # Owner can view their own files
-                if obj.created_by == user_obj:
-                    return True
-                # Check if user has global permission (for admins with view_file perm)
-                # This is needed because ModelBackend doesn't grant global perms with obj
-                if user_obj.has_perm(perm):
-                    return True
-                return False
-            return False
-
-        if perm == f"{file_app_label}.change_{file_model_name}":
-            if obj:
-                # Owner can change their own files
-                if obj.created_by == user_obj:
-                    return True
-                # Check if user has global permission (for admins with change_file perm)
-                # This is needed because ModelBackend doesn't grant global perms with obj
-                if user_obj.has_perm(perm):
-                    return True
-                return False
-            return False
-
-        if perm == f"{file_app_label}.delete_{file_model_name}":
-            if obj:
-                # Owner can delete their own files
-                if obj.created_by == user_obj:
-                    return True
-                # Check if user has global permission (for admins with delete_file perm)
-                # This is needed because ModelBackend doesn't grant global perms with obj
-                if user_obj.has_perm(perm):
-                    return True
-                return False
-            return False
+        if perm in (
+            f"{file_app_label}.view_{file_model_name}",
+            f"{file_app_label}.change_{file_model_name}",
+            f"{file_app_label}.delete_{file_model_name}",
+        ):
+            return self._is_owner_or_has_global(user_obj, perm, obj)
 
         return False

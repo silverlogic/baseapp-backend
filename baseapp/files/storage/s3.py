@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import boto3
 from botocore.exceptions import ClientError
@@ -118,8 +118,8 @@ class S3MultipartUploadHandler(BaseUploadHandler):
             if e.response["Error"]["Code"] != "NoSuchUpload":
                 raise
 
-    def get_file_url(self, file_obj) -> str:
-        """Get the S3 URL for the file."""
+    def get_file_url(self, file_obj) -> Optional[str]:
+        """Get the S3 URL for the file, or None if the file isn't stored yet."""
         if file_obj.file:
             return file_obj.file.url
         return None

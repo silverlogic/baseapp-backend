@@ -39,9 +39,9 @@ def cleanup_expired_uploads():
             file_obj.save()
 
             cleaned_count += 1
-        except Exception as e:
-            # Log error but continue
-            logger.error(f"Failed to cleanup file {file_obj.id}: {e}")
+        except Exception:
+            # Log with traceback but continue with the next file.
+            logger.exception("Failed to cleanup file %s", file_obj.id)
 
     logger.info(f"Cleaned up {cleaned_count} expired uploads")
     return f"Cleaned up {cleaned_count} expired uploads"

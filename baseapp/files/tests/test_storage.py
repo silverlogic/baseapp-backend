@@ -189,7 +189,7 @@ class TestLocalUploadHandler:
         upload_id = "test-upload-123"
         data = b"test file content"
 
-        etag = local_handler.upload_part(file_obj, upload_id, part_number=1, data=data)
+        etag = local_handler.upload_part(upload_id, part_number=1, data=data)
 
         assert etag  # Should return MD5 hash
         assert len(etag) == 32  # MD5 hash length

@@ -1,7 +1,7 @@
 import os
 import shutil
 import uuid
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from django.conf import settings
 from django.core import signing
@@ -63,7 +63,7 @@ class LocalUploadHandler(BaseUploadHandler):
             "expires_in": 3600,
         }
 
-    def upload_part(self, file_obj, upload_id: str, part_number: int, data: bytes) -> str:
+    def upload_part(self, upload_id: str, part_number: int, data: bytes) -> str:
         """
         Upload a part to local storage.
         This method is called by the backend when handling local uploads.
@@ -118,8 +118,8 @@ class LocalUploadHandler(BaseUploadHandler):
         temp_dir = os.path.join(settings.MEDIA_ROOT, "temp_uploads", upload_id)
         shutil.rmtree(temp_dir, ignore_errors=True)
 
-    def get_file_url(self, file_obj) -> str:
-        """Get the local file URL."""
+    def get_file_url(self, file_obj) -> Optional[str]:
+        """Get the local file URL, or None if the file isn't stored yet."""
         if file_obj.file:
             return file_obj.file.url
         return None

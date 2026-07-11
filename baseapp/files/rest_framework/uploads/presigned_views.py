@@ -121,7 +121,6 @@ class PresignedUploadViewSet(viewsets.GenericViewSet):
 
             # Upload the part using the storage handler
             etag = self.upload_service.handler.upload_part(
-                file_obj=file_obj,
                 upload_id=file_obj.upload_id,
                 part_number=part_number,
                 data=data,

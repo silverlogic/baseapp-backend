@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 class BaseUploadHandler(ABC):
@@ -46,6 +46,6 @@ class BaseUploadHandler(ABC):
         pass
 
     @abstractmethod
-    def get_file_url(self, file_obj) -> str:
-        """Get the URL for accessing the file."""
+    def get_file_url(self, file_obj) -> Optional[str]:
+        """Get the URL for accessing the file, or None if not available yet."""
         pass
