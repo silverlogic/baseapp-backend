@@ -16,8 +16,7 @@ The file upload system supports both direct S3 uploads (production) and local st
   "file_content_type": "video/mp4",
   "num_parts": 20,
   "part_size": 5242880,
-  "parent_content_type": "testapp.post",  // optional
-  "parent_object_id": 123  // optional
+  "parent_id": "b3c5…-document-public-id"  // optional (DocumentId public_id)
 }
 ```
 
@@ -143,28 +142,26 @@ Cancels the upload and cleans up temporary files.
 ```python
 # Maximum file size (default: 5GB)
 MAX_FILE_UPLOAD_SIZE = 5 * 1024 * 1024 * 1024
-
-# Storage backend
-UPLOAD_STORAGE_HANDLER = "local"  # or "s3"
 ```
 
-### Local Storage
-```python
-UPLOAD_STORAGE_HANDLER = "local"
-```
+The storage handler is selected automatically from Django's `default_storage`
+(`baseapp/files/storage/__init__.py`): an `S3Boto3Storage` backend selects the
+S3 multipart handler, anything else falls back to the local handler. There is
+no dedicated setting.
+
+### Local Storage (default_storage is not S3)
 - Uses `LocalUploadHandler`
 - Stores files in `MEDIA_ROOT/files/`
 - Temp parts in `MEDIA_ROOT/temp_uploads/{upload_id}/`
 
-### S3 Storage
+### S3 Storage (default_storage is S3Boto3Storage)
 ```python
-UPLOAD_STORAGE_HANDLER = "s3"
 AWS_ACCESS_KEY_ID = "..."
 AWS_SECRET_ACCESS_KEY = "..."
 AWS_STORAGE_BUCKET_NAME = "my-bucket"
 AWS_S3_REGION_NAME = "us-east-1"
 ```
-- Uses `S3UploadHandler`
+- Uses `S3MultipartUploadHandler`
 - Generates presigned URLs for direct S3 upload
 - No backend file handling
 

@@ -167,8 +167,7 @@ Content-Type: application/json
     "file_content_type": "video/mp4",
     "num_parts": 20,
     "part_size": 5242880,
-    "parent_content_type": "testapp.post",  // optional
-    "parent_object_id": 123                  // optional
+    "parent_id": "b3c5…-document-public-id"  // optional (DocumentId public_id of the parent)
 }
 ```
 
@@ -262,8 +261,7 @@ Content-Type: application/json
     "created_by": 1,
     "created_by_name": "John Doe",
     "created": "2025-12-29T10:00:00Z",
-    "parent_content_type": 23,
-    "parent_object_id": 123
+    "parent_id": "b3c5…-document-public-id"
 }
 ```
 
@@ -278,8 +276,7 @@ Authorization: Bearer {jwt_token}
 Content-Type: application/json
 
 {
-    "parent_content_type": "testapp.comment",
-    "parent_object_id": 789
+    "parent_id": "b3c5…-document-public-id"
 }
 ```
 
@@ -296,8 +293,7 @@ POST /v1/files/uploads
 - `file_content_type` (string, required) - MIME type (e.g., "video/mp4")
 - `num_parts` (integer, required) - Number of parts (1-10,000)
 - `part_size` (integer, required) - Size of each part in bytes (min 5MB for multipart)
-- `parent_content_type` (string, optional) - e.g., "testapp.post"
-- `parent_object_id` (integer, optional) - ID of parent object
+- `parent_id` (UUID, optional) - `DocumentId` public_id of the parent object
 
 **Validation:**
 - File size must not exceed `MAX_FILE_UPLOAD_SIZE` (default 5GB)
@@ -339,8 +335,7 @@ GET /v1/files
 
 **Query Parameters:**
 - `status` (string, optional) - Filter by upload_status (default: "completed")
-- `parent_content_type` (string, optional) - Filter by parent type
-- `parent_object_id` (integer, optional) - Filter by parent ID
+- `parent_id` (UUID, optional) - Filter by parent `DocumentId` public_id
 
 **Notes:**
 - Returns only user's own files (unless staff)
@@ -381,8 +376,7 @@ POST /v1/files/{id}/set-parent
 ```
 
 **Parameters:**
-- `parent_content_type` (string, required) - e.g., "testapp.post"
-- `parent_object_id` (integer, required) - Parent object ID
+- `parent_id` (UUID, required) - `DocumentId` public_id of the parent object
 
 ## Client Implementation
 
@@ -395,7 +389,7 @@ class MultipartUploader {
         this.token = token;
     }
 
-    async uploadFile(file, parentContentType = null, parentObjectId = null) {
+    async uploadFile(file, parentId = null) {
         // 1. Calculate parts
         const partSize = 5 * 1024 * 1024; // 5MB
         const numParts = Math.ceil(file.size / partSize);
@@ -413,8 +407,7 @@ class MultipartUploader {
                 file_content_type: file.type,
                 num_parts: numParts,
                 part_size: partSize,
-                parent_content_type: parentContentType,
-                parent_object_id: parentObjectId
+                parent_id: parentId
             })
         });
 
@@ -491,7 +484,7 @@ try {
 import requests
 import math
 
-def upload_file_multipart(api_url, token, file_path, parent_content_type=None, parent_object_id=None):
+def upload_file_multipart(api_url, token, file_path, parent_id=None):
     """Upload a file using multipart upload."""
 
     # 1. Read file info
@@ -516,8 +509,7 @@ def upload_file_multipart(api_url, token, file_path, parent_content_type=None, p
             'file_content_type': 'application/octet-stream',
             'num_parts': num_parts,
             'part_size': part_size,
-            'parent_content_type': parent_content_type,
-            'parent_object_id': parent_object_id
+            'parent_id': parent_id
         }
     )
     init_data = init_response.json()
@@ -557,8 +549,7 @@ result = upload_file_multipart(
     'https://api.example.com',
     'your-jwt-token',
     '/path/to/large-file.mp4',
-    parent_content_type='testapp.post',
-    parent_object_id=123
+    parent_id='b3c5…-document-public-id'
 )
 print(f"File uploaded: {result['url']}")
 ```
@@ -712,20 +703,13 @@ def get_upload_handler():
         return LocalUploadHandler()
 ```
 
-### Resumable Uploads
+### Resumable Uploads (not planned)
 
-The current implementation doesn't support resuming interrupted uploads. To add this:
-
-1. Client should track which parts were successfully uploaded
-2. Add an endpoint to query uploaded parts:
-   ```python
-   @action(detail=True, methods=['get'])
-   def uploaded_parts(self, request, pk=None):
-       file_obj = self.get_object()
-       # Return list of uploaded part numbers
-       return Response(file_obj.uploaded_parts or {})
-   ```
-3. Client resumes by only uploading missing parts
+Resuming interrupted uploads across sessions is intentionally **out of scope** — the
+package provides multipart upload for large files only. If an upload is interrupted,
+the client aborts (or lets the expiration cleanup task abort) and re-initiates.
+Clients may still pause/resume within a session by holding on to the presigned URLs
+returned at initiation, uploading only the remaining parts while the URLs are valid.
 
 ### File Size Quotas
 
