@@ -259,9 +259,9 @@ class AbstractFileTarget(models.Model):
             target__object_id=OuterRef("pk"),
         )
         total_subq = Subquery(
-            file_target_qs.annotate(total=KeyTextTransform("total", "files_count")).values(
-                "total"
-            )[:1]
+            file_target_qs.annotate(total=KeyTextTransform("total", "files_count")).values("total")[
+                :1
+            ]
         )
         return queryset.annotate(
             _file_target_files_count=Subquery(file_target_qs.values("files_count")[:1]),

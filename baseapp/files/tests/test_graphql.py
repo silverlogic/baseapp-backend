@@ -615,3 +615,132 @@ def test_update_files_count_after_delete_file(django_user_client, graphql_user_c
 
     comment.refresh_from_db()
     assert comment.files_count["total"] == 0
+
+
+MY_FILES_QUERY = """
+    query MyFiles($noParent: Boolean) {
+        myFiles(noParent: $noParent) {
+            edges {
+                node {
+                    id
+                    fileName
+                }
+            }
+        }
+    }
+"""
+
+FILE_NODE_QUERY = """
+    query GetFile($id: ID!) {
+        file(id: $id) {
+            id
+            fileName
+        }
+    }
+"""
+
+
+def test_my_files_includes_own_files(graphql_user_client, django_user_client):
+    own_file = File.objects.create(
+        file_name="mine.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=django_user_client.user,
+    )
+
+    response = graphql_user_client(MY_FILES_QUERY)
+    content = response.json()
+
+    assert "errors" not in content
+    edges = content["data"]["myFiles"]["edges"]
+    assert len(edges) == 1
+    assert edges[0]["node"]["id"] == own_file.relay_id
+    assert edges[0]["node"]["fileName"] == "mine.txt"
+
+
+def test_my_files_excludes_other_users_files(graphql_user_client, django_user_client):
+    """myFiles is scoped to the authenticated user — other users' files must
+    never be returned."""
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    other_user = User.objects.create_user(email="other@test.com", password="pass123")
+
+    File.objects.create(
+        file_name="theirs.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=other_user,
+    )
+    own_file = File.objects.create(
+        file_name="mine.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=django_user_client.user,
+    )
+
+    response = graphql_user_client(MY_FILES_QUERY)
+    content = response.json()
+
+    assert "errors" not in content
+    edges = content["data"]["myFiles"]["edges"]
+    assert len(edges) == 1
+    assert edges[0]["node"]["id"] == own_file.relay_id
+
+
+def test_my_files_no_parent_filter(graphql_user_client, django_user_client):
+    user = django_user_client.user
+    comment = CommentFactory(user=user)
+    comment_content_type = ContentType.objects.get_for_model(comment)
+    comment_document_id, _ = DocumentId.objects.get_or_create(
+        content_type=comment_content_type,
+        object_id=comment.pk,
+    )
+
+    standalone = File.objects.create(
+        file_name="standalone.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=user,
+    )
+    File.objects.create(
+        file_name="attached.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=user,
+        parent=comment_document_id,
+    )
+
+    response = graphql_user_client(MY_FILES_QUERY, variables={"noParent": True})
+    content = response.json()
+
+    assert "errors" not in content
+    edges = content["data"]["myFiles"]["edges"]
+    assert len(edges) == 1
+    assert edges[0]["node"]["id"] == standalone.relay_id
+
+
+def test_my_files_empty_for_anonymous(graphql_client, django_user_client):
+    """Anonymous visitors must not be able to list any files via myFiles."""
+    File.objects.create(
+        file_name="mine.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=django_user_client.user,
+    )
+
+    response = graphql_client(MY_FILES_QUERY)
+    content = response.json()
+
+    assert "errors" not in content
+    edges = content["data"]["myFiles"]["edges"]
+    assert len(edges) == 0
+
+
+def test_file_node_query_returns_file_for_owner(graphql_user_client, django_user_client):
+    file = File.objects.create(
+        file_name="mine.txt",
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=django_user_client.user,
+    )
+
+    response = graphql_user_client(FILE_NODE_QUERY, variables={"id": file.relay_id})
+    content = response.json()
+
+    assert "errors" not in content
+    assert content["data"]["file"]["id"] == file.relay_id
+    assert content["data"]["file"]["fileName"] == "mine.txt"

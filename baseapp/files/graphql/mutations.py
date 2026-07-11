@@ -96,9 +96,7 @@ class FileAttachToTarget(RelayMutation):
                 )
 
             # Object-level permission (FilesPermissionsBackend grants the owner)
-            if not info.context.user.has_perm(
-                f"{app_label}.attach_{file_model_name}", file_obj
-            ):
+            if not info.context.user.has_perm(f"{app_label}.attach_{file_model_name}", file_obj):
                 raise GraphQLError(
                     str(_("You don't have permission to attach this file")),
                     extensions={"code": "permission_required"},
