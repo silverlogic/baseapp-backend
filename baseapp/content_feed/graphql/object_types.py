@@ -38,7 +38,7 @@ class ContentPostObjectType(DjangoObjectType):
 
     class Meta:
         interfaces = graphql_shared_interfaces.get(
-            RelayNode, "MentionsInterface", "ReactionsInterface"
+            RelayNode, "MentionsInterface", "ReactionsInterface", "CommentsInterface"
         )
         model = ContentPost
         fields = (
@@ -60,5 +60,8 @@ class ContentPostObjectType(DjangoObjectType):
         # Annotate reactable metadata so the ReactionsInterface resolvers
         # (`reactions_count`, `is_reactions_enabled`) don't N+1 per post.
         if service := shared_services.get("reactable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+        # Same for CommentsInterface (`comments_count`, `is_comments_enabled`).
+        if service := shared_services.get("commentable_metadata"):
             queryset = service.annotate_queryset(queryset)
         return queryset
