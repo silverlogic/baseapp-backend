@@ -19,7 +19,6 @@ class UploadService:
     def __init__(self):
         self.handler = get_upload_handler()
 
-    @transaction.atomic
     def initiate_multipart_upload(
         self,
         user,
@@ -33,6 +32,11 @@ class UploadService:
     ):
         """
         Initiate a multipart upload.
+
+        The storage handler's ``initiate_upload`` (a remote call for S3) runs
+        outside any DB transaction: the File row is created in its own
+        statement, the network call happens without holding a transaction open,
+        and the row is then updated. On failure the orphan row is removed.
 
         Args:
             user: The user initiating the upload
@@ -65,28 +69,32 @@ class UploadService:
             upload_expires_at=timezone.now() + timedelta(hours=24),
         )
 
-        # Get presigned URLs from storage handler
+        # Get presigned URLs from storage handler (network I/O — not in a transaction)
         try:
             upload_data = self.handler.initiate_upload(file_obj, num_parts, part_size)
-
-            # Store upload_id
-            file_obj.upload_id = upload_data["upload_id"]
-            file_obj.upload_status = File.UploadStatus.UPLOADING
-            file_obj.save(update_fields=["upload_id", "upload_status"])
-
-            return file_obj, upload_data
-
         except Exception:
             # Cleanup file record if upload initiation fails
             file_obj.delete()
             raise
 
-    @transaction.atomic
+        # Store upload_id
+        file_obj.upload_id = upload_data["upload_id"]
+        file_obj.upload_status = File.UploadStatus.UPLOADING
+        file_obj.save(update_fields=["upload_id", "upload_status"])
+
+        return file_obj, upload_data
+
     def complete_multipart_upload(self, file_id: int, parts: list):
         """
         Complete a multipart upload.
+
+        The storage handler's ``complete_upload`` (a remote call for S3) runs
+        outside the transaction: state is validated first, the remote assembly
+        happens without holding a row lock, then a short ``select_for_update``
+        transaction flips the row to COMPLETED — guarding against a concurrent
+        complete/abort without pinning the lock across network I/O.
         """
-        file_obj = File.objects.select_for_update().get(id=file_id)
+        file_obj = File.objects.get(id=file_id)
 
         # Validate state
         if file_obj.upload_status not in [File.UploadStatus.PENDING, File.UploadStatus.UPLOADING]:
@@ -98,31 +106,32 @@ class UploadService:
         # Validate parts
         self._validate_parts(file_obj, parts)
 
-        # Complete with storage handler
+        # Complete with storage handler (network I/O — outside the transaction)
         try:
             file_path = self.handler.complete_upload(file_obj, file_obj.upload_id, parts)
-
-            # Update file record
-            file_obj.file = file_path
-            file_obj.upload_status = File.UploadStatus.COMPLETED
-            file_obj.uploaded_parts = {str(p["part_number"]): p["etag"] for p in parts}
-            file_obj.upload_id = ""
-            file_obj.upload_expires_at = None
-            file_obj.save()
-
-            return file_obj
-
         except Exception:
-            file_obj.upload_status = File.UploadStatus.FAILED
-            file_obj.save(update_fields=["upload_status"])
+            File.objects.filter(id=file_id).update(upload_status=File.UploadStatus.FAILED)
             raise
 
-    @transaction.atomic
+        # Persist the result under a short row lock. If a concurrent request
+        # already finished (or aborted) this upload, don't clobber it.
+        with transaction.atomic():
+            locked = File.objects.select_for_update().get(id=file_id)
+            if locked.upload_status in (File.UploadStatus.PENDING, File.UploadStatus.UPLOADING):
+                locked.file = file_path
+                locked.upload_status = File.UploadStatus.COMPLETED
+                locked.uploaded_parts = {str(p["part_number"]): p["etag"] for p in parts}
+                locked.upload_id = ""
+                locked.upload_expires_at = None
+                locked.save()
+            return locked
+
     def abort_multipart_upload(self, file_id: int):
         """
-        Abort a multipart upload and cleanup.
+        Abort a multipart upload and cleanup. The storage abort (network I/O)
+        runs outside the transaction; the row is then marked ABORTED.
         """
-        file_obj = File.objects.select_for_update().get(id=file_id)
+        file_obj = File.objects.get(id=file_id)
 
         if file_obj.upload_id:
             try:
@@ -136,11 +145,12 @@ class UploadService:
                     file_obj.upload_id,
                 )
 
-        file_obj.upload_status = File.UploadStatus.ABORTED
-        file_obj.upload_id = ""
-        file_obj.save()
-
-        return file_obj
+        with transaction.atomic():
+            locked = File.objects.select_for_update().get(id=file_id)
+            locked.upload_status = File.UploadStatus.ABORTED
+            locked.upload_id = ""
+            locked.save()
+            return locked
 
     def _validate_file_params(self, file_size, num_parts, part_size):
         """Validate file upload parameters."""

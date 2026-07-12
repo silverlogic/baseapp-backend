@@ -227,14 +227,25 @@ class AbstractFileTarget(DocumentIdUniqueTargetMixin):
         on_delete=models.CASCADE,
         primary_key=True,
         related_name="file_target",
+        verbose_name=_("target"),
         help_text=_("The document this file target belongs to"),
     )
 
-    files_count = models.JSONField(default=default_files_count)
-    is_files_enabled = models.BooleanField(default=True, verbose_name=_("is files enabled"))
+    files_count = models.JSONField(
+        default=default_files_count,
+        verbose_name=_("files count"),
+        help_text=_("Per-content-type file counts for the target"),
+    )
+    is_files_enabled = models.BooleanField(
+        default=True,
+        verbose_name=_("is files enabled"),
+        help_text=_("Whether files can be attached to the target"),
+    )
 
     class Meta:
         abstract = True
+        verbose_name = _("file target")
+        verbose_name_plural = _("file targets")
 
     def __str__(self):
         return f"FileTarget for {self.target}"
@@ -295,22 +306,57 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
         blank=True,
         on_delete=models.CASCADE,
         related_name="files",
+        verbose_name=_("parent"),
         help_text=_("The parent document this file belongs to"),
     )
 
-    file_content_type = models.CharField(max_length=150, blank=True, default="")
-    file_name = models.CharField(max_length=512, blank=True, default="")
-    file_size = models.PositiveIntegerField(null=True, help_text=_("File size in bytes"))
-    file = models.FileField(max_length=512, upload_to=random_name_in("files"))
+    file_content_type = models.CharField(
+        max_length=150,
+        blank=True,
+        default="",
+        verbose_name=_("content type"),
+        help_text=_("MIME type of the uploaded file"),
+    )
+    file_name = models.CharField(
+        max_length=512,
+        blank=True,
+        default="",
+        verbose_name=_("file name"),
+        help_text=_("Original name of the uploaded file"),
+    )
+    file_size = models.PositiveIntegerField(
+        null=True,
+        verbose_name=_("file size"),
+        help_text=_("File size in bytes"),
+    )
+    file = models.FileField(
+        max_length=512,
+        upload_to=random_name_in("files"),
+        verbose_name=_("file"),
+        help_text=_("The stored file"),
+    )
 
-    name = models.CharField(max_length=512, blank=True, default="")
-    description = models.TextField(blank=True, default="")
+    name = models.CharField(
+        max_length=512,
+        blank=True,
+        default="",
+        verbose_name=_("name"),
+        help_text=_("Display name for the file"),
+    )
+    description = models.TextField(
+        blank=True,
+        default="",
+        verbose_name=_("description"),
+        help_text=_("Optional description of the file"),
+    )
 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="files_created",
         on_delete=models.CASCADE,
         null=True,
+        verbose_name=_("created by"),
+        help_text=_("The user who uploaded the file"),
     )
 
     # Upload status tracking
@@ -326,6 +372,7 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
         choices=UploadStatus.choices,
         default=UploadStatus.COMPLETED,
         db_index=True,
+        verbose_name=_("upload status"),
         help_text=_("Status of the file upload"),
     )
 
@@ -334,6 +381,7 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
         max_length=512,
         blank=True,
         default="",
+        verbose_name=_("upload ID"),
         help_text=_("S3 multipart upload ID for in-progress uploads"),
     )
 
@@ -341,6 +389,7 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
     total_parts = models.PositiveIntegerField(
         null=True,
         blank=True,
+        verbose_name=_("total parts"),
         help_text=_("Total number of parts for multipart upload"),
     )
 
@@ -348,6 +397,7 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
         null=True,
         blank=True,
         default=dict,
+        verbose_name=_("uploaded parts"),
         help_text=_("Tracking uploaded parts with ETags"),
     )
 
@@ -356,6 +406,7 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
         null=True,
         blank=True,
         db_index=True,
+        verbose_name=_("upload expires at"),
         help_text=_("Expiration time for pending uploads"),
     )
 
@@ -381,6 +432,8 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
 
     class Meta:
         abstract = True
+        verbose_name = _("file")
+        verbose_name_plural = _("files")
         # Note: Triggers are registered via the class_prepared signal in this module
         # to properly handle swappable models.
 

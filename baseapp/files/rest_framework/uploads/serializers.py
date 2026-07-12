@@ -1,4 +1,5 @@
 import swapper
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from baseapp_core.models import DocumentId
@@ -27,7 +28,7 @@ class InitiateUploadSerializer(serializers.Serializer):
             document_id = DocumentId.objects.get(public_id=value)
             return document_id.pk
         except DocumentId.DoesNotExist:
-            raise serializers.ValidationError(["Invalid parent_id: DocumentId not found"])
+            raise serializers.ValidationError([_("Invalid parent_id: DocumentId not found")])
 
     def validate(self, data):
         """Validate file size matches parts."""
@@ -42,8 +43,8 @@ class InitiateUploadSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {
                     "non_field_errors": [
-                        f"File size {file_size} doesn't match {num_parts} parts of "
-                        f"{part_size} bytes"
+                        _("File size %(size)s doesn't match %(parts)s parts of %(part_size)s bytes")
+                        % {"size": file_size, "parts": num_parts, "part_size": part_size}
                     ]
                 }
             )
@@ -74,13 +75,15 @@ class CompleteUploadSerializer(serializers.Serializer):
         """Validate parts structure."""
         for part in value:
             if "part_number" not in part or "etag" not in part:
-                raise serializers.ValidationError(["Each part must have 'part_number' and 'etag'"])
+                raise serializers.ValidationError(
+                    [_("Each part must have 'part_number' and 'etag'")]
+                )
 
             if not isinstance(part["part_number"], int) or part["part_number"] < 1:
-                raise serializers.ValidationError(["part_number must be a positive integer"])
+                raise serializers.ValidationError([_("part_number must be a positive integer")])
 
             if not isinstance(part["etag"], str) or not part["etag"]:
-                raise serializers.ValidationError(["etag must be a non-empty string"])
+                raise serializers.ValidationError([_("etag must be a non-empty string")])
 
         return value
 
@@ -96,4 +99,4 @@ class SetParentSerializer(serializers.Serializer):
             document_id = DocumentId.objects.get(public_id=value)
             return document_id.pk
         except DocumentId.DoesNotExist:
-            raise serializers.ValidationError(["Invalid parent_id: DocumentId not found"])
+            raise serializers.ValidationError([_("Invalid parent_id: DocumentId not found")])

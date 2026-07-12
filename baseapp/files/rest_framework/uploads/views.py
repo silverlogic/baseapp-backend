@@ -1,6 +1,7 @@
 import logging
 
 import swapper
+from django.utils.translation import gettext_lazy as _
 from rest_framework import permissions, status, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -53,7 +54,7 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
         if obj is None:
             from rest_framework.exceptions import NotFound
 
-            raise NotFound("File not found")
+            raise NotFound(_("File not found"))
 
         self.check_object_permissions(self.request, obj)
         return obj
@@ -106,10 +107,10 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
 
         except ValueError:
             logger.warning("Upload initiation rejected", exc_info=True)
-            raise ValidationError(["Invalid upload parameters."]) from None
+            raise ValidationError([_("Invalid upload parameters.")]) from None
         except Exception:
             logger.exception("Failed to initiate upload")
-            raise ValidationError(["Failed to initiate upload."]) from None
+            raise ValidationError([_("Failed to initiate upload.")]) from None
 
     @action(detail=True, methods=["post"])
     def complete(self, request, pk=None):
@@ -130,7 +131,7 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
         # Check permission (owner or has change_file permission)
         if not request.user.has_perm(f"{file_app_label}.change_{file_model_name}", file_obj):
             return Response(
-                {"error": "You don't have permission to complete this upload"},
+                {"error": _("You don't have permission to complete this upload")},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -151,10 +152,10 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
 
         except ValueError:
             logger.warning("Upload completion rejected", exc_info=True)
-            raise ValidationError(["Invalid or incomplete upload parts."]) from None
+            raise ValidationError([_("Invalid or incomplete upload parts.")]) from None
         except Exception:
             logger.exception("Failed to complete upload")
-            raise ValidationError(["Failed to complete upload."]) from None
+            raise ValidationError([_("Failed to complete upload.")]) from None
 
     def destroy(self, request, pk=None):
         """
@@ -167,7 +168,7 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
         # Check permission (owner or has delete_file permission)
         if not request.user.has_perm(f"{file_app_label}.delete_{file_model_name}", file_obj):
             return Response(
-                {"error": "You don't have permission to abort this upload"},
+                {"error": _("You don't have permission to abort this upload")},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -177,4 +178,4 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
 
         except Exception:
             logger.exception("Failed to abort upload")
-            raise ValidationError(["Failed to abort upload."]) from None
+            raise ValidationError([_("Failed to abort upload.")]) from None

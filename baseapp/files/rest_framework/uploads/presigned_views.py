@@ -2,6 +2,7 @@ import logging
 
 import swapper
 from django.core import signing
+from django.utils.translation import gettext_lazy as _
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -66,7 +67,7 @@ class PresignedUploadViewSet(viewsets.GenericViewSet):
         token = request.query_params.get("token")
         if not token:
             return Response(
-                {"error": "Missing token parameter"},
+                {"error": _("Missing token parameter")},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
@@ -79,18 +80,18 @@ class PresignedUploadViewSet(viewsets.GenericViewSet):
                 token_data.get("part_number")
             ) != str(part_number):
                 return Response(
-                    {"error": "Invalid token for this file/part"},
+                    {"error": _("Invalid token for this file/part")},
                     status=status.HTTP_401_UNAUTHORIZED,
                 )
 
         except signing.SignatureExpired:
             return Response(
-                {"error": "Token has expired"},
+                {"error": _("Token has expired")},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         except signing.BadSignature:
             return Response(
-                {"error": "Invalid token signature"},
+                {"error": _("Invalid token signature")},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
@@ -99,7 +100,7 @@ class PresignedUploadViewSet(viewsets.GenericViewSet):
             file_obj = File.objects.get(id=pk)
         except File.DoesNotExist:
             return Response(
-                {"error": "File not found"},
+                {"error": _("File not found")},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -107,14 +108,17 @@ class PresignedUploadViewSet(viewsets.GenericViewSet):
         # previous initiation (different upload_id) must not upload into a new one.
         if str(token_data.get("upload_id")) != str(file_obj.upload_id):
             return Response(
-                {"error": "Token does not match the current upload session"},
+                {"error": _("Token does not match the current upload session")},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
         # Validate state
         if file_obj.upload_status not in [File.UploadStatus.PENDING, File.UploadStatus.UPLOADING]:
             return Response(
-                {"error": f"Cannot upload parts in status: {file_obj.upload_status}"},
+                {
+                    "error": _("Cannot upload parts in status: %(status)s")
+                    % {"status": file_obj.upload_status}
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -122,7 +126,7 @@ class PresignedUploadViewSet(viewsets.GenericViewSet):
         # go straight to S3, so its handler has no upload_part.
         if not hasattr(self.upload_service.handler, "upload_part"):
             return Response(
-                {"error": "The active storage backend does not support presigned part uploads"},
+                {"error": _("The active storage backend does not support presigned part uploads")},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -132,7 +136,10 @@ class PresignedUploadViewSet(viewsets.GenericViewSet):
             # Validate part number
             if part_number < 1 or part_number > file_obj.total_parts:
                 return Response(
-                    {"error": f"Invalid part number. Must be between 1 and {file_obj.total_parts}"},
+                    {
+                        "error": _("Invalid part number. Must be between 1 and %(total)s")
+                        % {"total": file_obj.total_parts}
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -157,7 +164,7 @@ class PresignedUploadViewSet(viewsets.GenericViewSet):
 
         except ValueError:
             logger.warning("Upload part rejected", exc_info=True)
-            raise ValidationError(["Invalid upload part request."]) from None
+            raise ValidationError([_("Invalid upload part request.")]) from None
         except Exception:
             logger.exception("Failed to upload part")
-            raise ValidationError(["Failed to upload part."]) from None
+            raise ValidationError([_("Failed to upload part.")]) from None

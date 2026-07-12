@@ -1,5 +1,6 @@
 import swapper
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
+from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from baseapp_core.models import DocumentId
@@ -24,11 +25,11 @@ def enforce_can_attach_to_parent(user: UserType, parent_document_pk: int) -> Non
     try:
         document = DocumentId.objects.get(pk=parent_document_pk)
     except DocumentId.DoesNotExist:
-        raise ValidationError(["Invalid parent: target not found."]) from None
+        raise ValidationError([_("Invalid parent: target not found.")]) from None
 
     target = document.content_object
     if not isinstance(target, FileableModel):
-        raise ValidationError(["This object does not support file attachments."])
+        raise ValidationError([_("This object does not support file attachments.")])
 
     if not user.has_perm(f"{file_app_label}.add_{file_model_name}", target):
-        raise PermissionDenied("You don't have permission to attach files to this object.")
+        raise PermissionDenied(_("You don't have permission to attach files to this object."))

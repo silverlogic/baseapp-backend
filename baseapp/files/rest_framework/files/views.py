@@ -1,4 +1,5 @@
 import swapper
+from django.utils.translation import gettext_lazy as _
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.response import Response
 
@@ -47,7 +48,7 @@ class FilesViewSet(
 
         obj = File.get_by_public_id(public_id)
         if obj is None:
-            raise NotFound("File not found")
+            raise NotFound(_("File not found"))
 
         self.check_object_permissions(self.request, obj)
         return obj
