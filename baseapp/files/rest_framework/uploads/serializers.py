@@ -28,7 +28,9 @@ class InitiateUploadSerializer(serializers.Serializer):
             document_id = DocumentId.objects.get(public_id=value)
             return document_id.pk
         except DocumentId.DoesNotExist:
-            raise serializers.ValidationError([_("Invalid parent_id: DocumentId not found")])
+            raise serializers.ValidationError(
+                [_("Invalid parent_id: DocumentId not found")]
+            ) from None
 
     def validate(self, data):
         """Validate file size matches parts."""
@@ -99,4 +101,6 @@ class SetParentSerializer(serializers.Serializer):
             document_id = DocumentId.objects.get(public_id=value)
             return document_id.pk
         except DocumentId.DoesNotExist:
-            raise serializers.ValidationError([_("Invalid parent_id: DocumentId not found")])
+            raise serializers.ValidationError(
+                [_("Invalid parent_id: DocumentId not found")]
+            ) from None
