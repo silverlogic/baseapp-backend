@@ -106,10 +106,10 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
 
         except ValueError:
             logger.warning("Upload initiation rejected", exc_info=True)
-            raise ValidationError("Invalid upload parameters.")
+            raise ValidationError(["Invalid upload parameters."]) from None
         except Exception:
             logger.exception("Failed to initiate upload")
-            raise ValidationError("Failed to initiate upload.")
+            raise ValidationError(["Failed to initiate upload."]) from None
 
     @action(detail=True, methods=["post"])
     def complete(self, request, pk=None):
@@ -151,10 +151,10 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
 
         except ValueError:
             logger.warning("Upload completion rejected", exc_info=True)
-            raise ValidationError("Invalid or incomplete upload parts.")
+            raise ValidationError(["Invalid or incomplete upload parts."]) from None
         except Exception:
             logger.exception("Failed to complete upload")
-            raise ValidationError("Failed to complete upload.")
+            raise ValidationError(["Failed to complete upload."]) from None
 
     def destroy(self, request, pk=None):
         """
@@ -177,4 +177,4 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
 
         except Exception:
             logger.exception("Failed to abort upload")
-            raise ValidationError("Failed to abort upload.")
+            raise ValidationError(["Failed to abort upload."]) from None

@@ -157,7 +157,7 @@ class PresignedUploadViewSet(viewsets.GenericViewSet):
 
         except ValueError:
             logger.warning("Upload part rejected", exc_info=True)
-            raise ValidationError("Invalid upload part request.")
+            raise ValidationError(["Invalid upload part request."]) from None
         except Exception:
             logger.exception("Failed to upload part")
-            raise ValidationError("Failed to upload part.")
+            raise ValidationError(["Failed to upload part."]) from None
