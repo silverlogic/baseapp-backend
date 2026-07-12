@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 
 import swapper
@@ -6,6 +7,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from ..storage import get_upload_handler
+
+logger = logging.getLogger(__name__)
 
 File = swapper.load_model("baseapp_files", "File")
 
@@ -125,8 +128,13 @@ class UploadService:
             try:
                 self.handler.abort_upload(file_obj, file_obj.upload_id)
             except Exception:
-                # Log but continue to mark as aborted
-                pass
+                # Continue to mark as aborted, but record the storage-side
+                # failure so orphaned remote uploads are diagnosable.
+                logger.exception(
+                    "Storage abort failed for file %s (upload_id=%s)",
+                    file_obj.id,
+                    file_obj.upload_id,
+                )
 
         file_obj.upload_status = File.UploadStatus.ABORTED
         file_obj.upload_id = ""

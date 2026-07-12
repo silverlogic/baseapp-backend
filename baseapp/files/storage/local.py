@@ -82,8 +82,9 @@ class LocalUploadHandler(BaseUploadHandler):
         with open(part_file, "wb") as f:
             f.write(data)
 
-        # Generate ETag (MD5 hash like S3)
-        etag = hashlib.md5(data).hexdigest()
+        # Generate ETag (MD5 hash like S3). Content checksum, not a security
+        # primitive — usedforsecurity=False documents intent and satisfies linters.
+        etag = hashlib.md5(data, usedforsecurity=False).hexdigest()
         return etag
 
     def complete_upload(self, file_obj, upload_id: str, parts: List[Dict]) -> str:
@@ -99,13 +100,15 @@ class LocalUploadHandler(BaseUploadHandler):
         # Ensure directory exists
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
 
-        # Combine parts in order
+        # Combine parts in order. A missing part would silently truncate the
+        # assembled file, so fail loudly instead.
         with open(full_path, "wb") as outfile:
             for part in sorted(parts, key=lambda x: x["part_number"]):
                 part_file = os.path.join(temp_dir, f"part_{part['part_number']}")
-                if os.path.exists(part_file):
-                    with open(part_file, "rb") as infile:
-                        outfile.write(infile.read())
+                if not os.path.exists(part_file):
+                    raise ValueError(f"Missing uploaded part {part['part_number']}")
+                with open(part_file, "rb") as infile:
+                    outfile.write(infile.read())
 
         # Cleanup temp files
         shutil.rmtree(temp_dir, ignore_errors=True)

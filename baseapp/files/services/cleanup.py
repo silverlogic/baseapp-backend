@@ -7,8 +7,6 @@ from django.utils import timezone
 
 from ..storage import get_upload_handler
 
-File = swapper.load_model("baseapp_files", "File")
-
 logger = logging.getLogger(__name__)
 
 
@@ -19,6 +17,9 @@ def cleanup_expired_uploads():
 
     Run this periodically (e.g., hourly via celery beat).
     """
+    # Loaded lazily (not at import time): this module is imported during Celery
+    # startup, which can precede Django's app registry being ready.
+    File = swapper.load_model("baseapp_files", "File")
     handler = get_upload_handler()
     now = timezone.now()
 
@@ -53,6 +54,7 @@ def cleanup_failed_uploads(days_old=7):
 
     Can be called manually or via management command.
     """
+    File = swapper.load_model("baseapp_files", "File")
     cutoff = timezone.now() - timedelta(days=days_old)
 
     deleted_count, _ = File.objects.filter(

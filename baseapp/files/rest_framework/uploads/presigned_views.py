@@ -155,8 +155,9 @@ class PresignedUploadViewSet(viewsets.GenericViewSet):
             response["ETag"] = etag
             return response
 
-        except ValueError as e:
-            raise ValidationError(str(e))
+        except ValueError:
+            logger.warning("Upload part rejected", exc_info=True)
+            raise ValidationError("Invalid upload part request.")
         except Exception:
             logger.exception("Failed to upload part")
             raise ValidationError("Failed to upload part.")

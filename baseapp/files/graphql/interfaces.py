@@ -36,10 +36,13 @@ class FilesInterface(Interface):
         # Filter through the DocumentId join instead of fetching the DocumentId
         # row per object — keeps the connection a single query per list.
         content_type = ContentType.objects.get_for_model(self)
+        # Total ordering (-created, -pk): AbstractFile has no Meta.ordering, and
+        # cursor pagination over a non-total order can duplicate/drop rows when
+        # timestamps collide. Matches FilesQueries.resolve_my_files.
         return File.objects.filter(
             parent__content_type=content_type,
             parent__object_id=self.pk,
-        ).order_by("-created")
+        ).order_by("-created", "-pk")
 
 
 def get_files_interface():

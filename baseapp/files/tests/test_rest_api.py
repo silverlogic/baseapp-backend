@@ -280,7 +280,9 @@ class TestFileUploadCompletion:
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "Expected 2 parts" in str(response.json())
+        # The specific reason is logged server-side; the client gets a generic
+        # message so internal exception details are not exposed.
+        assert "Invalid or incomplete upload parts" in str(response.json())
 
     def test_complete_upload_missing_part_number(
         self, user_client, pending_upload, mock_s3_handler
@@ -298,7 +300,7 @@ class TestFileUploadCompletion:
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "Missing or duplicate" in str(response.json())
+        assert "Invalid or incomplete upload parts" in str(response.json())
 
     def test_complete_upload_requires_ownership(self, client, pending_upload, mock_s3_handler):
         """Test that only the file owner can complete upload."""

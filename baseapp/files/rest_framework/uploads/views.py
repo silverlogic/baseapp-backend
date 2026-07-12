@@ -104,8 +104,9 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
             response_serializer = UploadResponseSerializer(response_data)
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
-        except ValueError as e:
-            raise ValidationError(str(e))
+        except ValueError:
+            logger.warning("Upload initiation rejected", exc_info=True)
+            raise ValidationError("Invalid upload parameters.")
         except Exception:
             logger.exception("Failed to initiate upload")
             raise ValidationError("Failed to initiate upload.")
@@ -148,8 +149,9 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
                 status=status.HTTP_200_OK,
             )
 
-        except ValueError as e:
-            raise ValidationError(str(e))
+        except ValueError:
+            logger.warning("Upload completion rejected", exc_info=True)
+            raise ValidationError("Invalid or incomplete upload parts.")
         except Exception:
             logger.exception("Failed to complete upload")
             raise ValidationError("Failed to complete upload.")

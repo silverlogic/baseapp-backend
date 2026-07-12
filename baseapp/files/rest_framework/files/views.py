@@ -56,9 +56,10 @@ class FilesViewSet(
         """Filter files based on user and query params."""
         qs = File.objects.all()
 
-        # Only show completed files by default
+        # Only show completed files by default. Use `is not None` so an empty
+        # `?status=` doesn't fall through and expose files in every state.
         status_filter = self.request.query_params.get("status", File.UploadStatus.COMPLETED)
-        if status_filter:
+        if status_filter is not None and status_filter != "":
             qs = qs.filter(upload_status=status_filter)
 
         # Filter by parent using DocumentId public_id

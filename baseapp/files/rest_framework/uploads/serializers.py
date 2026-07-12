@@ -27,7 +27,7 @@ class InitiateUploadSerializer(serializers.Serializer):
             document_id = DocumentId.objects.get(public_id=value)
             return document_id.pk
         except DocumentId.DoesNotExist:
-            raise serializers.ValidationError("Invalid parent_id: DocumentId not found")
+            raise serializers.ValidationError(["Invalid parent_id: DocumentId not found"])
 
     def validate(self, data):
         """Validate file size matches parts."""
@@ -40,7 +40,12 @@ class InitiateUploadSerializer(serializers.Serializer):
 
         if file_size < min_size or file_size > max_size:
             raise serializers.ValidationError(
-                f"File size {file_size} doesn't match {num_parts} parts of {part_size} bytes"
+                {
+                    "non_field_errors": [
+                        f"File size {file_size} doesn't match {num_parts} parts of "
+                        f"{part_size} bytes"
+                    ]
+                }
             )
 
         return data
@@ -69,13 +74,13 @@ class CompleteUploadSerializer(serializers.Serializer):
         """Validate parts structure."""
         for part in value:
             if "part_number" not in part or "etag" not in part:
-                raise serializers.ValidationError("Each part must have 'part_number' and 'etag'")
+                raise serializers.ValidationError(["Each part must have 'part_number' and 'etag'"])
 
             if not isinstance(part["part_number"], int) or part["part_number"] < 1:
-                raise serializers.ValidationError("part_number must be a positive integer")
+                raise serializers.ValidationError(["part_number must be a positive integer"])
 
             if not isinstance(part["etag"], str) or not part["etag"]:
-                raise serializers.ValidationError("etag must be a non-empty string")
+                raise serializers.ValidationError(["etag must be a non-empty string"])
 
         return value
 
@@ -91,4 +96,4 @@ class SetParentSerializer(serializers.Serializer):
             document_id = DocumentId.objects.get(public_id=value)
             return document_id.pk
         except DocumentId.DoesNotExist:
-            raise serializers.ValidationError("Invalid parent_id: DocumentId not found")
+            raise serializers.ValidationError(["Invalid parent_id: DocumentId not found"])

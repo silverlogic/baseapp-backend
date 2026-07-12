@@ -471,7 +471,7 @@ try {
     const fileInput = document.querySelector('input[type="file"]');
     const file = fileInput.files[0];
 
-    const result = await uploader.uploadFile(file, 'testapp.post', 123);
+    const result = await uploader.uploadFile(file, 'b3c5…-document-public-id');
     console.log('Upload complete:', result.url);
 } catch (error) {
     console.error('Upload failed:', error);
