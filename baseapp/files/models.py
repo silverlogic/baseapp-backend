@@ -298,13 +298,13 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
         help_text=_("The parent document this file belongs to"),
     )
 
-    file_content_type = models.CharField(max_length=150, null=True, blank=True)
-    file_name = models.CharField(max_length=512, null=True, blank=True)
+    file_content_type = models.CharField(max_length=150, blank=True, default="")
+    file_name = models.CharField(max_length=512, blank=True, default="")
     file_size = models.PositiveIntegerField(null=True, help_text=_("File size in bytes"))
     file = models.FileField(max_length=512, upload_to=random_name_in("files"))
 
-    name = models.CharField(max_length=512, null=True, blank=True)
-    description = models.TextField(null=True, blank=True)
+    name = models.CharField(max_length=512, blank=True, default="")
+    description = models.TextField(blank=True, default="")
 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -329,11 +329,11 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
         help_text=_("Status of the file upload"),
     )
 
-    # S3 multipart upload tracking
+    # S3 multipart upload tracking ("" when there is no active multipart upload)
     upload_id = models.CharField(
         max_length=512,
-        null=True,
         blank=True,
+        default="",
         help_text=_("S3 multipart upload ID for in-progress uploads"),
     )
 

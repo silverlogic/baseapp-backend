@@ -238,7 +238,7 @@ class TestFileUploadCompletion:
         # Check file was updated in database
         pending_upload.refresh_from_db()
         assert pending_upload.upload_status == File.UploadStatus.COMPLETED
-        assert pending_upload.upload_id is None
+        assert pending_upload.upload_id == ""
         assert pending_upload.uploaded_parts == {"1": "abc123", "2": "def456"}
 
         # Verify S3 handler was called
@@ -364,7 +364,7 @@ class TestFileUploadAbort:
         # Check file was updated
         uploading_file.refresh_from_db()
         assert uploading_file.upload_status == File.UploadStatus.ABORTED
-        assert uploading_file.upload_id is None
+        assert uploading_file.upload_id == ""
 
         # Verify S3 handler was called
         mock_s3_handler.abort_upload.assert_called_once_with(uploading_file, "test-upload-id")
@@ -385,7 +385,7 @@ class TestFileUploadAbort:
             file_size=10485760,
             file_content_type="video/mp4",
             upload_status=File.UploadStatus.PENDING,
-            upload_id=None,  # No upload_id
+            upload_id="",  # No upload_id
             total_parts=2,
             created_by=user_client.user,
         )

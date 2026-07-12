@@ -35,7 +35,7 @@ def cleanup_expired_uploads():
                 handler.abort_upload(file_obj, file_obj.upload_id)
 
             file_obj.upload_status = File.UploadStatus.ABORTED
-            file_obj.upload_id = None
+            file_obj.upload_id = ""
             file_obj.save()
 
             cleaned_count += 1

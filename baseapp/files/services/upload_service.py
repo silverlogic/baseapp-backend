@@ -103,7 +103,7 @@ class UploadService:
             file_obj.file = file_path
             file_obj.upload_status = File.UploadStatus.COMPLETED
             file_obj.uploaded_parts = {str(p["part_number"]): p["etag"] for p in parts}
-            file_obj.upload_id = None
+            file_obj.upload_id = ""
             file_obj.upload_expires_at = None
             file_obj.save()
 
@@ -129,7 +129,7 @@ class UploadService:
                 pass
 
         file_obj.upload_status = File.UploadStatus.ABORTED
-        file_obj.upload_id = None
+        file_obj.upload_id = ""
         file_obj.save()
 
         return file_obj

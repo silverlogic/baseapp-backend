@@ -69,7 +69,7 @@ class TestCleanupExpiredUploads:
         for file_obj in (pending, uploading):
             file_obj.refresh_from_db()
             assert file_obj.upload_status == File.UploadStatus.ABORTED
-            assert file_obj.upload_id is None
+            assert file_obj.upload_id == ""
 
     def test_leaves_non_expired_uploads_alone(self, user, mock_handler):
         """Uploads that have not expired yet are untouched."""
@@ -87,7 +87,7 @@ class TestCleanupExpiredUploads:
     def test_leaves_completed_files_alone(self, user, mock_handler):
         """COMPLETED files are never aborted, even with a past expiration date."""
         file_obj = create_file(
-            user, File.UploadStatus.COMPLETED, expires_delta=timedelta(hours=-1), upload_id=None
+            user, File.UploadStatus.COMPLETED, expires_delta=timedelta(hours=-1), upload_id=""
         )
 
         result = cleanup_expired_uploads()
@@ -101,7 +101,7 @@ class TestCleanupExpiredUploads:
     def test_skips_storage_abort_without_upload_id(self, user, mock_handler):
         """Expired uploads without an upload_id are aborted in the DB only."""
         file_obj = create_file(
-            user, File.UploadStatus.PENDING, expires_delta=timedelta(hours=-1), upload_id=None
+            user, File.UploadStatus.PENDING, expires_delta=timedelta(hours=-1), upload_id=""
         )
 
         result = cleanup_expired_uploads()
@@ -146,8 +146,8 @@ class TestCleanupFailedUploads:
 
     def test_deletes_old_failed_and_aborted(self, user):
         """FAILED/ABORTED files older than the cutoff are deleted."""
-        failed = create_file(user, File.UploadStatus.FAILED, upload_id=None)
-        aborted = create_file(user, File.UploadStatus.ABORTED, upload_id=None)
+        failed = create_file(user, File.UploadStatus.FAILED, upload_id="")
+        aborted = create_file(user, File.UploadStatus.ABORTED, upload_id="")
         self._age_file(failed, days=8)
         self._age_file(aborted, days=8)
 
@@ -158,8 +158,8 @@ class TestCleanupFailedUploads:
 
     def test_keeps_recent_failed_uploads(self, user):
         """FAILED/ABORTED files newer than the cutoff are kept."""
-        failed = create_file(user, File.UploadStatus.FAILED, upload_id=None)
-        aborted = create_file(user, File.UploadStatus.ABORTED, upload_id=None)
+        failed = create_file(user, File.UploadStatus.FAILED, upload_id="")
+        aborted = create_file(user, File.UploadStatus.ABORTED, upload_id="")
         self._age_file(failed, days=3)
 
         result = cleanup_failed_uploads(days_old=7)
@@ -169,7 +169,7 @@ class TestCleanupFailedUploads:
 
     def test_keeps_old_files_in_other_statuses(self, user):
         """Old COMPLETED/PENDING/UPLOADING files are never deleted."""
-        completed = create_file(user, File.UploadStatus.COMPLETED, upload_id=None)
+        completed = create_file(user, File.UploadStatus.COMPLETED, upload_id="")
         pending = create_file(user, File.UploadStatus.PENDING)
         uploading = create_file(user, File.UploadStatus.UPLOADING)
         for file_obj in (completed, pending, uploading):
@@ -182,7 +182,7 @@ class TestCleanupFailedUploads:
 
     def test_respects_custom_cutoff(self, user):
         """The days_old argument moves the deletion cutoff."""
-        failed = create_file(user, File.UploadStatus.FAILED, upload_id=None)
+        failed = create_file(user, File.UploadStatus.FAILED, upload_id="")
         self._age_file(failed, days=2)
 
         assert cleanup_failed_uploads(days_old=7) == "Deleted 0 old failed/aborted uploads"
