@@ -65,11 +65,8 @@ class GraphQLView(GrapheneGraphQLView):
     def parse_body(self, request):
         """Handle multipart request spec for multipart/form-data"""
         content_type = self.get_content_type(request)
-        # logging.info('content_type: %s' % content_type)
-        # import pdb; pdb.set_trace()
         if content_type == "multipart/form-data" and "operations" in request.POST:
             operations = json.loads(request.POST.get("operations", "{}"))
-            # import pdb; pdb.set_trace()
             files_map = json.loads(request.POST.get("map", "{}"))
             from graphene_file_upload.utils import place_files_in_operations
 
