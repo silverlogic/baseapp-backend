@@ -26,13 +26,15 @@ def recalculate_files_count(parent):
 
     file_target = get_or_create_file_target(parent)
 
-    files_count_qs = parent.files.values("file_content_type").annotate(
-        count=models.Count("file_content_type")
-    )
+    # Count by a non-null column: Count("file_content_type") ignores NULL rows,
+    # under-counting files with no content type. Bucket NULLs under "unknown"
+    # to match the pgtrigger that maintains this same JSON on insert/update.
+    files_count_qs = parent.files.values("file_content_type").annotate(count=models.Count("id"))
     file_target.files_count = default_files_count()
     for item in files_count_qs:
         count = item["count"]
-        file_target.files_count[item["file_content_type"]] = count
+        key = item["file_content_type"] or "unknown"
+        file_target.files_count[key] = count
         file_target.files_count["total"] += count
     file_target.save(update_fields=["files_count"])
 

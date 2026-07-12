@@ -8,6 +8,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from rest_framework import status
 
+from baseapp_comments.tests.factories import CommentFactory
 from baseapp_core.models import DocumentId
 
 File = swapper.load_model("baseapp_files", "File")
@@ -75,12 +76,12 @@ class TestFileUploadInitiation:
         mock_s3_handler.initiate_upload.assert_called_once()
 
     def test_initiate_upload_with_parent(self, user_client, mock_s3_handler):
-        """Test upload initiation with parent object."""
-        # Get or create DocumentId for the user
-        user_ct = ContentType.objects.get_for_model(User)
+        """Test upload initiation with a files-enabled parent object."""
+        comment = CommentFactory(user=user_client.user)
+        comment_ct = ContentType.objects.get_for_model(comment)
         document_id, _ = DocumentId.objects.get_or_create(
-            content_type=user_ct,
-            object_id=user_client.user.id,
+            content_type=comment_ct,
+            object_id=comment.id,
         )
 
         response = user_client.post(
@@ -96,19 +97,38 @@ class TestFileUploadInitiation:
             format="json",
         )
 
-        # Print response for debugging if it fails
-        if response.status_code != status.HTTP_201_CREATED:
-            print(f"Response status: {response.status_code}")
-            print(f"Response data: {response.json()}")
-
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
 
         file_obj = File.get_by_public_id(data["id"])
         # Parent is now a ForeignKey to DocumentId
         assert file_obj.parent is not None
-        assert file_obj.parent.content_type_id == user_ct.id
-        assert file_obj.parent.object_id == user_client.user.id
+        assert file_obj.parent.content_type_id == comment_ct.id
+        assert file_obj.parent.object_id == comment.id
+
+    def test_initiate_upload_rejects_non_fileable_parent(self, user_client, mock_s3_handler):
+        """A parent that does not support files (not a FileableModel) is rejected,
+        mirroring the fileAttachToTarget mutation."""
+        user_ct = ContentType.objects.get_for_model(User)
+        document_id, _ = DocumentId.objects.get_or_create(
+            content_type=user_ct,
+            object_id=user_client.user.id,
+        )
+
+        response = user_client.post(
+            "/v1/files/uploads",
+            {
+                "file_name": "avatar.jpg",
+                "file_size": 1048576,
+                "file_content_type": "image/jpeg",
+                "num_parts": 1,
+                "part_size": 1048576,
+                "parent_id": str(document_id.public_id),
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_initiate_upload_requires_authentication(self, client):
         """Test that upload initiation requires authentication."""
@@ -517,11 +537,12 @@ class TestSetParent:
         )
 
     def test_set_parent_success(self, user_client, standalone_file):
-        """Test setting parent on standalone file."""
-        user_ct = ContentType.objects.get_for_model(User)
+        """Test setting a files-enabled parent on a standalone file."""
+        comment = CommentFactory(user=user_client.user)
+        comment_ct = ContentType.objects.get_for_model(comment)
         document_id, _ = DocumentId.objects.get_or_create(
-            content_type=user_ct,
-            object_id=user_client.user.id,
+            content_type=comment_ct,
+            object_id=comment.id,
         )
 
         response = user_client.post(
@@ -537,8 +558,26 @@ class TestSetParent:
         standalone_file.refresh_from_db()
         # Parent is now a ForeignKey to DocumentId
         assert standalone_file.parent is not None
-        assert standalone_file.parent.content_type_id == user_ct.id
-        assert standalone_file.parent.object_id == user_client.user.id
+        assert standalone_file.parent.content_type_id == comment_ct.id
+        assert standalone_file.parent.object_id == comment.id
+
+    def test_set_parent_rejects_non_fileable_target(self, user_client, standalone_file):
+        """set-parent enforces the same target authorization as the mutation."""
+        user_ct = ContentType.objects.get_for_model(User)
+        document_id, _ = DocumentId.objects.get_or_create(
+            content_type=user_ct,
+            object_id=user_client.user.id,
+        )
+
+        response = user_client.post(
+            f"/v1/files/{standalone_file.public_id}/set-parent",
+            {
+                "parent_id": str(document_id.public_id),
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_set_parent_invalid_parent_id(self, user_client, standalone_file):
         """Test setting invalid parent_id."""

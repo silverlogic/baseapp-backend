@@ -8,6 +8,7 @@ from baseapp_profiles.rest_framework import CurrentProfileMixin
 
 from ..uploads.permissions import IsOwnerOrReadOnly
 from ..uploads.serializers import SetParentSerializer
+from ..utils import enforce_can_attach_to_parent
 from .serializers import FileSerializer
 
 File = swapper.load_model("baseapp_files", "File")
@@ -90,7 +91,11 @@ class FilesViewSet(
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        file_obj.parent_id = serializer.validated_data["parent_id"]
+        parent_pk = serializer.validated_data["parent_id"]
+        # Enforce target-level authorization, mirroring fileAttachToTarget.
+        enforce_can_attach_to_parent(request.user, parent_pk)
+
+        file_obj.parent_id = parent_pk
         file_obj.save()
 
         return Response(

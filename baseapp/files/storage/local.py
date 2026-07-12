@@ -36,7 +36,7 @@ class LocalUploadHandler(BaseUploadHandler):
         os.makedirs(temp_dir, exist_ok=True)
 
         # Get the base URL from settings or use default
-        base_url = getattr(settings, "BASE_URL", "http://localhost:8000")
+        base_url = settings.URL
 
         # Generate presigned URLs with signed tokens
         presigned_urls = []

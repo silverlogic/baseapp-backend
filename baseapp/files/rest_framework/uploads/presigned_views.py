@@ -1,3 +1,5 @@
+import logging
+
 import swapper
 from django.core import signing
 from django.views.decorators.csrf import csrf_exempt
@@ -8,6 +10,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from ...services.upload_service import UploadService
+
+logger = logging.getLogger(__name__)
 
 File = swapper.load_model("baseapp_files", "File")
 
@@ -99,10 +103,26 @@ class PresignedUploadViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        # Bind the token to the current upload session: a token minted for a
+        # previous initiation (different upload_id) must not upload into a new one.
+        if str(token_data.get("upload_id")) != str(file_obj.upload_id):
+            return Response(
+                {"error": "Token does not match the current upload session"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
         # Validate state
         if file_obj.upload_status not in [File.UploadStatus.PENDING, File.UploadStatus.UPLOADING]:
             return Response(
                 {"error": f"Cannot upload parts in status: {file_obj.upload_status}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Only the local handler stores parts through this endpoint; S3 uploads
+        # go straight to S3, so its handler has no upload_part.
+        if not hasattr(self.upload_service.handler, "upload_part"):
+            return Response(
+                {"error": "The active storage backend does not support presigned part uploads"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -137,5 +157,6 @@ class PresignedUploadViewSet(viewsets.GenericViewSet):
 
         except ValueError as e:
             raise ValidationError(str(e))
-        except Exception as e:
-            raise ValidationError(f"Failed to upload part: {str(e)}")
+        except Exception:
+            logger.exception("Failed to upload part")
+            raise ValidationError("Failed to upload part.")

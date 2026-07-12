@@ -1,3 +1,5 @@
+import logging
+
 import swapper
 from rest_framework import permissions, status, viewsets
 from rest_framework.exceptions import ValidationError
@@ -7,11 +9,14 @@ from baseapp_core.rest_framework.decorators import action
 from baseapp_profiles.rest_framework import CurrentProfileMixin
 
 from ...services.upload_service import UploadService
+from ..utils import enforce_can_attach_to_parent
 from .serializers import (
     CompleteUploadSerializer,
     InitiateUploadSerializer,
     UploadResponseSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 File = swapper.load_model("baseapp_files", "File")
 file_app_label = File._meta.app_label
@@ -79,6 +84,12 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        # Authorize the target before creating anything, mirroring the
+        # fileAttachToTarget mutation so this endpoint can't bypass it.
+        parent_pk = serializer.validated_data.get("parent_id")
+        if parent_pk:
+            enforce_can_attach_to_parent(request.user, parent_pk)
+
         try:
             # Get user's profile if available
             profile = request.user.current_profile
@@ -95,8 +106,9 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
 
         except ValueError as e:
             raise ValidationError(str(e))
-        except Exception as e:
-            raise ValidationError(f"Failed to initiate upload: {str(e)}")
+        except Exception:
+            logger.exception("Failed to initiate upload")
+            raise ValidationError("Failed to initiate upload.")
 
     @action(detail=True, methods=["post"])
     def complete(self, request, pk=None):
@@ -138,8 +150,9 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
 
         except ValueError as e:
             raise ValidationError(str(e))
-        except Exception as e:
-            raise ValidationError(f"Failed to complete upload: {str(e)}")
+        except Exception:
+            logger.exception("Failed to complete upload")
+            raise ValidationError("Failed to complete upload.")
 
     def destroy(self, request, pk=None):
         """
@@ -160,5 +173,6 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
             self.upload_service.abort_multipart_upload(file_obj.id)
             return Response(status=status.HTTP_204_NO_CONTENT)
 
-        except Exception as e:
-            raise ValidationError(f"Failed to abort upload: {str(e)}")
+        except Exception:
+            logger.exception("Failed to abort upload")
+            raise ValidationError("Failed to abort upload.")

@@ -147,8 +147,12 @@ class UploadService:
         if num_parts > 1 and part_size < 5 * 1024 * 1024:
             raise ValueError("Part size must be at least 5MB for multipart uploads")
 
-        expected_size = (num_parts - 1) * part_size
-        if expected_size > file_size:
+        # file_size must fit within the declared parts: strictly greater than
+        # the first (num_parts - 1) full parts, and no larger than all of them.
+        # Mirrors InitiateUploadSerializer so non-REST callers are protected too.
+        min_size = (num_parts - 1) * part_size
+        max_size = num_parts * part_size
+        if file_size < min_size or file_size > max_size:
             raise ValueError("Part size and count don't match file size")
 
     def _validate_parts(self, file_obj, parts):
