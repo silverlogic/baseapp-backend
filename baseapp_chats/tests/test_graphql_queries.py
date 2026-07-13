@@ -1287,3 +1287,155 @@ def test_resolve_is_sole_admin_when_admin_leaves_and_another_becomes_sole_admin(
 
     content = response.json()
     assert content["data"]["chatRoom"]["isSoleAdmin"] is True
+
+
+MANAGEABLE_ROOMS_GRAPHQL = """
+    query ManageableRooms($profileId: ID!, $manageable: Boolean, $q: String, $contactId: ID!) {
+        profile(id: $profileId) {
+            id
+            ... on ChatRoomsInterface {
+                chatRooms(manageable: $manageable, q: $q) {
+                    edges {
+                        node {
+                            id
+                            title
+                            participantsCount
+                            isParticipant(profileId: $contactId)
+                        }
+                    }
+                }
+            }
+        }
+    }
+"""
+
+
+def _make_room(profile, role, is_group=True, title=None, members=()):
+    room = ChatRoomFactory(is_group=is_group, title=title)
+    ChatRoomParticipantFactory(room=room, profile=profile, role=role)
+    for member in members:
+        ChatRoomParticipantFactory(
+            room=room,
+            profile=member,
+            role=ChatRoomParticipant.ChatRoomParticipantRoles.MEMBER,
+        )
+    room.participants_count = 1 + len(members)
+    room.save(update_fields=["participants_count"])
+    return room
+
+
+def test_manageable_filter_returns_only_admin_group_rooms(django_user_client, graphql_user_client):
+    my_profile = django_user_client.user.profile
+    contact = ProfileFactory()
+    roles = ChatRoomParticipant.ChatRoomParticipantRoles
+
+    admin_group = _make_room(
+        my_profile, roles.ADMIN, title="admin group", members=[ProfileFactory()]
+    )
+    # member-only group must be excluded
+    _make_room(my_profile, roles.MEMBER, title="member group", members=[ProfileFactory()])
+    # 1:1 room where user is ADMIN (creators get ADMIN) must be excluded too
+    _make_room(my_profile, roles.ADMIN, is_group=False, members=[ProfileFactory()])
+    # unrelated group must be excluded
+    _make_room(ProfileFactory(), roles.ADMIN, title="other group", members=[ProfileFactory()])
+
+    response = graphql_user_client(
+        MANAGEABLE_ROOMS_GRAPHQL,
+        variables={
+            "profileId": my_profile.relay_id,
+            "manageable": True,
+            "contactId": contact.relay_id,
+        },
+    )
+    edges = response.json()["data"]["profile"]["chatRooms"]["edges"]
+    assert len(edges) == 1
+    assert edges[0]["node"]["id"] == admin_group.relay_id
+    assert edges[0]["node"]["isParticipant"] is False
+
+
+def test_manageable_filter_combined_with_q(django_user_client, graphql_user_client):
+    my_profile = django_user_client.user.profile
+    contact = ProfileFactory()
+    roles = ChatRoomParticipant.ChatRoomParticipantRoles
+
+    matching = _make_room(my_profile, roles.ADMIN, title="Book club", members=[ProfileFactory()])
+    _make_room(my_profile, roles.ADMIN, title="Hiking crew", members=[ProfileFactory()])
+
+    response = graphql_user_client(
+        MANAGEABLE_ROOMS_GRAPHQL,
+        variables={
+            "profileId": my_profile.relay_id,
+            "manageable": True,
+            "q": "book",
+            "contactId": contact.relay_id,
+        },
+    )
+    edges = response.json()["data"]["profile"]["chatRooms"]["edges"]
+    assert len(edges) == 1
+    assert edges[0]["node"]["id"] == matching.relay_id
+
+
+def test_manageable_false_returns_all_member_rooms(django_user_client, graphql_user_client):
+    my_profile = django_user_client.user.profile
+    contact = ProfileFactory()
+    roles = ChatRoomParticipant.ChatRoomParticipantRoles
+
+    _make_room(my_profile, roles.ADMIN, title="admin group", members=[ProfileFactory()])
+    _make_room(my_profile, roles.MEMBER, title="member group", members=[ProfileFactory()])
+
+    response = graphql_user_client(
+        MANAGEABLE_ROOMS_GRAPHQL,
+        variables={
+            "profileId": my_profile.relay_id,
+            "manageable": False,
+            "contactId": contact.relay_id,
+        },
+    )
+    edges = response.json()["data"]["profile"]["chatRooms"]["edges"]
+    assert len(edges) == 2
+
+
+def test_is_participant_true_for_member_false_for_non_member(
+    django_user_client, graphql_user_client
+):
+    my_profile = django_user_client.user.profile
+    contact = ProfileFactory()
+    roles = ChatRoomParticipant.ChatRoomParticipantRoles
+
+    room_with_contact = _make_room(my_profile, roles.ADMIN, title="with contact", members=[contact])
+    room_without_contact = _make_room(
+        my_profile, roles.ADMIN, title="without contact", members=[ProfileFactory()]
+    )
+
+    response = graphql_user_client(
+        MANAGEABLE_ROOMS_GRAPHQL,
+        variables={
+            "profileId": my_profile.relay_id,
+            "manageable": True,
+            "contactId": contact.relay_id,
+        },
+    )
+    edges = response.json()["data"]["profile"]["chatRooms"]["edges"]
+    by_id = {edge["node"]["id"]: edge["node"]["isParticipant"] for edge in edges}
+    assert by_id[room_with_contact.relay_id] is True
+    assert by_id[room_without_contact.relay_id] is False
+
+
+def test_is_participant_with_invalid_profile_id_returns_null(
+    django_user_client, graphql_user_client
+):
+    my_profile = django_user_client.user.profile
+    roles = ChatRoomParticipant.ChatRoomParticipantRoles
+    _make_room(my_profile, roles.ADMIN, title="group", members=[ProfileFactory()])
+
+    response = graphql_user_client(
+        MANAGEABLE_ROOMS_GRAPHQL,
+        variables={
+            "profileId": my_profile.relay_id,
+            "manageable": True,
+            "contactId": "not-a-valid-relay-id",
+        },
+    )
+    edges = response.json()["data"]["profile"]["chatRooms"]["edges"]
+    assert len(edges) == 1
+    assert edges[0]["node"]["isParticipant"] is None
