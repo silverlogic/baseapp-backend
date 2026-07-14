@@ -1,8 +1,10 @@
+import logging
+
 import graphene
 import swapper
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, Model
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from graphene_django.types import ErrorType
@@ -31,6 +33,8 @@ from baseapp_core.graphql import (
     login_required,
 )
 from baseapp_core.plugins import shared_services
+
+logger = logging.getLogger(__name__)
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
@@ -415,6 +419,60 @@ class ChatRoomsAddParticipant(RelayMutation):
         )
 
     @classmethod
+    def _resolve_rooms(
+        cls, info: graphene.ResolveInfo, room_ids: list[str]
+    ) -> tuple[list[Model], ErrorType | None]:
+        """Resolve relay ids to unique group ChatRoom instances, preserving input order."""
+        rooms = []
+        seen_room_pks = set()
+        for room_id in room_ids:
+            try:
+                room = get_obj_from_relay_id(info, room_id)
+            except Exception:
+                room = None
+            if not room or not isinstance(room, ChatRoom) or not room.is_group:
+                return [], ErrorType(
+                    field="room_ids",
+                    messages=[_("Some rooms are not valid")],
+                )
+
+            if room.pk in seen_room_pks:
+                continue
+            seen_room_pks.add(room.pk)
+            rooms.append(room)
+
+        return rooms, None
+
+    @classmethod
+    def _check_rooms_permissions(
+        cls,
+        info: graphene.ResolveInfo,
+        profile: Model,
+        participant_profile: Model,
+        rooms: list[Model],
+    ) -> ErrorType | None:
+        """Return an error unless the actor can add the participant to every room."""
+        for room in rooms:
+            if not info.context.user.has_perm(
+                "baseapp_chats.modify_chatroom",
+                {
+                    "profile": profile,
+                    "room": room,
+                    "add_participants": [participant_profile.pk],
+                },
+            ):
+                return ErrorType(
+                    field="room_ids",
+                    messages=[
+                        _(
+                            "You don't have permission to add participants to one or "
+                            "more of the selected rooms"
+                        )
+                    ],
+                )
+        return None
+
+    @classmethod
     @login_required
     def mutate_and_get_payload(
         cls,
@@ -463,51 +521,10 @@ class ChatRoomsAddParticipant(RelayMutation):
                     ]
                 )
 
-        # Resolve and validate every room before any write (all-or-nothing)
-        rooms = []
-        seen_room_pks = set()
-        for room_id in room_ids:
-            try:
-                room = get_obj_from_relay_id(info, room_id)
-            except Exception:
-                room = None
-            if not room or not isinstance(room, ChatRoom):
-                return ChatRoomsAddParticipant(
-                    errors=[
-                        ErrorType(
-                            field="room_ids",
-                            messages=[_("Some rooms are not valid")],
-                        )
-                    ]
-                )
-
-            if room.pk in seen_room_pks:
-                continue
-            seen_room_pks.add(room.pk)
-
-            if not info.context.user.has_perm(
-                "baseapp_chats.modify_chatroom",
-                {
-                    "profile": profile,
-                    "room": room,
-                    "add_participants": [participant_profile.pk],
-                },
-            ):
-                return ChatRoomsAddParticipant(
-                    errors=[
-                        ErrorType(
-                            field="room_ids",
-                            messages=[
-                                _(
-                                    "You don't have permission to add participants to one or "
-                                    "more of the selected rooms"
-                                )
-                            ],
-                        )
-                    ]
-                )
-
-            rooms.append(room)
+        # Resolve every room before any write (all-or-nothing)
+        rooms, resolve_error = cls._resolve_rooms(info, room_ids)
+        if resolve_error:
+            return ChatRoomsAddParticipant(errors=[resolve_error])
 
         if not rooms:
             return ChatRoomsAddParticipant(
@@ -522,6 +539,35 @@ class ChatRoomsAddParticipant(RelayMutation):
         added_participants = []
         rooms_with_new_participant = []
         with transaction.atomic():
+            # Lock the room rows in deterministic pk order to serialize concurrent
+            # participant adds (keeps add_profiles_to_room idempotent and the
+            # participants_count increments lossless under concurrency)
+            locked_rooms_by_pk = {
+                locked_room.pk: locked_room
+                for locked_room in ChatRoom.objects.select_for_update()
+                .filter(pk__in=[room.pk for room in rooms])
+                .order_by("pk")
+            }
+            if len(locked_rooms_by_pk) != len(rooms):
+                return ChatRoomsAddParticipant(
+                    errors=[
+                        ErrorType(
+                            field="room_ids",
+                            messages=[_("Some rooms are not valid")],
+                        )
+                    ]
+                )
+            rooms = [locked_rooms_by_pk[room.pk] for room in rooms]
+
+            # Validate permissions under the lock, before any write, so a
+            # concurrent demotion/removal committed after resolving the rooms
+            # is still taken into account (all-or-nothing)
+            permission_error = cls._check_rooms_permissions(
+                info, profile, participant_profile, rooms
+            )
+            if permission_error:
+                return ChatRoomsAddParticipant(errors=[permission_error])
+
             for room in rooms:
                 created_participants = add_profiles_to_room(room, [participant_profile.pk])
                 if created_participants:
@@ -531,10 +577,17 @@ class ChatRoomsAddParticipant(RelayMutation):
                     rooms_with_new_participant.append((room, created_participants))
 
         for room, created_participants in rooms_with_new_participant:
-            ChatRoomOnRoomUpdate.room_updated(room, added_participants=created_participants)
-            send_chatroom_update_system_messages(
-                room, profile, added_participants=created_participants
-            )
+            # Memberships are already committed: notification failures must not
+            # surface as mutation errors nor block the remaining rooms
+            try:
+                ChatRoomOnRoomUpdate.room_updated(room, added_participants=created_participants)
+                send_chatroom_update_system_messages(
+                    room, profile, added_participants=created_participants
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to send chat room update notifications for room %s", room.pk
+                )
 
         return ChatRoomsAddParticipant(
             rooms=rooms,

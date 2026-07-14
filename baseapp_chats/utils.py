@@ -78,16 +78,20 @@ def add_profiles_to_room(room: Model, profile_pks: Iterable[int | str]) -> list[
     """Add profiles as MEMBER participants to a room, silently skipping existing members.
 
     Returns the created ChatRoomParticipant rows. Callers own the update of
-    room.participants_count.
+    room.participants_count. The check-then-insert is only idempotent while the
+    room row is locked — callers that can run concurrently must hold a lock on
+    the room (e.g. select_for_update) before calling.
     """
     ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
 
-    unique_profile_pks = list(set(profile_pks))
-    existing_profile_pks = ChatRoomParticipant.objects.filter(
-        room=room, profile__pk__in=unique_profile_pks
-    ).values_list("profile__pk", flat=True)
+    unique_profile_pks = {int(pk) for pk in profile_pks}
+    existing_profile_pks = set(
+        ChatRoomParticipant.objects.filter(
+            room=room, profile__pk__in=unique_profile_pks
+        ).values_list("profile__pk", flat=True)
+    )
 
-    new_profile_pks = [pk for pk in unique_profile_pks if int(pk) not in existing_profile_pks]
+    new_profile_pks = unique_profile_pks - existing_profile_pks
 
     return ChatRoomParticipant.objects.bulk_create(
         [

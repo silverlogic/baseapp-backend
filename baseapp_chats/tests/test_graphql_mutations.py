@@ -2195,6 +2195,24 @@ def test_add_participant_invalid_ids_return_errors(django_user_client, graphql_u
     )
     data = response.json()["data"]["chatRoomsAddParticipant"]
     assert data["errors"][0]["field"] == "room_ids"
+
+    # direct (non-group) room among the targets: all-or-nothing rejection
+    direct_room = ChatRoomFactory(created_by=django_user_client.user, is_group=False)
+    response = graphql_user_client(
+        ADD_PARTICIPANT_TO_ROOMS_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": my_profile.relay_id,
+                "participantProfileId": contact.relay_id,
+                "roomIds": [room.relay_id, direct_room.relay_id],
+            },
+            "participantProfileId": contact.relay_id,
+        },
+    )
+    data = response.json()["data"]["chatRoomsAddParticipant"]
+    assert data["errors"][0]["field"] == "room_ids"
+    assert data["errors"][0]["messages"] == ["Some rooms are not valid"]
+
     assert not ChatRoomParticipant.objects.filter(profile=contact).exists()
 
 
@@ -2266,6 +2284,39 @@ def test_add_participant_broadcasts_room_updated(django_user_client, graphql_use
     added = added_calls[0].kwargs["added_participants"]
     assert len(added) == 1
     assert added[0].profile_id == contact.pk
+
+
+def test_add_participant_notification_failure_does_not_fail_mutation(
+    django_user_client, graphql_user_client
+):
+    contact = ProfileFactory(name="Contact Person")
+    my_profile = django_user_client.user.profile
+    room_a = _make_group(my_profile, members=[ProfileFactory()])
+    room_b = _make_group(my_profile, members=[ProfileFactory()])
+
+    with mock.patch(
+        "baseapp_chats.graphql.mutations.ChatRoomOnRoomUpdate.room_updated",
+        side_effect=Exception("broadcast down"),
+    ):
+        response = graphql_user_client(
+            ADD_PARTICIPANT_TO_ROOMS_GRAPHQL,
+            variables={
+                "input": {
+                    "profileId": my_profile.relay_id,
+                    "participantProfileId": contact.relay_id,
+                    "roomIds": [room_a.relay_id, room_b.relay_id],
+                },
+                "participantProfileId": contact.relay_id,
+            },
+        )
+
+    # Memberships are committed before notifications run: a broadcast failure
+    # must not surface as a mutation error nor roll anything back
+    content = response.json()
+    assert not content["data"]["chatRoomsAddParticipant"]["errors"]
+    assert len(content["data"]["chatRoomsAddParticipant"]["addedParticipants"]) == 2
+    for room in (room_a, room_b):
+        assert ChatRoomParticipant.objects.filter(room=room, profile=contact).exists()
 
 
 def test_add_participant_requires_authentication(django_client):
