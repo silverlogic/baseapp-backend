@@ -35,8 +35,15 @@ jobs:
         if: steps.isort.outcome == 'success'
         run: docker compose exec -T web uv run --python ${{ matrix.python-version }} black --check ./
 
-      - name: Install tests requirements with Django ${{ matrix.django-version }}
+      - name: ast-grep
+        id: ast_grep
         if: steps.black.outcome == 'success'
+        run: |
+          docker compose exec -T web uv run --python ${{ matrix.python-version }} ast-grep test
+          docker compose exec -T web uv run --python ${{ matrix.python-version }} ast-grep scan
+
+      - name: Install tests requirements with Django ${{ matrix.django-version }}
+        if: steps.ast_grep.outcome == 'success'
         id: requirements_installation
         run: |
           docker compose exec -T web uv pip install --python ${{ matrix.python-version }} "Django~=${{ matrix.django-version }}"

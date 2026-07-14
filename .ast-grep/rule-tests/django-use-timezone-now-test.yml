@@ -1,0 +1,18 @@
+id: django-use-timezone-now
+valid:
+  - |
+    from django.utils import timezone
+
+    created_at = timezone.now()
+  # timezone-aware call — the rule only flags naive constructors
+  - |
+    when = datetime.now(dt.timezone.utc)
+invalid:
+  - |
+    created_at = datetime.now()
+  - |
+    created_at = datetime.datetime.now()
+  - |
+    created_at = datetime.utcnow()
+  - |
+    today = date.today()

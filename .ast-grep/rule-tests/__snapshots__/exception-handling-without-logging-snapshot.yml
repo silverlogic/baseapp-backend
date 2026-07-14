@@ -1,0 +1,82 @@
+id: exception-handling-without-logging
+snapshots:
+  ? |
+    try:
+        order.save()
+    except (ValueError, Exception) as exc:
+        return None
+  : labels:
+    - source: |-
+        except (ValueError, Exception) as exc:
+            return None
+      style: primary
+      start: 22
+      end: 76
+    - source: Exception
+      style: secondary
+      start: 42
+      end: 51
+    - source: (ValueError, Exception)
+      style: secondary
+      start: 29
+      end: 52
+    - source: (ValueError, Exception) as exc
+      style: secondary
+      start: 29
+      end: 59
+  ? |
+    try:
+        order.save()
+    except (ValueError, Exception):
+        pass
+  : labels:
+    - source: |-
+        except (ValueError, Exception):
+            pass
+      style: primary
+      start: 22
+      end: 62
+    - source: Exception
+      style: secondary
+      start: 42
+      end: 51
+    - source: (ValueError, Exception)
+      style: secondary
+      start: 29
+      end: 52
+  ? |
+    try:
+        order.save()
+    except Exception as exc:
+        return Response({"error": str(exc)}, status=500)
+  : labels:
+    - source: |-
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=500)
+      style: primary
+      start: 22
+      end: 99
+    - source: Exception
+      style: secondary
+      start: 29
+      end: 38
+    - source: Exception as exc
+      style: secondary
+      start: 29
+      end: 45
+  ? |
+    try:
+        order.save()
+    except Exception:
+        pass
+  : labels:
+    - source: |-
+        except Exception:
+            pass
+      style: primary
+      start: 22
+      end: 48
+    - source: Exception
+      style: secondary
+      start: 29
+      end: 38

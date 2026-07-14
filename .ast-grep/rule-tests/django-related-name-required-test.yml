@@ -1,0 +1,15 @@
+id: django-related-name-required
+valid:
+  - |
+    restaurant = models.ForeignKey(Restaurant, related_name="waiters", on_delete=models.CASCADE)
+  - |
+    place = models.OneToOneField(Place, related_name="restaurant", on_delete=models.CASCADE)
+  - |
+    stake_holders = models.ManyToManyField(StakeHolder, related_name="owned_restaurants")
+invalid:
+  - |
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE)
+  - |
+    place = models.OneToOneField(Place, on_delete=models.CASCADE)
+  - |
+    tags = models.ManyToManyField("tags.Tag")

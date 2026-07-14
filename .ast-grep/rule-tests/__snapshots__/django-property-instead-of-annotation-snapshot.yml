@@ -1,0 +1,28 @@
+id: django-property-instead-of-annotation
+snapshots:
+  ? |
+    class Product(models.Model):
+        @property
+        def favourites_count(self) -> int:
+            return self.favourites.filter(active=True).count()
+  : labels:
+    - source: |-
+        @property
+            def favourites_count(self) -> int:
+                return self.favourites.filter(active=True).count()
+      style: primary
+      start: 33
+      end: 140
+  ? |
+    class Product(models.Model):
+        @property
+        def is_favourited(self):
+            return self.favourites.filter(user=self.user).exists()
+  : labels:
+    - source: |-
+        @property
+            def is_favourited(self):
+                return self.favourites.filter(user=self.user).exists()
+      style: primary
+      start: 33
+      end: 134
