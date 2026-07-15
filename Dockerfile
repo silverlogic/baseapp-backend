@@ -1,4 +1,4 @@
-ARG PYTHON_VERSION=3.11
+ARG PYTHON_VERSION=3.12
 # NOSONAR - test/CI image, intentionally runs as root
 FROM python:${PYTHON_VERSION}-slim-trixie
 
