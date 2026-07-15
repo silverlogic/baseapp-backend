@@ -27,7 +27,7 @@ class ContentPostAdmin(ModelAdmin):
     inlines = [ContentPostImagesInline]
 
     @admin.display(boolean=True, description="Reactions enabled")
-    def is_reactions_enabled(self, obj):
+    def is_reactions_enabled(self, obj) -> bool:
         # Pulled from `ReactableMetadata` via the shared service
         if service := shared_services.get("reactable_metadata"):
             return service.is_reactions_enabled(obj)

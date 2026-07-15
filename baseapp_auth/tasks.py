@@ -8,7 +8,7 @@ User = get_user_model()
 
 
 @shared_task
-def notify_users_is_password_expired():
+def notify_users_is_password_expired() -> None:
     users = (
         User.objects.all()
         .add_is_password_expired()

@@ -24,7 +24,7 @@ COMMENT_UPDATE_GRAPHQL = """
 """
 
 
-def test_anon_cant_update_comment(graphql_client):
+def test_anon_cant_update_comment(graphql_client) -> None:
     comment = CommentFactory()
     old_body = comment.body
 
@@ -38,7 +38,7 @@ def test_anon_cant_update_comment(graphql_client):
     assert comment.body == old_body
 
 
-def test_user_cant_update_any_comment(graphql_user_client):
+def test_user_cant_update_any_comment(graphql_user_client) -> None:
     comment = CommentFactory()
     old_body = comment.body
 
@@ -52,7 +52,7 @@ def test_user_cant_update_any_comment(graphql_user_client):
     assert comment.body == old_body
 
 
-def test_owner_can_update_comment(django_user_client, graphql_user_client):
+def test_owner_can_update_comment(django_user_client, graphql_user_client) -> None:
     comment = CommentFactory(user=django_user_client.user)
     new_body = "my edited comment"
 
@@ -68,7 +68,7 @@ def test_owner_can_update_comment(django_user_client, graphql_user_client):
 
 def test_user_cant_update_own_comment_if_target_is_disabled(
     django_user_client, graphql_user_client
-):
+) -> None:
     target = CommentFactory(is_comments_enabled=False)
     comment = CommentFactory(target=target, user=django_user_client.user)
     old_body = comment.body
@@ -84,7 +84,7 @@ def test_user_cant_update_own_comment_if_target_is_disabled(
     assert comment.body == old_body
 
 
-def test_superuser_can_update_comment(django_user_client, graphql_user_client):
+def test_superuser_can_update_comment(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
     new_body = "my edited comment"
@@ -101,7 +101,7 @@ def test_superuser_can_update_comment(django_user_client, graphql_user_client):
     assert comment.body == new_body
 
 
-def test_user_with_permission_can_update_comment(django_user_client, graphql_user_client):
+def test_user_with_permission_can_update_comment(django_user_client, graphql_user_client) -> None:
     Comment = swapper.load_model("baseapp_comments", "Comment")
     app_label = Comment._meta.app_label
     perm = Permission.objects.get(content_type__app_label=app_label, codename="change_comment")

@@ -9,7 +9,7 @@ class SocialAuthBaseSerializer(serializers.Serializer):
     email = serializers.EmailField(required=False, allow_blank=True)
     referral_code = serializers.CharField(required=False, allow_blank=True)
 
-    def validate_referral_code(self, referral_code):
+    def validate_referral_code(self, referral_code) -> str:
         referrer = get_user_from_referral_code(referral_code)
         if not referrer:
             raise serializers.ValidationError(_("Invalid referral code."))

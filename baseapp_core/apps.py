@@ -8,7 +8,7 @@ class PackageConfig(AppConfig):
     verbose_name = "BaseApp Core"
     default_auto_field = "django.db.models.BigAutoField"
 
-    def ready(self):
+    def ready(self) -> None:
         from .pghelpers import apply_pghistory_tracks, apply_pgtrigger_tracks
 
         # Apply all registered pghistory tracks

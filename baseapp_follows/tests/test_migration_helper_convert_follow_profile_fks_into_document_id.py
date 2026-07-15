@@ -1,4 +1,6 @@
+from collections.abc import Generator, Iterator
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import patch
 
 import factory
@@ -12,25 +14,25 @@ from baseapp_follows.migration_helpers.convert_follow_profile_fks_into_document_
 
 
 class _FakeQuerySet:
-    def __init__(self, rows):
+    def __init__(self, rows) -> None:
         self._rows = list(rows)
 
-    def using(self, _alias):
+    def using(self, _alias) -> "_FakeQuerySet":
         return self
 
-    def all(self):
+    def all(self) -> "_FakeQuerySet":
         return self
 
-    def count(self):
+    def count(self) -> int:
         return len(self._rows)
 
-    def exclude(self, **kwargs):
+    def exclude(self, **kwargs) -> "_FakeQuerySet":
         return self._apply(**kwargs, exclude=True)
 
-    def filter(self, **kwargs):
+    def filter(self, **kwargs) -> "_FakeQuerySet":
         return self._apply(**kwargs, exclude=False)
 
-    def _apply(self, exclude=False, **kwargs):
+    def _apply(self, exclude=False, **kwargs) -> "_FakeQuerySet":
         rows = self._rows
         for key, value in kwargs.items():
             if key.endswith("__isnull"):
@@ -43,19 +45,19 @@ class _FakeQuerySet:
                 rows = [r for r in rows if getattr(r, key) == value]
         return _FakeQuerySet(rows)
 
-    def values(self, *fields):
+    def values(self, *fields) -> list[dict[str, Any]]:
         return [{f: getattr(r, f) for f in fields} for r in self._rows]
 
-    def values_list(self, *fields, flat=False):
+    def values_list(self, *fields, flat=False) -> "_FakeFlatList | _FakeValueList":
         if flat:
             assert len(fields) == 1
             return _FakeFlatList([getattr(r, fields[0]) for r in self._rows])
         return _FakeValueList([tuple(getattr(r, f) for f in fields) for r in self._rows])
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[SimpleNamespace]:
         return iter(self._rows)
 
-    def iterator(self, chunk_size=None):
+    def iterator(self, chunk_size=None) -> Iterator[SimpleNamespace]:
         # Real Django `QuerySet.iterator` streams rows; the test fixture's data is
         # already in memory, so we just iterate. `chunk_size` is ignored intentionally.
         return iter(self._rows)
@@ -65,11 +67,11 @@ class _FakeBulkDeleteQuerySet:
     """Returned by `_FakeManager.filter(pk__in=...)` so the helper can emit a single
     bulk `.delete()` for orphan rows."""
 
-    def __init__(self, manager, pks):
+    def __init__(self, manager, pks) -> None:
         self._manager = manager
         self._pks = list(pks)
 
-    def delete(self):
+    def delete(self) -> None:
         pk_set = set(self._pks)
         for pk in self._pks:
             self._manager.delete_log.append(pk)
@@ -77,7 +79,7 @@ class _FakeBulkDeleteQuerySet:
 
 
 class _FakeValueList(list):
-    def distinct(self):
+    def distinct(self) -> list[tuple[Any, ...]]:
         seen = []
         for row in self:
             if row not in seen:
@@ -86,7 +88,7 @@ class _FakeValueList(list):
 
 
 class _FakeFlatList(list):
-    def distinct(self):
+    def distinct(self) -> list[Any]:
         seen = []
         for row in self:
             if row not in seen:
@@ -95,11 +97,11 @@ class _FakeFlatList(list):
 
 
 class _FakeUpdateDeleteQuerySet:
-    def __init__(self, manager, pk):
+    def __init__(self, manager, pk) -> None:
         self._manager = manager
         self._pk = pk
 
-    def update(self, **kwargs):
+    def update(self, **kwargs) -> None:
         self._manager.update_log.append((self._pk, kwargs))
         for row in self._manager._rows:
             if getattr(row, "pk", None) == self._pk:
@@ -107,13 +109,13 @@ class _FakeUpdateDeleteQuerySet:
                     setattr(row, k, v)
                 break
 
-    def delete(self):
+    def delete(self) -> None:
         self._manager.delete_log.append(self._pk)
         self._manager._rows = [r for r in self._manager._rows if getattr(r, "pk", None) != self._pk]
 
 
 class _FakeManager:
-    def __init__(self, rows):
+    def __init__(self, rows) -> None:
         self._rows = list(rows)
         self.update_log = []
         self.delete_log = []
@@ -122,30 +124,32 @@ class _FakeManager:
         # `bulk_update` flush, so tests can assert chunking behavior.
         self.bulk_update_batches = []
 
-    def using(self, alias):
+    def using(self, alias) -> "_FakeManager":
         self.using_log.append(alias)
         return self
 
-    def all(self):
+    def all(self) -> _FakeQuerySet:
         return _FakeQuerySet(self._rows).all()
 
-    def values(self, *fields):
+    def values(self, *fields) -> list[dict[str, Any]]:
         return _FakeQuerySet(self._rows).values(*fields)
 
-    def values_list(self, *fields, flat=False):
+    def values_list(self, *fields, flat=False) -> "_FakeFlatList | _FakeValueList":
         return _FakeQuerySet(self._rows).values_list(*fields, flat=flat)
 
-    def filter(self, **kwargs):
+    def filter(
+        self, **kwargs
+    ) -> "_FakeUpdateDeleteQuerySet | _FakeBulkDeleteQuerySet | _FakeQuerySet":
         if "pk" in kwargs:
             return _FakeUpdateDeleteQuerySet(self, kwargs["pk"])
         if "pk__in" in kwargs:
             return _FakeBulkDeleteQuerySet(self, kwargs["pk__in"])
         return _FakeQuerySet(self._rows).filter(**kwargs)
 
-    def exclude(self, **kwargs):
+    def exclude(self, **kwargs) -> _FakeQuerySet:
         return _FakeQuerySet(self._rows).exclude(**kwargs)
 
-    def bulk_update(self, instances, fields, batch_size=None):
+    def bulk_update(self, instances, fields, batch_size=None) -> None:
         # Mirror Django: write a single `UPDATE … CASE WHEN` per `batch_size`
         # group. The fixture records each batch (and replays the field writes onto
         # the underlying rows so subsequent reads see the new values) and ALSO
@@ -188,31 +192,31 @@ class _DocumentIdRowFactory(factory.Factory):
     object_id = 1
 
 
-def _make_apps(*, follows, documents, profile_ct_id=99):
+def _make_apps(*, follows, documents, profile_ct_id=99) -> tuple[Any, _FakeManager, _FakeManager]:
     follow_manager = _FakeManager(follows)
     document_manager = _FakeManager(documents)
 
     class _ContentTypeManager:
-        def __init__(self):
+        def __init__(self) -> None:
             self.using_log = []
 
-        def using(self, alias):
+        def using(self, alias) -> "_ContentTypeManager":
             self.using_log.append(alias)
             return self
 
-        def _row(self):
+        def _row(self) -> SimpleNamespace:
             return SimpleNamespace(id=profile_ct_id, app_label="profiles", model="profile")
 
-        def get_or_create(self, **kwargs):
+        def get_or_create(self, **kwargs) -> tuple[SimpleNamespace, bool]:
             assert kwargs == {"app_label": "profiles", "model": "profile"}
             return self._row(), False
 
-        def filter(self, **kwargs):
+        def filter(self, **kwargs) -> Any:
             assert kwargs == {"app_label": "profiles", "model": "profile"}
             row = self._row()
 
             class _Filtered:
-                def first(_self):
+                def first(_self) -> SimpleNamespace:
                     return row
 
             return _Filtered()
@@ -225,7 +229,7 @@ def _make_apps(*, follows, documents, profile_ct_id=99):
     contenttype_model = SimpleNamespace(objects=_ContentTypeManager())
 
     class FakeApps:
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             mapping = {
                 ("baseapp_follows", "Follow"): follow_model,
                 ("profiles", "Profile"): profile_model,
@@ -238,7 +242,7 @@ def _make_apps(*, follows, documents, profile_ct_id=99):
 
 
 @pytest.fixture(autouse=True)
-def _stub_swapper_is_not_swapped():
+def _stub_swapper_is_not_swapped() -> Generator[None, None, None]:
     """`get_apps_model` consults `swapper.is_swapped` for the registered model. Force the
     "not swapped" branch so the helper resolves through `apps.get_model` with the labels
     we control in the fake apps registry."""
@@ -249,7 +253,7 @@ def _stub_swapper_is_not_swapped():
         yield
 
 
-def test_migrate_follow_profile_fks_to_document_id_remaps_actor_and_target():
+def test_migrate_follow_profile_fks_to_document_id_remaps_actor_and_target() -> None:
     follows = [
         _FollowLegacyFactory(pk=1, actor_id=10, target_id=20),
         _FollowLegacyFactory(pk=2, actor_id=20, target_id=30),
@@ -277,7 +281,7 @@ def test_migrate_follow_profile_fks_to_document_id_remaps_actor_and_target():
     assert follow_manager.delete_log == []
 
 
-def test_migrate_follow_profile_fks_deletes_orphaned_rows_when_no_documentid_match():
+def test_migrate_follow_profile_fks_deletes_orphaned_rows_when_no_documentid_match() -> None:
     follows = [
         _FollowLegacyFactory(pk=1, actor_id=10, target_id=20),
         _FollowLegacyFactory(pk=2, actor_id=999, target_id=20),  # actor missing doc
@@ -299,7 +303,7 @@ def test_migrate_follow_profile_fks_deletes_orphaned_rows_when_no_documentid_mat
     assert follow_manager.delete_log == [2]
 
 
-def test_assert_all_follow_rows_reference_document_ids_passes_when_all_valid():
+def test_assert_all_follow_rows_reference_document_ids_passes_when_all_valid() -> None:
     follows = [_FollowLegacyFactory(pk=1, actor_id=100, target_id=200)]
     documents = [
         _DocumentIdRowFactory(id=100, content_type_id=99, object_id=10),
@@ -310,7 +314,7 @@ def test_assert_all_follow_rows_reference_document_ids_passes_when_all_valid():
     assert_all_follow_rows_reference_document_ids(apps, schema_editor=None)
 
 
-def test_assert_all_follow_rows_reference_document_ids_raises_when_dangling():
+def test_assert_all_follow_rows_reference_document_ids_raises_when_dangling() -> None:
     follows = [_FollowLegacyFactory(pk=1, actor_id=100, target_id=999)]
     documents = [_DocumentIdRowFactory(id=100, content_type_id=99, object_id=10)]
     apps, _, _ = _make_apps(follows=follows, documents=documents)
@@ -319,7 +323,7 @@ def test_assert_all_follow_rows_reference_document_ids_raises_when_dangling():
         assert_all_follow_rows_reference_document_ids(apps, schema_editor=None)
 
 
-def test_assert_uses_db_alias_from_schema_editor():
+def test_assert_uses_db_alias_from_schema_editor() -> None:
     follows = [_FollowLegacyFactory(pk=1, actor_id=100, target_id=200)]
     documents = [
         _DocumentIdRowFactory(id=100, content_type_id=99, object_id=10),
@@ -331,7 +335,7 @@ def test_assert_uses_db_alias_from_schema_editor():
     assert_all_follow_rows_reference_document_ids(apps, schema_editor=se)
 
 
-def test_reverse_migrate_follow_document_id_fks_to_profile_restores_profile_pks():
+def test_reverse_migrate_follow_document_id_fks_to_profile_restores_profile_pks() -> None:
     follows = [
         _FollowLegacyFactory(pk=1, actor_id=100, target_id=200),
         _FollowLegacyFactory(pk=2, actor_id=200, target_id=300),
@@ -356,7 +360,7 @@ def test_reverse_migrate_follow_document_id_fks_to_profile_restores_profile_pks(
     ]
 
 
-def test_reverse_migrate_follow_document_id_fks_skips_unknown_documents():
+def test_reverse_migrate_follow_document_id_fks_skips_unknown_documents() -> None:
     follows = [_FollowLegacyFactory(pk=1, actor_id=100, target_id=999)]
     documents = [_DocumentIdRowFactory(id=100, content_type_id=99, object_id=10)]
     apps, follow_manager, _ = _make_apps(follows=follows, documents=documents)
@@ -371,7 +375,7 @@ def test_reverse_migrate_follow_document_id_fks_skips_unknown_documents():
     assert follow_manager.update_log == []
 
 
-def test_migrate_uses_db_alias_from_schema_editor():
+def test_migrate_uses_db_alias_from_schema_editor() -> None:
     """Every ORM access in the forward migration must be pinned to the schema editor's
     alias, so reads (ContentType / DocumentId / Follow lookups) and writes
     (Follow.update / .delete) hit the same database when running against a non-default
@@ -399,7 +403,7 @@ def test_migrate_uses_db_alias_from_schema_editor():
     assert ct_manager.using_log == ["replica"]
 
 
-def test_reverse_migrate_uses_db_alias_from_schema_editor():
+def test_reverse_migrate_uses_db_alias_from_schema_editor() -> None:
     follows = [_FollowLegacyFactory(pk=1, actor_id=100, target_id=200)]
     documents = [
         _DocumentIdRowFactory(id=100, content_type_id=99, object_id=10),
@@ -421,7 +425,7 @@ def test_reverse_migrate_uses_db_alias_from_schema_editor():
     assert ct_manager.using_log == ["replica"]
 
 
-def test_migrate_streams_and_bulk_updates_in_chunks(monkeypatch):
+def test_migrate_streams_and_bulk_updates_in_chunks(monkeypatch) -> None:
     """Forward migration should flush via `bulk_update` once per chunk and emit a
     single `filter(pk__in=…).delete()` for all orphans, regardless of the row count
     on the table. This is the regression we want to lock in for projects with 1M+
@@ -462,7 +466,7 @@ def test_migrate_streams_and_bulk_updates_in_chunks(monkeypatch):
     assert follow_manager.delete_log == [901, 902]
 
 
-def test_reverse_migrate_streams_and_bulk_updates_in_chunks(monkeypatch):
+def test_reverse_migrate_streams_and_bulk_updates_in_chunks(monkeypatch) -> None:
     from baseapp_follows.migration_helpers import (
         convert_follow_profile_fks_into_document_id_helper as helper,
     )

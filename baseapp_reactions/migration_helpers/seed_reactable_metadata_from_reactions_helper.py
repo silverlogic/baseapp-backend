@@ -21,10 +21,15 @@ Notes
   carry that flag, so this seeder only populates the per-type counts dict.
 """
 
+from typing import TYPE_CHECKING
+
 from baseapp_core.swapper import get_apps_model
 
+if TYPE_CHECKING:
+    from django.db.models import Manager, QuerySet
 
-def _alias_pinned_managers(schema_editor, *models):
+
+def _alias_pinned_managers(schema_editor, *models) -> "tuple[Manager | QuerySet, ...]":
     if schema_editor is not None and getattr(schema_editor, "connection", None) is not None:
         alias = schema_editor.connection.alias
         return tuple(model.objects.using(alias) for model in models)
@@ -47,7 +52,7 @@ def seed_reactable_metadata_from_reactions(
     *,
     metadata_app_label: str = "baseapp_reactions",
     metadata_model_name: str = "ReactableMetadata",
-):
+) -> None:
     """
     Create or update one `ReactableMetadata` row per `DocumentId` referenced as a
     `Reaction.target_document`, populating per-type counts from a fresh GROUP BY.
@@ -98,7 +103,7 @@ def reverse_seed_reactable_metadata(
     *,
     metadata_app_label: str = "baseapp_reactions",
     metadata_model_name: str = "ReactableMetadata",
-):
+) -> None:
     """
     Drop `ReactableMetadata` rows that were seeded from existing `Reaction` data.
     Only rows whose `target_id` is referenced as a live `Reaction.target_document`

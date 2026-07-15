@@ -1,11 +1,12 @@
 import ast
 import os
 import sys
+from typing import Any
 
 from django.core.exceptions import ImproperlyConfigured
 
 
-def env(key, *args, **kwargs):
+def env(key, *args, **kwargs) -> Any:
     """
     Retrieves environment variables and returns Python natives. The (optional)
     default will be returned if the environment variable does not exist.
@@ -26,5 +27,5 @@ def env(key, *args, **kwargs):
         raise ImproperlyConfigured("Missing required environment variable '%s'" % key)
 
 
-def is_uvicorn():
+def is_uvicorn() -> bool:
     return any("uvicorn" in arg for arg in sys.argv)

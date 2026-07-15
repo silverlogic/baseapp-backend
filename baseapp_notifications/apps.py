@@ -21,12 +21,12 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
 
         notify.connect(notify_handler, dispatch_uid="notifications.models.notification")
 
-    def register_shared_services(self, registry):
+    def register_shared_services(self, registry) -> None:
         from .services import NotificationService
 
         registry.register(NotificationService())
 
-    def register_graphql_shared_interfaces(self, registry):
+    def register_graphql_shared_interfaces(self, registry) -> None:
         from .graphql.interfaces import get_notifications_interface
 
         registry.register("NotificationsInterface", get_notifications_interface)

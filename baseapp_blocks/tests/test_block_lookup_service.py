@@ -18,16 +18,16 @@ Block = swapper.load_model("baseapp_blocks", "Block")
 ContentPost = swapper.load_model("baseapp_content_feed", "ContentPost")
 
 
-def _info(user):
+def _info(user) -> SimpleNamespace:
     """Minimal GraphQL info stub exposing ``info.context.user``."""
     return SimpleNamespace(context=SimpleNamespace(user=user))
 
 
-def _ids(queryset):
+def _ids(queryset) -> set[int]:
     return set(queryset.values_list("id", flat=True))
 
 
-def test_anonymous_user_is_not_filtered():
+def test_anonymous_user_is_not_filtered() -> None:
     ContentPostFactory(profile=ProfileFactory())
 
     qs = ContentPost.objects.all()
@@ -39,7 +39,7 @@ def test_anonymous_user_is_not_filtered():
     assert result._hints.get(_BLOCKED_PROFILES_FILTERED_HINT) is True
 
 
-def test_excludes_blocked_and_blocker_profiles_via_current_profile():
+def test_excludes_blocked_and_blocker_profiles_via_current_profile() -> None:
     viewer = ProfileFactory()
     blocked = ProfileFactory()  # viewer blocks them
     blocker = ProfileFactory()  # they block viewer
@@ -67,7 +67,7 @@ def test_excludes_blocked_and_blocker_profiles_via_current_profile():
     assert result._hints.get(_BLOCKED_PROFILES_FILTERED_HINT) is True
 
 
-def test_short_circuits_when_already_filtered():
+def test_short_circuits_when_already_filtered() -> None:
     viewer = ProfileFactory()
     blocked = ProfileFactory()
     Block.objects.create(actor=viewer, target=blocked)
@@ -86,7 +86,7 @@ def test_short_circuits_when_already_filtered():
     assert blocked_post.id in _ids(result)
 
 
-def test_fallback_uses_owned_profiles_when_no_current_profile():
+def test_fallback_uses_owned_profiles_when_no_current_profile() -> None:
     user = UserFactory()
     viewer = ProfileFactory(owner=user)
     blocked = ProfileFactory()

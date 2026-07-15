@@ -22,14 +22,14 @@ ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
 
 
-def test_service_is_registered():
+def test_service_is_registered() -> None:
     """Service is registered by `apps.py.ready()` under the documented name."""
     service = shared_services.get("chats_participation")
     assert service is not None
     assert isinstance(service, ChatsParticipationService)
 
 
-def test_cleanup_user_participation_removes_only_target_user_rows():
+def test_cleanup_user_participation_removes_only_target_user_rows() -> None:
     user = UserFactory()
     other_profile = ProfileFactory()
     room = ChatRoomFactory()
@@ -45,7 +45,7 @@ def test_cleanup_user_participation_removes_only_target_user_rows():
     assert ChatRoomParticipant.objects.filter(pk=other_participant.pk).exists()
 
 
-def test_cleanup_user_participation_recomputes_participants_count():
+def test_cleanup_user_participation_recomputes_participants_count() -> None:
     user = UserFactory()
     room = ChatRoomFactory()
     ChatRoomParticipantFactory(profile=user.profile, room=room)
@@ -60,14 +60,14 @@ def test_cleanup_user_participation_recomputes_participants_count():
     assert room.participants_count == 2
 
 
-def test_cleanup_user_participation_handles_user_with_no_rooms():
+def test_cleanup_user_participation_handles_user_with_no_rooms() -> None:
     """Idempotent on a clean user — no DB activity, no exception."""
     user = UserFactory()
 
     shared_services.get("chats_participation").cleanup_user_participation(user)
 
 
-def test_cleanup_user_participation_spans_multiple_rooms():
+def test_cleanup_user_participation_spans_multiple_rooms() -> None:
     user = UserFactory()
     room_a = ChatRoomFactory()
     room_b = ChatRoomFactory()

@@ -16,10 +16,10 @@ class BaseCustomer(TimeStampedModel):
         swappable = swapper.swappable_setting("baseapp_payments", "Customer")
         unique_together = ("entity_type", "entity_id")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.entity} - {self.remote_customer_id}"
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         if not hasattr(self, "tracker"):
             raise RuntimeError(
                 'BaseCustomer requires `tracker = FieldTracker(["entity"])`.'

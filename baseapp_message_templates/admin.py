@@ -77,7 +77,7 @@ class EmailTemplateAdmin(admin.ModelAdmin):
         ),
     )
 
-    def raw_html(self, obj):
+    def raw_html(self, obj) -> str | None:
         return obj.html_content
 
 

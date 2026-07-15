@@ -44,17 +44,17 @@ UserReferral = get_user_referral_model()
 class TestUsersRetrieve(ApiMixin):
     view_name = "users-detail"
 
-    def test_guest_cant_retrieve(self, client):
+    def test_guest_cant_retrieve(self, client) -> None:
         user = UserFactory()
         r = client.get(self.reverse(kwargs={"pk": user.pk}))
         h.responseUnauthorized(r)
 
-    def test_user_can_retrieve(self, user_client):
+    def test_user_can_retrieve(self, user_client) -> None:
         user = UserFactory()
         r = user_client.get(self.reverse(kwargs={"pk": user.pk}))
         h.responseOk(r)
 
-    def test_object_keys_for_own_user(self, user_client):
+    def test_object_keys_for_own_user(self, user_client) -> None:
         r = user_client.get(self.reverse(kwargs={"pk": user_client.user.pk}))
         h.responseOk(r)
         expected = {
@@ -78,7 +78,7 @@ class TestUsersRetrieve(ApiMixin):
         profile_actual = set(r.data["profile"].keys())
         assert profile_expected == profile_actual
 
-    def test_object_keys_for_other_user(self, user_client):
+    def test_object_keys_for_other_user(self, user_client) -> None:
         user = UserFactory()
         r = user_client.get(self.reverse(kwargs={"pk": user.pk}))
         h.responseOk(r)
@@ -94,7 +94,7 @@ class TestUsersRetrieve(ApiMixin):
         not hasattr(User, "public_id"),
         reason="User model does not expose public_id; skip until DocumentIdMixin is enabled",
     )
-    def test_id_returns_public_id(self, user_client):
+    def test_id_returns_public_id(self, user_client) -> None:
         """Ensure the serialized `id` is the public_id when available."""
         from django.contrib.contenttypes.models import ContentType
 
@@ -113,22 +113,22 @@ class TestUsersRetrieve(ApiMixin):
 class TestUsersUpdate(ApiMixin):
     view_name = "users-detail"
 
-    def test_guest_cant_update(self, client):
+    def test_guest_cant_update(self, client) -> None:
         user = UserFactory()
         r = client.patch(self.reverse(kwargs={"pk": user.id}))
         h.responseUnauthorized(r)
 
-    def test_user_can_update_self(self, user_client):
+    def test_user_can_update_self(self, user_client) -> None:
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.id}))
         h.responseOk(r)
 
-    def test_user_cant_update_other_user(self, user_client):
+    def test_user_cant_update_other_user(self, user_client) -> None:
         other_user = UserFactory()
         data = {"email": "test@email.co"}
         r = user_client.patch(self.reverse(kwargs={"pk": other_user.id}), data)
         h.responseForbidden(r)
 
-    def test_user_cant_update_email(self, user_client):
+    def test_user_cant_update_email(self, user_client) -> None:
         data = {"email": "test@email.co"}
         user_client.patch(self.reverse(kwargs={"pk": user_client.user.id}), data)
         user_client.user.refresh_from_db()
@@ -138,21 +138,21 @@ class TestUsersUpdate(ApiMixin):
         not hasattr(User, "public_id"),
         reason="User model does not expose public_id; skip until DocumentIdMixin is enabled",
     )
-    def test_can_update_public_fields_using_public_id(self, user_client):
+    def test_can_update_public_fields_using_public_id(self, user_client) -> None:
         data = {"preferred_language": "pt"}
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.public_id}), data)
         h.responseOk(r)
         user_client.user.refresh_from_db()
         assert user_client.user.preferred_language == "pt"
 
-    def test_can_update_timezone(self, user_client):
+    def test_can_update_timezone(self, user_client) -> None:
         data = {"timezone": "America/Sao_Paulo"}
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.pk}), data)
         h.responseOk(r)
         user_client.user.refresh_from_db()
         assert user_client.user.timezone == "America/Sao_Paulo"
 
-    def test_cant_update_timezone_with_invalid_value(self, user_client):
+    def test_cant_update_timezone_with_invalid_value(self, user_client) -> None:
         previous_timezone = user_client.user.timezone
         data = {"timezone": "foo/bar"}
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.pk}), data)
@@ -161,7 +161,7 @@ class TestUsersUpdate(ApiMixin):
         assert user_client.user.timezone == previous_timezone
 
     @skip_if_no_referrals
-    def test_can_update_referred_by_code_on_the_same_day_user_registered(self, user_client):
+    def test_can_update_referred_by_code_on_the_same_day_user_registered(self, user_client) -> None:
         user = UserFactory()
         data = {"referred_by_code": get_referral_code(user)}
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.id}), data)
@@ -170,14 +170,16 @@ class TestUsersUpdate(ApiMixin):
         assert user_client.user.referred_by.referrer == user
 
     @skip_if_no_referrals
-    def test_cant_update_referred_by_code_with_invalid_code(self, user_client):
+    def test_cant_update_referred_by_code_with_invalid_code(self, user_client) -> None:
         data = {"referred_by_code": "8182"}
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.id}), data)
         h.responseBadRequest(r)
         assert r.data["referred_by_code"] == ["Invalid referral code."]
 
     @skip_if_no_referrals
-    def test_cant_update_referred_by_code_when_user_already_has_a_referrer(self, user_client):
+    def test_cant_update_referred_by_code_when_user_already_has_a_referrer(
+        self, user_client
+    ) -> None:
         user = UserFactory()
         UserReferral.objects.create(referee=user_client.user, referrer=user)
         data = {"referred_by_code": get_referral_code(user)}
@@ -186,14 +188,16 @@ class TestUsersUpdate(ApiMixin):
         assert r.data["referred_by_code"] == ["You have already been referred by somebody."]
 
     @skip_if_no_referrals
-    def test_cant_update_referred_by_code_to_yourself(self, user_client):
+    def test_cant_update_referred_by_code_to_yourself(self, user_client) -> None:
         data = {"referred_by_code": get_referral_code(user_client.user)}
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.id}), data)
         h.responseBadRequest(r)
         assert r.data["referred_by_code"] == ["You cannot refer yourself."]
 
     @skip_if_no_referrals
-    def test_cant_update_referred_by_code_after_the_day_the_user_registered(self, user_client):
+    def test_cant_update_referred_by_code_after_the_day_the_user_registered(
+        self, user_client
+    ) -> None:
         user_client.user.date_joined = timezone.now() - timedelta(days=1, hours=1)
         user_client.user.save()
         user = UserFactory()
@@ -204,14 +208,14 @@ class TestUsersUpdate(ApiMixin):
             "You are no longer allowed to change who you were referred by."
         ]
 
-    def test_can_upload_avatar(self, user_client, image_base64):
+    def test_can_upload_avatar(self, user_client, image_base64) -> None:
         data = {"avatar": image_base64}
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.pk}), data)
         h.responseOk(r)
         user_client.user.profile.refresh_from_db()
         assert bool(user_client.user.profile.image) is True
 
-    def test_can_clear_avatar(self, user_client, image_djangofile):
+    def test_can_clear_avatar(self, user_client, image_djangofile) -> None:
         user_client.user.profile.image = image_djangofile
         user_client.user.profile.save()
         data = {"avatar": None}
@@ -224,15 +228,15 @@ class TestUsersUpdate(ApiMixin):
 class TestUsersList(ApiMixin):
     view_name = "users-list"
 
-    def test_guest_cant_list(self, client):
+    def test_guest_cant_list(self, client) -> None:
         r = client.get(self.reverse())
         h.responseUnauthorized(r)
 
-    def test_user_can_list(self, user_client):
+    def test_user_can_list(self, user_client) -> None:
         r = user_client.get(self.reverse())
         h.responseOk(r)
 
-    def test_can_search(self, user_client):
+    def test_can_search(self, user_client) -> None:
         UserFactory(first_name="John", last_name="Smith")
         UserFactory(first_name="Bobby", last_name="Timbers")
         r = user_client.get(self.reverse(query_params={"q": "John Smith"}))
@@ -244,11 +248,11 @@ class TestUsersList(ApiMixin):
 class TestUsersMe(ApiMixin):
     view_name = "users-me"
 
-    def test_as_anon(self, client):
+    def test_as_anon(self, client) -> None:
         r = client.get(self.reverse())
         h.responseUnauthorized(r)
 
-    def test_as_user(self, client):
+    def test_as_user(self, client) -> None:
         user = UserFactory()
         client.force_authenticate(user)
         r = client.get(self.reverse())
@@ -258,11 +262,11 @@ class TestUsersMe(ApiMixin):
 class TestUsersDeleteAccount(ApiMixin):
     view_name = "users-delete-account"
 
-    def test_as_anon(self, client):
+    def test_as_anon(self, client) -> None:
         r = client.get(self.reverse())
         h.responseUnauthorized(r)
 
-    def test_non_admin_can_delete_account(self, user_client):
+    def test_non_admin_can_delete_account(self, user_client) -> None:
         user_client.user.is_superuser = False
         user_client.user.save()
         user_id = user_client.user.id
@@ -270,7 +274,7 @@ class TestUsersDeleteAccount(ApiMixin):
         h.responseOk(r)
         assert User.objects.filter(id=user_id).exists() is False
 
-    def test_admin_can_only_deactivate_account(self, user_client):
+    def test_admin_can_only_deactivate_account(self, user_client) -> None:
         user_client.user.is_superuser = True
         user_client.user.save()
         user_id = user_client.user.id
@@ -278,7 +282,7 @@ class TestUsersDeleteAccount(ApiMixin):
         h.responseOk(r)
         assert User.objects.filter(id=user_id, is_active=False).exists() is True
 
-    def test_anonymize_and_delete_is_triggered(self, user_client):
+    def test_anonymize_and_delete_is_triggered(self, user_client) -> None:
         user_client.user.is_superuser = False
         user_client.user.save()
         user_id = user_client.user.id
@@ -293,7 +297,7 @@ class TestUsersDeleteAccount(ApiMixin):
             )
 
     @skip_if_no_organizations
-    def test_owner_of_organization_cannot_delete_account(self, user_client):
+    def test_owner_of_organization_cannot_delete_account(self, user_client) -> None:
         from baseapp_organizations.tests.factories import OrganizationFactory
         from baseapp_profiles.tests.factories import ProfileFactory
 
@@ -316,7 +320,7 @@ class TestUsersDeleteAccount(ApiMixin):
         assert user.is_active is True
 
     @override_config(SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS=True)
-    def test_anonymize_and_delete_user_task_sends_success_email_to_superusers(self, outbox):
+    def test_anonymize_and_delete_user_task_sends_success_email_to_superusers(self, outbox) -> None:
         user = UserFactory()
         user_id = user.id
         superuser = UserFactory(is_superuser=True, email="superuser@example.com")
@@ -328,7 +332,9 @@ class TestUsersDeleteAccount(ApiMixin):
         assert any(superuser.email in m.to for m in outbox)
 
     @override_config(SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS=False)
-    def test_anonymize_and_delete_user_task_sends_success_email_not_to_superusers(self, outbox):
+    def test_anonymize_and_delete_user_task_sends_success_email_not_to_superusers(
+        self, outbox
+    ) -> None:
         user = UserFactory()
         user_id = user.id
         superuser = UserFactory(is_superuser=True, email="superuser@example.com")
@@ -339,7 +345,7 @@ class TestUsersDeleteAccount(ApiMixin):
         assert any(user.email in m.to for m in outbox)
         assert not any(superuser.email in m.to for m in outbox)
 
-    def test_anonymize_and_delete_user_task_sends_error_email(self, outbox):
+    def test_anonymize_and_delete_user_task_sends_error_email(self, outbox) -> None:
         user = UserFactory()
         user_id = user.id
 
@@ -353,7 +359,7 @@ class TestUsersDeleteAccount(ApiMixin):
         assert any("error" in m.subject.lower() for m in outbox)
         assert any(user.email in m.to for m in outbox)
 
-    def test_send_anonymize_user_success_email_with_superusers(self, outbox):
+    def test_send_anonymize_user_success_email_with_superusers(self, outbox) -> None:
 
         config.SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS = True
         user = UserFactory()
@@ -369,7 +375,7 @@ class TestUsersDeleteAccount(ApiMixin):
         assert any(user.email in m.to for m in outbox)
         assert any(superuser.email in m.to for m in outbox)
 
-    def test_send_anonymize_user_error_email_with_superusers(self, outbox):
+    def test_send_anonymize_user_error_email_with_superusers(self, outbox) -> None:
 
         config.SEND_USER_ANONYMIZE_EMAIL_TO_SUPERUSERS = True
         user = UserFactory()
@@ -386,7 +392,7 @@ class TestUsersDeleteAccount(ApiMixin):
         assert any(user.email in m.to for m in outbox)
         assert any(superuser.email in m.to for m in outbox)
 
-    def test_anonymize_and_delete_user_task_anonymizes_user_comments(self):
+    def test_anonymize_and_delete_user_task_anonymizes_user_comments(self) -> None:
         Comment = swapper.load_model("baseapp_comments", "Comment")
 
         user = UserFactory()
@@ -398,7 +404,7 @@ class TestUsersDeleteAccount(ApiMixin):
         assert Comment.objects_visible.filter(user_id=user_id).count() == 0
         assert User.objects.all().count() == 0
 
-    def test_anonymize_and_delete_user_task_anonymizes_user_messages(self):
+    def test_anonymize_and_delete_user_task_anonymizes_user_messages(self) -> None:
         Message = swapper.load_model("baseapp_chats", "Message")
 
         user = UserFactory()
@@ -418,20 +424,20 @@ class TestUsersChangePassword(ApiMixin):
     view_name = "users-change-password"
 
     @pytest.fixture
-    def data(self):
+    def data(self) -> dict[str, str]:
         return {"current_password": "1234567890", "new_password": "0987654321"}  # NOSONAR
 
-    def test_as_anon(self, client):
+    def test_as_anon(self, client) -> None:
         r = client.post(self.reverse())
         h.responseUnauthorized(r)
 
-    def test_user_can_change_password(self, client, data):
+    def test_user_can_change_password(self, client, data) -> None:
         user = UserFactory(password=data["current_password"])
         client.force_authenticate(user)
         r = client.post(self.reverse(), data)
         h.responseOk(r)
 
-    def test_password_is_set(self, client, data):
+    def test_password_is_set(self, client, data) -> None:
         user = UserFactory(password=data["current_password"])
         client.force_authenticate(user)
         r = client.post(self.reverse(), data)
@@ -439,14 +445,14 @@ class TestUsersChangePassword(ApiMixin):
         user.refresh_from_db()
         assert user.check_password(data["new_password"])
 
-    def test_current_password_must_match(self, client, data):
+    def test_current_password_must_match(self, client, data) -> None:
         user = UserFactory(password="not current password")  # NOSONAR
         client.force_authenticate(user)
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
         assert r.data["current_password"] == ["That is not your current password."]
 
-    def test_new_password_must_match_password_validations(self, client, data):
+    def test_new_password_must_match_password_validations(self, client, data) -> None:
         PasswordValidationFactory()
         user = UserFactory(password=data["current_password"])
         client.force_authenticate(user)
@@ -456,7 +462,7 @@ class TestUsersChangePassword(ApiMixin):
             "This password must contain at least 1 special characters."
         ]
 
-    def test_fails_nicely_on_invalid_json(self, user_client):
+    def test_fails_nicely_on_invalid_json(self, user_client) -> None:
         invalid_json_str = """{
     "current_password": "1234",
     "new_password": "1234
@@ -478,7 +484,7 @@ class TestUsersChangePassword(ApiMixin):
 class TestUserPermission(ApiMixin):
     view_name = "users-permissions-me"
 
-    def test_can_get_their_permission(self, user_client):
+    def test_can_get_their_permission(self, user_client) -> None:
         admin_content_type = ContentType.objects.filter(app_label="admin").first()
         perm = Permission.objects.create(
             codename="test_unique_perm", name="Test", content_type=admin_content_type
@@ -487,11 +493,11 @@ class TestUserPermission(ApiMixin):
         r = user_client.get(self.reverse())
         h.responseOk(r)
 
-    def test_guest_cannot_get_permission(self, client):
+    def test_guest_cannot_get_permission(self, client) -> None:
         r = client.get(self.reverse())
         h.responseUnauthorized(r)
 
-    def test_user_can_check_their_permission(self, user_client):
+    def test_user_can_check_their_permission(self, user_client) -> None:
         admin_content_type = ContentType.objects.filter(app_label="admin").first()
         perm = Permission.objects.create(
             codename="test_unique_perm", name="Test", content_type=admin_content_type
@@ -501,7 +507,7 @@ class TestUserPermission(ApiMixin):
         h.responseOk(r)
         assert r.data["permissions"]["admin.test_unique_perm"] is True
 
-    def test_user_get_false_without_permission(self, user_client):
+    def test_user_get_false_without_permission(self, user_client) -> None:
         r = user_client.get(self.reverse(), {"perm": "admin.test_unique_perm"})
         h.responseOk(r)
         assert r.data["permissions"]["admin.test_unique_perm"] is not True
@@ -510,7 +516,7 @@ class TestUserPermission(ApiMixin):
 class TestUserPermissionList(ApiMixin):
     view_name = "user-permissions-list"
 
-    def test_guest_cannot_get_user_permissions(self, client):
+    def test_guest_cannot_get_user_permissions(self, client) -> None:
         content_type = ContentType.objects.all().first()
         perm = Permission.objects.filter(content_type_id=content_type).first()
         user = UserFactory()
@@ -518,7 +524,7 @@ class TestUserPermissionList(ApiMixin):
         r = client.get(self.reverse(kwargs={"user_pk": user.pk}))
         h.responseUnauthorized(r)
 
-    def test_user_with_perm_can_get_user_permissions(self, user_client):
+    def test_user_with_perm_can_get_user_permissions(self, user_client) -> None:
         content_type = ContentType.objects.all().first()
         perm = Permission.objects.filter(content_type_id=content_type).first()
         user = UserFactory()

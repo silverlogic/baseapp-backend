@@ -33,11 +33,11 @@ class TestAPIKeyViewSet(APITestCase, URLPatternsTestCase):
         path("/", include(test_router.urls)),
     ]
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.user = get_user_factory()()
         self.client.force_authenticate(self.user)
 
-    def test_create_uses_default_expiry_and_returns_key(self):
+    def test_create_uses_default_expiry_and_returns_key(self) -> None:
         response = self.client.post(reverse("api-keys-default-list"), {})
 
         h.responseOk(response)
@@ -54,7 +54,7 @@ class TestAPIKeyViewSet(APITestCase, URLPatternsTestCase):
         expected_expiry = now + timezone.timedelta(seconds=3600)
         assert abs((api_key.expiry_date - expected_expiry).total_seconds()) < 5
 
-    def test_create_with_no_expiry_sets_null_expiry_date(self):
+    def test_create_with_no_expiry_sets_null_expiry_date(self) -> None:
         response = self.client.post(reverse("api-keys-no-expiry-list"), {})
 
         h.responseOk(response)

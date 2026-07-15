@@ -22,7 +22,7 @@ class BaseAPIKeyManager(models.Manager):
         api_key_prefix: str,
         QuerySetClass: typing.Type[models.QuerySet] = BaseAPIKeyQuerySet,
         **kwargs,
-    ):
+    ) -> None:
         self.api_key_prefix = api_key_prefix
         super().__init__(*args, **kwargs)
         self._queryset_class = QuerySetClass
@@ -93,7 +93,7 @@ class BaseAPIKeyManager(models.Manager):
         decrypted_data = aessiv.decrypt(binascii.a2b_hex(encrypted_value), associated_data)
         return decrypted_data.decode()
 
-    def rotate_encryption_key(self, encryption_key_old: str, encryption_key_new: str):
+    def rotate_encryption_key(self, encryption_key_old: str, encryption_key_new: str) -> None:
         """
         Rotates the encryption key used for API keys by decrypting with the old key and re-encrypting with the new key.
 

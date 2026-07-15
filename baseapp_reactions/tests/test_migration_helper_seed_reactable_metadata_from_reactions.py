@@ -1,4 +1,6 @@
+from collections.abc import Generator, Iterator
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import patch
 
 import factory
@@ -16,7 +18,7 @@ class _ReactionTypes:
     LIKE = SimpleNamespace(value=1, name="LIKE")
     DISLIKE = SimpleNamespace(value=-1, name="DISLIKE")
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[SimpleNamespace]:
         return iter([self.LIKE, self.DISLIKE])
 
 
@@ -24,7 +26,7 @@ REACTION_TYPES = _ReactionTypes()
 
 
 class _FakeFlatList(list):
-    def distinct(self):
+    def distinct(self) -> list[Any]:
         seen = []
         for row in self:
             if row not in seen:
@@ -36,10 +38,10 @@ class _GroupedQuerySet:
     """Mimics ``.values(*keys).annotate(n=Count("id"))`` — yields one row per
     distinct (target_document_id, reaction_type) tuple with an `n` count."""
 
-    def __init__(self, rows):
+    def __init__(self, rows) -> None:
         self._rows = list(rows)
 
-    def annotate(self, **kwargs):
+    def annotate(self, **kwargs) -> list[dict[str, Any]]:
         # The helper calls `.annotate(n=Count("id"))`; group rows by their
         # current dict shape and emit `{**group_key, "n": count}`.
         groups: dict[tuple, int] = {}
@@ -53,22 +55,22 @@ class _GroupedQuerySet:
 
 
 class _FakeQuerySet:
-    def __init__(self, rows):
+    def __init__(self, rows) -> None:
         self._rows = list(rows)
 
-    def exclude(self, **kwargs):
+    def exclude(self, **kwargs) -> "_FakeQuerySet":
         return self._apply(**kwargs, exclude=True)
 
-    def filter(self, **kwargs):
+    def filter(self, **kwargs) -> "_FakeQuerySet":
         return self._apply(**kwargs, exclude=False)
 
-    def _apply(self, exclude=False, **kwargs):
+    def _apply(self, exclude=False, **kwargs) -> "_FakeQuerySet":
         rows = self._rows
         for key, value in kwargs.items():
             if key.endswith("__isnull"):
                 field = key.replace("__isnull", "")
 
-                def _is_null(row, _f=field):
+                def _is_null(row, _f=field) -> bool:
                     if hasattr(row, _f):
                         return getattr(row, _f) is None
                     return getattr(row, f"{_f}_id", None) is None
@@ -84,40 +86,40 @@ class _FakeQuerySet:
                 rows = [r for r in rows if getattr(r, key) == value]
         return _FakeQuerySet(rows)
 
-    def values_list(self, *fields, flat=False):
+    def values_list(self, *fields, flat=False) -> _FakeFlatList | list[tuple[Any, ...]]:
         if flat:
             assert len(fields) == 1
             return _FakeFlatList([getattr(r, fields[0]) for r in self._rows])
         return [tuple(getattr(r, f) for f in fields) for r in self._rows]
 
-    def values(self, *fields):
+    def values(self, *fields) -> _GroupedQuerySet:
         return _GroupedQuerySet([{f: getattr(r, f) for f in fields} for r in self._rows])
 
-    def count(self):
+    def count(self) -> int:
         return len(self._rows)
 
 
 class _FakeManager:
-    def __init__(self, rows=None):
+    def __init__(self, rows=None) -> None:
         self._rows = list(rows or [])
         self.update_log = []
         self.delete_log = []
 
-    def filter(self, **kwargs):
+    def filter(self, **kwargs) -> _FakeQuerySet:
         manager = self
         matched = _FakeQuerySet(manager._rows).filter(**kwargs)._rows
 
         class _MatchedQS(_FakeQuerySet):
-            def delete(self):
+            def delete(self) -> None:
                 manager.delete_log.append(kwargs)
                 manager._rows = [r for r in manager._rows if r not in matched]
 
         return _MatchedQS(matched)
 
-    def exclude(self, **kwargs):
+    def exclude(self, **kwargs) -> _FakeQuerySet:
         return _FakeQuerySet(self._rows).exclude(**kwargs)
 
-    def update_or_create(self, defaults=None, **kwargs):
+    def update_or_create(self, defaults=None, **kwargs) -> tuple[SimpleNamespace, bool]:
         defaults = defaults or {}
         self.update_log.append({**kwargs, "defaults": defaults})
         return SimpleNamespace(**kwargs, **defaults), True
@@ -132,7 +134,7 @@ class _ReactionFactory(factory.Factory):
     reaction_type = 1  # LIKE
 
 
-def _make_apps(*, reactions, metadata_rows=None):
+def _make_apps(*, reactions, metadata_rows=None) -> tuple[Any, _FakeManager, _FakeManager]:
     reaction_manager = _FakeManager(reactions)
     metadata_manager = _FakeManager(metadata_rows or [])
 
@@ -140,7 +142,7 @@ def _make_apps(*, reactions, metadata_rows=None):
     metadata_model = SimpleNamespace(objects=metadata_manager)
 
     class FakeApps:
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             mapping = {
                 ("baseapp_reactions", "Reaction"): reaction_model,
                 ("baseapp_reactions", "ReactableMetadata"): metadata_model,
@@ -154,7 +156,7 @@ def _make_apps(*, reactions, metadata_rows=None):
 
 
 @pytest.fixture(autouse=True)
-def _stub_swapper_is_not_swapped():
+def _stub_swapper_is_not_swapped() -> Generator[None, None, None]:
     """Force the helper through `apps.get_model` instead of `swapper.load_model`."""
     with patch(
         "baseapp_reactions.migration_helpers.seed_reactable_metadata_from_reactions_helper.get_apps_model",
@@ -163,7 +165,7 @@ def _stub_swapper_is_not_swapped():
         yield
 
 
-def test_seed_reactable_metadata_creates_one_row_per_unique_target():
+def test_seed_reactable_metadata_creates_one_row_per_unique_target() -> None:
     reactions = [
         _ReactionFactory(pk=1, target_document_id=10, reaction_type=1),  # LIKE
         _ReactionFactory(pk=2, target_document_id=10, reaction_type=1),  # LIKE
@@ -185,7 +187,7 @@ def test_seed_reactable_metadata_creates_one_row_per_unique_target():
     assert second["defaults"]["reactions_count"] == {"total": 1, "LIKE": 1, "DISLIKE": 0}
 
 
-def test_seed_reactable_metadata_no_op_when_no_reactions():
+def test_seed_reactable_metadata_no_op_when_no_reactions() -> None:
     apps, _, metadata_manager = _make_apps(reactions=[])
 
     seed_reactable_metadata_from_reactions(apps, schema_editor=None)
@@ -193,7 +195,7 @@ def test_seed_reactable_metadata_no_op_when_no_reactions():
     assert metadata_manager.update_log == []
 
 
-def test_seed_reactable_metadata_skips_reactions_with_null_target():
+def test_seed_reactable_metadata_skips_reactions_with_null_target() -> None:
     reactions = [
         _ReactionFactory(pk=1, target_document_id=None, reaction_type=1),
         _ReactionFactory(pk=2, target_document_id=20, reaction_type=-1),
@@ -211,7 +213,7 @@ def test_seed_reactable_metadata_skips_reactions_with_null_target():
     }
 
 
-def test_reverse_seed_reactable_metadata_deletes_metadata_for_known_doc_ids():
+def test_reverse_seed_reactable_metadata_deletes_metadata_for_known_doc_ids() -> None:
     reactions = [_ReactionFactory(pk=1, target_document_id=100, reaction_type=1)]
     apps, _, metadata_manager = _make_apps(
         reactions=reactions,
@@ -227,7 +229,7 @@ def test_reverse_seed_reactable_metadata_deletes_metadata_for_known_doc_ids():
     assert metadata_manager.delete_log[0] == {"target_id__in": [100]}
 
 
-def test_reverse_seed_reactable_metadata_no_op_when_no_reactions():
+def test_reverse_seed_reactable_metadata_no_op_when_no_reactions() -> None:
     apps, _, metadata_manager = _make_apps(reactions=[])
 
     reverse_seed_reactable_metadata(apps, schema_editor=None)

@@ -6,6 +6,7 @@ mutate real model classes or trigger third-party side effects. Each
 test isolates registry state via `patch.dict`.
 """
 
+from collections.abc import Callable, Generator
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -25,7 +26,7 @@ from baseapp_core.pghelpers import (
 )
 
 
-def _make_model(*, abstract: bool = False, swapped: bool = False, triggers=None):
+def _make_model(*, abstract: bool = False, swapped: bool = False, triggers=None) -> MagicMock:
     """Build a model-shaped Mock with the `_meta` surface the helpers read."""
     meta = SimpleNamespace(abstract=abstract, swapped=swapped)
     if triggers is not None:
@@ -42,11 +43,11 @@ def _make_model(*, abstract: bool = False, swapped: bool = False, triggers=None)
 
 class TestPghistoryRegister:
     @pytest.fixture(autouse=True)
-    def _isolate(self):
+    def _isolate(self) -> Generator[None, None, None]:
         with patch.dict(_pghistory_registry, {}, clear=True):
             yield
 
-    def test_default_track_records_args_kwargs(self):
+    def test_default_track_records_args_kwargs(self) -> None:
         model = _make_model()
         pghistory_register_default_track(model, "evt1", "evt2", exclude=["modified"])
 
@@ -55,17 +56,17 @@ class TestPghistoryRegister:
         assert kwargs == {"exclude": ["modified"]}
         assert is_override is False
 
-    def test_default_track_returns_model(self):
+    def test_default_track_returns_model(self) -> None:
         model = _make_model()
         assert pghistory_register_default_track(model, "evt") is model
 
-    def test_default_track_raises_on_abstract_model(self):
+    def test_default_track_raises_on_abstract_model(self) -> None:
         abstract = _make_model(abstract=True)
         with pytest.raises(ValueError, match="abstract models"):
             pghistory_register_default_track(abstract, "evt")
         assert abstract not in _pghistory_registry
 
-    def test_decorator_track_marks_override_true(self):
+    def test_decorator_track_marks_override_true(self) -> None:
         model = _make_model()
         decorator = pghistory_register_track("evt", exclude=["created"])
         result = decorator(model)
@@ -76,13 +77,13 @@ class TestPghistoryRegister:
         assert kwargs == {"exclude": ["created"]}
         assert is_override is True
 
-    def test_decorator_track_raises_on_abstract_model(self):
+    def test_decorator_track_raises_on_abstract_model(self) -> None:
         abstract = _make_model(abstract=True)
         decorator = pghistory_register_track("evt")
         with pytest.raises(ValueError, match="abstract models"):
             decorator(abstract)
 
-    def test_decorator_overrides_existing_default(self):
+    def test_decorator_overrides_existing_default(self) -> None:
         model = _make_model()
         pghistory_register_default_track(model, "default_evt")
         pghistory_register_track("override_evt", exclude=["x"])(model)
@@ -92,7 +93,7 @@ class TestPghistoryRegister:
         assert kwargs == {"exclude": ["x"]}
         assert is_override is True
 
-    def test_default_does_not_overwrite_existing_decorator_override(self):
+    def test_default_does_not_overwrite_existing_decorator_override(self) -> None:
         """Decorator wins even when the default is registered *after* it —
         this is the load-order safety guarantee the comment in
         `pghelpers.py` promises."""
@@ -104,7 +105,7 @@ class TestPghistoryRegister:
         assert args == ("override_evt",)
         assert is_override is True
 
-    def test_second_default_overwrites_first_default(self):
+    def test_second_default_overwrites_first_default(self) -> None:
         """Two `pghistory_register_default_track` calls with no decorator
         in between — the second call wins (it's still a "default" entry)."""
         model = _make_model()
@@ -123,11 +124,11 @@ class TestPghistoryRegister:
 
 class TestApplyPghistoryTracks:
     @pytest.fixture(autouse=True)
-    def _isolate(self):
+    def _isolate(self) -> Generator[None, None, None]:
         with patch.dict(_pghistory_registry, {}, clear=True):
             yield
 
-    def test_invokes_pghistory_track_per_registered_model(self):
+    def test_invokes_pghistory_track_per_registered_model(self) -> None:
         model_a = _make_model()
         model_b = _make_model()
         pghistory_register_default_track(model_a, "ev_a", exclude=["x"])
@@ -146,7 +147,7 @@ class TestApplyPghistoryTracks:
         # Each `track(...)` returns a decorator that's applied to the model.
         assert mock_pghistory.track.return_value.call_count == 2
 
-    def test_skips_abstract_models(self):
+    def test_skips_abstract_models(self) -> None:
         """`apply_pghistory_tracks` defensively skips models that became
         abstract after registration (registration itself rejects them, but
         the apply loop also guards)."""
@@ -164,7 +165,7 @@ class TestApplyPghistoryTracks:
 
         mock_pghistory.track.assert_not_called()
 
-    def test_skips_models_with_existing_event_models(self):
+    def test_skips_models_with_existing_event_models(self) -> None:
         """Idempotent: if pghistory already created event models for this
         target (e.g. earlier `apply_pghistory_tracks` call, or an external
         `@pghistory.track` decorator), don't re-register."""
@@ -180,7 +181,7 @@ class TestApplyPghistoryTracks:
 
         mock_pghistory.track.assert_not_called()
 
-    def test_empty_registry_is_noop(self):
+    def test_empty_registry_is_noop(self) -> None:
         with (
             patch.object(pghelpers, "pghistory") as mock_pghistory,
             patch.object(pghelpers, "pgh_core"),
@@ -207,11 +208,11 @@ def _make_trigger(name: str) -> pgtrigger.Trigger:
 
 class TestPgtriggerRegister:
     @pytest.fixture(autouse=True)
-    def _isolate(self):
+    def _isolate(self) -> Generator[None, None, None]:
         with patch.dict(_pgtrigger_registry, {}, clear=True):
             yield
 
-    def test_default_track_records_triggers_marked_not_override(self):
+    def test_default_track_records_triggers_marked_not_override(self) -> None:
         model = _make_model()
         triggers = [_make_trigger("t1"), _make_trigger("t2")]
         pgtrigger_register_default_track(model, triggers)
@@ -220,7 +221,7 @@ class TestPgtriggerRegister:
         assert stored == triggers
         assert is_override is False
 
-    def test_default_track_coerces_iterable_to_list(self):
+    def test_default_track_coerces_iterable_to_list(self) -> None:
         """Passing a generator/tuple should still be stored as a list so
         callers reading the registry don't trip on exhausted iterators."""
         model = _make_model()
@@ -230,17 +231,17 @@ class TestPgtriggerRegister:
         stored, _ = _pgtrigger_registry[model]
         assert stored == [t1]
 
-    def test_default_track_returns_model(self):
+    def test_default_track_returns_model(self) -> None:
         model = _make_model()
         assert pgtrigger_register_default_track(model, []) is model
 
-    def test_default_track_raises_on_abstract_model(self):
+    def test_default_track_raises_on_abstract_model(self) -> None:
         abstract = _make_model(abstract=True)
         with pytest.raises(ValueError, match="abstract models"):
             pgtrigger_register_default_track(abstract, [_make_trigger("t1")])
         assert abstract not in _pgtrigger_registry
 
-    def test_decorator_track_marks_override_true(self):
+    def test_decorator_track_marks_override_true(self) -> None:
         model = _make_model()
         t1 = _make_trigger("t1")
         result = pgtrigger_register_track(t1)(model)
@@ -250,12 +251,12 @@ class TestPgtriggerRegister:
         assert stored == [t1]
         assert is_override is True
 
-    def test_decorator_track_raises_on_abstract_model(self):
+    def test_decorator_track_raises_on_abstract_model(self) -> None:
         abstract = _make_model(abstract=True)
         with pytest.raises(ValueError, match="abstract models"):
             pgtrigger_register_track(_make_trigger("t1"))(abstract)
 
-    def test_decorator_overrides_existing_default(self):
+    def test_decorator_overrides_existing_default(self) -> None:
         model = _make_model()
         default_t = _make_trigger("default_t")
         override_t = _make_trigger("override_t")
@@ -266,7 +267,7 @@ class TestPgtriggerRegister:
         assert stored == [override_t]
         assert is_override is True
 
-    def test_default_does_not_overwrite_existing_decorator_override(self):
+    def test_default_does_not_overwrite_existing_decorator_override(self) -> None:
         model = _make_model()
         override_t = _make_trigger("override_t")
         default_t = _make_trigger("default_t")
@@ -285,11 +286,11 @@ class TestPgtriggerRegister:
 
 class TestApplyPgtriggerTracks:
     @pytest.fixture(autouse=True)
-    def _isolate(self):
+    def _isolate(self) -> Generator[None, None, None]:
         with patch.dict(_pgtrigger_registry, {}, clear=True):
             yield
 
-    def test_registers_triggers_via_pgtrigger_api(self):
+    def test_registers_triggers_via_pgtrigger_api(self) -> None:
         """The helper must register through `pgtrigger.register` (not a raw
         `_meta.triggers.append`) so pgtrigger syncs `_meta.triggers`,
         `_meta.original_attrs["triggers"]` (read by the migration
@@ -305,7 +306,7 @@ class TestApplyPgtriggerTracks:
         mock_pgtrigger.register.assert_called_once_with(t1, t2)
         mock_pgtrigger.register.return_value.assert_called_once_with(model)
 
-    def test_handles_missing_triggers_attribute(self):
+    def test_handles_missing_triggers_attribute(self) -> None:
         """Some Django Meta objects don't have `triggers` until pgtrigger
         touches them — the helper must read it defensively and still
         register."""
@@ -319,7 +320,7 @@ class TestApplyPgtriggerTracks:
         mock_pgtrigger.register.assert_called_once_with(t1)
         mock_pgtrigger.register.return_value.assert_called_once_with(model)
 
-    def test_skips_triggers_with_duplicate_names(self):
+    def test_skips_triggers_with_duplicate_names(self) -> None:
         """Idempotency guarantee — a trigger whose name already lives on
         `_meta.triggers` (e.g. one attached by DocumentIdMixin's
         `class_prepared` handler) must not be re-registered."""
@@ -338,15 +339,15 @@ class TestApplyPgtriggerTracks:
         mock_pgtrigger.register.assert_called_once_with(new_trigger)
         mock_pgtrigger.register.return_value.assert_called_once_with(model)
 
-    def test_is_idempotent_across_multiple_calls(self):
+    def test_is_idempotent_across_multiple_calls(self) -> None:
         model = _make_model(triggers=[])
         t1 = _make_trigger("t1")
         pgtrigger_register_default_track(model, [t1])
 
-        def fake_register(*triggers):
+        def fake_register(*triggers) -> Callable:
             # Mimic pgtrigger.register's side effect of syncing into
             # `_meta.triggers`, so the helper's dedup guard sees it next call.
-            def decorator(m):
+            def decorator(m) -> MagicMock:
                 for trigger in triggers:
                     if trigger not in m._meta.triggers:
                         m._meta.triggers.append(trigger)
@@ -366,7 +367,7 @@ class TestApplyPgtriggerTracks:
         mock_register.assert_called_once_with(t1)
         assert [t.name for t in model._meta.triggers] == ["t1"]
 
-    def test_skips_abstract_models(self):
+    def test_skips_abstract_models(self) -> None:
         abstract_model = _make_model(triggers=[])
         pgtrigger_register_default_track(abstract_model, [_make_trigger("t1")])
         # Flip after registration to bypass the register-time guard.
@@ -376,7 +377,7 @@ class TestApplyPgtriggerTracks:
 
         assert abstract_model._meta.triggers == []
 
-    def test_skips_swapped_models(self):
+    def test_skips_swapped_models(self) -> None:
         """When the consuming project has swapped out a chat model, the
         abstract's default triggers should not bleed onto the swapped
         target (the project owns its own triggers)."""
@@ -387,6 +388,6 @@ class TestApplyPgtriggerTracks:
 
         assert swapped_model._meta.triggers == []
 
-    def test_empty_registry_is_noop(self):
+    def test_empty_registry_is_noop(self) -> None:
         # Smoke test — just confirms no exception is raised.
         apply_pgtrigger_tracks()

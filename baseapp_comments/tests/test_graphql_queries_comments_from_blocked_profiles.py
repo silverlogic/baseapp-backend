@@ -38,7 +38,9 @@ Comment = swapper.load_model("baseapp_comments", "Comment")
 app_label = Comment._meta.app_label
 
 
-def test_user_cant_see_comment_made_by_bloker_profile(django_user_client, graphql_user_client):
+def test_user_cant_see_comment_made_by_bloker_profile(
+    django_user_client, graphql_user_client
+) -> None:
     """
     Scenario:
         - Current User is blocked by another user.
@@ -68,7 +70,9 @@ def test_user_cant_see_comment_made_by_bloker_profile(django_user_client, graphq
     assert len(content["data"]["allComments"]["edges"]) == 0
 
 
-def test_user_cant_see_comment_made_by_bloked_profile(django_user_client, graphql_user_client):
+def test_user_cant_see_comment_made_by_bloked_profile(
+    django_user_client, graphql_user_client
+) -> None:
     """
     Scenario:
         - Current User has a profile blocked.

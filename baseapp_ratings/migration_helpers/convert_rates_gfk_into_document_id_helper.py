@@ -31,10 +31,15 @@ Notes
 - Pins reads/writes to `schema_editor.connection.alias`.
 """
 
+from typing import TYPE_CHECKING
+
 from baseapp_core.swapper import get_apps_model
 
+if TYPE_CHECKING:
+    from django.db.models import Manager, QuerySet
 
-def _alias_pinned_managers(schema_editor, *models):
+
+def _alias_pinned_managers(schema_editor, *models) -> "tuple[Manager | QuerySet, ...]":
     if schema_editor is not None and getattr(schema_editor, "connection", None) is not None:
         alias = schema_editor.connection.alias
         return tuple(model.objects.using(alias) for model in models)
@@ -53,7 +58,7 @@ def assert_all_rate_rows_have_target_document(apps, schema_editor=None) -> None:
         )
 
 
-def migrate_rate_targets_to_document_id(apps, schema_editor):
+def migrate_rate_targets_to_document_id(apps, schema_editor) -> None:
     Rate = get_apps_model(apps, "baseapp_ratings", "Rate")
     DocumentId = apps.get_model("baseapp_core", "DocumentId")
     rate_qs, doc_qs = _alias_pinned_managers(schema_editor, Rate, DocumentId)
@@ -90,7 +95,7 @@ def migrate_rate_targets_to_document_id(apps, schema_editor):
     assert_all_rate_rows_have_target_document(apps, schema_editor=schema_editor)
 
 
-def reverse_migrate_rate_targets_to_generic_fk(apps, schema_editor):
+def reverse_migrate_rate_targets_to_generic_fk(apps, schema_editor) -> None:
     Rate = get_apps_model(apps, "baseapp_ratings", "Rate")
     (rate_qs,) = _alias_pinned_managers(schema_editor, Rate)
 

@@ -64,7 +64,9 @@ class ChatRoomCreate(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, profile_id, participants, is_group, **input):
+    def mutate_and_get_payload(
+        cls, root, info, profile_id, participants, is_group, **input
+    ) -> "ChatRoomCreate":
         profile = get_obj_from_relay_id(info, profile_id)
 
         if not info.context.user.has_perm(f"{profile_app_label}.use_profile", profile):
@@ -224,7 +226,7 @@ class ChatRoomUpdate(RelayMutation):
         add_participants,
         remove_participants,
         **input,
-    ):
+    ) -> "ChatRoomUpdate":
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
         is_sole_admin = (
@@ -421,7 +423,7 @@ class ChatRoomToggleAdmin(RelayMutation):
         target_participant_id,
         profile_id,
         room_id,
-    ):
+    ) -> "ChatRoomToggleAdmin":
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 
@@ -522,7 +524,7 @@ class ChatRoomSendMessage(RelayMutation):
     @login_required
     def mutate_and_get_payload(
         cls, root, info, room_id, content, profile_id, in_reply_to_id=None, **input
-    ):
+    ) -> "ChatRoomSendMessage":
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 
@@ -615,7 +617,7 @@ class ChatRoomEditMessage(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ChatRoomEditMessage":
         mentioned_profile_ids = input.pop("mentioned_profile_ids", None)
         pk = get_pk_from_relay_id(input.get("id"))
         try:
@@ -700,7 +702,7 @@ class ChatRoomDeleteMessage(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ChatRoomDeleteMessage":
         pk = get_pk_from_relay_id(input.get("id"))
         try:
             message = Message.objects.get(pk=pk)
@@ -770,7 +772,9 @@ class ChatRoomReadMessages(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, room_id, profile_id, message_ids=None, **input):
+    def mutate_and_get_payload(
+        cls, root, info, room_id, profile_id, message_ids=None, **input
+    ) -> "ChatRoomReadMessages":
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 
@@ -801,13 +805,13 @@ class ChatRoomReadMessages(RelayMutation):
         return cls.read_messages(room, profile, message_ids)
 
     @classmethod
-    def remove_marked_unread(cls, room, profile):
+    def remove_marked_unread(cls, room, profile) -> None:
         UnreadMessageCount.objects.filter(profile=profile, room=room, marked_unread=True).update(
             marked_unread=False
         )
 
     @classmethod
-    def read_messages(cls, room, profile, message_ids=None):
+    def read_messages(cls, room, profile, message_ids=None) -> "ChatRoomReadMessages":
         messages_status_qs = MessageStatus.objects.filter(
             profile_id=profile.pk,
             is_read=False,
@@ -846,7 +850,7 @@ class ChatRoomUnread(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, room_id, profile_id, **input):
+    def mutate_and_get_payload(cls, root, info, room_id, profile_id, **input) -> "ChatRoomUnread":
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 
@@ -892,7 +896,9 @@ class ChatRoomArchive(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, room_id, profile_id, archive, **input):
+    def mutate_and_get_payload(
+        cls, root, info, room_id, profile_id, archive, **input
+    ) -> "ChatRoomArchive":
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 

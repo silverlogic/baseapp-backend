@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import graphene
 import graphene_django_optimizer as gql_optimizer
@@ -14,12 +14,15 @@ from baseapp_core.plugins import apply_if_installed, shared_services
 
 from ..permissions import can_anonymous_view_reactions
 
+if TYPE_CHECKING:
+    from django.db.models import Model, QuerySet
+
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
 
 ReactionTypesEnum = graphene.Enum.from_enum(Reaction.ReactionTypes)
 
 
-def create_object_type_from_enum(name, enum):
+def create_object_type_from_enum(name, enum) -> type[graphene.ObjectType]:
     fields = {}
     for reaction_type in enum:
         fields[reaction_type.name] = graphene.Int()
@@ -40,19 +43,19 @@ class ReactionsInterface(RelayNode):
         **apply_if_installed("baseapp_profiles", {"profile_id": graphene.ID(required=False)}),
     )
 
-    def resolve_reactions_count(self, info):
+    def resolve_reactions_count(self, info) -> dict[str, int]:
         if service := shared_services.get("reactable_metadata"):
             return service.get_reactions_count(self)
         from baseapp_reactions.models import default_reactions_count
 
         return default_reactions_count()
 
-    def resolve_is_reactions_enabled(self, info):
+    def resolve_is_reactions_enabled(self, info) -> bool:
         if service := shared_services.get("reactable_metadata"):
             return service.is_reactions_enabled(self)
         return True
 
-    def resolve_reactions(self, info, **kwargs):
+    def resolve_reactions(self, info, **kwargs) -> "QuerySet":
         service = shared_services.get("reactable_metadata")
         if service is not None and not service.is_reactions_enabled(self):
             return Reaction.objects.none()
@@ -66,7 +69,7 @@ class ReactionsInterface(RelayNode):
             target_document__object_id=self.pk,
         ).order_by("-created")
 
-    def resolve_my_reaction(root, info, profile_id=None, **kwargs):
+    def resolve_my_reaction(root, info, profile_id=None, **kwargs) -> "Model | None":
         if not info.context.user.is_authenticated:
             return None
 
@@ -77,7 +80,7 @@ class ReactionsInterface(RelayNode):
         return ReactionsInterface._resolve_my_reaction_with_current_user(root, info)
 
     @staticmethod
-    def _resolve_my_reaction_with_profiles(root, info, profile_id=None):
+    def _resolve_my_reaction_with_profiles(root, info, profile_id=None) -> "Model | None":
         Profile = swapper.load_model("baseapp_profiles", "Profile")
 
         if profile_id:
@@ -96,7 +99,7 @@ class ReactionsInterface(RelayNode):
         ).first()
 
     @staticmethod
-    def _resolve_my_reaction_with_current_user(root, info):
+    def _resolve_my_reaction_with_current_user(root, info) -> "Model | None":
         return Reaction.objects.filter(
             target_document__content_type=ContentType.objects.get_for_model(root),
             target_document__object_id=root.pk,

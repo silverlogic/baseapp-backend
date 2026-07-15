@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import Any
 
 from django.conf import settings
 from django.contrib.auth.models import Permission
@@ -23,7 +24,7 @@ class GroupedPermissionWidget(CheckboxSelectMultiple):
         js = ("baseapp_auth/js/grouped_permission_widget.js",)
         css = {"all": ("baseapp_auth/css/grouped_permission_widget.css",)}
 
-    def get_context(self, name, value, attrs):
+    def get_context(self, name, value, attrs) -> dict[str, Any]:
         context = super().get_context(name, value, attrs)
 
         value = set(str(v) for v in value or [])
@@ -63,7 +64,7 @@ class GroupedPermissionWidget(CheckboxSelectMultiple):
 
         return context
 
-    def _resolve_permission_instance(self, option_value):
+    def _resolve_permission_instance(self, option_value) -> Permission | None:
         """Resolve the Permission instance from the option value."""
         if option_value is None:
             return None
@@ -76,6 +77,6 @@ class GroupedPermissionWidget(CheckboxSelectMultiple):
         except Permission.DoesNotExist:
             return None
 
-    def _is_hidden(self, app_label, full_model, hide_apps, hide_models):
+    def _is_hidden(self, app_label, full_model, hide_apps, hide_models) -> bool:
         """Determine if a permission should be hidden based on app and model."""
         return app_label in hide_apps or full_model in hide_models

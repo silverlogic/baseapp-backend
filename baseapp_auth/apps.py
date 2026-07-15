@@ -10,7 +10,7 @@ class PackageConfig(AppConfig):
     verbose_name = "BaseApp Auth"
     default_auto_field = "django.db.models.BigAutoField"
 
-    def ready(self):
+    def ready(self) -> None:
         from django.conf import settings  # noqa
 
         # Set default settings

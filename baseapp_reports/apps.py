@@ -8,12 +8,12 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
     verbose_name = "BaseApp Reports"
     default_auto_field = "django.db.models.AutoField"
 
-    def register_shared_services(self, registry):
+    def register_shared_services(self, registry) -> None:
         from .services import ReportableMetadataService
 
         registry.register(ReportableMetadataService())
 
-    def register_graphql_shared_interfaces(self, registry):
+    def register_graphql_shared_interfaces(self, registry) -> None:
         from .graphql.interfaces import get_reports_interface
 
         registry.register("ReportsInterface", get_reports_interface)

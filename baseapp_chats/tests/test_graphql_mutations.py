@@ -225,7 +225,7 @@ TOGGLE_ADMIN_GRAPHQL = """
 """
 
 
-def test_user_can_read_all_messages(graphql_user_client, django_user_client):
+def test_user_can_read_all_messages(graphql_user_client, django_user_client) -> None:
     room = ChatRoomFactory(created_by=django_user_client.user)
 
     my_profile = django_user_client.user.profile
@@ -282,7 +282,7 @@ def test_user_can_read_all_messages(graphql_user_client, django_user_client):
     assert UnreadMessageCount.objects.filter(profile=my_profile, room=room).first().count == 0
 
 
-def test_user_can_read_one_message(graphql_user_client, django_user_client):
+def test_user_can_read_one_message(graphql_user_client, django_user_client) -> None:
     room = ChatRoomFactory(created_by=django_user_client.user)
 
     my_profile = django_user_client.user.profile
@@ -341,7 +341,7 @@ def test_user_can_read_one_message(graphql_user_client, django_user_client):
     assert UnreadMessageCount.objects.filter(profile=my_profile, room=room).first().count == 1
 
 
-def test_user_can_unread_chat(graphql_user_client, django_user_client):
+def test_user_can_unread_chat(graphql_user_client, django_user_client) -> None:
     room = ChatRoomFactory(created_by=django_user_client.user)
 
     my_profile = django_user_client.user.profile
@@ -389,7 +389,7 @@ def test_user_can_unread_chat(graphql_user_client, django_user_client):
 
 
 @pytest.mark.celery_app
-def test_user_can_send_message(django_user_client, graphql_user_client, celery_config):
+def test_user_can_send_message(django_user_client, graphql_user_client, celery_config) -> None:
     user = django_user_client.user
     room = ChatRoomFactory(created_by=user)
     friend = ProfileFactory()
@@ -419,7 +419,9 @@ def test_user_can_send_message(django_user_client, graphql_user_client, celery_c
 
 
 @pytest.mark.celery_app
-def test_user_can_send_message_in_reply_to(django_user_client, graphql_user_client, celery_config):
+def test_user_can_send_message_in_reply_to(
+    django_user_client, graphql_user_client, celery_config
+) -> None:
     user = django_user_client.user
     room = ChatRoomFactory(created_by=user)
     friend = ProfileFactory()
@@ -448,7 +450,7 @@ def test_user_can_send_message_in_reply_to(django_user_client, graphql_user_clie
     )
 
 
-def test_cant_send_message_non_participating_room(django_user_client, graphql_user_client):
+def test_cant_send_message_non_participating_room(django_user_client, graphql_user_client) -> None:
     user = UserFactory()
     room = ChatRoomFactory(created_by=user)
     ChatRoomParticipantFactory(profile=user.profile, room=room)
@@ -474,7 +476,7 @@ def test_cant_send_message_non_participating_room(django_user_client, graphql_us
     assert room.messages.count() == 0
 
 
-def test_user_can_edit_message(django_user_client, graphql_user_client):
+def test_user_can_edit_message(django_user_client, graphql_user_client) -> None:
     user = django_user_client.user
     room = ChatRoomFactory(created_by=user)
     friend = ProfileFactory()
@@ -499,7 +501,7 @@ def test_user_can_edit_message(django_user_client, graphql_user_client):
     assert content["data"]["chatRoomEditMessage"]["message"]["node"]["content"] == "edited"
 
 
-def test_user_cant_edit_to_empty_message(django_user_client, graphql_user_client):
+def test_user_cant_edit_to_empty_message(django_user_client, graphql_user_client) -> None:
     user = django_user_client.user
     room = ChatRoomFactory(created_by=user)
     friend = ProfileFactory()
@@ -527,7 +529,9 @@ def test_user_cant_edit_to_empty_message(django_user_client, graphql_user_client
     )
 
 
-def test_user_cant_edit_to_more_than_1000_caracters(django_user_client, graphql_user_client):
+def test_user_cant_edit_to_more_than_1000_caracters(
+    django_user_client, graphql_user_client
+) -> None:
     user = django_user_client.user
     room = ChatRoomFactory(created_by=user)
     friend = ProfileFactory()
@@ -555,7 +559,9 @@ def test_user_cant_edit_to_more_than_1000_caracters(django_user_client, graphql_
     )
 
 
-def test_user_cant_edit_a_message_that_does_not_exist(django_user_client, graphql_user_client):
+def test_user_cant_edit_a_message_that_does_not_exist(
+    django_user_client, graphql_user_client
+) -> None:
     user = django_user_client.user
     response = graphql_user_client(
         EDIT_MESSAGE_GRAPHQL,
@@ -577,7 +583,7 @@ def test_user_cant_edit_a_message_that_does_not_exist(django_user_client, graphq
 
 def test_current_profile_connot_edit_message_sent_by_another_profile(
     django_user_client, graphql_user_client
-):
+) -> None:
     user = django_user_client.user
     room = ChatRoomFactory(created_by=user)
     friend = ProfileFactory()
@@ -605,7 +611,7 @@ def test_current_profile_connot_edit_message_sent_by_another_profile(
     )
 
 
-def test_user_can_create_room(django_user_client, graphql_user_client):
+def test_user_can_create_room(django_user_client, graphql_user_client) -> None:
     band = ProfileFactory()
 
     response = graphql_user_client(
@@ -630,7 +636,7 @@ def test_user_can_create_room(django_user_client, graphql_user_client):
 @pytest.mark.celery_app
 def test_user_get_new_message_in_app_notification(
     django_user_client, graphql_user_client, celery_config
-):
+) -> None:
     room = ChatRoomFactory(created_by=django_user_client.user)
     ChatRoomParticipantFactory(profile=django_user_client.user.profile, room=room)
     friend = ChatRoomParticipantFactory(room=room)
@@ -650,7 +656,7 @@ def test_user_get_new_message_in_app_notification(
     assert notification.verb == "NEW_CHAT_MESSAGE"
 
 
-def test_user_cant_send_message_to_blocked_user(django_user_client, graphql_user_client):
+def test_user_cant_send_message_to_blocked_user(django_user_client, graphql_user_client) -> None:
     room = ChatRoomFactory(created_by=django_user_client.user)
     user = UserFactory()
 
@@ -678,7 +684,7 @@ def test_user_cant_send_message_to_blocked_user(django_user_client, graphql_user
     assert room.messages.count() == 0
 
 
-def test_blocked_user_cant_send_message_to_user(django_user_client, graphql_user_client):
+def test_blocked_user_cant_send_message_to_user(django_user_client, graphql_user_client) -> None:
     room = ChatRoomFactory(created_by=django_user_client.user)
     user = UserFactory()
 
@@ -706,7 +712,7 @@ def test_blocked_user_cant_send_message_to_user(django_user_client, graphql_user
     assert room.messages.count() == 0
 
 
-def test_user_cant_create_room_with_blocked_user(django_user_client, graphql_user_client):
+def test_user_cant_create_room_with_blocked_user(django_user_client, graphql_user_client) -> None:
     user = UserFactory()
 
     BlockFactory(actor=django_user_client.user.profile, target=user.profile)
@@ -731,7 +737,7 @@ def test_user_cant_create_room_with_blocked_user(django_user_client, graphql_use
     )
 
 
-def test_blocked_user_cant_create_room_with_user(django_user_client, graphql_user_client):
+def test_blocked_user_cant_create_room_with_user(django_user_client, graphql_user_client) -> None:
     friend = ProfileFactory()
 
     BlockFactory(actor=friend, target=django_user_client.user.profile)
@@ -758,7 +764,7 @@ def test_blocked_user_cant_create_room_with_user(django_user_client, graphql_use
 
 
 @pytest.mark.celery_app
-def test_user_can_archive_chatroom(django_user_client, graphql_user_client, celery_config):
+def test_user_can_archive_chatroom(django_user_client, graphql_user_client, celery_config) -> None:
     user = django_user_client.user
     room = ChatRoomFactory(created_by=user)
     friend = ProfileFactory()
@@ -813,7 +819,7 @@ def test_user_can_archive_chatroom(django_user_client, graphql_user_client, cele
     assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 0
 
 
-def test_user_can_create_group(django_user_client, graphql_user_client, image_djangofile):
+def test_user_can_create_group(django_user_client, graphql_user_client, image_djangofile) -> None:
     participant = ProfileFactory()
     participant_2 = ProfileFactory()
     response = graphql_user_client(
@@ -844,7 +850,7 @@ def test_user_can_create_group(django_user_client, graphql_user_client, image_dj
     )
 
 
-def test_user_cant_create_group_without_title(django_user_client, graphql_user_client):
+def test_user_cant_create_group_without_title(django_user_client, graphql_user_client) -> None:
     friend = ProfileFactory()
     friend_2 = ProfileFactory()
 
@@ -872,7 +878,7 @@ def test_user_cant_create_group_without_title(django_user_client, graphql_user_c
 
 def test_create_room_handles_corrupted_images(
     django_user_client, graphql_user_client, corrupted_image
-):
+) -> None:
     friend = ProfileFactory()
 
     response = graphql_user_client(
@@ -893,7 +899,9 @@ def test_create_room_handles_corrupted_images(
     assert "corrupted" in content["data"]["chatRoomCreate"]["errors"][0]["messages"][0]
 
 
-def test_create_room_creates_system_message(django_user_client, graphql_user_client, django_client):
+def test_create_room_creates_system_message(
+    django_user_client, graphql_user_client, django_client
+) -> None:
     friend = UserFactory()
 
     response = graphql_user_client(
@@ -945,7 +953,9 @@ def test_create_room_creates_system_message(django_user_client, graphql_user_cli
     )
 
 
-def test_member_user_cannot_update_group(django_user_client, graphql_user_client, django_client):
+def test_member_user_cannot_update_group(
+    django_user_client, graphql_user_client, django_client
+) -> None:
     friend = ProfileFactory()
     friend_2 = ProfileFactory()
 
@@ -985,7 +995,7 @@ def test_member_user_cannot_update_group(django_user_client, graphql_user_client
     )
 
 
-def test_admin_user_can_update_group_title(django_user_client, graphql_user_client):
+def test_admin_user_can_update_group_title(django_user_client, graphql_user_client) -> None:
     friend = ProfileFactory()
     friend_2 = ProfileFactory()
 
@@ -1021,7 +1031,7 @@ def test_admin_user_can_update_group_title(django_user_client, graphql_user_clie
     assert content["data"]["chatRoomUpdate"]["room"]["node"]["title"] == "new group"
 
 
-def test_user_cannot_update_room_title(django_user_client, graphql_user_client):
+def test_user_cannot_update_room_title(django_user_client, graphql_user_client) -> None:
     # user can't update the title of a room that is not a group
     friend = ProfileFactory()
 
@@ -1061,7 +1071,7 @@ def test_user_cannot_update_room_title(django_user_client, graphql_user_client):
 
 def test_admin_user_can_update_group_image(
     django_user_client, graphql_user_client, image_djangofile
-):
+) -> None:
     friend = ProfileFactory()
     friend_2 = ProfileFactory()
 
@@ -1103,7 +1113,7 @@ def test_admin_user_can_update_group_image(
 
 def test_admin_user_can_delete_group_image(
     django_user_client, graphql_user_client, image_djangofile
-):
+) -> None:
     # user can delete the image of a group if he is the creator/admin
     friend = ProfileFactory()
     friend_2 = ProfileFactory()
@@ -1145,7 +1155,7 @@ def test_admin_user_can_delete_group_image(
 
 def test_update_room_handles_corrupted_images(
     django_user_client, graphql_user_client, corrupted_image
-):
+) -> None:
     friend = ProfileFactory()
 
     response = graphql_user_client(
@@ -1181,7 +1191,7 @@ def test_update_room_handles_corrupted_images(
     assert "corrupted" in content["data"]["chatRoomUpdate"]["errors"][0]["messages"][0]
 
 
-def test_admin_user_can_remove_participants(django_user_client, graphql_user_client):
+def test_admin_user_can_remove_participants(django_user_client, graphql_user_client) -> None:
     friend_1 = ProfileFactory()
     friend_2 = ProfileFactory()
     friend_3 = ProfileFactory()
@@ -1238,7 +1248,7 @@ def test_admin_user_can_remove_participants(django_user_client, graphql_user_cli
     assert friend_4.relay_id in ids
 
 
-def test_member_user_can_leave_room(django_user_client, graphql_user_client, django_client):
+def test_member_user_can_leave_room(django_user_client, graphql_user_client, django_client) -> None:
     friend_1 = ProfileFactory()
     friend_2 = ProfileFactory()
     friend_3 = ProfileFactory()
@@ -1288,7 +1298,7 @@ def test_member_user_can_leave_room(django_user_client, graphql_user_client, dja
 
 def test_member_user_cannot_remove_other_members(
     django_user_client, graphql_user_client, django_client
-):
+) -> None:
     friend_1 = ProfileFactory()
     friend_2 = ProfileFactory()
     friend_3 = ProfileFactory()
@@ -1330,7 +1340,7 @@ def test_member_user_cannot_remove_other_members(
     )
 
 
-def test_user_can_delete_own_message(graphql_user_client, django_user_client):
+def test_user_can_delete_own_message(graphql_user_client, django_user_client) -> None:
     room = ChatRoomFactory(created_by=django_user_client.user)
 
     my_profile = django_user_client.user.profile
@@ -1362,7 +1372,7 @@ def test_user_can_delete_own_message(graphql_user_client, django_user_client):
     assert my_messages[1].deleted is False
 
 
-def test_user_cant_delete_other_users_message(graphql_user_client, django_user_client):
+def test_user_cant_delete_other_users_message(graphql_user_client, django_user_client) -> None:
     room = ChatRoomFactory(created_by=django_user_client.user)
 
     my_profile = django_user_client.user.profile
@@ -1389,7 +1399,7 @@ def test_user_cant_delete_other_users_message(graphql_user_client, django_user_c
     )
 
 
-def test_admin_user_can_add_members_to_group(django_user_client, graphql_user_client):
+def test_admin_user_can_add_members_to_group(django_user_client, graphql_user_client) -> None:
     friend_1 = ProfileFactory()
     friend_2 = ProfileFactory()
     friend_3 = ProfileFactory()
@@ -1435,7 +1445,7 @@ def test_admin_user_can_add_members_to_group(django_user_client, graphql_user_cl
 
 def test_admin_user_cant_add_repeated_or_existing_participants(
     django_user_client, graphql_user_client
-):
+) -> None:
     # already existing participants and repeated participants should be ignored
     friend_1 = ProfileFactory()
     friend_2 = ProfileFactory()
@@ -1490,7 +1500,7 @@ def test_admin_user_cant_add_repeated_or_existing_participants(
     assert ids.count(friend_3.relay_id) == 1
 
 
-def test_admin_user_cant_add_invalid_participants(django_user_client, graphql_user_client):
+def test_admin_user_cant_add_invalid_participants(django_user_client, graphql_user_client) -> None:
     friend_1 = ProfileFactory()
     friend_2 = ProfileFactory()
 
@@ -1528,7 +1538,9 @@ def test_admin_user_cant_add_invalid_participants(django_user_client, graphql_us
     )
 
 
-def test_member_user_cant_add_participants(django_user_client, graphql_user_client, django_client):
+def test_member_user_cant_add_participants(
+    django_user_client, graphql_user_client, django_client
+) -> None:
     friend_1 = ProfileFactory()
     friend_2 = ProfileFactory()
 
@@ -1574,7 +1586,7 @@ def test_member_user_cant_add_participants(django_user_client, graphql_user_clie
 )
 def test_chat_room_toggle_admin_success(
     role_before, role_after, django_user_client, graphql_user_client
-):
+) -> None:
     friend = ProfileFactory()
 
     room = ChatRoomFactory(created_by=django_user_client.user, is_group=True)
@@ -1597,7 +1609,7 @@ def test_chat_room_toggle_admin_success(
     assert content["data"]["chatRoomToggleAdmin"]["participant"]["node"]["role"] == role_after
 
 
-def test_chat_room_toggle_admin_no_permission(django_user_client, graphql_user_client):
+def test_chat_room_toggle_admin_no_permission(django_user_client, graphql_user_client) -> None:
     room = ChatRoomFactory(created_by=django_user_client.user, is_group=True)
     ChatRoomParticipantFactory(
         profile=django_user_client.user.profile, room=room, role=ChatRoomParticipantRoles.MEMBER
@@ -1622,7 +1634,7 @@ def test_chat_room_toggle_admin_no_permission(django_user_client, graphql_user_c
     )
 
 
-def test_chat_room_toggle_admin_invalid_target(django_user_client, graphql_user_client):
+def test_chat_room_toggle_admin_invalid_target(django_user_client, graphql_user_client) -> None:
     room = ChatRoomFactory(created_by=django_user_client.user, is_group=True)
     ChatRoomParticipantFactory(
         profile=django_user_client.user.profile, room=room, role=ChatRoomParticipantRoles.ADMIN
@@ -1653,7 +1665,9 @@ def test_chat_room_toggle_admin_invalid_target(django_user_client, graphql_user_
     )
 
 
-def test_chat_room_toggle_admin_cannot_remove_last_admin(django_user_client, graphql_user_client):
+def test_chat_room_toggle_admin_cannot_remove_last_admin(
+    django_user_client, graphql_user_client
+) -> None:
     room = ChatRoomFactory(created_by=django_user_client.user, is_group=True)
     admin_participant = ChatRoomParticipantFactory(
         profile=django_user_client.user.profile, room=room, role=ChatRoomParticipantRoles.ADMIN
@@ -1676,7 +1690,7 @@ def test_chat_room_toggle_admin_cannot_remove_last_admin(django_user_client, gra
     )
 
 
-def _system_message_contents(room_data):
+def _system_message_contents(room_data) -> list[str]:
     return [
         edge["node"]["content"]
         for edge in room_data["allMessages"]["edges"]
@@ -1684,7 +1698,7 @@ def _system_message_contents(room_data):
     ]
 
 
-def test_update_group_title_creates_system_message(django_user_client, graphql_user_client):
+def test_update_group_title_creates_system_message(django_user_client, graphql_user_client) -> None:
     friend = ProfileFactory()
 
     response = graphql_user_client(
@@ -1719,7 +1733,7 @@ def test_update_group_title_creates_system_message(django_user_client, graphql_u
     assert 'You changed the group name to "new group"' in _system_message_contents(room_data)
 
 
-def test_add_participant_creates_system_message(django_user_client, graphql_user_client):
+def test_add_participant_creates_system_message(django_user_client, graphql_user_client) -> None:
     friend = ProfileFactory()
     new_member = ProfileFactory()
 
@@ -1755,7 +1769,7 @@ def test_add_participant_creates_system_message(django_user_client, graphql_user
     assert f"You added {new_member.name}" in _system_message_contents(room_data)
 
 
-def test_remove_participant_creates_system_message(django_user_client, graphql_user_client):
+def test_remove_participant_creates_system_message(django_user_client, graphql_user_client) -> None:
     friend = ProfileFactory()
     member_to_remove = ProfileFactory()
 
@@ -1791,7 +1805,9 @@ def test_remove_participant_creates_system_message(django_user_client, graphql_u
     assert f"You removed {member_to_remove.name}" in _system_message_contents(room_data)
 
 
-def test_leave_group_creates_system_message(django_user_client, graphql_user_client, django_client):
+def test_leave_group_creates_system_message(
+    django_user_client, graphql_user_client, django_client
+) -> None:
     leaver = ProfileFactory()
     other = ProfileFactory()
 
@@ -1834,7 +1850,7 @@ def test_leave_group_creates_system_message(django_user_client, graphql_user_cli
 
 def test_change_group_image_creates_system_message(
     django_user_client, graphql_user_client, image_djangofile
-):
+) -> None:
     friend = ProfileFactory()
 
     response = graphql_user_client(
@@ -1870,7 +1886,7 @@ def test_change_group_image_creates_system_message(
     assert "You changed the group image" in _system_message_contents(room_data)
 
 
-def test_toggle_admin_creates_system_message(django_user_client, graphql_user_client):
+def test_toggle_admin_creates_system_message(django_user_client, graphql_user_client) -> None:
     friend = ProfileFactory()
 
     response = graphql_user_client(
@@ -1908,7 +1924,7 @@ def test_toggle_admin_creates_system_message(django_user_client, graphql_user_cl
 
 
 @override_settings(BASEAPP_CHATS_ENABLE_SYSTEM_MESSAGES=False)
-def test_system_messages_disabled(django_user_client, graphql_user_client):
+def test_system_messages_disabled(django_user_client, graphql_user_client) -> None:
     friend = ProfileFactory()
 
     response = graphql_user_client(

@@ -10,7 +10,7 @@ from baseapp_core.constants import DEFAULT_ACTIONS
 class Command(BaseCommand):
     help = "List routes with extra information"
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser) -> None:
         parser.add_argument(
             "-npc",
             "--no-permission-classes",
@@ -39,7 +39,7 @@ class Command(BaseCommand):
 
         return actions, has_empty_permission_classes
 
-    def handle(self, *args, **kwargs):
+    def handle(self, *args, **kwargs) -> None:
         registry = v1_router.registry
         write_always = not kwargs["no_permission_classes"]
         paths = []

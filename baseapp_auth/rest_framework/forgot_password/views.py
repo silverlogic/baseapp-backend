@@ -5,7 +5,7 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.utils.translation import gettext_lazy as _
 from rest_framework import mixins, response, status, viewsets
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from baseapp_auth.emails import send_password_reset_email
 
@@ -17,10 +17,10 @@ from .serializers import ForgotPasswordSerializer, ResetPasswordSerializer
 class ForgotPasswordBaseViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):
     serializer_class = ForgotPasswordSerializer
 
-    def get_urlsafe_user_token(self, user):
+    def get_urlsafe_user_token(self, user) -> None:
         pass
 
-    def create(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs) -> response.Response:
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         associated_user = getattr(serializer, "user", None)
@@ -41,14 +41,14 @@ class ForgotPasswordBaseViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin
 
 
 class ForgotPasswordViewSet(ForgotPasswordBaseViewSet):
-    def get_urlsafe_user_token(self, user):
+    def get_urlsafe_user_token(self, user) -> str:
         user_id = user.pk
         user_token = default_token_generator.make_token(user)
         return urlsafe_base64_encode(force_bytes(signing.dumps([user_id, user_token])))
 
 
 class ForgotPasswordJwtViewSet(ForgotPasswordBaseViewSet):
-    def get_urlsafe_user_token(self, user):
+    def get_urlsafe_user_token(self, user) -> AccessToken:
         refresh = RefreshToken.for_user(user)
         return refresh.access_token
 
@@ -56,7 +56,7 @@ class ForgotPasswordJwtViewSet(ForgotPasswordBaseViewSet):
 class ResetPasswordViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):
     serializer_class = ResetPasswordSerializer
 
-    def create(self, request, *arg, **kwargs):
+    def create(self, request, *arg, **kwargs) -> response.Response:
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()

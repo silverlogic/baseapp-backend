@@ -1,5 +1,10 @@
+from typing import TYPE_CHECKING
+
 from rest_framework import status, viewsets
 from rest_framework.response import Response
+
+if TYPE_CHECKING:
+    from django.contrib.auth.models import AbstractBaseUser
 
 from baseapp_auth.emails import send_welcome_email
 
@@ -11,7 +16,7 @@ class RegisterViewSet(viewsets.GenericViewSet):
     serializer_class = RegisterSerializer
     permission_classes = ()
 
-    def create(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs) -> Response:
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = self.perform_create(serializer)
@@ -20,7 +25,7 @@ class RegisterViewSet(viewsets.GenericViewSet):
             status=status.HTTP_201_CREATED,
         )
 
-    def perform_create(self, serializer):
+    def perform_create(self, serializer) -> "AbstractBaseUser":
         user = serializer.save()
         send_welcome_email(user)
         return user

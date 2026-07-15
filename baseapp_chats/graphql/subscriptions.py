@@ -25,7 +25,7 @@ class ChatRoomOnRoomUpdate(channels_graphql_ws.Subscription):
         profile_id = graphene.ID(required=True)
 
     @staticmethod
-    async def subscribe(root, info, profile_id):
+    async def subscribe(root, info, profile_id) -> list[str]:
         user = info.context.channels_scope["user"]
         profile = await database_sync_to_async(get_obj_from_relay_id)(info, profile_id)
         if not user.is_authenticated or not profile:
@@ -38,7 +38,7 @@ class ChatRoomOnRoomUpdate(channels_graphql_ws.Subscription):
         return [str(profile.pk)]
 
     @staticmethod
-    def publish(payload, info, profile_id):
+    def publish(payload, info, profile_id) -> "ChatRoomOnRoomUpdate":
         return ChatRoomOnRoomUpdate(
             room=ChatRoomObjectType._meta.connection.Edge(node=payload["room"]),
             removed_participants=payload["removed_participants"],
@@ -46,11 +46,11 @@ class ChatRoomOnRoomUpdate(channels_graphql_ws.Subscription):
         )
 
     @classmethod
-    def new_message(cls, message):
+    def new_message(cls, message) -> None:
         cls.room_updated(message.room)
 
     @classmethod
-    def room_updated(cls, room, removed_participants=[], added_participants=[]):
+    def room_updated(cls, room, removed_participants=[], added_participants=[]) -> None:
         participant_ids = list(room.participants.values_list("profile_id", flat=True))
         removed_ids = [participant.profile.id for participant in removed_participants]
         for id in participant_ids + removed_ids:
@@ -71,7 +71,7 @@ class ChatRoomOnMessagesCountUpdate(channels_graphql_ws.Subscription):
         profile_id = graphene.ID(required=True)
 
     @staticmethod
-    async def subscribe(root, info, profile_id):
+    async def subscribe(root, info, profile_id) -> list[str]:
         user = info.context.channels_scope["user"]
         profile = await database_sync_to_async(get_obj_from_relay_id)(info, profile_id)
 
@@ -86,13 +86,13 @@ class ChatRoomOnMessagesCountUpdate(channels_graphql_ws.Subscription):
         return [profile_id]
 
     @staticmethod
-    def publish(payload, info, profile_id):
+    def publish(payload, info, profile_id) -> "ChatRoomOnMessagesCountUpdate":
         profile = payload["profile"]
 
         return ChatRoomOnMessagesCountUpdate(profile=profile)
 
     @classmethod
-    def send_updated_chat_count(cls, profile, profile_id):
+    def send_updated_chat_count(cls, profile, profile_id) -> None:
         cls.broadcast(
             group=profile_id,
             payload={"profile": profile},
@@ -107,7 +107,7 @@ class ChatRoomOnMessage(channels_graphql_ws.Subscription):
         profile_id = graphene.ID(required=True)
 
     @staticmethod
-    async def subscribe(root, info, room_id, profile_id):
+    async def subscribe(root, info, room_id, profile_id) -> list[str]:
         room = await database_sync_to_async(get_obj_from_relay_id)(info, room_id)
         user = info.context.channels_scope["user"]
         profile = await database_sync_to_async(get_obj_from_relay_id)(info, profile_id)
@@ -135,7 +135,7 @@ class ChatRoomOnMessage(channels_graphql_ws.Subscription):
         return [room_id]
 
     @staticmethod
-    def publish(payload, info, room_id, profile_id):
+    def publish(payload, info, room_id, profile_id) -> "ChatRoomOnMessage | None":
         message = payload["message"]
         user = info.context.channels_scope["user"]
 
@@ -147,7 +147,7 @@ class ChatRoomOnMessage(channels_graphql_ws.Subscription):
         return ChatRoomOnMessage(message=MessageObjectType._meta.connection.Edge(node=message))
 
     @classmethod
-    def new_message(cls, message, room_id):
+    def new_message(cls, message, room_id) -> None:
         cls.broadcast(
             group=room_id,
             payload={"message": message},
@@ -155,7 +155,7 @@ class ChatRoomOnMessage(channels_graphql_ws.Subscription):
         ChatRoomOnRoomUpdate.new_message(message=message)
 
     @classmethod
-    def edit_message(cls, message, room_id):
+    def edit_message(cls, message, room_id) -> None:
         cls.broadcast(
             group=room_id,
             payload={"message": message},

@@ -41,10 +41,15 @@ Notes
   the same database.
 """
 
+from typing import TYPE_CHECKING
+
 from baseapp_core.swapper import get_apps_model
 
+if TYPE_CHECKING:
+    from django.db.models import Manager, QuerySet
 
-def _alias_pinned_managers(schema_editor, *models):
+
+def _alias_pinned_managers(schema_editor, *models) -> "tuple[Manager | QuerySet, ...]":
     if schema_editor is not None and getattr(schema_editor, "connection", None) is not None:
         alias = schema_editor.connection.alias
         return tuple(model.objects.using(alias) for model in models)
@@ -70,7 +75,7 @@ def assert_all_report_rows_have_target_document(apps, schema_editor=None) -> Non
         )
 
 
-def migrate_report_targets_to_document_id(apps, schema_editor):
+def migrate_report_targets_to_document_id(apps, schema_editor) -> None:
     Report = get_apps_model(apps, "baseapp_reports", "Report")
     DocumentId = apps.get_model("baseapp_core", "DocumentId")
     report_qs, doc_qs = _alias_pinned_managers(schema_editor, Report, DocumentId)
@@ -108,7 +113,7 @@ def migrate_report_targets_to_document_id(apps, schema_editor):
     assert_all_report_rows_have_target_document(apps, schema_editor=schema_editor)
 
 
-def reverse_migrate_report_targets_to_generic_fk(apps, schema_editor):
+def reverse_migrate_report_targets_to_generic_fk(apps, schema_editor) -> None:
     Report = get_apps_model(apps, "baseapp_reports", "Report")
     (report_qs,) = _alias_pinned_managers(schema_editor, Report)
 

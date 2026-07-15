@@ -1,7 +1,12 @@
+from typing import TYPE_CHECKING
+
 import factory
 import swapper
 
 from baseapp_core.models import DocumentId
+
+if TYPE_CHECKING:
+    from django.db import models
 
 
 class FollowFactory(factory.django.DjangoModelFactory):
@@ -11,7 +16,7 @@ class FollowFactory(factory.django.DjangoModelFactory):
     target_is_following_back = False
 
     @classmethod
-    def _create(cls, model_class, *args, **kwargs):
+    def _create(cls, model_class, *args, **kwargs) -> "models.Model":
         actor_object = kwargs.pop("actor_object", None)
         target_object = kwargs.pop("target_object", None)
 

@@ -15,7 +15,7 @@ Subscription = swapper.load_model("baseapp_payments", "Subscription")
 
 
 class StripeWebhookHandler:
-    def __init__(self):
+    def __init__(self) -> None:
         self.EVENT_HANDLERS = {
             "customer.created": self.customer_created,
             "customer.deleted": self.customer_deleted,
@@ -24,7 +24,7 @@ class StripeWebhookHandler:
         }
 
     @staticmethod
-    def customer_created(event):
+    def customer_created(event) -> JsonResponse:
         customer_entity_model = config.STRIPE_CUSTOMER_ENTITY_MODEL
         customer_data = event["data"]["object"]
         try:
@@ -47,7 +47,7 @@ class StripeWebhookHandler:
             return JsonResponse({"error": "Error"}, status=500)
 
     @staticmethod
-    def customer_deleted(event):
+    def customer_deleted(event) -> JsonResponse:
         customer_data = event["data"]["object"]
         try:
             Customer.objects.filter(remote_customer_id=customer_data["id"]).delete()
@@ -57,7 +57,7 @@ class StripeWebhookHandler:
             return JsonResponse({"error": "Error"}, status=500)
 
     @staticmethod
-    def subscription_created(event):
+    def subscription_created(event) -> JsonResponse:
         subscription_data = event["data"]["object"]
         try:
             existing_subscription = Subscription.objects.filter(
@@ -75,7 +75,7 @@ class StripeWebhookHandler:
             return JsonResponse({"error": "Error"}, status=500)
 
     @staticmethod
-    def subscription_deleted(event):
+    def subscription_deleted(event) -> JsonResponse:
         subscription_data = event["data"]["object"]
         try:
             Subscription.objects.filter(remote_subscription_id=subscription_data["id"]).delete()
@@ -84,7 +84,7 @@ class StripeWebhookHandler:
             logger.exception(e)
             return JsonResponse({"error": "Error"}, status=500)
 
-    def webhook_handler(self, request, secret):
+    def webhook_handler(self, request, secret) -> JsonResponse:
         payload = request.body
         sig_header = request.META["HTTP_STRIPE_SIGNATURE"]
         endpoint_secret = secret
@@ -165,18 +165,18 @@ class StripeService:
         self,
         api_key=settings.STRIPE_SECRET_KEY,
         api_version=getattr(settings, "STRIPE_API_VERSION", "2025-02-24.acacia"),
-    ):
+    ) -> None:
         stripe.api_key = api_key
         stripe.api_version = api_version
 
-    def create_customer(self, **kwargs):
+    def create_customer(self, **kwargs) -> "stripe.Customer":
         try:
             return stripe.Customer.create(**kwargs)
         except Exception as e:
             logger.exception(e)
             raise CustomerCreationError("Error creating customer in Stripe")
 
-    def retrieve_customer(self, customer_id=None, email=None):
+    def retrieve_customer(self, customer_id=None, email=None) -> "stripe.Customer | None":
         try:
             if not customer_id and email:
                 results = stripe.Customer.search(query=f"email:'{email}'")
@@ -192,14 +192,14 @@ class StripeService:
             logger.exception(e)
             raise CustomerNotFound("Error retrieving customer in Stripe")
 
-    def update_customer(self, customer_id, **kwargs):
+    def update_customer(self, customer_id, **kwargs) -> "stripe.Customer":
         try:
             return stripe.Customer.modify(customer_id, **kwargs)
         except Exception as e:
             logger.exception(e)
             raise CustomerUpdateError("Error updating customer in Stripe")
 
-    def delete_customer(self, customer_id):
+    def delete_customer(self, customer_id) -> "stripe.Customer | None":
         try:
             response = stripe.Customer.delete(customer_id)
             return response
@@ -210,7 +210,7 @@ class StripeService:
             logger.exception(e)
             raise Exception("Error deleting customer in Stripe")
 
-    def create_subscription(self, customer_id, price_id):
+    def create_subscription(self, customer_id, price_id) -> "stripe.Subscription":
         try:
             subscription = stripe.Subscription.create(
                 customer=customer_id,
@@ -223,7 +223,7 @@ class StripeService:
 
     def create_incomplete_subscription(
         self, customer_id, price_id, payment_method_id=None, product_id=None
-    ):
+    ) -> "stripe.Subscription":
         try:
             subscription = stripe.Subscription.create(
                 customer=customer_id,
@@ -245,7 +245,7 @@ class StripeService:
             logger.exception(e)
             raise SubscriptionCreationError("Error creating subscription intent in Stripe")
 
-    def retrieve_subscription(self, subscription_id):
+    def retrieve_subscription(self, subscription_id) -> "stripe.Subscription | None":
         try:
             subscription = stripe.Subscription.retrieve(subscription_id)
         except Exception as e:
@@ -274,7 +274,7 @@ class StripeService:
             logger.exception(e)
             raise SubscriptionNotFound("Error retrieving subscriptions for customer in Stripe")
 
-    def delete_subscription(self, subscription_id):
+    def delete_subscription(self, subscription_id) -> "stripe.Subscription | None":
         try:
             response = stripe.Subscription.cancel(subscription_id)
             return response
@@ -284,7 +284,7 @@ class StripeService:
             logger.exception(e)
             raise Exception("Error deleting subscription in Stripe")
 
-    def list_products(self, **kwargs):
+    def list_products(self, **kwargs) -> "stripe.ListObject[stripe.Product]":
         try:
             products = stripe.Product.list(**kwargs)
             return products
@@ -292,7 +292,7 @@ class StripeService:
             logger.exception(e)
             raise Exception("Error retrieving products in Stripe")
 
-    def retrieve_product(self, product_id):
+    def retrieve_product(self, product_id) -> "stripe.Product | None":
         try:
             product = stripe.Product.retrieve(product_id, expand=["default_price"])
             return product
@@ -303,7 +303,7 @@ class StripeService:
             logger.exception(f"Stripe API error: {str(e)}")
             return None
 
-    def retrieve_payment_method(self, payment_method_id):
+    def retrieve_payment_method(self, payment_method_id) -> "stripe.PaymentMethod":
         try:
             payment_method = stripe.PaymentMethod.retrieve(payment_method_id)
             return payment_method
@@ -311,7 +311,7 @@ class StripeService:
             logger.exception(e)
             raise PaymentMethodNotFound("Error retrieving payment method in Stripe")
 
-    def list_payment_methods(self, customer_id, type="card"):
+    def list_payment_methods(self, customer_id, type="card") -> "list[stripe.PaymentMethod]":
         try:
             payment_methods = stripe.PaymentMethod.list(
                 customer=customer_id,
@@ -322,7 +322,7 @@ class StripeService:
             logger.exception(e)
             raise CustomerNotFound("Customer not found in Stripe")
 
-    def get_customer_payment_methods(self, remote_customer_id):
+    def get_customer_payment_methods(self, remote_customer_id) -> "list[stripe.PaymentMethod]":
         customer = self.retrieve_customer(remote_customer_id)
         if not customer:
             raise CustomerNotFound("Customer not found in Stripe")
@@ -342,7 +342,7 @@ class StripeService:
             logger.exception(e)
             raise PaymentIntendNotFound("Failed to retrieve payment methods")
 
-    def update_payment_method(self, payment_method_id, **kwargs):
+    def update_payment_method(self, payment_method_id, **kwargs) -> "stripe.PaymentMethod":
         try:
             return stripe.PaymentMethod.modify(
                 payment_method_id,
@@ -352,7 +352,9 @@ class StripeService:
             logger.exception(e)
             raise PaymentMethodUpdateError("Error updating payment method in Stripe")
 
-    def delete_payment_method(self, payment_method_id, customer_id, is_default=False):
+    def delete_payment_method(
+        self, payment_method_id, customer_id, is_default=False
+    ) -> "stripe.PaymentMethod":
         try:
             if is_default:
                 stripe.Customer.modify(
@@ -364,7 +366,7 @@ class StripeService:
             logger.exception(e)
             raise PaymentMethodDeletionError("Error deleting payment method in Stripe")
 
-    def get_upcoming_invoice(self, customer_id):
+    def get_upcoming_invoice(self, customer_id) -> "stripe.Invoice":
         try:
             invoice = stripe.Invoice.upcoming(customer=customer_id)
             return invoice
@@ -372,7 +374,7 @@ class StripeService:
             logger.exception(e)
             raise InvoiceNotFound("Error retrieving upcoming invoice in Stripe")
 
-    def get_payment_intent(self, payment_intent_id):
+    def get_payment_intent(self, payment_intent_id) -> "stripe.PaymentIntent | None":
         try:
             payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
             return payment_intent
@@ -385,7 +387,7 @@ class StripeService:
             logger.exception(e)
             raise PaymentIntendNotFound("Error retrieving PaymentIntent in Stripe")
 
-    def create_setup_intent(self, customer_id):
+    def create_setup_intent(self, customer_id) -> "stripe.SetupIntent":
         try:
             setup_intent = stripe.SetupIntent.create(
                 customer=customer_id,
@@ -396,7 +398,7 @@ class StripeService:
             logger.exception(e)
             raise SetupIntentCreationError("Error creating SetupIntent in Stripe")
 
-    def retrieve_price(self, price_id):
+    def retrieve_price(self, price_id) -> "stripe.Price | None":
         try:
             price = stripe.Price.retrieve(price_id, expand=["product"])
             return price
@@ -413,7 +415,7 @@ class StripeService:
             logger.exception(f"Unexpected error retrieving price {price_id}: {str(e)}")
             raise PriceRetrievalError(f"Error retrieving price from Stripe: {str(e)}")
 
-    def checkCustomerIdForUser(self, remote_customer_id, user):
+    def checkCustomerIdForUser(self, remote_customer_id, user) -> bool:
         try:
             customer = self.retrieve_customer(remote_customer_id)
             if not customer:
@@ -433,7 +435,7 @@ class StripeService:
             logger.exception(f"Error checking customer ID for user: {e}")
             raise CustomerOwnershipError("Error verifying customer ownership.")
 
-    def update_subscription(self, subscription_id, **kwargs):
+    def update_subscription(self, subscription_id, **kwargs) -> "stripe.Subscription":
         try:
             subscription = stripe.Subscription.modify(subscription_id, **kwargs)
             return subscription
