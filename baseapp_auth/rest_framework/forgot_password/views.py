@@ -17,8 +17,8 @@ from .serializers import ForgotPasswordSerializer, ResetPasswordSerializer
 class ForgotPasswordBaseViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):
     serializer_class = ForgotPasswordSerializer
 
-    def get_urlsafe_user_token(self, user) -> None:
-        pass
+    def get_urlsafe_user_token(self, user) -> str | AccessToken:
+        raise NotImplementedError
 
     def create(self, request, *args, **kwargs) -> response.Response:
         serializer = self.get_serializer(data=request.data)
