@@ -191,6 +191,10 @@ class BaseChatRoomObjectType:
     other_participant = graphene.Field(get_object_type_for_model(ChatRoomParticipant))
     is_sole_admin = graphene.Boolean()
     participant_ids = graphene.List(graphene.ID)
+    is_participant = graphene.Boolean(
+        profile_id=graphene.ID(required=True),
+        description="Whether the given profile is a participant of this room.",
+    )
 
     @classmethod
     def get_node(cls, info, id):
@@ -344,6 +348,23 @@ class BaseChatRoomObjectType:
         )
         return [get_obj_relay_id(profile) for profile in profiles]
 
+    def resolve_is_participant(
+        self, info: graphene.ResolveInfo, profile_id: str, **kwargs: Any
+    ) -> bool | None:
+        # The relay id decode can hit the database (public-id strategy) and the
+        # argument is the same for every row of a listing, so memoize the decoded
+        # pk on the request.
+        cache = getattr(info.context, "_chats_relay_pk_cache", None)
+        if cache is None:
+            cache = {}
+            info.context._chats_relay_pk_cache = cache
+        if profile_id not in cache:
+            cache[profile_id] = get_pk_from_relay_id(profile_id)
+        profile_pk = cache[profile_id]
+        if not profile_pk:
+            return None
+        return self.participants.filter(profile_id=profile_pk).exists()
+
     class Meta:
         interfaces = (RelayNode,)
         model = ChatRoom
@@ -359,6 +380,7 @@ class BaseChatRoomObjectType:
             "other_participant",
             "is_sole_admin",
             "participant_ids",
+            "is_participant",
         )
         filterset_class = ChatRoomFilter
 

@@ -1,7 +1,10 @@
+from unittest import mock
+
 import pytest
 import swapper
 from django.test.client import MULTIPART_CONTENT
 from django.test.utils import override_settings
+from django.utils import timezone
 
 from baseapp_blocks.tests.factories import BlockFactory
 from baseapp_core.graphql.testing.fixtures import graphql_query
@@ -1933,3 +1936,405 @@ def test_system_messages_disabled(django_user_client, graphql_user_client):
     )
     room_data = response.json()["data"]["chatRoom"]
     assert _system_message_contents(room_data) == []
+
+
+ADD_PARTICIPANT_TO_ROOMS_GRAPHQL = """
+    mutation ChatRoomsAddParticipantMutation(
+        $input: ChatRoomsAddParticipantInput!
+        $participantProfileId: ID!
+    ) {
+        chatRoomsAddParticipant(input: $input) {
+            rooms {
+                id
+                participantsCount
+                isParticipant(profileId: $participantProfileId)
+            }
+            addedParticipants {
+                id
+                profile {
+                    id
+                }
+            }
+            errors {
+                field
+                messages
+            }
+        }
+    }
+"""
+
+
+def _make_group(profile, role=ChatRoomParticipantRoles.ADMIN, members=()):
+    """Create a group room with profile in the given role plus extra member profiles."""
+    room = ChatRoomFactory(is_group=True, title="group")
+    ChatRoomParticipantFactory(room=room, profile=profile, role=role, accepted_at=timezone.now())
+    for member in members:
+        ChatRoomParticipantFactory(
+            room=room,
+            profile=member,
+            role=ChatRoomParticipantRoles.MEMBER,
+            accepted_at=timezone.now(),
+        )
+    room.participants_count = 1 + len(members)
+    room.save(update_fields=["participants_count"])
+    return room
+
+
+def test_admin_can_add_participant_to_multiple_rooms(django_user_client, graphql_user_client):
+    contact = ProfileFactory(name="Contact Person")
+    my_profile = django_user_client.user.profile
+    room_1 = _make_group(my_profile, members=[ProfileFactory()])
+    room_2 = _make_group(my_profile, members=[ProfileFactory()])
+
+    response = graphql_user_client(
+        ADD_PARTICIPANT_TO_ROOMS_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": my_profile.relay_id,
+                "participantProfileId": contact.relay_id,
+                "roomIds": [room_1.relay_id, room_2.relay_id],
+            },
+            "participantProfileId": contact.relay_id,
+        },
+    )
+    content = response.json()
+    data = content["data"]["chatRoomsAddParticipant"]
+
+    assert data["errors"] is None
+    assert len(data["rooms"]) == 2
+    assert all(room["participantsCount"] == 3 for room in data["rooms"])
+    assert all(room["isParticipant"] is True for room in data["rooms"])
+    assert len(data["addedParticipants"]) == 2
+    assert all(
+        participant["profile"]["id"] == contact.relay_id
+        for participant in data["addedParticipants"]
+    )
+    assert ChatRoomParticipant.objects.filter(profile=contact, room=room_1).exists()
+    assert ChatRoomParticipant.objects.filter(profile=contact, room=room_2).exists()
+    room_1.refresh_from_db()
+    room_2.refresh_from_db()
+    assert room_1.participants_count == 3
+    assert room_2.participants_count == 3
+
+
+def test_add_participant_skips_rooms_where_already_member(django_user_client, graphql_user_client):
+    contact = ProfileFactory(name="Contact Person")
+    my_profile = django_user_client.user.profile
+    room_new = _make_group(my_profile, members=[ProfileFactory()])
+    room_existing = _make_group(my_profile, members=[contact])
+
+    response = graphql_user_client(
+        ADD_PARTICIPANT_TO_ROOMS_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": my_profile.relay_id,
+                "participantProfileId": contact.relay_id,
+                "roomIds": [room_new.relay_id, room_existing.relay_id],
+            },
+            "participantProfileId": contact.relay_id,
+        },
+    )
+    content = response.json()
+    data = content["data"]["chatRoomsAddParticipant"]
+
+    assert data["errors"] is None
+    assert len(data["rooms"]) == 2
+    assert len(data["addedParticipants"]) == 1
+    assert ChatRoomParticipant.objects.filter(profile=contact, room=room_existing).count() == 1
+    room_existing.refresh_from_db()
+    assert room_existing.participants_count == 2
+
+
+def test_add_participant_all_or_nothing_when_not_admin_in_one_room(
+    django_user_client, graphql_user_client
+):
+    contact = ProfileFactory(name="Contact Person")
+    my_profile = django_user_client.user.profile
+    room_admin = _make_group(my_profile, members=[ProfileFactory()])
+    room_member = _make_group(
+        ProfileFactory(), members=[my_profile]
+    )  # someone else is admin, I'm member
+
+    response = graphql_user_client(
+        ADD_PARTICIPANT_TO_ROOMS_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": my_profile.relay_id,
+                "participantProfileId": contact.relay_id,
+                "roomIds": [room_admin.relay_id, room_member.relay_id],
+            },
+            "participantProfileId": contact.relay_id,
+        },
+    )
+    content = response.json()
+    data = content["data"]["chatRoomsAddParticipant"]
+
+    assert data["errors"][0]["field"] == "room_ids"
+    assert not ChatRoomParticipant.objects.filter(profile=contact).exists()
+
+
+def test_cannot_add_participant_to_non_group_room(django_user_client, graphql_user_client):
+    contact = ProfileFactory(name="Contact Person")
+    my_profile = django_user_client.user.profile
+    friend = ProfileFactory()
+    room = ChatRoomFactory(is_group=False, participants_count=2)
+    ChatRoomParticipantFactory(room=room, profile=my_profile, role=ChatRoomParticipantRoles.ADMIN)
+    ChatRoomParticipantFactory(room=room, profile=friend, role=ChatRoomParticipantRoles.MEMBER)
+
+    response = graphql_user_client(
+        ADD_PARTICIPANT_TO_ROOMS_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": my_profile.relay_id,
+                "participantProfileId": contact.relay_id,
+                "roomIds": [room.relay_id],
+            },
+            "participantProfileId": contact.relay_id,
+        },
+    )
+    content = response.json()
+    data = content["data"]["chatRoomsAddParticipant"]
+
+    assert data["errors"][0]["field"] == "room_ids"
+    assert not ChatRoomParticipant.objects.filter(profile=contact).exists()
+
+
+def test_cannot_add_blocked_participant(django_user_client, graphql_user_client):
+    contact = ProfileFactory(name="Contact Person")
+    my_profile = django_user_client.user.profile
+    room = _make_group(my_profile, members=[ProfileFactory()])
+    BlockFactory(actor=my_profile, target=contact)
+
+    response = graphql_user_client(
+        ADD_PARTICIPANT_TO_ROOMS_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": my_profile.relay_id,
+                "participantProfileId": contact.relay_id,
+                "roomIds": [room.relay_id],
+            },
+            "participantProfileId": contact.relay_id,
+        },
+    )
+    content = response.json()
+    data = content["data"]["chatRoomsAddParticipant"]
+
+    assert data["errors"][0]["field"] == "participant_profile_id"
+    assert not ChatRoomParticipant.objects.filter(profile=contact).exists()
+
+
+def test_cannot_add_participant_acting_as_unowned_profile(django_user_client, graphql_user_client):
+    contact = ProfileFactory(name="Contact Person")
+    other_profile = ProfileFactory()
+    room = _make_group(other_profile, members=[ProfileFactory()])
+
+    response = graphql_user_client(
+        ADD_PARTICIPANT_TO_ROOMS_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": other_profile.relay_id,
+                "participantProfileId": contact.relay_id,
+                "roomIds": [room.relay_id],
+            },
+            "participantProfileId": contact.relay_id,
+        },
+    )
+    content = response.json()
+    data = content["data"]["chatRoomsAddParticipant"]
+
+    assert data["errors"][0]["field"] == "profile_id"
+    assert not ChatRoomParticipant.objects.filter(profile=contact).exists()
+
+
+def test_add_participant_invalid_ids_return_errors(django_user_client, graphql_user_client):
+    contact = ProfileFactory(name="Contact Person")
+    my_profile = django_user_client.user.profile
+    room = _make_group(my_profile, members=[ProfileFactory()])
+
+    # invalid room id
+    response = graphql_user_client(
+        ADD_PARTICIPANT_TO_ROOMS_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": my_profile.relay_id,
+                "participantProfileId": contact.relay_id,
+                "roomIds": ["invalid-id"],
+            },
+            "participantProfileId": contact.relay_id,
+        },
+    )
+    data = response.json()["data"]["chatRoomsAddParticipant"]
+    assert data["errors"][0]["field"] == "room_ids"
+
+    # participant id pointing to a non-profile node (a room id)
+    response = graphql_user_client(
+        ADD_PARTICIPANT_TO_ROOMS_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": my_profile.relay_id,
+                "participantProfileId": room.relay_id,
+                "roomIds": [room.relay_id],
+            },
+            "participantProfileId": contact.relay_id,
+        },
+    )
+    data = response.json()["data"]["chatRoomsAddParticipant"]
+    assert data["errors"][0]["field"] == "participant_profile_id"
+
+    # empty room list
+    response = graphql_user_client(
+        ADD_PARTICIPANT_TO_ROOMS_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": my_profile.relay_id,
+                "participantProfileId": contact.relay_id,
+                "roomIds": [],
+            },
+            "participantProfileId": contact.relay_id,
+        },
+    )
+    data = response.json()["data"]["chatRoomsAddParticipant"]
+    assert data["errors"][0]["field"] == "room_ids"
+
+    # direct (non-group) room among the targets: all-or-nothing rejection
+    direct_room = ChatRoomFactory(created_by=django_user_client.user, is_group=False)
+    response = graphql_user_client(
+        ADD_PARTICIPANT_TO_ROOMS_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": my_profile.relay_id,
+                "participantProfileId": contact.relay_id,
+                "roomIds": [room.relay_id, direct_room.relay_id],
+            },
+            "participantProfileId": contact.relay_id,
+        },
+    )
+    data = response.json()["data"]["chatRoomsAddParticipant"]
+    assert data["errors"][0]["field"] == "room_ids"
+    assert data["errors"][0]["messages"] == ["Some rooms are not valid"]
+
+    assert not ChatRoomParticipant.objects.filter(profile=contact).exists()
+
+
+def test_add_participant_emits_system_message_only_for_newly_added_rooms(
+    django_user_client, graphql_user_client
+):
+    contact = ProfileFactory(name="Contact Person")
+    my_profile = django_user_client.user.profile
+    room_new = _make_group(my_profile, members=[ProfileFactory()])
+    room_existing = _make_group(my_profile, members=[contact])
+
+    graphql_user_client(
+        ADD_PARTICIPANT_TO_ROOMS_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": my_profile.relay_id,
+                "participantProfileId": contact.relay_id,
+                "roomIds": [room_new.relay_id, room_existing.relay_id],
+            },
+            "participantProfileId": contact.relay_id,
+        },
+    )
+
+    added_message = f"You added {contact.name}"
+
+    response = graphql_user_client(
+        ROOM_GRAPHQL,
+        variables={"profileId": my_profile.relay_id, "roomId": room_new.relay_id},
+    )
+    assert added_message in _system_message_contents(response.json()["data"]["chatRoom"])
+
+    response = graphql_user_client(
+        ROOM_GRAPHQL,
+        variables={"profileId": my_profile.relay_id, "roomId": room_existing.relay_id},
+    )
+    assert added_message not in _system_message_contents(response.json()["data"]["chatRoom"])
+
+
+def test_add_participant_broadcasts_room_updated(django_user_client, graphql_user_client):
+    contact = ProfileFactory(name="Contact Person")
+    my_profile = django_user_client.user.profile
+    room_new = _make_group(my_profile, members=[ProfileFactory()])
+    room_existing = _make_group(my_profile, members=[contact])
+
+    with mock.patch(
+        "baseapp_chats.graphql.mutations.ChatRoomOnRoomUpdate.room_updated"
+    ) as room_updated_mock:
+        graphql_user_client(
+            ADD_PARTICIPANT_TO_ROOMS_GRAPHQL,
+            variables={
+                "input": {
+                    "profileId": my_profile.relay_id,
+                    "participantProfileId": contact.relay_id,
+                    "roomIds": [room_new.relay_id, room_existing.relay_id],
+                },
+                "participantProfileId": contact.relay_id,
+            },
+        )
+
+    # Broadcasts fire only for the room that actually gained the participant.
+    # (The system message emitted for that room triggers a second room_updated
+    # via ChatRoomOnRoomUpdate.new_message — also scoped to the same room.)
+    assert room_updated_mock.call_count >= 1
+    assert all(call.args[0].pk == room_new.pk for call in room_updated_mock.call_args_list)
+    added_calls = [
+        call for call in room_updated_mock.call_args_list if call.kwargs.get("added_participants")
+    ]
+    assert len(added_calls) == 1
+    added = added_calls[0].kwargs["added_participants"]
+    assert len(added) == 1
+    assert added[0].profile_id == contact.pk
+
+
+def test_add_participant_notification_failure_does_not_fail_mutation(
+    django_user_client, graphql_user_client
+):
+    contact = ProfileFactory(name="Contact Person")
+    my_profile = django_user_client.user.profile
+    room_a = _make_group(my_profile, members=[ProfileFactory()])
+    room_b = _make_group(my_profile, members=[ProfileFactory()])
+
+    with mock.patch(
+        "baseapp_chats.graphql.mutations.ChatRoomOnRoomUpdate.room_updated",
+        side_effect=Exception("broadcast down"),
+    ):
+        response = graphql_user_client(
+            ADD_PARTICIPANT_TO_ROOMS_GRAPHQL,
+            variables={
+                "input": {
+                    "profileId": my_profile.relay_id,
+                    "participantProfileId": contact.relay_id,
+                    "roomIds": [room_a.relay_id, room_b.relay_id],
+                },
+                "participantProfileId": contact.relay_id,
+            },
+        )
+
+    # Memberships are committed before notifications run: a broadcast failure
+    # must not surface as a mutation error nor roll anything back
+    content = response.json()
+    assert not content["data"]["chatRoomsAddParticipant"]["errors"]
+    assert len(content["data"]["chatRoomsAddParticipant"]["addedParticipants"]) == 2
+    for room in (room_a, room_b):
+        assert ChatRoomParticipant.objects.filter(room=room, profile=contact).exists()
+
+
+def test_add_participant_requires_authentication(django_client):
+    contact = ProfileFactory(name="Contact Person")
+    room = ChatRoomFactory(is_group=True)
+
+    response = graphql_query(
+        ADD_PARTICIPANT_TO_ROOMS_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": contact.relay_id,
+                "participantProfileId": contact.relay_id,
+                "roomIds": [room.relay_id],
+            },
+            "participantProfileId": contact.relay_id,
+        },
+        client=django_client,
+    )
+    content = response.json()
+    assert content["errors"]
+    assert not ChatRoomParticipant.objects.filter(profile=contact).exists()
