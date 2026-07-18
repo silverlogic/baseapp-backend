@@ -1,13 +1,8 @@
-from typing import TYPE_CHECKING
-
 import django_filters
 import swapper
 from django.db.models import Q, QuerySet
 
 from baseapp_core.graphql import get_pk_from_relay_id
-
-if TYPE_CHECKING:
-    from django.db.models import QuerySet
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
