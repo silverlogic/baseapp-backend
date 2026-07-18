@@ -1,10 +1,13 @@
 import django_filters
 import swapper
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.geos import Point, Polygon
 from django.contrib.gis.measure import D
 from django.core.exceptions import ValidationError
 from django.db.models import Q, QuerySet
 from django.utils.translation import gettext_lazy as _
+
+from baseapp_core.hashids.utils import is_uuid4
 
 MAX_NEAR_RADIUS_METERS = 100_000
 
@@ -34,6 +37,37 @@ def _validate_lat(value: float, field: str) -> None:
         raise ValidationError({field: [_("Latitude must be between -90 and 90.")]})
 
 
+def _resolve_target(value: str, field: str) -> tuple[ContentType, int]:
+    """Resolve a relay global ID into `(content_type, object_id)` without a graphene context.
+
+    Public IDs (UUID4) resolve through `DocumentId`; legacy base64 IDs are decoded with
+    `graphql_relay.from_global_id` and mapped to a model via the graphene-django registry.
+    Both graphene-adjacent imports are lazy so the FilterSet stays DRF-reusable.
+    """
+    if is_uuid4(value):
+        from baseapp_core.models import DocumentId
+
+        resolved = DocumentId.get_content_type_and_id_by_public_id(value)
+        if resolved is None:
+            raise ValidationError({field: [_("Target object does not exist.")]})
+        return resolved
+
+    try:
+        from graphql_relay import from_global_id
+
+        type_name, raw_pk = from_global_id(value)
+        object_id = int(raw_pk)
+    except Exception as exc:
+        raise ValidationError({field: [_("Invalid relay global ID.")]}) from exc
+
+    from graphene_django.registry import get_global_registry
+
+    for model, object_type in get_global_registry()._registry.items():
+        if object_type._meta.name == type_name:
+            return ContentType.objects.get_for_model(model), object_id
+    raise ValidationError({field: [_("Invalid relay global ID.")]})
+
+
 class GeoJSONFeatureFilter(django_filters.FilterSet):
     bbox = django_filters.CharFilter(
         method="filter_bbox",
@@ -46,10 +80,19 @@ class GeoJSONFeatureFilter(django_filters.FilterSet):
             "when their nearest edge is within the radius, not their centroid."
         ),
     )
+    feature_type = django_filters.CharFilter(
+        field_name="feature_type",
+        lookup_expr="exact",
+        help_text=_("Exact match on the feature's type label."),
+    )
+    target_object_id = django_filters.CharFilter(
+        method="filter_target",
+        help_text=_("Relay global ID of the object the features are attached to."),
+    )
 
     class Meta:
         model = swapper.load_model("baseapp_geo", "GeoJSONFeature")
-        fields = ["bbox", "near"]
+        fields = ["bbox", "near", "feature_type", "target_object_id"]
 
     def filter_bbox(self, queryset: QuerySet, name: str, value: str) -> QuerySet:
         west, south, east, north = _parse_floats(value, 4, name)
@@ -87,3 +130,11 @@ class GeoJSONFeatureFilter(django_filters.FilterSet):
                 }
             )
         return queryset.filter(geometry__dwithin=(Point(lng, lat, srid=4326), D(m=radius)))
+
+    def filter_target(self, queryset: QuerySet, name: str, value: str) -> QuerySet:
+        """Filter features attached to the object identified by relay global ID `value`."""
+        content_type, object_id = _resolve_target(value, name)
+        return queryset.filter(
+            target_document__content_type=content_type,
+            target_document__object_id=object_id,
+        )
