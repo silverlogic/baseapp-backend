@@ -21,5 +21,5 @@ class Geometry(BaseGeometry):
         if isinstance(node, ast.StringValueNode):
             return cls.parse_value(node.value)
         if isinstance(node, ast.ObjectValueNode):
-            return cls.parse_value(value_from_ast_untyped(node))
+            return cls.parse_value(value_from_ast_untyped(node, _variables))
         return None

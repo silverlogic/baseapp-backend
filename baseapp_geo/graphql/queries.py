@@ -10,7 +10,10 @@ GeoJSONFeature = swapper.load_model("baseapp_geo", "GeoJSONFeature")
 
 
 class GeoQueries:
-    geo_feature = Node.Field(get_object_type_for_model(GeoJSONFeature))
+    geo_feature = Node.Field(
+        get_object_type_for_model(GeoJSONFeature),
+        description=_("Fetch a single GeoJSON feature by Relay ID."),
+    )
     geo_features = DjangoFilterConnectionField(
         get_object_type_for_model(GeoJSONFeature),
         filterset_class=GeoJSONFeatureFilter,
