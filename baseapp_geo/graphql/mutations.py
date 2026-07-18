@@ -32,17 +32,35 @@ class GeoJSONFeatureForm(forms.ModelForm):
 class GeoJSONFeatureCreate(RelayMutation):
     """Create a GeoJSON feature attached to a target object."""
 
-    geo_feature = graphene.Field(ObjectType._meta.connection.Edge)
+    geo_feature = graphene.Field(
+        ObjectType._meta.connection.Edge,
+        description=_("Edge wrapping the newly created GeoJSON feature."),
+    )
 
     class Input:
-        target_object_id = graphene.ID(required=True)
-        geometry = Geometry(required=True)
-        name = graphene.String(required=False)
-        description = graphene.String(required=False)
-        feature_type = graphene.String(required=False)
+        target_object_id = graphene.ID(
+            required=True,
+            description=_("Relay global ID of the object the feature is attached to."),
+        )
+        geometry = Geometry(
+            required=True,
+            description=_("Feature geometry as GeoJSON or WKT; must be a Point or a Polygon."),
+        )
+        name = graphene.String(
+            required=False, description=_("Optional human-readable name for the feature.")
+        )
+        description = graphene.String(
+            required=False, description=_("Optional free-text description of the feature.")
+        )
+        feature_type = graphene.String(
+            required=False, description=_("Optional type label used to categorize the feature.")
+        )
 
     @classmethod
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(
+        cls, root, info: graphene.ResolveInfo, **input
+    ) -> "GeoJSONFeatureCreate":
+        """Permission-check, validate via GeoJSONFeatureForm, and create the feature."""
         if not info.context.user.has_perm(f"{app_label}.add_geojsonfeature"):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),

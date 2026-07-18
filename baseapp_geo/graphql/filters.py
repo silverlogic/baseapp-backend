@@ -62,6 +62,7 @@ def _resolve_target(value: str, field: str) -> tuple[ContentType, int]:
 
     from graphene_django.registry import get_global_registry
 
+    # Depends on graphene-django's private `_registry` dict (no public type-name lookup API).
     for model, object_type in get_global_registry()._registry.items():
         if object_type._meta.name == type_name:
             return ContentType.objects.get_for_model(model), object_id
