@@ -12,6 +12,7 @@ from baseapp_wagtail.settings import (
 
 # Application definition
 INSTALLED_APPS += [
+    "django.contrib.gis",
     "channels",
     "graphene_django",
     "django_quill",
@@ -33,6 +34,7 @@ INSTALLED_APPS += [
     "baseapp.activity_log",
     "baseapp_notifications",
     "baseapp_ratings",
+    "baseapp_geo",
     "baseapp_payments",
     "baseapp_message_templates",
     "baseapp_url_shortening",
@@ -58,6 +60,7 @@ INSTALLED_APPS += [
     "testproject.base",
     "testproject.e2e",
     "testproject.ratings",
+    "testproject.geo",
     "testproject.reports",
     "testproject.pages",
     "testproject.organizations",
@@ -134,6 +137,7 @@ AUTHENTICATION_BACKENDS = [
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_reactions"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_reports"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_ratings"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_geo"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_follows"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_blocks"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_chats"),
@@ -219,6 +223,9 @@ BASEAPP_BLOCKS_BLOCKABLEMETADATA_MODEL = "blocks.BlockableMetadata"
 # Ratings
 BASEAPP_RATINGS_RATE_MODEL = "ratings.Rate"
 BASEAPP_RATINGS_RATABLEMETADATA_MODEL = "ratings.RatableMetadata"
+
+# Geo
+BASEAPP_GEO_GEOJSONFEATURE_MODEL = "geo.GeoJSONFeature"
 
 # Reports
 BASEAPP_REPORTS_REPORT_MODEL = "reports.Report"
