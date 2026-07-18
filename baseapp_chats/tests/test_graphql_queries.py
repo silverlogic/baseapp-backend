@@ -104,9 +104,7 @@ ROOM_TITLE_AND_IMAGE_GRAPHQL = """
         query GetRoom($roomId: ID!) {
             chatRoom(id: $roomId) {
                 id
-                image(width: 100, height: 100) {
-                    url
-                }
+                image(width: 100, height: 100)
             }
         }
     """
@@ -915,8 +913,8 @@ def test_resolve_image_for_1on1_chat_returns_other_participant_image(
 
     content = response.json()
     assert content["data"]["chatRoom"]["image"] is not None
-    assert content["data"]["chatRoom"]["image"]["url"] is not None
-    assert "100x100" in content["data"]["chatRoom"]["image"]["url"]
+    assert content["data"]["chatRoom"]["image"] is not None
+    assert "100x100" in content["data"]["chatRoom"]["image"]
 
 
 def test_resolve_image_for_group_chat_returns_group_image(django_client, image_djangofile):
@@ -939,8 +937,8 @@ def test_resolve_image_for_group_chat_returns_group_image(django_client, image_d
 
     content = response.json()
     assert content["data"]["chatRoom"]["image"] is not None
-    assert content["data"]["chatRoom"]["image"]["url"] is not None
-    assert "100x100" in content["data"]["chatRoom"]["image"]["url"]
+    assert content["data"]["chatRoom"]["image"] is not None
+    assert "100x100" in content["data"]["chatRoom"]["image"]
 
 
 def test_resolve_image_returns_none_when_other_participant_has_no_image(django_client):

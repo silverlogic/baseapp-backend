@@ -12,9 +12,7 @@ GET_PROFILE_BY_PATH = """
             name
             metadata {
                 metaTitle
-                metaOgImage(width: 100, height: 100) {
-                    url
-                }
+                metaOgImage(width: 100, height: 100)
             }
         }
     }

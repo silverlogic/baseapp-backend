@@ -10,9 +10,7 @@ ME_WITH_PROFILE_COUPLED_FIELDS_GRAPHQL = """
     query {
         me {
             fullName
-            avatar(width: 32, height: 32) {
-                url
-            }
+            avatar(width: 32, height: 32)
         }
     }
 """
