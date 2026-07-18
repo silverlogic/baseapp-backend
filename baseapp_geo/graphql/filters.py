@@ -68,5 +68,22 @@ class GeoJSONFeatureFilter(django_filters.FilterSet):
         return queryset.filter(geometry__intersects=Polygon.from_bbox((west, south, east, north)))
 
     def filter_near(self, queryset: QuerySet, name: str, value: str) -> QuerySet:
+        """Filter features within `radiusMeters` of a `lng,lat` point.
+
+        Uses ST_DWithin (`geometry__dwithin`): polygons match when their nearest
+        edge is within the radius, not their centroid. Radius must satisfy
+        0 < r <= MAX_NEAR_RADIUS_METERS.
+        """
         lng, lat, radius = _parse_floats(value, 3, name)
+        _validate_lon(lng, name)
+        _validate_lat(lat, name)
+        if not 0 < radius <= MAX_NEAR_RADIUS_METERS:
+            raise ValidationError(
+                {
+                    name: [
+                        _("Radius must be greater than 0 and at most %(max)d meters.")
+                        % {"max": MAX_NEAR_RADIUS_METERS}
+                    ]
+                }
+            )
         return queryset.filter(geometry__dwithin=(Point(lng, lat, srid=4326), D(m=radius)))
