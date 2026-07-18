@@ -82,5 +82,62 @@ class GeoJSONFeatureCreate(RelayMutation):
             return cls(errors=errors)
 
 
+class GeoJSONFeatureUpdate(RelayMutation):
+    """Update an existing GeoJSON feature."""
+
+    geo_feature = graphene.Field(
+        ObjectType,
+        description=_("The updated GeoJSON feature."),
+    )
+
+    class Input:
+        id = graphene.ID(
+            required=True,
+            description=_("Relay global ID of the GeoJSON feature to update."),
+        )
+        geometry = Geometry(
+            required=False,
+            description=_("New feature geometry as GeoJSON or WKT; must be a Point or a Polygon."),
+        )
+        name = graphene.String(
+            required=False, description=_("New human-readable name for the feature.")
+        )
+        description = graphene.String(
+            required=False, description=_("New free-text description of the feature.")
+        )
+        feature_type = graphene.String(
+            required=False, description=_("New type label used to categorize the feature.")
+        )
+
+    @classmethod
+    def mutate_and_get_payload(
+        cls, root, info: graphene.ResolveInfo, **input
+    ) -> "GeoJSONFeatureUpdate":
+        """Permission-check, overlay input onto instance values, validate and save."""
+        if not info.context.user.has_perm(f"{app_label}.change_geojsonfeature"):
+            raise GraphQLError(
+                str(_("You don't have permission to perform this action")),
+                extensions={"code": "permission_required"},
+            )
+
+        instance = get_obj_from_relay_id(info, input.get("id"))
+
+        data = {
+            field: input[field] if field in input else getattr(instance, field)
+            for field in GeoJSONFeatureForm.Meta.fields
+        }
+
+        form = GeoJSONFeatureForm(instance=instance, data=data)
+        if form.is_valid():
+            obj = form.save()
+
+            return cls(geo_feature=obj)
+        else:
+            errors = ErrorType.from_errors(form.errors)
+            _set_errors_flag_to_context(info)
+
+            return cls(errors=errors)
+
+
 class GeoMutations:
     pass
