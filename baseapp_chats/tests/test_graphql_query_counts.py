@@ -12,6 +12,7 @@ Modelled after:
   the count alone is too coarse).
 """
 
+from collections import Counter
 from typing import TYPE_CHECKING
 
 import pytest
@@ -298,4 +299,85 @@ def test_chat_room_filter_unread_messages_prefetches_unread_messages(
         "`ChatRoomFilter.filter_unread_messages` lost its prefetch_related "
         "call, or the queryset got re-evaluated mid-pagination. "
         f"Offending queries: {prefetch_queries}"
+    )
+
+
+MANAGEABLE_ROOMS_WITH_IS_PARTICIPANT_LISTING = """
+    query ManageableRooms($profileId: ID!, $contactId: ID!) {
+        profile(id: $profileId) {
+            id
+            ... on ChatRoomsInterface {
+                chatRooms(manageable: true) {
+                    edges {
+                        node {
+                            id
+                            title
+                            participantsCount
+                            isParticipant(profileId: $contactId)
+                        }
+                    }
+                }
+            }
+        }
+    }
+"""
+
+
+def test_manageable_listing_with_is_participant_stays_linear(
+    graphql_user_client, django_user_client
+):
+    """Bound guard for the add-contact-to-group listing.
+
+    `isParticipant(profileId:)` resolves one indexed EXISTS per row —
+    an accepted per-row cost bounded by page size (same precedent as
+    `resolve_is_archived`). The relay-id decode of `profileId` is
+    memoized per request, so it must NOT scale with row count.
+
+    Baseline for 5 rooms is 26 queries: ~21 fixed (request setup,
+    documentid decodes, permission + blocks checks, metadata tables,
+    COUNT + page) + 1 EXISTS per room. The bound absorbs minor churn;
+    a second per-row query (e.g. an un-memoized decode, or hydrating
+    participant profiles like `participant_ids` does) adds +5 and
+    trips it immediately.
+    """
+    import swapper
+
+    from baseapp_profiles.tests.factories import ProfileFactory as _ProfileFactory
+
+    ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
+    roles = ChatRoomParticipant.ChatRoomParticipantRoles
+
+    my_profile = django_user_client.user.profile
+    contact = _ProfileFactory()
+
+    n_rooms = 5
+    for i in range(n_rooms):
+        room = ChatRoomFactory(is_group=True, title=f"group {i}")
+        ChatRoomParticipantFactory(room=room, profile=my_profile, role=roles.ADMIN)
+        ChatRoomParticipantFactory(room=room, profile=_ProfileFactory(), role=roles.MEMBER)
+        room.participants_count = 2
+        room.save(update_fields=["participants_count"])
+
+    with CaptureQueriesContext(connection) as ctx:
+        response = graphql_user_client(
+            MANAGEABLE_ROOMS_WITH_IS_PARTICIPANT_LISTING,
+            variables={
+                "profileId": my_profile.relay_id,
+                "contactId": contact.relay_id,
+            },
+        )
+
+    assert "errors" not in response.json(), response.json()
+    fixed_overhead = 24
+    tables = Counter()
+    for captured in ctx.captured_queries:
+        for token in captured["sql"].split('FROM "')[1:]:
+            tables[token.split('"')[0]] += 1
+    assert len(ctx.captured_queries) <= fixed_overhead + n_rooms, (
+        f"Manageable listing issued {len(ctx.captured_queries)} queries for "
+        f"{n_rooms} rooms. Table histogram: {dict(tables)}\n"
+        "Likely causes:\n"
+        "  - `resolve_is_participant` started hydrating profiles instead of EXISTS\n"
+        "  - the `manageable` filter join lost `.distinct()` and duplicated rows\n"
+        "  - a per-row COUNT crept into `participants_count` resolution"
     )

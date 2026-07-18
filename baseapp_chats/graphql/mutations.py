@@ -1,8 +1,10 @@
+import logging
+
 import graphene
 import swapper
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Model
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from graphene_django.types import ErrorType
@@ -17,6 +19,7 @@ from baseapp_chats.graphql.subscriptions import (
 from baseapp_chats.utils import (
     SYSTEM_MESSAGE_GROUP_CREATED,
     SYSTEM_MESSAGE_MADE_ADMIN,
+    add_profiles_to_room,
     escape_format_braces,
     send_chatroom_update_system_messages,
     send_message,
@@ -30,6 +33,8 @@ from baseapp_core.graphql import (
     login_required,
 )
 from baseapp_core.plugins import shared_services
+
+logger = logging.getLogger(__name__)
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
@@ -347,28 +352,7 @@ class ChatRoomUpdate(RelayMutation):
                     oldest_remaining_participant.save(update_fields=["role"])
 
             # Adding new participants
-            unique_participants_pks = list(set(add_participants_pks))
-            existing_participants_pks = ChatRoomParticipant.objects.filter(
-                Q(room=room) & Q(profile__pk__in=unique_participants_pks)
-            ).values_list("profile__pk", flat=True)
-
-            new_participants = [
-                participant
-                for participant in unique_participants_pks
-                if int(participant) not in existing_participants_pks
-            ]
-
-            created_participants = ChatRoomParticipant.objects.bulk_create(
-                [
-                    ChatRoomParticipant(
-                        profile_id=participant,
-                        room=room,
-                        role=ChatRoomParticipantRoles.MEMBER,
-                        accepted_at=timezone.now(),
-                    )
-                    for participant in new_participants
-                ]
-            )
+            created_participants = add_profiles_to_room(room, add_participants_pks)
 
             room.participants_count = (
                 room.participants_count - len(removed_participants) + len(created_participants)
@@ -403,6 +387,213 @@ class ChatRoomUpdate(RelayMutation):
             ),
             removed_participants=removed_participants,
             added_participants=created_participants,
+        )
+
+
+class ChatRoomsAddParticipant(RelayMutation):
+    """Add one profile as a MEMBER participant to multiple group chat rooms at once.
+
+    All-or-nothing: if the acting profile can't add participants to any of the
+    requested rooms, nothing is written. Rooms where the profile is already a
+    participant are silently skipped (idempotent).
+    """
+
+    rooms = graphene.List(
+        ChatRoomObjectType,
+        description="All requested rooms, after the update.",
+    )
+    added_participants = graphene.List(
+        ChatRoomParticipantObjectType,
+        description="Participant rows actually created (already-member rooms are skipped).",
+    )
+
+    class Input:
+        profile_id = graphene.ID(
+            required=True, description="Relay id of the acting profile (must be manageable)."
+        )
+        participant_profile_id = graphene.ID(
+            required=True, description="Relay id of the profile to add to the rooms."
+        )
+        room_ids = graphene.List(
+            graphene.NonNull(graphene.ID),
+            required=True,
+            description="Relay ids of the group rooms to add the participant to.",
+        )
+
+    @classmethod
+    def _resolve_rooms(
+        cls, info: graphene.ResolveInfo, room_ids: list[str]
+    ) -> tuple[list[Model], ErrorType | None]:
+        """Resolve relay ids to unique group ChatRoom instances, preserving input order."""
+        rooms = []
+        seen_room_pks = set()
+        for room_id in room_ids:
+            try:
+                room = get_obj_from_relay_id(info, room_id)
+            except Exception:
+                room = None
+            if not room or not isinstance(room, ChatRoom) or not room.is_group:
+                return [], ErrorType(
+                    field="room_ids",
+                    messages=[_("Some rooms are not valid")],
+                )
+
+            if room.pk in seen_room_pks:
+                continue
+            seen_room_pks.add(room.pk)
+            rooms.append(room)
+
+        return rooms, None
+
+    @classmethod
+    def _check_rooms_permissions(
+        cls,
+        info: graphene.ResolveInfo,
+        profile: Model,
+        participant_profile: Model,
+        rooms: list[Model],
+    ) -> ErrorType | None:
+        """Return an error unless the actor can add the participant to every room."""
+        for room in rooms:
+            if not info.context.user.has_perm(
+                "baseapp_chats.modify_chatroom",
+                {
+                    "profile": profile,
+                    "room": room,
+                    "add_participants": [participant_profile.pk],
+                },
+            ):
+                return ErrorType(
+                    field="room_ids",
+                    messages=[
+                        _(
+                            "You don't have permission to add participants to one or "
+                            "more of the selected rooms"
+                        )
+                    ],
+                )
+        return None
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(
+        cls,
+        root,
+        info: graphene.ResolveInfo,
+        profile_id: str,
+        participant_profile_id: str,
+        room_ids: list[str],
+        **input,
+    ) -> "ChatRoomsAddParticipant":
+        profile = get_obj_from_relay_id(info, profile_id)
+
+        if not info.context.user.has_perm(f"{profile_app_label}.use_profile", profile):
+            return ChatRoomsAddParticipant(
+                errors=[
+                    ErrorType(
+                        field="profile_id",
+                        messages=[_("You don't have permission to act as this profile")],
+                    )
+                ]
+            )
+
+        try:
+            participant_profile = get_obj_from_relay_id(info, participant_profile_id)
+        except Exception:
+            participant_profile = None
+        if not isinstance(participant_profile, Profile):
+            return ChatRoomsAddParticipant(
+                errors=[
+                    ErrorType(
+                        field="participant_profile_id",
+                        messages=[_("This profile is not valid")],
+                    )
+                ]
+            )
+
+        # Check if the participant is blocked
+        if service := shared_services.get("blocks.lookup"):
+            if service.has_block_between([profile.id], [participant_profile.pk]):
+                return ChatRoomsAddParticipant(
+                    errors=[
+                        ErrorType(
+                            field="participant_profile_id",
+                            messages=[_("You can't add this participant to a chatroom")],
+                        )
+                    ]
+                )
+
+        # Resolve every room before any write (all-or-nothing)
+        rooms, resolve_error = cls._resolve_rooms(info, room_ids)
+        if resolve_error:
+            return ChatRoomsAddParticipant(errors=[resolve_error])
+
+        if not rooms:
+            return ChatRoomsAddParticipant(
+                errors=[
+                    ErrorType(
+                        field="room_ids",
+                        messages=[_("You need to select at least one room")],
+                    )
+                ]
+            )
+
+        added_participants = []
+        rooms_with_new_participant = []
+        with transaction.atomic():
+            # Lock the room rows in deterministic pk order to serialize concurrent
+            # participant adds (keeps add_profiles_to_room idempotent and the
+            # participants_count increments lossless under concurrency)
+            locked_rooms_by_pk = {
+                locked_room.pk: locked_room
+                for locked_room in ChatRoom.objects.select_for_update()
+                .filter(pk__in=[room.pk for room in rooms])
+                .order_by("pk")
+            }
+            if len(locked_rooms_by_pk) != len(rooms):
+                return ChatRoomsAddParticipant(
+                    errors=[
+                        ErrorType(
+                            field="room_ids",
+                            messages=[_("Some rooms are not valid")],
+                        )
+                    ]
+                )
+            rooms = [locked_rooms_by_pk[room.pk] for room in rooms]
+
+            # Validate permissions under the lock, before any write, so a
+            # concurrent demotion/removal committed after resolving the rooms
+            # is still taken into account (all-or-nothing)
+            permission_error = cls._check_rooms_permissions(
+                info, profile, participant_profile, rooms
+            )
+            if permission_error:
+                return ChatRoomsAddParticipant(errors=[permission_error])
+
+            for room in rooms:
+                created_participants = add_profiles_to_room(room, [participant_profile.pk])
+                if created_participants:
+                    room.participants_count = room.participants_count + len(created_participants)
+                    room.save(update_fields=["participants_count"])
+                    added_participants.extend(created_participants)
+                    rooms_with_new_participant.append((room, created_participants))
+
+        for room, created_participants in rooms_with_new_participant:
+            # Memberships are already committed: notification failures must not
+            # surface as mutation errors nor block the remaining rooms
+            try:
+                ChatRoomOnRoomUpdate.room_updated(room, added_participants=created_participants)
+                send_chatroom_update_system_messages(
+                    room, profile, added_participants=created_participants
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to send chat room update notifications for room %s", room.pk
+                )
+
+        return ChatRoomsAddParticipant(
+            rooms=rooms,
+            added_participants=added_participants,
         )
 
 
@@ -940,6 +1131,7 @@ class ChatRoomArchive(RelayMutation):
 class ChatsMutations(object):
     chat_room_create = ChatRoomCreate.Field()
     chat_room_update = ChatRoomUpdate.Field()
+    chat_rooms_add_participant = ChatRoomsAddParticipant.Field()
     chat_room_send_message = ChatRoomSendMessage.Field()
     chat_room_edit_message = ChatRoomEditMessage.Field()
     chat_room_delete_message = ChatRoomDeleteMessage.Field()
