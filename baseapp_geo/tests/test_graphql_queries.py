@@ -1,15 +1,21 @@
+import uuid
+
 import pytest
 import swapper
 from django.contrib.gis.geos import Point
+from django.core.exceptions import ValidationError
+from graphql_relay import to_global_id
 
 from baseapp_core.models import DocumentId
 from baseapp_core.tests.factories import UserFactory
+from baseapp_geo.graphql.filters import GeoJSONFeatureFilter
 
 from .factories import (
     POINT_NYC,
     GeoJSONFeatureFactory,
     antimeridian_east,
     antimeridian_west,
+    point_east_of_origin,
     point_nyc,
     unit_square_polygon,
 )
@@ -54,6 +60,36 @@ GENERIC_NODE_QUERY = """
                 type
                 properties {
                     name
+                }
+            }
+        }
+    }
+"""
+
+FILTERED_CONNECTION_QUERY = """
+    query GeoFeaturesFiltered(
+        $first: Int
+        $after: String
+        $featureType: String
+        $targetObjectId: String
+    ) {
+        geoFeatures(
+            first: $first
+            after: $after
+            featureType: $featureType
+            targetObjectId: $targetObjectId
+        ) {
+            totalCount
+            pageInfo {
+                hasNextPage
+                endCursor
+            }
+            edges {
+                node {
+                    properties {
+                        name
+                        featureType
+                    }
                 }
             }
         }
@@ -281,3 +317,241 @@ class TestBboxFilter:
 
         assert content["errors"]
         assert content["data"]["geoFeatures"] is None
+
+
+class TestNearFilter:
+    """near filter: metric correctness, nearest-edge semantics, radius cap (FR-11, AC-7.*)."""
+
+    def _total_count(self, graphql_client, near):
+        response = graphql_client(CONNECTION_QUERY, variables={"near": near})
+        content = response.json()
+        assert "errors" not in content
+        return content["data"]["geoFeatures"]["totalCount"]
+
+    def test_near_metric_brackets_1113m_distance(self, graphql_client):
+        """AC-7.5: 0.01 deg of longitude at the equator is ~1113 m, so a query point
+        0.01 deg east of a feature at the origin matches with radius 1200 m but not
+        1000 m — proving the radius is metric, not degree-based."""
+        GeoJSONFeatureFactory(name="origin")  # Point at (0, 0)
+        GeoJSONFeatureFactory(name="far-away", geometry=point_nyc())
+
+        assert self._total_count(graphql_client, "0.01,0,1200") == 1
+        assert self._total_count(graphql_client, "0.01,0,1000") == 0
+
+    def test_near_polygon_matches_on_nearest_edge_not_centroid(self, graphql_client):
+        """AC-7.4: ST_DWithin measures to the polygon's nearest edge. From (0.51, 0)
+        the unit square's east edge (x=0.5) is ~1113 m away while its centroid is
+        ~56 km away, so radius 1200 matches and radius 1000 does not."""
+        GeoJSONFeatureFactory(name="square", geometry=unit_square_polygon())
+
+        assert self._total_count(graphql_client, "0.51,0,1200") == 1
+        assert self._total_count(graphql_client, "0.51,0,1000") == 0
+
+    def test_near_radius_at_cap_is_accepted(self, graphql_client):
+        """FR-11 boundary: radius exactly MAX_NEAR_RADIUS_METERS (100 km) is valid."""
+        GeoJSONFeatureFactory(name="origin")
+
+        assert self._total_count(graphql_client, "0,0,100000") == 1
+
+    @pytest.mark.parametrize(
+        "near",
+        [
+            pytest.param("0,0", id="wrong-arity"),
+            pytest.param("a,0,100", id="non-numeric"),
+            pytest.param("-181,0,100", id="lon-out-of-range"),
+            pytest.param("0,-91,100", id="lat-out-of-range"),
+            pytest.param("0,0,0", id="zero-radius"),
+            pytest.param("0,0,-1", id="negative-radius"),
+            pytest.param("0,0,100001", id="radius-above-cap"),
+        ],
+    )
+    def test_malformed_or_capped_near_yields_errors_not_full_table(self, graphql_client, near):
+        """FR-12 / AC-7.2 / AC-7.3: malformed near or radius above the 100 km cap
+        surfaces as GraphQL errors[] with data.geoFeatures null."""
+        GeoJSONFeatureFactory()
+
+        response = graphql_client(CONNECTION_QUERY, variables={"near": near})
+        content = response.json()
+
+        assert content["errors"]
+        assert content["data"]["geoFeatures"] is None
+
+
+class TestCombinedFilters:
+    """Filters compose with AND and with Relay pagination (FR-13, AC-8.*)."""
+
+    def _names(self, data):
+        return {edge["node"]["properties"]["name"] for edge in data["edges"]}
+
+    def test_bbox_and_near_combine_with_and(self, graphql_client):
+        """AC-8.1: a feature must satisfy BOTH bbox and near — matching only one
+        of the two filters is not enough."""
+        # bbox east edge at lon 0.005; near centered at (0.01, 0) with radius 1200 m.
+        GeoJSONFeatureFactory(name="both")  # (0, 0): in bbox, 1113 m from near center
+        # (0.02, 0): 1113 m from near center but east of the bbox.
+        GeoJSONFeatureFactory(name="near-only", geometry=Point(0.02, 0, srid=4326))
+        # (0, 0.05): in bbox but ~5.6 km from the near center.
+        GeoJSONFeatureFactory(name="bbox-only", geometry=Point(0, 0.05, srid=4326))
+
+        response = graphql_client(
+            CONNECTION_QUERY,
+            variables={"bbox": "-0.1,-0.1,0.005,0.1", "near": "0.01,0,1200"},
+        )
+        content = response.json()
+
+        assert "errors" not in content
+        data = content["data"]["geoFeatures"]
+        assert data["totalCount"] == 1
+        assert self._names(data) == {"both"}
+
+    def test_pagination_with_first_after_over_filtered_set(self, graphql_client):
+        """AC-8.2: `first`/`after` cursors paginate the FILTERED set — totalCount and
+        pages cover only matching features, with no overlap between pages."""
+        for name in ("poi-1", "poi-2", "poi-3"):
+            GeoJSONFeatureFactory(name=name, poi=True)
+        GeoJSONFeatureFactory(name="not-poi", area=True)
+
+        response = graphql_client(
+            FILTERED_CONNECTION_QUERY, variables={"featureType": "poi", "first": 2}
+        )
+        content = response.json()
+
+        assert "errors" not in content
+        page_one = content["data"]["geoFeatures"]
+        assert page_one["totalCount"] == 3
+        assert len(page_one["edges"]) == 2
+        assert page_one["pageInfo"]["hasNextPage"] is True
+
+        response = graphql_client(
+            FILTERED_CONNECTION_QUERY,
+            variables={
+                "featureType": "poi",
+                "first": 2,
+                "after": page_one["pageInfo"]["endCursor"],
+            },
+        )
+        content = response.json()
+
+        assert "errors" not in content
+        page_two = content["data"]["geoFeatures"]
+        assert len(page_two["edges"]) == 1
+        assert page_two["pageInfo"]["hasNextPage"] is False
+        assert self._names(page_one) | self._names(page_two) == {"poi-1", "poi-2", "poi-3"}
+
+    def test_feature_type_and_target_object_id_combine_with_and(self, graphql_client):
+        """AC-8.3: featureType + targetObjectId narrow to one target's features of
+        one type — same-target features of another type and same-type features of
+        another target (a Profile) are both excluded."""
+        user = UserFactory()
+        GeoJSONFeatureFactory(name="user-poi", target=user, poi=True)
+        GeoJSONFeatureFactory(name="user-area", target=user, area=True)
+        GeoJSONFeatureFactory(name="profile-poi", profile_target=True, poi=True)
+
+        response = graphql_client(
+            FILTERED_CONNECTION_QUERY,
+            variables={"featureType": "poi", "targetObjectId": user.relay_id},
+        )
+        content = response.json()
+
+        assert "errors" not in content
+        data = content["data"]["geoFeatures"]
+        assert data["totalCount"] == 1
+        assert self._names(data) == {"user-poi"}
+
+
+class TestTargetObjectIdFilter:
+    """targetObjectId accepts both relay ID forms `_resolve_target` supports (AC-8.4)."""
+
+    def _query_names(self, graphql_client, target_object_id):
+        response = graphql_client(
+            FILTERED_CONNECTION_QUERY, variables={"targetObjectId": target_object_id}
+        )
+        content = response.json()
+        assert "errors" not in content
+        data = content["data"]["geoFeatures"]
+        return {edge["node"]["properties"]["name"] for edge in data["edges"]}
+
+    def test_target_filter_accepts_public_uuid_id(self, graphql_client):
+        user = UserFactory()
+        GeoJSONFeatureFactory(name="mine", target=user)
+        GeoJSONFeatureFactory(name="other")
+
+        public_id = str(DocumentId.get_or_create_for_object(user).public_id)
+
+        assert self._query_names(graphql_client, public_id) == {"mine"}
+
+    def test_target_filter_accepts_legacy_base64_relay_id(self, graphql_client):
+        user = UserFactory()
+        GeoJSONFeatureFactory(name="mine", target=user)
+        GeoJSONFeatureFactory(name="other")
+
+        legacy_id = to_global_id("User", user.pk)
+
+        assert self._query_names(graphql_client, legacy_id) == {"mine"}
+
+    @pytest.mark.parametrize(
+        "target_object_id",
+        [
+            pytest.param("not-a-valid-relay-id", id="malformed"),
+            pytest.param(str(uuid.uuid4()), id="unknown-uuid"),
+        ],
+    )
+    def test_bad_target_id_yields_errors_not_full_table(self, graphql_client, target_object_id):
+        GeoJSONFeatureFactory()
+
+        response = graphql_client(
+            FILTERED_CONNECTION_QUERY, variables={"targetObjectId": target_object_id}
+        )
+        content = response.json()
+
+        assert content["errors"]
+        assert content["data"]["geoFeatures"] is None
+
+
+class TestFilterSetDRFReusability:
+    """AC-8.4: the FilterSet works outside graphene — instantiated directly (as DRF's
+    DjangoFilterBackend does) it filters a queryset with no GraphQL context at all."""
+
+    def test_filterset_filters_queryset_outside_graphene(self):
+        user = UserFactory()
+        match = GeoJSONFeatureFactory(name="match", target=user, poi=True)
+        GeoJSONFeatureFactory(name="wrong-type", target=user)  # feature_type ""
+        GeoJSONFeatureFactory(name="too-far", target=user, poi=True, geometry=point_nyc())
+        GeoJSONFeatureFactory(name="wrong-target", poi=True)
+
+        public_id = str(DocumentId.get_or_create_for_object(user).public_id)
+        filterset = GeoJSONFeatureFilter(
+            data={
+                "near": "0.01,0,1200",
+                "feature_type": "poi",
+                "target_object_id": public_id,
+            },
+            queryset=GeoJSONFeature.objects.all(),
+        )
+
+        assert list(filterset.qs) == [match]
+
+    def test_filterset_raises_validation_error_outside_graphene(self):
+        GeoJSONFeatureFactory()
+
+        filterset = GeoJSONFeatureFilter(
+            data={"near": "0,0"}, queryset=GeoJSONFeature.objects.all()
+        )
+
+        with pytest.raises(ValidationError):
+            filterset.qs
+
+    def test_target_filter_east_point_distance_sanity(self):
+        """Anchor for the 1113 m constant: the factory's east-of-origin point really
+        is between 1000 and 1200 m from the origin on the geography column."""
+        GeoJSONFeatureFactory(geometry=point_east_of_origin())
+
+        included = GeoJSONFeatureFilter(
+            data={"near": "0,0,1200"}, queryset=GeoJSONFeature.objects.all()
+        )
+        excluded = GeoJSONFeatureFilter(
+            data={"near": "0,0,1000"}, queryset=GeoJSONFeature.objects.all()
+        )
+
+        assert included.qs.count() == 1
+        assert excluded.qs.count() == 0
