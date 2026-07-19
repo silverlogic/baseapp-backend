@@ -7,6 +7,7 @@ from graphene_django.forms.mutation import _set_errors_flag_to_context
 from graphene_django.types import ErrorType
 from graphql.error import GraphQLError
 
+from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import RelayMutation, get_obj_from_relay_id
 
 from ..models import ALLOWED_GEOMETRY_TYPES
@@ -139,5 +140,45 @@ class GeoJSONFeatureUpdate(RelayMutation):
             return cls(errors=errors)
 
 
+class GeoJSONFeatureDelete(RelayMutation):
+    """Delete an existing GeoJSON feature."""
+
+    deleted_id = graphene.ID(
+        description=_("Relay global ID of the deleted GeoJSON feature."),
+    )
+    target = graphene.Field(
+        RelayNode,
+        description=_("The object the deleted feature was attached to."),
+    )
+
+    class Input:
+        id = graphene.ID(
+            required=True,
+            description=_("Relay global ID of the GeoJSON feature to delete."),
+        )
+
+    @classmethod
+    def mutate_and_get_payload(
+        cls, root, info: graphene.ResolveInfo, **input
+    ) -> "GeoJSONFeatureDelete":
+        """Permission-check, capture the target, and delete the feature."""
+        if not info.context.user.has_perm(f"{app_label}.delete_geojsonfeature"):
+            raise GraphQLError(
+                str(_("You don't have permission to perform this action")),
+                extensions={"code": "permission_required"},
+            )
+
+        relay_id = input.get("id")
+        obj = get_obj_from_relay_id(info, relay_id)
+
+        target = obj.target
+
+        obj.delete()
+
+        return cls(deleted_id=relay_id, target=target)
+
+
 class GeoMutations:
-    pass
+    geo_feature_create = GeoJSONFeatureCreate.Field()
+    geo_feature_update = GeoJSONFeatureUpdate.Field()
+    geo_feature_delete = GeoJSONFeatureDelete.Field()
