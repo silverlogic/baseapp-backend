@@ -1,6 +1,5 @@
 import pytest
 import swapper
-from constance.test import override_config
 from django.contrib.auth.backends import BaseBackend
 from django.contrib.auth.models import AnonymousUser, Permission
 from django.test import override_settings
@@ -93,11 +92,7 @@ class TestPermissionMatrix:
         assert user.has_perm(DELETE_PERM) is False
 
 
-# Node lookups below run with public-id logic disabled: the public-id resolver looks up the
-# schema type by model class name ("GeoJSONFeature"), while NFR-7 pins the ObjectType name as
-# "GeoJSONFeatureObjectType", so relay_id-based node queries only resolve via the legacy strategy.
 class TestGetNodePermissionGate:
-    @override_config(ENABLE_PUBLIC_ID_LOGIC=False)
     def test_get_node_returns_feature_when_view_granted(self, graphql_client):
         feature = GeoJSONFeatureFactory()
 
@@ -107,7 +102,6 @@ class TestGetNodePermissionGate:
         assert "errors" not in content
         assert content["data"]["geoFeature"]["id"] == feature.relay_id
 
-    @override_config(ENABLE_PUBLIC_ID_LOGIC=False)
     @override_settings(
         AUTHENTICATION_BACKENDS=["baseapp_geo.tests.test_permissions.DenyAllBackend"]
     )
@@ -122,7 +116,6 @@ class TestGetNodePermissionGate:
 
 
 class TestHasPermInterfaceField:
-    @override_config(ENABLE_PUBLIC_ID_LOGIC=False)
     def test_has_perm_resolves_for_anonymous(self, graphql_client):
         feature = GeoJSONFeatureFactory()
 
@@ -138,7 +131,6 @@ class TestHasPermInterfaceField:
             "canDelete": False,
         }
 
-    @override_config(ENABLE_PUBLIC_ID_LOGIC=False)
     def test_has_perm_resolves_for_authenticated(self, graphql_user_client):
         feature = GeoJSONFeatureFactory()
 

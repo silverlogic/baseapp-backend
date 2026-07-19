@@ -63,7 +63,10 @@ class BaseGeoJSONFeatureObjectType:
 
     class Meta:
         model = GeoJSONFeature
-        name = "GeoJSONFeatureObjectType"
+        # Pinned to the default model name so it stays stable under swapping (NFR-7) AND
+        # matches baseapp_core's public-id node lookup, which resolves the schema type by
+        # `model_class().__name__`.
+        name = "GeoJSONFeature"
         interfaces = (RelayNode, PermissionsInterface)
         fields = ("id", "type", "bbox", "geometry", "properties")
 
