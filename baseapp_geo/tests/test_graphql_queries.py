@@ -5,7 +5,14 @@ from django.contrib.gis.geos import Point
 from baseapp_core.models import DocumentId
 from baseapp_core.tests.factories import UserFactory
 
-from .factories import POINT_NYC, GeoJSONFeatureFactory, point_nyc, unit_square_polygon
+from .factories import (
+    POINT_NYC,
+    GeoJSONFeatureFactory,
+    antimeridian_east,
+    antimeridian_west,
+    point_nyc,
+    unit_square_polygon,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -215,3 +222,62 @@ class TestGeoFeaturesConnection:
         assert node["properties"]["name"] == "Empire State Building"
         assert node["properties"]["description"] == ""
         assert node["properties"]["featureType"] == ""
+
+
+class TestBboxFilter:
+    """bbox filter: intersects semantics, antimeridian split, malformed input (FR-10, AC-6.*)."""
+
+    def _names(self, data):
+        return {edge["node"]["properties"]["name"] for edge in data["edges"]}
+
+    def test_bbox_includes_inside_and_straddling_excludes_outside(self, graphql_client):
+        """Intersects semantics (AC-6.1): a polygon straddling the bbox edge is included
+        even though it is not fully within the box; features outside are excluded."""
+        GeoJSONFeatureFactory(name="inside")  # Point at (0, 0)
+        GeoJSONFeatureFactory(name="outside", geometry=point_nyc())
+        # Unit square spans -0.5..0.5 and straddles the bbox's west edge at -0.2.
+        GeoJSONFeatureFactory(name="straddling", geometry=unit_square_polygon())
+
+        response = graphql_client(CONNECTION_QUERY, variables={"bbox": "-0.2,-0.2,1.0,0.2"})
+        content = response.json()
+
+        assert "errors" not in content
+        data = content["data"]["geoFeatures"]
+        assert data["totalCount"] == 2
+        assert self._names(data) == {"inside", "straddling"}
+
+    def test_bbox_crossing_antimeridian_matches_both_sides(self, graphql_client):
+        """RFC 7946 section 5.2: west > east means the box crosses the antimeridian and is
+        split into two OR-ed boxes; features on both sides match, (0, 0) does not."""
+        GeoJSONFeatureFactory(name="east-side", geometry=antimeridian_east())  # (179.5, 0)
+        GeoJSONFeatureFactory(name="west-side", geometry=antimeridian_west())  # (-179.5, 0)
+        GeoJSONFeatureFactory(name="origin")  # Point at (0, 0)
+
+        response = graphql_client(CONNECTION_QUERY, variables={"bbox": "179,-1,-179,1"})
+        content = response.json()
+
+        assert "errors" not in content
+        data = content["data"]["geoFeatures"]
+        assert data["totalCount"] == 2
+        assert self._names(data) == {"east-side", "west-side"}
+
+    @pytest.mark.parametrize(
+        "bbox",
+        [
+            pytest.param("-10,-10,10", id="wrong-arity"),
+            pytest.param("a,-10,10,10", id="non-numeric"),
+            pytest.param("-181,-10,10,10", id="lon-out-of-range"),
+            pytest.param("-10,-91,10,10", id="lat-out-of-range"),
+            pytest.param("-10,10,10,-10", id="south-gt-north"),
+        ],
+    )
+    def test_malformed_bbox_yields_errors_not_full_table(self, graphql_client, bbox):
+        """FR-12 / AC-6.2: malformed bbox surfaces as GraphQL errors[] with
+        data.geoFeatures null — never silently ignored into a full-table result."""
+        GeoJSONFeatureFactory()
+
+        response = graphql_client(CONNECTION_QUERY, variables={"bbox": bbox})
+        content = response.json()
+
+        assert content["errors"]
+        assert content["data"]["geoFeatures"] is None
