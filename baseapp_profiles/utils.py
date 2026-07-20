@@ -6,14 +6,14 @@ import unicodedata
 
 def to_ascii_handle(value: str) -> str:
     """
-    Fold `value` to a URL-safe ASCII handle, keeping its existing case.
+    Fold `value` to a lowercase URL-safe ASCII handle.
 
-    Transliterates accents to their base letters and drops emoji and any other
-    non-alphanumeric characters. It does NOT change case — the result mirrors the
-    input casing (e.g. "Jön Doe" -> "JonDoe", but "jön doe" -> "jondoe").
+    Transliterates accents to their base letters, drops emoji and any other
+    non-alphanumeric characters, and lowercases the result
+    (e.g. "Jön Doe" -> "jondoe").
     """
     folded = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
-    return re.sub(r"[^A-Za-z0-9]", "", folded)
+    return re.sub(r"[^A-Za-z0-9]", "", folded).lower()
 
 
 def pad_handle(slug: str) -> str:

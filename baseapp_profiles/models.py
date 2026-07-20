@@ -114,8 +114,8 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
         Build this profile's URL handle (with leading slash) from its display name.
 
         Uses `profile_name` when provided, otherwise `self.name`. The name is
-        folded to a URL-safe ASCII handle (accents transliterated, emoji and other
-        non-alphanumerics dropped). When the name yields no usable characters
+        folded to a lowercase URL-safe ASCII handle (accents transliterated, emoji
+        and other non-alphanumerics dropped). When the name yields no usable characters
         (e.g. an emoji-only name), it falls back to the local-part of the owner's
         email so the handle stays meaningful. The result is NOT collision-checked —
         `create_url_path` resolves uniqueness via the `pages.url_path` service.

@@ -14,32 +14,32 @@ Profile = swapper.load_model("baseapp_profiles", "Profile")
 def test_profile_generate_url_path_with_valid_name():
     user = UserFactory(first_name="Jonathan", last_name="Doe")
     profile = Profile.objects.get(owner=user)
-    assert profile.url_path.path == "/JonathanDoe"
+    assert profile.url_path.path == "/jonathandoe"
 
 
 def test_profile_generate_url_path_with_short_name():
     user = UserFactory(first_name="Joe", last_name="Doe")
     profile = Profile.objects.get(owner=user)
-    # "JoeDoe" is 6 chars, so it gets padded with random digits to a min length of 8.
-    assert profile.url_path.path.startswith("/JoeDoe")
+    # "joedoe" is 6 chars, so it gets padded with random digits to a min length of 8.
+    assert profile.url_path.path.startswith("/joedoe")
     assert len(profile.url_path.path) == 9
     assert profile.url_path.path[-1].isdigit()
 
 
 def test_profile_generate_url_path_with_existing_path():
-    URLPathFactory(path="/JanetDoe", is_active=True, language=None)
+    URLPathFactory(path="/janetdoe", is_active=True, language=None)
     user = UserFactory(first_name="Janet", last_name="Doe")
     profile = Profile.objects.get(owner=user)
-    assert profile.url_path.path == "/JanetDoe1"
+    assert profile.url_path.path == "/janetdoe1"
 
 
 def test_profile_generate_url_path_strips_accents_to_ascii():
     # Names with accents must not leak the accented char into the URL path (an accented
-    # path previously 404'd once percent-encoded). Capitalization is preserved; only the
-    # accent is folded to ASCII.
+    # path previously 404'd once percent-encoded). The accent is folded to ASCII and the
+    # handle is lowercased.
     user = UserFactory(first_name="Foobar", last_name="Báz")
     profile = Profile.objects.get(owner=user)
-    assert profile.url_path.path == "/FoobarBaz"
+    assert profile.url_path.path == "/foobarbaz"
     assert profile.url_path.path.isascii()
 
 
@@ -50,14 +50,14 @@ def test_profile_generate_url_path_normalizes_decomposed_unicode():
     assert decomposed_last != "Báz"  # sanity: it really is decomposed
     user = UserFactory(first_name="Foobar", last_name=decomposed_last)
     profile = Profile.objects.get(owner=user)
-    assert profile.url_path.path == "/FoobarBaz"
+    assert profile.url_path.path == "/foobarbaz"
     assert profile.url_path.path.isascii()
 
 
 def test_profile_generate_url_path_with_mixed_unicode_name():
     user = UserFactory(first_name="Bäz", last_name="Qüxson")
     profile = Profile.objects.get(owner=user)
-    assert profile.url_path.path == "/BazQuxson"
+    assert profile.url_path.path == "/bazquxson"
     assert profile.url_path.path.isascii()
 
 
@@ -68,17 +68,25 @@ def test_profile_generate_url_path_drops_non_decomposable_latin_letters():
     # deliberate decision rather than a silent regression.
     user = UserFactory(first_name="Foo", last_name="Straße")
     profile = Profile.objects.get(owner=user)
-    assert profile.url_path.path == "/FooStrae"  # the "ß" is dropped, not turned into "ss"
+    assert profile.url_path.path == "/foostrae"  # the "ß" is dropped, not turned into "ss"
     assert profile.url_path.path.isascii()
+
+
+def test_profile_generate_url_path_lowercases_handle():
+    # Handles are always lowercase, regardless of the name's casing.
+    user = UserFactory(first_name="MixedCase", last_name="NAME")
+    profile = Profile.objects.get(owner=user)
+    assert profile.url_path.path == "/mixedcasename"
+    assert profile.url_path.path == profile.url_path.path.lower()
 
 
 def test_profile_generate_url_path_with_name_and_emoji():
     # A name with a usable part plus an emoji keeps the usable part and drops the emoji
     # (never leaking it into the URL), without falling back to the email.
-    # "JonDoe" is 6 chars, so it is padded to the 8-char minimum with random digits.
+    # "jondoe" is 6 chars, so it is padded to the 8-char minimum with random digits.
     user = UserFactory(first_name="Jon", last_name="Doe 😀", email="jon@example.com")
     profile = Profile.objects.get(owner=user)
-    assert profile.url_path.path.startswith("/JonDoe")
+    assert profile.url_path.path.startswith("/jondoe")
     assert len(profile.url_path.path) == 9
     assert profile.url_path.path[-1].isdigit()
     assert profile.url_path.path.isascii()
@@ -87,7 +95,7 @@ def test_profile_generate_url_path_with_name_and_emoji():
 def test_profile_generate_url_path_falls_back_to_email_when_name_has_no_ascii():
     # An emoji-only (or fully non-latin) name produces an empty handle, so it falls back
     # to the local-part of the owner's email instead of a string of random digits.
-    user = UserFactory(first_name="😀", last_name="", email="coolperson@example.com")
+    user = UserFactory(first_name="😀", last_name="", email="CoolPerson@example.com")
     profile = Profile.objects.get(owner=user)
     assert profile.url_path.path == "/coolperson"
     assert profile.url_path.path.isascii()
@@ -110,6 +118,6 @@ def test_profile_generate_url_path_assigns_unique_paths_for_duplicate_names():
     user_2 = UserFactory(first_name="Jonathan", last_name="Doe")
     profile_1 = Profile.objects.get(owner=user_1)
     profile_2 = Profile.objects.get(owner=user_2)
-    assert profile_1.url_path.path == "/JonathanDoe"
-    assert profile_2.url_path.path == "/JonathanDoe1"
+    assert profile_1.url_path.path == "/jonathandoe"
+    assert profile_2.url_path.path == "/jonathandoe1"
     assert profile_1.url_path.path != profile_2.url_path.path
