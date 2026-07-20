@@ -1,3 +1,4 @@
+from itertools import chain
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from django.apps import apps
@@ -89,7 +90,7 @@ class PluginRegistry:
         """Return (flat_list, slot_name -> list). SlottedList is Dict; empty dict = no slots."""
         if not value:
             return ([], {})
-        return (sum(value.values(), []), value)
+        return (list(chain.from_iterable(value.values())), value)
 
     def get(self, key: str, slot: Optional[str] = None) -> List[Any]:
         """
@@ -136,7 +137,7 @@ class PluginRegistry:
             if isinstance(value, list):
                 result.extend(value)
             elif isinstance(value, dict):
-                result.extend(sum(value.values(), []))
+                result.extend(chain.from_iterable(value.values()))
             else:
                 raise ImproperlyConfigured(f"Plugin '{plugin.name}' has an invalid {key} attribute")
         return result

@@ -27,14 +27,14 @@ mutation ProfileUserRoleCreateMutation($input: ProfileUserRoleCreateInput!) {
 """
 
 
-def _add_member_permission(user):
+def _add_member_permission(user) -> None:
     perm = Permission.objects.get(
         content_type__app_label=ProfileUserRole._meta.app_label, codename="add_profileuserrole"
     )
     user.user_permissions.add(perm)
 
 
-def test_user_with_permission_can_add_member(django_user_client, graphql_user_client):
+def test_user_with_permission_can_add_member(django_user_client, graphql_user_client) -> None:
     user = django_user_client.user
     _add_member_permission(user)
     profile = ProfileFactory(owner=user)
@@ -60,7 +60,7 @@ def test_user_with_permission_can_add_member(django_user_client, graphql_user_cl
 
 def test_adding_an_existing_member_returns_a_friendly_error(
     django_user_client, graphql_user_client
-):
+) -> None:
     user = django_user_client.user
     _add_member_permission(user)
     profile = ProfileFactory(owner=user)
@@ -90,7 +90,7 @@ def test_adding_an_existing_member_returns_a_friendly_error(
 
 def test_duplicate_user_ids_in_one_request_create_a_single_membership(
     django_user_client, graphql_user_client
-):
+) -> None:
     user = django_user_client.user
     _add_member_permission(user)
     profile = ProfileFactory(owner=user)
@@ -116,7 +116,7 @@ def test_duplicate_user_ids_in_one_request_create_a_single_membership(
 
 def test_integrity_error_that_is_not_a_duplicate_returns_a_generic_error(
     django_user_client, graphql_user_client
-):
+) -> None:
     user = django_user_client.user
     _add_member_permission(user)
     profile = ProfileFactory(owner=user)
@@ -141,7 +141,7 @@ def test_integrity_error_that_is_not_a_duplicate_returns_a_generic_error(
     assert not ProfileUserRole.objects.filter(profile=profile, user=new_member).exists()
 
 
-def test_cannot_add_the_owner_as_a_member(django_user_client, graphql_user_client):
+def test_cannot_add_the_owner_as_a_member(django_user_client, graphql_user_client) -> None:
     user = django_user_client.user
     _add_member_permission(user)
     profile = ProfileFactory(owner=user)

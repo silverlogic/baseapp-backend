@@ -7,18 +7,18 @@ from baseapp_profiles.tests.factories import ProfileFactory, ProfileUserRoleFact
 
 
 class CurrentProfileMiddlewareTest(TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.factory = RequestFactory()
         self.middleware = CurrentProfileMiddleware(lambda request: HttpResponse("OK"))
 
-    def test_set_user_current_profile(self):
+    def test_set_user_current_profile(self) -> None:
         request = self.factory.get("/some-path/")
         request.user = UserFactory()
         request.META["HTTP_CURRENT_PROFILE"] = request.user.profile.relay_id
         self.middleware(request)
         self.assertEqual(request.user.current_profile, request.user.profile)
 
-    def test_cant_use_anothers_profile(self):
+    def test_cant_use_anothers_profile(self) -> None:
         request = self.factory.get("/some-path/")
         request.user = UserFactory()
         profile = ProfileFactory()
@@ -26,7 +26,7 @@ class CurrentProfileMiddlewareTest(TestCase):
         self.middleware(request)
         self.assertEqual(request.user.current_profile, None)
 
-    def test_members_can_use(self):
+    def test_members_can_use(self) -> None:
         request = self.factory.get("/some-path/")
         request.user = UserFactory()
         profile = ProfileFactory()
@@ -35,7 +35,7 @@ class CurrentProfileMiddlewareTest(TestCase):
         self.middleware(request)
         self.assertEqual(request.user.current_profile, profile)
 
-    def test_bad_profile_id(self):
+    def test_bad_profile_id(self) -> None:
         request = self.factory.get("/some-path/")
         request.user = UserFactory()
         ProfileFactory()
@@ -43,7 +43,7 @@ class CurrentProfileMiddlewareTest(TestCase):
         self.middleware(request)
         self.assertEqual(request.user.current_profile, None)
 
-    def test_default_profile_when_not_passing_header(self):
+    def test_default_profile_when_not_passing_header(self) -> None:
         request = self.factory.get("/some-path/")
         request.user = UserFactory()
         self.middleware(request)

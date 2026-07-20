@@ -1,5 +1,6 @@
 import logging
 import traceback
+from typing import Any
 
 from rest_framework.authentication import TokenAuthentication as RestTokenAuthentication
 from rest_framework_simplejwt.authentication import (
@@ -8,7 +9,7 @@ from rest_framework_simplejwt.authentication import (
 
 
 class LogExceptionMiddleware(object):
-    def on_error(self, error):
+    def on_error(self, error) -> None:
         # need to raise error again to get access to traceback
         try:
             raise error
@@ -20,7 +21,7 @@ class LogExceptionMiddleware(object):
             traceback.print_exc()
             raise error
 
-    def resolve(self, next, root, info, **args):
+    def resolve(self, next, root, info, **args) -> Any:
         response = next(root, info, **args)
 
         if isinstance(response, Exception):
@@ -34,7 +35,7 @@ class LogExceptionMiddleware(object):
 class TokenAuthentication(RestTokenAuthentication):
     authenticated = False
 
-    def resolve(self, next, root, info, **kwargs):
+    def resolve(self, next, root, info, **kwargs) -> Any:
         if not self.authenticated:
             auth = self.authenticate(info.context)
             if auth:
@@ -48,7 +49,7 @@ class TokenAuthentication(RestTokenAuthentication):
 class JWTAuthentication(RestJWTAuthentication):
     authenticated = False
 
-    def resolve(self, next, root, info, **kwargs):
+    def resolve(self, next, root, info, **kwargs) -> Any:
         if not self.authenticated:
             auth = self.authenticate(info.context)
             if auth:

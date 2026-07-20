@@ -42,7 +42,7 @@ class OrganizationCreate(SerializerMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "OrganizationCreate":
         if not info.context.user.has_perm(f"{app_label}.add_organization"):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
@@ -52,7 +52,7 @@ class OrganizationCreate(SerializerMutation):
         return response
 
     @classmethod
-    def perform_mutate(cls, serializer, info):
+    def perform_mutate(cls, serializer, info) -> "OrganizationCreate":
         OrganizationObjectType = Organization.get_graphql_object_type()
 
         if not serializer.is_valid():

@@ -6,7 +6,7 @@ from .sendgrid import get_personalization
 logger = logging.getLogger(__name__)
 
 
-def send_template_email(template_name, *args, **kwargs):
+def send_template_email(template_name, *args, **kwargs) -> None:
 
     try:
         template = EmailTemplate.objects.get(name=template_name)
@@ -15,7 +15,7 @@ def send_template_email(template_name, *args, **kwargs):
         logger.error(f'Email template "{template_name}" not found.')
 
 
-def send_sendgrid_email(template_name, content=[]):
+def send_sendgrid_email(template_name, content=[]) -> None:
     try:
         template = EmailTemplate.objects.get(name=template_name)
         if len(content) == 0:

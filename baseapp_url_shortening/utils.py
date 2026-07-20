@@ -8,7 +8,7 @@ from .models import ShortUrl
 logger = logging.getLogger(__name__)
 
 
-def shorten_url(full_url):
+def shorten_url(full_url) -> str:
     try:
         short_url_path = ShortUrl.objects.create(full_url=full_url).public_short_url
 

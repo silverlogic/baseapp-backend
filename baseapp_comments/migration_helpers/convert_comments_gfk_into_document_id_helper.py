@@ -43,6 +43,11 @@ Notes
   schema steps).
 """
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from django.db.models import Manager, QuerySet
+
 
 def assert_all_comment_rows_have_target_document(apps, schema_editor=None) -> None:
     """
@@ -118,7 +123,7 @@ def backfill_commentevent_target_from_pghistory_comment(apps, schema_editor=None
             e_qs.filter(pk=event.pk).update(target_document_id=tid)
 
 
-def _alias_pinned_managers(schema_editor, *models):
+def _alias_pinned_managers(schema_editor, *models) -> "tuple[Manager | QuerySet, ...]":
     # Pin every read/write to the alias the schema editor is operating on. The assert
     # helpers above already do this; mirroring it here keeps the forward / reverse
     # functions on the same database when running on a non-default alias.
@@ -128,7 +133,7 @@ def _alias_pinned_managers(schema_editor, *models):
     return tuple(model.objects for model in models)
 
 
-def migrate_comment_targets_to_document_id(apps, schema_editor):
+def migrate_comment_targets_to_document_id(apps, schema_editor) -> None:
     Comment = apps.get_model("comments", "Comment")
     CommentEvent = apps.get_model("comments", "CommentEvent")
     DocumentId = apps.get_model("baseapp_core", "DocumentId")
@@ -175,7 +180,7 @@ def migrate_comment_targets_to_document_id(apps, schema_editor):
     assert_all_commentevent_rows_have_target_document(apps, schema_editor=schema_editor)
 
 
-def reverse_migrate_comment_targets_to_generic_fk(apps, schema_editor):
+def reverse_migrate_comment_targets_to_generic_fk(apps, schema_editor) -> None:
     Comment = apps.get_model("comments", "Comment")
     CommentEvent = apps.get_model("comments", "CommentEvent")
     comment_qs, event_qs = _alias_pinned_managers(schema_editor, Comment, CommentEvent)

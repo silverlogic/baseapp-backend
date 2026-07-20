@@ -1,14 +1,19 @@
+from typing import TYPE_CHECKING
+
 from graphene.relay import Node as GrapheneRelayNode
 from graphql_relay import from_global_id
 
 from baseapp_core.hashids.strategies.interfaces import GraphQLResolverStrategy
 
+if TYPE_CHECKING:
+    from django.db.models import Model
+
 
 class LegacyGraphQLResolverStrategy(GraphQLResolverStrategy):
-    def to_global_id(self, model_instance, type_, id):
+    def to_global_id(self, model_instance, type_, id) -> str:
         return GrapheneRelayNode.to_global_id(type_, id)
 
-    def get_node_from_global_id(self, info, global_id, only_type=None):
+    def get_node_from_global_id(self, info, global_id, only_type=None) -> "Model | None":
         """
         Needed to copy the original method from GrapheneRelayNode.get_node_from_global_id, because
         the original method uses the current class to verify if the ObjectType implements the
@@ -35,11 +40,11 @@ class LegacyGraphQLResolverStrategy(GraphQLResolverStrategy):
         if get_node:
             return get_node(info, _id)
 
-    def get_pk_from_global_id(self, global_id):
+    def get_pk_from_global_id(self, global_id) -> str:
         gid_type, gid = from_global_id(global_id)
         return gid
 
-    def get_instance_from_global_id(self, info, global_id, get_node=False):
+    def get_instance_from_global_id(self, info, global_id, get_node=False) -> "Model":
         gid_type, gid = from_global_id(global_id)
         object_type = info.schema.get_type(gid_type)
         if get_node:

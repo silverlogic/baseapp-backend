@@ -13,6 +13,7 @@ Modelled after:
 """
 
 from collections import Counter
+from typing import TYPE_CHECKING
 
 import pytest
 from django.db import connection
@@ -23,10 +24,13 @@ from baseapp_profiles.tests.factories import ProfileFactory
 
 from .factories import ChatRoomFactory, ChatRoomParticipantFactory, MessageFactory
 
+if TYPE_CHECKING:
+    from django.db.models import Model
+
 pytestmark = pytest.mark.django_db
 
 
-def _captured_sql(ctx):
+def _captured_sql(ctx) -> list[str]:
     return [q["sql"] for q in ctx.captured_queries]
 
 
@@ -89,7 +93,9 @@ ROOM_MESSAGES_WITH_MENTIONS = """
 """
 
 
-def _set_up_rooms_with_participants(my_profile, n_rooms, n_other_participants_per_room):
+def _set_up_rooms_with_participants(
+    my_profile, n_rooms, n_other_participants_per_room
+) -> "list[Model]":
     """Create n rooms, place my_profile in each, add n_other participants
     + one message so each room is visible to my_profile."""
     rooms = []
@@ -104,7 +110,9 @@ def _set_up_rooms_with_participants(my_profile, n_rooms, n_other_participants_pe
     return rooms
 
 
-def test_paginated_chat_rooms_does_not_explode_query_count(graphql_user_client, django_user_client):
+def test_paginated_chat_rooms_does_not_explode_query_count(
+    graphql_user_client, django_user_client
+) -> None:
     """Regression guard: paged `chatRooms` listing stays flat regardless
     of room count, with `lastMessage` batched (not per-row).
 
@@ -137,7 +145,7 @@ def test_paginated_chat_rooms_does_not_explode_query_count(graphql_user_client, 
 
 def test_chat_rooms_listing_unread_count_subquery_runs_once_per_page(
     graphql_user_client, django_user_client
-):
+) -> None:
     """SQL-shape guard for `unreadMessagesCount`.
 
     `ChatRoomsInterface.resolve_unread_messages_count` aggregates
@@ -180,7 +188,7 @@ def test_chat_rooms_listing_unread_count_subquery_runs_once_per_page(
 
 def test_mentions_interface_on_messages_rides_optimizer_prefetch(
     graphql_user_client, django_user_client
-):
+) -> None:
     """Regression guard: the `MentionsInterface` optimizer hook on
     `MessageObjectType` must batch the `document__<reverse>` mentions prefetch,
     and the chats-side `pre_optimization_hook` must keep `room_id`,
@@ -257,7 +265,7 @@ UNREAD_FILTERED_ROOMS = """
 
 def test_chat_room_filter_unread_messages_prefetches_unread_messages(
     graphql_user_client, django_user_client
-):
+) -> None:
     """SQL-shape guard for `ChatRoomFilter.filter_unread_messages`.
 
     The filter calls `queryset.prefetch_related("unread_messages")` —

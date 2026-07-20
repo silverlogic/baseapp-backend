@@ -1,7 +1,12 @@
+from typing import TYPE_CHECKING
+
 import swapper
 from django.contrib import admin
 
 from baseapp_core.admin_helpers import ModelAdmin
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
 
 ReportType = swapper.load_model("baseapp_reports", "ReportType")
 Report = swapper.load_model("baseapp_reports", "Report")
@@ -21,7 +26,7 @@ class ReportAdmin(ModelAdmin):
     raw_id_fields = ("user", "target_document")
     date_hierarchy = "created"
 
-    def get_queryset(self, request):
+    def get_queryset(self, request) -> "QuerySet":
         return (
             super()
             .get_queryset(request)

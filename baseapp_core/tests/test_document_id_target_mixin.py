@@ -9,22 +9,22 @@ from testproject.testapp.tests.factories import DummyPublicIdModelFactory
 @pytest.mark.django_db
 class TestDocumentIdTargetMixin:
     @pytest.fixture
-    def dummy_instance(self, db):
+    def dummy_instance(self, db) -> DummyPublicIdModel:
         return DummyPublicIdModelFactory()
 
-    def test_target_document_is_non_unique_foreign_key_to_document_id(self):
+    def test_target_document_is_non_unique_foreign_key_to_document_id(self) -> None:
         field = DummyDocumentTarget._meta.get_field("target_document")
         assert field.many_to_one is True
         assert field.one_to_one is False
         assert field.null is False
         assert field.related_model is DocumentId
 
-    def test_related_name_is_app_label_and_class_scoped(self, dummy_instance):
+    def test_related_name_is_app_label_and_class_scoped(self, dummy_instance) -> None:
         row = DummyDocumentTarget(target=dummy_instance)
         row.save()
         assert list(row.target_document.testapp_dummydocumenttarget.all()) == [row]
 
-    def test_setting_target_creates_document_and_resolves_back(self, dummy_instance):
+    def test_setting_target_creates_document_and_resolves_back(self, dummy_instance) -> None:
         row = DummyDocumentTarget(target=dummy_instance)
         row.save()
 
@@ -32,13 +32,13 @@ class TestDocumentIdTargetMixin:
         assert DocumentId.objects.filter(pk=row.target_document_id).exists()
         assert row.target == dummy_instance
 
-    def test_target_resolves_from_persisted_document(self, dummy_instance):
+    def test_target_resolves_from_persisted_document(self, dummy_instance) -> None:
         row = DummyDocumentTarget.objects.create(target=dummy_instance)
 
         reloaded = DummyDocumentTarget.objects.get(pk=row.pk)
         assert reloaded.target == dummy_instance
 
-    def test_target_getter_is_cached(self, dummy_instance):
+    def test_target_getter_is_cached(self, dummy_instance) -> None:
         row = DummyDocumentTarget.objects.create(target=dummy_instance)
         reloaded = DummyDocumentTarget.objects.get(pk=row.pk)
 
@@ -46,16 +46,16 @@ class TestDocumentIdTargetMixin:
         assert reloaded._target_object_cache is first
         assert reloaded.target is first
 
-    def test_target_getter_returns_none_when_unset(self):
+    def test_target_getter_returns_none_when_unset(self) -> None:
         assert DummyDocumentTarget().target is None
 
-    def test_setting_target_to_none_clears_document(self, dummy_instance):
+    def test_setting_target_to_none_clears_document(self, dummy_instance) -> None:
         row = DummyDocumentTarget(target=dummy_instance)
         row.target = None
         assert row.target_document_id is None
         assert row.target is None
 
-    def test_target_metadata_shortcuts(self, dummy_instance):
+    def test_target_metadata_shortcuts(self, dummy_instance) -> None:
         row = DummyDocumentTarget.objects.create(target=dummy_instance)
         ct = ContentType.objects.get_for_model(DummyPublicIdModel)
 
@@ -63,13 +63,13 @@ class TestDocumentIdTargetMixin:
         assert row.target_content_type_id == ct.pk
         assert row.target_object_id == dummy_instance.pk
 
-    def test_target_metadata_shortcuts_none_when_unset(self):
+    def test_target_metadata_shortcuts_none_when_unset(self) -> None:
         row = DummyDocumentTarget()
         assert row.target_content_type is None
         assert row.target_content_type_id is None
         assert row.target_object_id is None
 
-    def test_multiple_rows_can_share_the_same_target(self, dummy_instance):
+    def test_multiple_rows_can_share_the_same_target(self, dummy_instance) -> None:
         first = DummyDocumentTarget.objects.create(target=dummy_instance)
         second = DummyDocumentTarget.objects.create(target=dummy_instance)
 
@@ -79,7 +79,7 @@ class TestDocumentIdTargetMixin:
             == 2
         )
 
-    def test_rows_are_cascade_deleted_with_their_document(self, dummy_instance):
+    def test_rows_are_cascade_deleted_with_their_document(self, dummy_instance) -> None:
         row = DummyDocumentTarget.objects.create(target=dummy_instance)
         document_id = row.target_document_id
 

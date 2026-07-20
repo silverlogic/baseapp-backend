@@ -10,7 +10,7 @@ from baseapp_core.graphql.consumers import GraphqlWsJWTAuthenticatedConsumer
 CONSUMER_AUTH = "baseapp_core.graphql.consumers.authenticate_jwt_async"
 
 
-def _make_consumer(scope=None):
+def _make_consumer(scope=None) -> GraphqlWsJWTAuthenticatedConsumer:
     with patch.object(channels_graphql_ws.GraphqlWsConsumer, "__init__", return_value=None):
         consumer = GraphqlWsJWTAuthenticatedConsumer()
     consumer.scope = {} if scope is None else scope
@@ -19,7 +19,7 @@ def _make_consumer(scope=None):
 
 class TestGraphqlWsJWTAuthenticatedConsumerOnConnect:
     @pytest.mark.asyncio
-    async def test_authenticates_valid_user(self):
+    async def test_authenticates_valid_user(self) -> None:
         consumer = _make_consumer()
         user = MagicMock(is_active=True)
 
@@ -29,7 +29,7 @@ class TestGraphqlWsJWTAuthenticatedConsumerOnConnect:
         assert consumer.scope["user"] is user
 
     @pytest.mark.asyncio
-    async def test_anonymous_when_auth_fails(self):
+    async def test_anonymous_when_auth_fails(self) -> None:
         consumer = _make_consumer()
 
         with patch(CONSUMER_AUTH, new=AsyncMock(return_value=(None, None))):
@@ -38,7 +38,7 @@ class TestGraphqlWsJWTAuthenticatedConsumerOnConnect:
         assert isinstance(consumer.scope["user"], AnonymousUser)
 
     @pytest.mark.asyncio
-    async def test_anonymous_when_no_authorization(self):
+    async def test_anonymous_when_no_authorization(self) -> None:
         consumer = _make_consumer()
 
         with patch(CONSUMER_AUTH, new=AsyncMock()) as mock_auth:
@@ -48,7 +48,7 @@ class TestGraphqlWsJWTAuthenticatedConsumerOnConnect:
         mock_auth.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_anonymous_when_user_inactive(self):
+    async def test_anonymous_when_user_inactive(self) -> None:
         consumer = _make_consumer()
         user = MagicMock(is_active=False)
 
@@ -58,7 +58,7 @@ class TestGraphqlWsJWTAuthenticatedConsumerOnConnect:
         assert isinstance(consumer.scope["user"], AnonymousUser)
 
     @pytest.mark.asyncio
-    async def test_skips_when_already_authenticated(self):
+    async def test_skips_when_already_authenticated(self) -> None:
         sentinel = MagicMock()
         consumer = _make_consumer(scope={"user": sentinel})
 
@@ -69,7 +69,7 @@ class TestGraphqlWsJWTAuthenticatedConsumerOnConnect:
         mock_auth.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_passes_access_and_refresh_to_authenticator(self):
+    async def test_passes_access_and_refresh_to_authenticator(self) -> None:
         consumer = _make_consumer()
         user = MagicMock(is_active=True)
 
@@ -79,7 +79,7 @@ class TestGraphqlWsJWTAuthenticatedConsumerOnConnect:
         mock_auth.assert_awaited_once_with("access", "refresh")
 
     @pytest.mark.asyncio
-    async def test_ignores_unknown_current_profile(self):
+    async def test_ignores_unknown_current_profile(self) -> None:
         consumer = _make_consumer()
         user = MagicMock(is_active=True)
 
@@ -92,7 +92,7 @@ class TestGraphqlWsJWTAuthenticatedConsumerOnConnect:
         assert consumer.scope["user"] is user
 
     @pytest.mark.asyncio
-    async def test_attaches_current_profile_when_permitted(self):
+    async def test_attaches_current_profile_when_permitted(self) -> None:
         consumer = _make_consumer()
         profile = MagicMock()
         user = MagicMock(is_active=True)
@@ -110,7 +110,7 @@ class TestGraphqlWsJWTAuthenticatedConsumerOnConnect:
         assert user.current_profile is profile
 
     @pytest.mark.asyncio
-    async def test_does_not_attach_current_profile_without_permission(self):
+    async def test_does_not_attach_current_profile_without_permission(self) -> None:
         consumer = _make_consumer()
         profile = MagicMock()
         user = MagicMock(is_active=True)

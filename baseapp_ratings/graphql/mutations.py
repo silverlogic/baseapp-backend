@@ -31,7 +31,7 @@ class RateCreate(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "RateCreate":
         has_profiles = apps.is_installed("baseapp_profiles")
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
 

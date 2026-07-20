@@ -14,7 +14,7 @@ UnreadMessageCount = swapper.load_model("baseapp_chats", "UnreadMessageCount")
 MessageStatus = swapper.load_model("baseapp_chats", "MessageStatus")
 
 
-def test_last_message_is_set():
+def test_last_message_is_set() -> None:
     room = ChatRoomFactory()
     message = MessageFactory(room=room)
 
@@ -23,7 +23,7 @@ def test_last_message_is_set():
     assert room.last_message_time == message.created
 
 
-def test_last_message_deleted_updates_to_previous():
+def test_last_message_deleted_updates_to_previous() -> None:
     room = ChatRoomFactory()
     old_message = MessageFactory(room=room)
     new_message = MessageFactory(room=room)
@@ -38,7 +38,7 @@ def test_last_message_deleted_updates_to_previous():
     assert room.last_message_time == old_message.created
 
 
-def test_last_message_deleted_clears_fields_when_no_previous():
+def test_last_message_deleted_clears_fields_when_no_previous() -> None:
     room = ChatRoomFactory()
     message = MessageFactory(room=room)
 
@@ -51,7 +51,7 @@ def test_last_message_deleted_clears_fields_when_no_previous():
     assert room.last_message_time is None
 
 
-def test_message_status_are_created():
+def test_message_status_are_created() -> None:
     room = ChatRoomFactory()
     participants_count = 2
     ChatRoomParticipantFactory.create_batch(participants_count, room=room)
@@ -61,7 +61,7 @@ def test_message_status_are_created():
     assert MessageStatus.objects.filter(message=message).count() == participants_count
 
 
-def test_sender_status_is_read_and_unread_not_counted():
+def test_sender_status_is_read_and_unread_not_counted() -> None:
     room = ChatRoomFactory()
     sender_profile = ProfileFactory()
     receiver_profile = ProfileFactory()
@@ -83,7 +83,7 @@ def test_sender_status_is_read_and_unread_not_counted():
     assert UnreadMessageCount.objects.get(profile=receiver_profile, room=room).count == 1
 
 
-def test_does_not_create_message_status_for_system_messages():
+def test_does_not_create_message_status_for_system_messages() -> None:
     room = ChatRoomFactory()
     participants_count = 2
     ChatRoomParticipantFactory.create_batch(participants_count, room=room)
@@ -93,7 +93,7 @@ def test_does_not_create_message_status_for_system_messages():
     assert MessageStatus.objects.filter(message=message).count() == 0
 
 
-def test_unread_message_count_is_incremented():
+def test_unread_message_count_is_incremented() -> None:
     room = ChatRoomFactory()
     participants_count = 2
     participants = ChatRoomParticipantFactory.create_batch(participants_count, room=room)
@@ -104,7 +104,7 @@ def test_unread_message_count_is_incremented():
         assert UnreadMessageCount.objects.get(profile=participant.profile).count == 1
 
 
-def test_unread_message_count_increments_one_at_a_time():
+def test_unread_message_count_increments_one_at_a_time() -> None:
     room = ChatRoomFactory()
     sender = ChatRoomParticipantFactory(room=room)
     receiver = ChatRoomParticipantFactory(room=room)
@@ -121,7 +121,7 @@ def test_unread_message_count_increments_one_at_a_time():
     assert unread_count.count == 2
 
 
-def test_unread_message_count_is_not_incremented_for_system_messages():
+def test_unread_message_count_is_not_incremented_for_system_messages() -> None:
     room = ChatRoomFactory()
     participants_count = 2
     participants = ChatRoomParticipantFactory.create_batch(participants_count, room=room)
@@ -132,7 +132,7 @@ def test_unread_message_count_is_not_incremented_for_system_messages():
         assert UnreadMessageCount.objects.filter(profile=participant.profile).count() == 0
 
 
-def test_unread_message_count_is_decremented():
+def test_unread_message_count_is_decremented() -> None:
     room = ChatRoomFactory()
     participants_count = 2
     participants = ChatRoomParticipantFactory.create_batch(participants_count, room=room)
@@ -145,7 +145,7 @@ def test_unread_message_count_is_decremented():
         assert UnreadMessageCount.objects.get(profile=participant.profile).count == 0
 
 
-def test_unread_message_count_decrements_one_at_a_time():
+def test_unread_message_count_decrements_one_at_a_time() -> None:
     room = ChatRoomFactory()
     participant = ChatRoomParticipantFactory(room=room)
     ChatRoomParticipantFactory(room=room)

@@ -1,4 +1,6 @@
+from collections.abc import Iterator
 from types import SimpleNamespace
+from typing import Any, NoReturn
 
 import factory
 
@@ -38,65 +40,65 @@ class _DocumentRowFactory(factory.Factory):
 class _LegacyQuerySet:
     """Minimal queryset shim — the helper calls `only()`, `exists()`, iteration."""
 
-    def __init__(self, rows):
+    def __init__(self, rows) -> None:
         self._rows = list(rows)
 
-    def only(self, *_args):
+    def only(self, *_args) -> "_LegacyQuerySet":
         return self
 
-    def exists(self):
+    def exists(self) -> bool:
         return bool(self._rows)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[SimpleNamespace]:
         return iter(self._rows)
 
 
 class _UpdateQuerySet:
-    def __init__(self, log, pk):
+    def __init__(self, log, pk) -> None:
         self._log = log
         self._pk = pk
 
-    def update(self, **kwargs):
+    def update(self, **kwargs) -> None:
         self._log.append((self._pk, kwargs))
 
 
 class _SourceManager:
-    def __init__(self, rows):
+    def __init__(self, rows) -> None:
         self._rows = rows
         self.update_log = []
 
-    def only(self, *_args):
+    def only(self, *_args) -> _LegacyQuerySet:
         return _LegacyQuerySet(self._rows)
 
-    def filter(self, **kwargs):
+    def filter(self, **kwargs) -> _UpdateQuerySet:
         if "pk" in kwargs:
             return _UpdateQuerySet(self.update_log, kwargs["pk"])
         raise AssertionError("Unexpected filter call")
 
 
-def _make_apps(*, source_model, content_type, get_or_create_log, metadata_log):
+def _make_apps(*, source_model, content_type, get_or_create_log, metadata_log) -> Any:
     class ContentTypeManager:
-        def get_or_create(self, **kwargs):
+        def get_or_create(self, **kwargs) -> tuple[SimpleNamespace, bool]:
             assert kwargs == {
                 "app_label": source_model._meta.app_label,
                 "model": source_model._meta.model_name,
             }
             return content_type, False
 
-        def filter(self, **kwargs):
+        def filter(self, **kwargs) -> Any:
             assert kwargs == {
                 "app_label": source_model._meta.app_label,
                 "model": source_model._meta.model_name,
             }
 
             class _Filtered:
-                def first(_self):
+                def first(_self) -> SimpleNamespace:
                     return content_type
 
             return _Filtered()
 
     class DocumentIdManager:
-        def get_or_create(self, **kwargs):
+        def get_or_create(self, **kwargs) -> tuple[SimpleNamespace, bool]:
             doc = _DocumentRowFactory(
                 id=1000 + kwargs["object_id"],
                 content_type_id=kwargs["content_type_id"],
@@ -106,12 +108,12 @@ def _make_apps(*, source_model, content_type, get_or_create_log, metadata_log):
             return doc, True
 
     class BlockableMetadataManager:
-        def update_or_create(self, **kwargs):
+        def update_or_create(self, **kwargs) -> tuple[SimpleNamespace, bool]:
             metadata_log.append(kwargs)
             return SimpleNamespace(), True
 
     class FakeApps:
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             mapping = {
                 ("profiles", "Profile"): source_model,
                 ("contenttypes", "ContentType"): SimpleNamespace(objects=ContentTypeManager()),
@@ -125,7 +127,7 @@ def _make_apps(*, source_model, content_type, get_or_create_log, metadata_log):
     return FakeApps()
 
 
-def test_migrate_legacy_block_counts_to_metadata_creates_metadata_rows():
+def test_migrate_legacy_block_counts_to_metadata_creates_metadata_rows() -> None:
     source_rows = [
         _ModelRowFactory(pk=1, blockers_count=3, blocking_count=2),
         _ModelRowFactory(pk=2, blockers_count=0, blocking_count=5),
@@ -162,7 +164,7 @@ def test_migrate_legacy_block_counts_to_metadata_creates_metadata_rows():
     ]
 
 
-def test_migrate_legacy_block_counts_no_op_when_no_source_rows():
+def test_migrate_legacy_block_counts_no_op_when_no_source_rows() -> None:
     """Empty source table → helper creates no DocumentId or metadata rows.
     Bails before touching ContentType so it's safe on a fresh test DB where
     ``post_migrate`` hasn't yet populated the row."""
@@ -192,7 +194,7 @@ def test_migrate_legacy_block_counts_no_op_when_no_source_rows():
     assert metadata_updates == []
 
 
-def test_reverse_migrate_legacy_block_counts_restores_source_fields():
+def test_reverse_migrate_legacy_block_counts_restores_source_fields() -> None:
     source_model = SimpleNamespace(
         _meta=SimpleNamespace(app_label="profiles", model_name="profile"),
         objects=_SourceManager([]),
@@ -207,32 +209,32 @@ def test_reverse_migrate_legacy_block_counts_restores_source_fields():
     ]
 
     class _MetadataQuerySet:
-        def __init__(self, rows):
+        def __init__(self, rows) -> None:
             self._rows = rows
 
-        def select_related(self, *_args):
+        def select_related(self, *_args) -> "_MetadataQuerySet":
             return self
 
-        def __iter__(self):
+        def __iter__(self) -> Iterator[SimpleNamespace]:
             return iter(self._rows)
 
     class ContentTypeManager:
-        def filter(self, **kwargs):
+        def filter(self, **kwargs) -> Any:
             assert kwargs == {"app_label": "profiles", "model": "profile"}
 
             class _Filtered:
-                def first(_self):
+                def first(_self) -> SimpleNamespace:
                     return ct
 
             return _Filtered()
 
     class MetadataManager:
-        def filter(self, **kwargs):
+        def filter(self, **kwargs) -> "_MetadataQuerySet":
             assert kwargs == {"target__content_type_id": 77}
             return _MetadataQuerySet(metadata_rows)
 
     class FakeApps:
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             mapping = {
                 ("profiles", "Profile"): source_model,
                 ("contenttypes", "ContentType"): SimpleNamespace(objects=ContentTypeManager()),
@@ -250,26 +252,26 @@ def test_reverse_migrate_legacy_block_counts_restores_source_fields():
     assert source_model.objects.update_log == [(10, {"blockers_count": 4, "blocking_count": 7})]
 
 
-def test_reverse_migrate_legacy_block_counts_no_op_when_content_type_missing():
+def test_reverse_migrate_legacy_block_counts_no_op_when_content_type_missing() -> None:
     source_model = SimpleNamespace(
         _meta=SimpleNamespace(app_label="profiles", model_name="profile"),
         objects=_SourceManager([]),
     )
 
     class ContentTypeManager:
-        def filter(self, **_kwargs):
+        def filter(self, **_kwargs) -> Any:
             class _Filtered:
-                def first(_self):
+                def first(_self) -> None:
                     return None
 
             return _Filtered()
 
     class MetadataManager:
-        def filter(self, **kwargs):
+        def filter(self, **kwargs) -> NoReturn:
             raise AssertionError("Should not query metadata when ContentType is missing")
 
     class FakeApps:
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             mapping = {
                 ("profiles", "Profile"): source_model,
                 ("contenttypes", "ContentType"): SimpleNamespace(objects=ContentTypeManager()),

@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.utils.safestring import mark_safe
 from wagtail.blocks import CharBlock, ChoiceBlock, StaticBlock, StructBlock
 
@@ -38,7 +40,7 @@ class BannerBlock(StructBlock):
         help_text="This indicates the position of the image in the desktop view.",
     )
 
-    def get_api_representation(self, value, context=None):
+    def get_api_representation(self, value, context=None) -> dict[str, Any]:
         serialized_data = super().get_api_representation(value, context)
         serialized_data.pop("hr")
 

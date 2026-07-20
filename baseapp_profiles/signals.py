@@ -3,7 +3,7 @@ from django.apps import apps
 from .models import update_or_create_profile
 
 
-def create_profile_url_path(instance, created, **kwargs):
+def create_profile_url_path(instance, created, **kwargs) -> None:
     """
     After a ProfilableModel instance is created, the DB trigger has already created
     the Profile row and set profile_id. This signal handles URL path creation, which
@@ -20,7 +20,7 @@ def create_profile_url_path(instance, created, **kwargs):
         instance.profile.create_url_path()
 
 
-def update_user_profile(instance, created, **kwargs):
+def update_user_profile(instance, created, **kwargs) -> None:
     """
     Deprecated: profile creation is now handled by a pgtrigger INSERT trigger.
     Kept for backwards compatibility with projects that have not yet added

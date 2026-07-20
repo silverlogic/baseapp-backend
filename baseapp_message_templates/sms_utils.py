@@ -6,7 +6,7 @@ from .models import SmsTemplate
 logger = logging.getLogger(__name__)
 
 
-def get_sms_message(template_name, context):
+def get_sms_message(template_name, context) -> str | None:
     try:
         template = SmsTemplate.objects.get(name=template_name)
         return get_sms_template_message(template, context)

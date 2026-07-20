@@ -33,7 +33,7 @@ mutation ProfileUserRoleDeleteMutation($input: ProfileUserRoleDeleteInput!) {
 """
 
 
-def test_anon_cant_delete_profile(graphql_client):
+def test_anon_cant_delete_profile(graphql_client) -> None:
     profile = ProfileFactory()
 
     response = graphql_client(
@@ -44,7 +44,7 @@ def test_anon_cant_delete_profile(graphql_client):
     assert content["errors"][0]["message"] == "authentication required"
 
 
-def test_user_cant_delete_any_profile(graphql_user_client):
+def test_user_cant_delete_any_profile(graphql_user_client) -> None:
     profile = ProfileFactory()
 
     response = graphql_user_client(
@@ -55,7 +55,7 @@ def test_user_cant_delete_any_profile(graphql_user_client):
     assert content["errors"][0]["extensions"]["code"] == "permission_required"
 
 
-def test_owner_can_delete_profile(django_user_client, graphql_user_client):
+def test_owner_can_delete_profile(django_user_client, graphql_user_client) -> None:
     profile = ProfileFactory(owner=django_user_client.user)
 
     response = graphql_user_client(
@@ -68,7 +68,7 @@ def test_owner_can_delete_profile(django_user_client, graphql_user_client):
         profile.refresh_from_db()
 
 
-def test_superuser_can_delete_profile(django_user_client, graphql_user_client):
+def test_superuser_can_delete_profile(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
 
@@ -84,7 +84,7 @@ def test_superuser_can_delete_profile(django_user_client, graphql_user_client):
         profile.refresh_from_db()
 
 
-def test_user_with_permission_can_delete_profile(django_user_client, graphql_user_client):
+def test_user_with_permission_can_delete_profile(django_user_client, graphql_user_client) -> None:
     perm = Permission.objects.get(
         content_type__app_label=Profile._meta.app_label, codename="delete_profile"
     )
@@ -102,7 +102,9 @@ def test_user_with_permission_can_delete_profile(django_user_client, graphql_use
         profile.refresh_from_db()
 
 
-def test_user_profile_owner_can_remove_profile_member(django_user_client, graphql_user_client):
+def test_user_profile_owner_can_remove_profile_member(
+    django_user_client, graphql_user_client
+) -> None:
     perm = Permission.objects.get(
         content_type__app_label=ProfileUserRole._meta.app_label, codename="delete_profileuserrole"
     )
@@ -127,7 +129,9 @@ def test_user_profile_owner_can_remove_profile_member(django_user_client, graphq
     assert not ProfileUserRole.objects.filter(id=profile_user_role.id).exists()
 
 
-def test_user_with_permission_can_remove_profile_member(django_user_client, graphql_user_client):
+def test_user_with_permission_can_remove_profile_member(
+    django_user_client, graphql_user_client
+) -> None:
     perm = Permission.objects.get(
         content_type__app_label=ProfileUserRole._meta.app_label, codename="delete_profileuserrole"
     )
@@ -155,7 +159,7 @@ def test_user_with_permission_can_remove_profile_member(django_user_client, grap
 
 def test_user_without_permission_cant_remove_profile_member(
     django_user_client, graphql_user_client
-):
+) -> None:
     user = django_user_client.user
     user_2 = UserFactory()
     user_3 = UserFactory()

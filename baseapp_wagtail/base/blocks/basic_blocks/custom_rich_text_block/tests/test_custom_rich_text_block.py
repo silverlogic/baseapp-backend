@@ -7,7 +7,7 @@ from baseapp_wagtail.tests.utils.blocks_helpers import BlocksHelper
 class CustomRichTextBlockTests(BlocksHelper, TestPageContextMixin):
     block_type = "custom_rich_text_block"
 
-    def test_rich_text_render_within_api_request(self):
+    def test_rich_text_render_within_api_request(self) -> None:
         text = f'<p>Link to <a linktype="page" id="{self.page.id}">Test Page</a></p>'
         self.insert_block(self.page, RichText(text))
 

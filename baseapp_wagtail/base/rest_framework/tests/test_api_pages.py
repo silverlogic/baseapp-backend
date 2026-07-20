@@ -7,7 +7,7 @@ from baseapp_wagtail.tests.models import PageForTests
 
 
 class PagesAPITests(StandardPageContextMixin):
-    def test_page_url_path(self):
+    def test_page_url_path(self) -> None:
         new_page = PageForTests(
             title="My Page Child",
             slug="mypage-child",
@@ -22,7 +22,7 @@ class PagesAPITests(StandardPageContextMixin):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json()["meta"]["url_path"], "/mypage/mypage-child/")
 
-    def test_path_endpoint(self):
+    def test_path_endpoint(self) -> None:
         response = self.client.get(
             reverse("baseappwagtailapi_base:pages:path"), {"html_path": "/mypage/"}
         )
@@ -30,7 +30,7 @@ class PagesAPITests(StandardPageContextMixin):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json()["id"], self.page.id)
 
-    def test_path_endpoint_with_similar_paths(self):
+    def test_path_endpoint_with_similar_paths(self) -> None:
         new_page = PageForTests(
             title="My Page",
             slug="mypage",
@@ -48,7 +48,7 @@ class PagesAPITests(StandardPageContextMixin):
 
 
 class DefaultPageModelAPISerializerTests(StandardPageContextMixin):
-    def setUp(self):
+    def setUp(self) -> None:
         super().setUp()
         self.new_page = PageForTests(
             title="My Standard Page",
@@ -57,7 +57,7 @@ class DefaultPageModelAPISerializerTests(StandardPageContextMixin):
         )
         self.page.add_child(instance=self.new_page)
 
-    def test_page_featured_image(self):
+    def test_page_featured_image(self) -> None:
         image = media_factory.ImageFactory()
         self.page.featured_image.extend([("featured_image", {"image": image})])
         self.page.save()
@@ -71,7 +71,7 @@ class DefaultPageModelAPISerializerTests(StandardPageContextMixin):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json()["featured_image"]["image"]["id"], image.id)
 
-    def test_page_ancestors(self):
+    def test_page_ancestors(self) -> None:
         self.new_page.save_revision().publish()
         response = self.client.get(
             reverse("baseappwagtailapi_base:pages:detail", args=[self.new_page.id]),
@@ -86,7 +86,7 @@ class DefaultPageModelAPISerializerTests(StandardPageContextMixin):
         self.assertIsNotNone(response.json()["meta"]["ancestors"][0]["type"])
         self.assertIsNotNone(response.json()["meta"]["ancestors"][0]["locale"])
 
-    def test_page_with_unpublished_ancestor(self):
+    def test_page_with_unpublished_ancestor(self) -> None:
         self.page.live = False
         self.page.save()
         self.new_page.save_revision().publish()
@@ -99,7 +99,7 @@ class DefaultPageModelAPISerializerTests(StandardPageContextMixin):
         self.assertEqual(len(response.json()["meta"]["ancestors"]), 1)
         self.assertEqual(response.json()["meta"]["ancestors"][0]["id"], self.page.get_parent().id)
 
-    def test_path_endpoint_with_locale_prefix(self):
+    def test_path_endpoint_with_locale_prefix(self) -> None:
         response = self.client.get(
             reverse("baseappwagtailapi_base:pages:path"), {"html_path": "/es/mypage/"}
         )

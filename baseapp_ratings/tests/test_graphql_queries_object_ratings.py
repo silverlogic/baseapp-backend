@@ -42,7 +42,7 @@ COUNTS_ONLY_QUERY = """
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_ratings_count_is_flat_regardless_of_rate_volume(
     django_user_client, graphql_client_with_queries
-):
+) -> None:
     """`ratingsCount` should be a flat query path: regardless of how many `Rate`
     rows point at the target, the GraphQL query should make the same number of DB
     round-trips (modulo content-type cache jitter)."""
@@ -76,7 +76,7 @@ def test_anon_ratings_count_is_flat_regardless_of_rate_volume(
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_ratings_count_zero_when_no_rates_does_not_extra_query(
     django_user_client, graphql_client_with_queries
-):
+) -> None:
     """A target with no rates should resolve in the same query budget as one with
     rates — the metadata row simply doesn't exist yet, and `Coalesce` returns the
     zero defaults without an extra round trip."""

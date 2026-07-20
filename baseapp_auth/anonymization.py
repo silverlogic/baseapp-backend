@@ -1,7 +1,7 @@
 from django.db import connection
 
 
-def anonymize_activitylog(self, *args, **kwargs):
+def anonymize_activitylog(self, *args, **kwargs) -> None:
     """
      Ensures full anonymization of user-related activity logs.
 
@@ -26,7 +26,7 @@ def anonymize_activitylog(self, *args, **kwargs):
         _anonymize_activitylog(self, *args, **kwargs)
 
 
-def _anonymize_activitylog(self, *args, **kwargs):
+def _anonymize_activitylog(self, *args, **kwargs) -> None:
     from baseapp.activity_log.models import ActivityLog
 
     all_activity_logs = ActivityLog.objects.filter(user=self)

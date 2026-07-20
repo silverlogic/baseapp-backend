@@ -38,7 +38,7 @@ COMMENT_DELETE_GRAPHQL = """
 """
 
 
-def test_anon_cant_delete_comment(graphql_client):
+def test_anon_cant_delete_comment(graphql_client) -> None:
     comment = CommentFactory()
 
     response = graphql_client(
@@ -50,7 +50,7 @@ def test_anon_cant_delete_comment(graphql_client):
     assert Comment.objects_visible.count() == 1
 
 
-def test_user_cant_delete_any_comment(graphql_user_client):
+def test_user_cant_delete_any_comment(graphql_user_client) -> None:
     comment = CommentFactory()
 
     response = graphql_user_client(
@@ -62,7 +62,7 @@ def test_user_cant_delete_any_comment(graphql_user_client):
     assert Comment.objects_visible.count() == 1
 
 
-def test_owner_can_delete_comment(django_user_client, graphql_user_client):
+def test_owner_can_delete_comment(django_user_client, graphql_user_client) -> None:
     comment = CommentFactory(user=django_user_client.user)
 
     response = graphql_user_client(
@@ -74,7 +74,7 @@ def test_owner_can_delete_comment(django_user_client, graphql_user_client):
     assert Comment.objects_visible.count() == 0
 
 
-def test_superuser_can_delete_comment(django_user_client, graphql_user_client):
+def test_superuser_can_delete_comment(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
 
@@ -89,7 +89,7 @@ def test_superuser_can_delete_comment(django_user_client, graphql_user_client):
     assert Comment.objects_visible.count() == 0
 
 
-def test_user_with_permission_can_delete_comment(django_user_client, graphql_user_client):
+def test_user_with_permission_can_delete_comment(django_user_client, graphql_user_client) -> None:
     app_label = Comment._meta.app_label
     perm = Permission.objects.get(content_type__app_label=app_label, codename="delete_comment")
     django_user_client.user.user_permissions.add(perm)
@@ -105,7 +105,9 @@ def test_user_with_permission_can_delete_comment(django_user_client, graphql_use
     assert Comment.objects_visible.count() == 0
 
 
-def test_update_comments_counts_after_delete_comment(django_user_client, graphql_user_client):
+def test_update_comments_counts_after_delete_comment(
+    django_user_client, graphql_user_client
+) -> None:
     service = shared_services.get("commentable_metadata")
     target = CommentFactory()
     parent = CommentFactory(target=target)

@@ -146,7 +146,7 @@ NESTED_FOLLOWERS_QUERY = """
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_followers_and_following_counts_query_count(
     django_user_client, graphql_client_with_queries
-):
+) -> None:
     """Counts-only query: should be flat regardless of follower volume."""
     target_profile = ProfileFactory(owner=django_user_client.user)
     follower_users = [UserFactory() for _ in range(3)]
@@ -175,7 +175,7 @@ def test_anon_followers_and_following_counts_query_count(
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_followers_list_query_count_does_not_grow_with_followers(
     django_user_client, graphql_client_with_queries
-):
+) -> None:
     """Listing followers should be O(1) in the optimizer's eyes regardless of how many
     follower rows exist. Two test runs with different follower counts must produce the
     same query count (this is the regression we want to lock in)."""
@@ -213,7 +213,9 @@ def test_anon_followers_list_query_count_does_not_grow_with_followers(
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_anon_following_list_query_count_is_flat(django_user_client, graphql_client_with_queries):
+def test_anon_following_list_query_count_is_flat(
+    django_user_client, graphql_client_with_queries
+) -> None:
     """Symmetric to followers list — querying `following` for a profile should also
     resolve in a flat number of queries."""
     actor_profile = ProfileFactory(owner=django_user_client.user)
@@ -245,7 +247,7 @@ def test_anon_following_list_query_count_is_flat(django_user_client, graphql_cli
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_followers_pagination_query_count_independent_of_page_size(
     django_user_client, graphql_client_with_queries
-):
+) -> None:
     """The paginated followers query should not scale with the page size — first=50 must
     use the same number of queries (within ContentType-cache jitter) as first=5.
     Catches a regression where the resolver fans out per-edge queries."""
@@ -283,7 +285,7 @@ def test_anon_followers_pagination_query_count_independent_of_page_size(
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_nested_followers_count_does_not_explode(
     django_user_client, graphql_client_with_queries
-):
+) -> None:
     """When each follower edge expands to its own followers/following counts, query count
     should stay sublinear (one extra batch fetch — not one per row). This is the canonical
     'N+1 on FollowableMetadata' regression test."""

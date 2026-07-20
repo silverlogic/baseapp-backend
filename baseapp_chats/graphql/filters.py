@@ -30,7 +30,7 @@ class ChatRoomFilter(django_filters.FilterSet):
             "manageable",
         ]
 
-    def filter_q(self, queryset, name, value):
+    def filter_q(self, queryset, name, value) -> "QuerySet":
         if not value:
             return queryset
 
@@ -51,11 +51,11 @@ class ChatRoomFilter(django_filters.FilterSet):
             )
         ).distinct()
 
-    def filter_profile_id(self, queryset, name, value):
+    def filter_profile_id(self, queryset, name, value) -> "QuerySet":
         pk = get_pk_from_relay_id(value)
         return queryset.filter(participants__profile_id=pk)
 
-    def filter_unread_messages(self, queryset, name, value):
+    def filter_unread_messages(self, queryset, name, value) -> "QuerySet":
         if value:
             profile_id = self.data.get("profile_id", None)
             try:
@@ -78,7 +78,7 @@ class ChatRoomFilter(django_filters.FilterSet):
 
         return queryset
 
-    def filter_archived(self, queryset, name, value):
+    def filter_archived(self, queryset, name, value) -> "QuerySet":
         try:
             user_profile = self.request.user.current_profile
         except AttributeError:
@@ -115,7 +115,7 @@ class ChatRoomParticipantFilter(django_filters.FilterSet):
         model = ChatRoomParticipant
         fields = ["q"]
 
-    def filter_q(self, qs, name, value):
+    def filter_q(self, qs, name, value) -> "QuerySet":
         if not value:
             return qs
         return qs.filter(Q(profile__name__icontains=value)).distinct()

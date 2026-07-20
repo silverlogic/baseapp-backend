@@ -1,7 +1,7 @@
 from django.apps import apps
 
 
-def get_app_and_model_verbose_names(content_type):
+def get_app_and_model_verbose_names(content_type) -> tuple[str, str]:
     """Retrieve the verbose names for the app and model from a ContentType."""
     try:
         app_config = apps.get_app_config(content_type.app_label)

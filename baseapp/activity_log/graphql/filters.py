@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import django_filters
 from django.apps import apps
 from django.core.exceptions import ValidationError
@@ -6,6 +8,9 @@ from django.db.models import Q
 from baseapp_core.plugins import apply_if_installed
 
 from ..models import ActivityLog
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
 
 
 class ActivityLogFilter(django_filters.FilterSet):
@@ -17,14 +22,14 @@ class ActivityLogFilter(django_filters.FilterSet):
     if apps.is_installed("baseapp_profiles"):
         profile_pk = django_filters.NumberFilter(field_name="profile_id")
 
-    def filter_user_name(self, queryset, name, value):
+    def filter_user_name(self, queryset, name, value) -> "QuerySet[ActivityLog]":
         if apps.is_installed("baseapp_profiles"):
             return queryset.filter(
                 Q(user__profile__name__icontains=value) | Q(user__email__icontains=value)
             )
         return queryset.filter(user__email__icontains=value)
 
-    def filter_queryset(self, queryset):
+    def filter_queryset(self, queryset) -> "QuerySet[ActivityLog]":
         created_from = self.data.get("created_from")
         created_to = self.data.get("created_to")
 

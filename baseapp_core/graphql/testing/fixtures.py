@@ -1,4 +1,5 @@
 import json
+from collections.abc import Awaitable, Callable, Generator
 
 import channels
 import channels_graphql_ws
@@ -6,11 +7,12 @@ import channels_graphql_ws.testing
 import django
 import pytest
 from channels.db import database_sync_to_async
+from django.http import HttpResponse
 from django.test import Client
 from graphene_django.settings import graphene_settings
 from rest_framework.authtoken.models import Token
 
-from baseapp_core.graphql.utils import capture_database_queries
+from baseapp_core.graphql.utils import QueryData, capture_database_queries
 
 from ..consumers import GraphqlWsAuthenticatedConsumer
 
@@ -28,7 +30,7 @@ def graphql_query(
     content_type="application/json",
     extra={},
     queries=None,
-):
+) -> HttpResponse | tuple[HttpResponse, QueryData]:
     """
     Args:
         query (string)              - GraphQL query to run
@@ -88,16 +90,16 @@ def graphql_query(
 
 
 @pytest.fixture
-def graphql_client(django_client):
-    def func(*args, **kwargs):
+def graphql_client(django_client) -> Callable[..., HttpResponse | tuple[HttpResponse, QueryData]]:
+    def func(*args, **kwargs) -> HttpResponse | tuple[HttpResponse, QueryData]:
         return graphql_query(*args, **kwargs, client=django_client)
 
     return func
 
 
 @pytest.fixture
-def graphql_client_with_queries(django_client):
-    def func(*args, **kwargs):
+def graphql_client_with_queries(django_client) -> Callable[..., tuple[HttpResponse, QueryData]]:
+    def func(*args, **kwargs) -> tuple[HttpResponse, QueryData]:
         with capture_database_queries() as queries:
             return graphql_query(*args, **kwargs, client=django_client, queries=queries)
 
@@ -105,15 +107,19 @@ def graphql_client_with_queries(django_client):
 
 
 @pytest.fixture
-def graphql_user_client(django_user_client):
-    def func(*args, **kwargs):
+def graphql_user_client(
+    django_user_client,
+) -> Callable[..., HttpResponse | tuple[HttpResponse, QueryData]]:
+    def func(*args, **kwargs) -> HttpResponse | tuple[HttpResponse, QueryData]:
         return graphql_query(*args, **kwargs, client=django_user_client)
 
     return func
 
 
 @pytest.fixture
-def graphql_websocket(request):
+def graphql_websocket(
+    request,
+) -> Generator[Callable[..., channels_graphql_ws.testing.GraphqlWsClient], None, None]:
     """PyTest fixture for testing GraphQL WebSocket backends.
 
     The fixture provides a method to setup GraphQL testing backend for
@@ -164,7 +170,7 @@ def graphql_websocket(request):
         *,
         consumer_attrs=None,
         communicator_kwds=None,
-    ):
+    ) -> channels_graphql_ws.testing.GraphqlWsClient:
         """Setup GraphQL consumer and the communicator for tests."""
 
         ChannelsConsumer = GraphqlWsAuthenticatedConsumer
@@ -200,8 +206,12 @@ def graphql_websocket(request):
 
 
 @pytest.fixture
-def graphql_ws_client(graphql_websocket):
-    async def internal_client(django_user_client, consumer_attrs=None, communicator_kwds=None):
+def graphql_ws_client(
+    graphql_websocket,
+) -> Callable[..., Awaitable[channels_graphql_ws.testing.GraphqlWsClient]]:
+    async def internal_client(
+        django_user_client, consumer_attrs=None, communicator_kwds=None
+    ) -> channels_graphql_ws.testing.GraphqlWsClient:
         client = graphql_websocket(
             consumer_attrs=consumer_attrs, communicator_kwds=communicator_kwds
         )
@@ -221,8 +231,12 @@ def graphql_ws_client(graphql_websocket):
 
 
 @pytest.fixture
-def graphql_ws_user_client(graphql_ws_client, django_user_client):
-    async def internal_client(consumer_attrs=None, communicator_kwds=None):
+def graphql_ws_user_client(
+    graphql_ws_client, django_user_client
+) -> Callable[..., Awaitable[channels_graphql_ws.testing.GraphqlWsClient]]:
+    async def internal_client(
+        consumer_attrs=None, communicator_kwds=None
+    ) -> channels_graphql_ws.testing.GraphqlWsClient:
         client = await graphql_ws_client(django_user_client, consumer_attrs, communicator_kwds)
         return client
 

@@ -1,10 +1,12 @@
+from typing import Any
+
 from wagtail.blocks import CharBlock, StructBlock
 
 from ..custom_image_chooser_block import CustomImageChooserBlock
 
 
 class CustomImageBlock(StructBlock):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         image_sizes = kwargs.pop("image_sizes", None)
         required = kwargs.pop("required", False)
         local_blocks = [
@@ -19,7 +21,7 @@ class CustomImageBlock(StructBlock):
         ]
         super().__init__(local_blocks, *args, **kwargs)
 
-    def get_api_representation(self, value, context=None):
+    def get_api_representation(self, value, context=None) -> dict[str, Any] | None:
         serialized_data = super().get_api_representation(value, context)
         if not serialized_data["image"]:
             return None

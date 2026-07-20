@@ -37,7 +37,7 @@ REACTION_TOGGLE_GRAPHQL = """
 """
 
 
-def test_anon_cant_react(graphql_client):
+def test_anon_cant_react(graphql_client) -> None:
     comment = CommentFactory()
 
     response = graphql_client(
@@ -49,7 +49,7 @@ def test_anon_cant_react(graphql_client):
     assert Reaction.objects.count() == 0
 
 
-def test_user_can_add_reaction(graphql_user_client):
+def test_user_can_add_reaction(graphql_user_client) -> None:
     comment = CommentFactory()
 
     with override_settings(BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS=True):
@@ -70,7 +70,7 @@ def test_user_can_add_reaction(graphql_user_client):
             assert Reaction.objects.count() == 1
 
 
-def test_more_than_one_user_can_add_reaction(graphql_user_client, django_client):
+def test_more_than_one_user_can_add_reaction(graphql_user_client, django_client) -> None:
     comment = CommentFactory()
 
     # create reaction with type LIKE
@@ -113,7 +113,7 @@ def test_more_than_one_user_can_add_reaction(graphql_user_client, django_client)
     assert _reactions_count(comment)["DISLIKE"] == 0
 
 
-def test_user_can_change_reaction(django_user_client, graphql_user_client):
+def test_user_can_change_reaction(django_user_client, graphql_user_client) -> None:
     comment = CommentFactory()
     reaction = ReactionFactory(
         target=comment,
@@ -139,7 +139,7 @@ def test_user_can_change_reaction(django_user_client, graphql_user_client):
     assert _reactions_count(comment)["DISLIKE"] == 1
 
 
-def test_user_can_remove_reaction(django_user_client, graphql_user_client):
+def test_user_can_remove_reaction(django_user_client, graphql_user_client) -> None:
     comment = CommentFactory()
 
     ReactionFactory(
@@ -165,7 +165,7 @@ def test_user_can_remove_reaction(django_user_client, graphql_user_client):
     assert _reactions_count(comment)["DISLIKE"] == 0
 
 
-def test_user_can_react_with_profile(django_user_client, graphql_user_client):
+def test_user_can_react_with_profile(django_user_client, graphql_user_client) -> None:
     profile = ProfileFactory(owner=django_user_client.user)
     target = CommentFactory()
 
@@ -187,7 +187,7 @@ def test_user_can_react_with_profile(django_user_client, graphql_user_client):
     assert Reaction.objects.count() == 1
 
 
-def test_user_cant_react_with_profile(graphql_user_client):
+def test_user_cant_react_with_profile(graphql_user_client) -> None:
     profile = ProfileFactory()
     target = CommentFactory()
 

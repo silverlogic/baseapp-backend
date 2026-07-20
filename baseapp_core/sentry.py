@@ -1,7 +1,7 @@
 import os.path
 
 
-def fetch_git_sha(path, head=None):
+def fetch_git_sha(path, head=None) -> str:
     """
     >>> fetch_git_sha(os.path.dirname(__file__))
     """

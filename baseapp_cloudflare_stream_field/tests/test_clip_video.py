@@ -8,7 +8,7 @@ from baseapp_cloudflare_stream_field.tasks import clip_video
 pytestmark = pytest.mark.django_db
 
 
-def test_clip_video_ready(setup_video_ready_with_url, video_uid):
+def test_clip_video_ready(setup_video_ready_with_url, video_uid) -> None:
     content_type, obj = setup_video_ready_with_url
 
     with patch.object(settings, "CLOUDFLARE_VIDEO_TRIM_DURATION_SECONDS", 60):
@@ -22,7 +22,7 @@ def test_clip_video_ready(setup_video_ready_with_url, video_uid):
             )
 
 
-def test_clip_video_retry(setup_video_not_ready):
+def test_clip_video_retry(setup_video_not_ready) -> None:
     content_type, obj = setup_video_not_ready
 
     with patch("baseapp_cloudflare_stream_field.tasks.clip_video.apply_async") as mock_clip_video:

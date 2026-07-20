@@ -13,6 +13,8 @@ The semantics that must hold:
   profile pks describing the delta.
 """
 
+from collections.abc import Generator
+
 import pytest
 import swapper
 
@@ -30,22 +32,24 @@ Mention = swapper.load_model("baseapp_mentions", "Mention")
 class _SignalCapture:
     """Collect every fire of `mentions_changed` for assertion."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.events = []
 
-    def __call__(self, sender, target, added, removed, **kwargs):
+    def __call__(self, sender, target, added, removed, **kwargs) -> None:
         self.events.append({"target": target, "added": list(added), "removed": list(removed)})
 
 
 @pytest.fixture
-def captured_signal():
+def captured_signal() -> Generator[_SignalCapture, None, None]:
     capture = _SignalCapture()
     mentions_changed.connect(capture, weak=False)
     yield capture
     mentions_changed.disconnect(capture)
 
 
-def test_inserts_mentions_for_new_profiles(captured_signal, django_capture_on_commit_callbacks):
+def test_inserts_mentions_for_new_profiles(
+    captured_signal, django_capture_on_commit_callbacks
+) -> None:
     target = CommentFactory()
     a = ProfileFactory()
     b = ProfileFactory()
@@ -59,7 +63,9 @@ def test_inserts_mentions_for_new_profiles(captured_signal, django_capture_on_co
     assert captured_signal.events[0]["removed"] == []
 
 
-def test_replaces_existing_mentions_with_delta(captured_signal, django_capture_on_commit_callbacks):
+def test_replaces_existing_mentions_with_delta(
+    captured_signal, django_capture_on_commit_callbacks
+) -> None:
     target = CommentFactory()
     a = ProfileFactory()
     b = ProfileFactory()
@@ -77,7 +83,9 @@ def test_replaces_existing_mentions_with_delta(captured_signal, django_capture_o
     assert event["removed"] == [a.pk]
 
 
-def test_empty_list_clears_all_mentions(captured_signal, django_capture_on_commit_callbacks):
+def test_empty_list_clears_all_mentions(
+    captured_signal, django_capture_on_commit_callbacks
+) -> None:
     target = CommentFactory()
     a = ProfileFactory()
     seed_mentions(target, [a])
@@ -91,7 +99,7 @@ def test_empty_list_clears_all_mentions(captured_signal, django_capture_on_commi
     assert captured_signal.events[0]["removed"] == [a.pk]
 
 
-def test_exclude_profile_filters_self_mention(captured_signal):
+def test_exclude_profile_filters_self_mention(captured_signal) -> None:
     target = CommentFactory()
     me = ProfileFactory()
     friend = ProfileFactory()
@@ -101,7 +109,9 @@ def test_exclude_profile_filters_self_mention(captured_signal):
     assert mentioned_profile_ids(target) == {friend.pk}
 
 
-def test_idempotent_call_does_not_fire_signal(captured_signal, django_capture_on_commit_callbacks):
+def test_idempotent_call_does_not_fire_signal(
+    captured_signal, django_capture_on_commit_callbacks
+) -> None:
     target = CommentFactory()
     a = ProfileFactory()
     with django_capture_on_commit_callbacks(execute=True):
@@ -115,7 +125,7 @@ def test_idempotent_call_does_not_fire_signal(captured_signal, django_capture_on
     assert captured_signal.events == []
 
 
-def test_malformed_relay_ids_are_dropped(captured_signal):
+def test_malformed_relay_ids_are_dropped(captured_signal) -> None:
     target = CommentFactory()
     real = ProfileFactory()
 

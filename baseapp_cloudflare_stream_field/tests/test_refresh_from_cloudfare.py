@@ -19,7 +19,7 @@ def test_refresh_from_cloudflare_ready_no_trim(
     mock_get_video_data,
     setup_video_not_ready,
     video_uid,
-):
+) -> None:
     content_type, obj = setup_video_not_ready
 
     mock_get_content_type.return_value = content_type
@@ -45,7 +45,7 @@ def test_refresh_from_cloudflare_ready_no_trim(
 @patch("django.contrib.contenttypes.models.ContentType.objects.get")
 def test_refresh_from_cloudflare_not_ready(
     mock_get_content_type, mock_apply_async, mock_get_video_data, setup_video_not_ready, video_uid
-):
+) -> None:
     content_type, obj = setup_video_not_ready
 
     mock_get_content_type.return_value = content_type
@@ -80,7 +80,7 @@ def test_refresh_from_cloudflare_ready_with_error(
     setup_video_not_ready,
     video_uid,
     mock_delete_video_data,
-):
+) -> None:
     content_type, obj = setup_video_not_ready
 
     mock_get_content_type.return_value = content_type
@@ -110,7 +110,7 @@ def test_refresh_from_cloudflare_ready_with_trim(
     mock_get_video_data,
     setup_video_not_ready,
     video_uid,
-):
+) -> None:
     content_type, obj = setup_video_not_ready
 
     mock_get_content_type.return_value = content_type
@@ -155,7 +155,7 @@ def test_refresh_from_cloudflare_ready_with_trim(
 @patch("baseapp_cloudflare_stream_field.tasks.refresh_from_cloudflare.apply_async")
 def test_refresh_from_cloudflare_retry_logic(
     mock_apply_async, mock_get_content_type, mock_get_video_data, setup_video_not_ready, video_uid
-):
+) -> None:
     content_type, obj = setup_video_not_ready
 
     mock_get_content_type.return_value = content_type

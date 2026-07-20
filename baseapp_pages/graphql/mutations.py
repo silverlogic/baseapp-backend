@@ -1,3 +1,5 @@
+from typing import Any
+
 import graphene
 import swapper
 from django.contrib.contenttypes.models import ContentType
@@ -30,7 +32,7 @@ class PageSerializer(serializers.ModelSerializer):
         model = Page
         fields = ("user", "title", "body", "url_path")
 
-    def validate_url_path(self, value):
+    def validate_url_path(self, value) -> str:
         language = get_language()
         queryset = URLPath.objects.filter(
             Q(language=language) | Q(language__isnull=True), path=value
@@ -46,7 +48,7 @@ class PageSerializer(serializers.ModelSerializer):
 
         return value
 
-    def save(self, **kwargs):
+    def save(self, **kwargs) -> "Page":
         url_path = self.validated_data.pop("url_path", None)
         instance = super().save(**kwargs)
         language = get_language()
@@ -65,14 +67,14 @@ class PageCreate(SerializerMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "PageCreate":
         if not info.context.user.has_perm(f"{page_app_label}.add_page"):
             raise PermissionError(_("You don't have permission to create a page"))
 
         return super().mutate_and_get_payload(root, info, **input)
 
     @classmethod
-    def perform_mutate(cls, serializer, info):
+    def perform_mutate(cls, serializer, info) -> "PageCreate":
         obj = serializer.save()
         return cls(
             errors=None,
@@ -90,7 +92,7 @@ class PageEdit(SerializerMutation):
         id = graphene.ID(required=True)
 
     @classmethod
-    def get_serializer_kwargs(cls, root, info, **input):
+    def get_serializer_kwargs(cls, root, info, **input) -> dict[str, Any]:
         pk = get_pk_from_relay_id(input.get("id"))
         instance = Page.objects.get(pk=pk)
         if not info.context.user.has_perm(f"{page_app_label}.change_page", instance):
@@ -103,7 +105,7 @@ class PageEdit(SerializerMutation):
         }
 
     @classmethod
-    def perform_mutate(cls, serializer, info):
+    def perform_mutate(cls, serializer, info) -> "PageEdit":
         obj = serializer.save()
         return cls(
             errors=None,
@@ -112,7 +114,7 @@ class PageEdit(SerializerMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "PageEdit":
         return super().mutate_and_get_payload(root, info, **input)
 
 

@@ -8,7 +8,7 @@ ADD_REPORT_PERMISSION = f"{Report._meta.app_label}.add_report"
 
 
 class ReportsPermissionsBackend(BaseBackend):
-    def has_perm(self, user_obj, perm, obj=None):
+    def has_perm(self, user_obj, perm, obj=None) -> bool | None:
         if perm == ADD_REPORT_PERMISSION:
             return user_obj.is_authenticated
 

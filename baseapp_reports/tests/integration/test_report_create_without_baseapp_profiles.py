@@ -37,7 +37,7 @@ query reportTypesQuery {
 class TestReportsWithoutBaseappProfiles:
     def test_report_create_uses_user_based_identity_check_without_profiles(
         self, with_disabled_apps, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         Report = swapper.load_model("baseapp_reports", "Report")
         ReportType = swapper.load_model("baseapp_reports", "ReportType")
         target = SimpleNamespace(
@@ -88,7 +88,7 @@ class TestReportsWithoutBaseappProfiles:
 
     def test_user_cannot_self_report_using_target_user_id_without_profiles(
         self, with_disabled_apps, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         user_id = django_user_client.user.id
         target = SimpleNamespace(pk=100, user_id=user_id, relay_id="target-relay-id")
         report_type = SimpleNamespace(pk=5, relay_id="report-type-relay-id")
@@ -117,7 +117,7 @@ class TestReportsWithoutBaseappProfiles:
 
     def test_user_cannot_self_report_using_target_pk_without_profiles(
         self, with_disabled_apps, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         user_id = django_user_client.user.id
         target = SimpleNamespace(pk=user_id, relay_id="target-relay-id")
         report_type = SimpleNamespace(pk=5, relay_id="report-type-relay-id")
@@ -146,7 +146,7 @@ class TestReportsWithoutBaseappProfiles:
 
     def test_query_all_report_types_works_through_graphql_request(
         self, with_disabled_apps, graphql_client
-    ):
+    ) -> None:
         ReportType = swapper.load_model("baseapp_reports", "ReportType")
         fake_queryset = ReportType.objects.none()
 

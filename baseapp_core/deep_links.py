@@ -1,3 +1,5 @@
+from typing import Any
+
 import requests
 from django.conf import settings
 from requests.exceptions import RequestException
@@ -13,7 +15,7 @@ def get_deep_link(
     for_blackberry=False,
     for_fire=False,
     **kwargs,
-):
+) -> dict[str, Any]:
     """
     Create Branch.io deep link
     Valid params and return value can be found at:

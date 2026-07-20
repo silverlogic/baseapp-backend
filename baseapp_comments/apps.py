@@ -8,16 +8,16 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
     verbose_name = "BaseApp Comments"
     default_auto_field = "django.db.models.BigAutoField"
 
-    def ready(self):
+    def ready(self) -> None:
         super().ready()
         import baseapp_comments.signals  # noqa: F401
 
-    def register_shared_services(self, registry):
+    def register_shared_services(self, registry) -> None:
         from .services import CommentableMetadataService
 
         registry.register(CommentableMetadataService())
 
-    def register_graphql_shared_interfaces(self, registry):
+    def register_graphql_shared_interfaces(self, registry) -> None:
         from .graphql.interfaces import get_comments_interface
 
         registry.register("CommentsInterface", get_comments_interface)

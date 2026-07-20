@@ -28,7 +28,7 @@ mutation FollowToggle($input: FollowToggleInput!) {
 """
 
 
-def test_anon_cant_follow(graphql_client):
+def test_anon_cant_follow(graphql_client) -> None:
     profile1 = ProfileFactory()
     profile2 = ProfileFactory()
 
@@ -46,7 +46,7 @@ def test_anon_cant_follow(graphql_client):
     assert Follow.objects.count() == 0
 
 
-def test_user_can_follow(django_user_client, graphql_user_client):
+def test_user_can_follow(django_user_client, graphql_user_client) -> None:
     profile1 = ProfileFactory(owner=django_user_client.user)
     profile2 = ProfileFactory()
 
@@ -64,7 +64,7 @@ def test_user_can_follow(django_user_client, graphql_user_client):
     assert content["data"]["followToggle"]["actor"]["followingCount"] == 1
 
 
-def test_user_can_unfollow(django_user_client, graphql_user_client):
+def test_user_can_unfollow(django_user_client, graphql_user_client) -> None:
     profile1 = ProfileFactory(owner=django_user_client.user)
     profile2 = ProfileFactory()
 
@@ -88,7 +88,7 @@ def test_user_can_unfollow(django_user_client, graphql_user_client):
     assert content["data"]["followToggle"]["actor"]["followingCount"] == 0
 
 
-def test_user_cant_unfollow_others_follow(django_user_client, graphql_user_client):
+def test_user_cant_unfollow_others_follow(django_user_client, graphql_user_client) -> None:
     profile1 = ProfileFactory(owner=django_user_client.user)
     profile2 = ProfileFactory()
     profile3 = ProfileFactory()
@@ -120,7 +120,7 @@ def test_user_cant_unfollow_others_follow(django_user_client, graphql_user_clien
     assert content["errors"][0]["extensions"]["code"] == "permission_required"
 
 
-def test_user_can_follow_profile_from_same_user(django_user_client, graphql_user_client):
+def test_user_can_follow_profile_from_same_user(django_user_client, graphql_user_client) -> None:
     profile1 = ProfileFactory(owner=django_user_client.user)
     profile2 = ProfileFactory(owner=django_user_client.user)
 
@@ -138,7 +138,7 @@ def test_user_can_follow_profile_from_same_user(django_user_client, graphql_user
     assert content["data"]["followToggle"]["actor"]["followingCount"] == 1
 
 
-def test_user_can_unfollow_profile_from_same_user(django_user_client, graphql_user_client):
+def test_user_can_unfollow_profile_from_same_user(django_user_client, graphql_user_client) -> None:
     profile1 = ProfileFactory(owner=django_user_client.user)
     profile2 = ProfileFactory(owner=django_user_client.user)
 

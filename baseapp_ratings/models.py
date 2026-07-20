@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import swapper
 from django.apps import apps
 from django.conf import settings
@@ -14,6 +16,9 @@ from baseapp_core.models import (
     DocumentIdTargetMixin,
     DocumentIdUniqueTargetMixin,
 )
+
+if TYPE_CHECKING:
+    from baseapp_core.graphql import DjangoObjectType
 
 inheritances = []
 
@@ -51,23 +56,23 @@ class AbstractRate(
         swappable = swapper.swappable_setting("baseapp_ratings", "Rate")
         unique_together = [["user", "target_document"]]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Rating (%s) by %s" % (
             self.id,
             self.user.first_name,
         )
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         super().save(*args, **kwargs)
         self.update_ratings_indicators(self.target)
 
-    def delete(self, *args, **kwargs):
+    def delete(self, *args, **kwargs) -> None:
         target = self.target
         super().delete(*args, **kwargs)
         self.update_ratings_indicators(target)
 
     @classmethod
-    def update_ratings_indicators(cls, target):
+    def update_ratings_indicators(cls, target) -> None:
         """Recompute count/sum/average on `RatableMetadata` for `target`."""
         if not target:
             return
@@ -93,7 +98,7 @@ class AbstractRate(
             )
 
     @classmethod
-    def get_graphql_object_type(cls):
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
         from .graphql.object_types import RatingObjectType
 
         return RatingObjectType
@@ -117,11 +122,11 @@ class AbstractRatableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
         verbose_name = _("ratable metadata")
         verbose_name_plural = _("ratable metadata")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"RatableMetadata for {self.target}"
 
     @classmethod
-    def annotate_queryset(cls, queryset):
+    def annotate_queryset(cls, queryset) -> models.QuerySet:
         """
         Annotate `queryset` with ratable metadata so resolvers don't N+1.
         Adds `_ratable_ratings_count`, `_ratable_ratings_sum`,

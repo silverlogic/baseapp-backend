@@ -33,7 +33,7 @@ app_label = Comment._meta.app_label
 CommentStatusEnum = graphene.Enum.from_enum(CommentStatus)
 
 
-def create_object_type_from_dict(name, d):
+def create_object_type_from_dict(name, d) -> type[graphene.ObjectType]:
     fields = {}
     for key_name in d.keys():
         fields[key_name] = graphene.Int(required=False)
@@ -146,7 +146,7 @@ class BaseCommentObjectType:
             return None
         return node
 
-    def resolve_target(root, info, **kwargs):
+    def resolve_target(root, info, **kwargs) -> models.Model | None:
         if not root.target_document_id:
             return None
         return resolve_document_content_object(
@@ -154,7 +154,7 @@ class BaseCommentObjectType:
         )
 
     @classmethod
-    def pre_optimization_hook(cls, queryset, optimizer):
+    def pre_optimization_hook(cls, queryset, optimizer) -> models.QuerySet:
         queryset = super().pre_optimization_hook(queryset, optimizer)
         queryset = queryset.select_related("target_document", "target_document__content_type")
 
@@ -183,7 +183,7 @@ class BaseCommentObjectType:
         return queryset
 
     @classmethod
-    def get_queryset(cls, queryset, info):
+    def get_queryset(cls, queryset, info) -> models.QuerySet:
         if service := shared_services.get("blocks.lookup"):
             return service.exclude_blocked_from_foreign_queryset(queryset, info)
 

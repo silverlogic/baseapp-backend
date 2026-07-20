@@ -33,7 +33,7 @@ COMMENT_CREATE_GRAPHQL = """
 """
 
 
-def test_anon_cant_comment(graphql_client):
+def test_anon_cant_comment(graphql_client) -> None:
     target = CommentFactory()
 
     response = graphql_client(
@@ -45,7 +45,7 @@ def test_anon_cant_comment(graphql_client):
     assert Comment.objects.exclude(pk=target.pk).count() == 0
 
 
-def test_user_can_comment(graphql_user_client):
+def test_user_can_comment(graphql_user_client) -> None:
     target = CommentFactory()
 
     graphql_user_client(
@@ -59,7 +59,7 @@ def test_user_can_comment(graphql_user_client):
     assert service.get_comments_count(target)["main"] == 1
 
 
-def test_user_cant_comment_if_disabled(graphql_user_client):
+def test_user_cant_comment_if_disabled(graphql_user_client) -> None:
     target = CommentFactory(is_comments_enabled=False)
 
     response = graphql_user_client(
@@ -71,7 +71,7 @@ def test_user_cant_comment_if_disabled(graphql_user_client):
     assert Comment.objects.exclude(pk=target.pk).count() == 0
 
 
-def test_user_can_reply(graphql_user_client):
+def test_user_can_reply(graphql_user_client) -> None:
     target = CommentFactory()
     parent = CommentFactory(target=target)
 
@@ -99,7 +99,7 @@ def test_user_can_reply(graphql_user_client):
     assert service.get_comments_count(parent)["replies"] == 1
 
 
-def test_user_can_comment_with_profile(django_user_client, graphql_user_client):
+def test_user_can_comment_with_profile(django_user_client, graphql_user_client) -> None:
     profile = ProfileFactory(owner=django_user_client.user)
     target = CommentFactory()
 
@@ -116,7 +116,7 @@ def test_user_can_comment_with_profile(django_user_client, graphql_user_client):
     assert Comment.objects.exclude(pk=target.pk).count() == 1
 
 
-def test_user_cant_comment_with_profile(graphql_user_client):
+def test_user_cant_comment_with_profile(graphql_user_client) -> None:
     profile = ProfileFactory()
     target = CommentFactory()
 

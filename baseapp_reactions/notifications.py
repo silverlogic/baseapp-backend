@@ -13,7 +13,7 @@ User = get_user_model()
 
 
 @shared_task
-def send_reaction_created_notification(reaction_pk, recipient_id):
+def send_reaction_created_notification(reaction_pk, recipient_id) -> None:
     service = shared_services.get("notifications")
     if not service:
         return

@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import pghistory
 import pgtrigger
 import swapper
@@ -23,6 +25,9 @@ from baseapp_core.swapper import init_swapped_models
 
 from .validators import blocked_words_validator
 
+if TYPE_CHECKING:
+    from baseapp_core.graphql import DjangoObjectType
+
 
 class CommentStatus(models.IntegerChoices):
     DELETED = 0, _("deleted")
@@ -30,10 +35,10 @@ class CommentStatus(models.IntegerChoices):
 
 
 class CommentQuerySet(models.QuerySet):
-    def visible(self):
+    def visible(self) -> "CommentQuerySet":
         return self.exclude(status=CommentStatus.DELETED)
 
-    def for_target(self, obj, *, root_only=True):
+    def for_target(self, obj, *, root_only=True) -> "CommentQuerySet":
         ct = ContentType.objects.get_for_model(obj)
 
         qs = self.visible().filter(
@@ -50,10 +55,10 @@ class CommentQuerySet(models.QuerySet):
 class NonDeletedComments(models.Manager):
     """Automatically filters out soft deleted objects from QuerySets"""
 
-    def get_queryset(self):
+    def get_queryset(self) -> CommentQuerySet:
         return CommentQuerySet(self.model, using=self._db).visible()
 
-    def for_target(self, obj, *, root_only=True):
+    def for_target(self, obj, *, root_only=True) -> CommentQuerySet:
         return self.get_queryset().for_target(obj, root_only=root_only)
 
 
@@ -152,17 +157,17 @@ class AbstractComment(
         verbose_name = _("comment")
         verbose_name_plural = _("comments")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Comment #%s by %s" % (self.id, self.user_id)
 
     @classmethod
-    def get_graphql_object_type(cls):
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
         from .graphql.object_types import CommentObjectType
 
         return CommentObjectType
 
 
-def default_comments_count():
+def default_comments_count() -> dict[str, int]:
     return {
         "total": 0,
         "main": 0,
@@ -195,11 +200,11 @@ class AbstractCommentableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel)
         verbose_name = _("commentable metadata")
         verbose_name_plural = _("commentable metadata")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"CommentableMetadata for {self.target}"
 
     @classmethod
-    def annotate_queryset(cls, queryset):
+    def annotate_queryset(cls, queryset) -> models.QuerySet:
         """
         Annotate a queryset with commentable metadata to prevent N+1 queries.
         Adds _commentable_comments_count and _commentable_is_comments_enabled.

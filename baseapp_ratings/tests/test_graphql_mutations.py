@@ -27,7 +27,7 @@ REACTION_TOGGLE_GRAPHQL = """
 """
 
 
-def test_anon_cant_rate(graphql_client):
+def test_anon_cant_rate(graphql_client) -> None:
     user = UserFactory()
 
     response = graphql_client(
@@ -44,7 +44,7 @@ def test_anon_cant_rate(graphql_client):
     assert RateModel.objects.count() == 0
 
 
-def test_user_can_add_rate(django_user_client, graphql_user_client):
+def test_user_can_add_rate(django_user_client, graphql_user_client) -> None:
     user = UserFactory()
 
     response = graphql_user_client(
@@ -64,7 +64,9 @@ def test_user_can_add_rate(django_user_client, graphql_user_client):
     assert content["data"]["rateCreate"]["rate"]["node"]["target"]["pk"] == user.pk
 
 
-def test_user_cant_add_rate_if_its_higher_than_max_value(django_user_client, graphql_user_client):
+def test_user_cant_add_rate_if_its_higher_than_max_value(
+    django_user_client, graphql_user_client
+) -> None:
     user = UserFactory()
 
     with override_settings(BASEAPP_MAX_RATING_VALUE=3):
