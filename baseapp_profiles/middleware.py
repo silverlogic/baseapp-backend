@@ -8,7 +8,7 @@ profile_app_label = Profile._meta.app_label
 
 
 class CurrentProfileMiddleware(BaseMiddleware):
-    def process_request(self, request):
+    def process_request(self, request) -> None:
         current_profile_header = request.headers.get("Current-Profile")
         request.user.current_profile = None
 

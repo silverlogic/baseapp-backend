@@ -13,12 +13,12 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
     verbose_name = "BaseApp Follows"
     default_auto_field = "django.db.models.AutoField"
 
-    def register_shared_services(self, registry):
+    def register_shared_services(self, registry) -> None:
         from .services import FollowableMetadataService
 
         registry.register(FollowableMetadataService())
 
-    def register_graphql_shared_interfaces(self, registry: GraphQLSharedInterfaceRegistry):
+    def register_graphql_shared_interfaces(self, registry: GraphQLSharedInterfaceRegistry) -> None:
         from .graphql.interfaces import FollowsInterface
 
         registry.register("FollowsInterface", FollowsInterface)

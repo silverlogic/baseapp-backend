@@ -17,7 +17,7 @@ ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
 @pytest.mark.django_db
 class TestInvitations:
-    def test_create_invitation(self):
+    def test_create_invitation(self) -> None:
         owner = UserFactory(email="owner@test.com", first_name="John", last_name="Doe")
         profile = ProfileFactory(owner=owner, name="Test Organization")
 
@@ -39,7 +39,7 @@ class TestInvitations:
         days_diff = (invitation.invitation_expires_at - invitation.invited_at).days
         assert days_diff == INVITATION_EXPIRATION_DAYS
 
-    def test_invitation_expiration_check(self):
+    def test_invitation_expiration_check(self) -> None:
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
 
@@ -54,7 +54,7 @@ class TestInvitations:
 
         assert invitation.is_invitation_expired() is True
 
-    def test_invitation_for_existing_user(self):
+    def test_invitation_for_existing_user(self) -> None:
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
         existing_user = UserFactory(email="existing@test.com")
@@ -66,7 +66,7 @@ class TestInvitations:
         assert invitation.user == existing_user
         assert invitation.invited_email == "existing@test.com"
 
-    def test_invitation_for_nonexistent_user(self):
+    def test_invitation_for_nonexistent_user(self) -> None:
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
 
@@ -77,7 +77,7 @@ class TestInvitations:
         assert invitation.user is None
         assert invitation.invited_email == "nonexistent@test.com"
 
-    def test_invitation_token_generation(self):
+    def test_invitation_token_generation(self) -> None:
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
 
@@ -98,7 +98,7 @@ class TestInvitationMutations:
     @patch("baseapp_profiles.emails.send_invitation_email")
     def test_send_profile_invitation_mutation(
         self, mock_send_email, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         profile = ProfileFactory(owner=django_user_client.user)
 
         mutation = """
@@ -140,7 +140,7 @@ class TestInvitationMutations:
     @patch("baseapp_profiles.emails.send_invitation_email")
     def test_send_profile_invitation_mutation_batch(
         self, mock_send_email, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         profile = ProfileFactory(owner=django_user_client.user)
 
         mutation = """
@@ -177,7 +177,9 @@ class TestInvitationMutations:
         assert all(role["status"] == "PENDING" for role in data["profileUserRoles"])
         assert mock_send_email.call_count == 2
 
-    def test_accept_profile_invitation_mutation(self, django_user_client, graphql_user_client):
+    def test_accept_profile_invitation_mutation(
+        self, django_user_client, graphql_user_client
+    ) -> None:
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
 
@@ -217,7 +219,7 @@ class TestInvitationMutations:
 
     def test_owner_cannot_accept_invitation_to_their_own_profile(
         self, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         owner = django_user_client.user
         profile = ProfileFactory(owner=owner)
 
@@ -249,7 +251,9 @@ class TestInvitationMutations:
         invitation.refresh_from_db()
         assert invitation.status == ProfileUserRole.ProfileRoleStatus.PENDING
 
-    def test_decline_profile_invitation_mutation(self, django_user_client, graphql_user_client):
+    def test_decline_profile_invitation_mutation(
+        self, django_user_client, graphql_user_client
+    ) -> None:
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
 
@@ -276,7 +280,9 @@ class TestInvitationMutations:
         assert invitation.status == ProfileUserRole.ProfileRoleStatus.DECLINED
         assert invitation.responded_at is not None
 
-    def test_cancel_profile_invitation_mutation(self, django_user_client, graphql_user_client):
+    def test_cancel_profile_invitation_mutation(
+        self, django_user_client, graphql_user_client
+    ) -> None:
         profile = ProfileFactory(owner=django_user_client.user)
 
         invitation = create_invitation(
@@ -300,7 +306,9 @@ class TestInvitationMutations:
 
         assert not ProfileUserRole.objects.filter(pk=invitation.pk).exists()
 
-    def test_expired_invitation_sets_expired_status(self, django_user_client, graphql_user_client):
+    def test_expired_invitation_sets_expired_status(
+        self, django_user_client, graphql_user_client
+    ) -> None:
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
 
@@ -339,7 +347,7 @@ class TestInvitationMutations:
     @patch("baseapp_profiles.emails.send_invitation_email")
     def test_resend_expired_invitation_mutation(
         self, mock_send_email, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         profile = ProfileFactory(owner=django_user_client.user)
 
         invitation = create_invitation(
@@ -380,7 +388,7 @@ class TestInvitationMutations:
     @patch("baseapp_profiles.emails.send_invitation_email")
     def test_resend_pending_invitation_mutation(
         self, mock_send_email, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         profile = ProfileFactory(owner=django_user_client.user)
 
         invitation = create_invitation(
@@ -412,7 +420,9 @@ class TestInvitationMutations:
         invitation.refresh_from_db()
         assert invitation.invitation_token != old_token
 
-    def test_cannot_resend_declined_invitation(self, django_user_client, graphql_user_client):
+    def test_cannot_resend_declined_invitation(
+        self, django_user_client, graphql_user_client
+    ) -> None:
         profile = ProfileFactory(owner=django_user_client.user)
 
         invitation = create_invitation(
@@ -441,7 +451,7 @@ class TestInvitationMutations:
         assert "errors" in content
         assert content["errors"][0]["extensions"]["code"] == "invalid_status"
 
-    def test_cannot_resend_active_invitation(self, django_user_client, graphql_user_client):
+    def test_cannot_resend_active_invitation(self, django_user_client, graphql_user_client) -> None:
         profile = ProfileFactory(owner=django_user_client.user)
 
         invitation = create_invitation(
@@ -476,7 +486,7 @@ class TestInvitationMutations:
     )
     def test_send_invitation_succeeds_even_if_email_fails(
         self, mock_send_email, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         profile = ProfileFactory(owner=django_user_client.user)
 
         mutation = """
@@ -523,7 +533,7 @@ class TestInvitationMutations:
     )
     def test_resend_invitation_succeeds_even_if_email_fails(
         self, mock_send_email, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         profile = ProfileFactory(owner=django_user_client.user)
 
         invitation = create_invitation(
@@ -553,7 +563,7 @@ class TestInvitationMutations:
 
     def test_accept_null_user_wrong_email_returns_wrong_user(
         self, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
 
@@ -583,7 +593,7 @@ class TestInvitationMutations:
 
     def test_decline_null_user_wrong_email_returns_wrong_user(
         self, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
 
@@ -610,7 +620,7 @@ class TestInvitationMutations:
 
     def test_accept_null_user_matching_email_binds_user(
         self, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
 
@@ -651,7 +661,7 @@ class TestInvitationMutations:
 
     def test_decline_null_user_matching_email_binds_user(
         self, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
 
@@ -694,7 +704,7 @@ class TestInvitationStateMachine:
     @patch("baseapp_profiles.emails.send_invitation_email")
     def test_send_invitation_reuses_declined_row(
         self, mock_send_email, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         profile = ProfileFactory(owner=django_user_client.user)
         email = "declined@test.com"
 
@@ -737,7 +747,7 @@ class TestInvitationStateMachine:
     @patch("baseapp_profiles.emails.send_invitation_email")
     def test_send_invitation_reuses_inactive_row(
         self, mock_send_email, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         profile = ProfileFactory(owner=django_user_client.user)
         email = "inactive@test.com"
 
@@ -775,7 +785,7 @@ class TestInvitationStateMachine:
     @patch("baseapp_profiles.emails.send_invitation_email")
     def test_send_invitation_reuses_expired_row(
         self, mock_send_email, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         profile = ProfileFactory(owner=django_user_client.user)
         email = "expired@test.com"
 
@@ -815,7 +825,7 @@ class TestInvitationStateMachine:
 
     def test_send_invitation_blocks_pending_duplicate(
         self, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         profile = ProfileFactory(owner=django_user_client.user)
         email = "pending@test.com"
 
@@ -839,7 +849,9 @@ class TestInvitationStateMachine:
         assert "errors" in content
         assert content["errors"][0]["extensions"]["code"] == "duplicate_invitation"
 
-    def test_send_invitation_blocks_active_member(self, django_user_client, graphql_user_client):
+    def test_send_invitation_blocks_active_member(
+        self, django_user_client, graphql_user_client
+    ) -> None:
         profile = ProfileFactory(owner=django_user_client.user)
         email = "active@test.com"
 
@@ -870,7 +882,7 @@ class TestInvitationStateMachine:
     @patch("baseapp_profiles.emails.send_invitation_email")
     def test_send_invitation_handles_expired_pending(
         self, mock_send_email, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         profile = ProfileFactory(owner=django_user_client.user)
         email = "expiredpending@test.com"
 
@@ -904,7 +916,7 @@ class TestInvitationStateMachine:
         assert invitation.pk == original_pk
         assert invitation.invitation_expires_at > timezone.now()
 
-    def test_expiration_uses_constant(self):
+    def test_expiration_uses_constant(self) -> None:
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
 
@@ -916,7 +928,7 @@ class TestInvitationStateMachine:
         diff = abs((invitation.invitation_expires_at - expected_expiration).total_seconds())
         assert diff < 1
 
-    def test_accept_transitions_to_active(self, django_user_client, graphql_user_client):
+    def test_accept_transitions_to_active(self, django_user_client, graphql_user_client) -> None:
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
 
@@ -948,7 +960,7 @@ class TestInvitationStateMachine:
         assert invitation.responded_at is not None
         assert invitation.user == django_user_client.user
 
-    def test_decline_transitions_to_declined(self, django_user_client, graphql_user_client):
+    def test_decline_transitions_to_declined(self, django_user_client, graphql_user_client) -> None:
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
 
@@ -977,7 +989,7 @@ class TestInvitationStateMachine:
         assert invitation.status == ProfileUserRole.ProfileRoleStatus.DECLINED
         assert invitation.responded_at is not None
 
-    def test_unique_constraint_prevents_duplicate_invited_email(self):
+    def test_unique_constraint_prevents_duplicate_invited_email(self) -> None:
         from django.db import IntegrityError
 
         owner = UserFactory()
@@ -997,7 +1009,7 @@ class TestInvitationStateMachine:
 
 @pytest.mark.django_db
 class TestInvitationPIIFieldPermissions:
-    def test_authorized_user_sees_pii_fields(self, django_user_client, graphql_user_client):
+    def test_authorized_user_sees_pii_fields(self, django_user_client, graphql_user_client) -> None:
         profile = ProfileFactory(owner=django_user_client.user)
 
         invitation = create_invitation(
@@ -1027,7 +1039,7 @@ class TestInvitationPIIFieldPermissions:
         assert content["data"]["node"]["invitedAt"] is not None
         assert content["data"]["node"]["invitationExpiresAt"] is not None
 
-    def test_unauthorized_user_cannot_fetch_role_via_node(self):
+    def test_unauthorized_user_cannot_fetch_role_via_node(self) -> None:
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
         unauthorized_user = UserFactory()
@@ -1076,7 +1088,7 @@ class TestProfileInvitationQuery:
 
     def test_pending_invitation_reports_pending_with_profile(
         self, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         owner = UserFactory()
         profile = ProfileFactory(owner=owner, name="Acme Org")
         invitation = create_invitation(
@@ -1094,7 +1106,7 @@ class TestProfileInvitationQuery:
 
     def test_expired_invitation_reports_expired_without_persisting(
         self, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
         invitation = create_invitation(
@@ -1117,14 +1129,16 @@ class TestProfileInvitationQuery:
         invitation.refresh_from_db()
         assert invitation.status == ProfileUserRole.ProfileRoleStatus.PENDING
 
-    def test_invalid_token_returns_null(self, django_user_client, graphql_user_client):
+    def test_invalid_token_returns_null(self, django_user_client, graphql_user_client) -> None:
         response = graphql_user_client(self.QUERY, variables={"token": "does-not-exist"})
         content = response.json()
 
         assert "errors" not in content
         assert content["data"]["profileInvitation"] is None
 
-    def test_responded_invitation_reports_its_status(self, django_user_client, graphql_user_client):
+    def test_responded_invitation_reports_its_status(
+        self, django_user_client, graphql_user_client
+    ) -> None:
         owner = UserFactory()
         profile = ProfileFactory(owner=owner)
         invitation = create_invitation(
@@ -1143,7 +1157,7 @@ class TestProfileInvitationQuery:
         # declined/accepted invitation never exposes it.
         assert content["data"]["profileInvitation"]["profile"] is None
 
-    def test_token_is_authorization_for_non_member(self):
+    def test_token_is_authorization_for_non_member(self) -> None:
         # A user who is not a member of the profile can still read the invitation's state by
         # presenting the token — the token is the authorization (mirrors accept/decline).
         owner = UserFactory()

@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import graphene
 import swapper
 from django.db.models import Q, Sum
@@ -7,6 +9,9 @@ from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model
 from baseapp_core.plugins import shared_services
 
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 UnreadMessageCount = swapper.load_model("baseapp_chats", "UnreadMessageCount")
 
@@ -15,7 +20,7 @@ class ChatRoomsInterface(RelayNode):
     chat_rooms = DjangoConnectionField(get_object_type_for_model(ChatRoom))
     unread_messages_count = graphene.Int()
 
-    def resolve_chat_rooms(self, info, **kwargs):
+    def resolve_chat_rooms(self, info, **kwargs) -> "QuerySet":
         if not info.context.user.has_perm("baseapp_chats.list_chatrooms", self):
             return ChatRoom.objects.none()
 
@@ -47,7 +52,7 @@ class ChatRoomsInterface(RelayNode):
 
         return qs
 
-    def resolve_unread_messages_count(self, info, **kwargs):
+    def resolve_unread_messages_count(self, info, **kwargs) -> int | None:
         if not info.context.user.has_perm("baseapp_chats.list_chatrooms", self):
             return None
 

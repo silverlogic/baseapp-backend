@@ -8,14 +8,16 @@ from baseapp_core.tests.factories import UserFactory
 
 
 class HistoryMiddlewareTest:
-    def setUp(self):
+    def setUp(self) -> None:
         self.factory = RequestFactory()
         self.get_response = lambda request: HttpResponse("OK")
         self.middleware = HistoryMiddleware(self.get_response)
 
     @patch("baseapp_core.middleware.get_client_ip")
     @patch("baseapp_core.middleware.pghistory.context")
-    def test_history_middleware_with_authenticated_user(self, mock_context, mock_get_client_ip):
+    def test_history_middleware_with_authenticated_user(
+        self, mock_context, mock_get_client_ip
+    ) -> None:
         request = self.factory.get("/some-path/")
         request.user = UserFactory()
         mock_get_client_ip.return_value = ("127.0.0.1", True)
@@ -29,7 +31,7 @@ class HistoryMiddlewareTest:
 
     @patch("baseapp_core.middleware.get_client_ip")
     @patch("baseapp_core.middleware.pghistory.context")
-    def test_history_middleware_with_anonymous_user(self, mock_context, mock_get_client_ip):
+    def test_history_middleware_with_anonymous_user(self, mock_context, mock_get_client_ip) -> None:
         request = self.factory.get("/some-path/")
         request.user = None
         mock_get_client_ip.return_value = ("127.0.0.1", True)
@@ -43,7 +45,9 @@ class HistoryMiddlewareTest:
 
     @patch("baseapp_core.middleware.get_client_ip")
     @patch("baseapp_core.middleware.pghistory.context")
-    def test_history_middleware_with_non_routable_ip(self, mock_context, mock_get_client_ip):
+    def test_history_middleware_with_non_routable_ip(
+        self, mock_context, mock_get_client_ip
+    ) -> None:
         request = self.factory.get("/some-path/")
         request.user = UserFactory()
         mock_get_client_ip.return_value = ("127.0.0.1", False)
@@ -57,7 +61,7 @@ class HistoryMiddlewareTest:
 
     @patch("baseapp_core.middleware.get_client_ip")
     @patch("baseapp_core.middleware.pghistory.context")
-    def test_history_middleware_with_post_method(self, mock_context, mock_get_client_ip):
+    def test_history_middleware_with_post_method(self, mock_context, mock_get_client_ip) -> None:
         request = self.factory.post("/some-path/")
         request.user = UserFactory()
         mock_get_client_ip.return_value = ("127.0.0.1", True)
@@ -72,7 +76,9 @@ class HistoryMiddlewareTest:
     @patch("baseapp_core.middleware.get_client_ip")
     @patch("baseapp_core.middleware.pghistory.context")
     @override_settings(PGHISTORY_MIDDLEWARE_METHODS=("GET", "POST", "PATCH", "DELETE"))
-    def test_history_middleware_with_unsupported_method(self, mock_context, mock_get_client_ip):
+    def test_history_middleware_with_unsupported_method(
+        self, mock_context, mock_get_client_ip
+    ) -> None:
         request = self.factory.put("/some-path/")
         request.user = UserFactory()
         mock_get_client_ip.return_value = ("127.0.0.1", True)

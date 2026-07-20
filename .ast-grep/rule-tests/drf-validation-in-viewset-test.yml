@@ -1,0 +1,21 @@
+id: drf-validation-in-viewset
+valid:
+  - |
+    class MyViewSet(viewsets.GenericViewSet):
+        @action(detail=False, methods=["POST"], serializer_class=CustomActionSerializer)
+        def custom(self, request):
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            amount = serializer.validated_data["amount"]
+invalid:
+  - |
+    class MyViewSet(viewsets.GenericViewSet):
+        @action(detail=False, methods=["POST"])
+        def custom(self, request):
+            amount = request.data.get("amount")
+            if not isinstance(amount, int):
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+  - |
+    class MyView(APIView):
+        def post(self, request):
+            amount = request.data["amount"]

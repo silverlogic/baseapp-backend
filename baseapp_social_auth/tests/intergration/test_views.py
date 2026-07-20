@@ -1,4 +1,5 @@
 import re
+from collections.abc import Generator
 from unittest.mock import patch
 
 import pytest
@@ -25,29 +26,29 @@ class SocialAuthViewSetMock(APITestCase, URLPatternsTestCase):
         path("/", include(test_router.urls)),
     ]
 
-    def reverse(self):
+    def reverse(self) -> str:
         return reverse("social-auth-list")
 
-    def setUp(self):
+    def setUp(self) -> None:
         super().setUp()
         self.responses_mock = responses.RequestsMock(assert_all_requests_are_fired=False)
         self.responses_mock.start()
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.responses_mock.stop()
         super().tearDown()
 
 
 @pytest.mark.usefixtures("responses_mock")
 class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
-    def base_data(self):
+    def base_data(self) -> dict[str, str]:
         return {
             "code": "asdf9123",
             "redirect_uri": "https://example.com",
             "provider": "facebook",
         }
 
-    def data(self):
+    def data(self) -> dict[str, str]:
         base_data = self.base_data()
 
         self.responses_mock.add(
@@ -59,7 +60,7 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
 
         return base_data
 
-    def success_data(self):
+    def success_data(self) -> dict[str, str]:
         self.responses_mock.add(
             responses.GET,
             re.compile(r"https://graph\.facebook\.com/v\d+\.\d+/oauth/access_token"),
@@ -68,7 +69,7 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
         )
         return self.data()
 
-    def complete_data(self):
+    def complete_data(self) -> dict[str, str]:
         self.success_data()
         self.responses_mock.add(
             responses.GET,
@@ -83,7 +84,7 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
         )
         return self.data()
 
-    def no_email_data(self):
+    def no_email_data(self) -> dict[str, str]:
         self.responses_mock.add(
             responses.GET,
             re.compile(r"https://graph\.facebook\.com/v\d+\.\d+/me"),
@@ -92,7 +93,7 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
         )
         return self.success_data()
 
-    def invalid_code_data(self):
+    def invalid_code_data(self) -> dict[str, str]:
         self.responses_mock.add(
             responses.GET,
             re.compile(r"https://graph\.facebook\.com/v\d+\.\d+/oauth/access_token"),
@@ -101,7 +102,7 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
         )
         return self.data()
 
-    def test_cant_auth_without_redirect_uri(self):
+    def test_cant_auth_without_redirect_uri(self) -> None:
         base_data = self.base_data()
         base_data["provider"] = "facebook"
         base_data.pop("redirect_uri")
@@ -109,11 +110,11 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
         h.responseBadRequest(r)
         assert "redirect_uri" in r.data
 
-    def test_can_auth_facebook(self):
+    def test_can_auth_facebook(self) -> None:
         r = self.client.post(self.reverse(), self.complete_data())
         h.responseOk(r)
 
-    def test_facebook_user_is_created_with_fields_filled_in(self):
+    def test_facebook_user_is_created_with_fields_filled_in(self) -> None:
         complete_data = self.complete_data()
         r = self.client.post(self.reverse(), complete_data)
         h.responseOk(r)
@@ -122,14 +123,14 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
         assert user.last_name == "Smith"
         assert user.email == "johnsmith@example.com"
 
-    def test_facebook_user_avatar_is_created_from_profile_picture(self):
+    def test_facebook_user_avatar_is_created_from_profile_picture(self) -> None:
         complete_data = self.complete_data()
         r = self.client.post(self.reverse(), complete_data)
         h.responseOk(r)
         user = get_user_model().objects.get()
         assert user.profile.image
 
-    def test_facebook_can_be_referred(self):
+    def test_facebook_can_be_referred(self) -> None:
         referrer = get_user_model().objects.create(email="referrer@tsl.io")
         complete_data = self.complete_data()
         complete_data["referral_code"] = get_referral_code(referrer)
@@ -138,33 +139,33 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
         referee = get_user_model().objects.exclude(pk=referrer.pk).first()
         referee.referred_by
 
-    def test_facebook_when_referral_code_is_invalid(self):
+    def test_facebook_when_referral_code_is_invalid(self) -> None:
         data = self.data()
         data["referral_code"] = "18a9sdf891203"
         r = self.client.post(self.reverse(), data)
         h.responseBadRequest(r)
         assert r.data["referral_code"] == ["Invalid referral code."]
 
-    def test_facebook_when_no_email_from_provider(self):
+    def test_facebook_when_no_email_from_provider(self) -> None:
         no_email_data = self.no_email_data()
         r = self.client.post(self.reverse(), no_email_data)
         h.responseBadRequest(r)
         assert r.data["email"] == "no_email_provided"
 
-    def test_facebook_when_email_already_belongs_to_another_user(self):
+    def test_facebook_when_email_already_belongs_to_another_user(self) -> None:
         complete_data = self.complete_data()
         get_user_model().objects.create(email="johnsmith@example.com")
         r = self.client.post(self.reverse(), complete_data)
         h.responseBadRequest(r)
         assert r.data["email"] == "email_already_in_use"
 
-    def test_facebook_when_invalid_code(self):
+    def test_facebook_when_invalid_code(self) -> None:
         invalid_code_data = self.invalid_code_data()
         r = self.client.post(self.reverse(), invalid_code_data)
         h.responseBadRequest(r)
         assert r.data["non_field_errors"] == "invalid_credentials"
 
-    def test_facebook_is_new_response_field(self):
+    def test_facebook_is_new_response_field(self) -> None:
         complete_data = self.complete_data()
         # Register
         r = self.client.post(self.reverse(), complete_data)
@@ -179,16 +180,16 @@ class TestFacebookSocialAuthViewSet(SocialAuthViewSetMock):
 
 @pytest.mark.usefixtures("responses_mock")
 class TestTwitterSocialAuth(SocialAuthViewSetMock):
-    def base_data(self):
+    def base_data(self) -> dict[str, str]:
         return {}
 
-    def data(self):
+    def data(self) -> dict[str, str]:
         base_data = self.base_data()
         base_data["provider"] = "twitter"
 
         return base_data
 
-    def step1_data(self):
+    def step1_data(self) -> dict[str, str]:
         data = self.data()
         self.responses_mock.add(
             responses.POST,
@@ -198,7 +199,7 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
         )
         return data
 
-    def step2_data(self):
+    def step2_data(self) -> Generator[dict[str, str], None, None]:
         data = self.data()
         data["oauth_token"] = "1234"
         data["oauth_token_secret"] = "1234xyz"
@@ -217,7 +218,7 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
                 mock.return_value = "1234"
                 yield data
 
-    def step2_data_with_profile_image(self):
+    def step2_data_with_profile_image(self) -> Generator[dict[str, str], None, None]:
         data = self.data()
         data["oauth_token"] = "1234"
         data["oauth_token_secret"] = "1234xyz"
@@ -248,7 +249,7 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
                 mock.return_value = "1234"
                 yield data
 
-    def step2_data_with_default_profile_image(self):
+    def step2_data_with_default_profile_image(self) -> Generator[dict[str, str], None, None]:
         data = self.data()
         data["oauth_token"] = "1234"
         data["oauth_token_secret"] = "1234xyz"
@@ -272,23 +273,23 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
                 mock.return_value = "1234"
                 yield data
 
-    def test_cant_auth_with_invalid_provider(self):
+    def test_cant_auth_with_invalid_provider(self) -> None:
         data = {"provider": "blarg"}
         r = self.client.post(self.reverse(), data)
         h.responseBadRequest(r)
         assert "provider" in r.data
 
-    def test_twitter_can_perform_step1(self):
+    def test_twitter_can_perform_step1(self) -> None:
         step1_data = self.step1_data()
         r = self.client.post(self.reverse(), step1_data)
         h.responseOk(r)
 
-    def test_twitter_can_perform_step2(self):
+    def test_twitter_can_perform_step2(self) -> None:
         for step2_data in self.step2_data():
             r = self.client.post(self.reverse(), step2_data)
             h.responseOk(r)
 
-    def test_twitter_user_is_created_with_fields_filled_in(self):
+    def test_twitter_user_is_created_with_fields_filled_in(self) -> None:
         for step2_data in self.step2_data():
             r = self.client.post(self.reverse(), step2_data)
         h.responseOk(r)
@@ -297,7 +298,7 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
         assert user.last_name == "Cook"
         assert user.email == "seancook@example.com"
 
-    def test_twitter_user_avatar_is_created_from_profile_image(self):
+    def test_twitter_user_avatar_is_created_from_profile_image(self) -> None:
         for step2_data_with_profile_image in self.step2_data_with_profile_image():
             r = self.client.post(self.reverse(), step2_data_with_profile_image)
         h.responseOk(r)
@@ -306,7 +307,7 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
 
     def test_twitter_user_avatar_is_not_created_when_user_has_default_profile_image(
         self,
-    ):
+    ) -> None:
         for step2_data_with_default_profile_image in self.step2_data_with_default_profile_image():
             r = self.client.post(self.reverse(), step2_data_with_default_profile_image)
         h.responseOk(r)
@@ -316,14 +317,14 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
 
 @pytest.mark.usefixtures("responses_mock")
 class TestLinkedInSocialAuth(SocialAuthViewSetMock):
-    def base_data(self):
+    def base_data(self) -> dict[str, str]:
         return {
             "code": "asdf9123",
             "redirect_uri": "https://example.com",
             "provider": "linkedin-oauth2",
         }
 
-    def data(self):
+    def data(self) -> dict[str, str]:
         base_data = self.base_data()
 
         self.responses_mock.add(
@@ -335,7 +336,7 @@ class TestLinkedInSocialAuth(SocialAuthViewSetMock):
 
         return base_data
 
-    def success_data(self):
+    def success_data(self) -> dict[str, str]:
         data = self.data()
         self.responses_mock.add(
             responses.POST,
@@ -345,7 +346,7 @@ class TestLinkedInSocialAuth(SocialAuthViewSetMock):
         )
         return data
 
-    def complete_data(self):
+    def complete_data(self) -> dict[str, str]:
         success_data = self.success_data()
         self.responses_mock.add(
             responses.GET,
@@ -375,7 +376,7 @@ class TestLinkedInSocialAuth(SocialAuthViewSetMock):
         )
         return success_data
 
-    def picture_data(self):
+    def picture_data(self) -> dict[str, str]:
         success_data = self.success_data()
         self.responses_mock.add(
             responses.GET,
@@ -409,12 +410,12 @@ class TestLinkedInSocialAuth(SocialAuthViewSetMock):
         )
         return success_data
 
-    def test_can_auth_linkedin(self):
+    def test_can_auth_linkedin(self) -> None:
         complete_data = self.complete_data()
         r = self.client.post(self.reverse(), complete_data)
         h.responseOk(r)
 
-    def test_linkedin_user_is_created_with_fields_filled_in(self):
+    def test_linkedin_user_is_created_with_fields_filled_in(self) -> None:
         complete_data = self.complete_data()
         r = self.client.post(self.reverse(), complete_data)
         h.responseOk(r)
@@ -423,7 +424,7 @@ class TestLinkedInSocialAuth(SocialAuthViewSetMock):
         assert user.last_name == "Smith"
         assert user.email == "bobsmith@example.com"
 
-    def test_linkedin_user_avatar_is_created_from_profile_picture(self):
+    def test_linkedin_user_avatar_is_created_from_profile_picture(self) -> None:
         picture_data = self.picture_data()
         r = self.client.post(self.reverse(), picture_data)
         h.responseOk(r)
@@ -433,14 +434,14 @@ class TestLinkedInSocialAuth(SocialAuthViewSetMock):
 
 @pytest.mark.usefixtures("responses_mock")
 class TestGoogleSocialAuthViewSet(SocialAuthViewSetMock):
-    def base_data(self):
+    def base_data(self) -> dict[str, str]:
         return {
             "code": "asdf9123",
             "redirect_uri": "https://example.com",
             "provider": "google-oauth2",
         }
 
-    def data(self):
+    def data(self) -> dict[str, str]:
         base_data = self.base_data()
         self.responses_mock.add(
             responses.GET,
@@ -455,7 +456,7 @@ class TestGoogleSocialAuthViewSet(SocialAuthViewSetMock):
         )
         return base_data
 
-    def success_data(self):
+    def success_data(self) -> dict[str, str]:
         self.responses_mock.add(
             responses.POST,
             re.compile(r"https://accounts\.google\.com/o/oauth2/token"),
@@ -464,11 +465,11 @@ class TestGoogleSocialAuthViewSet(SocialAuthViewSetMock):
         )
         return self.data()
 
-    def test_can_auth_google(self):
+    def test_can_auth_google(self) -> None:
         r = self.client.post(self.reverse(), self.success_data())
         h.responseOk(r)
 
-    def test_google_user_is_created_with_fields_filled_in(self):
+    def test_google_user_is_created_with_fields_filled_in(self) -> None:
         complete_data = self.success_data()
         r = self.client.post(self.reverse(), complete_data)
         h.responseOk(r)

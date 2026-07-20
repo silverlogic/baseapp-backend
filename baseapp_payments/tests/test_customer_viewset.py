@@ -19,11 +19,11 @@ Customer = swapper.load_model("baseapp_payments", "Customer")
 class TestCustomerRetrieveView:
     viewname = "v1:customers-detail"
 
-    def test_anon_user_cannot_get_customer(self, client):
+    def test_anon_user_cannot_get_customer(self, client) -> None:
         response = client.get(reverse(self.viewname, kwargs={"pk": "me"}))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
-    def test_user_can_get_self_customer_with_existing_db_entry(self, user_client):
+    def test_user_can_get_self_customer_with_existing_db_entry(self, user_client) -> None:
         CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.get(reverse(self.viewname, kwargs={"pk": "me"}))
         responseEquals(response, status.HTTP_200_OK)
@@ -31,7 +31,7 @@ class TestCustomerRetrieveView:
     @patch("baseapp_payments.views.StripeService.retrieve_customer")
     def test_user_can_get_self_customer_with_existing_stripe_entry(
         self, mock_retrieve_customer, user_client
-    ):
+    ) -> None:
         mock_retrieve_customer.return_value = {"id": "cus_123"}
         response = user_client.get(reverse(self.viewname, kwargs={"pk": "me"}))
         responseEquals(response, status.HTTP_200_OK)
@@ -45,12 +45,12 @@ class TestCustomerRetrieveView:
 class TestCustomerCreateView:
     viewname = "v1:customers-list"
 
-    def test_anon_user_cannot_create_customer(self, client):
+    def test_anon_user_cannot_create_customer(self, client) -> None:
         response = client.post(reverse(self.viewname, kwargs={}))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
     @patch("baseapp_payments.views.StripeService.create_customer")
-    def test_user_can_create_customer(self, mock_create_customer, user_client):
+    def test_user_can_create_customer(self, mock_create_customer, user_client) -> None:
         mock_create_customer.return_value = {"id": "cus_123"}
         response = user_client.post(reverse(self.viewname))
         responseEquals(response, status.HTTP_201_CREATED)

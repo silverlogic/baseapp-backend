@@ -1,5 +1,6 @@
 import zoneinfo
 from datetime import timedelta
+from typing import TYPE_CHECKING
 
 import swapper
 from constance import config
@@ -19,8 +20,13 @@ from baseapp_core.models import CaseInsensitiveEmailField, DocumentIdMixin
 
 from .managers import UserManager
 
+if TYPE_CHECKING:
+    from django.db.models.fields.files import FieldFile
 
-def use_relay_model():
+    from baseapp_core.graphql import DjangoObjectType
+
+
+def use_relay_model() -> type:
     try:
         from baseapp_core.graphql.models import RelayModel
 
@@ -29,7 +35,7 @@ def use_relay_model():
         return object
 
 
-def use_profile_model():
+def use_profile_model() -> type[models.Model]:
     if apps.is_installed("baseapp_profiles"):
         from baseapp_profiles.models import ProfilableModel
 
@@ -138,16 +144,16 @@ class AbstractUser(
             ("view_user_is_new_email_confirmed", _("can view user's is_new_email_confirmed field")),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.get_full_name()
 
-    def get_full_name(self):
+    def get_full_name(self) -> str:
         names = [self.first_name, self.last_name]
         full_name = " ".join([name for name in names if name]).strip()
         return full_name or self.email
 
     @property
-    def avatar(self):
+    def avatar(self) -> "FieldFile | None":
         # TODO: deprecate
         if profile := getattr(self, "profile", None):
             return profile.image
@@ -166,19 +172,19 @@ class AbstractUser(
         return timezone.now() >= expires_at
 
     @classmethod
-    def get_graphql_object_type(cls):
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
         from .graphql.object_types import UserObjectType
 
         return UserObjectType
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         if hasattr(self, "tracker"):
             with self.tracker:
                 if self.tracker.has_changed("password"):
                     self.password_changed_date = timezone.now()
                 super().save(*args, **kwargs)
 
-    def anonymize_and_delete(self):
+    def anonymize_and_delete(self) -> None:
 
         from .rest_framework.users.tasks import anonymize_and_delete_user_task
 
@@ -218,7 +224,7 @@ class PasswordValidation(models.Model):
     options = models.JSONField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 

@@ -18,7 +18,7 @@ pytestmark = pytest.mark.django_db
 
 
 class TestChangeExpiredPasswordMixin(ApiMixin):
-    def check_data_keys(self, data):
+    def check_data_keys(self, data) -> None:
         if isinstance(data, dict):
             if set(data.keys()) == {"count", "next", "previous", "results"}:
                 self.check_data_keys(data["results"])
@@ -44,7 +44,7 @@ class TestChangeExpiredPasswordCreate(TestChangeExpiredPasswordListMixin):
     @override_settings(
         BA_AUTH_CHANGE_EXPIRED_PASSWORD_TOKEN_EXPIRATION_TIME_DELTA=timedelta(minutes=5)
     )
-    def test_can_change_expired_password_with_valid_token(self, client):
+    def test_can_change_expired_password_with_valid_token(self, client) -> None:
         user_data = {"email": "john@doe.com", "password": "1234567890"}  # NOSONAR
         user = UserFactory(email=user_data["email"], password=user_data["password"])
         user.password_changed_date = timezone.now() - timezone.timedelta(days=1)
@@ -73,7 +73,7 @@ class TestChangeExpiredPasswordCreate(TestChangeExpiredPasswordListMixin):
     )
     def test_cant_change_expired_password_with_valid_token_and_invalid_current_password(
         self, client
-    ):
+    ) -> None:
         user_data = {"email": "john@doe.com", "password": "1234567890"}  # NOSONAR
         user = UserFactory(email=user_data["email"], password=user_data["password"])
         token = ChangeExpiredPasswordTokenGenerator().make_token(user)
@@ -95,7 +95,9 @@ class TestChangeExpiredPasswordCreate(TestChangeExpiredPasswordListMixin):
     @override_settings(
         BA_AUTH_CHANGE_EXPIRED_PASSWORD_TOKEN_EXPIRATION_TIME_DELTA=timedelta(minutes=5)
     )
-    def test_cant_change_expired_password_with_valid_token_and_same_new_password(self, client):
+    def test_cant_change_expired_password_with_valid_token_and_same_new_password(
+        self, client
+    ) -> None:
         user_data = {"email": "john@doe.com", "password": "1234567890"}  # NOSONAR
         user = UserFactory(email=user_data["email"], password=user_data["password"])
         token = ChangeExpiredPasswordTokenGenerator().make_token(user)
@@ -117,7 +119,7 @@ class TestChangeExpiredPasswordCreate(TestChangeExpiredPasswordListMixin):
     @override_settings(
         BA_AUTH_CHANGE_EXPIRED_PASSWORD_TOKEN_EXPIRATION_TIME_DELTA=timedelta(seconds=1)
     )
-    def test_cant_change_expired_password_with_expired_token(self, client):
+    def test_cant_change_expired_password_with_expired_token(self, client) -> None:
         user_data = {"email": "john@doe.com", "password": "1234567890"}  # NOSONAR
         user = UserFactory(email=user_data["email"], password=user_data["password"])
         token = ChangeExpiredPasswordTokenGenerator().make_token(user)

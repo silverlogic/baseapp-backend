@@ -1,0 +1,9 @@
+id: django-translation-use-gettext-lazy
+snapshots:
+  ? |
+    from django.utils.translation import gettext as _
+  : labels:
+    - source: from django.utils.translation import gettext as _
+      style: primary
+      start: 0
+      end: 49

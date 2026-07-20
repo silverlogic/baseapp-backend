@@ -17,7 +17,7 @@ pytestmark = pytest.mark.django_db
 Mention = swapper.load_model("baseapp_mentions", "Mention")
 
 
-def test_creating_mention_registers_it_in_document_id_registry():
+def test_creating_mention_registers_it_in_document_id_registry() -> None:
     target_doc = DocumentId.get_or_create_for_object(CommentFactory())
     mention = Mention.objects.create(profile=ProfileFactory(), target_document=target_doc)
 
@@ -25,7 +25,7 @@ def test_creating_mention_registers_it_in_document_id_registry():
     assert DocumentId.objects.filter(content_type=ct, object_id=mention.pk).exists()
 
 
-def test_deleting_mention_removes_its_document_id():
+def test_deleting_mention_removes_its_document_id() -> None:
     target_doc = DocumentId.get_or_create_for_object(CommentFactory())
     mention = Mention.objects.create(profile=ProfileFactory(), target_document=target_doc)
     ct = ContentType.objects.get_for_model(Mention)
@@ -36,7 +36,7 @@ def test_deleting_mention_removes_its_document_id():
     assert not DocumentId.objects.filter(content_type=ct, object_id=pk).exists()
 
 
-def test_backfill_registers_rows_that_predate_the_trigger():
+def test_backfill_registers_rows_that_predate_the_trigger() -> None:
     """The migration's `backfill_model_document_ids` call must register Mention
     rows that existed before the insert trigger was added. Simulate that legacy
     state by deleting the auto-created DocumentId rows, then backfill.

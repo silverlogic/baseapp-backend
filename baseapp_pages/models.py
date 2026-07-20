@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import pghistory
 import swapper
 from django.conf import settings
@@ -15,6 +17,9 @@ from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import DocumentIdMixin, random_name_in
 from baseapp_core.pghelpers import pghistory_register_default_track
 from baseapp_core.swapper import init_swapped_models
+
+if TYPE_CHECKING:
+    from baseapp_core.graphql import DjangoObjectType
 
 
 class URLPath(DocumentIdMixin, RelayModel, TimeStampedModel):
@@ -46,7 +51,7 @@ class URLPath(DocumentIdMixin, RelayModel, TimeStampedModel):
             )
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.path
 
 
@@ -104,7 +109,7 @@ class PageMixin(models.Model):
         abstract = True
 
     @property
-    def url_path(self):
+    def url_path(self) -> URLPath | None:
         # returns the most probable url path based on current session
         return self.url_paths.filter(
             Q(is_active=True), Q(language=get_language()) | Q(language__isnull=True)
@@ -117,7 +122,7 @@ class AbstractPage(PageMixin, DocumentIdMixin, RelayModel, TimeStampedModel):
         PUBLISHED = 2, _("Published")
 
         @property
-        def description(self):
+        def description(self) -> str:
             return self.label
 
     user = models.ForeignKey(
@@ -139,11 +144,11 @@ class AbstractPage(PageMixin, DocumentIdMixin, RelayModel, TimeStampedModel):
         abstract = True
         swappable = swapper.swappable_setting("baseapp_pages", "Page")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.title or str(self.pk)
 
     @classmethod
-    def get_graphql_object_type(cls):
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
         from .graphql.object_types import PageObjectType
 
         return PageObjectType

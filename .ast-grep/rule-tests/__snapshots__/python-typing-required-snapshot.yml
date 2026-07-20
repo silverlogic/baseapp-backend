@@ -1,0 +1,33 @@
+id: python-typing-required
+snapshots:
+  ? |
+    class Foo:
+        def bar(self):
+            return self
+  : labels:
+    - source: |-
+        def bar(self):
+                return self
+      style: primary
+      start: 15
+      end: 49
+  ? |
+    def add(a, b):
+        return a + b
+  : labels:
+    - source: |-
+        def add(a, b):
+            return a + b
+      style: primary
+      start: 0
+      end: 31
+  ? |
+    def typed_args_only(a: int, b: int):
+        return a + b
+  : labels:
+    - source: |-
+        def typed_args_only(a: int, b: int):
+            return a + b
+      style: primary
+      start: 0
+      end: 53

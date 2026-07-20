@@ -1,5 +1,6 @@
 import logging
 import re
+from typing import TYPE_CHECKING
 
 import pghistory
 import pgtrigger
@@ -23,6 +24,9 @@ from baseapp_core.swapper import init_swapped_models
 from baseapp_profiles.managers import ProfileManager
 from baseapp_profiles.utils import pad_handle, to_ascii_handle
 
+if TYPE_CHECKING:
+    from baseapp_core.graphql import DjangoObjectType
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,7 +44,7 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
         PRIVATE = 2, _("private")
 
         @property
-        def description(self):
+        def description(self) -> str:
             return self.label
 
     name = models.CharField(_("name"), max_length=255, blank=True, null=True, editable=False)
@@ -84,23 +88,23 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
         ]
         swappable = swapper.swappable_setting("baseapp_profiles", "Profile")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name or str(self.pk)
 
-    def user_has_perm(self, user, perm=None):
+    def user_has_perm(self, user, perm=None) -> bool:
         if not perm:
             Profile = swapper.load_model("baseapp_profiles", "Profile")
             profile_app_label = Profile._meta.app_label
             perm = f"{profile_app_label}.use_profile"
         return user.has_perm(perm, self)
 
-    def get_all_users(self):
+    def get_all_users(self) -> models.QuerySet:
         User = get_user_model()
         return User.objects.filter(
             models.Q(profiles_owner=self) | models.Q(profile_members__profile=self)
         ).distinct()
 
-    def create_url_path(self, profile_name: str | None = None):
+    def create_url_path(self, profile_name: str | None = None) -> None:
         if service := shared_services.get("pages.url_path"):
             # Build the handle (with owner-email fallback) then let the service
             # resolve uniqueness against existing rows before persisting.
@@ -146,7 +150,7 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
 
         return None
 
-    def check_if_member(self, user):
+    def check_if_member(self, user) -> bool:
         return (
             self.__class__.objects.filter(pk=self.pk)
             .filter(models.Q(members__user=user) | models.Q(owner=user))
@@ -154,12 +158,12 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
         )
 
     @classmethod
-    def get_graphql_object_type(cls):
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
         from .graphql.object_types import ProfileObjectType
 
         return ProfileObjectType
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         created = self._state.adding
         super().save(*args, **kwargs)
 
@@ -211,7 +215,7 @@ class ProfilableModel(models.Model):
         abstract = True
 
 
-def _columns_from_profile_name_sql(sql):
+def _columns_from_profile_name_sql(sql) -> list[str] | None:
     """Extract column names referenced as NEW.<col> in a profile_name_sql expression."""
     return re.findall(r"NEW\.(\w+)", sql) or None
 
@@ -224,7 +228,7 @@ class UpdateProfileNameFunc(pgtrigger.Func):
     Leading/trailing whitespace is trimmed from the resulting name.
     """
 
-    def __init__(self, func="", *, profile_name_sql, profile_column):
+    def __init__(self, func="", *, profile_name_sql, profile_column) -> None:
         super().__init__(func)
         self._profile_name_sql = profile_name_sql
         self._profile_column = profile_column
@@ -240,7 +244,7 @@ class UpdateProfileNameFunc(pgtrigger.Func):
         """
 
 
-def _python_default_to_sql(default):
+def _python_default_to_sql(default) -> str | None:
     """
     Convert a Python value (from field.get_default()) to a SQL literal safe for embedding
     in a raw trigger INSERT statement.
@@ -285,7 +289,7 @@ class CreateProfileFunc(pgtrigger.Func):
         model_name,
         self_table,
         pk,
-    ):
+    ) -> None:
         super().__init__(func)
         self._profile_name_sql = profile_name_sql
         self._profile_owner_sql = profile_owner_sql
@@ -360,7 +364,7 @@ class CreateProfileFunc(pgtrigger.Func):
         """
 
 
-def update_profile_name_trigger(profile_name_sql, profile_column):
+def update_profile_name_trigger(profile_name_sql, profile_column) -> pgtrigger.Trigger:
     """
     Trigger to automatically update profile.name when a ProfilableModel row is updated.
     The columns referenced in `profile_name_sql` (as NEW.<col>) are automatically used
@@ -382,7 +386,7 @@ def update_profile_name_trigger(profile_name_sql, profile_column):
 
 def create_profile_trigger(
     *, profile_name_sql, profile_owner_sql, profile_column, app_label, model_name, self_table, pk
-):
+) -> pgtrigger.Trigger:
     """
     Trigger to automatically create a Profile and link it back to the ProfilableModel instance on INSERT.
     """
@@ -404,7 +408,7 @@ def create_profile_trigger(
 
 
 @receiver(class_prepared)
-def add_profilable_triggers(sender, **kwargs):
+def add_profilable_triggers(sender, **kwargs) -> None:
     """
     Auto-add pgtriggers to every concrete ProfilableModel subclass that defines `profile_name_sql`.
     - Always adds the UPDATE trigger to keep profile.name in sync.
@@ -476,7 +480,7 @@ class AbstractProfileUserRole(DocumentIdMixin, RelayModel, models.Model):
         MANAGER = 2, _("manager")
 
         @property
-        def description(self):
+        def description(self) -> str:
             return self.label
 
     class ProfileRoleStatus(models.IntegerChoices):
@@ -487,7 +491,7 @@ class AbstractProfileUserRole(DocumentIdMixin, RelayModel, models.Model):
         EXPIRED = 5, _("expired")
 
         @property
-        def description(self):
+        def description(self) -> str:
             return self.label
 
     user = models.ForeignKey(
@@ -555,31 +559,31 @@ class AbstractProfileUserRole(DocumentIdMixin, RelayModel, models.Model):
             ),
         ]
 
-    def is_invitation_expired(self):
+    def is_invitation_expired(self) -> bool:
         from django.utils import timezone
 
         if not self.invitation_expires_at:
             return False
         return timezone.now() > self.invitation_expires_at
 
-    def generate_invitation_token(self):
+    def generate_invitation_token(self) -> str:
         from django.utils.crypto import get_random_string
 
         token = get_random_string(length=64)
         self.invitation_token = token
         return token
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.user} as {self.role} in {self.profile}"
 
     @classmethod
-    def get_graphql_object_type(cls):
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
         from .graphql.object_types import ProfileUserRoleObjectType
 
         return ProfileUserRoleObjectType
 
 
-def update_or_create_profile(instance, owner, profile_name):
+def update_or_create_profile(instance, owner, profile_name) -> None:
     Profile = swapper.load_model("baseapp_profiles", "Profile")
     target_content_type = ContentType.objects.get_for_model(instance)
 

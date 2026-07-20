@@ -1,0 +1,57 @@
+id: exception-handling-without-logging
+valid:
+  - |
+    try:
+        order.save()
+    except Exception:
+        logger.exception("Failed to create order")
+        return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+  - |
+    try:
+        order.save()
+    except Exception:
+        logger.error("Failed to create order")
+        raise
+  - |
+    try:
+        order.save()
+    except Exception as exc:
+        raise PaymentError("Order failed") from exc
+  - |
+    try:
+        value = int(raw)
+    except ValueError:
+        value = None
+  - |
+    try:
+        order.save()
+    except Exception:
+        log.exception("Failed to create order")
+        return None
+  - |
+    try:
+        order.save()
+    except Exception as exc:
+        sentry_sdk.capture_exception(exc)
+        return None
+invalid:
+  - |
+    try:
+        order.save()
+    except Exception:
+        pass
+  - |
+    try:
+        order.save()
+    except Exception as exc:
+        return Response({"error": str(exc)}, status=500)
+  - |
+    try:
+        order.save()
+    except (ValueError, Exception):
+        pass
+  - |
+    try:
+        order.save()
+    except (ValueError, Exception) as exc:
+        return None

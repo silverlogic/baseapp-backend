@@ -8,7 +8,7 @@ from testproject.testapp.models import DummyPublicIdModel
 
 
 class DummyStrategyAnnotator:
-    def get_annotations(self, model_cls):
+    def get_annotations(self, model_cls) -> dict[str, models.Value]:
         return {"id": models.Value("annotated_id", output_field=models.CharField())}
 
 
@@ -16,12 +16,12 @@ class DummyStrategy:
     queryset_annotator = DummyStrategyAnnotator()
 
 
-def dummy_get_hashids_strategy_from_instance_or_cls(instance_or_cls):
+def dummy_get_hashids_strategy_from_instance_or_cls(instance_or_cls) -> DummyStrategy:
     return DummyStrategy()
 
 
 class DummyQueryOptimizer:
-    def __init__(self, only_fields=None, model=None):
+    def __init__(self, only_fields=None, model=None) -> None:
         self.only_fields = only_fields or []
         self.model = model or DummyPublicIdModel
         self.annotations = {}
@@ -40,7 +40,9 @@ class TestDjangoObjectTypePreOptimizationHook:
         "baseapp_core.hashids.strategies.get_hashids_strategy_from_instance_or_cls",
         side_effect=dummy_get_hashids_strategy_from_instance_or_cls,
     )
-    def test_pre_optimization_hook_sets_annotations_when_id_in_only_fields(self, mock_strategy):
+    def test_pre_optimization_hook_sets_annotations_when_id_in_only_fields(
+        self, mock_strategy
+    ) -> None:
         queryset = DummyPublicIdModel.objects.all()
         optimizer = DummyQueryOptimizer(only_fields=["id", "name"], model=DummyPublicIdModel)
 
@@ -57,7 +59,7 @@ class TestDjangoObjectTypePreOptimizationHook:
     )
     def test_pre_optimization_hook_does_not_set_annotations_when_id_not_in_only_fields(
         self, mock_strategy
-    ):
+    ) -> None:
         queryset = DummyPublicIdModel.objects.all()
         optimizer = DummyQueryOptimizer(only_fields=["name"], model=DummyPublicIdModel)
 
@@ -71,7 +73,7 @@ class TestDjangoObjectTypePreOptimizationHook:
         "baseapp_core.hashids.strategies.get_hashids_strategy_from_instance_or_cls",
         side_effect=dummy_get_hashids_strategy_from_instance_or_cls,
     )
-    def test_pre_optimization_hook_recurses_related_optimizers(self, mock_strategy):
+    def test_pre_optimization_hook_recurses_related_optimizers(self, mock_strategy) -> None:
         queryset = DummyPublicIdModel.objects.all()
         parent_optimizer = DummyQueryOptimizer(only_fields=["id"], model=DummyPublicIdModel)
         child_optimizer = DummyQueryOptimizer(only_fields=["id"], model=DummyPublicIdModel)
@@ -88,7 +90,9 @@ class TestDjangoObjectTypePreOptimizationHook:
         "baseapp_core.hashids.strategies.get_hashids_strategy_from_instance_or_cls",
         side_effect=dummy_get_hashids_strategy_from_instance_or_cls,
     )
-    def test_pre_optimization_hook_recurses_prefetch_related_optimizers(self, mock_strategy):
+    def test_pre_optimization_hook_recurses_prefetch_related_optimizers(
+        self, mock_strategy
+    ) -> None:
         queryset = DummyPublicIdModel.objects.all()
         parent_optimizer = DummyQueryOptimizer(only_fields=["id"], model=DummyPublicIdModel)
         child_optimizer = DummyQueryOptimizer(only_fields=["id"], model=DummyPublicIdModel)

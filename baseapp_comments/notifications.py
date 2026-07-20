@@ -11,7 +11,7 @@ User = get_user_model()
 
 
 @shared_task
-def send_reply_created_notification(comment_pk):
+def send_reply_created_notification(comment_pk) -> None:
     if service := shared_services.get("notifications"):
         comment = Comment.objects.get(pk=comment_pk)
         sender = getattr(comment, "profile", None) or comment.user
@@ -33,7 +33,7 @@ def send_reply_created_notification(comment_pk):
 
 
 @shared_task
-def send_comment_created_notification(comment_pk, recipient_id):
+def send_comment_created_notification(comment_pk, recipient_id) -> None:
     if service := shared_services.get("notifications"):
         comment = Comment.objects.get(pk=comment_pk)
         recipient = User.objects.get(pk=recipient_id)

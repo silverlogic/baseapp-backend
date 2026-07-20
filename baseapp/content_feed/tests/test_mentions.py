@@ -53,7 +53,9 @@ CONTENT_POST_CREATE_GRAPHQL = """
 """
 
 
-def test_content_post_create_persists_mentioned_profiles(django_user_client, graphql_user_client):
+def test_content_post_create_persists_mentioned_profiles(
+    django_user_client, graphql_user_client
+) -> None:
     a = ProfileFactory()
     b = ProfileFactory()
 
@@ -80,7 +82,9 @@ def test_content_post_create_persists_mentioned_profiles(django_user_client, gra
     }
 
 
-def test_content_post_create_without_mention_field_persists_no_mentions(graphql_user_client):
+def test_content_post_create_without_mention_field_persists_no_mentions(
+    graphql_user_client,
+) -> None:
     response = graphql_user_client(
         CONTENT_POST_CREATE_GRAPHQL,
         variables={
@@ -96,7 +100,7 @@ def test_content_post_create_without_mention_field_persists_no_mentions(graphql_
     assert mention_count(post) == 0
 
 
-def test_content_post_create_excludes_self_mention(django_user_client, graphql_user_client):
+def test_content_post_create_excludes_self_mention(django_user_client, graphql_user_client) -> None:
     me = ProfileFactory(owner=django_user_client.user)
     friend = ProfileFactory()
 
@@ -116,7 +120,7 @@ def test_content_post_create_excludes_self_mention(django_user_client, graphql_u
     assert mentioned_profile_ids(post) == {friend.pk}
 
 
-def test_content_post_create_drops_malformed_mention_ids(graphql_user_client):
+def test_content_post_create_drops_malformed_mention_ids(graphql_user_client) -> None:
     real = ProfileFactory()
 
     graphql_user_client(

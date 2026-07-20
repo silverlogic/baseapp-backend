@@ -22,7 +22,7 @@ class E2EViewSet(viewsets.ViewSet):
     parser_classes = [JSONParser]
 
     @action(detail=False, methods=["POST"])
-    def load_data(self, request):
+    def load_data(self, request) -> response.Response:
         serializer = LoadDataSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         objects = []
@@ -32,7 +32,7 @@ class E2EViewSet(viewsets.ViewSet):
         return response.Response({"objects": json.loads(serialize("json", objects))})
 
     @action(detail=False, methods=["POST"])
-    def flush_data(self, request):
+    def flush_data(self, request) -> response.Response:
         connection = connections[DEFAULT_DB_ALIAS]
         style = no_style()
         sql_statements = sql_flush(style, connection)
@@ -44,14 +44,14 @@ class E2EViewSet(viewsets.ViewSet):
         return response.Response({"detail": "success"})
 
     @action(detail=False, methods=["POST"])
-    def load_script(self, request):
+    def load_script(self, request) -> response.Response:
         serializer = LoadScriptSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return response.Response({"detail": "success"})
 
     @action(detail=False, methods=["POST"])
-    def set_password(self, request):
+    def set_password(self, request) -> response.Response:
         serializer = SetUserPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()

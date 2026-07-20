@@ -8,16 +8,16 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
     verbose_name = "BaseApp Reactions"
     default_auto_field = "django.db.models.AutoField"
 
-    def ready(self):
+    def ready(self) -> None:
         super().ready()
         import baseapp_reactions.signals  # noqa
 
-    def register_shared_services(self, registry):
+    def register_shared_services(self, registry) -> None:
         from .services import ReactableMetadataService
 
         registry.register(ReactableMetadataService())
 
-    def register_graphql_shared_interfaces(self, registry):
+    def register_graphql_shared_interfaces(self, registry) -> None:
         from .graphql.interfaces import get_reactions_interface
 
         registry.register("ReactionsInterface", get_reactions_interface)

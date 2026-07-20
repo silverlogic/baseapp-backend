@@ -1,0 +1,13 @@
+id: graphql-use-relay-model
+language: Python
+severity: hint
+message: "If this model is (or will be) exposed via GraphQL, it must inherit `RelayModel` from `baseapp_core.graphql` for Relay Node support. See .claude/skills/backend-conventions/references/graphql-file-layout.md"
+files:
+  - "**/models.py"
+  - "**/models/**"
+ignores:
+  - "**/migrations/**"
+rule:
+  pattern: |
+    class $MODEL(models.Model):
+        $$$

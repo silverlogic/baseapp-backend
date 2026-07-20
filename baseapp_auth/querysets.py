@@ -6,7 +6,7 @@ from django.utils import timezone
 
 
 class UserQuerySet(models.QuerySet):
-    def add_is_password_expired(self):
+    def add_is_password_expired(self) -> "UserQuerySet":
         if self.query.annotations.get("is_password_expired") is not None:
             return self
         return self.annotate(

@@ -88,7 +88,7 @@ EDIT_MESSAGE_WITH_MENTIONS_GRAPHQL = """
 """
 
 
-def _set_up_two_person_room(user, friend):
+def _set_up_two_person_room(user, friend) -> "ChatRoom":
     room = ChatRoomFactory(created_by=user)
     ChatRoomParticipantFactory(profile=user.profile, room=room)
     ChatRoomParticipantFactory(profile=friend, room=room)
@@ -98,7 +98,7 @@ def _set_up_two_person_room(user, friend):
 @pytest.mark.celery_app
 def test_send_message_persists_mentioned_profiles(
     django_user_client, graphql_user_client, celery_config
-):
+) -> None:
     user = django_user_client.user
     friend = ProfileFactory()
     room = _set_up_two_person_room(user, friend)
@@ -132,7 +132,7 @@ def test_send_message_persists_mentioned_profiles(
 @pytest.mark.celery_app
 def test_send_message_without_mention_field_persists_no_mentions(
     django_user_client, graphql_user_client, celery_config
-):
+) -> None:
     user = django_user_client.user
     friend = ProfileFactory()
     room = _set_up_two_person_room(user, friend)
@@ -153,7 +153,9 @@ def test_send_message_without_mention_field_persists_no_mentions(
 
 
 @pytest.mark.celery_app
-def test_send_message_excludes_self_mention(django_user_client, graphql_user_client, celery_config):
+def test_send_message_excludes_self_mention(
+    django_user_client, graphql_user_client, celery_config
+) -> None:
     user = django_user_client.user
     friend = ProfileFactory()
     room = _set_up_two_person_room(user, friend)
@@ -174,7 +176,7 @@ def test_send_message_excludes_self_mention(django_user_client, graphql_user_cli
     assert mentioned_profile_ids(message) == {friend.pk}
 
 
-def test_edit_message_replaces_mentioned_profiles(django_user_client, graphql_user_client):
+def test_edit_message_replaces_mentioned_profiles(django_user_client, graphql_user_client) -> None:
     user = django_user_client.user
     friend = ProfileFactory()
     room = _set_up_two_person_room(user, friend)
@@ -199,7 +201,9 @@ def test_edit_message_replaces_mentioned_profiles(django_user_client, graphql_us
     assert mentioned_profile_ids(message) == {c.pk}
 
 
-def test_edit_message_with_empty_list_clears_mentions(django_user_client, graphql_user_client):
+def test_edit_message_with_empty_list_clears_mentions(
+    django_user_client, graphql_user_client
+) -> None:
     user = django_user_client.user
     friend = ProfileFactory()
     room = _set_up_two_person_room(user, friend)
@@ -223,7 +227,7 @@ def test_edit_message_with_empty_list_clears_mentions(django_user_client, graphq
 
 def test_edit_message_without_mention_field_preserves_existing(
     django_user_client, graphql_user_client
-):
+) -> None:
     user = django_user_client.user
     friend = ProfileFactory()
     room = _set_up_two_person_room(user, friend)

@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from unittest.mock import patch
 
 import pytest
@@ -10,33 +11,33 @@ from testproject.testapp.models import Post
 
 
 @pytest.fixture(autouse=True)
-def responses_mock():
+def responses_mock() -> Generator[responses.RequestsMock, None, None]:
     with responses.RequestsMock() as r:
         yield r
 
 
 @pytest.fixture
-def stream_client():
+def stream_client() -> StreamClient:
     return StreamClient()
 
 
 @pytest.fixture
-def account_id():
+def account_id() -> str:
     return settings.CLOUDFLARE_ACCOUNT_ID
 
 
 @pytest.fixture
-def video_uid():
+def video_uid() -> str:
     return "6b9e68b07dfee8cc2d116e4c51d6a957"
 
 
 @pytest.fixture
-def clipped_video_uid():
+def clipped_video_uid() -> str:
     return "64b280da11154c63862de71560b9a684"
 
 
 @pytest.fixture
-def setup_video_not_ready(video_uid):
+def setup_video_not_ready(video_uid) -> tuple[ContentType, Post]:
     with patch("baseapp_cloudflare_stream_field.tasks.refresh_from_cloudflare.apply_async"):
         content_type = ContentType.objects.get_for_model(Post)
         obj = Post.objects.create()
@@ -46,7 +47,7 @@ def setup_video_not_ready(video_uid):
 
 
 @pytest.fixture
-def setup_video_ready_no_url(video_uid):
+def setup_video_ready_no_url(video_uid) -> tuple[ContentType, Post]:
     with patch("baseapp_cloudflare_stream_field.tasks.refresh_from_cloudflare.apply_async"):
         content_type = ContentType.objects.get_for_model(Post)
         obj = Post.objects.create()
@@ -56,7 +57,7 @@ def setup_video_ready_no_url(video_uid):
 
 
 @pytest.fixture
-def setup_video_ready_with_url(video_uid):
+def setup_video_ready_with_url(video_uid) -> tuple[ContentType, Post]:
     with patch("baseapp_cloudflare_stream_field.tasks.refresh_from_cloudflare.apply_async"):
         content_type = ContentType.objects.get_for_model(Post)
         obj = Post.objects.create()
@@ -70,7 +71,7 @@ def setup_video_ready_with_url(video_uid):
 
 
 @pytest.fixture
-def setup_video_ready_with_error(video_uid):
+def setup_video_ready_with_error(video_uid) -> tuple[ContentType, Post]:
     content_type = ContentType.objects.get_for_model(Post)
     obj = Post.objects.create()
     obj.video = {
@@ -83,7 +84,7 @@ def setup_video_ready_with_error(video_uid):
 
 
 @pytest.fixture
-def mock_get_video_data(responses_mock, account_id, video_uid):
+def mock_get_video_data(responses_mock, account_id, video_uid) -> None:
     responses_mock.add(
         responses.GET,
         f"https://api.cloudflare.com/client/v4/accounts/{account_id}/stream/{video_uid}",
@@ -110,7 +111,7 @@ def mock_get_video_data(responses_mock, account_id, video_uid):
 
 
 @pytest.fixture
-def mock_upload_via_link(responses_mock, account_id, video_uid):
+def mock_upload_via_link(responses_mock, account_id, video_uid) -> None:
     responses_mock.add(
         responses.POST,
         f"https://api.cloudflare.com/client/v4/accounts/{account_id}/stream/copy",
@@ -136,7 +137,7 @@ def mock_upload_via_link(responses_mock, account_id, video_uid):
 
 
 @pytest.fixture
-def mock_update_video_data(responses_mock, account_id, video_uid):
+def mock_update_video_data(responses_mock, account_id, video_uid) -> None:
     responses_mock.add(
         responses.POST,
         f"https://api.cloudflare.com/client/v4/accounts/{account_id}/stream/{video_uid}",
@@ -162,7 +163,7 @@ def mock_update_video_data(responses_mock, account_id, video_uid):
 
 
 @pytest.fixture
-def mock_upload_caption_file(responses_mock, account_id, video_uid):
+def mock_upload_caption_file(responses_mock, account_id, video_uid) -> None:
     responses_mock.add(
         responses.PUT,
         f"https://api.cloudflare.com/client/v4/accounts/{account_id}/stream/{video_uid}/captions/en",
@@ -188,7 +189,7 @@ def mock_upload_caption_file(responses_mock, account_id, video_uid):
 
 
 @pytest.fixture
-def mock_delete_video_data(responses_mock, account_id, video_uid):
+def mock_delete_video_data(responses_mock, account_id, video_uid) -> None:
     responses_mock.add(
         responses.DELETE,
         f"https://api.cloudflare.com/client/v4/accounts/{account_id}/stream/{video_uid}",
@@ -196,7 +197,7 @@ def mock_delete_video_data(responses_mock, account_id, video_uid):
 
 
 @pytest.fixture
-def mock_list_videos(responses_mock, account_id, video_uid):
+def mock_list_videos(responses_mock, account_id, video_uid) -> None:
     responses_mock.add(
         responses.GET,
         f"https://api.cloudflare.com/client/v4/accounts/{account_id}/stream",
@@ -258,7 +259,7 @@ def mock_list_videos(responses_mock, account_id, video_uid):
 
 
 @pytest.fixture
-def mock_download_video(responses_mock, account_id, video_uid):
+def mock_download_video(responses_mock, account_id, video_uid) -> None:
     responses_mock.add(
         responses.POST,
         f"https://api.cloudflare.com/client/v4/accounts/{account_id}/stream/{video_uid}/downloads",
@@ -267,7 +268,7 @@ def mock_download_video(responses_mock, account_id, video_uid):
 
 
 @pytest.fixture
-def mock_clip_video(responses_mock, account_id, clipped_video_uid, video_uid):
+def mock_clip_video(responses_mock, account_id, clipped_video_uid, video_uid) -> None:
     responses_mock.add(
         responses.POST,
         f"https://api.cloudflare.com/client/v4/accounts/{account_id}/stream/clip",

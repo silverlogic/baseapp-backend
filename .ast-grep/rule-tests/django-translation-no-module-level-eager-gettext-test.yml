@@ -1,0 +1,34 @@
+id: django-translation-no-module-level-eager-gettext
+valid:
+  - |
+    from django.utils.translation import gettext_lazy as _
+
+    MY_STRING = _("This is a translated string.")
+  - |
+    from django.utils.translation import gettext as _
+
+    def handler():
+        message = _("Evaluated at request time.")
+        return message
+  - |
+    from django.utils.translation import gettext_lazy as _
+
+    STATUS_CHOICES = ((1, _("Pending")), (2, _("Done")))
+invalid:
+  - |
+    from django.utils.translation import gettext as _
+
+    MY_STRING = _("This is a translated string.")
+  - |
+    from django.utils.translation import gettext as _
+
+    STATUS_CHOICES = ((1, _("Pending")), (2, _("Done")))
+  - |
+    from django.utils.translation import gettext as _
+
+    STATUS: str = _("Pending")
+  - |
+    from django.utils.translation import gettext as _
+
+    class Order(models.Model):
+        status = models.CharField(verbose_name=_("Status"))

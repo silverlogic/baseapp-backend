@@ -10,7 +10,7 @@ name = "baseapp_backend"
 dynamic = ["version"]
 description = "BaseApp"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = "BSD-3-Clause"
 authors = [
     { name = "The SilverLogic", email = "dev@tsl.io" }
@@ -120,6 +120,7 @@ dev = [
     "django-notifications-community",
     "django-push-notifications[apns-async,fcm,wp]==3.3.0",
     "baseapp-backend[auth,graphql,messagetemplates,notifications,pages,payments,pdf,referrals,socialauth,urlshortening,wagtail]",
+    "ast-grep-cli>=0.42.3",
     "testproject",
 ]
 

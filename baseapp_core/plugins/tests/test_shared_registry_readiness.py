@@ -30,7 +30,7 @@ def test_shared_registry_getters_raise_before_django_ready(
     monkeypatch: pytest.MonkeyPatch,
     callback,
     accessor_name: str,
-):
+) -> None:
     monkeypatch.setattr(apps, "ready", False)
 
     registry_map = {

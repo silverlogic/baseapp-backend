@@ -1,0 +1,18 @@
+id: django-related-name-required
+language: Python
+severity: warning
+message: "Relationship fields must declare an explicit `related_name` — plural for ForeignKey/ManyToManyField, singular for OneToOneField. See .claude/skills/backend-conventions/references/models.md"
+ignores:
+  - "**/migrations/**"
+rule:
+  any:
+    - pattern: models.ForeignKey($$$ARGS)
+    - pattern: models.OneToOneField($$$ARGS)
+    - pattern: models.ManyToManyField($$$ARGS)
+  not:
+    has:
+      stopBy: end
+      kind: keyword_argument
+      has:
+        field: name
+        regex: ^related_name$

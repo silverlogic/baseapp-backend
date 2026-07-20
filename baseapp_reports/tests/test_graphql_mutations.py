@@ -24,7 +24,7 @@ mutation ReportCreate($input: ReportCreateInput!) {
 """
 
 
-def test_anon_cant_report(graphql_client):
+def test_anon_cant_report(graphql_client) -> None:
     other_profile = ProfileFactory()
     report_type = ReportTypeFactory()
 
@@ -43,7 +43,7 @@ def test_anon_cant_report(graphql_client):
     assert Report.objects.count() == 0
 
 
-def test_user_can_report(django_user_client, graphql_user_client):
+def test_user_can_report(django_user_client, graphql_user_client) -> None:
     other_profile = ProfileFactory()
     report_type = ReportTypeFactory()
 
@@ -65,7 +65,7 @@ def test_user_can_report(django_user_client, graphql_user_client):
     assert metadata_service.get_reports_count(other_profile)["total"] == 1
 
 
-def test_user_profile_cant_self_report(django_user_client, graphql_user_client):
+def test_user_profile_cant_self_report(django_user_client, graphql_user_client) -> None:
     profile = django_user_client.user.profile
     report_type = ReportTypeFactory()
 

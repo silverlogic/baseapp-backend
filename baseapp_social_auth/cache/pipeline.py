@@ -1,11 +1,12 @@
 import json
+from typing import Any
 
 from social_core.exceptions import AuthException
 
 from .models import SocialAuthAccessTokenCache
 
 
-def cache_access_token(strategy, response, user=None, *args, **kwargs):
+def cache_access_token(strategy, response, user=None, *args, **kwargs) -> None:
     if not user:
         data = strategy.request_data()
 
@@ -30,7 +31,7 @@ def cache_access_token(strategy, response, user=None, *args, **kwargs):
             )
 
 
-def associate_by_email(strategy, response, user=None, *args, **kwargs):
+def associate_by_email(strategy, response, user=None, *args, **kwargs) -> dict[str, Any] | None:
     # Associate current auth with a user with the same email address in the DB.
     # This pipeline entry is not 100% secure unless you know that the providers
     # enabled enforce email verification on their side, otherwise a user can

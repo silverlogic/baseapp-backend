@@ -43,7 +43,7 @@ LIST_ACTIVITY_LOG_GRAPHQL = """
 """
 
 
-def test_user_cant_see_private_activity(django_user_client, graphql_user_client):
+def test_user_cant_see_private_activity(django_user_client, graphql_user_client) -> None:
     with pghistory.context(user=django_user_client.user.pk, visibility=VisibilityTypes.PRIVATE):
         CommentFactory()
 
@@ -59,7 +59,7 @@ def test_user_cant_see_private_activity(django_user_client, graphql_user_client)
     assert content["data"]["activityLogs"]["edges"] == []
 
 
-def test_user_can_see_public_activity(django_user_client, graphql_user_client):
+def test_user_can_see_public_activity(django_user_client, graphql_user_client) -> None:
     verb = f"{Comment._meta.app_label}.add_comment"
     with pghistory.context(
         user=django_user_client.user.pk, visibility=VisibilityTypes.PUBLIC, verb=verb
@@ -83,7 +83,7 @@ def test_user_can_see_public_activity(django_user_client, graphql_user_client):
     assert comment.relay_id in obj_ids
 
 
-def test_superuser_can_see_private_activity(django_user_client, graphql_user_client):
+def test_superuser_can_see_private_activity(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
 
@@ -108,7 +108,7 @@ def test_superuser_can_see_private_activity(django_user_client, graphql_user_cli
     assert activity_response["visibility"] == VisibilityTypes.PRIVATE.name
 
 
-def test_user_can_see_node_activity(django_user_client, graphql_user_client):
+def test_user_can_see_node_activity(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
     verb = f"{Comment._meta.app_label}.add_comment"
@@ -149,7 +149,7 @@ def test_user_can_see_node_activity(django_user_client, graphql_user_client):
     assert len(content["data"]["node"]["nodeActivityLogs"]["edges"]) == 1
 
 
-def test_user_can_see_user_activity(django_user_client, graphql_user_client):
+def test_user_can_see_user_activity(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
     another_user = UserFactory()
@@ -189,7 +189,7 @@ def test_user_can_see_user_activity(django_user_client, graphql_user_client):
     assert len(content["data"]["node"]["activityLogs"]["edges"]) == 1
 
 
-def test_user_can_see_profile_activity(django_user_client, graphql_user_client):
+def test_user_can_see_profile_activity(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
     profile = ProfileFactory()
@@ -233,7 +233,7 @@ def test_user_can_see_profile_activity(django_user_client, graphql_user_client):
     assert len(content["data"]["node"]["activityLogs"]["edges"]) == 1
 
 
-def test_user_can_filter_by_user_name(django_user_client, graphql_user_client):
+def test_user_can_filter_by_user_name(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.first_name = "userA"
     django_user_client.user.last_name = "Doe"
@@ -281,7 +281,7 @@ def test_user_can_filter_by_user_name(django_user_client, graphql_user_client):
     assert len(content["data"]["activityLogs"]["edges"]) == 1
 
 
-def test_filter_by_user_name_is_case_insensitive(django_user_client, graphql_user_client):
+def test_filter_by_user_name_is_case_insensitive(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.first_name = "userA"
     django_user_client.user.last_name = "Doe"
@@ -329,7 +329,7 @@ def test_filter_by_user_name_is_case_insensitive(django_user_client, graphql_use
     assert len(content["data"]["activityLogs"]["edges"]) == 2
 
 
-def test_filter_by_partial_match(django_user_client, graphql_user_client):
+def test_filter_by_partial_match(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.first_name = "john"
     django_user_client.user.last_name = "Doe"
@@ -383,7 +383,9 @@ def test_filter_by_partial_match(django_user_client, graphql_user_client):
     assert len(content["data"]["activityLogs"]["edges"]) == 1
 
 
-def test_invalid_date_range_created_from_after_created_to(django_user_client, graphql_user_client):
+def test_invalid_date_range_created_from_after_created_to(
+    django_user_client, graphql_user_client
+) -> None:
     now = datetime.date.today()
     created_from = now + datetime.timedelta(days=1)
     created_to = now - datetime.timedelta(days=1)

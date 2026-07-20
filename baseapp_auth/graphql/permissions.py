@@ -11,7 +11,7 @@ class PermissionsInterface(RelayNode):
         description=_("Determine if the logged in user has a specific permission for this object."),
     )
 
-    def resolve_has_perm(self, info, perm, **kwargs):
+    def resolve_has_perm(self, info, perm, **kwargs) -> bool:
         # Builds a permission string of the form "<app_label>.<perm>_<model_name>"
         perm = normalize_permission(perm, self)
         return info.context.user.has_perm(perm, self)

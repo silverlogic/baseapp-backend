@@ -29,7 +29,7 @@ class ActivityLogPermissionsBackend(BaseBackend):
         ),
     }
 
-    def has_perm(self, user_obj, perm, obj=None):
+    def has_perm(self, user_obj, perm, obj=None) -> bool:
         # Public permissions
         if perm in self.PUBLIC_PERMISSIONS:
             return True

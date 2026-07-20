@@ -17,16 +17,16 @@ class Role(models.Model):
         Permission, related_name="excluded_permission_roles", blank=True
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         if not self.slug:
             self.slug = self.name.lower().replace(" ", "_")
         return super().save(*args, **kwargs)
 
     @cached_property
-    def permission_list(self):
+    def permission_list(self) -> set[str]:
         return self.get_permission_list()
 
     def get_permission_list(self, user_exclude_perms: list | None = None) -> set:

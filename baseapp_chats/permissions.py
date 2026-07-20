@@ -12,7 +12,7 @@ profile_app_label = Profile._meta.app_label
 
 
 class ChatsPermissionsBackend(BaseBackend):
-    def can_add_chatroom(self, user_obj, obj):
+    def can_add_chatroom(self, user_obj, obj) -> bool:
         if isinstance(obj, dict):
             participants = obj["participants"]
             current_profile = obj["profile"]
@@ -35,7 +35,7 @@ class ChatsPermissionsBackend(BaseBackend):
 
             return True
 
-    def can_modify_chatroom(self, user_obj, obj):
+    def can_modify_chatroom(self, user_obj, obj) -> bool:
         if isinstance(obj, dict):
             room = obj["room"]
             is_leaving_chatroom = obj.get("is_leaving_chatroom", False)
@@ -67,7 +67,7 @@ class ChatsPermissionsBackend(BaseBackend):
 
             return True
 
-    def has_perm(self, user_obj, perm, obj=None):
+    def has_perm(self, user_obj, perm, obj=None) -> bool | None:
         if perm == "baseapp_chats.add_chatroom" and user_obj.is_authenticated:
             return self.can_add_chatroom(user_obj, obj)
         if perm == "baseapp_chats.add_chatroom_with_profile":

@@ -1,7 +1,12 @@
+from typing import TYPE_CHECKING
+
 import django_filters
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
 
 
 class UsersFilter(django_filters.FilterSet):
@@ -18,7 +23,7 @@ class UsersFilter(django_filters.FilterSet):
         model = get_user_model()
         fields = ["q", "order_by"]
 
-    def filter_by_q(self, queryset, name, value):
+    def filter_by_q(self, queryset, name, value) -> "QuerySet":
         filters = Q(email__iexact=value)
         if apps.is_installed("baseapp_profiles"):
             filters |= Q(profile__name__search=value)

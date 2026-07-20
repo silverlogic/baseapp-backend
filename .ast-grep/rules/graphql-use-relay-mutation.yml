@@ -1,0 +1,17 @@
+id: graphql-use-relay-mutation
+language: Python
+severity: warning
+message: "GraphQL mutations must inherit `RelayMutation` from `baseapp_core.graphql` (Input inner class, structured `errors` field), not `graphene.Mutation`. See .claude/skills/backend-conventions/references/graphql-file-layout.md"
+ignores:
+  - "**/migrations/**"
+rule:
+  any:
+    - pattern: |
+        class $MUTATION(graphene.Mutation):
+            $$$
+    - pattern: |
+        class $MUTATION(graphene.relay.ClientIDMutation):
+            $$$
+    - pattern: |
+        class $MUTATION(relay.ClientIDMutation):
+            $$$

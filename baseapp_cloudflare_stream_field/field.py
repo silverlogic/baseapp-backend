@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 from django import forms
 from django.db.models import JSONField, signals
@@ -15,14 +16,14 @@ stream_client = StreamClient()
 
 
 class CloudflareFormJSONField(forms.JSONField):
-    def bound_data(self, data, initial):
+    def bound_data(self, data, initial) -> Any:
         if data and isinstance(data, dict):
             return data
         return super().bound_data(data, initial)
 
 
 class CloudflareStreamDeferredAttribute(DeferredAttribute):
-    def __set__(self, instance, value):
+    def __set__(self, instance, value) -> None:
         # Check if its an video ID, seems like its a 32char hexdecimal value.
         # But was afraid of them changing this structure in the future, trying to make it more future proof:
         if value and isinstance(value, str) and len(value) >= 16 and len(value) <= 64:
@@ -38,17 +39,17 @@ class CloudflareStreamField(JSONField):
         self,
         downloadable=False,
         **kwargs,
-    ):
+    ) -> None:
         self.downloadable = downloadable
         super().__init__(**kwargs)
 
-    def contribute_to_class(self, cls, name, **kwargs):
+    def contribute_to_class(self, cls, name, **kwargs) -> None:
         super().contribute_to_class(cls, name, **kwargs)
         if not cls._meta.abstract:
             signals.pre_delete.connect(self.pre_delete, sender=cls)
             signals.post_save.connect(self.post_save, sender=cls)
 
-    def pre_delete(self, sender, instance, **kwargs):
+    def pre_delete(self, sender, instance, **kwargs) -> None:
         cloudflare_video = getattr(instance, self.attname)
         if cloudflare_video and "uid" in cloudflare_video:
             if isinstance(cloudflare_video, str):
@@ -56,7 +57,7 @@ class CloudflareStreamField(JSONField):
             uid = cloudflare_video["uid"]
             stream_client.delete_video_data(uid)
 
-    def post_save(self, sender, instance, **kwargs):
+    def post_save(self, sender, instance, **kwargs) -> None:
         cloudflare_video = getattr(instance, self.attname)
         if cloudflare_video and "uid" in cloudflare_video:
             from django.contrib.contenttypes.models import ContentType
@@ -82,7 +83,7 @@ class CloudflareStreamField(JSONField):
                     }
                 )
 
-    def formfield(self, *args, **kwargs):
+    def formfield(self, *args, **kwargs) -> forms.Field:
         kwargs.update(
             {
                 "form_class": CloudflareFormJSONField,
@@ -92,7 +93,7 @@ class CloudflareStreamField(JSONField):
         )
         return super().formfield(*args, **kwargs)
 
-    def bound_data(self, data, initial):
+    def bound_data(self, data, initial) -> Any:
         if data and isinstance(data, dict):
             return data
         return super().bound_data(data, initial)

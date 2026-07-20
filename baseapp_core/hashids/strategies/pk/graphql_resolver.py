@@ -1,12 +1,17 @@
+from typing import TYPE_CHECKING
+
 from graphene.relay import Node as GrapheneRelayNode
 
 from baseapp_core.hashids.strategies.legacy.graphql_resolver import (
     LegacyGraphQLResolverStrategy,
 )
 
+if TYPE_CHECKING:
+    from django.db.models import Model
+
 
 class PkGraphQLResolverStrategy(LegacyGraphQLResolverStrategy):
-    def get_node_from_global_id(self, info, global_id, only_type=None):
+    def get_node_from_global_id(self, info, global_id, only_type=None) -> "Model | None":
         """
         Logic copied from GrapheneRelayNode.get_node_from_global_id and adapted to accept the PK as global_id.
         """

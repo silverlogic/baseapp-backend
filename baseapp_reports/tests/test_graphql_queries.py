@@ -57,14 +57,14 @@ query ProfileMyReport($nodeId: ID!) {
 """
 
 
-def test_anon_can_list_report_types(graphql_client):
+def test_anon_can_list_report_types(graphql_client) -> None:
     response = graphql_client(REPORT_TYPES_LIST_GRAPHQL)
     content = response.json()
     assert "errors" not in content
     assert len(content["data"]["allReportTypes"]["edges"]) > 0
 
 
-def test_anon_can_get_report_type_filtered_by_top_level(graphql_client):
+def test_anon_can_get_report_type_filtered_by_top_level(graphql_client) -> None:
     response = graphql_client(REPORT_TYPES_LIST_GRAPHQL, variables={"topLevelOnly": True})
     content = response.json()
     assert (
@@ -72,7 +72,7 @@ def test_anon_can_get_report_type_filtered_by_top_level(graphql_client):
     )  # 11 total created by baseapp_reports migrations, with 3 subtypes
 
 
-def test_anon_can_get_report_type_filtered_by_content_type(graphql_client):
+def test_anon_can_get_report_type_filtered_by_content_type(graphql_client) -> None:
     other_profile = ProfileFactory()
     response = graphql_client(
         REPORT_TYPES_LIST_GRAPHQL, variables={"targetObjectId": other_profile.relay_id}
@@ -85,7 +85,7 @@ def test_anon_can_get_report_type_filtered_by_content_type(graphql_client):
 
 def test_reports_interface_resolve_reports_filters_by_target_profile(
     django_user_client, graphql_user_client
-):
+) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
 
@@ -117,7 +117,7 @@ def test_reports_interface_resolve_reports_filters_by_target_profile(
 
 def test_reports_interface_resolve_reports_empty_when_no_reports(
     django_user_client, graphql_user_client
-):
+) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
 
@@ -135,7 +135,7 @@ def test_reports_interface_resolve_reports_empty_when_no_reports(
     assert conn["edges"] == []
 
 
-def test_reports_interface_resolve_reports_anonymous_cannot_list_reports(graphql_client):
+def test_reports_interface_resolve_reports_anonymous_cannot_list_reports(graphql_client) -> None:
     target = ProfileFactory()
     report_type = ReportTypeFactory()
     ReportFactory(user=UserFactory(), target=target, report_type=report_type)
@@ -154,7 +154,7 @@ def test_reports_interface_resolve_reports_anonymous_cannot_list_reports(graphql
 
 def test_reports_interface_resolve_reports_normal_user_without_perm_cannot_list_reports(
     django_user_client, graphql_user_client
-):
+) -> None:
     django_user_client.user.is_superuser = False
     django_user_client.user.is_staff = False
     django_user_client.user.save()
@@ -178,7 +178,7 @@ def test_reports_interface_resolve_reports_normal_user_without_perm_cannot_list_
 
 def test_reports_interface_resolve_reports_user_with_view_report_can_list_reports(
     django_user_client, graphql_user_client
-):
+) -> None:
     user = django_user_client.user
     user.is_superuser = False
     user.is_staff = True
@@ -212,7 +212,7 @@ def test_reports_interface_resolve_reports_user_with_view_report_can_list_report
 
 def test_reports_interface_resolve_my_report_returns_only_current_users_report(
     django_user_client, graphql_user_client
-):
+) -> None:
     reporter_me = django_user_client.user
     other_user = UserFactory()
     target = ProfileFactory()
@@ -233,7 +233,7 @@ def test_reports_interface_resolve_my_report_returns_only_current_users_report(
 
 def test_reports_interface_resolve_my_report_null_when_user_has_not_reported(
     django_user_client, graphql_user_client
-):
+) -> None:
     target = ProfileFactory()
     other_user = UserFactory()
     report_type = ReportTypeFactory()
@@ -248,7 +248,7 @@ def test_reports_interface_resolve_my_report_null_when_user_has_not_reported(
     assert content["data"]["node"]["myReport"] is None
 
 
-def test_reports_interface_resolve_my_report_null_for_anonymous(graphql_client):
+def test_reports_interface_resolve_my_report_null_for_anonymous(graphql_client) -> None:
     target = ProfileFactory()
     response = graphql_client(
         PROFILE_MY_REPORT_QUERY,

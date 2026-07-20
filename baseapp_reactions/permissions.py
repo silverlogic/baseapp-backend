@@ -25,12 +25,12 @@ def can_anonymous_view_reactions() -> bool:
 
 
 class ReactionsPermissionsBackend(BaseBackend):
-    def has_perm(self, user_obj, perm, obj=None):
+    def has_perm(self, user_obj, perm, obj=None) -> bool:
         if apps.is_installed("baseapp_profiles"):
             return self._has_perm_with_profiles(user_obj, perm, obj)
         return self._has_perm_with_user(user_obj, perm, obj)
 
-    def _has_perm_with_profiles(self, user_obj, perm, obj=None):
+    def _has_perm_with_profiles(self, user_obj, perm, obj=None) -> bool:
         Profile = swapper.load_model("baseapp_profiles", "Profile")
         use_profile_perm = f"{Profile._meta.app_label}.use_profile"
 
@@ -60,7 +60,7 @@ class ReactionsPermissionsBackend(BaseBackend):
 
         return False
 
-    def _has_perm_with_user(self, user_obj, perm, obj=None):
+    def _has_perm_with_user(self, user_obj, perm, obj=None) -> bool:
         if perm == "baseapp_reactions.add_reaction":
             return user_obj.is_authenticated and _is_reactions_enabled(obj)
 

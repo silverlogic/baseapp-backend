@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import swapper
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
@@ -10,6 +12,9 @@ from model_utils.models import TimeStampedModel
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import DocumentId, DocumentIdMixin, DocumentIdUniqueTargetMixin
 
+if TYPE_CHECKING:
+    from baseapp_core.graphql import DjangoObjectType
+
 
 class AbstractFollowableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
     followers_count = models.PositiveIntegerField(default=0, editable=False)
@@ -21,11 +26,11 @@ class AbstractFollowableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
         verbose_name = _("followable metadata")
         verbose_name_plural = _("followable metadata")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.target} followable metadata"
 
     @classmethod
-    def annotate_queryset(cls, queryset):
+    def annotate_queryset(cls, queryset) -> models.QuerySet:
         """
         Annotate a queryset with followable metadata to prevent N+1 queries when resolving
         `followers_count` / `following_count` for many rows of the same model.
@@ -82,13 +87,13 @@ class AbstractFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
         swappable = swapper.swappable_setting("baseapp_follows", "Follow")
         unique_together = [("actor", "target")]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{} followed {}".format(self.actor, self.target)
 
-    def _is_profile_to_profile(self):
+    def _is_profile_to_profile(self) -> bool:
         return self.actor.content_type_id == self.target.content_type_id
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         created = self._state.adding
         super().save(*args, **kwargs)  # Save the instance first
 
@@ -98,7 +103,7 @@ class AbstractFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
             if self._is_profile_to_profile():
                 self._sync_target_is_following_back_on_create()
 
-    def delete(self, *args, **kwargs):
+    def delete(self, *args, **kwargs) -> None:
         actor_id = self.actor_id
         target_id = self.target_id
         # Resolve _is_profile_to_profile() while the FK descriptor cache is still warm —
@@ -113,7 +118,7 @@ class AbstractFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
             self._clear_reciprocal_target_is_following_back(actor_id, target_id)
 
     @classmethod
-    def _adjust_followable_metadata(cls, doc_id, field, delta):
+    def _adjust_followable_metadata(cls, doc_id, field, delta) -> None:
         """
         Atomically increment / decrement a `FollowableMetadata` counter via
         `F` expression. Live path — keeps follow / unfollow O(1) per write,
@@ -134,7 +139,7 @@ class AbstractFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
             # writers thanks to the unique target_id constraint.
             FollowableMetadata.objects.update_or_create(target_id=doc_id, defaults={field: delta})
 
-    def _sync_target_is_following_back_on_create(self):
+    def _sync_target_is_following_back_on_create(self) -> None:
         """
         When a Follow is created and a reciprocal Follow already exists, flip
         `target_is_following_back` on BOTH rows via single-row UPDATEs instead of
@@ -159,7 +164,7 @@ class AbstractFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
         self.target_is_following_back = True
 
     @classmethod
-    def _clear_reciprocal_target_is_following_back(cls, actor_id, target_id):
+    def _clear_reciprocal_target_is_following_back(cls, actor_id, target_id) -> None:
         """
         When a Follow is deleted, flip `target_is_following_back` on the
         reciprocal Follow (if any) back to False via a single UPDATE — same
@@ -171,7 +176,7 @@ class AbstractFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
         ).update(target_is_following_back=False)
 
     @classmethod
-    def recount_followers_count(cls, target):
+    def recount_followers_count(cls, target) -> None:
         """
         Periodic-reconciliation helper: recompute `followers_count` from the
         live follow rows under a row lock. Use this from a Celery beat task, NOT
@@ -181,11 +186,11 @@ class AbstractFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
         cls._recount(target, "followers_count", "target_id")
 
     @classmethod
-    def recount_following_count(cls, actor):
+    def recount_following_count(cls, actor) -> None:
         cls._recount(actor, "following_count", "actor_id")
 
     @classmethod
-    def _recount(cls, doc_or_id, metadata_field, follow_field):
+    def _recount(cls, doc_or_id, metadata_field, follow_field) -> None:
         doc_id = doc_or_id.pk if hasattr(doc_or_id, "pk") else doc_or_id
         FollowableMetadata = swapper.load_model("baseapp_follows", "FollowableMetadata")
         with transaction.atomic():
@@ -197,7 +202,7 @@ class AbstractFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
             stats.save(update_fields=[metadata_field])
 
     @classmethod
-    def is_following(cls, actor, target):
+    def is_following(cls, actor, target) -> bool:
         """Check if actor follows target. Both are model instances."""
         actor_ct = ContentType.objects.get_for_model(actor)
         target_ct = ContentType.objects.get_for_model(target)
@@ -209,7 +214,7 @@ class AbstractFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
         ).exists()
 
     @classmethod
-    def get_graphql_object_type(cls):
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
         from .graphql.object_types import FollowObjectType
 
         return FollowObjectType

@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 from django.contrib.auth.models import Permission
 from django.utils.translation import gettext_lazy as _
 from rest_framework import response
@@ -5,6 +7,9 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 
 from baseapp_auth.utils.normalize_permission import normalize_permission
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
 
 
 class PermissionsActionMixin:
@@ -19,7 +24,7 @@ class PermissionsActionMixin:
 
     permission_query_param = "perm"
 
-    def get_model_permissions_queryset(self, instance):
+    def get_model_permissions_queryset(self, instance) -> "QuerySet[Permission]":
         opts = instance._meta
         return Permission.objects.filter(
             content_type__app_label=opts.app_label,
@@ -27,7 +32,7 @@ class PermissionsActionMixin:
         )
 
     @action(detail=True, methods=["get"])
-    def permissions(self, request, *args, **kwargs):
+    def permissions(self, request, *args, **kwargs) -> response.Response:
         user = request.user
         instance = self.get_object()
 

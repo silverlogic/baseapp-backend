@@ -1,0 +1,42 @@
+id: django-admin-use-unfold
+valid:
+  - |
+    from unfold.admin import ModelAdmin, TabularInline
+
+    @admin.register(Article)
+    class ArticleAdmin(ModelAdmin):
+        list_display = ("id", "title")
+  - |
+    from django.contrib import admin
+  - |
+    @admin.register(User)
+    class UserAdmin(BaseUserAdmin, ModelAdmin):
+        pass
+  - |
+    from unfold import admin
+
+    class ArticleAdmin(admin.ModelAdmin):
+        list_display = ("id", "title")
+invalid:
+  - |
+    @admin.register(Article)
+    class ArticleAdmin(admin.ModelAdmin):
+        list_display = ("id", "title")
+  - |
+    class CommentInline(admin.TabularInline):
+        model = Comment
+  - |
+    class CommentInline(admin.StackedInline):
+        model = Comment
+  - |
+    from django.contrib.admin import ModelAdmin
+  - |
+    from django.contrib.admin import TabularInline
+  - |
+    from django.contrib.admin import ModelAdmin as DjangoModelAdmin
+  - |
+    class CommentInline(django.contrib.admin.TabularInline):
+        model = Comment
+  - |
+    class CommentInline(django.contrib.admin.StackedInline):
+        model = Comment

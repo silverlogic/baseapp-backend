@@ -22,8 +22,13 @@ Notes
 - Pins reads/writes to `schema_editor.connection.alias`.
 """
 
+from typing import TYPE_CHECKING
 
-def _alias_pinned_managers(schema_editor, *models):
+if TYPE_CHECKING:
+    from django.db.models import Manager, QuerySet
+
+
+def _alias_pinned_managers(schema_editor, *models) -> "tuple[Manager | QuerySet, ...]":
     if schema_editor is not None and getattr(schema_editor, "connection", None) is not None:
         alias = schema_editor.connection.alias
         return tuple(model.objects.using(alias) for model in models)
@@ -40,7 +45,7 @@ def migrate_legacy_reactable_fields_to_metadata(
     metadata_model_name: str = "ReactableMetadata",
     reactions_count_field: str = "reactions_count",
     is_reactions_enabled_field: str = "is_reactions_enabled",
-):
+) -> None:
     SourceModel = apps.get_model(source_app_label, source_model_name)
     ContentType = apps.get_model("contenttypes", "ContentType")
     DocumentId = apps.get_model("baseapp_core", "DocumentId")
@@ -83,7 +88,7 @@ def reverse_migrate_legacy_reactable_fields_from_metadata(
     metadata_model_name: str = "ReactableMetadata",
     reactions_count_field: str = "reactions_count",
     is_reactions_enabled_field: str = "is_reactions_enabled",
-):
+) -> None:
     SourceModel = apps.get_model(source_app_label, source_model_name)
     ContentType = apps.get_model("contenttypes", "ContentType")
     ReactableMetadata = apps.get_model(metadata_app_label, metadata_model_name)

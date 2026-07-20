@@ -28,7 +28,7 @@ mutation BlockToggle($input: BlockToggleInput!) {
 """
 
 
-def test_anon_cant_block(graphql_client):
+def test_anon_cant_block(graphql_client) -> None:
     profile1 = ProfileFactory()
     profile2 = ProfileFactory()
 
@@ -46,7 +46,7 @@ def test_anon_cant_block(graphql_client):
     assert Block.objects.count() == 0
 
 
-def test_user_can_block(django_user_client, graphql_user_client):
+def test_user_can_block(django_user_client, graphql_user_client) -> None:
     profile1 = ProfileFactory(owner=django_user_client.user)
     profile2 = ProfileFactory()
 
@@ -67,7 +67,7 @@ def test_user_can_block(django_user_client, graphql_user_client):
     assert content["data"]["blockToggle"]["target"]["blockersCount"] is None
 
 
-def test_user_can_unblock(django_user_client, graphql_user_client):
+def test_user_can_unblock(django_user_client, graphql_user_client) -> None:
     profile1 = ProfileFactory(owner=django_user_client.user)
     profile2 = ProfileFactory()
 
@@ -95,7 +95,7 @@ def test_user_can_unblock(django_user_client, graphql_user_client):
     assert content["data"]["blockToggle"]["target"]["blockersCount"] is None
 
 
-def test_user_cant_unblock_others_block(django_user_client, graphql_user_client):
+def test_user_cant_unblock_others_block(django_user_client, graphql_user_client) -> None:
     profile1 = ProfileFactory(owner=django_user_client.user)
     profile2 = ProfileFactory()
     profile3 = ProfileFactory()
@@ -129,7 +129,7 @@ def test_user_cant_unblock_others_block(django_user_client, graphql_user_client)
     assert content["errors"][0]["extensions"]["code"] == "permission_required"
 
 
-def test_user_profile_cant_self_block(django_user_client, graphql_user_client):
+def test_user_profile_cant_self_block(django_user_client, graphql_user_client) -> None:
     profile1 = ProfileFactory(owner=django_user_client.user)
 
     variables = {
@@ -153,7 +153,7 @@ def test_user_profile_cant_self_block(django_user_client, graphql_user_client):
     assert content["errors"][0]["message"] == "You cannot block yourself"
 
 
-def test_user_can_block_profile_from_same_user(django_user_client, graphql_user_client):
+def test_user_can_block_profile_from_same_user(django_user_client, graphql_user_client) -> None:
     profile1 = ProfileFactory(owner=django_user_client.user)
     profile2 = ProfileFactory(owner=django_user_client.user)
 
@@ -173,7 +173,7 @@ def test_user_can_block_profile_from_same_user(django_user_client, graphql_user_
     assert content["data"]["blockToggle"]["target"]["blockersCount"] is None
 
 
-def test_user_can_unblock_profile_from_same_user(django_user_client, graphql_user_client):
+def test_user_can_unblock_profile_from_same_user(django_user_client, graphql_user_client) -> None:
     profile1 = ProfileFactory(owner=django_user_client.user)
     profile2 = ProfileFactory(owner=django_user_client.user)
 

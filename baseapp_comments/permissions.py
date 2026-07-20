@@ -8,7 +8,7 @@ Comment = swapper.load_model("baseapp_comments", "Comment")
 app_label = Comment._meta.app_label
 
 
-def _is_comments_enabled(obj):
+def _is_comments_enabled(obj) -> bool:
     from baseapp_core.plugins import shared_services
 
     if service := shared_services.get("commentable_metadata"):
@@ -17,7 +17,7 @@ def _is_comments_enabled(obj):
 
 
 class CommentsPermissionsBackend(BaseBackend):
-    def has_perm(self, user_obj, perm, obj=None):
+    def has_perm(self, user_obj, perm, obj=None) -> bool | None:
         if perm in [f"{app_label}.add_comment", f"{app_label}.reply_comment"]:
             return user_obj.is_authenticated and _is_comments_enabled(obj)
 

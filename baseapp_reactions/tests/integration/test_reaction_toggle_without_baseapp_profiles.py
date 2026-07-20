@@ -38,7 +38,7 @@ query MyReaction($id: ID!) {
 class TestReactionsWithoutBaseappProfiles:
     def test_mutation_uses_user_based_get_or_create_when_profiles_disabled(
         self, with_disabled_apps, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         Reaction = swapper.load_model("baseapp_reactions", "Reaction")
         target = SimpleNamespace(pk=10, is_reactions_enabled=True, refresh_from_db=Mock())
         reaction = Reaction(pk=1, reaction_type=Reaction.ReactionTypes.LIKE)
@@ -82,7 +82,7 @@ class TestReactionsWithoutBaseappProfiles:
 
     def test_mutation_ignores_profile_object_id_when_profiles_disabled(
         self, with_disabled_apps, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         Reaction = swapper.load_model("baseapp_reactions", "Reaction")
         target = SimpleNamespace(pk=20, is_reactions_enabled=True, refresh_from_db=Mock())
         reaction = Reaction(pk=2, reaction_type=Reaction.ReactionTypes.LIKE)
@@ -124,7 +124,7 @@ class TestReactionsWithoutBaseappProfiles:
 
     def test_my_reaction_resolves_using_current_user_when_profiles_disabled(
         self, with_disabled_apps, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         Reaction = swapper.load_model("baseapp_reactions", "Reaction")
         Comment = swapper.load_model("baseapp_comments", "Comment")
 
@@ -164,7 +164,7 @@ class TestReactionsWithoutBaseappProfiles:
 
     def test_add_reaction_with_profile_permission_is_disabled_without_profiles(
         self, with_disabled_apps
-    ):
+    ) -> None:
         backend = ReactionsPermissionsBackend()
         user = SimpleNamespace(
             is_authenticated=True,
@@ -180,7 +180,9 @@ class TestReactionsWithoutBaseappProfiles:
 
         assert has_perm is False
 
-    def test_notification_sender_falls_back_to_user_without_profiles(self, with_disabled_apps):
+    def test_notification_sender_falls_back_to_user_without_profiles(
+        self, with_disabled_apps
+    ) -> None:
         sender_user = SimpleNamespace(id=12)
         recipient = SimpleNamespace(id=22)
         reaction = SimpleNamespace(profile=None, user=sender_user, target=SimpleNamespace())
