@@ -1,9 +1,9 @@
 from importlib.metadata import entry_points
 
-from baseapp_core.plugins.registry import PluginRegistry
 from baseapp.geo.graphql.mutations import GeoMutations
 from baseapp.geo.graphql.queries import GeoQueries
 from baseapp.geo.plugin import GeoPlugin
+from baseapp_core.plugins.registry import PluginRegistry
 
 
 class TestGeoPlugin:
