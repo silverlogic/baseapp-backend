@@ -8,22 +8,22 @@ class GeoPlugin(BaseAppPlugin):
 
     @property
     def package_name(self) -> str:
-        return "baseapp_geo"
+        return "baseapp.geo"
 
     def get_settings(self) -> PackageSettings:
         return PackageSettings(
             INSTALLED_APPS=[],
             AUTHENTICATION_BACKENDS={
                 "baseapp_geo": [
-                    "baseapp_geo.permissions.GeoPermissionsBackend",
+                    "baseapp.geo.permissions.GeoPermissionsBackend",
                 ],
             },
             # Graphql
             graphql_queries=[
-                "baseapp_geo.graphql.queries.GeoQueries",
+                "baseapp.geo.graphql.queries.GeoQueries",
             ],
             graphql_mutations=[
-                "baseapp_geo.graphql.mutations.GeoMutations",
+                "baseapp.geo.graphql.mutations.GeoMutations",
             ],
             # Deps
             required_packages=[],

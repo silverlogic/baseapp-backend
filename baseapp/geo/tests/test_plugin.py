@@ -1,9 +1,9 @@
 from importlib.metadata import entry_points
 
 from baseapp_core.plugins.registry import PluginRegistry
-from baseapp_geo.graphql.mutations import GeoMutations
-from baseapp_geo.graphql.queries import GeoQueries
-from baseapp_geo.plugin import GeoPlugin
+from baseapp.geo.graphql.mutations import GeoMutations
+from baseapp.geo.graphql.queries import GeoQueries
+from baseapp.geo.plugin import GeoPlugin
 
 
 class TestGeoPlugin:
@@ -16,14 +16,14 @@ class TestGeoPlugin:
         eps = entry_points(group=PluginRegistry.NAMESPACE)
         geo_eps = [ep for ep in eps if ep.name == "baseapp_geo"]
         assert len(geo_eps) == 1
-        assert geo_eps[0].value == "baseapp_geo.plugin:GeoPlugin"
+        assert geo_eps[0].value == "baseapp.geo.plugin:GeoPlugin"
 
     def test_plugin_loaded_in_registry(self):
         registry = self._fresh_registry()
         plugin = registry.get_plugin("baseapp_geo")
         assert plugin is not None
         assert isinstance(plugin, GeoPlugin)
-        assert plugin.package_name == "baseapp_geo"
+        assert plugin.package_name == "baseapp.geo"
 
     def test_graphql_queries_contains_geo_queries(self):
         registry = self._fresh_registry()
@@ -36,4 +36,4 @@ class TestGeoPlugin:
     def test_authentication_backends_registered_under_geo_slot(self):
         registry = self._fresh_registry()
         backends = registry.get("AUTHENTICATION_BACKENDS", "baseapp_geo")
-        assert backends == ["baseapp_geo.permissions.GeoPermissionsBackend"]
+        assert backends == ["baseapp.geo.permissions.GeoPermissionsBackend"]

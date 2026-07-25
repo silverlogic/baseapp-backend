@@ -103,7 +103,7 @@ class TestGetNodePermissionGate:
         assert content["data"]["geoFeature"]["id"] == feature.relay_id
 
     @override_settings(
-        AUTHENTICATION_BACKENDS=["baseapp_geo.tests.test_permissions.DenyAllBackend"]
+        AUTHENTICATION_BACKENDS=["baseapp.geo.tests.test_permissions.DenyAllBackend"]
     )
     def test_get_node_returns_none_when_view_perm_denied(self, graphql_client):
         feature = GeoJSONFeatureFactory()

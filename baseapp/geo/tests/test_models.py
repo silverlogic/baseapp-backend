@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.gis.geos import LineString
 from django.core.exceptions import ValidationError
 
-from baseapp_geo.models import AbstractGeoJSONFeature
+from baseapp.geo.models import AbstractGeoJSONFeature
 
 from .factories import POINT_NYC, UNIT_SQUARE_POLYGON, GeoJSONFeatureFactory
 

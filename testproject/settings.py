@@ -34,7 +34,7 @@ INSTALLED_APPS += [
     "baseapp.activity_log",
     "baseapp_notifications",
     "baseapp_ratings",
-    "baseapp_geo",
+    "baseapp.geo",
     "baseapp_payments",
     "baseapp_message_templates",
     "baseapp_url_shortening",

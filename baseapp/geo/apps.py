@@ -5,7 +5,7 @@ from baseapp_core.plugins import BaseAppConfig
 
 class BaseappGeoConfig(BaseAppConfig):
     default = True
-    name = "baseapp_geo"
+    name = "baseapp.geo"
     label = "baseapp_geo"
     verbose_name = _("BaseApp Geo")
-    default_auto_field = "django.db.models.AutoField"
+    default_auto_field = "django.db.models.BigAutoField"

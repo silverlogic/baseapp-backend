@@ -8,7 +8,7 @@ from graphql_relay import to_global_id
 
 from baseapp_core.models import DocumentId
 from baseapp_core.tests.factories import UserFactory
-from baseapp_geo.graphql.filters import GeoJSONFeatureFilter
+from baseapp.geo.graphql.filters import GeoJSONFeatureFilter
 
 from .factories import (
     POINT_NYC,

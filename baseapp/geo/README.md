@@ -13,19 +13,19 @@ Requires PostGIS: the project database must use the
 be in `INSTALLED_APPS`.
 
 Add `baseapp_geo` to `INSTALLED_APPS`. The package registers itself as a plugin
-(see `baseapp_geo.plugin:GeoPlugin`), so:
+(see `baseapp.geo.plugin:GeoPlugin`), so:
 
 - `GeoQueries` / `GeoMutations` are contributed via
   `plugin_registry.get_all_graphql_queries()` / `get_all_graphql_mutations()`.
 - `GeoPermissionsBackend` is contributed via
-  `plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_geo")` and spliced
+  `plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp.geo")` and spliced
   into the project's `AUTHENTICATION_BACKENDS`.
 
 ```python
 # settings.py
 INSTALLED_APPS += [
     "django.contrib.gis",
-    "baseapp_geo",
+    "baseapp.geo",
 ]
 ```
 
@@ -99,7 +99,7 @@ Define a concrete model in your project that subclasses the abstract:
 
 ```python
 # myproject/geo/models.py
-from baseapp_geo.models import AbstractGeoJSONFeature
+from baseapp.geo.models import AbstractGeoJSONFeature
 
 
 class GeoJSONFeature(AbstractGeoJSONFeature):

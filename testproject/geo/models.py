@@ -1,4 +1,4 @@
-from baseapp_geo.models import AbstractGeoJSONFeature
+from baseapp.geo.models import AbstractGeoJSONFeature
 
 
 class GeoJSONFeature(AbstractGeoJSONFeature):

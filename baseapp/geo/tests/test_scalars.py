@@ -2,7 +2,7 @@ from django.contrib.gis.geos import GEOSGeometry, Point
 from graphql import parse
 from graphql.language import ast
 
-from baseapp_geo.graphql.scalars import Geometry
+from baseapp.geo.graphql.scalars import Geometry
 
 
 def _argument_value_node(document: str) -> ast.ValueNode:
