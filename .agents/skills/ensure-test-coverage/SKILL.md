@@ -51,7 +51,9 @@ docker compose <run> web pytest --cov --reuse-db                   # faster re-r
 
 CI **and** local run the suite under `pytest-xdist` (`-n 2 --dist loadscope`, per `setup.cfg`) — each worker gets its **own** test DB. Tests must be **hermetic**:
 
-**Never assert on data you didn't create in the test** — not migration-seeded reference rows, not rows left by other tests. A `TransactionTestCase` truncates every table (Django does not restore migration data without `serialized_rollback`), and under xdist that wipe can land on your worker just before your test. Ambient-data assertions pass serially but flake in parallel.
+**Don't depend on *global* reference data your test didn't establish** — migration-seeded rows, or rows left by other tests. A `TransactionTestCase` truncates every table (Django does not restore migration data without `serialized_rollback`), and under xdist that wipe can land on your worker just before your test — so global-reference assertions pass serially but flake in parallel.
+
+Data you set up **in your own scope is fine**: the test function, a Django `setUpTestData`, or a module/class-scoped fixture. `--dist loadscope` keeps a whole module on one worker, so same-scope setup stays put — the trap is *global* seed data, not shared local setup. (This safety leans on `loadscope`; don't switch the dist mode without accounting for it.)
 
 ❌ Flaky — depends on migration-seeded rows:
 ```python
