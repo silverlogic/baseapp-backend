@@ -49,7 +49,7 @@ docker compose <run> web pytest --cov --reuse-db                   # faster re-r
 
 ## Parallel-safe tests (required)
 
-CI **and** local run the suite under `pytest-xdist` (`-n 2 --dist loadscope`, per `setup.cfg`) — each worker gets its **own** test DB. Tests must be **hermetic**:
+Projects that enable `pytest-xdist` run the suite in parallel in CI **and** locally (`-n <N> --dist loadscope`, set in the project's pytest `addopts` — `pytest.ini` or `setup.cfg`), and each worker gets its **own** test DB. Whether or not parallel is enabled, tests must be **hermetic**:
 
 **Don't depend on *global* reference data your test didn't establish** — migration-seeded rows, or rows left by other tests. A `TransactionTestCase` truncates every table (Django does not restore migration data without `serialized_rollback`), and under xdist that wipe can land on your worker just before your test — so global-reference assertions pass serially but flake in parallel.
 

@@ -1,8 +1,10 @@
 """Shared pytest behavior for baseapp projects, auto-loaded via the ``pytest11`` entry point.
 
-Projects run their suite in parallel by default (``setup.cfg`` ``addopts = ... -n 2 --dist
-loadscope``) so CI and local match. This plugin keeps a *targeted* single-test run serial —
-fast feedback and a working ``pdb`` — without anyone having to remember a flag.
+Projects that enable pytest-xdist run their suite in parallel by default via ``addopts`` in
+their pytest config (``pytest.ini`` or ``setup.cfg``, e.g. ``-n 2 --dist loadscope``) so CI and
+local match. This plugin keeps a *targeted* single-test run serial — fast feedback and a working
+``pdb`` — without anyone having to remember a flag. It never *enables* xdist; if a project has no
+``-n`` configured, runs stay serial as before.
 
 A run is treated as targeted when a node id (``path::test``) is passed and no explicit ``-n``
 was given; then xdist is disabled for that invocation. Pass ``-n <N>`` explicitly to force
