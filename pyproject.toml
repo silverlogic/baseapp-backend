@@ -218,9 +218,6 @@ baseapp_blocks = "baseapp_blocks.plugin:BlocksPlugin"
 baseapp_content_feed = "baseapp.content_feed.plugin:ContentFeedPlugin"
 baseapp_chats = "baseapp_chats.plugin:ChatsPlugin"
 
-[project.entry-points.pytest11]
-baseapp_core = "baseapp_core.pytest_plugin"
-
 [tool.black]
 line-length = 100
 target-version = ['py311']
