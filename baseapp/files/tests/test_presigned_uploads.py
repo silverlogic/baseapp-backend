@@ -14,10 +14,11 @@ from urllib.parse import urlparse
 import pytest
 import swapper
 from django.conf import settings
-from django.core import signing
 from django.utils import timezone
 from freezegun import freeze_time
 from rest_framework import status
+
+from baseapp.files.tokens import PresignedUploadToken
 
 File = swapper.load_model("baseapp_files", "File")
 
@@ -131,12 +132,10 @@ class TestPresignedUploadPart:
         file_obj = File.get_by_public_id(initiated_upload["id"])
 
         with freeze_time(timezone.now() - timedelta(hours=2)):
-            token = signing.dumps(
-                {
-                    "file_id": file_obj.id,
-                    "part_number": 1,
-                    "upload_id": file_obj.upload_id,
-                }
+            token = PresignedUploadToken.mint(
+                file_id=file_obj.id,
+                part_number=1,
+                upload_id=file_obj.upload_id,
             )
 
         response = put_part(
@@ -161,12 +160,10 @@ class TestPresignedUploadPart:
     def test_upload_part_number_out_of_range(self, client, initiated_upload):
         """A part number above total_parts is rejected even with a valid token."""
         file_obj = File.get_by_public_id(initiated_upload["id"])
-        token = signing.dumps(
-            {
-                "file_id": file_obj.id,
-                "part_number": 5,
-                "upload_id": file_obj.upload_id,
-            }
+        token = PresignedUploadToken.mint(
+            file_id=file_obj.id,
+            part_number=5,
+            upload_id=file_obj.upload_id,
         )
 
         response = put_part(
@@ -175,6 +172,22 @@ class TestPresignedUploadPart:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "Invalid part number" in response.json()["error"]
+
+    def test_token_from_previous_upload_session(self, client, initiated_upload):
+        """A token minted for an earlier initiation cannot upload into a new session."""
+        file_obj = File.get_by_public_id(initiated_upload["id"])
+        token = PresignedUploadToken.mint(
+            file_id=file_obj.id,
+            part_number=1,
+            upload_id="stale-upload-id",
+        )
+
+        response = put_part(
+            client, f"/v1/files/presigned-uploads/{file_obj.id}/upload-part/1?token={token}"
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert "does not match the current upload session" in response.json()["error"]
 
     def test_token_for_other_file(self, client, user_client, temp_media_root, initiated_upload):
         """A token signed for one file cannot be used on another file's URL."""

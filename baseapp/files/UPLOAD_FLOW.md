@@ -75,7 +75,7 @@ Body: <binary data>
 ETag: abc123def456...
 ```
 
-**Note:** The token is generated using Django signing and is valid for 1 hour. No session authentication or CSRF protection is required for this endpoint. The ETag is returned both in the response body and as an HTTP header for S3 compatibility.
+**Note:** The token is minted and verified by `PresignedUploadToken` (`baseapp/files/tokens.py`) using Django signing, and is valid for `FILE_UPLOAD_PRESIGNED_URL_EXPIRATION` seconds (1 hour by default). No session authentication or CSRF protection is required for this endpoint. The ETag is returned both in the response body and as an HTTP header for S3 compatibility.
 
 ### 3. Complete Upload
 **POST** `/v1/files/uploads/{id}/complete/`

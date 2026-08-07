@@ -1,7 +1,6 @@
 import logging
 
 import swapper
-from django.core import signing
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status, viewsets
@@ -11,6 +10,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from ...services.upload_service import UploadService
+from ...tokens import PresignedUploadToken, PresignedUploadTokenError
 
 logger = logging.getLogger(__name__)
 
@@ -63,37 +63,14 @@ class PresignedUploadViewSet(viewsets.GenericViewSet):
                 "etag": "abc123..."
             }
         """
-        # Get and validate the signed token
-        token = request.query_params.get("token")
-        if not token:
-            return Response(
-                {"error": _("Missing token parameter")},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-
         try:
-            # Verify the token (max age: 1 hour)
-            token_data = signing.loads(token, max_age=3600)
-
-            # Validate token matches request
-            if str(token_data.get("file_id")) != str(pk) or str(
-                token_data.get("part_number")
-            ) != str(part_number):
-                return Response(
-                    {"error": _("Invalid token for this file/part")},
-                    status=status.HTTP_401_UNAUTHORIZED,
-                )
-
-        except signing.SignatureExpired:
-            return Response(
-                {"error": _("Token has expired")},
-                status=status.HTTP_401_UNAUTHORIZED,
+            token_data = PresignedUploadToken.verify(
+                request.query_params.get("token"),
+                file_id=pk,
+                part_number=part_number,
             )
-        except signing.BadSignature:
-            return Response(
-                {"error": _("Invalid token signature")},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
+        except PresignedUploadTokenError as exc:
+            return Response({"error": exc.message}, status=status.HTTP_401_UNAUTHORIZED)
 
         # Get the file object
         try:
@@ -104,13 +81,10 @@ class PresignedUploadViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Bind the token to the current upload session: a token minted for a
-        # previous initiation (different upload_id) must not upload into a new one.
-        if str(token_data.get("upload_id")) != str(file_obj.upload_id):
-            return Response(
-                {"error": _("Token does not match the current upload session")},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
+        try:
+            PresignedUploadToken.check_upload_session(token_data, file_obj.upload_id)
+        except PresignedUploadTokenError as exc:
+            return Response({"error": exc.message}, status=status.HTTP_401_UNAUTHORIZED)
 
         # Validate state
         if file_obj.upload_status not in [File.UploadStatus.PENDING, File.UploadStatus.UPLOADING]:

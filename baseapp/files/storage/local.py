@@ -4,10 +4,10 @@ import uuid
 from typing import Any, Dict, List, Optional
 
 from django.conf import settings
-from django.core import signing
 
 from baseapp_core.models import random_name_in
 
+from ..tokens import PresignedUploadToken
 from .base import BaseUploadHandler
 
 
@@ -41,13 +41,11 @@ class LocalUploadHandler(BaseUploadHandler):
         # Generate presigned URLs with signed tokens
         presigned_urls = []
         for part_num in range(1, num_parts + 1):
-            # Create a signed token for this specific file and part
-            token_data = {
-                "file_id": file_obj.id,
-                "part_number": part_num,
-                "upload_id": upload_id,
-            }
-            token = signing.dumps(token_data)
+            token = PresignedUploadToken.mint(
+                file_id=file_obj.id,
+                part_number=part_num,
+                upload_id=upload_id,
+            )
 
             presigned_urls.append(
                 {
@@ -60,7 +58,7 @@ class LocalUploadHandler(BaseUploadHandler):
         return {
             "upload_id": upload_id,
             "presigned_urls": presigned_urls,
-            "expires_in": 3600,
+            "expires_in": PresignedUploadToken.max_age(),
         }
 
     def upload_part(self, upload_id: str, part_number: int, data: bytes) -> str:
