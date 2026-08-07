@@ -65,7 +65,7 @@ docker compose <run> web pytest --cov="baseapp_<package>" --junitxml=test-report
 ```
 
 **Parallel-aware.** When a project enables xdist (`-n <N> --dist loadscope` in its pytest `addopts` — `pytest.ini` or `setup.cfg`), `pytest` runs in parallel by default, matching CI so parallel-only failures reproduce locally; each worker uses its own test DB. Tests must be hermetic (see the `ensure-test-coverage` skill).
-- Debug one test serially (pdb works): `docker compose <run> web pytest -n 0 apps/<app>/tests/test_file.py::test_function` — or just pass a `path::test` node id; `baseapp_core`'s pytest plugin auto-serializes targeted runs.
+- Debug one test serially (pdb works): `docker compose <run> web pytest -n 0 apps/<app>/tests/test_file.py::test_function` — or just pass a `path::test` node id; the project's `conftest.py` auto-serializes targeted runs.
 - Use all cores on a big machine: `docker compose <run> web pytest -n auto`.
 
 ### Migrations
