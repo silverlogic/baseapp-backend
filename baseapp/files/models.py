@@ -7,8 +7,6 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import OuterRef, Subquery, Value
 from django.db.models.functions import Coalesce
-from django.db.models.signals import class_prepared
-from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
@@ -19,6 +17,8 @@ from baseapp_core.models import (
     DocumentIdUniqueTargetMixin,
     random_name_in,
 )
+from baseapp_core.pghelpers import pgtrigger_register_default_track
+from baseapp_core.swapper import init_swapped_models
 
 from .utils import default_files_count
 
@@ -188,36 +188,6 @@ def file_target_delete_trigger():
     )
 
 
-@receiver(class_prepared)
-def add_file_target_triggers(sender, **kwargs):
-    """
-    Add the FileTarget count triggers to the model when it is prepared.
-    This handles swappable models by adding triggers to the concrete model.
-    """
-    # Only models that inherit from AbstractFile
-    if not issubclass(sender, AbstractFile):
-        return
-
-    # Skip non-schema models
-    if sender._meta.abstract or sender._meta.proxy:
-        return
-
-    # Skip swapped-out models
-    if sender._meta.swapped:
-        return
-
-    if not hasattr(sender._meta, "triggers"):
-        sender._meta.triggers = []
-
-    existing = [t.name for t in sender._meta.triggers]
-    if "update_file_target_on_insert" not in existing:
-        sender._meta.triggers.append(file_target_insert_trigger())
-    if "update_file_target_on_update" not in existing:
-        sender._meta.triggers.append(file_target_update_trigger())
-    if "update_file_target_on_delete" not in existing:
-        sender._meta.triggers.append(file_target_delete_trigger())
-
-
 class AbstractFileTarget(DocumentIdUniqueTargetMixin):
     # Override only to keep the existing related_name/help_text (avoids a no-op
     # AlterField migration on the concrete swappable models); get_for_object and
@@ -246,6 +216,7 @@ class AbstractFileTarget(DocumentIdUniqueTargetMixin):
         abstract = True
         verbose_name = _("file target")
         verbose_name_plural = _("file targets")
+        swappable = swapper.swappable_setting("baseapp_files", "FileTarget")
 
     def __str__(self):
         return f"FileTarget for {self.target}"
@@ -434,11 +405,25 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
         abstract = True
         verbose_name = _("file")
         verbose_name_plural = _("files")
-        # Note: Triggers are registered via the class_prepared signal in this module
-        # to properly handle swappable models.
+        swappable = swapper.swappable_setting("baseapp_files", "File")
 
     @classmethod
     def get_graphql_object_type(cls):
         from .graphql.object_types import FileObjectType
 
         return FileObjectType
+
+
+# Resolve the concrete swap target (e.g. files.File) so the count triggers are
+# attached to the real table. Consumers can override these via
+# `@pgtrigger_register_track(...)` on their concrete model.
+File = init_swapped_models([("baseapp_files", "File")])
+
+pgtrigger_register_default_track(
+    File,
+    [
+        file_target_insert_trigger(),
+        file_target_update_trigger(),
+        file_target_delete_trigger(),
+    ],
+)
