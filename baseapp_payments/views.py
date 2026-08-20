@@ -132,7 +132,11 @@ class StripeCustomerViewset(
         lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
         relay_id = self.kwargs[lookup_url_kwarg]
         if relay_id == "me":
-            return self.queryset.get(entity_id=self.request.user.profile.id)
+            try:
+                customer = self.queryset.get(entity_id=self.request.user.profile.id)
+            except Customer.DoesNotExist:
+                raise NotFound("Customer not found")
+            return customer
         try:
             entity_id = get_pk_from_relay_id(relay_id)
             return self.queryset.get(entity_id=entity_id)
