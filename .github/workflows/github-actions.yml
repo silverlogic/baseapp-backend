@@ -61,8 +61,10 @@ jobs:
       - name: Install pip-audit
         if: steps.requirements_installation.outcome == 'success' && startsWith(matrix.django-version, '5.2')
         run: docker compose exec -T web uv tool install --python ${{ matrix.python-version }} pip-audit
-      # No vulnerabilities are currently suppressed. Add --ignore-vuln only for a
-      # finding with no available fix, and record here why, with a date to re-check.
+      # Ignored vulnerabilities:
+
+      # Name                   Version ID             Fix Versions
+      # ---------------------- ------- -------------- ------------
       - name: Run pip-audit (installed dependencies)
         if: steps.requirements_installation.outcome == 'success' && startsWith(matrix.django-version, '5.2')
         run: docker compose exec -T web pip-audit --skip-editable
