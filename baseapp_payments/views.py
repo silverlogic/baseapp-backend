@@ -25,6 +25,15 @@ from .utils import StripeService, StripeWebhookHandler
 
 logger = logging.getLogger(__name__)
 
+
+def _query_flag(request, name) -> bool:
+    """Query params arrive as strings, so `?flag=false` would otherwise be truthy."""
+    value = request.query_params.get(name)
+    if value is None:
+        return False
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+
 Customer = swapper.load_model("baseapp_payments", "Customer")
 
 
@@ -59,8 +68,17 @@ class StripeSubscriptionViewset(
         customer = Customer.objects.filter(entity_id=entity_id).first()
         if not customer:
             return Response({"error": "Customer not found"}, status=404)
-        subscriptions = StripeService().list_subscriptions(customer.remote_customer_id, **kwargs)
-        serializer = self.get_serializer(subscriptions.data, many=True)
+        # No get_object() on this route, so the entity has to be authorized explicitly.
+        self.check_object_permissions(request, customer)
+
+        # Stripe returns every non-canceled subscription unless asked otherwise. The
+        # default here is the narrower "active", with `?status=` to widen it - `all`
+        # included, which Stripe understands as "canceled ones too".
+        status_filter = request.query_params.get("status") or "active"
+        subscriptions = StripeService().list_subscriptions(
+            customer.remote_customer_id, status=status_filter
+        )
+        serializer = self.get_serializer(subscriptions.auto_paging_iter(), many=True)
         return Response(serializer.data, status=200)
 
     def destroy(self, request, *args, **kwargs):
@@ -148,7 +166,11 @@ class StripeCustomerViewset(
     )
     def invoices(self, request, pk=None, *args, **kwargs):
         customer = self.get_object()
-        invoices = StripeService().get_customer_invoices(customer.remote_customer_id)
+        # Materialized because paginate_queryset slices; the service hands back a
+        # Stripe ListObject like every other list_* method.
+        invoices = list(
+            StripeService().list_invoices(customer.remote_customer_id).auto_paging_iter()
+        )
         page = self.paginate_queryset(invoices)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -221,6 +243,11 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
             return Response({"error": "An internal error has occurred"}, status=500)
 
     def update(self, request, pk=None):
+        customer = getattr(request._request, "customer", None)
+        if customer is None or not StripeService().payment_method_belongs_to(
+            pk, customer.remote_customer_id
+        ):
+            return Response({"error": "Payment method not found"}, status=404)
         serializer = self.get_serializer(data={"pk": pk, **request.data})
         serializer.is_valid(raise_exception=True)
         try:
@@ -233,10 +260,16 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
             return Response({"error": "An internal error has occurred"}, status=500)
 
     def delete(self, request, pk=None):
+        customer = getattr(request._request, "customer", None)
+        stripe_service = StripeService()
+        # The route authorizes the customer; the card id itself is caller-supplied.
+        if customer is None or not stripe_service.payment_method_belongs_to(
+            pk, customer.remote_customer_id
+        ):
+            return Response({"error": "Payment method not found"}, status=404)
         try:
-            customer = getattr(request._request, "customer", None)
-            StripeService().delete_payment_method(
-                pk, customer.remote_customer_id, request.query_params.get("is_default")
+            stripe_service.delete_payment_method(
+                pk, customer.remote_customer_id, _query_flag(request, "is_default")
             )
             return Response({}, status=204)
         except Exception as e:
