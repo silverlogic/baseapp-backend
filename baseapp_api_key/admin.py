@@ -46,5 +46,7 @@ for APIKeyClass in [
 ]:
 
     @admin.register(APIKeyClass)
-    class _APIKeyAdmin(BaseAPIKeyAdmin[APIKeyClass]):
+    # BaseAPIKeyAdmin is a plain ModelAdmin subclass, not a generic - subscripting
+    # it raises at import time and takes the whole admin registry down with it.
+    class _APIKeyAdmin(BaseAPIKeyAdmin):
         pass
