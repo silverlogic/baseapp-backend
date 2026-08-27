@@ -109,12 +109,22 @@ baseapp_foo = "baseapp.foo.plugin:FooPlugin"
 > `[options.entry_points]`. **That file does not exist.** The README is stale; use
 > `pyproject.toml`.
 
-Also add package data if the block ships templates, static files, or locales:
+Also add package data if the block ships templates, static files, or locales. The key is a
+**package name**, so for the namespaced layout it is the quoted dotted path — not the underscore
+form:
 
 ```toml
 [tool.setuptools.package-data]
-baseapp_foo = ["*.j2", "*.html", "*.png"]
+"baseapp.foo" = ["*.j2", "*.html", "*.png"]
 ```
+
+Getting this wrong fails silently: `baseapp_foo` is a valid identifier, so setuptools accepts the
+key, matches it against no package, and simply ships none of your data files. Note also that the
+existing `baseapp = [...]` entry covers only files directly in `baseapp/` — `package-data` keys are
+exact package names, not recursive, so it does **not** cover `baseapp/foo/`. (Neither of the two
+existing namespaced blocks declares one; they ship no data files, so it has never come up.)
+
+Skip this entirely if the block has no templates, static files, or locales — most don't.
 
 And an extra **only if the block needs new third-party dependencies**:
 
@@ -132,7 +142,7 @@ Editing entry points requires reinstalling the distribution before they take eff
 
 ## 3. `MANIFEST.in`
 
-```
+```text
 include baseapp/foo/README.md
 recursive-include baseapp/foo/templates *
 recursive-include baseapp/foo/static *

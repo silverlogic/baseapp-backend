@@ -27,7 +27,7 @@ prefix, and the first argument to `swapper.load_model(...)`.
 
 ## Layout
 
-```
+```text
 baseapp/foo/
 ├── __init__.py          # empty
 ├── apps.py              # PackageConfig — required

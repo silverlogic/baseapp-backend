@@ -6,7 +6,7 @@ same.
 
 ## The shape
 
-```
+```text
 Target model (Profile, Page, Comment, …)
         │  has a DocumentId
         ▼
