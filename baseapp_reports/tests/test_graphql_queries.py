@@ -59,31 +59,46 @@ query ProfileMyReport($nodeId: ID!) {
 
 
 def test_anon_can_list_report_types(graphql_client: GraphQLClient) -> None:
+    # Self-contained: create our own types and assert they appear, rather than asserting a
+    # count of the migration-seeded defaults — a bare count still passes when the query
+    # returns the wrong rows, and any TransactionTestCase in the suite can truncate the
+    # seeded rows. Explicit keys keep the assertions deterministic.
+    ReportTypeFactory(key="qa_list_a")
+    ReportTypeFactory(key="qa_list_b")
     response = graphql_client(REPORT_TYPES_LIST_GRAPHQL)
     content = response.json()
     assert "errors" not in content
-    assert (
-        len(content["data"]["allReportTypes"]["edges"]) == 11
-    )  # 8 base types + 3 adult-content subtypes created by baseapp_reports migrations
+    keys = {edge["node"]["key"] for edge in content["data"]["allReportTypes"]["edges"]}
+    assert {"qa_list_a", "qa_list_b"} <= keys
 
 
 def test_anon_can_get_report_type_filtered_by_top_level(graphql_client: GraphQLClient) -> None:
+    top_level = ReportTypeFactory(key="qa_top_level")
+    ReportTypeFactory(key="qa_subtype", parent_type=top_level)
     response = graphql_client(REPORT_TYPES_LIST_GRAPHQL, variables={"topLevelOnly": True})
     content = response.json()
-    assert (
-        len(content["data"]["allReportTypes"]["edges"]) == 8
-    )  # 11 total created by baseapp_reports migrations, with 3 subtypes
+    assert "errors" not in content
+    keys = {edge["node"]["key"] for edge in content["data"]["allReportTypes"]["edges"]}
+    assert "qa_top_level" in keys
+    assert "qa_subtype" not in keys  # subtypes are excluded by topLevelOnly
 
 
 def test_anon_can_get_report_type_filtered_by_content_type(graphql_client: GraphQLClient) -> None:
-    other_profile = ProfileFactory()
+    target_profile = ProfileFactory()
+    # A type wired to the target's content type is returned; one wired to a different
+    # content type is not.
+    matching = ReportTypeFactory(key="qa_match")
+    matching.content_types.set([ContentType.objects.get_for_model(target_profile)])
+    other = ReportTypeFactory(key="qa_other")
+    other.content_types.set([ContentType.objects.get_for_model(Report)])
     response = graphql_client(
-        REPORT_TYPES_LIST_GRAPHQL, variables={"targetObjectId": other_profile.relay_id}
+        REPORT_TYPES_LIST_GRAPHQL, variables={"targetObjectId": target_profile.relay_id}
     )
     content = response.json()
-    assert (
-        len(content["data"]["allReportTypes"]["edges"]) == 8
-    )  # 11 total, with 3 being exclusive to comments
+    assert "errors" not in content
+    keys = {edge["node"]["key"] for edge in content["data"]["allReportTypes"]["edges"]}
+    assert "qa_match" in keys
+    assert "qa_other" not in keys
 
 
 def test_reports_interface_resolve_reports_filters_by_target_profile(
