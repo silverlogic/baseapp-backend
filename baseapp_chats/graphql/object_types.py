@@ -4,7 +4,9 @@ from django.db.models import Case, When
 from django.utils.translation import gettext_lazy as _
 from graphene_django.filter import DjangoFilterConnectionField
 
-from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import (
+    DjangoObjectType,
+)
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import (
     ThumbnailField,

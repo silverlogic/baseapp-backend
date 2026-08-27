@@ -49,15 +49,13 @@ def create_message_status_trigger(ChatRoomParticipant, MessageType):
         when=pgtrigger.After,
         operation=pgtrigger.Insert,
         condition=pgtrigger.Q(new__message_type=MessageType.USER_MESSAGE),
-        func=Func(
-            f"""
+        func=Func(f"""
             INSERT INTO {{model.statuses.field.model._meta.db_table}} (message_id, profile_id, is_read)
             SELECT NEW.id, crp.profile_id, CASE WHEN NEW.profile_id = crp.profile_id THEN TRUE ELSE FALSE END
             FROM {ChatRoomParticipant._meta.db_table} as crp
             WHERE crp.room_id = NEW.room_id;
             RETURN NULL;
-        """
-        ),
+        """),
     )
 
 
@@ -84,8 +82,7 @@ def update_last_message_on_delete_trigger(ChatRoom):
         level=pgtrigger.Row,
         when=pgtrigger.After,
         operation=pgtrigger.Delete,
-        func=Func(
-            f"""
+        func=Func(f"""
             UPDATE {ChatRoom._meta.db_table}
             SET last_message_id = (
                 SELECT id
@@ -103,6 +100,5 @@ def update_last_message_on_delete_trigger(ChatRoom):
             )
             WHERE id = OLD.room_id;
             RETURN NULL;
-        """
-        ),
+        """),
     )
