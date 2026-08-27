@@ -171,11 +171,42 @@ query), `baseapp_follows/tests/test_graphql_queries_object_follows.py`,
   `with_disabled_apps` / `with_disabled_apps_context` from `baseapp_core/plugins/tests/fixtures.py`
   and put it in `tests/integration/`.
 
-Run them from the **submodule** root, not a consuming template:
+## Running them
+
+Run from the **submodule** root, not a consuming template, and go through **`uv run`**:
 
 ```bash
-docker compose run --rm web pytest baseapp/<name>/tests/ --reuse-db
+docker compose run --rm web uv run --python 3.12 pytest baseapp/<name>/tests/ --reuse-db
 ```
+
+**`uv run` is not optional, and bare `pytest` is a trap.** The image is built with
+`uv sync --no-install-project`, so the `baseapp_backend` distribution is *not* installed in
+`/opt/venv`. Plugin discovery is `stevedore` over the `baseapp.plugins` entry-point namespace
+(`baseapp_core/plugins/registry.py`) with no fallback, so without an installed distribution
+exactly **one** entry point is visible (`testproject_plugin_test_app`), no plugin's settings or
+GraphQL roots are aggregated, and tests fail in confusing ways. `uv run` builds and installs the
+project first, which registers all entry points. CI does the same thing.
+
+Bare `pytest` *appears* to work once you have run `uv run` before, because that leaves a
+gitignored `baseapp_backend.egg-info/` in the bind-mounted source tree which `importlib.metadata`
+picks up from the working directory. Delete it, or start from a fresh checkout, and bare `pytest`
+breaks again. Don't rely on it.
+
+The explicit `--python 3.12` is also required: `.python-version` in the repo root still pins
+`3.11` while `pyproject.toml` sets `requires-python = ">=3.12"`, so plain `uv run` aborts with
+`No interpreter found for Python 3.11`. CI passes `--python` explicitly for the same reason.
+
+### Diagnosing a suspicious run
+
+If every test in a new block fails at once, check plugin discovery before debugging your code:
+
+```bash
+docker compose run --rm web uv run --python 3.12 python -c \
+  "from importlib.metadata import entry_points; \
+   print(len(list(entry_points(group='baseapp.plugins'))))"
+```
+
+Expect ~25. If it prints `1`, the distribution isn't installed — that is the bug, not your test.
 
 ## Anti-patterns
 

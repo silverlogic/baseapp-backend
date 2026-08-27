@@ -80,6 +80,26 @@ Never import models, services, or GraphQL types at package import time. The plug
 before the app registry is ready, and an import-time model reference raises
 `ImproperlyConfigured`.
 
+## Factories need a real target
+
+A model using `DocumentIdTargetMixin` has a **non-null** `target_document`. Its factory resolves it
+from a `target` that must be a real, documentable object:
+
+```python
+class AbstractWidgetFactory(factory.django.DjangoModelFactory):
+    target_document = factory.LazyAttribute(
+        lambda o: DocumentId.get_or_create_for_object(o.target)
+    )
+
+    class Meta:
+        exclude = ["target"]
+        abstract = True
+```
+
+Callers must pass one — `WidgetFactory(target=some_profile)`. Passing `target=None` produces a
+`NotNullViolation` on insert, not a friendly error. Any model with `DocumentIdMixin` works as a
+target; `ProfileFactory()` is the usual choice in tests.
+
 ## Naming
 
 | Thing | Convention |
