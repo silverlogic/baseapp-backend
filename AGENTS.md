@@ -94,6 +94,8 @@ docker compose run --rm web pre-commit run --all-files
 
 ## For AI Agents
 
+- Use the `compose-a-block` skill when creating or extending a package in this repo, and for any
+  GraphQL query-performance work (N+1s, `pre_optimization_hook`, annotations, connection fields).
 - Use the `ensure-test-coverage` skill whenever implementing or modifying backend code.
 - Use the `run-development-commands` skill to translate intent into the correct Docker Compose commands.
 - Do not mark a task done until tests pass and coverage meets the threshold.

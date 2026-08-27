@@ -1,0 +1,101 @@
+{
+  "skill_name": "compose-a-block",
+  "evals": [
+    {
+      "id": "new-package-scaffold",
+      "prompt": "Create a new baseapp-backend package called 'bookmarks' that lets any object be bookmarked by a profile. Scaffold it.",
+      "files": [],
+      "assertions": [
+        "Creates the package under baseapp/bookmarks/, not baseapp_bookmarks/ at the repo root",
+        "Creates both apps.py (PackageConfig) and plugin.py (BookmarksPlugin)",
+        "Sets AppConfig.name to the dotted path 'baseapp.bookmarks' and label to the underscore form 'baseapp_bookmarks'",
+        "Adds the entry point to [project.entry-points.\"baseapp.plugins\"] in pyproject.toml, not to a setup.cfg",
+        "Does NOT create a migrations/ directory for the swappable model"
+      ]
+    },
+    {
+      "id": "plugin-package-name",
+      "prompt": "My new block baseapp/bookmarks is in INSTALLED_APPS but plugin_registry.get('INSTALLED_APPS') doesn't show anything from it and its GraphQL queries are missing. Why?",
+      "files": [],
+      "assertions": [
+        "Identifies that plugin.package_name must be the dotted import path 'baseapp.bookmarks' since it is matched against INSTALLED_APPS",
+        "Distinguishes package_name from name (the underscore identity form)",
+        "Mentions that the app must be added before plugin_registry.load_from_installed_apps(...) is called",
+        "Mentions that the distribution must be reinstalled for an entry-point change to take effect",
+        "Does not suggest editing setup.cfg"
+      ]
+    },
+    {
+      "id": "n-plus-one-deferred-field",
+      "prompt": "Our Message resolver reads root.deleted and root.message_type, but neither is exposed in GraphQL. The messages list issues one extra query per message. Fix it.",
+      "files": [],
+      "assertions": [
+        "Adds the fields to optimizer.only_fields inside pre_optimization_hook",
+        "Explains that the optimizer defers columns not selected by GraphQL, so each access triggers a per-row refresh_from_db",
+        "Calls super().pre_optimization_hook(queryset, optimizer)",
+        "Does not suggest graphene_django_optimizer or gql_optimizer.query()",
+        "Recommends pinning the result with a query-count test"
+      ]
+    },
+    {
+      "id": "interface-field-optimization",
+      "prompt": "I'm adding a bookmarksCount field to a shared GraphQL interface that Comment, Page and ContentPost all mix in. How do I keep it from doing a query per row without every consuming block changing its own code?",
+      "files": [],
+      "assertions": [
+        "Recommends attaching a function to the field's optimizer_hook attribute rather than editing each consumer's pre_optimization_hook",
+        "Explains the hook fires only when the field is selected",
+        "Builds the subquery from compiler.optimizer.model rather than a hardcoded model",
+        "Guards against compiler.optimizer or its model being None",
+        "Mentions the interface needs Meta.model so the AST walker descends into the inline fragment"
+      ]
+    },
+    {
+      "id": "connection-field-choice",
+      "prompt": "I added a pre_optimization_hook to ProfileObjectType but the profiles list query count didn't change at all. What's going on?",
+      "files": [],
+      "assertions": [
+        "Identifies that graphene_django.filter.DjangoFilterConnectionField does not run the query_optimizer compiler",
+        "Recommends switching to query_optimizer.DjangoConnectionField",
+        "Notes that filtering still works via Meta.filterset_class on the optimized class",
+        "Warns that neighbouring code is an unreliable guide because the repo is mid-migration",
+        "Suggests capturing the query count before and after the switch"
+      ]
+    },
+    {
+      "id": "counter-without-n-plus-one",
+      "prompt": "Add a bookmarks_count to profiles that clients can also sort by, without a query per profile.",
+      "files": [],
+      "assertions": [
+        "Stores the counter in a DocumentId-keyed sidecar metadata model rather than a column on Profile",
+        "Adds an annotate_queryset classmethod using a correlated Subquery with OuterRef('pk')",
+        "Wraps the annotation in Coalesce with a default so targets without a metadata row cost nothing",
+        "Exposes a public (non-underscore) annotation name so OrderingFilter can sort on it",
+        "Gives the service getter a hasattr fallback so correctness does not depend on the annotation"
+      ]
+    },
+    {
+      "id": "optional-dependency-degradation",
+      "prompt": "My block should show a profile field when baseapp_profiles is installed and work fine when it isn't. How do I wire that up?",
+      "files": [],
+      "assertions": [
+        "Guards the model field with apps.is_installed and mixes it in at class-definition time",
+        "Uses apply_if_installed for the GraphQL Meta.fields entry",
+        "Declares baseapp_profiles in optional_packages, not required_packages",
+        "Guards any shared_services.get(...) result against None",
+        "Adds a test under tests/integration/ using with_disabled_apps_context"
+      ]
+    },
+    {
+      "id": "no-legacy-optimizer",
+      "prompt": "Add a new ObjectType for the Bookmark model. The neighbouring blocks mix in gql_optimizer.OptimizedDjangoObjectType — should I?",
+      "files": [],
+      "assertions": [
+        "Says no, and subclasses only baseapp_core.graphql.DjangoObjectType",
+        "Explains that gql_optimizer.query() is never called so the mixin is inert",
+        "Identifies graphene-django-query-optimizer (query_optimizer) as the live library",
+        "Notes baseapp_core.DjangoObjectType already subclasses query_optimizer.DjangoObjectType",
+        "Does not recommend gql_optimizer.resolver_hints or gql_optimizer.query"
+      ]
+    }
+  ]
+}
