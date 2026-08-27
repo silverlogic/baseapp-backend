@@ -17,6 +17,8 @@ the consuming block must work when the provider isn't installed.
 
 ```python
 from django.apps import apps
+from django.db import models
+
 from baseapp_core.plugins import SharedServiceProvider
 
 

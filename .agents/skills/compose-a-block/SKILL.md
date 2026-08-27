@@ -1,7 +1,7 @@
 ---
 name: compose-a-block
 version: 1.0.0
-description: ALWAYS use this skill when creating, extending, or reviewing a reusable package ("block") inside the baseapp-backend monorepo, and whenever GraphQL query performance is in play anywhere in this repo. Trigger on requests like "add a new baseapp package for X", "scaffold baseapp_foo", "wire up a plugin", "register a shared service", "expose this via a GraphQL shared interface", "make this model swappable", "why is this query doing N+1", "this list endpoint is slow", "add a counter field without a query per row", "add a pre_optimization_hook", "annotate this queryset", "the optimizer isn't picking up my prefetch", or "add a query-count regression test". Covers package scaffolding, plugin.py + PackageSettings, entry-point registration, AppConfig contributor mixins, swappable models, the DocumentId decoupling layer, shared services / GraphQL shared interfaces, and the full query-optimization stack (pre_optimization_hook, field-level optimizer_hook, annotate_queryset, connection-field choice, escape hatches, query-count tests). Skip ONLY for work in a consuming template's apps/ directory, dependency bumps, and doc-only edits.
+description: ALWAYS use this skill when creating, extending, or reviewing a reusable package ("block") inside the baseapp-backend monorepo, and whenever GraphQL query performance is in play anywhere in this repo. Trigger on requests like "add a new baseapp package for X", "scaffold baseapp_foo", "wire up a plugin", "register a shared service", "expose this via a GraphQL shared interface", "make this model swappable", "why is this query doing N+1", "this list endpoint is slow", "add a counter field without a query per row", "add a pre_optimization_hook", "annotate this queryset", "the optimizer isn't picking up my prefetch", or "add a query-count regression test". Covers package scaffolding, plugin.py + PackageSettings, entry-point registration, AppConfig contributor mixins, swappable models, the DocumentId decoupling layer, shared services / GraphQL shared interfaces, and the full query-optimization stack (pre_optimization_hook, field-level optimizer_hook, annotate_queryset, connection-field choice, escape hatches, query-count tests). The plugin-architecture half is for this repo only; the query-optimization half also applies to a consuming template's apps/ code, which inherits the same base ObjectType and the same traps. Skip ONLY for package-authoring questions about a consuming template's apps/ directory, dependency bumps, and doc-only edits.
 triggers:
   - create a new baseapp package
   - scaffold a block
@@ -27,11 +27,18 @@ for runtime behaviour.
 
 ## Scope
 
-**Use this skill for** work inside this repository — `baseapp/<name>/` or `baseapp_<name>/`.
+The two halves of this skill have different reach.
 
-**Do not use it for** work in a consuming template's `apps/` directory. That is project code; it
-consumes blocks rather than defining them, and the template ships its own `backend-conventions`
-and `backend-patterns` skills for it.
+**Sections 1–6 (plugin architecture) are for this repository only** — `baseapp/<name>/` or
+`baseapp_<name>/`. A consuming template's `apps/` directory consumes blocks rather than defining
+them, so plugin registration, swappable models, and the shared registries don't apply there; the
+template ships its own `backend-conventions` and `backend-patterns` skills for that code.
+
+**Sections 7–11 (query optimization) apply to any Graphene code built on
+`baseapp_core.graphql.DjangoObjectType`** — including a consuming template's `apps/`. Those types
+inherit the same `pre_optimization_hook`, hit the same deferred-column and connection-field traps,
+and carry the same inert `gql_optimizer` mixins. Use these sections there, alongside the template's
+own skills rather than instead of them.
 
 Two companion skills still apply to everything here: `run-development-commands` for translating
 intent into Docker Compose commands, and `ensure-test-coverage` for the 75% floor.
