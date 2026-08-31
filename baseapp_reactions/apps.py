@@ -1,3 +1,5 @@
+from django.utils.translation import gettext_lazy as _
+
 from baseapp_core.plugins import BaseAppConfig, GraphQLContributor, ServicesContributor
 
 
@@ -5,7 +7,7 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
     default = True
     name = "baseapp_reactions"
     label = "baseapp_reactions"
-    verbose_name = "BaseApp Reactions"
+    verbose_name = _("BaseApp Reactions")
     default_auto_field = "django.db.models.AutoField"
 
     def ready(self) -> None:

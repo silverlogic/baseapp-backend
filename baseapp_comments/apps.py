@@ -1,3 +1,5 @@
+from django.utils.translation import gettext_lazy as _
+
 from baseapp_core.plugins import BaseAppConfig, GraphQLContributor, ServicesContributor
 
 
@@ -5,7 +7,7 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
     default = True
     name = "baseapp_comments"
     label = "baseapp_comments"
-    verbose_name = "BaseApp Comments"
+    verbose_name = _("BaseApp Comments")
     default_auto_field = "django.db.models.BigAutoField"
 
     def ready(self) -> None:

@@ -7,6 +7,8 @@ before Django's app registry is ready, while runtime registration must happen af
 ## The shape
 
 ```python
+from django.utils.translation import gettext_lazy as _
+
 from baseapp_core.plugins import BaseAppConfig, GraphQLContributor, ServicesContributor
 
 
@@ -14,7 +16,7 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
     default = True
     name = "baseapp.foo"            # dotted import path
     label = "baseapp_foo"           # underscore form — DB prefix + swapper app label
-    verbose_name = "BaseApp Foo"
+    verbose_name = _("BaseApp Foo")
     default_auto_field = "django.db.models.BigAutoField"
 
     def register_shared_services(self, registry) -> None:
@@ -30,6 +32,12 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
 
 `BaseAppConfig.ready()` dispatches by `isinstance` against each mixin, so you implement only the
 hooks you declare. Class name is `PackageConfig` by convention.
+
+`verbose_name` is user-facing — it labels the app in the Django admin — so wrap it in
+`gettext_lazy`, never eager `gettext`: `apps.py` is imported during app loading, well before the
+active locale is known, and an eager call would freeze the string at import time. Note that isort
+treats `django.*` as third party and `baseapp_*` as first party, so the translation import sorts
+into the block *above* any `baseapp_core` import.
 
 ## Contributor mixins
 
@@ -99,3 +107,5 @@ setting up a sidecar row for a newly documentable object.
 - Connecting a receiver without `dispatch_uid`.
 - Importing another block directly to react to its events. Use a signal or a shared service.
 - Setting `label` to the dotted form. It must be the underscore form.
+- A bare `verbose_name = "BaseApp Foo"`. It is a user-facing admin label; `AGENTS.md` requires
+  `gettext_lazy` for it by name.

@@ -1,3 +1,5 @@
+from django.utils.translation import gettext_lazy as _
+
 from baseapp_core.plugins import (
     BaseAppConfig,
     GraphQLContributor,
@@ -20,7 +22,7 @@ class PackageConfig(
     default = True
     name = "baseapp_profiles"
     label = "baseapp_profiles"
-    verbose_name = "BaseApp Profiles"
+    verbose_name = _("BaseApp Profiles")
     default_auto_field = "django.db.models.AutoField"
 
     def register_shared_services(self, registry: SharedServiceRegistry) -> None:

@@ -1,11 +1,12 @@
 from django.apps import AppConfig
+from django.utils.translation import gettext_lazy as _
 
 
 class PackageConfig(AppConfig):
     default = True
     name = "baseapp_core"
     label = "baseapp_core"
-    verbose_name = "BaseApp Core"
+    verbose_name = _("BaseApp Core")
     default_auto_field = "django.db.models.BigAutoField"
 
     def ready(self) -> None:

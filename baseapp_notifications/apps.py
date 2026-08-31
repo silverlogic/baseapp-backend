@@ -1,3 +1,5 @@
+from django.utils.translation import gettext_lazy as _
+
 from baseapp_core.plugins import BaseAppConfig, GraphQLContributor, ServicesContributor
 
 
@@ -5,7 +7,7 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
     default = True
     name = "baseapp_notifications"
     label = "baseapp_notifications"
-    verbose_name = "BaseApp Notifications"
+    verbose_name = _("BaseApp Notifications")
     default_auto_field = "django.db.models.AutoField"
 
     def ready(self) -> None:
