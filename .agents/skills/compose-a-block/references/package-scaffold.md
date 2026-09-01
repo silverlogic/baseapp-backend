@@ -35,7 +35,7 @@ baseapp/foo/
 ├── models.py            # abstract + swappable
 ├── admin.py
 ├── permissions.py       # a Django auth backend; compose with | and &
-├── services.py          # SharedServiceProvider implementations
+├── services.py          # SharedServiceProvider implementations (or services/)
 ├── signals.py           # receivers; connect in ready() with dispatch_uid
 ├── README.md            # how to install / use / customise the model
 ├── graphql/
@@ -43,7 +43,7 @@ baseapp/foo/
 │   ├── object_types.py  # Base<X>ObjectType + concrete <X>ObjectType
 │   ├── interfaces.py    # lazy getters returning interface classes
 │   ├── queries.py       # class FooQueries
-│   ├── mutations.py     # class FooMutations
+│   ├── mutations.py     # class FooMutations (or mutations/)
 │   ├── subscriptions.py # optional
 │   └── filters.py       # FilterSets, shared with DRF
 ├── rest_framework/      # only if the block has a REST surface
@@ -59,6 +59,12 @@ baseapp/foo/
 
 Only `__init__.py`, `apps.py`, and `plugin.py` are mandatory. Add the rest when the block needs
 them — `baseapp_api_key` has no `graphql/object_types.py`; `baseapp_ratings` has no `signals.py`.
+
+Any of these single modules may become a package when it outgrows one file. Split it into a
+directory of the same name with an `__init__.py` re-exporting the public names, so importers don't
+change. `baseapp_profiles` does this twice: `services/` (`base_service.py`, `graphql_service.py`)
+and `graphql/mutations/` (`invitations.py`, `profiles.py`, `roles.py`). Prefer one file until it is
+genuinely unwieldy — most blocks never need the split.
 
 **Default to GraphQL.** Add `rest_framework/` only when the work is explicitly scoped to REST.
 
