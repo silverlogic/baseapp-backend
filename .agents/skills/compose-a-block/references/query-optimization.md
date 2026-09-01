@@ -10,7 +10,7 @@ Two packages with near-identical names are installed. Only one does anything.
 
 | Library | Import | Version | Status |
 |---|---|---|---|
-| `graphene-django-query-optimizer` | `query_optimizer` | 0.10.15 | **Live.** Supplies `pre_optimization_hook`, `QueryOptimizer`, `OptimizationCompiler`, field-level `optimizer_hook`, `DjangoConnectionField`. |
+| `graphene-django-query-optimizer` | `query_optimizer` | 0.10.16 | **Live.** Supplies `pre_optimization_hook`, `QueryOptimizer`, `OptimizationCompiler`, field-level `optimizer_hook`, `DjangoConnectionField`. |
 | `graphene-django-optimizer` | `gql_optimizer` | 0.10.0 | **Dead.** 8 ObjectTypes in this repo mix in `gql_optimizer.OptimizedDjangoObjectType`, but `gql_optimizer.query()` — the call that would activate it — appears nowhere, nor does `resolver_hints`. `baseapp_core.DjangoObjectType` sits later in the MRO and supplies the working optimizer. |
 
 **Do not copy the `OptimizedDjangoObjectType` mixin into new code.** It is inherited noise:
