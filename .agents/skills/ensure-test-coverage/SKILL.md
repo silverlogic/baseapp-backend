@@ -47,36 +47,6 @@ docker compose <run> web pytest --cov --reuse-db                   # faster re-r
 
 ---
 
-## Parallel-safe tests (required)
-
-Projects that enable `pytest-xdist` run the suite in parallel in CI **and** locally (`-n <N> --dist loadscope`, set in the project's pytest `addopts` — `pytest.ini` or `setup.cfg`), and each worker gets its **own** test DB. Whether or not parallel is enabled, tests must be **hermetic**:
-
-**Don't depend on *global* reference data your test didn't establish** — migration-seeded rows, or rows left by other tests. A `TransactionTestCase` truncates every table (Django does not restore migration data without `serialized_rollback`), and under xdist that wipe can land on your worker just before your test — so global-reference assertions pass serially but flake in parallel.
-
-Data you set up **in your own scope is fine**: the test function, a Django `setUpTestData`, or a module/class-scoped fixture. `--dist loadscope` keeps a whole module on one worker, so same-scope setup stays put — the trap is *global* seed data, not shared local setup. (This safety leans on `loadscope`; don't switch the dist mode without accounting for it.)
-
-❌ Flaky — depends on migration-seeded rows:
-```python
-def test_list_report_types(graphql_client):
-    resp = graphql_client(REPORT_TYPES_QUERY, variables={"topLevelOnly": True})
-    assert len(resp.json()["data"]["allReportTypes"]["edges"]) == 8
-```
-
-✅ Hermetic — creates its own rows, asserts membership not counts:
-```python
-def test_list_report_types(graphql_client):
-    top = ReportTypeFactory(key="qa_top")
-    ReportTypeFactory(key="qa_sub", parent_type=top)      # a subtype
-    resp = graphql_client(REPORT_TYPES_QUERY, variables={"topLevelOnly": True})
-    keys = {e["node"]["key"] for e in resp.json()["data"]["allReportTypes"]["edges"]}
-    assert "qa_top" in keys
-    assert "qa_sub" not in keys                            # independent of ambient data
-```
-
-Create your own rows (factories + explicit keys); assert **membership**, not global counts. **Reproduce any parallel failure serially before deciding it's real:** `pytest -n 0 path::test`.
-
----
-
 ## Rules
 
 1. **Never run on the host.** All pytest and coverage commands run inside the container.
@@ -86,5 +56,4 @@ Create your own rows (factories + explicit keys); assert **membership**, not glo
 5. **Follow project test layout.** Place tests under `baseapp_<package>/tests/`, using `integration/` and `unit/` when working on packages or `apps/<app>/tests/integration/` or `apps/<app>/tests/unit/` when working on a project or template. Use `factories.py` and `fixtures.py`.
 6. **Both API surfaces need coverage.** REST + GraphQL features both need tests.
 7. **Don't over-test boilerplate.** Skip `__str__`, auto-generated migrations. Focus on logic, permissions, and edge cases.
-8. **Tests must be parallel-safe (hermetic).** See "Parallel-safe tests" above — never assert on migration-seeded or cross-test data; create and assert on your own rows (membership, not global counts).
 

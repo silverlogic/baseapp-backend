@@ -3,6 +3,7 @@ import swapper
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 
+from baseapp_core.graphql.testing.fixtures import GraphQLClient
 from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.tests.factories import ProfileFactory
 from baseapp_reports.permissions import VIEW_REPORT_PERMISSION
@@ -57,10 +58,11 @@ query ProfileMyReport($nodeId: ID!) {
 """
 
 
-def test_anon_can_list_report_types(graphql_client) -> None:
-    # Self-contained: create our own types and assert they appear, rather than relying on
-    # the migration-seeded defaults (which any TransactionTestCase in the suite truncates,
-    # making this flaky under pytest-xdist). Explicit keys keep assertions deterministic.
+def test_anon_can_list_report_types(graphql_client: GraphQLClient) -> None:
+    # Self-contained: create our own types and assert they appear, rather than asserting a
+    # count of the migration-seeded defaults — a bare count still passes when the query
+    # returns the wrong rows, and any TransactionTestCase in the suite can truncate the
+    # seeded rows. Explicit keys keep the assertions deterministic.
     ReportTypeFactory(key="qa_list_a")
     ReportTypeFactory(key="qa_list_b")
     response = graphql_client(REPORT_TYPES_LIST_GRAPHQL)
@@ -70,7 +72,7 @@ def test_anon_can_list_report_types(graphql_client) -> None:
     assert {"qa_list_a", "qa_list_b"} <= keys
 
 
-def test_anon_can_get_report_type_filtered_by_top_level(graphql_client) -> None:
+def test_anon_can_get_report_type_filtered_by_top_level(graphql_client: GraphQLClient) -> None:
     top_level = ReportTypeFactory(key="qa_top_level")
     ReportTypeFactory(key="qa_subtype", parent_type=top_level)
     response = graphql_client(REPORT_TYPES_LIST_GRAPHQL, variables={"topLevelOnly": True})
@@ -81,7 +83,7 @@ def test_anon_can_get_report_type_filtered_by_top_level(graphql_client) -> None:
     assert "qa_subtype" not in keys  # subtypes are excluded by topLevelOnly
 
 
-def test_anon_can_get_report_type_filtered_by_content_type(graphql_client) -> None:
+def test_anon_can_get_report_type_filtered_by_content_type(graphql_client: GraphQLClient) -> None:
     target_profile = ProfileFactory()
     # A type wired to the target's content type is returned; one wired to a different
     # content type is not.

@@ -18,6 +18,10 @@ from ..consumers import GraphqlWsAuthenticatedConsumer
 
 DEFAULT_GRAPHQL_URL = "/graphql"
 
+# Callable returned by the `graphql_client` / `graphql_user_client` fixtures, so tests can
+# annotate the fixture parameter without restating the signature.
+GraphQLClient = Callable[..., HttpResponse | tuple[HttpResponse, QueryData]]
+
 
 def graphql_query(
     query,
@@ -90,7 +94,7 @@ def graphql_query(
 
 
 @pytest.fixture
-def graphql_client(django_client) -> Callable[..., HttpResponse | tuple[HttpResponse, QueryData]]:
+def graphql_client(django_client) -> GraphQLClient:
     def func(*args, **kwargs) -> HttpResponse | tuple[HttpResponse, QueryData]:
         return graphql_query(*args, **kwargs, client=django_client)
 
@@ -107,9 +111,7 @@ def graphql_client_with_queries(django_client) -> Callable[..., tuple[HttpRespon
 
 
 @pytest.fixture
-def graphql_user_client(
-    django_user_client,
-) -> Callable[..., HttpResponse | tuple[HttpResponse, QueryData]]:
+def graphql_user_client(django_user_client) -> GraphQLClient:
     def func(*args, **kwargs) -> HttpResponse | tuple[HttpResponse, QueryData]:
         return graphql_query(*args, **kwargs, client=django_user_client)
 
