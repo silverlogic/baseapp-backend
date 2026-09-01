@@ -65,18 +65,24 @@ Do **not** use a consuming template's container: it runs the template's `setting
 `testproject.settings`) and its pytest config ignores `baseapp-backend`, so package tests won't run
 there. Paths below are relative to the submodule root.
 
+Tests must go through **`uv run`**. The image is built with `uv sync --no-install-project`, so the
+`baseapp_backend` distribution is not installed and the `baseapp.plugins` entry points are not
+registered — bare `pytest` sees 1 plugin instead of ~25 and fails in confusing ways. `uv run`
+installs the project first (CI does the same). The explicit `--python 3.12` is needed because
+`.python-version` still pins `3.11` while `pyproject.toml` requires `>=3.12`.
+
 ```bash
 # All tests
-docker compose run --rm web pytest
+docker compose run --rm web uv run --python 3.12 pytest
 
 # Specific package
-docker compose run --rm web pytest baseapp_profiles/tests/
+docker compose run --rm web uv run --python 3.12 pytest baseapp_profiles/tests/
 
 # Reuse the test DB across runs (skips the slow migrate/setup step)
-docker compose run --rm web pytest baseapp_profiles/tests/ --reuse-db
+docker compose run --rm web uv run --python 3.12 pytest baseapp_profiles/tests/ --reuse-db
 
 # With coverage
-docker compose run --rm web pytest --cov --cov-report=term-missing
+docker compose run --rm web uv run --python 3.12 pytest --cov --cov-report=term-missing
 
 # Code quality
 docker compose run --rm web black .
@@ -94,6 +100,8 @@ docker compose run --rm web pre-commit run --all-files
 
 ## For AI Agents
 
+- Use the `compose-a-block` skill when creating or extending a package in this repo, and for any
+  GraphQL query-performance work (N+1s, `pre_optimization_hook`, annotations, connection fields).
 - Use the `ensure-test-coverage` skill whenever implementing or modifying backend code.
 - Use the `run-development-commands` skill to translate intent into the correct Docker Compose commands.
 - Do not mark a task done until tests pass and coverage meets the threshold.

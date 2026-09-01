@@ -1,3 +1,5 @@
+from django.utils.translation import gettext_lazy as _
+
 from baseapp_core.plugins import BaseAppConfig, GraphQLContributor, ServicesContributor
 
 
@@ -5,7 +7,7 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
     default = True
     name = "baseapp_chats"
     label = "baseapp_chats"
-    verbose_name = "BaseApp Chats"
+    verbose_name = _("BaseApp Chats")
     default_auto_field = "django.db.models.BigAutoField"
 
     def register_shared_services(self, registry) -> None:
