@@ -1,4 +1,4 @@
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 import swapper
@@ -100,7 +100,7 @@ class TestSubscriptionCreateView:
         self, mock_retrieve_price, mock_create_subscription, mock_list_subscriptions, user_client
     ):
         mock_retrieve_price.return_value = {"id": "price_123", "product": {"id": "prod_123"}}
-        mock_list_subscriptions.return_value = Mock(data=[])
+        mock_list_subscriptions.return_value = stripe_list([])
         mock_create_subscription.return_value = {
             "id": "sub_123",
             "status": "active",
@@ -126,7 +126,7 @@ class TestSubscriptionCreateView:
         user_client,
     ):
         mock_retrieve_price.return_value = {"id": "price_123", "product": {"id": "prod_123"}}
-        mock_list_subscriptions.return_value = Mock(data=[])
+        mock_list_subscriptions.return_value = stripe_list([])
         mock_create_incomplete_subscription.return_value = {
             "id": "sub_123",
             "status": "incomplete",

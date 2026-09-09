@@ -115,8 +115,12 @@ class StripeSubscriptionSerializer(serializers.Serializer):
         if not entity_id:
             raise serializers.ValidationError({"entity_id": "This field is required."})
         if isinstance(entity_id, str):
-            entity_id = get_pk_from_relay_id(entity_id)
-        customer = Customer.objects.filter(entity_id=entity_id).first()
+            # "" is what get_pk_from_relay_id answers for a non-relay id; querying on
+            # it raises ValueError from the pk field rather than returning nothing.
+            entity_id = get_pk_from_relay_id(entity_id) or None
+        customer = (
+            Customer.objects.filter(entity_id=entity_id).first() if entity_id is not None else None
+        )
         if not customer:
             raise serializers.ValidationError({"entity_id": "Customer not found."})
         data["customer"] = customer
@@ -132,7 +136,9 @@ class StripeSubscriptionSerializer(serializers.Serializer):
             subscriptions = stripe_service.list_subscriptions(
                 customer.remote_customer_id, status="all"
             )
-            for subscription in subscriptions.data:
+            # .data is only Stripe's first page (10 by default), so a customer with
+            # more subscriptions than that could slip a duplicate past this check.
+            for subscription in subscriptions.auto_paging_iter():
                 if subscription["status"] in STRIPE_ACTIVE_SUBSCRIPTION_STATUSES:
                     sub_price = subscription["items"]["data"][0]["price"]
                     sub_product_id = sub_price.get("product")

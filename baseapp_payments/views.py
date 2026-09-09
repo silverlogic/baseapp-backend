@@ -59,13 +59,37 @@ class StripeSubscriptionViewset(
         serializer = self.get_serializer(subscription)
         return Response(serializer.data, status=200)
 
+    def create(self, request, *args, **kwargs):
+        # CreateModelMixin never calls has_object_permission - there is no object yet -
+        # so without this the only gate is IsAuthenticated and any entity_id would be
+        # accepted, billing that entity's saved card.
+        customer = self._customer_from_entity_id(request.data.get("entity_id"))
+        self.check_object_permissions(request, customer)
+        return super().create(request, *args, **kwargs)
+
+    def _customer_from_entity_id(self, entity_id):
+        if not entity_id:
+            raise ValidationError({"entity_id": "This field is required."})
+        if isinstance(entity_id, str):
+            entity_id = get_pk_from_relay_id(entity_id) or None
+        if not entity_id:
+            raise NotFound("Customer not found")
+        customer = Customer.objects.filter(entity_id=entity_id).first()
+        if not customer:
+            raise NotFound("Customer not found")
+        return customer
+
     def list(self, request, *args, **kwargs):
         entity_id = request.query_params.get("entity_id")
         if not entity_id:
             return Response({"error": "entity_id is required"}, status=400)
         if isinstance(entity_id, str):
-            entity_id = get_pk_from_relay_id(entity_id)
-        customer = Customer.objects.filter(entity_id=entity_id).first()
+            # "" is what get_pk_from_relay_id answers for a non-relay id; querying on
+            # it raises ValueError from the pk field rather than returning nothing.
+            entity_id = get_pk_from_relay_id(entity_id) or None
+        customer = (
+            Customer.objects.filter(entity_id=entity_id).first() if entity_id is not None else None
+        )
         if not customer:
             return Response({"error": "Customer not found"}, status=404)
         # No get_object() on this route, so the entity has to be authorized explicitly.
@@ -150,14 +174,26 @@ class StripeCustomerViewset(
         lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
         relay_id = self.kwargs[lookup_url_kwarg]
         if relay_id == "me":
-            return self.queryset.get(entity_id=self.request.user.profile.id)
+            entity_id = self.request.user.profile.id
+        else:
+            try:
+                entity_id = get_pk_from_relay_id(relay_id)
+            except (ValueError, TypeError):
+                entity_id = None
+            if not entity_id:
+                # get_pk_from_relay_id answers "" for anything that is not a relay id,
+                # so this is the raw-pk case. DRF resolves it and runs the object
+                # permission check itself.
+                return super().get_object()
         try:
-            entity_id = get_pk_from_relay_id(relay_id)
-            return self.queryset.get(entity_id=entity_id)
-        except (ValueError, TypeError):
-            return super().get_object()
-        except Customer.DoesNotExist:
+            obj = self.queryset.get(entity_id=entity_id)
+        except (Customer.DoesNotExist, ValueError, TypeError):
             raise NotFound("Customer not found")
+        # Every path has to land here. Returning early from any branch above is what
+        # let a relay id read another entity's cards - DRF only runs the object
+        # permission check inside super().get_object().
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     @action(
         methods=["GET"],

@@ -105,8 +105,11 @@ class DRFCustomerPermissions(BasePermission):
 class DRFSubscriptionPermissions(BasePermission):
     def has_object_permission(self, request, view, obj):
         action = getattr(view, "action", None)
-        # `create` and `list` have no subscription to check, so the view resolves the
-        # customer they concern and passes that instead.
+        # `create` and `list` have no subscription yet, so `obj` here is the Customer,
+        # not a Subscription. Neither route reaches this class on its own - DRF only
+        # runs object permissions from get_object() - so both override their handler
+        # to call check_object_permissions(request, customer) explicitly. Drop that
+        # call and the branches below go dead silently.
         if action == "create":
             return request.user.has_perm(payments_perm("add_subscription"), obj)
         elif action == "list":
