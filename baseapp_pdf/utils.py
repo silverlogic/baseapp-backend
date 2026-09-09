@@ -90,7 +90,8 @@ def render_to_pdf(*args, source: str | Path, **kwargs) -> typing.Generator[Path,
         "--headless",
         "--no-sandbox",
         "--run-all-compositor-stages-before-draw",
-        "--single-process",
+        # No --single-process: recent Chrome builds abort with SIGTRAP when the
+        # renderer shares the browser process, which fails every PDF render in CI.
         "--disable-gpu",
         "--disable-audio-output",
         "--disable-dev-shm-usage",

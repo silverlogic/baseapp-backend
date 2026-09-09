@@ -25,6 +25,15 @@ from .utils import StripeService, StripeWebhookHandler
 
 logger = logging.getLogger(__name__)
 
+
+def _query_flag(request, name) -> bool:
+    """Query params arrive as strings, so `?flag=false` would otherwise be truthy."""
+    value = request.query_params.get(name)
+    if value is None:
+        return False
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+
 Customer = swapper.load_model("baseapp_payments", "Customer")
 
 
@@ -50,17 +59,50 @@ class StripeSubscriptionViewset(
         serializer = self.get_serializer(subscription)
         return Response(serializer.data, status=200)
 
+    def create(self, request, *args, **kwargs):
+        # CreateModelMixin never calls has_object_permission - there is no object yet -
+        # so without this the only gate is IsAuthenticated and any entity_id would be
+        # accepted, billing that entity's saved card.
+        customer = self._customer_from_entity_id(request.data.get("entity_id"))
+        self.check_object_permissions(request, customer)
+        return super().create(request, *args, **kwargs)
+
+    def _customer_from_entity_id(self, entity_id):
+        if not entity_id:
+            raise ValidationError({"entity_id": "This field is required."})
+        if isinstance(entity_id, str):
+            entity_id = get_pk_from_relay_id(entity_id) or None
+        if not entity_id:
+            raise NotFound("Customer not found")
+        customer = Customer.objects.filter(entity_id=entity_id).first()
+        if not customer:
+            raise NotFound("Customer not found")
+        return customer
+
     def list(self, request, *args, **kwargs):
         entity_id = request.query_params.get("entity_id")
         if not entity_id:
             return Response({"error": "entity_id is required"}, status=400)
         if isinstance(entity_id, str):
-            entity_id = get_pk_from_relay_id(entity_id)
-        customer = Customer.objects.filter(entity_id=entity_id).first()
+            # "" is what get_pk_from_relay_id answers for a non-relay id; querying on
+            # it raises ValueError from the pk field rather than returning nothing.
+            entity_id = get_pk_from_relay_id(entity_id) or None
+        customer = (
+            Customer.objects.filter(entity_id=entity_id).first() if entity_id is not None else None
+        )
         if not customer:
             return Response({"error": "Customer not found"}, status=404)
-        subscriptions = StripeService().list_subscriptions(customer.remote_customer_id, **kwargs)
-        serializer = self.get_serializer(subscriptions.data, many=True)
+        # No get_object() on this route, so the entity has to be authorized explicitly.
+        self.check_object_permissions(request, customer)
+
+        # Stripe returns every non-canceled subscription unless asked otherwise. The
+        # default here is the narrower "active", with `?status=` to widen it - `all`
+        # included, which Stripe understands as "canceled ones too".
+        status_filter = request.query_params.get("status") or "active"
+        subscriptions = StripeService().list_subscriptions(
+            customer.remote_customer_id, status=status_filter
+        )
+        serializer = self.get_serializer(subscriptions.auto_paging_iter(), many=True)
         return Response(serializer.data, status=200)
 
     def destroy(self, request, *args, **kwargs):
@@ -132,14 +174,26 @@ class StripeCustomerViewset(
         lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
         relay_id = self.kwargs[lookup_url_kwarg]
         if relay_id == "me":
-            return self.queryset.get(entity_id=self.request.user.profile.id)
+            entity_id = self.request.user.profile.id
+        else:
+            try:
+                entity_id = get_pk_from_relay_id(relay_id)
+            except (ValueError, TypeError):
+                entity_id = None
+            if not entity_id:
+                # get_pk_from_relay_id answers "" for anything that is not a relay id,
+                # so this is the raw-pk case. DRF resolves it and runs the object
+                # permission check itself.
+                return super().get_object()
         try:
-            entity_id = get_pk_from_relay_id(relay_id)
-            return self.queryset.get(entity_id=entity_id)
-        except (ValueError, TypeError):
-            return super().get_object()
-        except Customer.DoesNotExist:
+            obj = self.queryset.get(entity_id=entity_id)
+        except (Customer.DoesNotExist, ValueError, TypeError):
             raise NotFound("Customer not found")
+        # Every path has to land here. Returning early from any branch above is what
+        # let a relay id read another entity's cards - DRF only runs the object
+        # permission check inside super().get_object().
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     @action(
         methods=["GET"],
@@ -148,7 +202,11 @@ class StripeCustomerViewset(
     )
     def invoices(self, request, pk=None, *args, **kwargs):
         customer = self.get_object()
-        invoices = StripeService().get_customer_invoices(customer.remote_customer_id)
+        # Materialized because paginate_queryset slices; the service hands back a
+        # Stripe ListObject like every other list_* method.
+        invoices = list(
+            StripeService().list_invoices(customer.remote_customer_id).auto_paging_iter()
+        )
         page = self.paginate_queryset(invoices)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -221,6 +279,11 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
             return Response({"error": "An internal error has occurred"}, status=500)
 
     def update(self, request, pk=None):
+        customer = getattr(request._request, "customer", None)
+        if customer is None or not StripeService().payment_method_belongs_to(
+            pk, customer.remote_customer_id
+        ):
+            return Response({"error": "Payment method not found"}, status=404)
         serializer = self.get_serializer(data={"pk": pk, **request.data})
         serializer.is_valid(raise_exception=True)
         try:
@@ -233,10 +296,16 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
             return Response({"error": "An internal error has occurred"}, status=500)
 
     def delete(self, request, pk=None):
+        customer = getattr(request._request, "customer", None)
+        stripe_service = StripeService()
+        # The route authorizes the customer; the card id itself is caller-supplied.
+        if customer is None or not stripe_service.payment_method_belongs_to(
+            pk, customer.remote_customer_id
+        ):
+            return Response({"error": "Payment method not found"}, status=404)
         try:
-            customer = getattr(request._request, "customer", None)
-            StripeService().delete_payment_method(
-                pk, customer.remote_customer_id, request.query_params.get("is_default")
+            stripe_service.delete_payment_method(
+                pk, customer.remote_customer_id, _query_flag(request, "is_default")
             )
             return Response({}, status=204)
         except Exception as e:
