@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import graphene
 import swapper
 from query_optimizer import DjangoConnectionField
@@ -6,6 +8,9 @@ from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
 from baseapp_core.models import DocumentId
 from baseapp_core.plugins import shared_services
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
 
 Follow = swapper.load_model("baseapp_follows", "Follow")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
@@ -20,25 +25,25 @@ class FollowsInterface(RelayNode):
         profile_id=graphene.ID(required=False),
     )
 
-    def resolve_followers_count(self, info):
+    def resolve_followers_count(self, info) -> int:
         if service := shared_services.get("followable_metadata"):
             return service.get_followers_count(self)
         raise RuntimeError("FollowableMetadata service is not available")
 
-    def resolve_following_count(self, info):
+    def resolve_following_count(self, info) -> int:
         if service := shared_services.get("followable_metadata"):
             return service.get_following_count(self)
         raise RuntimeError("FollowableMetadata service is not available")
 
-    def resolve_followers(self, info, **kwargs):
+    def resolve_followers(self, info, **kwargs) -> "QuerySet":
         doc = DocumentId.get_or_create_for_object(self)
         return Follow.objects.filter(target=doc)
 
-    def resolve_following(self, info, **kwargs):
+    def resolve_following(self, info, **kwargs) -> "QuerySet":
         doc = DocumentId.get_or_create_for_object(self)
         return Follow.objects.filter(actor=doc)
 
-    def resolve_is_followed_by_me(self, info, profile_id=None, **kwargs):
+    def resolve_is_followed_by_me(self, info, profile_id=None, **kwargs) -> bool:
         if not info.context.user.is_authenticated:
             return False
         if profile_id:

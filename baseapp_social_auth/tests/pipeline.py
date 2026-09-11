@@ -44,7 +44,7 @@ def get_username(
     return {"username": username}
 
 
-def set_avatar(is_new, backend, user, response, *args, **kwargs):
+def set_avatar(is_new, backend, user, response, *args, **kwargs) -> None:
     if not is_new:
         return
 
@@ -81,11 +81,11 @@ def set_avatar(is_new, backend, user, response, *args, **kwargs):
             profile.save(update_fields=["image"])
 
 
-def set_is_new(is_new, user, *args, **kwargs):
+def set_is_new(is_new, user, *args, **kwargs) -> None:
     user.is_new = is_new
 
 
-def link_user_to_referrer(is_new, strategy, user, *args, **kwargs):
+def link_user_to_referrer(is_new, strategy, user, *args, **kwargs) -> None:
     if not is_new:
         return
 

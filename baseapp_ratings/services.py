@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import swapper
 from django.apps import apps
 
 from baseapp_core.plugins import SharedServiceProvider
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+
+    from .models import AbstractRatableMetadata
 
 
 class RatableMetadataService(SharedServiceProvider):
@@ -19,14 +26,14 @@ class RatableMetadataService(SharedServiceProvider):
     def is_available(self) -> bool:
         return apps.is_installed("baseapp_ratings")
 
-    def _get_model(self):
+    def _get_model(self) -> type[AbstractRatableMetadata]:
         return swapper.load_model("baseapp_ratings", "RatableMetadata")
 
-    def get_metadata(self, obj):
+    def get_metadata(self, obj) -> AbstractRatableMetadata | None:
         """Return `RatableMetadata` for `obj`, or `None` if not found."""
         return self._get_model().get_for_object(obj)
 
-    def get_or_create_metadata(self, obj):
+    def get_or_create_metadata(self, obj) -> AbstractRatableMetadata | None:
         """Return or create `RatableMetadata` for `obj`."""
         return self._get_model().get_or_create_for_object(obj)
 
@@ -62,5 +69,5 @@ class RatableMetadataService(SharedServiceProvider):
         metadata = self.get_metadata(obj)
         return metadata.is_ratings_enabled if metadata else True
 
-    def annotate_queryset(self, queryset):
+    def annotate_queryset(self, queryset) -> QuerySet:
         return self._get_model().annotate_queryset(queryset)

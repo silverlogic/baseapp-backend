@@ -37,10 +37,17 @@ Notes
   `Follow.target_id`, so unrelated metadata records are preserved.
 """
 
+from typing import TYPE_CHECKING
+
 from baseapp_core.swapper import get_apps_model
 
+if TYPE_CHECKING:
+    from django.db.models import Manager, QuerySet
 
-def _alias_pinned_managers(schema_editor, follow_model, metadata_model):
+
+def _alias_pinned_managers(
+    schema_editor, follow_model, metadata_model
+) -> "tuple[Manager | QuerySet, Manager | QuerySet]":
     # Pin every read/write to the alias the schema editor is operating on so the count
     # reads (Follow) and the upserts (FollowableMetadata) hit the same database — same
     # pattern convert_follow_profile_fks_into_document_id_helper uses.
@@ -56,7 +63,7 @@ def seed_followable_metadata_from_follows(
     *,
     metadata_app_label: str = "baseapp_follows",
     metadata_model_name: str = "FollowableMetadata",
-):
+) -> None:
     """
     Create or update one `FollowableMetadata` row per `DocumentId` that appears as an
     `actor` or `target` in any `Follow` row, populating
@@ -88,7 +95,7 @@ def reverse_seed_followable_metadata(
     *,
     metadata_app_label: str = "baseapp_follows",
     metadata_model_name: str = "FollowableMetadata",
-):
+) -> None:
     """
     Drop `FollowableMetadata` rows that were seeded from existing `Follow` data.
 

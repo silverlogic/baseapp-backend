@@ -1,6 +1,11 @@
+from typing import TYPE_CHECKING
+
 import swapper
 from django.contrib.contenttypes.models import ContentType
 from graphene_django.filter import DjangoFilterConnectionField
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
 
 from baseapp_core.graphql import Node, get_obj_from_relay_id, get_object_type_for_model
 
@@ -15,7 +20,7 @@ class ReportsQueries:
     report_types = Node.Field(ReportTypeObjectType)
     all_report_types = DjangoFilterConnectionField(ReportTypeObjectType)
 
-    def resolve_all_report_types(self, info, **kwargs):
+    def resolve_all_report_types(self, info, **kwargs) -> "QuerySet":
         target_object_id = kwargs.get("target_object_id")
         if not target_object_id:
             return ReportType.objects.all()

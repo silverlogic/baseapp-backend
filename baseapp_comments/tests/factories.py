@@ -1,13 +1,19 @@
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
+
 import factory
 import swapper
 
 from baseapp_core.models import DocumentId
 
+if TYPE_CHECKING:
+    from django.contrib.contenttypes.models import ContentType
+
 Comment = swapper.load_model("baseapp_comments", "Comment")
 
 
-def get_content_type(field_name):
-    def _obj_content_type(obj):
+def get_content_type(field_name) -> "Callable[[Any], ContentType | None]":
+    def _obj_content_type(obj) -> "ContentType | None":
         if not hasattr(obj, field_name):
             return None
         target = getattr(obj, field_name, None)
@@ -18,8 +24,8 @@ def get_content_type(field_name):
     return _obj_content_type
 
 
-def get_obj_pk(field_name):
-    def _obj_id(obj):
+def get_obj_pk(field_name) -> Callable[[Any], Any]:
+    def _obj_id(obj) -> Any:
         if not hasattr(obj, field_name):
             return None
         target = getattr(obj, field_name, None)
@@ -30,8 +36,8 @@ def get_obj_pk(field_name):
     return _obj_id
 
 
-def get_document_id(field_name):
-    def _doc_id(obj):
+def get_document_id(field_name) -> Callable[[Any], DocumentId | None]:
+    def _doc_id(obj) -> DocumentId | None:
         if not hasattr(obj, field_name):
             return None
         target = getattr(obj, field_name, None)
@@ -64,7 +70,7 @@ class CommentFactory(AbstractCommentFactory):
         model = Comment
 
     @factory.post_generation
-    def is_comments_enabled(obj, create, extracted, **kwargs):
+    def is_comments_enabled(obj, create, extracted, **kwargs) -> None:
         """
         Set is_comments_enabled on the CommentableMetadata associated with this comment.
         Usage: CommentFactory(is_comments_enabled=False)

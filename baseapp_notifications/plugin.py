@@ -1,6 +1,11 @@
+from typing import TYPE_CHECKING
+
 from django.apps import apps
 
 from baseapp_core.plugins.base import BaseAppPlugin, PackageSettings
+
+if TYPE_CHECKING:
+    from django.urls import URLPattern
 
 
 class NotificationsPlugin(BaseAppPlugin):
@@ -41,7 +46,7 @@ class NotificationsPlugin(BaseAppPlugin):
         )
 
     @staticmethod
-    def v1_urlpatterns(include, path, re_path):
+    def v1_urlpatterns(include, path, re_path) -> list["URLPattern"]:
         if not apps.is_installed("push_notifications"):
             return []
 

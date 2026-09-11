@@ -12,7 +12,7 @@ class BasicPageTestsMixin(StandardPageContextMixin):
     model = None
 
     @override_settings(FRONT_HEADLESS_URL="testserver")
-    def test_get_url_with_site(self):
+    def test_get_url_with_site(self) -> None:
         if not self.model:
             return
         page = self.model(
@@ -31,7 +31,7 @@ class StandardPageTests(BasicPageTestsMixin):
     page_type = "tests.PageForTests"
 
     @classmethod
-    def setUpTestData(cls):
+    def setUpTestData(cls) -> None:
         super().setUpTestData()
 
         cls.standard_page = cls.page
@@ -41,16 +41,16 @@ class StandardPageTests(BasicPageTestsMixin):
         )
         cls.standard_page.add_child(instance=cls.page)
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.login()
 
-    def test_default_route(self):
+    def test_default_route(self) -> None:
         self.assertPageIsRoutable(self.page)
 
-    def test_default_route_rendering(self):
+    def test_default_route_rendering(self) -> None:
         self.assertPageIsRenderable(self.page)
 
-    def test_can_create_standard_page(self):
+    def test_can_create_standard_page(self) -> None:
         image = media_factory.ImageFactory()
         self.assertCanCreate(
             self.site.root_page,
@@ -69,7 +69,7 @@ class StandardPageTests(BasicPageTestsMixin):
             ),
         )
 
-    def test_api_fields(self):
+    def test_api_fields(self) -> None:
         self.page.featured_image.extend(
             [
                 (

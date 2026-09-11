@@ -18,7 +18,7 @@ Reaction = swapper.load_model("baseapp_reactions", "Reaction")
 class Command(BaseCommand):
     help = "Recompute ReactableMetadata.reactions_count for every distinct reaction target."
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options) -> None:
         target_doc_ids = (
             Reaction.objects.exclude(target_document__isnull=True)
             .values_list("target_document_id", flat=True)

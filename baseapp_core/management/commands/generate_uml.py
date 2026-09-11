@@ -72,7 +72,7 @@ class Command(BaseCommand):
         "xdot",
     ]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super(Command, self).__init__(*args, **kwargs)
 
         for app_config in django_apps.get_app_configs():
@@ -87,7 +87,7 @@ class Command(BaseCommand):
                 if Model is not None:
                     self.available_models.append(ct.model_class().__name__)
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser) -> None:
         parser.add_argument(
             "--library",
             type=str,
@@ -132,7 +132,7 @@ class Command(BaseCommand):
             """,
         )
 
-    def handle(self, library, apps, models, output_format, **options):
+    def handle(self, library, apps, models, output_format, **options) -> None:
         try:
             self._handle(library, apps, models, output_format, **options)
         except BaseException as e:

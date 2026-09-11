@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import TYPE_CHECKING, Any, List
 
 import graphene
 import swapper
@@ -21,6 +21,9 @@ from baseapp_core.graphql import (
 from baseapp_core.plugins import graphql_shared_interfaces
 
 from .filters import ChatRoomFilter, ChatRoomParticipantFilter
+
+if TYPE_CHECKING:
+    from django.db.models.fields.files import ImageFieldFile
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
@@ -103,7 +106,7 @@ class BaseMessageObjectType:
         return super().pre_optimization_hook(queryset, optimizer)
 
     @classmethod
-    def get_node(cls, info, id):
+    def get_node(cls, info, id) -> "Message | None":
         try:
             message = cls._meta.model.objects.get(id=id)
             if not info.context.user.has_perm("baseapp_chats.view_message", message):
@@ -113,7 +116,7 @@ class BaseMessageObjectType:
             return None
 
     @staticmethod
-    def get_profile_pk(info, profile_id=None):
+    def get_profile_pk(info, profile_id=None) -> int | None:
         if profile_id:
             profile_pk = get_pk_from_relay_id(profile_id)
             if not Profile.objects.get_if_member(pk=profile_pk, user=info.context.user):
@@ -130,7 +133,7 @@ class BaseMessageObjectType:
             return None
 
     @staticmethod
-    def get_replaced_profile_name(profile, profile_pk, replacement_text, include_verb=False):
+    def get_replaced_profile_name(profile, profile_pk, replacement_text, include_verb=False) -> str:
         if not profile:
             return _("Profile Not Found")
         elif profile.id == profile_pk:
@@ -139,7 +142,7 @@ class BaseMessageObjectType:
             return profile.name if not include_verb else profile.name + " is"
 
     @staticmethod
-    def resolve_content(root, info, profile_id=None, **kwargs):
+    def resolve_content(root, info, profile_id=None, **kwargs) -> str | None:
         profile_pk = BaseMessageObjectType.get_profile_pk(info, profile_id)
         if not profile_pk:
             return None
@@ -166,7 +169,7 @@ class BaseMessageObjectType:
         )
 
     @staticmethod
-    def resolve_is_read(root, info, profile_id=None, **kwargs):
+    def resolve_is_read(root, info, profile_id=None, **kwargs) -> bool | None:
         profile_pk = BaseMessageObjectType.get_profile_pk(info, profile_id)
         if not profile_pk:
             return None
@@ -191,9 +194,13 @@ class BaseChatRoomObjectType:
     other_participant = graphene.Field(get_object_type_for_model(ChatRoomParticipant))
     is_sole_admin = graphene.Boolean()
     participant_ids = graphene.List(graphene.ID)
+    is_participant = graphene.Boolean(
+        profile_id=graphene.ID(required=True),
+        description="Whether the given profile is a participant of this room.",
+    )
 
     @classmethod
-    def get_node(cls, info, id):
+    def get_node(cls, info, id) -> "ChatRoom | None":
         try:
             room = cls._meta.model.objects.get(id=id)
             if not info.context.user.has_perm("baseapp_chats.view_chatroom", room):
@@ -204,7 +211,7 @@ class BaseChatRoomObjectType:
             return None
 
     @staticmethod
-    def get_other_participant(room, info):
+    def get_other_participant(room, info) -> "ChatRoomParticipant | None":
         current_profile = (
             info.context.user.current_profile
             if hasattr(info.context.user, "current_profile")
@@ -216,7 +223,7 @@ class BaseChatRoomObjectType:
 
         return room.participants.exclude(profile_id=current_profile.pk).first()
 
-    def resolve_all_messages(self, info, **kwargs):
+    def resolve_all_messages(self, info, **kwargs) -> QuerySet:
         if self.is_group:
             profile = (
                 info.context.user.current_profile
@@ -232,7 +239,7 @@ class BaseChatRoomObjectType:
                 )
         return self.messages.all().order_by("-created")
 
-    def resolve_participants(self, info, **kwargs):
+    def resolve_participants(self, info, **kwargs) -> QuerySet:
         if self.is_group:
             profile = (
                 info.context.user.current_profile
@@ -248,7 +255,7 @@ class BaseChatRoomObjectType:
                 )
         return self.participants.all()
 
-    def resolve_is_archived(self, info, profile_id=None, **kwargs):
+    def resolve_is_archived(self, info, profile_id=None, **kwargs) -> bool | None:
         if profile_id:
             profile_pk = get_pk_from_relay_id(profile_id)
             profile = Profile.objects.get_if_member(pk=profile_pk, user=info.context.user)
@@ -268,7 +275,9 @@ class BaseChatRoomObjectType:
             )
         return self.participants.filter(profile_id=profile_pk, has_archived_room=True).exists()
 
-    def resolve_unread_messages(self, info, profile_id=None, **kwargs):
+    def resolve_unread_messages(
+        self, info, profile_id=None, **kwargs
+    ) -> "UnreadMessageCount | None":
         if profile_id:
             profile_pk = get_pk_from_relay_id(profile_id)
             profile = Profile.objects.get_if_member(pk=profile_pk, user=info.context.user)
@@ -287,13 +296,13 @@ class BaseChatRoomObjectType:
 
         return unread_messages
 
-    def resolve_other_participant(self, info, **kwargs):
+    def resolve_other_participant(self, info, **kwargs) -> "ChatRoomParticipant | None":
         if self.is_group:
             return None
 
         return BaseChatRoomObjectType.get_other_participant(self, info)
 
-    def resolve_is_sole_admin(self, info, **kwargs):
+    def resolve_is_sole_admin(self, info, **kwargs) -> bool:
         if not self.is_group:
             return False
 
@@ -319,7 +328,7 @@ class BaseChatRoomObjectType:
 
         return admin_count == 1
 
-    def resolve_title(self, info, **kwargs):
+    def resolve_title(self, info, **kwargs) -> str | None:
         if self.is_group:
             return self.title
 
@@ -327,7 +336,7 @@ class BaseChatRoomObjectType:
         if other_participant and other_participant.profile:
             return other_participant.profile.name
 
-    def resolve_image(self, info, **kwargs):
+    def resolve_image(self, info, **kwargs) -> "ImageFieldFile | None":
         if self.is_group:
             return self.image
 
@@ -344,6 +353,23 @@ class BaseChatRoomObjectType:
         )
         return [get_obj_relay_id(profile) for profile in profiles]
 
+    def resolve_is_participant(
+        self, info: graphene.ResolveInfo, profile_id: str, **kwargs: Any
+    ) -> bool | None:
+        # The relay id decode can hit the database (public-id strategy) and the
+        # argument is the same for every row of a listing, so memoize the decoded
+        # pk on the request.
+        cache = getattr(info.context, "_chats_relay_pk_cache", None)
+        if cache is None:
+            cache = {}
+            info.context._chats_relay_pk_cache = cache
+        if profile_id not in cache:
+            cache[profile_id] = get_pk_from_relay_id(profile_id)
+        profile_pk = cache[profile_id]
+        if not profile_pk:
+            return None
+        return self.participants.filter(profile_id=profile_pk).exists()
+
     class Meta:
         interfaces = (RelayNode,)
         model = ChatRoom
@@ -359,6 +385,7 @@ class BaseChatRoomObjectType:
             "other_participant",
             "is_sole_admin",
             "participant_ids",
+            "is_participant",
         )
         filterset_class = ChatRoomFilter
 

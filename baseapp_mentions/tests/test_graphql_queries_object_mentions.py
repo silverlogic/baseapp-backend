@@ -15,9 +15,14 @@ connection and still grows linearly in parents — the dedicated test below
 documents and locks in that linearity instead of pretending it's flat.
 """
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from baseapp_comments.tests.factories import CommentFactory
+
+if TYPE_CHECKING:
+    from baseapp_comments.models import Comment
 from baseapp_mentions.tests.helpers import seed_mentions
 from baseapp_profiles.tests.factories import ProfileFactory
 
@@ -85,7 +90,7 @@ MENTIONS_QUERY = """
 """
 
 
-def _make_mentioned_comments(parent, n_children, profiles):
+def _make_mentioned_comments(parent, n_children, profiles) -> "list[Comment]":
     """Create `n_children` reply Comments under `parent`, each mentioning `profiles`."""
     children = [CommentFactory(in_reply_to=parent) for _ in range(n_children)]
     for child in children:
@@ -93,7 +98,7 @@ def _make_mentioned_comments(parent, n_children, profiles):
     return children
 
 
-def test_mentions_count_is_flat_across_paginated_parents(graphql_user_client):
+def test_mentions_count_is_flat_across_paginated_parents(graphql_user_client) -> None:
     """`mentionsCount` resolves off the `_mentions_count` subquery annotation
     added by `MentionableMetadataService.annotate_queryset` in
     `BaseCommentObjectType.pre_optimization_hook`. The total query count must
@@ -132,7 +137,7 @@ def test_mentions_count_is_flat_across_paginated_parents(graphql_user_client):
     assert len(ctx_big.captured_queries) == small_count
 
 
-def test_is_mentioning_profile_is_flat_across_paginated_parents(graphql_user_client):
+def test_is_mentioning_profile_is_flat_across_paginated_parents(graphql_user_client) -> None:
     """`isMentioningProfile` reads off `_mention_target_doc_id` so the
     existence check is a single indexed lookup per child — but the
     annotation means no extra DocumentId lookup. Doubling parents adds
@@ -179,7 +184,7 @@ def test_is_mentioning_profile_is_flat_across_paginated_parents(graphql_user_cli
     )
 
 
-def test_mentions_connection_stays_flat_across_paginated_parents(graphql_user_client):
+def test_mentions_connection_stays_flat_across_paginated_parents(graphql_user_client) -> None:
     """`mentions` is wired into the optimizer via `MentionsInterface.mentions.optimizer_hook`,
     which promotes the field to a real `prefetch_related('document__<reverse>')`
     chain on the consumer's queryset. With that prefetch in place the entire

@@ -1,4 +1,4 @@
-from typing import Any, Optional, Type
+from typing import TYPE_CHECKING, Any, Optional, Type
 
 from django.core.exceptions import ImproperlyConfigured
 from django.shortcuts import get_object_or_404
@@ -6,11 +6,14 @@ from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+if TYPE_CHECKING:
+    from django.db.models import Model
+
 
 class PublicIdLookupMixin:
     """Mixin to resolve public_id (UUID) URL kwargs to numeric PKs."""
 
-    def get_object(self):
+    def get_object(self) -> "Model":
         """Attempt to resolve a public_id in the lookup kwarg and fetch the
         corresponding object without mutating self.kwargs.
         This applies the view's queryset filters and permission checks to
@@ -57,5 +60,5 @@ class DestroyModelMixin:
         self.perform_destroy(instance)
         return Response({}, status=status.HTTP_204_NO_CONTENT)
 
-    def perform_destroy(self, instance):
+    def perform_destroy(self, instance) -> None:
         instance.delete()

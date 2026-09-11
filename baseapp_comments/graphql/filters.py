@@ -1,8 +1,13 @@
+from typing import TYPE_CHECKING
+
 import django_filters
 import swapper
 from django.db.models import Q
 
 from baseapp_core.plugins import apply_if_installed
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
 
@@ -29,7 +34,7 @@ class CommentFilter(django_filters.FilterSet):
         model = Comment
         fields = ["q", "order_by"]
 
-    def filter_q(self, queryset, name, value):
+    def filter_q(self, queryset, name, value) -> "QuerySet":
         return queryset.filter(
             Q(body__icontains=value)
             | Q(user__first_name__icontains=value)

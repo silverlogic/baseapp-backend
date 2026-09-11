@@ -13,7 +13,7 @@ class TestSocialAuthPipelineWithoutBaseappProfiles:
     def test_set_avatar_does_not_require_profile_attribute_when_profiles_disabled(
         self,
         with_disabled_apps,
-    ):
+    ) -> None:
         user = SimpleNamespace(refresh_from_db=Mock())
         backend = SimpleNamespace(name="twitter")
         response = {"profile_image_url": "http://example.com/profile_images/1/abc_bigger.jpg"}
@@ -33,7 +33,7 @@ class TestSocialAuthPipelineWithoutBaseappProfiles:
     def test_set_avatar_skips_default_twitter_profile_images_without_profiles(
         self,
         with_disabled_apps,
-    ):
+    ) -> None:
         user = SimpleNamespace(refresh_from_db=Mock())
         backend = SimpleNamespace(name="twitter")
         response = {

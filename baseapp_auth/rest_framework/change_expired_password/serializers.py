@@ -21,11 +21,11 @@ class ChangeExpiredPasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField()
     token = serializers.CharField()
 
-    def validate_new_password(self, new_password):
+    def validate_new_password(self, new_password) -> str:
         apply_password_validators(new_password)
         return new_password
 
-    def validate_token(self, token):
+    def validate_token(self, token) -> str:
         generator = ChangeExpiredPasswordTokenGenerator()
         value = generator.decode_token(token)
         if value is None:
@@ -38,7 +38,7 @@ class ChangeExpiredPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError(_("Invalid token."))
         return token
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         current_password = self.validated_data["current_password"]
         new_password = self.validated_data["new_password"]
         if current_password == new_password:

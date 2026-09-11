@@ -1,14 +1,19 @@
+from typing import TYPE_CHECKING
+
 from django.conf import settings
 from django.utils.module_loading import import_string
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from trench.views.base import MFAViewSetMixin
 
+if TYPE_CHECKING:
+    from rest_framework.serializers import Serializer
+
 
 class MFAJWTLoginViewSetMixin(MFAViewSetMixin):
     _claim_serializer_class = getattr(settings, "JWT_CLAIM_SERIALIZER_CLASS", None)
 
-    def get_claim_serializer_class(self):
+    def get_claim_serializer_class(self) -> type["Serializer"]:
         try:
             return import_string(self._claim_serializer_class)
         except ImportError:

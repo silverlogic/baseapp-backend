@@ -49,7 +49,7 @@ query CommentWithActivityLogs($nodeId: ID!) {
 """
 
 
-def test_comment_node_resolves_node_activity_logs(graphql_user_client, django_user_client):
+def test_comment_node_resolves_node_activity_logs(graphql_user_client, django_user_client) -> None:
     """A Comment node implements NodeActivityLogInterface and returns its pghistory context."""
     verb = f"{Comment._meta.app_label}.add_comment"
     with pghistory.context(
@@ -79,7 +79,7 @@ def test_comment_node_resolves_node_activity_logs(graphql_user_client, django_us
 
 def test_comment_node_activity_logs_only_include_own_context(
     graphql_user_client, django_user_client
-):
+) -> None:
     """Each comment is tied to its own activity context; other comments do not appear."""
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
@@ -113,7 +113,7 @@ def test_comment_node_activity_logs_only_include_own_context(
 
 def test_comment_object_type_exposes_node_activity_logs_field(
     graphql_user_client, django_user_client
-):
+) -> None:
     """CommentObjectType surfaces nodeActivityLogs alongside concrete Comment fields."""
     verb = f"{Comment._meta.app_label}.add_comment"
     with pghistory.context(

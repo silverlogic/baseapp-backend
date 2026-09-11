@@ -27,7 +27,7 @@ class ReportCreate(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ReportCreate":
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
         report_type = get_obj_from_relay_id(info, input.get("report_type_id"))
         report_subject = input.get("report_subject")

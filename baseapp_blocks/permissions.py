@@ -5,7 +5,7 @@ Block = swapper.load_model("baseapp_blocks", "Block")
 
 
 class BlocksPermissionsBackend(BaseBackend):
-    def has_perm(self, user_obj, perm, obj=None):
+    def has_perm(self, user_obj, perm, obj=None) -> bool:
         Profile = swapper.load_model("baseapp_profiles", "Profile")
 
         profile_app_label = Profile._meta.app_label

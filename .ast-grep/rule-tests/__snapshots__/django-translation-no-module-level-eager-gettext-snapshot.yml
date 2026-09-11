@@ -1,0 +1,84 @@
+id: django-translation-no-module-level-eager-gettext
+snapshots:
+  ? |
+    from django.utils.translation import gettext as _
+
+    MY_STRING = _("This is a translated string.")
+  : labels:
+    - source: _("This is a translated string.")
+      style: primary
+      start: 63
+      end: 96
+    - source: from django.utils.translation import gettext as _
+      style: secondary
+      start: 0
+      end: 49
+    - source: |
+        from django.utils.translation import gettext as _
+
+        MY_STRING = _("This is a translated string.")
+      style: secondary
+      start: 0
+      end: 97
+  ? |
+    from django.utils.translation import gettext as _
+
+    STATUS: str = _("Pending")
+  : labels:
+    - source: _("Pending")
+      style: primary
+      start: 65
+      end: 77
+    - source: from django.utils.translation import gettext as _
+      style: secondary
+      start: 0
+      end: 49
+    - source: |
+        from django.utils.translation import gettext as _
+
+        STATUS: str = _("Pending")
+      style: secondary
+      start: 0
+      end: 78
+  ? |
+    from django.utils.translation import gettext as _
+
+    STATUS_CHOICES = ((1, _("Pending")), (2, _("Done")))
+  : labels:
+    - source: _("Pending")
+      style: primary
+      start: 73
+      end: 85
+    - source: from django.utils.translation import gettext as _
+      style: secondary
+      start: 0
+      end: 49
+    - source: |
+        from django.utils.translation import gettext as _
+
+        STATUS_CHOICES = ((1, _("Pending")), (2, _("Done")))
+      style: secondary
+      start: 0
+      end: 104
+  ? |
+    from django.utils.translation import gettext as _
+
+    class Order(models.Model):
+        status = models.CharField(verbose_name=_("Status"))
+  : labels:
+    - source: _("Status")
+      style: primary
+      start: 121
+      end: 132
+    - source: from django.utils.translation import gettext as _
+      style: secondary
+      start: 0
+      end: 49
+    - source: |
+        from django.utils.translation import gettext as _
+
+        class Order(models.Model):
+            status = models.CharField(verbose_name=_("Status"))
+      style: secondary
+      start: 0
+      end: 134

@@ -26,7 +26,7 @@ CREATE_MUTATION_QUERY = """
 """
 
 
-def test_superuser_can_create_page(django_user_client, graphql_user_client):
+def test_superuser_can_create_page(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
 
@@ -47,7 +47,7 @@ def test_superuser_can_create_page(django_user_client, graphql_user_client):
     assert page.url_paths.first().path == "/about"
 
 
-def test_user_cant_create_page(graphql_user_client):
+def test_user_cant_create_page(graphql_user_client) -> None:
     response = graphql_user_client(
         query=CREATE_MUTATION_QUERY,
         variables={
@@ -63,7 +63,7 @@ def test_user_cant_create_page(graphql_user_client):
     assert content["errors"][0]["message"] == "You don't have permission to create a page"
 
 
-def test_user_with_permission_can_create_page(django_user_client, graphql_user_client):
+def test_user_with_permission_can_create_page(django_user_client, graphql_user_client) -> None:
     perm = Permission.objects.get(content_type__app_label="baseapp_pages", codename="add_page")
     django_user_client.user.user_permissions.add(perm)
 
@@ -81,7 +81,7 @@ def test_user_with_permission_can_create_page(django_user_client, graphql_user_c
     assert Page.objects.first().title_en == "About Title"
 
 
-def test_superuser_can_create_page_localized(django_user_client, graphql_user_client):
+def test_superuser_can_create_page_localized(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
 

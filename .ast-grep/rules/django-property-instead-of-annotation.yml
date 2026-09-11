@@ -1,0 +1,24 @@
+id: django-property-instead-of-annotation
+language: Python
+severity: warning
+message: "Avoid `@property` methods that run queries per-instance. Add a QuerySet `add_*` annotation method instead — one DB hit for the whole list, and the value becomes filterable. See .claude/skills/backend-patterns/references/queryset-annotations.md"
+ignores:
+  - "**/migrations/**"
+rule:
+  any:
+    - pattern: |
+        @property
+        def $PROP(self):
+            return $QS.filter($$$).exists()
+    - pattern: |
+        @property
+        def $PROP(self):
+            return $QS.filter($$$).count()
+    - pattern: |
+        @property
+        def $PROP(self) -> $RET:
+            return $QS.filter($$$).exists()
+    - pattern: |
+        @property
+        def $PROP(self) -> $RET:
+            return $QS.filter($$$).count()

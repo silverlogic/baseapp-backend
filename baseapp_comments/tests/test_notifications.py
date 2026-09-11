@@ -14,7 +14,7 @@ Comment = swapper.load_model("baseapp_comments", "Comment")
 Notification = swapper.load_model("notifications", "Notification")
 
 
-def test_user_receieve_notification_when_comment_is_created():
+def test_user_receieve_notification_when_comment_is_created() -> None:
     user = UserFactory()
     friend = UserFactory()
 
@@ -29,7 +29,7 @@ def test_user_receieve_notification_when_comment_is_created():
             assert mock.call_args.args == (comment.pk, user.id)
 
 
-def test_user_receieve_notification_when_reply_is_created():
+def test_user_receieve_notification_when_reply_is_created() -> None:
     user = UserFactory()
     friend = UserFactory()
 
@@ -43,7 +43,7 @@ def test_user_receieve_notification_when_reply_is_created():
             assert mock.call_args.args == (comment.pk,)
 
 
-def test_comment_created_notification_sends_email_by_default(outbox):
+def test_comment_created_notification_sends_email_by_default(outbox) -> None:
     user = UserFactory()
     friend = UserFactory()
     target = CommentFactory(user=user)
@@ -59,7 +59,7 @@ def test_comment_created_notification_sends_email_by_default(outbox):
     assert Notification.objects.filter(recipient=user, verb="COMMENTS.COMMENT_CREATED").exists()
 
 
-def test_comment_created_notification_skips_email_when_disabled(outbox):
+def test_comment_created_notification_skips_email_when_disabled(outbox) -> None:
     user = UserFactory()
     friend = UserFactory()
     target = CommentFactory(user=user)
@@ -75,7 +75,7 @@ def test_comment_created_notification_skips_email_when_disabled(outbox):
     assert Notification.objects.filter(recipient=user, verb="COMMENTS.COMMENT_CREATED").exists()
 
 
-def test_reply_created_notification_sends_email_by_default(outbox):
+def test_reply_created_notification_sends_email_by_default(outbox) -> None:
     user = UserFactory()
     friend = UserFactory()
     # Suppress notifications while building the parent, which would otherwise email its target's owner.
@@ -96,7 +96,7 @@ def test_reply_created_notification_sends_email_by_default(outbox):
     ).exists()
 
 
-def test_reply_created_notification_skips_email_when_disabled(outbox):
+def test_reply_created_notification_skips_email_when_disabled(outbox) -> None:
     user = UserFactory()
     friend = UserFactory()
     # Suppress notifications while building the parent, which would otherwise email its target's owner.

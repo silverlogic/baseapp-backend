@@ -1,0 +1,20 @@
+id: graphql-use-django-object-type
+valid:
+  - |
+    from baseapp_core.graphql import DjangoObjectType, Node
+  - |
+    from graphene_django.filter import DjangoFilterConnectionField
+invalid:
+  - |
+    from graphene_django.types import DjangoObjectType
+  - |
+    from graphene_django import DjangoObjectType
+  - |
+    from graphene_django.types import DjangoObjectType, ErrorType
+  - |
+    from graphene_django import DjangoObjectType as DOT
+  - |
+    import graphene_django
+
+    class UserObjectType(graphene_django.DjangoObjectType):
+        pass

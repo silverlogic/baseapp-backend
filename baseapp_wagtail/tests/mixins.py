@@ -1,5 +1,7 @@
 import urllib.parse
+from typing import Any
 
+from django.http import HttpResponse
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from wagtail.models import Page, Site
@@ -17,7 +19,7 @@ class WagtailBasicMixin(WagtailPageTestCase, WagtailTestUtils, TestCase):
 
 class StandardPageContextMixin(WagtailBasicMixin):
     @classmethod
-    def setUpTestData(cls):
+    def setUpTestData(cls) -> None:
         cls.user = UserFactory()
         cls.site, _ = Site.objects.get_or_create(
             is_default_site=True,
@@ -34,14 +36,14 @@ class StandardPageContextMixin(WagtailBasicMixin):
         )
         cls.site.root_page.add_child(instance=cls.page)
 
-    def _reload_the_page(self):
+    def _reload_the_page(self) -> None:
         self.page = PageForTests.objects.get(id=self.page.id)
 
-    def _get_edit_page(self, page):
+    def _get_edit_page(self, page) -> HttpResponse:
         response = self.client.get(reverse("wagtailadmin_pages:edit", args=[page.id]))
         return response
 
-    def _get_featured_image_raw_data(self):
+    def _get_featured_image_raw_data(self) -> dict[str, Any]:
         image = medias_factories.ImageFactory()
         return {
             "featured_image-count": "1",
@@ -58,7 +60,7 @@ class StandardPageContextMixin(WagtailBasicMixin):
 
 class TestPageContextMixin(StandardPageContextMixin):
     @classmethod
-    def setUpTestData(cls):
+    def setUpTestData(cls) -> None:
         super().setUpTestData()
         cls.standard_page = cls.page
         cls.page = PageForTests(
@@ -67,7 +69,7 @@ class TestPageContextMixin(StandardPageContextMixin):
         )
         cls.site.root_page.add_child(instance=cls.page)
 
-    def _reload_the_page(self):
+    def _reload_the_page(self) -> None:
         self.page = PageForTests.objects.get(id=self.page.id)
 
 
@@ -75,7 +77,7 @@ class WagtailApiMixin:
     view_name = ""
     url_kwargs = None
 
-    def reverse(self, view_name=None, query_params=None, **kwargs):
+    def reverse(self, view_name=None, query_params=None, **kwargs) -> str:
         version = "wagtailapi"
 
         if self.url_kwargs is not None:

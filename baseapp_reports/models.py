@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import swapper
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
@@ -14,12 +16,15 @@ from baseapp_core.models import (
     DocumentIdUniqueTargetMixin,
 )
 
+if TYPE_CHECKING:
+    from baseapp_core.graphql import DjangoObjectType
 
-def default_reports_count():
+
+def default_reports_count() -> dict[str, int]:
     return {"total": 0}
 
 
-def default_reports_count_full():
+def default_reports_count_full() -> dict[str, int]:
     d = default_reports_count()
 
     ReportTypeModel = swapper.load_model("baseapp_reports", "ReportType")
@@ -50,11 +55,11 @@ class AbstractReportType(DocumentIdMixin, RelayModel, TimeStampedModel):
         abstract = True
         swappable = swapper.swappable_setting("baseapp_reports", "ReportType")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.label
 
     @classmethod
-    def get_graphql_object_type(cls):
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
         from .graphql.object_types import ReportTypeObjectType
 
         return ReportTypeObjectType
@@ -80,24 +85,24 @@ class AbstractReport(DocumentIdTargetMixin, DocumentIdMixin, RelayModel, TimeSta
         swappable = swapper.swappable_setting("baseapp_reports", "Report")
         unique_together = [["user", "target_document"]]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Report (%s) #%s by %s" % (
             self.report_type,
             self.id,
             self.user.first_name,
         )
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         super().save(*args, **kwargs)
         self.update_reports_count(self.target)
 
-    def delete(self, *args, **kwargs):
+    def delete(self, *args, **kwargs) -> None:
         target = self.target
         super().delete(*args, **kwargs)
         self.update_reports_count(target)
 
     @classmethod
-    def update_reports_count(cls, target):
+    def update_reports_count(cls, target) -> None:
         """Recompute and persist `reports_count` on `ReportableMetadata` for `target`."""
         if not target:
             return
@@ -127,7 +132,7 @@ class AbstractReport(DocumentIdTargetMixin, DocumentIdMixin, RelayModel, TimeSta
         metadata.save(update_fields=["reports_count", "modified"])
 
     @classmethod
-    def get_graphql_object_type(cls):
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
         from .graphql.object_types import ReportObjectType
 
         return ReportObjectType
@@ -152,11 +157,11 @@ class AbstractReportableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
         verbose_name = _("reportable metadata")
         verbose_name_plural = _("reportable metadata")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"ReportableMetadata for {self.target}"
 
     @classmethod
-    def annotate_queryset(cls, queryset):
+    def annotate_queryset(cls, queryset) -> models.QuerySet:
         """
         Annotate `queryset` with reportable metadata to prevent N+1 queries when
         resolving `reports_count` for many rows of the same model.

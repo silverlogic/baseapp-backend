@@ -34,7 +34,7 @@ class ProfileUserRoleCreate(RelayMutation):
     @classmethod
     @login_required
     @transaction.atomic
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ProfileUserRoleCreate":
         users_ids = input.get("users_ids")
         profile_id = input.get("profile_id")
         profile_pk = get_pk_from_relay_id(profile_id)
@@ -119,7 +119,7 @@ class ProfileUserRoleUpdate(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ProfileUserRoleUpdate":
         user_id = input.get("user_id")
         profile_id = input.get("profile_id")
         role_type = input.get("role_type")
@@ -162,7 +162,7 @@ class ProfileUserRoleDelete(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ProfileUserRoleDelete":
         profile_id = input.get("profile_id")
         user_id = input.get("user_id")
         profile_pk = get_pk_from_relay_id(profile_id)

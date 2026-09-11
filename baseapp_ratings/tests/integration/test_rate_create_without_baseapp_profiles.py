@@ -38,7 +38,7 @@ query MyRating($id: ID!) {
 class TestRatingsWithoutBaseappProfiles:
     def test_mutation_uses_user_based_create_when_profiles_disabled(
         self, with_disabled_apps, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         RateModel = swapper.load_model("baseapp_ratings", "Rate")
         target = SimpleNamespace(pk=10, is_ratings_enabled=True, refresh_from_db=Mock())
         fake_rate = RateModel(pk=1, value=4, user=django_user_client.user)
@@ -77,7 +77,7 @@ class TestRatingsWithoutBaseappProfiles:
 
     def test_mutation_ignores_profile_id_when_profiles_disabled(
         self, with_disabled_apps, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         RateModel = swapper.load_model("baseapp_ratings", "Rate")
         target = SimpleNamespace(pk=11, is_ratings_enabled=True, refresh_from_db=Mock())
 
@@ -117,7 +117,7 @@ class TestRatingsWithoutBaseappProfiles:
 
     def test_my_rating_resolves_using_current_user_when_profiles_disabled(
         self, with_disabled_apps, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         RateModel = swapper.load_model("baseapp_ratings", "Rate")
         User = swapper.load_model("users", "User")
 
@@ -157,7 +157,7 @@ class TestRatingsWithoutBaseappProfiles:
 
     def test_add_rate_with_profile_permission_is_disabled_without_profiles(
         self, with_disabled_apps
-    ):
+    ) -> None:
         backend = RatingsPermissionsBackend()
         user = SimpleNamespace(
             is_authenticated=True,

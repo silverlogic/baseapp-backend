@@ -15,14 +15,14 @@ ReportableMetadata = swapper.load_model("baseapp_reports", "ReportableMetadata")
 pytestmark = pytest.mark.django_db
 
 
-def _call():
+def _call() -> str:
     """Run the command and return its captured stdout."""
     out = StringIO()
     call_command("update_reports_count", stdout=out)
     return out.getvalue()
 
 
-def test_command_recomputes_metadata_from_existing_reports():
+def test_command_recomputes_metadata_from_existing_reports() -> None:
     """Even if metadata rows are stale (or missing), the command should produce counts
     that match the live `Report` data."""
     target = ProfileFactory()
@@ -46,7 +46,7 @@ def test_command_recomputes_metadata_from_existing_reports():
     assert "Refreshed 1 reportable target" in output
 
 
-def test_command_iterates_over_distinct_targets_only():
+def test_command_iterates_over_distinct_targets_only() -> None:
     """A target with multiple reports should only get refreshed once. The command's
     summary counts distinct `target_document` references, not raw report rows."""
     target_a = ProfileFactory()
@@ -64,14 +64,14 @@ def test_command_iterates_over_distinct_targets_only():
     assert ReportableMetadata.get_for_object(target_b).reports_count["total"] == 1
 
 
-def test_command_no_op_when_no_reports():
+def test_command_no_op_when_no_reports() -> None:
     """With no `Report` rows in the DB the command exits cleanly and reports zero
     refreshed targets — exercises the fresh-DB / first-run scenario."""
     output = _call()
     assert "Refreshed 0 reportable target(s)" in output
 
 
-def test_command_skips_targets_when_content_object_is_missing():
+def test_command_skips_targets_when_content_object_is_missing() -> None:
     """If a `DocumentId`'s `content_object` resolves to `None` (e.g. the
     underlying row was hard-deleted out from under the document), the command should
     skip that target rather than crash. We exercise the defensive branch by patching

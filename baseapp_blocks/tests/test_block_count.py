@@ -9,7 +9,7 @@ Block = swapper.load_model("baseapp_blocks", "Block")
 pytestmark = pytest.mark.django_db
 
 
-def _counts(profile):
+def _counts(profile) -> tuple[int, int]:
     service = shared_services.get("blockable_metadata")
     return (
         service.get_blockers_count(profile),
@@ -17,7 +17,7 @@ def _counts(profile):
     )
 
 
-def test_block_and_unblock():
+def test_block_and_unblock() -> None:
     profile1 = ProfileFactory()
     profile2 = ProfileFactory()
 

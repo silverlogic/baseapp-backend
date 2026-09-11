@@ -14,7 +14,7 @@ class APIKeyFactory(factory.django.DjangoModelFactory):
         model = "baseapp_api_key.APIKey"
 
     @factory.post_generation
-    def default_unencrypted_api_key(self, create, extracted, **kwargs):
+    def default_unencrypted_api_key(self, create, extracted, **kwargs) -> None:
         if create:
             unencrypted_api_key = self.__class__.objects.generate_unencrypted_api_key()
             self.encrypted_api_key = self.__class__.objects.encrypt(

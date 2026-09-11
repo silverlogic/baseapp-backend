@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import TYPE_CHECKING
 
 import graphene
 import swapper
@@ -14,12 +15,18 @@ from baseapp_core.plugins import graphql_shared_interfaces, shared_services
 
 from .filters import MemberFilter, ProfileFilter
 
+if TYPE_CHECKING:
+    from datetime import datetime
+
+    from django.db.models import QuerySet
+    from django.db.models.fields.files import ImageFieldFile
+
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 profile_app_label = Profile._meta.app_label
 
 
-def can_view_profile_members(user, profile):
+def can_view_profile_members(user, profile) -> bool:
     if not user.is_authenticated:
         return False
     return user.has_perm(f"{profile_app_label}.view_profile_members", profile)
@@ -43,19 +50,19 @@ def get_profile_metadata_type() -> type[object] | None:
 
     class ProfileMetadata(AbstractMetadataObjectType):
         @property
-        def meta_title(self):
+        def meta_title(self) -> str | None:
             return self.instance.name
 
         @property
-        def meta_description(self):
+        def meta_description(self) -> None:
             return None
 
         @property
-        def meta_og_type(self):
+        def meta_og_type(self) -> str:
             return "profile"
 
         @property
-        def meta_og_image(self):
+        def meta_og_image(self) -> "ImageFieldFile":
             return self.instance.image
 
     return ProfileMetadata
@@ -90,33 +97,33 @@ class BaseProfileUserRoleObjectType:
         filterset_class = MemberFilter
 
     @classmethod
-    def _can_view_invitation_fields(cls, info, instance):
+    def _can_view_invitation_fields(cls, info, instance) -> bool:
         return can_view_profile_members(info.context.user, instance.profile)
 
-    def resolve_invited_email(self, info):
+    def resolve_invited_email(self, info) -> str | None:
         if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
             return None
         return self.invited_email
 
-    def resolve_invited_at(self, info):
+    def resolve_invited_at(self, info) -> "datetime | None":
         if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
             return None
         return self.invited_at
 
-    def resolve_invitation_expires_at(self, info):
+    def resolve_invitation_expires_at(self, info) -> "datetime | None":
         if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
             return None
         return self.invitation_expires_at
 
-    def resolve_responded_at(self, info):
+    def resolve_responded_at(self, info) -> "datetime | None":
         if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
             return None
         return self.responded_at
 
-    def resolve_is_expired(self, info):
+    def resolve_is_expired(self, info) -> bool:
         return is_expired_invitation(self)
 
-    def resolve_profile(self, info):
+    def resolve_profile(self, info) -> "Profile | None":
         # Only expose the org profile while the invitation is still actionable — pending and
         # not yet expired (never for accepted/declined/expired roles).
         is_actionable = (
@@ -131,7 +138,7 @@ class ProfileUserRoleObjectType(DjangoObjectType, BaseProfileUserRoleObjectType)
         model = ProfileUserRole
 
     @classmethod
-    def get_node(cls, info, id):
+    def get_node(cls, info, id) -> "ProfileUserRole | None":
         # Relay `node(id: ...)` bypasses every other resolver, so gate it here: only members
         # of the role's profile may fetch a ProfileUserRole by node id.
         node = super().get_node(info, id)
@@ -149,7 +156,7 @@ class ProfileInterface(RelayNode):
 class ProfilesInterface(RelayNode):
     profiles = DjangoFilterConnectionField(lambda: ProfileObjectType)
 
-    def resolve_profiles(self, info, **kwargs):
+    def resolve_profiles(self, info, **kwargs) -> "QuerySet[Profile]":
         if info.context.user.is_authenticated and info.context.user == self:
             # distinct() is required: the OR spans the to-many `members` relation, so the
             # JOIN returns one row per member and would otherwise duplicate an owned profile
@@ -188,14 +195,14 @@ class BaseProfileObjectType(object):
         filterset_class = ProfileFilter
 
     @classmethod
-    def get_node(cls, info, id):
+    def get_node(cls, info, id) -> "Profile | None":
         node = super().get_node(info, id)
         if not info.context.user.has_perm(f"{profile_app_label}.view_profile", node):
             return None
         return node
 
     @classmethod
-    def pre_optimization_hook(cls, queryset, optimizer):
+    def pre_optimization_hook(cls, queryset, optimizer) -> "QuerySet[Profile]":
         queryset = super().pre_optimization_hook(queryset, optimizer)
         if service := shared_services.get("commentable_metadata"):
             queryset = service.annotate_queryset(queryset)
@@ -206,7 +213,7 @@ class BaseProfileObjectType(object):
         return queryset
 
     @classmethod
-    def get_queryset(cls, queryset, info):
+    def get_queryset(cls, queryset, info) -> "QuerySet[Profile]":
         if info.context.user.is_active and info.context.user.is_superuser:
             return queryset
 
@@ -218,7 +225,7 @@ class BaseProfileObjectType(object):
             )
 
     @classmethod
-    def resolve_metadata(cls, instance, info):
+    def resolve_metadata(cls, instance, info) -> object | None:
         ProfileMetadataType = get_profile_metadata_type()
         if ProfileMetadataType is None:
             return None
@@ -226,7 +233,7 @@ class BaseProfileObjectType(object):
         return ProfileMetadataType(instance, info)
 
     @classmethod
-    def resolve_members(cls, instance, info, **kwargs):
+    def resolve_members(cls, instance, info, **kwargs) -> "QuerySet[ProfileUserRole]":
         if not can_view_profile_members(info.context.user, instance):
             return instance.members.none()
 

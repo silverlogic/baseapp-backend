@@ -44,7 +44,9 @@ COUNTS_ONLY_QUERY = """
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_anon_reactions_count_is_flat_regardless_of_reaction_volume(graphql_client_with_queries):
+def test_anon_reactions_count_is_flat_regardless_of_reaction_volume(
+    graphql_client_with_queries,
+) -> None:
     """`reactionsCount` should be a flat query path: regardless of how many
     `Reaction` rows point at the target, the GraphQL query should make the same
     number of DB round-trips (modulo content-type cache jitter)."""
@@ -77,7 +79,7 @@ def test_anon_reactions_count_is_flat_regardless_of_reaction_volume(graphql_clie
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_reactions_count_zero_when_no_reactions_does_not_extra_query(
     graphql_client_with_queries,
-):
+) -> None:
     """A target with no reactions should resolve in the same query budget as one
     with reactions — the metadata row simply doesn't exist yet, and `Coalesce`
     returns the zero defaults without an extra round trip."""

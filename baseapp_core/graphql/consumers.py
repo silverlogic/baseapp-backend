@@ -2,6 +2,7 @@ import asyncio
 import contextvars
 import functools
 import sys
+from typing import Any
 
 import channels_graphql_ws
 import swapper
@@ -18,7 +19,7 @@ python_version = sys.version_info
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
-async def threadpool_for_sync_resolvers(next_middleware, root, info, *args, **kwds):
+async def threadpool_for_sync_resolvers(next_middleware, root, info, *args, **kwds) -> Any:
     if asyncio.iscoroutinefunction(next_middleware):
         result = await next_middleware(root, info, *args, **kwds)
     else:
@@ -37,7 +38,7 @@ class GraphqlWsAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
 
     schema = graphene_settings.SCHEMA
 
-    async def on_connect(self, payload):
+    async def on_connect(self, payload) -> None:
         if "user" in self.scope:
             # do nothing if already authenticated
             return
@@ -75,7 +76,7 @@ class GraphqlWsJWTAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
 
     schema = graphene_settings.SCHEMA
 
-    async def on_connect(self, payload):
+    async def on_connect(self, payload) -> None:
         if "user" in self.scope:
             # do nothing if already authenticated
             return

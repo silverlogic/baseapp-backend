@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
@@ -7,6 +9,9 @@ from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
 from baseapp_core.plugins import shared_services
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
 
 Block = swapper.load_model("baseapp_blocks", "Block")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
@@ -51,29 +56,29 @@ class BlocksInterface(RelayNode):
         # `BlockableMetadata` fetch.
         model = Profile
 
-    def resolve_blockers_count(self, info):
+    def resolve_blockers_count(self, info) -> int | None:
         if info.context.user.has_perm("baseapp_blocks.view_block-blockers_count", self):
             if service := shared_services.get("blockable_metadata"):
                 return service.get_blockers_count(self)
             raise RuntimeError("blockable_metadata shared service is not registered")
 
-    def resolve_blocking_count(self, info):
+    def resolve_blocking_count(self, info) -> int | None:
         if info.context.user.has_perm("baseapp_blocks.view_block-blocking_count", self):
             if service := shared_services.get("blockable_metadata"):
                 return service.get_blocking_count(self)
             raise RuntimeError("blockable_metadata shared service is not registered")
 
-    def resolve_blockers(self, info, **kwargs):
+    def resolve_blockers(self, info, **kwargs) -> "QuerySet":
         if info.context.user.has_perm("baseapp_blocks.view_block-blockers", self):
             return self.blockers.all()
         return Block.objects.none()
 
-    def resolve_blocking(self, info, **kwargs):
+    def resolve_blocking(self, info, **kwargs) -> "QuerySet":
         if info.context.user.has_perm("baseapp_blocks.view_block-blocking", self):
             return self.blocking.all()
         return Block.objects.none()
 
-    def resolve_is_blocked_by_me(self, info, profile_id=None, **kwargs):
+    def resolve_is_blocked_by_me(self, info, profile_id=None, **kwargs) -> bool:
         if not info.context.user.is_authenticated:
             return False
 
@@ -93,7 +98,7 @@ class BaseBlockObjectType:
         interfaces = (RelayNode,)
 
     @classmethod
-    def get_node(cls, info, id):
+    def get_node(cls, info, id) -> "Block | None":
         node = super().get_node(info, id)
         if info.context.user.has_perm("baseapp_blocks.view_block", node):
             return node

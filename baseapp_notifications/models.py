@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import swapper
 from django.conf import settings
@@ -11,6 +11,9 @@ from notifications.base.models import NotificationQuerySet as BaseNotificationQu
 
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import DocumentIdMixin
+
+if TYPE_CHECKING:
+    from baseapp_core.graphql import DjangoObjectType
 
 
 class NotificationQuerySet(BaseNotificationQuerySet):
@@ -31,7 +34,7 @@ class NotificationQuerySet(BaseNotificationQuerySet):
         Model = self.model
         db = self.db
 
-        def broadcast():
+        def broadcast() -> None:
             for notification in Model._default_manager.using(db).filter(pk__in=pks):
                 OnNotificationChange.send_created_notification(notification=notification)
 
@@ -47,7 +50,7 @@ class AbstractNotification(BaseAbstractNotification, DocumentIdMixin, RelayModel
         # This model must reference "notifications.Notification" due to the dependency on django-notifications-community
         swappable = swapper.swappable_setting("notifications", "Notification")
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         created = self._state.adding
         super().save(*args, **kwargs)
 
@@ -56,7 +59,7 @@ class AbstractNotification(BaseAbstractNotification, DocumentIdMixin, RelayModel
         pk = self.pk
         Notification = type(self)
 
-        def broadcast():
+        def broadcast() -> None:
             notification = Notification.objects.filter(pk=pk).first()
             if notification is None:
                 return
@@ -67,7 +70,7 @@ class AbstractNotification(BaseAbstractNotification, DocumentIdMixin, RelayModel
 
         transaction.on_commit(broadcast)
 
-    def delete(self, *args, **kwargs):
+    def delete(self, *args, **kwargs) -> None:
         notification_relay_id = self.relay_id
 
         super().delete(*args, **kwargs)
@@ -79,7 +82,7 @@ class AbstractNotification(BaseAbstractNotification, DocumentIdMixin, RelayModel
         )
 
     @classmethod
-    def get_graphql_object_type(cls):
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
         from .graphql.object_types import NotificationNode
 
         return NotificationNode
@@ -97,7 +100,7 @@ class AbstractNotificationSetting(TimeStampedModel, DocumentIdMixin, RelayModel)
         IN_APP = 3, _("In-App")
 
         @property
-        def description(self):
+        def description(self) -> str:
             return self.label
 
     user = models.ForeignKey(
@@ -108,7 +111,7 @@ class AbstractNotificationSetting(TimeStampedModel, DocumentIdMixin, RelayModel)
     is_active = models.BooleanField(default=True)
 
     @classmethod
-    def get_graphql_object_type(cls):
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
         from .graphql.object_types import NotificationSettingNode
 
         return NotificationSettingNode

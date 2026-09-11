@@ -22,35 +22,35 @@ class MockObjectType(ObjectType):
 class TestGraphQLSharedInterfaceRegistry:
     """Test suite for GraphQLSharedInterfaceRegistry."""
 
-    def test_registry_initialization(self):
+    def test_registry_initialization(self) -> None:
         """Test that registry initializes with empty state."""
         registry = GraphQLSharedInterfaceRegistry()
         assert len(registry._registry) == 0
 
-    def test_register_interface(self):
+    def test_register_interface(self) -> None:
         registry = GraphQLSharedInterfaceRegistry()
         registry.register("test_interface", MockInterface)
 
         assert "test_interface" in registry._registry
         assert registry._registry["test_interface"] == MockInterface
 
-    def test_get_interface_returns_registered_interface(self):
+    def test_get_interface_returns_registered_interface(self) -> None:
         registry = GraphQLSharedInterfaceRegistry()
         registry.register("test_interface", MockInterface)
 
         result = registry.get_interface("test_interface")
         assert result == MockInterface
 
-    def test_get_interface_returns_none_when_not_registered(self):
+    def test_get_interface_returns_none_when_not_registered(self) -> None:
         registry = GraphQLSharedInterfaceRegistry()
 
         result = registry.get_interface("nonexistent_interface")
         assert result is None
 
-    def test_get_interface_resolves_callable(self):
+    def test_get_interface_resolves_callable(self) -> None:
         registry = GraphQLSharedInterfaceRegistry()
 
-        def get_interface():
+        def get_interface() -> type[MockInterface]:
             return MockInterface
 
         registry.register("test_interface", get_interface)
@@ -58,13 +58,13 @@ class TestGraphQLSharedInterfaceRegistry:
         result = registry.get_interface("test_interface")
         assert result == MockInterface
 
-    def test_get_interfaces_returns_default_when_no_names(self):
+    def test_get_interfaces_returns_default_when_no_names(self) -> None:
         registry = GraphQLSharedInterfaceRegistry()
 
         result = registry.get(MockInterface)
         assert result == (MockInterface,)
 
-    def test_get_interfaces_includes_registered_interfaces(self):
+    def test_get_interfaces_includes_registered_interfaces(self) -> None:
         registry = GraphQLSharedInterfaceRegistry()
         registry.register("test_interface", MockInterface)
 
@@ -72,7 +72,7 @@ class TestGraphQLSharedInterfaceRegistry:
         assert len(result) == 1
         assert result[0] == MockInterface
 
-    def test_get_interfaces_combines_default_and_registered(self):
+    def test_get_interfaces_combines_default_and_registered(self) -> None:
         registry = GraphQLSharedInterfaceRegistry()
         registry.register("test_interface", MockInterface)
 
@@ -84,13 +84,13 @@ class TestGraphQLSharedInterfaceRegistry:
         assert result[0] == MockInterface
         assert result[1] == DefaultInterface
 
-    def test_get_interfaces_skips_missing_interfaces(self):
+    def test_get_interfaces_skips_missing_interfaces(self) -> None:
         registry = GraphQLSharedInterfaceRegistry()
 
         result = registry.get("nonexistent")
         assert result == ()
 
-    def test_get_interfaces_handles_mixed_existing_and_missing(self):
+    def test_get_interfaces_handles_mixed_existing_and_missing(self) -> None:
         registry = GraphQLSharedInterfaceRegistry()
         registry.register("existing", MockInterface)
 
@@ -98,7 +98,7 @@ class TestGraphQLSharedInterfaceRegistry:
         assert len(result) == 1
         assert result[0] == MockInterface
 
-    def test_interface_overwrite(self):
+    def test_interface_overwrite(self) -> None:
         """Test that registering an interface with existing name overwrites it."""
         registry = GraphQLSharedInterfaceRegistry()
 
@@ -114,7 +114,7 @@ class TestGraphQLSharedInterfaceRegistry:
         registry.register("test_interface", Interface2)
         assert registry.get_interface("test_interface") == Interface2
 
-    def test_multiple_interfaces_registration(self):
+    def test_multiple_interfaces_registration(self) -> None:
         registry = GraphQLSharedInterfaceRegistry()
 
         class Interface1(Interface):
@@ -133,11 +133,11 @@ class TestGraphQLSharedInterfaceRegistry:
 class TestGraphQLSharedInterfaceRegistrySingleton:
     """Test suite for the graphql_shared_interfaces singleton."""
 
-    def test_singleton_instance(self):
+    def test_singleton_instance(self) -> None:
         """Test that graphql_shared_interfaces is a singleton instance."""
         assert isinstance(graphql_shared_interfaces, GraphQLSharedInterfaceRegistry)
 
-    def test_singleton_persistence(self):
+    def test_singleton_persistence(self) -> None:
         """Test that the singleton persists across imports."""
         from baseapp_core.plugins.shared_graphql_interfaces import (
             graphql_shared_interfaces as registry1,

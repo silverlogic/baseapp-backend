@@ -1,0 +1,21 @@
+id: django-property-instead-of-annotation
+valid:
+  - |
+    class ProductQuerySet(models.QuerySet):
+        def add_is_favourited(self, user_id: int) -> "ProductQuerySet":
+            return self.annotate(
+                is_favourited=models.Exists(
+                    Favourite.objects.filter(product=models.OuterRef("pk"), user_id=user_id)
+                )
+            )
+invalid:
+  - |
+    class Product(models.Model):
+        @property
+        def is_favourited(self):
+            return self.favourites.filter(user=self.user).exists()
+  - |
+    class Product(models.Model):
+        @property
+        def favourites_count(self) -> int:
+            return self.favourites.filter(active=True).count()

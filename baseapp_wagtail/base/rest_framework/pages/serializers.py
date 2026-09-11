@@ -1,16 +1,20 @@
+from typing import Any
+
 from rest_framework.fields import Field
 from wagtail.api.v2.serializers import PageSerializer as WagtailPageSerializer
 from wagtail.api.v2.serializers import get_serializer_class
+from wagtail.blocks.stream_block import StreamValue
+from wagtail.models import Page
 
 
 class PageFeaturedImage(Field):
-    def get_attribute(self, instance):
+    def get_attribute(self, instance) -> StreamValue | None:
         obj = instance.specific
         if hasattr(obj, "featured_image"):
             return obj.featured_image
         return None
 
-    def to_representation(self, value):
+    def to_representation(self, value) -> dict[str, Any] | None:
         if not value:
             return None
         item = list(value).pop()
@@ -23,23 +27,23 @@ class OptionalMetaField(Field):
     serializer. This class is used to handle the absence of the field in the model.
     """
 
-    def get_attribute(self, instance):
+    def get_attribute(self, instance) -> Any:
         obj = instance.specific
         if hasattr(obj, self.field_name):
             return getattr(obj, self.field_name)
         return None
 
-    def to_representation(self, value):
+    def to_representation(self, value) -> Any:
         if not value:
             return None
         return value
 
 
 class PageUrlPath(Field):
-    def get_attribute(self, instance):
+    def get_attribute(self, instance) -> Page:
         return instance
 
-    def to_representation(self, page):
+    def to_representation(self, page) -> str | None:
         try:
             url_parts = page.get_url_parts()
             _, _, page_path = url_parts
@@ -49,10 +53,10 @@ class PageUrlPath(Field):
 
 
 class PageAncestors(Field):
-    def get_attribute(self, instance):
+    def get_attribute(self, instance) -> Page:
         return instance
 
-    def to_representation(self, page):
+    def to_representation(self, page) -> list[dict[str, Any]]:
         """
         Method based on get_breadcrumbs_items_for_page from Wagtail.
         """

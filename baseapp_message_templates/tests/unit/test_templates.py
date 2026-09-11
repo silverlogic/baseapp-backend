@@ -19,7 +19,7 @@ pytestmark = pytest.mark.django_db
 
 class TestEmailTemplates:
     @pytest.fixture
-    def data(self):
+    def data(self) -> dict[str, str]:
         template_data = {
             "name": "Test Template",
             "subject": "This is a test",
@@ -30,13 +30,13 @@ class TestEmailTemplates:
         self.template = f.EmailTemplateFactory(**template_data)
         return template_data
 
-    def test_auto_generate_plain_text(self, data):
+    def test_auto_generate_plain_text(self, data) -> None:
         _html_content, text_content, subject = get_full_copy_template(self.template)
 
         assert text_content == "Hello"
         assert subject == "This is a test"
 
-    def test_send_mail(self, outbox, data):
+    def test_send_mail(self, outbox, data) -> None:
         send_template_email("Test Template", ["test@test.com"])
 
         assert len(outbox) == 1
@@ -46,7 +46,7 @@ class TestEmailTemplates:
         assert outbox[0].body == "Hello"
         assert data["html_content"] in outbox[0].alternatives[0][0]
 
-    def test_send_mail_with_context(self, outbox, data):
+    def test_send_mail_with_context(self, outbox, data) -> None:
         self.template.html_content = "<p>{{content}}</p>"
         self.template.plain_text_content = "{{content}}"
         context = {"content": "Test Content"}
@@ -59,7 +59,7 @@ class TestEmailTemplates:
         assert outbox[0].body == context["content"]
         assert outbox[0].alternatives[0][0] == f"<p>{context['content']}</p>"
 
-    def test_get_personalization(self):
+    def test_get_personalization(self) -> None:
         recipient = "test@test.com"
         context = {"message": "Hello!"}
         personalization = get_personalization(recipient, context)
@@ -67,14 +67,14 @@ class TestEmailTemplates:
         assert personalization.dynamic_template_data == context
         assert {"email": recipient} in personalization.tos
 
-    def test_send_via_sendgrid(self, outbox, data):
+    def test_send_via_sendgrid(self, outbox, data) -> None:
         recipient = "test@test.com"
         context = "Hello!"
         send_sendgrid_email("Test Template", [(recipient, context)])
 
         assert len(outbox) == 1
 
-    def test_mass_send_via_sendgrid(self, outbox, data):
+    def test_mass_send_via_sendgrid(self, outbox, data) -> None:
         recipient_1 = "john@test.com"
         context_1 = "Hello!"
         recipient_2 = "jane@test.com"
@@ -87,7 +87,7 @@ class TestEmailTemplates:
 
 class TestSmsTemplates:
     @pytest.fixture
-    def data(self):
+    def data(self) -> dict[str, str]:
         template_data = {
             "name": "Test Template",
             "message": "Hello {{ user_name }}",
@@ -95,20 +95,20 @@ class TestSmsTemplates:
         self.template = f.SmsTemplateFactory(**template_data)
         return template_data
 
-    def test_get_sms_template_message(self, data):
+    def test_get_sms_template_message(self, data) -> None:
         context = {"user_name": "Test User"}
         message = get_sms_message(self.template.name, context)
 
         assert message == "Hello Test User"
 
-    def test_template_does_not_exist(self, caplog):
+    def test_template_does_not_exist(self, caplog) -> None:
         context = {"user_name": "Test User"}
         get_sms_message("Nonexistent Template", context)
 
         assert "Template Nonexistent Template does not exist" in caplog.text
 
 
-def test_mass_send_personalized_mail_logs_on_send_exception(db):
+def test_mass_send_personalized_mail_logs_on_send_exception(db) -> None:
     mock_template = MagicMock()
     mock_template.sendgrid_template_id = "d-test"
     mock_template.static_attachments.all.return_value = []

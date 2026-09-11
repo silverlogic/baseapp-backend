@@ -16,11 +16,11 @@ class DocumentIdAdmin(ModelAdmin):
 
     readonly_fields = ("public_id", "content_type", "object_id", "created")
 
-    def has_add_permission(self, request):
+    def has_add_permission(self, request) -> bool:
         return False
 
-    def has_change_permission(self, request, obj=None):
+    def has_change_permission(self, request, obj=None) -> bool:
         return False
 
-    def has_delete_permission(self, request, obj=None):
+    def has_delete_permission(self, request, obj=None) -> bool:
         return False

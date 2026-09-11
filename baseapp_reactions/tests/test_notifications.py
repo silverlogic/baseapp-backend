@@ -15,7 +15,7 @@ Reaction = swapper.load_model("baseapp_reactions", "Reaction")
 Notification = swapper.load_model("notifications", "Notification")
 
 
-def test_user_receives_notification_when_reaction_is_created(graphql_client):
+def test_user_receives_notification_when_reaction_is_created(graphql_client) -> None:
     user = UserFactory()
     target = CommentFactory(user=user)
 
@@ -28,7 +28,7 @@ def test_user_receives_notification_when_reaction_is_created(graphql_client):
             assert mock.call_args.args == (reaction.pk, user.id)
 
 
-def test_reaction_created_notification_sends_email_by_default(outbox):
+def test_reaction_created_notification_sends_email_by_default(outbox) -> None:
     user = UserFactory()
     target = CommentFactory(user=user)
 
@@ -43,7 +43,7 @@ def test_reaction_created_notification_sends_email_by_default(outbox):
     assert Notification.objects.filter(recipient=user, verb="REACTIONS.REACTION_CREATED").exists()
 
 
-def test_reaction_created_notification_skips_email_when_disabled(outbox):
+def test_reaction_created_notification_skips_email_when_disabled(outbox) -> None:
     user = UserFactory()
     target = CommentFactory(user=user)
 

@@ -10,7 +10,7 @@ class User(AbstractUser):
     # FieldTracker doesn't work with abstract model classes
     tracker = FieldTracker(fields=["is_superuser", "password"])
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         with self.tracker:
             if self.tracker.has_changed("password"):
                 self.password_changed_date = timezone.now()

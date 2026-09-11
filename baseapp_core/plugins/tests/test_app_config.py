@@ -13,14 +13,14 @@ from baseapp_core.plugins.shared_services import SharedServiceRegistry
 class TestServicesContributor:
     """Test suite for ServicesContributor mixin."""
 
-    def test_register_shared_services_default_no_op(self):
+    def test_register_shared_services_default_no_op(self) -> None:
         """Default register_shared_services does nothing and does not raise."""
         registry = SharedServiceRegistry()
         contributor = ServicesContributor()
         contributor.register_shared_services(registry)
         assert len(registry._registry) == 0
 
-    def test_register_shared_services_accepts_registry(self):
+    def test_register_shared_services_accepts_registry(self) -> None:
         """register_shared_services accepts a SharedServiceRegistry instance."""
         registry = SharedServiceRegistry()
         contributor = ServicesContributor()
@@ -32,14 +32,14 @@ class TestServicesContributor:
 class TestGraphQLContributor:
     """Test suite for GraphQLContributor mixin."""
 
-    def test_register_graphql_shared_interfaces_default_no_op(self):
+    def test_register_graphql_shared_interfaces_default_no_op(self) -> None:
         """Default register_graphql_shared_interfaces does nothing and does not raise."""
         registry = GraphQLSharedInterfaceRegistry()
         contributor = GraphQLContributor()
         contributor.register_graphql_shared_interfaces(registry)
         assert len(registry._registry) == 0
 
-    def test_register_graphql_shared_interfaces_accepts_registry(self):
+    def test_register_graphql_shared_interfaces_accepts_registry(self) -> None:
         """register_graphql_shared_interfaces accepts a GraphQLSharedInterfaceRegistry."""
         registry = GraphQLSharedInterfaceRegistry()
         contributor = GraphQLContributor()
@@ -50,7 +50,7 @@ class TestGraphQLContributor:
 class RecordingAppConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
     """AppConfig that records which register methods were called and with which registry."""
 
-    def __init__(self, app_name: str, app_module):
+    def __init__(self, app_name: str, app_module) -> None:
         super().__init__(app_name, app_module)
         self.recorded: list[tuple[str, object]] = []
 
@@ -64,7 +64,7 @@ class RecordingAppConfig(BaseAppConfig, ServicesContributor, GraphQLContributor)
 class TestBaseAppConfig:
     """Test suite for BaseAppConfig ready() integration."""
 
-    def test_ready_calls_register_shared_services_when_services_contributor(self):
+    def test_ready_calls_register_shared_services_when_services_contributor(self) -> None:
         """ready() calls register_shared_services with shared_services when config is ServicesContributor."""
         config = RecordingAppConfig("baseapp_core", baseapp_core)
         config.ready()
@@ -72,7 +72,7 @@ class TestBaseAppConfig:
         assert len(services_calls) == 1
         assert isinstance(services_calls[0][1], SharedServiceRegistry)
 
-    def test_ready_calls_register_graphql_shared_interfaces_when_graphql_contributor(self):
+    def test_ready_calls_register_graphql_shared_interfaces_when_graphql_contributor(self) -> None:
         """ready() calls register_graphql_shared_interfaces with registry when config is GraphQLContributor."""
         config = RecordingAppConfig("baseapp_core", baseapp_core)
         config.ready()
@@ -80,7 +80,7 @@ class TestBaseAppConfig:
         assert len(graphql_calls) == 1
         assert isinstance(graphql_calls[0][1], GraphQLSharedInterfaceRegistry)
 
-    def test_ready_calls_both_when_both_mixins(self):
+    def test_ready_calls_both_when_both_mixins(self) -> None:
         """ready() calls both register methods when config has both mixins."""
         config = RecordingAppConfig("baseapp_core", baseapp_core)
         config.ready()

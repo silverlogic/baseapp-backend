@@ -38,5 +38,5 @@ class ChatRoomAdmin(admin.ModelAdmin):
     search_fields = ["room"]
     inlines = [ChatRoomParticipantInline]
 
-    def room(self, obj):
+    def room(self, obj) -> str:
         return obj.__str__()

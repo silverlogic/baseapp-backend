@@ -69,12 +69,12 @@ class URLPathService(SharedServiceProvider):
 
     def _next_path_candidate(self, path_string: str) -> str:
         normalized_path = self._normalize_path(path_string)
-        match = re.match(r"^(.*?)(\d+)$", normalized_path)
+        match = re.search(r"\d+$", normalized_path)
         if not match:
             return f"{normalized_path}1"
 
-        prefix, number_suffix = match.groups()
-        return f"{prefix}{int(number_suffix) + 1}"
+        prefix = normalized_path[: match.start()]
+        return f"{prefix}{int(match.group()) + 1}"
 
     def _normalize_path(self, path_string: str) -> str:
         return path_string if path_string.startswith("/") else f"/{path_string}"

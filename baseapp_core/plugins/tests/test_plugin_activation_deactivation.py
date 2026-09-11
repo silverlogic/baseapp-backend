@@ -13,7 +13,7 @@ class TestPluginActivationDeactivation:
     when their app is in INSTALLED_APPS.
     """
 
-    def test_plugin_excluded_when_not_in_installed_apps(self, minimal_installed_apps):
+    def test_plugin_excluded_when_not_in_installed_apps(self, minimal_installed_apps) -> None:
         """
         This is the main use case: removing an app from INSTALLED_APPS
         should remove all its plugin contributions.
@@ -35,7 +35,7 @@ class TestPluginActivationDeactivation:
             installed_apps = registry.get("INSTALLED_APPS")
             assert "testproject.plugin_test_app" not in installed_apps
 
-    def test_plugin_included_when_in_installed_apps(self, installed_apps_with_test_plugin):
+    def test_plugin_included_when_in_installed_apps(self, installed_apps_with_test_plugin) -> None:
         registry = PluginRegistry()
 
         # Load with test plugin in INSTALLED_APPS
@@ -57,7 +57,7 @@ class TestPluginActivationDeactivation:
 
     def test_plugin_settings_removed_on_deactivation(
         self, minimal_installed_apps, installed_apps_with_test_plugin
-    ):
+    ) -> None:
         """
         This tests the full cycle: activate -> deactivate -> verify removal.
         """
@@ -100,7 +100,7 @@ class TestPluginActivationDeactivation:
 
     def test_plugin_settings_not_in_aggregated_results_when_deactivated(
         self, minimal_installed_apps, installed_apps_with_test_plugin
-    ):
+    ) -> None:
         registry = PluginRegistry()
 
         # First, get settings with plugin active
@@ -143,7 +143,7 @@ class TestPluginActivationDeactivation:
 
     def test_plugin_slotted_settings_removed_on_deactivation(
         self, minimal_installed_apps, installed_apps_with_test_plugin
-    ):
+    ) -> None:
         registry = PluginRegistry()
 
         # Activate plugin and get slotted settings
@@ -173,7 +173,7 @@ class TestPluginActivationDeactivation:
 
     def test_plugin_graphql_contributions_removed_on_deactivation(
         self, minimal_installed_apps, installed_apps_with_test_plugin
-    ):
+    ) -> None:
         registry = PluginRegistry()
 
         # Activate plugin
@@ -204,7 +204,7 @@ class TestPluginActivationDeactivation:
 
     def test_plugin_reactivation_restores_settings(
         self, minimal_installed_apps, installed_apps_with_test_plugin
-    ):
+    ) -> None:
         registry = PluginRegistry()
 
         # Step 1: Activate

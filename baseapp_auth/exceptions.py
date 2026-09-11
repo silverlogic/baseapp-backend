@@ -7,6 +7,6 @@ User = get_user_model()
 class UserPasswordExpiredException(Exception):
     user: AbstractUser
 
-    def __init__(self, *args, user: AbstractUser, **kwargs):
+    def __init__(self, *args, user: AbstractUser, **kwargs) -> None:
         self.user = user
         super().__init__(*args, **kwargs)

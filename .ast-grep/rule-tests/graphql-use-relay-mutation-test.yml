@@ -1,0 +1,19 @@
+id: graphql-use-relay-mutation
+valid:
+  - |
+    class CreateOrder(RelayMutation):
+        class Input:
+            amount = graphene.Int(required=True)
+invalid:
+  - |
+    class CreateOrder(graphene.Mutation):
+        class Arguments:
+            amount = graphene.Int(required=True)
+  - |
+    class CreateOrder(graphene.relay.ClientIDMutation):
+        class Input:
+            amount = graphene.Int(required=True)
+  - |
+    class CreateOrder(relay.ClientIDMutation):
+        class Input:
+            amount = graphene.Int(required=True)

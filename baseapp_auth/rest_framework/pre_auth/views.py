@@ -15,7 +15,7 @@ class PreAuthViewSet(viewsets.GenericViewSet):
         serializer_class=AuthTokenPreAuthSerializer,
         url_path="auth-token",
     )
-    def auth_token(self, request, *args, **kwargs):
+    def auth_token(self, request, *args, **kwargs) -> response.Response:
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
@@ -26,7 +26,7 @@ class PreAuthViewSet(viewsets.GenericViewSet):
         methods=["POST"],
         serializer_class=JWTPreAuthSerializer,
     )
-    def jwt(self, request, *args, **kwargs):
+    def jwt(self, request, *args, **kwargs) -> response.Response:
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()

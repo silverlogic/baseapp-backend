@@ -1,4 +1,4 @@
-from typing import Any, Optional, Type
+from typing import TYPE_CHECKING, Any, Optional, Type
 
 from constance import config
 
@@ -7,6 +7,9 @@ from baseapp_core.hashids.strategies.bundle import HashidsStrategyBundle
 from baseapp_core.hashids.utils import is_uuid4
 from baseapp_core.models import DocumentIdMixin
 from baseapp_core.utils import has_autoincrement_pk
+
+if TYPE_CHECKING:
+    from django.db.models import Model
 
 
 def _is_public_id_logic_enabled() -> bool:
@@ -128,7 +131,7 @@ def graphql_get_node_from_global_id_using_strategy(info, global_id, only_type=No
     return legacy_strategy.graphql_resolver.get_node_from_global_id(info, global_id, only_type)
 
 
-def graphql_get_pk_from_global_id_using_strategy(global_id):
+def graphql_get_pk_from_global_id_using_strategy(global_id) -> int | str:
     if is_uuid4(global_id) and _is_public_id_logic_enabled():
         strategy = get_public_id_strategy()
     else:
@@ -137,7 +140,7 @@ def graphql_get_pk_from_global_id_using_strategy(global_id):
     return strategy.graphql_resolver.get_pk_from_global_id(global_id)
 
 
-def graphql_get_instance_from_global_id_using_strategy(info, global_id, get_node=False):
+def graphql_get_instance_from_global_id_using_strategy(info, global_id, get_node=False) -> "Model":
     if is_uuid4(global_id) and _is_public_id_logic_enabled():
         strategy = get_public_id_strategy()
     else:
@@ -146,7 +149,9 @@ def graphql_get_instance_from_global_id_using_strategy(info, global_id, get_node
     return strategy.graphql_resolver.get_instance_from_global_id(info, global_id, get_node)
 
 
-def drf_get_pk_from_public_id_using_strategy(value: Any, expected_model: Optional[Type] = None):
+def drf_get_pk_from_public_id_using_strategy(
+    value: Any, expected_model: Optional[Type] = None
+) -> int | str:
     if is_uuid4(value) and _is_public_id_logic_enabled():
         strategy = get_public_id_strategy()
     else:

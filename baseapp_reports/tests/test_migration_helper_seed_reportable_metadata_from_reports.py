@@ -1,4 +1,6 @@
+from collections.abc import Generator
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import patch
 
 import factory
@@ -11,7 +13,7 @@ from baseapp_reports.migration_helpers.seed_reportable_metadata_from_reports_hel
 
 
 class _FakeFlatList(list):
-    def distinct(self):
+    def distinct(self) -> list[Any]:
         seen = []
         for row in self:
             if row not in seen:
@@ -20,7 +22,7 @@ class _FakeFlatList(list):
 
 
 class _FakeValueList(list):
-    def distinct(self):
+    def distinct(self) -> list[Any]:
         seen = []
         for row in self:
             if row not in seen:
@@ -29,22 +31,22 @@ class _FakeValueList(list):
 
 
 class _FakeQuerySet:
-    def __init__(self, rows):
+    def __init__(self, rows) -> None:
         self._rows = list(rows)
 
-    def exclude(self, **kwargs):
+    def exclude(self, **kwargs) -> "_FakeQuerySet":
         return self._apply(**kwargs, exclude=True)
 
-    def filter(self, **kwargs):
+    def filter(self, **kwargs) -> "_FakeQuerySet":
         return self._apply(**kwargs, exclude=False)
 
-    def _apply(self, exclude=False, **kwargs):
+    def _apply(self, exclude=False, **kwargs) -> "_FakeQuerySet":
         rows = self._rows
         for key, value in kwargs.items():
             if key.endswith("__isnull"):
                 field = key.replace("__isnull", "")
 
-                def _is_null(row, _f=field):
+                def _is_null(row, _f=field) -> bool:
                     # Django ORM permits both `target_content_type` and
                     # `target_content_type_id` for FK lookups; fall back to the FK
                     # column so fakes can store just the integer.
@@ -63,41 +65,41 @@ class _FakeQuerySet:
                 rows = [r for r in rows if getattr(r, key) == value]
         return _FakeQuerySet(rows)
 
-    def values_list(self, *fields, flat=False):
+    def values_list(self, *fields, flat=False) -> _FakeFlatList | _FakeValueList:
         if flat:
             assert len(fields) == 1
             return _FakeFlatList([getattr(r, fields[0]) for r in self._rows])
         return _FakeValueList([tuple(getattr(r, f) for f in fields) for r in self._rows])
 
-    def count(self):
+    def count(self) -> int:
         return len(self._rows)
 
 
 class _FakeManager:
-    def __init__(self, rows=None):
+    def __init__(self, rows=None) -> None:
         self._rows = list(rows or [])
         self.update_log = []
         self.delete_log = []
         self.create_log = []
 
-    def filter(self, **kwargs):
+    def filter(self, **kwargs) -> _FakeQuerySet:
         manager = self
         matched = _FakeQuerySet(manager._rows).filter(**kwargs)._rows
 
         class _MatchedQS(_FakeQuerySet):
-            def delete(self):
+            def delete(self) -> None:
                 manager.delete_log.append(kwargs)
                 manager._rows = [r for r in manager._rows if r not in matched]
 
         return _MatchedQS(matched)
 
-    def exclude(self, **kwargs):
+    def exclude(self, **kwargs) -> _FakeQuerySet:
         return _FakeQuerySet(self._rows).exclude(**kwargs)
 
-    def values_list(self, *fields, flat=False):
+    def values_list(self, *fields, flat=False) -> _FakeFlatList | _FakeValueList:
         return _FakeQuerySet(self._rows).values_list(*fields, flat=flat)
 
-    def get_or_create(self, **kwargs):
+    def get_or_create(self, **kwargs) -> tuple[SimpleNamespace, bool]:
         for row in self._rows:
             if all(getattr(row, k) == v for k, v in kwargs.items()):
                 return row, False
@@ -107,7 +109,7 @@ class _FakeManager:
         self.create_log.append(kwargs)
         return row, True
 
-    def update_or_create(self, defaults=None, **kwargs):
+    def update_or_create(self, defaults=None, **kwargs) -> tuple[SimpleNamespace, bool]:
         defaults = defaults or {}
         self.update_log.append({**kwargs, "defaults": defaults})
         return SimpleNamespace(**kwargs, **defaults), True
@@ -139,7 +141,9 @@ class _DocumentIdRowFactory(factory.Factory):
     object_id = 1
 
 
-def _make_apps(*, reports, report_types, documents=None, metadata_rows=None):
+def _make_apps(
+    *, reports, report_types, documents=None, metadata_rows=None
+) -> tuple[Any, _FakeManager, _FakeManager, _FakeManager]:
     report_manager = _FakeManager(reports)
     report_type_manager = _FakeManager(report_types)
     documentid_manager = _FakeManager(documents or [])
@@ -151,7 +155,7 @@ def _make_apps(*, reports, report_types, documents=None, metadata_rows=None):
     metadata_model = SimpleNamespace(objects=metadata_manager)
 
     class FakeApps:
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             mapping = {
                 ("baseapp_reports", "Report"): report_model,
                 ("baseapp_reports", "ReportType"): report_type_model,
@@ -168,7 +172,7 @@ def _make_apps(*, reports, report_types, documents=None, metadata_rows=None):
 
 
 @pytest.fixture(autouse=True)
-def _stub_swapper_is_not_swapped():
+def _stub_swapper_is_not_swapped() -> Generator[None, None, None]:
     """Force the helper through `apps.get_model` instead of `swapper.load_model`."""
     with patch(
         "baseapp_reports.migration_helpers.seed_reportable_metadata_from_reports_helper.get_apps_model",
@@ -177,7 +181,7 @@ def _stub_swapper_is_not_swapped():
         yield
 
 
-def test_seed_reportable_metadata_creates_one_row_per_unique_target():
+def test_seed_reportable_metadata_creates_one_row_per_unique_target() -> None:
     spam_type = _ReportTypeRowFactory(id=1, key="spam")
     fake_type = _ReportTypeRowFactory(id=2, key="fake")
 
@@ -208,7 +212,7 @@ def test_seed_reportable_metadata_creates_one_row_per_unique_target():
     assert [e["target_id"] for e in metadata_manager.update_log] == [10, 20]
 
 
-def test_seed_reportable_metadata_no_op_when_no_reports():
+def test_seed_reportable_metadata_no_op_when_no_reports() -> None:
     apps, _, metadata_manager, _ = _make_apps(reports=[], report_types=[])
 
     seed_reportable_metadata_from_reports(apps, schema_editor=None)
@@ -216,7 +220,7 @@ def test_seed_reportable_metadata_no_op_when_no_reports():
     assert metadata_manager.update_log == []
 
 
-def test_seed_reportable_metadata_skips_reports_with_null_target():
+def test_seed_reportable_metadata_skips_reports_with_null_target() -> None:
     spam_type = _ReportTypeRowFactory(id=1, key="spam")
     reports = [
         _ReportFactory(pk=1, target_document_id=None, report_type_id=1),
@@ -232,7 +236,7 @@ def test_seed_reportable_metadata_skips_reports_with_null_target():
     assert metadata_manager.update_log[0]["defaults"]["reports_count"] == {"total": 1, "spam": 1}
 
 
-def test_reverse_seed_reportable_metadata_deletes_metadata_for_known_doc_ids():
+def test_reverse_seed_reportable_metadata_deletes_metadata_for_known_doc_ids() -> None:
     spam_type = _ReportTypeRowFactory(id=1, key="spam")
     reports = [
         _ReportFactory(pk=1, target_document_id=100, report_type_id=1),
@@ -255,7 +259,7 @@ def test_reverse_seed_reportable_metadata_deletes_metadata_for_known_doc_ids():
     assert deleted_kwargs == {"target_id__in": [100]}
 
 
-def test_reverse_seed_reportable_metadata_no_op_when_no_reports():
+def test_reverse_seed_reportable_metadata_no_op_when_no_reports() -> None:
     apps, _, metadata_manager, _ = _make_apps(reports=[], report_types=[])
 
     reverse_seed_reportable_metadata(apps, schema_editor=None)

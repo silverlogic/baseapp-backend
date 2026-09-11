@@ -13,7 +13,7 @@ from baseapp_core.plugins import shared_services
 
 
 @shared_task
-def anonymize_and_delete_user_task(user_id):
+def anonymize_and_delete_user_task(user_id) -> None:
     User = get_user_model()
     user = User.objects.get(id=user_id)
     user_email = user.email

@@ -15,17 +15,17 @@ UserFactory = h.get_user_factory()
 pytestmark = pytest.mark.django_db
 
 
-def test_user_str():
+def test_user_str() -> None:
     user = User(email="john@gmail.com")
     assert str(user) == "john@gmail.com"
 
 
-def test_user_get_full_name():
+def test_user_get_full_name() -> None:
     user = User(first_name="John", last_name="Doe", email="john@gmail.com")
     assert user.get_full_name() == "John Doe"
 
 
-def test_user_get_full_name_as_email():
+def test_user_get_full_name_as_email() -> None:
     """
     User instance without name returns email, so names in django returns e-mail
     (which is required) in order to debug.
@@ -35,7 +35,7 @@ def test_user_get_full_name_as_email():
 
 
 @override_config(USER_PASSWORD_EXPIRATION_INTERVAL=1)
-def test_user_only_notified_once_for_expired_password():
+def test_user_only_notified_once_for_expired_password() -> None:
     now = timezone.now()
 
     user = UserFactory()
@@ -62,7 +62,7 @@ def test_user_only_notified_once_for_expired_password():
 
 
 @override_config(USER_PASSWORD_EXPIRATION_INTERVAL=0)
-def test_user_password_never_expires_when_interval_is_zero():
+def test_user_password_never_expires_when_interval_is_zero() -> None:
     user = UserFactory()
     user.password_changed_date = timezone.now() - timezone.timedelta(days=1)
     user.save()

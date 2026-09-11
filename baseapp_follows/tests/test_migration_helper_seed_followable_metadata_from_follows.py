@@ -1,4 +1,6 @@
+from collections.abc import Generator
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import patch
 
 import factory
@@ -11,7 +13,7 @@ from baseapp_follows.migration_helpers.seed_followable_metadata_from_follows_hel
 
 
 class _FakeFlatList(list):
-    def distinct(self):
+    def distinct(self) -> list[Any]:
         seen = []
         for row in self:
             if row not in seen:
@@ -20,10 +22,10 @@ class _FakeFlatList(list):
 
 
 class _FakeQuerySet:
-    def __init__(self, rows):
+    def __init__(self, rows) -> None:
         self._rows = list(rows)
 
-    def filter(self, **kwargs):
+    def filter(self, **kwargs) -> "_FakeQuerySet":
         rows = self._rows
         for key, value in kwargs.items():
             if key.endswith("__in"):
@@ -33,60 +35,60 @@ class _FakeQuerySet:
                 rows = [r for r in rows if getattr(r, key) == value]
         return _FakeQuerySet(rows)
 
-    def values_list(self, *fields, flat=False):
+    def values_list(self, *fields, flat=False) -> "_FakeFlatList | list[tuple[Any, ...]]":
         if flat:
             assert len(fields) == 1
             return _FakeFlatList([getattr(r, fields[0]) for r in self._rows])
         return [tuple(getattr(r, f) for f in fields) for r in self._rows]
 
-    def count(self):
+    def count(self) -> int:
         return len(self._rows)
 
-    def delete(self):
+    def delete(self) -> list[SimpleNamespace]:
         deleted = list(self._rows)
         self._rows.clear()
         return deleted
 
 
 class _FakeFollowManager:
-    def __init__(self, rows):
+    def __init__(self, rows) -> None:
         self._rows = list(rows)
         self.using_log = []
 
-    def using(self, alias):
+    def using(self, alias) -> "_FakeFollowManager":
         self.using_log.append(alias)
         return self
 
-    def filter(self, **kwargs):
+    def filter(self, **kwargs) -> _FakeQuerySet:
         return _FakeQuerySet(self._rows).filter(**kwargs)
 
-    def values_list(self, *fields, flat=False):
+    def values_list(self, *fields, flat=False) -> "_FakeFlatList | list[tuple[Any, ...]]":
         return _FakeQuerySet(self._rows).values_list(*fields, flat=flat)
 
 
 class _FakeMetadataManager:
-    def __init__(self, rows=None):
+    def __init__(self, rows=None) -> None:
         self._rows = list(rows or [])
         self.update_log = []
         self.delete_log = []
         self.using_log = []
 
-    def using(self, alias):
+    def using(self, alias) -> "_FakeMetadataManager":
         self.using_log.append(alias)
         return self
 
-    def update_or_create(self, **kwargs):
+    def update_or_create(self, **kwargs) -> tuple[SimpleNamespace, bool]:
         self.update_log.append(kwargs)
         return SimpleNamespace(), True
 
-    def filter(self, **kwargs):
+    def filter(self, **kwargs) -> Any:
         manager = self
 
         class _DeleteQS:
-            def __init__(self, rows):
+            def __init__(self, rows) -> None:
                 self._rows = rows
 
-            def delete(self):
+            def delete(self) -> None:
                 manager.delete_log.append(kwargs)
                 manager._rows = [r for r in manager._rows if r not in self._rows]
 
@@ -109,7 +111,9 @@ class _FollowFactory(factory.Factory):
     target_id = 0
 
 
-def _make_apps(*, follows, metadata_rows=None):
+def _make_apps(
+    *, follows, metadata_rows=None
+) -> tuple[Any, _FakeFollowManager, _FakeMetadataManager]:
     follow_manager = _FakeFollowManager(follows)
     metadata_manager = _FakeMetadataManager(metadata_rows or [])
 
@@ -117,7 +121,7 @@ def _make_apps(*, follows, metadata_rows=None):
     metadata_model = SimpleNamespace(objects=metadata_manager)
 
     class FakeApps:
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             mapping = {
                 ("baseapp_follows", "Follow"): follow_model,
                 ("baseapp_follows", "FollowableMetadata"): metadata_model,
@@ -128,7 +132,7 @@ def _make_apps(*, follows, metadata_rows=None):
 
 
 @pytest.fixture(autouse=True)
-def _stub_swapper_is_not_swapped():
+def _stub_swapper_is_not_swapped() -> Generator[None, None, None]:
     """Force the helper through `apps.get_model` instead of `swapper.load_model`."""
     with patch(
         "baseapp_follows.migration_helpers.seed_followable_metadata_from_follows_helper.get_apps_model",
@@ -137,7 +141,7 @@ def _stub_swapper_is_not_swapped():
         yield
 
 
-def test_seed_followable_metadata_creates_one_row_per_unique_documentid():
+def test_seed_followable_metadata_creates_one_row_per_unique_documentid() -> None:
     follows = [
         _FollowFactory(pk=1, actor_id=100, target_id=200),
         _FollowFactory(pk=2, actor_id=100, target_id=300),
@@ -156,7 +160,7 @@ def test_seed_followable_metadata_creates_one_row_per_unique_documentid():
     assert by_target[300] == {"followers_count": 2, "following_count": 0}
 
 
-def test_seed_followable_metadata_no_op_when_no_follows():
+def test_seed_followable_metadata_no_op_when_no_follows() -> None:
     apps, _, metadata_manager = _make_apps(follows=[])
 
     seed_followable_metadata_from_follows(apps, schema_editor=None)
@@ -164,7 +168,7 @@ def test_seed_followable_metadata_no_op_when_no_follows():
     assert metadata_manager.update_log == []
 
 
-def test_reverse_seed_followable_metadata_deletes_metadata_for_known_doc_ids():
+def test_reverse_seed_followable_metadata_deletes_metadata_for_known_doc_ids() -> None:
     follows = [_FollowFactory(pk=1, actor_id=100, target_id=200)]
     apps, _, metadata_manager = _make_apps(
         follows=follows,
@@ -186,7 +190,7 @@ def test_reverse_seed_followable_metadata_deletes_metadata_for_known_doc_ids():
     assert any(r.target_id == 999 for r in metadata_manager._rows)
 
 
-def test_reverse_seed_followable_metadata_no_op_when_no_follows():
+def test_reverse_seed_followable_metadata_no_op_when_no_follows() -> None:
     apps, _, metadata_manager = _make_apps(follows=[])
 
     reverse_seed_followable_metadata(apps, schema_editor=None)
@@ -194,7 +198,7 @@ def test_reverse_seed_followable_metadata_no_op_when_no_follows():
     assert metadata_manager.delete_log == []
 
 
-def test_seed_uses_db_alias_from_schema_editor():
+def test_seed_uses_db_alias_from_schema_editor() -> None:
     """Both Follow reads (values_list / filter / count) and FollowableMetadata writes
     (update_or_create) must be pinned to schema_editor.connection.alias so reads and
     writes never split across databases on a multi-db migration run."""
@@ -208,7 +212,7 @@ def test_seed_uses_db_alias_from_schema_editor():
     assert metadata_manager.using_log == ["replica"]
 
 
-def test_reverse_seed_uses_db_alias_from_schema_editor():
+def test_reverse_seed_uses_db_alias_from_schema_editor() -> None:
     follows = [_FollowFactory(pk=1, actor_id=100, target_id=200)]
     apps, follow_manager, metadata_manager = _make_apps(
         follows=follows,

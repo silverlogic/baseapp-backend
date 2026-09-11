@@ -1,3 +1,5 @@
+from typing import Any
+
 from graphene.relay import BaseGlobalIDType, DefaultGlobalIDType
 from graphene.relay import GlobalID as GrapheneGlobalID
 from graphene.relay import Node as GrapheneRelayNode
@@ -12,7 +14,7 @@ from baseapp_core.hashids.strategies import (
 
 class GlobalID(GrapheneGlobalID):
     @staticmethod
-    def id_resolver(parent_resolver, node, root, info, parent_type_name=None, **args):
+    def id_resolver(parent_resolver, node, root, info, parent_type_name=None, **args) -> str:
         type_id = parent_resolver(root, info, **args)
         parent_type_name = parent_type_name or info.parent_type.name
         return node.to_global_id_via_strategy(root, parent_type_name, type_id)  # root._meta.name
@@ -28,7 +30,7 @@ class AbstractBaseappNode(GrapheneRelayNode):
         abstract = True
 
     @classmethod
-    def __init_subclass_with_meta__(cls, global_id_type=DefaultGlobalIDType, **options):
+    def __init_subclass_with_meta__(cls, global_id_type=DefaultGlobalIDType, **options) -> None:
         assert issubclass(
             global_id_type, BaseGlobalIDType
         ), "Custom ID type need to be implemented as a subclass of BaseGlobalIDType."
@@ -47,22 +49,22 @@ class AbstractBaseappNode(GrapheneRelayNode):
         super(AbstractNode, cls).__init_subclass_with_meta__(_meta=_meta, **options)
 
     @classmethod
-    def to_global_id(cls, type_, id):
+    def to_global_id(cls, type_, id) -> str:
         """
         Legacy to_global_id method. Still required in case __init_subclass_with_meta__ isn't properly called.
         """
         return GrapheneRelayNode.to_global_id(type_, id)
 
     @classmethod
-    def to_global_id_via_strategy(cls, model_instance, type_, id):
+    def to_global_id_via_strategy(cls, model_instance, type_, id) -> str:
         raise NotImplementedError
 
 
 class Node(AbstractBaseappNode):
     @classmethod
-    def to_global_id_via_strategy(cls, model_instance, type_, id):
+    def to_global_id_via_strategy(cls, model_instance, type_, id) -> str:
         return graphql_to_global_id_using_strategy(model_instance, type_, id)
 
     @classmethod
-    def get_node_from_global_id(cls, info, global_id, only_type=None):
+    def get_node_from_global_id(cls, info, global_id, only_type=None) -> Any:
         return graphql_get_node_from_global_id_using_strategy(info, global_id, only_type)

@@ -11,10 +11,10 @@ from baseapp_api_key.models import BaseAPIKey
 class Command(BaseCommand):
     help = f"{BaseAPIKey._meta.verbose_name.title()} Management"
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super(Command, self).__init__(*args, **kwargs)
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser) -> None:
         parser.add_argument(
             "--model",
             type=str,
@@ -35,7 +35,7 @@ class Command(BaseCommand):
             help="Rotate BA_API_KEY_ENCRYPTION_KEY",
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options) -> None:
         try:
             model: str = options.pop("model")
             APIKeyModel = apps.get_model(model)
@@ -47,7 +47,7 @@ class Command(BaseCommand):
                 return
             raise e
 
-    def _handle(self, *args, APIKeyModel: typing.Type[BaseAPIKey], **options):
+    def _handle(self, *args, APIKeyModel: typing.Type[BaseAPIKey], **options) -> None:
         if options.get("generate_encryption_key"):
             encryption_key = APIKeyModel.objects.generate_encryption_key()
             self.stdout.write(self.style.SUCCESS(f"\n{encryption_key}\n"))

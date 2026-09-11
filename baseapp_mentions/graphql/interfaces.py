@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import graphene
 import swapper
 from query_optimizer import DjangoConnectionField
@@ -6,6 +8,9 @@ from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
 from baseapp_core.models import DocumentId
 from baseapp_core.plugins import shared_services
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
 
 Mention = swapper.load_model("baseapp_mentions", "Mention")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
@@ -78,7 +83,7 @@ class MentionsInterface(RelayNode):
     mentions_count.optimizer_hook = _mentions_count_optimizer_hook
     is_mentioning_profile.optimizer_hook = _is_mentioning_profile_optimizer_hook
 
-    def resolve_mentions(root, info, **kwargs):
+    def resolve_mentions(root, info, **kwargs) -> "QuerySet":
         # Hit the prefetch cache populated by the optimizer hook above when
         # the consumer was paged via the optimizer.
         try:
@@ -97,12 +102,12 @@ class MentionsInterface(RelayNode):
             return Mention.objects.none()
         return Mention.objects.filter(target_document_id=doc_pk).select_related("profile")
 
-    def resolve_mentions_count(root, info):
+    def resolve_mentions_count(root, info) -> int:
         if service := shared_services.get("mentionable_metadata"):
             return service.get_mentions_count(root)
         return 0
 
-    def resolve_is_mentioning_profile(root, info, profile_id):
+    def resolve_is_mentioning_profile(root, info, profile_id) -> bool:
         try:
             pk = get_pk_from_relay_id(profile_id)
         except Exception:  # noqa: BLE001 — malformed IDs are treated as "not mentioning"

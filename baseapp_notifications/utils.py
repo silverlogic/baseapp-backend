@@ -8,7 +8,7 @@ from django.template.loader import render_to_string
 from django.utils.text import slugify
 
 
-def render_verb_template_or_default(verb, context, template_type, extension):
+def render_verb_template_or_default(verb, context, template_type, extension) -> str:
     try:
         return render_to_string(
             f"emails/notifications/{verb}-{template_type}.{extension}.j2",
@@ -24,7 +24,7 @@ def render_verb_template_or_default(verb, context, template_type, extension):
         )
 
 
-def send_email_notification(to, context):
+def send_email_notification(to, context) -> None:
     verb = slugify(context["verb"])
 
     subject = render_verb_template_or_default(verb, context, "subject", "txt")
@@ -38,7 +38,7 @@ def send_email_notification(to, context):
     )
 
 
-def can_user_receive_notification(user_id, verb, channel):
+def can_user_receive_notification(user_id, verb, channel) -> bool:
     NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationSetting")
     user_setting = (
         NotificationSetting.objects.filter(
@@ -55,7 +55,7 @@ def can_user_receive_notification(user_id, verb, channel):
     return True
 
 
-def get_setting_from_verb(verb):
+def get_setting_from_verb(verb) -> str:
     """ "
     Returns the setting group from the verb if available, otherwise returns the verb itself
         'CHATS.SEND_MESSAGE' -> 'CHATS'

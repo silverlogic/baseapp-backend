@@ -17,7 +17,7 @@ class ReportTypeFactory(factory.django.DjangoModelFactory):
         model = ReportType
 
     @factory.post_generation
-    def set_content_types(self, create, extracted, **kwargs):
+    def set_content_types(self, create, extracted, **kwargs) -> None:
         if not create:
             return
         if extracted:

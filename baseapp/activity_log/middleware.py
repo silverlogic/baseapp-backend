@@ -1,8 +1,15 @@
+from typing import TYPE_CHECKING
+
 import pghistory
 from django.core.handlers.asgi import ASGIRequest as DjangoASGIRequest
 from django.core.handlers.wsgi import WSGIRequest as DjangoWSGIRequest
 from ipware import get_client_ip
 from pghistory import config
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from django.http import HttpRequest, HttpResponse
 
 # The default meta precedence order
 IPWARE_META_PRECEDENCE_ORDER = (
@@ -40,7 +47,7 @@ class DjangoRequest:
     the request.user attribute is updated.
     """
 
-    def __setattr__(self, attr, value):
+    def __setattr__(self, attr, value) -> None:
         if attr == "user":
             pghistory.context(user=value.pk if value and hasattr(value, "pk") else None)
 
@@ -55,8 +62,8 @@ class ASGIRequest(DjangoRequest, DjangoASGIRequest):
     pass
 
 
-def HistoryMiddleware(get_response):
-    def middleware(request):
+def HistoryMiddleware(get_response) -> "Callable[[HttpRequest], HttpResponse]":
+    def middleware(request) -> "HttpResponse":
         if request.method in config.middleware_methods():
             user = (
                 request.user.pk

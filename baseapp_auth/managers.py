@@ -1,32 +1,36 @@
 import logging
+from typing import TYPE_CHECKING
 
 from django.contrib.auth.models import BaseUserManager
 
 from baseapp_auth.querysets import UserQuerySet
+
+if TYPE_CHECKING:
+    from django.contrib.auth.models import AbstractBaseUser
 
 logger = logging.getLogger(__name__)
 
 
 # from .managers import UserManager
 class UserManager(BaseUserManager):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._queryset_class = UserQuerySet
 
-    def _create_user(self, email, password, **extra_fields):
+    def _create_user(self, email, password, **extra_fields) -> "AbstractBaseUser":
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save()
         return user
 
-    def create_user(self, email, password=None, **extra_fields):
+    def create_user(self, email, password=None, **extra_fields) -> "AbstractBaseUser":
         return self._create_user(email, password, **extra_fields)
 
-    def create_superuser(self, email, password, **extra_fields):
+    def create_superuser(self, email, password, **extra_fields) -> "AbstractBaseUser":
         extra_fields["is_staff"] = True
         extra_fields["is_superuser"] = True
         return self._create_user(email, password, **extra_fields)
 
-    def get_by_natural_key(self, email):
+    def get_by_natural_key(self, email) -> "AbstractBaseUser":
         # to be used by deserialization by natural keys (https://docs.djangoproject.com/en/4.2/topics/serialization/#deserialization-of-natural-keys)
         return self.get(email=email)

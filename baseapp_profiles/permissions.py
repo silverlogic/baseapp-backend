@@ -8,7 +8,7 @@ profile_user_role_app_label = ProfileUserRole._meta.app_label
 
 
 class ProfilesPermissionsBackend(BaseBackend):
-    def has_perm(self, user_obj, perm, obj=None):
+    def has_perm(self, user_obj, perm, obj=None) -> bool | None:
         if perm == f"{profile_app_label}.view_profile":
             if not obj:
                 # Anyone can view a profile

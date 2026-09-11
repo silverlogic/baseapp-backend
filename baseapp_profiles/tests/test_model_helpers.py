@@ -31,48 +31,48 @@ Profile = swapper.load_model("baseapp_profiles", "Profile")
 # ---------------------------------------------------------------------------
 
 
-def test_python_default_to_sql_bool_true():
+def test_python_default_to_sql_bool_true() -> None:
     assert _python_default_to_sql(True) == "TRUE"
 
 
-def test_python_default_to_sql_bool_false():
+def test_python_default_to_sql_bool_false() -> None:
     assert _python_default_to_sql(False) == "FALSE"
 
 
-def test_python_default_to_sql_int():
+def test_python_default_to_sql_int() -> None:
     assert _python_default_to_sql(0) == "0"
     assert _python_default_to_sql(42) == "42"
 
 
-def test_python_default_to_sql_float():
+def test_python_default_to_sql_float() -> None:
     assert _python_default_to_sql(1.5) == "1.5"
 
 
-def test_python_default_to_sql_str():
+def test_python_default_to_sql_str() -> None:
     assert _python_default_to_sql("hello") == "'hello'"
 
 
-def test_python_default_to_sql_str_escapes_single_quotes():
+def test_python_default_to_sql_str_escapes_single_quotes() -> None:
     assert _python_default_to_sql("it's") == "'it''s'"
 
 
-def test_python_default_to_sql_dict():
+def test_python_default_to_sql_dict() -> None:
     result = _python_default_to_sql({"total": 0})
     assert result == "'{\"total\":0}'::jsonb"
 
 
-def test_python_default_to_sql_list():
+def test_python_default_to_sql_list() -> None:
     result = _python_default_to_sql([1, 2, 3])
     assert result == "'[1,2,3]'::jsonb"
 
 
-def test_python_default_to_sql_dict_with_single_quotes():
+def test_python_default_to_sql_dict_with_single_quotes() -> None:
     result = _python_default_to_sql({"key": "it's"})
     assert "it''s" in result
     assert result.endswith("::jsonb")
 
 
-def test_python_default_to_sql_unsupported_type_returns_none():
+def test_python_default_to_sql_unsupported_type_returns_none() -> None:
     import datetime
 
     assert _python_default_to_sql(None) is None
@@ -85,16 +85,16 @@ def test_python_default_to_sql_unsupported_type_returns_none():
 # ---------------------------------------------------------------------------
 
 
-def test_columns_from_profile_name_sql_single_column():
+def test_columns_from_profile_name_sql_single_column() -> None:
     assert _columns_from_profile_name_sql("NEW.name") == ["name"]
 
 
-def test_columns_from_profile_name_sql_multiple_columns():
+def test_columns_from_profile_name_sql_multiple_columns() -> None:
     result = _columns_from_profile_name_sql("NEW.first_name || ' ' || NEW.last_name")
     assert result == ["first_name", "last_name"]
 
 
-def test_columns_from_profile_name_sql_no_match_returns_none():
+def test_columns_from_profile_name_sql_no_match_returns_none() -> None:
     assert _columns_from_profile_name_sql("SOME_FUNCTION()") is None
     assert _columns_from_profile_name_sql("OLD.name") is None
 
@@ -105,7 +105,7 @@ def test_columns_from_profile_name_sql_no_match_returns_none():
 
 
 @pytest.mark.django_db
-def test_update_profile_name_func_render_produces_valid_sql():
+def test_update_profile_name_func_render_produces_valid_sql() -> None:
     func = UpdateProfileNameFunc(
         profile_name_sql="NEW.first_name || ' ' || NEW.last_name",
         profile_column="profile_id",
@@ -123,7 +123,7 @@ def test_update_profile_name_func_render_produces_valid_sql():
 
 
 @pytest.mark.django_db
-def test_create_profile_func_render_produces_valid_sql():
+def test_create_profile_func_render_produces_valid_sql() -> None:
     func = CreateProfileFunc(
         profile_name_sql="NEW.first_name || ' ' || NEW.last_name",
         profile_owner_sql="NEW.id",
@@ -141,7 +141,7 @@ def test_create_profile_func_render_produces_valid_sql():
 
 
 @pytest.mark.django_db
-def test_create_profile_func_render_raises_for_unconvertible_default(monkeypatch):
+def test_create_profile_func_render_raises_for_unconvertible_default(monkeypatch) -> None:
     """render() must fail fast when a NOT NULL field's default can't be serialised."""
     import datetime
 
@@ -176,7 +176,7 @@ def test_create_profile_func_render_raises_for_unconvertible_default(monkeypatch
 # ---------------------------------------------------------------------------
 
 
-def test_add_profilable_triggers_skips_non_profilable_sender():
+def test_add_profilable_triggers_skips_non_profilable_sender() -> None:
     """A class that does not inherit ProfilableModel is silently ignored."""
 
     class Unrelated:
@@ -186,7 +186,7 @@ def test_add_profilable_triggers_skips_non_profilable_sender():
     add_profilable_triggers(sender=Unrelated)
 
 
-def test_add_profilable_triggers_skips_abstract_model():
+def test_add_profilable_triggers_skips_abstract_model() -> None:
     """Abstract ProfilableModel subclasses should not get triggers."""
 
     class FakeAbstract(ProfilableModel):
@@ -201,7 +201,7 @@ def test_add_profilable_triggers_skips_abstract_model():
     assert getattr(FakeAbstract._meta, "triggers", original) == original
 
 
-def test_add_profilable_triggers_skips_when_no_profile_name_sql(monkeypatch):
+def test_add_profilable_triggers_skips_when_no_profile_name_sql(monkeypatch) -> None:
     """Concrete ProfilableModel with profile_name_sql=None is ignored (profile_name_sql guard)."""
     monkeypatch.setattr(User, "profile_name_sql", None)
     monkeypatch.setattr(User._meta, "triggers", [])
@@ -210,7 +210,7 @@ def test_add_profilable_triggers_skips_when_no_profile_name_sql(monkeypatch):
     assert not any(t.name == "update_profile_name" for t in getattr(User._meta, "triggers", []))
 
 
-def test_add_profilable_triggers_skips_duplicate_trigger(monkeypatch):
+def test_add_profilable_triggers_skips_duplicate_trigger(monkeypatch) -> None:
     """Calling add_profilable_triggers twice must not add the same trigger twice."""
     original_triggers = list(getattr(User._meta, "triggers", []))
     monkeypatch.setattr(User._meta, "triggers", list(original_triggers))

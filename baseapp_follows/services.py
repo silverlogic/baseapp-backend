@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import swapper
 from django.apps import apps
 
 from baseapp_core.plugins import SharedServiceProvider
+
+if TYPE_CHECKING:
+    from django.db import models
+
+    from baseapp_follows.models import AbstractFollowableMetadata
 
 
 class FollowableMetadataService(SharedServiceProvider):
@@ -22,14 +29,14 @@ class FollowableMetadataService(SharedServiceProvider):
     def is_available(self) -> bool:
         return apps.is_installed("baseapp_follows")
 
-    def _get_model(self):
+    def _get_model(self) -> type[AbstractFollowableMetadata]:
         return swapper.load_model("baseapp_follows", "FollowableMetadata")
 
-    def get_metadata(self, obj):
+    def get_metadata(self, obj) -> AbstractFollowableMetadata | None:
         """Return `FollowableMetadata` for `obj`, or `None` if not found."""
         return self._get_model().get_for_object(obj)
 
-    def get_or_create_metadata(self, obj):
+    def get_or_create_metadata(self, obj) -> AbstractFollowableMetadata | None:
         """Return or create `FollowableMetadata` for `obj`."""
         return self._get_model().get_or_create_for_object(obj)
 
@@ -49,6 +56,6 @@ class FollowableMetadataService(SharedServiceProvider):
         metadata = self.get_metadata(obj)
         return metadata.following_count if metadata else 0
 
-    def annotate_queryset(self, queryset):
+    def annotate_queryset(self, queryset) -> models.QuerySet:
         """Annotate `queryset` with followable metadata for N+1 prevention."""
         return self._get_model().annotate_queryset(queryset)

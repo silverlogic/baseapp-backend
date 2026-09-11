@@ -27,7 +27,7 @@ class UserCreationForm(forms.ModelForm):
         model = User
         fields = ("email",)
 
-    def clean_password2(self):
+    def clean_password2(self) -> str:
         password1 = self.cleaned_data.get("password1")
         password2 = self.cleaned_data.get("password2")
         if password1 and password2 and password1 != password2:
@@ -38,7 +38,7 @@ class UserCreationForm(forms.ModelForm):
         apply_password_validators(password1)
         return password2
 
-    def save(self, commit=True):
+    def save(self, commit=True) -> "User":
         user = super(UserCreationForm, self).save(commit=False)
         user.set_password(self.cleaned_data["password1"])
         if commit:
@@ -60,13 +60,13 @@ class UserChangeForm(forms.ModelForm):
         model = User
         fields = "__all__"
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super(UserChangeForm, self).__init__(*args, **kwargs)
         f = self.fields.get("user_permissions", None)
         if f is not None:
             f.queryset = f.queryset.select_related("content_type")
 
-    def clean_password(self):
+    def clean_password(self) -> str:
         # Regardless of what the user provides, return the initial value.
         # This is done here, rather than on the field, because the
         # field does not have access to the initial value

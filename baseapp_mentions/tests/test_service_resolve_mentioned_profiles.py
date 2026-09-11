@@ -23,7 +23,7 @@ pytestmark = pytest.mark.django_db
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
-def test_resolves_valid_relay_ids_to_profiles():
+def test_resolves_valid_relay_ids_to_profiles() -> None:
     a = ProfileFactory()
     b = ProfileFactory()
 
@@ -32,15 +32,15 @@ def test_resolves_valid_relay_ids_to_profiles():
     assert {p.pk for p in profiles} == {a.pk, b.pk}
 
 
-def test_returns_empty_list_for_empty_iterable():
+def test_returns_empty_list_for_empty_iterable() -> None:
     assert MentionsService().resolve_mentioned_profiles([]) == []
 
 
-def test_returns_empty_list_for_none():
+def test_returns_empty_list_for_none() -> None:
     assert MentionsService().resolve_mentioned_profiles(None) == []
 
 
-def test_drops_malformed_relay_ids():
+def test_drops_malformed_relay_ids() -> None:
     valid = ProfileFactory()
     profiles = MentionsService().resolve_mentioned_profiles(
         ["not-a-relay-id", valid.relay_id, "!!!", ""]
@@ -49,7 +49,7 @@ def test_drops_malformed_relay_ids():
     assert [p.pk for p in profiles] == [valid.pk]
 
 
-def test_drops_relay_ids_pointing_at_non_existent_profiles():
+def test_drops_relay_ids_pointing_at_non_existent_profiles() -> None:
     valid = ProfileFactory()
     stale = ProfileFactory()
     stale_relay_id = stale.relay_id
@@ -60,7 +60,7 @@ def test_drops_relay_ids_pointing_at_non_existent_profiles():
     assert [p.pk for p in profiles] == [valid.pk]
 
 
-def test_excludes_self_when_exclude_profile_provided():
+def test_excludes_self_when_exclude_profile_provided() -> None:
     me = ProfileFactory()
     friend = ProfileFactory()
 
@@ -72,7 +72,7 @@ def test_excludes_self_when_exclude_profile_provided():
     assert [p.pk for p in profiles] == [friend.pk]
 
 
-def test_exclude_profile_with_unsaved_instance_is_a_noop():
+def test_exclude_profile_with_unsaved_instance_is_a_noop() -> None:
     """A profile without a pk can't match anything in the queryset; the
     resolver must not blow up trying to exclude it."""
     a = ProfileFactory()
@@ -87,7 +87,7 @@ def test_exclude_profile_with_unsaved_instance_is_a_noop():
     assert {p.pk for p in profiles} == {a.pk, b.pk}
 
 
-def test_duplicate_relay_ids_collapse_to_unique_profiles():
+def test_duplicate_relay_ids_collapse_to_unique_profiles() -> None:
     a = ProfileFactory()
 
     profiles = MentionsService().resolve_mentioned_profiles([a.relay_id, a.relay_id])

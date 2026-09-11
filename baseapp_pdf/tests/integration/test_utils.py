@@ -16,21 +16,21 @@ pytestmark = pytest.mark.django_db
 
 @pytest.mark.usefixtures("responses_mock")
 class TestUtils:
-    def test_utils_ensure_google_chrome_installed(self):
+    def test_utils_ensure_google_chrome_installed(self) -> None:
         ensure_google_chrome_installed()
 
-    def test_utils_render_to_pdf_succeeds_with_valid_url(self):
+    def test_utils_render_to_pdf_succeeds_with_valid_url(self) -> None:
         with render_to_pdf(source="https://google.ca") as _:
             pass
 
-    def test_utils_render_to_pdf_fails_with_invalid_url(self):
+    def test_utils_render_to_pdf_fails_with_invalid_url(self) -> None:
         try:
             with render_to_pdf(source="https://not.a.url") as _:
                 pass
         except BaseAppBackendPDFRenderToPDFException:
             pass
 
-    def test_utils_render_template_to_pdf(self):
+    def test_utils_render_template_to_pdf(self) -> None:
         context = {
             "pdf_title": "Example PDF",
             "pdf_margins": "1cm 1cm",

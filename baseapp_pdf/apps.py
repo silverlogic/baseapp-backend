@@ -1,3 +1,5 @@
+from django.utils.translation import gettext_lazy as _
+
 from baseapp_core.plugins import BaseAppConfig
 
 
@@ -5,5 +7,5 @@ class PackageConfig(BaseAppConfig):
     default = True
     name = "baseapp_pdf"
     label = "baseapp_pdf"
-    verbose_name = "BaseApp PDF"
+    verbose_name = _("BaseApp PDF")
     default_auto_field = "django.db.models.AutoField"

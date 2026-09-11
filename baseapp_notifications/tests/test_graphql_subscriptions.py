@@ -35,7 +35,7 @@ SUBSCRIPTION_QUERY = textwrap.dedent("""
 @pytest.mark.asyncio
 async def test_user_recieves_new_notification_subscription_event(
     django_user_client, graphql_ws_user_client
-):
+) -> None:
     # Establish & initialize WebSocket GraphQL connection.
     client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
 
@@ -70,7 +70,7 @@ async def test_user_recieves_new_notification_subscription_event(
 @pytest.mark.asyncio
 async def test_another_user_do_not_recieves_new_notification_subscription_event(
     graphql_ws_user_client,
-):
+) -> None:
     # Establish & initialize WebSocket GraphQL connection.
     client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
 
@@ -96,7 +96,7 @@ async def test_another_user_do_not_recieves_new_notification_subscription_event(
 @pytest.mark.asyncio
 async def test_user_recieves_updated_notification_subscription_event(
     django_user_client, graphql_ws_user_client
-):
+) -> None:
     notification = await database_sync_to_async(NotificationFactory)(
         recipient=django_user_client.user
     )
@@ -134,7 +134,7 @@ async def test_user_recieves_updated_notification_subscription_event(
 @pytest.mark.asyncio
 async def test_user_recieves_deleted_notification_subscription_event(
     django_user_client, graphql_ws_user_client
-):
+) -> None:
     notification = await database_sync_to_async(NotificationFactory)(
         recipient=django_user_client.user
     )
@@ -168,7 +168,7 @@ async def test_user_recieves_deleted_notification_subscription_event(
 @pytest.mark.asyncio
 async def test_user_receives_bulk_created_notification_subscription_events(
     django_user_client, graphql_ws_user_client
-):
+) -> None:
     actor = await database_sync_to_async(UserFactory)()
 
     # Establish & initialize WebSocket GraphQL connection.
@@ -212,7 +212,7 @@ async def test_user_receives_bulk_created_notification_subscription_events(
 @pytest.mark.asyncio
 async def test_another_user_does_not_receive_bulk_created_notification_subscription_events(
     graphql_ws_user_client,
-):
+) -> None:
     actor = await database_sync_to_async(UserFactory)()
     other_recipient = await database_sync_to_async(UserFactory)()
 

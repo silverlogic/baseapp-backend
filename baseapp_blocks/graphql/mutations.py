@@ -24,7 +24,7 @@ class BlockToggle(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "BlockToggle":
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
         actor = get_obj_from_relay_id(info, input.get("actor_object_id"))
 

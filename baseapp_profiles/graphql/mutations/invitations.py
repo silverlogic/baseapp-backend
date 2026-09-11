@@ -25,7 +25,7 @@ ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 profile_user_role_app_label = ProfileUserRole._meta.app_label
 
 
-def _get_invitation_by_token(token: str):
+def _get_invitation_by_token(token: str) -> "ProfileUserRole":
     try:
         return ProfileUserRole.objects.get(invitation_token=token)
     except ProfileUserRole.DoesNotExist:
@@ -35,7 +35,7 @@ def _get_invitation_by_token(token: str):
         )
 
 
-def _get_invitation_by_id(invitation_id: str):
+def _get_invitation_by_id(invitation_id: str) -> "ProfileUserRole":
     invitation_pk = get_pk_from_relay_id(invitation_id)
     try:
         return ProfileUserRole.objects.get(pk=invitation_pk)
@@ -89,7 +89,9 @@ def _reset_invitation_for_send(invitation, role=None, user=None) -> None:
         invitation.user = user
 
 
-def _create_or_reset_invitation(profile, normalized_email: str, role, invited_user):
+def _create_or_reset_invitation(
+    profile, normalized_email: str, role, invited_user
+) -> "ProfileUserRole":
     """Create a fresh invitation for ``normalized_email`` on ``profile`` (or revive an
     existing declined/inactive/expired one). Must run inside a transaction — it takes a
     ``select_for_update`` lock. Raises ``GraphQLError`` on a hard conflict (the email is
@@ -167,7 +169,7 @@ class ProfileSendInvitation(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ProfileSendInvitation":
         from django.contrib.auth import get_user_model
 
         from baseapp_profiles.emails import send_invitation_email
@@ -243,7 +245,7 @@ class ProfileAcceptInvitation(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ProfileAcceptInvitation":
         token = input.get("token")
 
         invitation = _get_invitation_by_token(token)
@@ -270,7 +272,7 @@ class ProfileDeclineInvitation(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ProfileDeclineInvitation":
         token = input.get("token")
 
         invitation = _get_invitation_by_token(token)
@@ -291,7 +293,7 @@ class ProfileCancelInvitation(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ProfileCancelInvitation":
         invitation_id = input.get("invitation_id")
 
         invitation = _get_invitation_by_id(invitation_id)
@@ -324,7 +326,7 @@ class ProfileResendInvitation(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ProfileResendInvitation":
         from baseapp_profiles.emails import send_invitation_email
 
         invitation_id = input.get("invitation_id")

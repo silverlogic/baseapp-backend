@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import django_filters
 import graphene
 import swapper
@@ -12,6 +14,9 @@ from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import ThumbnailField
 from baseapp_core.plugins import graphql_shared_interfaces, shared_services
 from baseapp_pages.models import AbstractPage, Metadata, URLPath
+
+if TYPE_CHECKING:
+    from django.db.models import Model, QuerySet
 
 Page = swapper.load_model("baseapp_pages", "Page")
 page_app_label = Page._meta.app_label
@@ -29,11 +34,11 @@ class PageInterface(RelayNode):
     metadata = graphene.Field(lambda: MetadataObjectType)
 
     @classmethod
-    def resolve_url_path(cls, instance, info, **kwargs):
+    def resolve_url_path(cls, instance, info, **kwargs) -> URLPath | None:
         return instance.url_path
 
     @classmethod
-    def resolve_url_paths(cls, instance, info, **kwargs):
+    def resolve_url_paths(cls, instance, info, **kwargs) -> "QuerySet[URLPath]":
         return instance.url_paths.all()
         # return URLPath.objects.filter(
         #     target_content_type=ContentType.objects.get_for_model(instance),
@@ -41,7 +46,7 @@ class PageInterface(RelayNode):
         # )
 
     @classmethod
-    def resolve_metadata(cls, instance, info, **kwargs):
+    def resolve_metadata(cls, instance, info, **kwargs) -> "Metadata | MetadataObjectType":
         raise NotImplementedError
 
 
@@ -66,14 +71,14 @@ class URLPathNode(DjangoObjectType):
             "id": ["exact"],
         }
 
-    def resolve_target(self, info, **kwargs):
+    def resolve_target(self, info, **kwargs) -> "Model | None":
         if isinstance(self.target, AbstractPage):
             if not info.context.user.has_perm(f"{page_app_label}.view_page", self.target):
                 return None
         return self.target
 
     @classmethod
-    def get_queryset(cls, queryset, info):
+    def get_queryset(cls, queryset, info) -> "QuerySet[URLPath]":
         MAX_COMPLEXITY = 3
         return optimize(queryset, info, max_complexity=MAX_COMPLEXITY)
 
@@ -84,7 +89,7 @@ class URLPathNode(DjangoObjectType):
 
 
 class AbstractMetadataObjectType:
-    def __init__(self, instance, info):
+    def __init__(self, instance, info) -> None:
         self.instance = instance
         self.info = info
 
@@ -99,7 +104,7 @@ class MetadataObjectType(DjangoObjectType):
         exclude = ("id",)
 
     @classmethod
-    def is_type_of(cls, root, info):
+    def is_type_of(cls, root, info) -> bool:
         if isinstance(root, AbstractMetadataObjectType):
             return True
         return super().is_type_of(root, info)
@@ -131,7 +136,7 @@ class BasePageObjectType:
         filterset_class = PageFilter
 
     @classmethod
-    def get_node(cls, info, id):
+    def get_node(cls, info, id) -> AbstractPage | None:
         node = super().get_node(info, id)
         if not info.context.user.has_perm(f"{page_app_label}.view_page", node):
             return None
@@ -140,7 +145,7 @@ class BasePageObjectType:
     MAX_COMPLEXITY = 3
 
     @classmethod
-    def get_queryset(cls, queryset, info):
+    def get_queryset(cls, queryset, info) -> "QuerySet[AbstractPage]":
         if info.context.user.is_active and info.context.user.is_superuser:
             return optimize(queryset, info, max_complexity=cls.MAX_COMPLEXITY)
 
@@ -158,18 +163,18 @@ class BasePageObjectType:
             )
 
     @classmethod
-    def pre_optimization_hook(cls, queryset, optimizer):
+    def pre_optimization_hook(cls, queryset, optimizer) -> "QuerySet[AbstractPage]":
         queryset = super().pre_optimization_hook(queryset, optimizer)
         if service := shared_services.get("commentable_metadata"):
             queryset = service.annotate_queryset(queryset)
         return queryset
 
     @classmethod
-    def resolve_body(cls, instance, info, **kwargs):
+    def resolve_body(cls, instance, info, **kwargs) -> str:
         return instance.body.html
 
     @classmethod
-    def resolve_metadata(cls, instance, info, **kwargs):
+    def resolve_metadata(cls, instance, info, **kwargs) -> Metadata | MetadataObjectType:
         target_content_type = ContentType.objects.get_for_model(instance)
         metadata = Metadata.objects.filter(
             target_content_type=target_content_type,

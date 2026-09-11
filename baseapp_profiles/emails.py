@@ -14,7 +14,9 @@ from .constants import INVITATION_EXPIRATION_DAYS
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
 
-def create_invitation(profile, inviter, invited_email, role=ProfileUserRole.ProfileRoles.MANAGER):
+def create_invitation(
+    profile, inviter, invited_email, role=ProfileUserRole.ProfileRoles.MANAGER
+) -> "ProfileUserRole":
     from django.contrib.auth import get_user_model
 
     User = get_user_model()
@@ -40,7 +42,7 @@ def create_invitation(profile, inviter, invited_email, role=ProfileUserRole.Prof
     return invitation
 
 
-def send_invitation_email(invitation, inviter):
+def send_invitation_email(invitation, inviter) -> None:
     token = invitation.invitation_token
     fallback_url = settings.FRONT_ACCEPT_INVITATION_URL.format(token=token)
 

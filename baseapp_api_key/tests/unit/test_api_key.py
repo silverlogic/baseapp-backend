@@ -19,12 +19,12 @@ pytestmark = pytest.mark.django_db
 
 
 class TestAPIKey(TestCase):
-    def test_is_expired_when_expiry_date_is_null(self):
+    def test_is_expired_when_expiry_date_is_null(self) -> None:
         api_key = f.APIKeyFactory()
 
         assert APIKey.objects.get(pk=api_key.pk).is_expired is False
 
-    def test_is_expired_when_expiry_date_is_set(self):
+    def test_is_expired_when_expiry_date_is_set(self) -> None:
         api_key = f.APIKeyFactory(expiry_date=timezone.now() + timezone.timedelta(days=1))
         expired_api_key = f.APIKeyFactory(
             expiry_date=timezone.now() - timezone.timedelta(minutes=1)
@@ -36,7 +36,7 @@ class TestAPIKey(TestCase):
     @override_settings(
         BA_API_KEY_ENCRYPTION_KEY="jCe8USiQJDatFT5T0WCIl86QBxYs0-Q7iDJQc77Dh7LR1VAnWW3PA9UyXK-V7LhFnKq9sLd3xDw5FTrrYYtj2Q=="
     )
-    def test_can_rotate_encryption_key(self):
+    def test_can_rotate_encryption_key(self) -> None:
         BA_API_KEY_ENCRYPTION_KEY_OLD = APIKey.objects.generate_encryption_key()
         BA_API_KEY_ENCRYPTION_KEY_NEW = APIKey.objects.generate_encryption_key()
 
@@ -70,19 +70,19 @@ class TestAPIKey(TestCase):
             ):
                 APIKey.objects.decrypt(encrypted_value=api_key.encrypted_api_key)
 
-    def test_encrypt_raises_if_encryption_key_not_set(self):
+    def test_encrypt_raises_if_encryption_key_not_set(self) -> None:
         with override_settings(BA_API_KEY_ENCRYPTION_KEY=None):
             with self.assertRaises(ImproperlyConfigured) as excinfo:
                 APIKey.objects.encrypt("some-value")
             assert "BA_API_KEY_ENCRYPTION_KEY is not set" in str(excinfo.exception)
 
-    def test_decrypt_raises_if_encryption_key_not_set(self):
+    def test_decrypt_raises_if_encryption_key_not_set(self) -> None:
         with override_settings(BA_API_KEY_ENCRYPTION_KEY=None):
             with self.assertRaises(ImproperlyConfigured) as excinfo:
                 APIKey.objects.decrypt(b"00")
             assert "BA_API_KEY_ENCRYPTION_KEY is not set" in str(excinfo.exception)
 
-    def test_rotate_encryption_key_raises_if_encryption_key_not_set(self):
+    def test_rotate_encryption_key_raises_if_encryption_key_not_set(self) -> None:
         with override_settings(
             BA_API_KEY_ENCRYPTION_KEY="jCe8USiQJDatFT5T0WCIl86QBxYs0-Q7iDJQc77Dh7LR1VAnWW3PA9UyXK-V7LhFnKq9sLd3xDw5FTrrYYtj2Q=="
         ):
@@ -105,7 +105,7 @@ class TestAPIKeyAuthentication(APITestCase, URLPatternsTestCase):
                 IsAuthenticated,
             ],
         )
-        def custom_action(self, *args, **kwargs):
+        def custom_action(self, *args, **kwargs) -> response.Response:
             return response.Response({})
 
     client_class = Client
@@ -116,11 +116,11 @@ class TestAPIKeyAuthentication(APITestCase, URLPatternsTestCase):
         path("/", include(test_router.urls)),
     ]
 
-    def test_missing_api_key(self):
+    def test_missing_api_key(self) -> None:
         r = self.client.post(reverse("dummy-custom-action"), {})
         h.responseUnauthorized(r)
 
-    def test_has_non_expired_api_key(self):
+    def test_has_non_expired_api_key(self) -> None:
         api_key = f.APIKeyFactory()
         unencrypted_api_key = APIKey.objects.decrypt(encrypted_value=api_key.encrypted_api_key)
 
@@ -131,7 +131,7 @@ class TestAPIKeyAuthentication(APITestCase, URLPatternsTestCase):
         )
         h.responseOk(r)
 
-    def test_has_expired_api_key(self):
+    def test_has_expired_api_key(self) -> None:
         api_key = f.APIKeyFactory(expiry_date=timezone.now() - timezone.timedelta(minutes=1))
         unencrypted_api_key = APIKey.objects.decrypt(encrypted_value=api_key.encrypted_api_key)
 
@@ -152,7 +152,7 @@ class TestHasAPIKeyPermission(APITestCase, URLPatternsTestCase):
                 HasAPIKey,
             ],
         )
-        def custom_action(self, *args, **kwargs):
+        def custom_action(self, *args, **kwargs) -> response.Response:
             return response.Response({})
 
     client_class = Client
@@ -163,11 +163,11 @@ class TestHasAPIKeyPermission(APITestCase, URLPatternsTestCase):
         path("/", include(test_router.urls)),
     ]
 
-    def test_missing_api_key(self):
+    def test_missing_api_key(self) -> None:
         r = self.client.post(reverse("dummy-custom-action"), {})
         h.responseUnauthorized(r)
 
-    def test_has_non_expired_api_key(self):
+    def test_has_non_expired_api_key(self) -> None:
         api_key = f.APIKeyFactory()
         unencrypted_api_key = APIKey.objects.decrypt(encrypted_value=api_key.encrypted_api_key)
 
@@ -178,7 +178,7 @@ class TestHasAPIKeyPermission(APITestCase, URLPatternsTestCase):
         )
         h.responseOk(r)
 
-    def test_has_expired_api_key(self):
+    def test_has_expired_api_key(self) -> None:
         api_key = f.APIKeyFactory(expiry_date=timezone.now() - timezone.timedelta(minutes=1))
         unencrypted_api_key = APIKey.objects.decrypt(encrypted_value=api_key.encrypted_api_key)
 

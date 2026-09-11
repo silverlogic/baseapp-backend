@@ -1,10 +1,11 @@
+from datetime import datetime
 from typing import Any, Optional
 
 import graphene
 import swapper
 from django.apps import apps
 from django.contrib.auth import get_user_model
-from django.db.models import QuerySet
+from django.db.models import Model, QuerySet
 from graphene.types.generic import GenericScalar
 from graphene_django.filter import DjangoFilterConnectionField
 from pghistory.models import MiddlewareEvents
@@ -42,25 +43,25 @@ class NodeLogEventObjectType(DjangoObjectType):
         )
         filterset_class = MiddlewareEventFilter
 
-    def resolve_data(self, info, **kwargs):
+    def resolve_data(self, info, **kwargs) -> dict[str, Any] | None:
         if info.context.user.has_perm("activity_log.view_nodelogevent-data", self):
             return self.pgh_data
 
-    def resolve_obj(self, info, **kwargs):
+    def resolve_obj(self, info, **kwargs) -> Model | None:
         Model = apps.get_model(self.pgh_obj_model)
         try:
             return Model.objects.get(pk=self.pgh_obj_id)
         except Model.DoesNotExist:
             return None
 
-    def resolve_created_at(self, info, **kwargs):
+    def resolve_created_at(self, info, **kwargs) -> datetime:
         return self.pgh_created_at
 
-    def resolve_diff(self, info, **kwargs):
+    def resolve_diff(self, info, **kwargs) -> dict[str, Any] | None:
         if info.context.user.has_perm("activity_log.view_nodelogevent-diff", self):
             return self.pgh_diff
 
-    def resolve_label(self, info, **kwargs):
+    def resolve_label(self, info, **kwargs) -> str:
         return self.pgh_label
 
 
@@ -72,7 +73,7 @@ if apps.is_installed("baseapp_profiles"):
     class ActivityLogWithProfileInterface(graphene.Interface):
         profile = graphene.Field(get_object_type_for_model(Profile))
 
-        def resolve_profile(self, info, **kwargs):
+        def resolve_profile(self, info, **kwargs) -> Model | None:
             profile_id = getattr(self, "profile_id", None)
             if profile_id is not None:
                 try:
@@ -94,7 +95,7 @@ class BaseActivityLogObjectType:
     url = graphene.String()
 
     @classmethod
-    def get_node(cls, info, id):
+    def get_node(cls, info, id) -> ActivityLog | None:
         try:
             obj = cls._meta.model.objects.get(id=id)
             if not info.context.user.has_perm("activity_log.view_activitylog", obj):
@@ -105,7 +106,7 @@ class BaseActivityLogObjectType:
             return None
 
     @classmethod
-    def get_queryset(cls, queryset, info):
+    def get_queryset(cls, queryset, info) -> QuerySet:
         if not info.context.user.has_perm("activity_log.list_activitylog_any_visibility"):
             queryset = queryset.filter(visibility=VisibilityTypes.PUBLIC)
         return queryset

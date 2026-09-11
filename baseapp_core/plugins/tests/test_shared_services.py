@@ -9,7 +9,7 @@ from baseapp_core.plugins.shared_services import (
 class MockSharedServiceProvider:
     """Mock service provider for testing."""
 
-    def __init__(self, service_name: str, available: bool = True):
+    def __init__(self, service_name: str, available: bool = True) -> None:
         self._service_name = service_name
         self._available = available
 
@@ -24,12 +24,12 @@ class MockSharedServiceProvider:
 class TestSharedServiceRegistry:
     """Test suite for SharedServiceRegistry."""
 
-    def test_registry_initialization(self):
+    def test_registry_initialization(self) -> None:
         """Test that registry initializes with empty state."""
         registry = SharedServiceRegistry()
         assert len(registry._registry) == 0
 
-    def test_register_service(self):
+    def test_register_service(self) -> None:
         registry = SharedServiceRegistry()
         provider = MockSharedServiceProvider("test_service")
 
@@ -37,13 +37,13 @@ class TestSharedServiceRegistry:
         assert "test_service" in registry._registry
         assert registry._registry["test_service"] == provider
 
-    def test_register_non_provider_raises_typeerror(self):
+    def test_register_non_provider_raises_typeerror(self) -> None:
         registry = SharedServiceRegistry()
 
         with pytest.raises(TypeError, match="Provider must implement SharedServiceProvider"):
             registry.register("not_a_provider")
 
-    def test_get_service_returns_provider_when_available(self):
+    def test_get_service_returns_provider_when_available(self) -> None:
         registry = SharedServiceRegistry()
         provider = MockSharedServiceProvider("test_service", available=True)
         registry.register(provider)
@@ -51,7 +51,7 @@ class TestSharedServiceRegistry:
         result = registry.get("test_service")
         assert result == provider
 
-    def test_get_service_returns_none_when_unavailable(self):
+    def test_get_service_returns_none_when_unavailable(self) -> None:
         registry = SharedServiceRegistry()
         provider = MockSharedServiceProvider("test_service", available=False)
         registry.register(provider)
@@ -59,32 +59,32 @@ class TestSharedServiceRegistry:
         result = registry.get("test_service")
         assert result is None
 
-    def test_get_service_returns_none_when_not_registered(self):
+    def test_get_service_returns_none_when_not_registered(self) -> None:
         registry = SharedServiceRegistry()
 
         result = registry.get("nonexistent_service")
         assert result is None
 
-    def test_has_service_returns_true_when_available(self):
+    def test_has_service_returns_true_when_available(self) -> None:
         registry = SharedServiceRegistry()
         provider = MockSharedServiceProvider("test_service", available=True)
         registry.register(provider)
 
         assert registry.has_service("test_service") is True
 
-    def test_has_service_returns_false_when_unavailable(self):
+    def test_has_service_returns_false_when_unavailable(self) -> None:
         registry = SharedServiceRegistry()
         provider = MockSharedServiceProvider("test_service", available=False)
         registry.register(provider)
 
         assert registry.has_service("test_service") is False
 
-    def test_has_service_returns_false_when_not_registered(self):
+    def test_has_service_returns_false_when_not_registered(self) -> None:
         registry = SharedServiceRegistry()
 
         assert registry.has_service("nonexistent_service") is False
 
-    def test_multiple_services_registration(self):
+    def test_multiple_services_registration(self) -> None:
         registry = SharedServiceRegistry()
         provider1 = MockSharedServiceProvider("service1")
         provider2 = MockSharedServiceProvider("service2")
@@ -97,7 +97,7 @@ class TestSharedServiceRegistry:
         assert registry.get("service1") == provider1
         assert registry.get("service2") == provider2
 
-    def test_service_overwrite(self):
+    def test_service_overwrite(self) -> None:
         """Test that registering a service with existing name overwrites it."""
         registry = SharedServiceRegistry()
         provider1 = MockSharedServiceProvider("test_service")
@@ -109,7 +109,7 @@ class TestSharedServiceRegistry:
         registry.register(provider2)
         assert registry.get("test_service") == provider2
 
-    def test_service_provider_protocol(self):
+    def test_service_provider_protocol(self) -> None:
         """Test that SharedServiceProvider protocol is correctly implemented."""
         # MockSharedServiceProvider should satisfy the protocol
         provider = MockSharedServiceProvider("test")
@@ -122,13 +122,13 @@ class TestSharedServiceRegistry:
 class TestSharedServiceRegistrySingleton:
     """Test suite for the shared_services singleton."""
 
-    def test_singleton_instance(self):
+    def test_singleton_instance(self) -> None:
         """Test that shared_services is a singleton instance."""
         from baseapp_core.plugins.shared_services import shared_services
 
         assert isinstance(shared_services, SharedServiceRegistry)
 
-    def test_singleton_persistence(self):
+    def test_singleton_persistence(self) -> None:
         """Test that the singleton persists across imports."""
         from baseapp_core.plugins.shared_services import shared_services as registry1
         from baseapp_core.plugins.shared_services import shared_services as registry2

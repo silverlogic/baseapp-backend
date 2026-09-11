@@ -1,5 +1,6 @@
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
+from rest_framework.response import Response
 from rest_framework.serializers import Serializer
 from rest_framework.viewsets import GenericViewSet
 from rest_framework_simplejwt.settings import api_settings
@@ -21,9 +22,9 @@ class JWTAuthViewSet(TokenObtainPairView, TokenRefreshView, GenericViewSet):
 
     @action(detail=False, methods=["POST"])
     @redirect_if_user_has_expired_password
-    def login(self, request, *args, **kwargs):
+    def login(self, request, *args, **kwargs) -> Response:
         return super().post(request, *args, **kwargs)
 
     @action(detail=False, methods=["POST"])
-    def refresh(self, request, *args, **kwargs):
+    def refresh(self, request, *args, **kwargs) -> Response:
         return super(TokenRefreshView, self).post(request, *args, **kwargs)

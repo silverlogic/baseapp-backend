@@ -2,7 +2,7 @@ from constance import config
 from django.core.exceptions import ValidationError
 
 
-def blocked_words_validator(value):
+def blocked_words_validator(value) -> None:
     try:
         blocked_list = config.BLOCKLISTED_WORDS
     except AttributeError:

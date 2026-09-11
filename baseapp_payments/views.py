@@ -1,4 +1,5 @@
 import logging
+from typing import TYPE_CHECKING
 
 import swapper
 from constance import config
@@ -20,6 +21,12 @@ from .serializers import (
 )
 from .utils import StripeService, StripeWebhookHandler
 
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+    from django.http import JsonResponse
+
+    from .models import BaseSubscription
+
 logger = logging.getLogger(__name__)
 
 Customer = swapper.load_model("baseapp_payments", "Customer")
@@ -37,10 +44,10 @@ class StripeSubscriptionViewset(
     permission_classes = [IsAuthenticated]
     lookup_field = "remote_subscription_id"
 
-    def get_queryset(self):
+    def get_queryset(self) -> "QuerySet[BaseSubscription]":
         return Subscription.objects.all()
 
-    def create(self, request):
+    def create(self, request) -> Response:
         serializer = self.get_serializer(data=request.data, context={"request": request})
         if serializer.is_valid():
             result = serializer.save()
@@ -48,13 +55,13 @@ class StripeSubscriptionViewset(
         logger.error(f"Validation errors: {serializer.errors}")
         return Response(serializer.errors, status=400)
 
-    def retrieve(self, request, remote_subscription_id=None):
+    def retrieve(self, request, remote_subscription_id=None) -> Response:
         subscription = StripeService().retrieve_subscription(remote_subscription_id)
         if not subscription:
             return Response({"error": "Subscription not found"}, status=404)
         return Response(subscription, status=200)
 
-    def delete(self, request):
+    def delete(self, request) -> Response:
         remote_subscription_id = request.query_params.get("remote_subscription_id")
         customer = Customer.objects.filter(entity_id=self.request.user.id).first()
         if not customer:
@@ -75,7 +82,7 @@ class StripeSubscriptionViewset(
             logger.exception(e)
             return Response({"error": "Error deleting subscription"}, status=500)
 
-    def partial_update(self, request, *args, **kwargs):
+    def partial_update(self, request, *args, **kwargs) -> Response:
         instance = self.get_object()
         serializer = StripeSubscriptionPatchSerializer(
             data=request.data, context={"request": request}
@@ -91,7 +98,7 @@ class StripeWebhookViewset(viewsets.GenericViewSet):
     serializer_class = StripeWebhookSerializer
     permission_classes = []
 
-    def create(self, request):
+    def create(self, request) -> "JsonResponse":
         endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
         response = StripeWebhookHandler().webhook_handler(request, endpoint_secret)
         return response
@@ -102,11 +109,11 @@ class StripeProductViewset(viewsets.GenericViewSet):
     serializer_class = StripeProductSerializer
     lookup_field = "remote_product_id"
 
-    def list(self, request):
+    def list(self, request) -> Response:
         products = StripeService().list_products()
         return Response(products, status=200)
 
-    def retrieve(self, request, remote_product_id=None):
+    def retrieve(self, request, remote_product_id=None) -> Response:
         product = StripeService().retrieve_product(remote_product_id)
         if not product:
             return Response({"error": "Product not found"}, status=404)
@@ -119,13 +126,13 @@ class StripeCustomerViewset(viewsets.GenericViewSet):
     queryset = Customer.objects.all()
     permission_classes = [IsAuthenticated]
 
-    def create(self, request):
+    def create(self, request) -> Response:
         serializer = self.get_serializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=201)
 
-    def retrieve(self, request, pk=None):
+    def retrieve(self, request, pk=None) -> Response:
         if pk == "me":
             customer_entity_model = config.STRIPE_CUSTOMER_ENTITY_MODEL
             entity_model = apps.get_model(customer_entity_model)
@@ -160,7 +167,7 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = StripePaymentMethodSerializer
 
-    def list(self, request):
+    def list(self, request) -> Response:
         remote_customer_id = request.query_params.get("customer_id")
         stripe_service = StripeService()
         if not remote_customer_id:
@@ -179,7 +186,7 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
             return Response({"error": "An internal error has occurred"}, status=500)
 
     # This method is used to create a new creating SetupIntent in Stripe
-    def create(self, request):
+    def create(self, request) -> Response:
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
@@ -201,7 +208,7 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
             logger.exception("Failed to create payment method: %s", e)
             return Response({"error": "An internal error has occurred"}, status=500)
 
-    def update(self, request, pk=None):
+    def update(self, request, pk=None) -> Response:
         serializer = self.get_serializer(data={"pk": pk, **request.data})
         serializer.is_valid(raise_exception=True)
         try:
@@ -221,7 +228,7 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
             logger.exception("Failed to update payment method: %s", e)
             return Response({"error": "An internal error has occurred"}, status=500)
 
-    def delete(self, request, pk=None):
+    def delete(self, request, pk=None) -> Response:
         try:
             remote_customer_id = request.query_params.get("customer_id")
             stripe_service = StripeService()

@@ -149,5 +149,5 @@ class BaseAppPlugin(ABC):
 
         return apps.is_installed(package_name)
 
-    def ready(self):
+    def ready(self) -> None:
         pass

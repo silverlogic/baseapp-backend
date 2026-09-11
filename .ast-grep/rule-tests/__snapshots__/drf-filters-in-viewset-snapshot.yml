@@ -1,0 +1,62 @@
+id: drf-filters-in-viewset
+snapshots:
+  ? |
+    queryset = self.get_queryset().exclude(status=request.query_params["status"])
+  : labels:
+    - source: request.query_params
+      style: primary
+      start: 46
+      end: 66
+    - source: self.get_queryset().exclude
+      style: secondary
+      start: 11
+      end: 38
+    - source: self.get_queryset().exclude(status=request.query_params["status"])
+      style: secondary
+      start: 11
+      end: 77
+  ? |
+    queryset = self.get_queryset().filter(name=request.GET.get("name"))
+  : labels:
+    - source: request.GET
+      style: primary
+      start: 43
+      end: 54
+    - source: self.get_queryset().filter
+      style: secondary
+      start: 11
+      end: 37
+    - source: self.get_queryset().filter(name=request.GET.get("name"))
+      style: secondary
+      start: 11
+      end: 67
+  ? |
+    queryset = self.get_queryset().filter(name=request.GET["name"])
+  : labels:
+    - source: request.GET
+      style: primary
+      start: 43
+      end: 54
+    - source: self.get_queryset().filter
+      style: secondary
+      start: 11
+      end: 37
+    - source: self.get_queryset().filter(name=request.GET["name"])
+      style: secondary
+      start: 11
+      end: 63
+  ? |
+    queryset = self.get_queryset().filter(name=request.query_params.get("name"))
+  : labels:
+    - source: request.query_params
+      style: primary
+      start: 43
+      end: 63
+    - source: self.get_queryset().filter
+      style: secondary
+      start: 11
+      end: 37
+    - source: self.get_queryset().filter(name=request.query_params.get("name"))
+      style: secondary
+      start: 11
+      end: 76

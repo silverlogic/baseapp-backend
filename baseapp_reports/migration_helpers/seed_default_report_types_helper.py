@@ -35,9 +35,14 @@ Notes
   baseapp_follows / baseapp_comments helpers use.
 """
 
+from typing import TYPE_CHECKING
+
 import pgtrigger
 
 from baseapp_core.swapper import get_apps_model
+
+if TYPE_CHECKING:
+    from django.db.models import Manager, Model, QuerySet
 
 DEFAULT_REPORT_TYPES = [
     {"key": "spam", "label": "Spam", "targets": ["comment"]},
@@ -57,20 +62,20 @@ DEFAULT_ADULT_CONTENT_SUBTYPES = [
 ]
 
 
-def _schema_alias(schema_editor):
+def _schema_alias(schema_editor) -> str | None:
     if schema_editor is not None and getattr(schema_editor, "connection", None) is not None:
         return schema_editor.connection.alias
     return None
 
 
-def _alias_pinned_managers(schema_editor, *models):
+def _alias_pinned_managers(schema_editor, *models) -> "tuple[Manager | QuerySet, ...]":
     alias = _schema_alias(schema_editor)
     if alias is None:
         return tuple(model.objects for model in models)
     return tuple(model.objects.using(alias) for model in models)
 
 
-def _get_report_type_uris(ReportType):
+def _get_report_type_uris(ReportType) -> list[str]:
     concrete_report_type = ReportType._meta.concrete_model
     report_type_uri = (
         f"{concrete_report_type._meta.app_label}.{concrete_report_type._meta.object_name}"
@@ -78,7 +83,7 @@ def _get_report_type_uris(ReportType):
     return [f"{report_type_uri}:insert_document_id", f"{report_type_uri}:delete_document_id"]
 
 
-def _resolve_content_types(apps, ContentType, ct_qs, content_type_targets):
+def _resolve_content_types(apps, ContentType, ct_qs, content_type_targets) -> "dict[str, Model]":
     """Resolve each alias to a `ContentType` row, alias-pinning the get_or_create so the
     lookup hits the same database the rest of the migration is running on."""
     resolved = {}
@@ -100,7 +105,7 @@ def seed_default_report_types(
     content_type_targets=None,
     base_types=None,
     adult_content_subtypes=None,
-):
+) -> None:
     """
     Create default `ReportType` rows and (optionally) wire them up to existing
     project content types.
@@ -151,7 +156,7 @@ def seed_default_report_types(
                 rt.content_types.set(cts)
 
 
-def reverse_seed_default_report_types(apps, schema_editor):
+def reverse_seed_default_report_types(apps, schema_editor) -> None:
     """Drop all `ReportType` rows."""
     ReportType = get_apps_model(apps, "baseapp_reports", "ReportType")
     (rt_qs,) = _alias_pinned_managers(schema_editor, ReportType)

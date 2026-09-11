@@ -1,6 +1,6 @@
 import django_filters
 import swapper
-from django.db.models import Case, IntegerField, Q, Value, When
+from django.db.models import Case, IntegerField, Q, QuerySet, Value, When
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
@@ -22,18 +22,18 @@ class ProfileFilter(django_filters.FilterSet):
         model = Profile
         fields = ["q", "order_by"]
 
-    def filter_q(self, queryset, name, value):
+    def filter_q(self, queryset, name, value) -> QuerySet:
         return queryset.filter(Q(name__icontains=value) | Q(url_paths__path__icontains=value))
 
 
 class MemberOrderingFilter(django_filters.OrderingFilter):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.extra["choices"] += [
             ("status", "Status"),
         ]
 
-    def filter(self, qs, value):
+    def filter(self, qs, value) -> QuerySet:
         if value is None:
             return qs
 
@@ -54,7 +54,7 @@ class MemberFilter(django_filters.FilterSet):
     order_by = MemberOrderingFilter()
     q = django_filters.CharFilter(method="filter_q")
 
-    def filter_q(self, queryset, name, value):
+    def filter_q(self, queryset, name, value) -> QuerySet:
         return queryset.filter(
             Q(user__profile__name__icontains=value) | Q(user__email__icontains=value)
         )

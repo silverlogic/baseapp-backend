@@ -10,7 +10,7 @@ from baseapp_core.tokens import TokenGenerator
 class ChangeEmailConfirmTokenGenerator(TokenGenerator):
     key_salt = "change-email"
 
-    def get_signing_value(self, user):
+    def get_signing_value(self, user) -> list[int | str | bool]:
         return [user.id, user.new_email, user.is_new_email_confirmed]
 
     @property
@@ -30,7 +30,7 @@ class ChangeEmailConfirmTokenGenerator(TokenGenerator):
 class ChangeEmailVerifyTokenGenerator(TokenGenerator):
     key_salt = "verify-email"
 
-    def get_signing_value(self, user):
+    def get_signing_value(self, user) -> list[int | str | bool]:
         return [user.id, user.new_email, user.is_new_email_confirmed]
 
     @property
@@ -50,7 +50,7 @@ class ChangeEmailVerifyTokenGenerator(TokenGenerator):
 class ConfirmEmailTokenGenerator(TokenGenerator):
     key_salt = "confirm_email"
 
-    def get_signing_value(self, user):
+    def get_signing_value(self, user) -> list[int | str]:
         return [user.pk, user.email]
 
     @property
@@ -70,7 +70,7 @@ class ConfirmEmailTokenGenerator(TokenGenerator):
 class PreAuthTokenGenerator(TokenGenerator):
     key_salt = "pre_auth_token"
 
-    def get_signing_value(self, user):
+    def get_signing_value(self, user) -> list[int | str]:
         return [user.pk, user.email]
 
     @property
@@ -88,7 +88,7 @@ class PreAuthTokenGenerator(TokenGenerator):
 class ChangeExpiredPasswordTokenGenerator(TokenGenerator):
     key_salt = "change_expired_password_token"
 
-    def get_signing_value(self, user):
+    def get_signing_value(self, user) -> list[int | str]:
         return [user.pk, user.email]
 
     @property

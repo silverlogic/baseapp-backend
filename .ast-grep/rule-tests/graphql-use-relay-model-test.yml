@@ -1,0 +1,9 @@
+id: graphql-use-relay-model
+valid:
+  - |
+    class User(RelayModel):
+        email = models.EmailField(unique=True)
+invalid:
+  - |
+    class User(models.Model):
+        email = models.EmailField(unique=True)

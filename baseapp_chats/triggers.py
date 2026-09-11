@@ -6,7 +6,7 @@ class Func(pgtrigger.Func):
         return self.func.format(model=meta.model, meta=meta, fields=fields, columns=columns)
 
 
-def increment_unread_count_trigger(UnreadMessageCount, Message):
+def increment_unread_count_trigger(UnreadMessageCount, Message) -> pgtrigger.Trigger:
     return pgtrigger.Trigger(
         name="increment_unread_count",
         level=pgtrigger.Row,
@@ -23,7 +23,7 @@ def increment_unread_count_trigger(UnreadMessageCount, Message):
     )
 
 
-def decrement_unread_count_trigger(UnreadMessageCount, Message):
+def decrement_unread_count_trigger(UnreadMessageCount, Message) -> pgtrigger.Trigger:
     return pgtrigger.Trigger(
         name="decrement_unread_count",
         level=pgtrigger.Row,
@@ -42,7 +42,7 @@ def decrement_unread_count_trigger(UnreadMessageCount, Message):
 
 
 # Create MessageStatus row in the database for each CharRoomParticipant
-def create_message_status_trigger(ChatRoomParticipant, MessageType):
+def create_message_status_trigger(ChatRoomParticipant, MessageType) -> pgtrigger.Trigger:
     return pgtrigger.Trigger(
         name="create_message_status",
         level=pgtrigger.Row,
@@ -60,7 +60,7 @@ def create_message_status_trigger(ChatRoomParticipant, MessageType):
 
 
 # Set ChatRoom last_message and last_message_time fields when a new Message is created
-def set_last_message_on_insert_trigger(ChatRoom):
+def set_last_message_on_insert_trigger(ChatRoom) -> pgtrigger.Trigger:
     return pgtrigger.Trigger(
         name="set_last_message",
         level=pgtrigger.Row,
@@ -76,7 +76,7 @@ def set_last_message_on_insert_trigger(ChatRoom):
 
 
 # Update ChatRoom last_message and last_message_time fields to previous message when the last message is deleted
-def update_last_message_on_delete_trigger(ChatRoom):
+def update_last_message_on_delete_trigger(ChatRoom) -> pgtrigger.Trigger:
     return pgtrigger.Trigger(
         name="update_last_message",
         level=pgtrigger.Row,

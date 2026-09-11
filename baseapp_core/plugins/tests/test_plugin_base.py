@@ -7,7 +7,7 @@ from baseapp_core.plugins.base import BaseAppPlugin, PackageDependency, PackageS
 class TestPackageSettings:
     """Test suite for PackageSettings model."""
 
-    def test_package_settings_defaults(self):
+    def test_package_settings_defaults(self) -> None:
         """Test that PackageSettings has sensible defaults."""
         settings = PackageSettings()
         assert settings.installed_apps == []
@@ -16,11 +16,11 @@ class TestPackageSettings:
         assert settings.required_packages == []
         assert settings.optional_packages == []
 
-    def test_package_settings_required_packages_accept_strings(self):
+    def test_package_settings_required_packages_accept_strings(self) -> None:
         settings = PackageSettings(required_packages=["baseapp_core"])
         assert settings.required_packages == [PackageDependency(package="baseapp_core")]
 
-    def test_package_settings_required_packages_accept_dict_mapping(self):
+    def test_package_settings_required_packages_accept_dict_mapping(self) -> None:
         settings = PackageSettings(
             required_packages=[
                 {"baseapp_core": "Shared core models and signals"},
@@ -33,27 +33,27 @@ class TestPackageSettings:
             )
         ]
 
-    def test_package_settings_installed_apps(self):
+    def test_package_settings_installed_apps(self) -> None:
         settings = PackageSettings(installed_apps=["test_app"])
         assert settings.installed_apps == ["test_app"]
 
-    def test_package_settings_alias_installed_apps(self):
+    def test_package_settings_alias_installed_apps(self) -> None:
         settings = PackageSettings(INSTALLED_APPS=["test_app"])
         assert settings.installed_apps == ["test_app"]
 
-    def test_package_settings_slotted_fields(self):
+    def test_package_settings_slotted_fields(self) -> None:
         settings = PackageSettings(middleware={"auth": ["auth.middleware.AuthMiddleware"]})
         assert settings.middleware == {"auth": ["auth.middleware.AuthMiddleware"]}
 
-    def test_package_settings_django_extra_settings(self):
+    def test_package_settings_django_extra_settings(self) -> None:
         settings = PackageSettings(django_extra_settings={"TEST_SETTING": "test_value"})
         assert settings.django_extra_settings == {"TEST_SETTING": "test_value"}
 
-    def test_package_settings_graphql_queries(self):
+    def test_package_settings_graphql_queries(self) -> None:
         settings = PackageSettings(graphql_queries=["test.graphql.queries.TestQueries"])
         assert settings.graphql_queries == ["test.graphql.queries.TestQueries"]
 
-    def test_package_settings_model_dump_by_alias(self):
+    def test_package_settings_model_dump_by_alias(self) -> None:
         settings = PackageSettings(installed_apps=["test_app"])
         data = settings.model_dump(by_alias=True)
         assert "INSTALLED_APPS" in data
@@ -63,7 +63,7 @@ class TestPackageSettings:
 class MockPlugin(BaseAppPlugin):
     """Mock plugin for testing."""
 
-    def __init__(self, name: str, package_name: str, required_packages: list = None):
+    def __init__(self, name: str, package_name: str, required_packages: list = None) -> None:
         self._name = name
         self._package_name = package_name
         self._required_packages = required_packages or []
@@ -86,34 +86,34 @@ class MockPlugin(BaseAppPlugin):
 class TestBaseAppPlugin:
     """Test suite for BaseAppPlugin base class."""
 
-    def test_plugin_abstract_methods(self):
+    def test_plugin_abstract_methods(self) -> None:
         """Test that BaseAppPlugin requires abstract methods."""
         with pytest.raises(TypeError):
             # Cannot instantiate abstract class
             BaseAppPlugin()
 
-    def test_plugin_implementation(self):
+    def test_plugin_implementation(self) -> None:
         """Test that a concrete plugin implements required methods."""
         plugin = MockPlugin("test_plugin", "test_package")
         assert plugin.name == "test_plugin"
         assert plugin.package_name == "test_package"
         assert isinstance(plugin.get_settings(), PackageSettings)
 
-    def test_plugin_validate_no_errors_when_requirements_met(self):
+    def test_plugin_validate_no_errors_when_requirements_met(self) -> None:
         plugin = MockPlugin("test_plugin", "test_package", required_packages=["baseapp_core"])
         # baseapp_core should be installed in test environment
         errors = plugin.validate()
         assert errors == []
 
     @override_settings(INSTALLED_APPS=["django.contrib.contenttypes"])
-    def test_plugin_validate_errors_when_requirements_not_met(self):
+    def test_plugin_validate_errors_when_requirements_not_met(self) -> None:
         plugin = MockPlugin("test_plugin", "test_package", required_packages=["missing_package"])
         errors = plugin.validate()
         assert len(errors) > 0
         assert "missing_package" in errors[0]
 
     @override_settings(INSTALLED_APPS=["django.contrib.contenttypes"])
-    def test_plugin_validate_errors_includes_dependency_description_when_present(self):
+    def test_plugin_validate_errors_includes_dependency_description_when_present(self) -> None:
         plugin = MockPlugin(
             "test_plugin",
             "test_package",
@@ -124,25 +124,25 @@ class TestBaseAppPlugin:
         assert "missing_package" in errors[0]
         assert "Enable advanced permissions" in errors[0]
 
-    def test_plugin_validate_uses_installed_apps_override(self):
+    def test_plugin_validate_uses_installed_apps_override(self) -> None:
         """When ``installed_apps`` is passed, membership is checked against that list only."""
         plugin = MockPlugin("test_plugin", "test_package", required_packages=["baseapp_core"])
         assert plugin.validate(installed_apps=["baseapp_core", "test_package"]) == []
         err = plugin.validate(installed_apps=["test_package"])[0]
         assert "baseapp_core" in err
 
-    def test_plugin_validate_empty_installed_apps_list(self):
+    def test_plugin_validate_empty_installed_apps_list(self) -> None:
         """An explicit empty list means no app is considered installed for dependency checks."""
         plugin = MockPlugin("test_plugin", "test_package", required_packages=["baseapp_core"])
         assert len(plugin.validate(installed_apps=[])) == 1
 
-    def test_plugin_ready_default_implementation(self):
+    def test_plugin_ready_default_implementation(self) -> None:
         """Test that ready() has a default no-op implementation."""
         plugin = MockPlugin("test_plugin", "test_package")
         # Should not raise
         plugin.ready()
 
-    def test_plugin_settings_cached(self):
+    def test_plugin_settings_cached(self) -> None:
         """Test that get_settings() can be called multiple times."""
         plugin = MockPlugin("test_plugin", "test_package")
         settings1 = plugin.get_settings()

@@ -13,11 +13,11 @@ pytestmark = pytest.mark.django_db
 class TestPaymentMethodListView:
     viewname = "v1:payment-methods-list"
 
-    def test_anon_user_cannot_list_payment_methods(self, client):
+    def test_anon_user_cannot_list_payment_methods(self, client) -> None:
         response = client.get(reverse(self.viewname))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
-    def test_user_cannot_list_self_payment_methods_without_customer_id(self, user_client):
+    def test_user_cannot_list_self_payment_methods_without_customer_id(self, user_client) -> None:
         response = user_client.get(reverse(self.viewname))
         responseEquals(response, status.HTTP_400_BAD_REQUEST)
         assert response.json() == {"error": "Missing customer_id"}
@@ -26,7 +26,7 @@ class TestPaymentMethodListView:
     @patch("baseapp_payments.views.StripeService.get_customer_payment_methods")
     def test_user_can_list_self_payment_methods(
         self, mock_get_customer_payment_methods, mock_retrieve_customer, user_client
-    ):
+    ) -> None:
         CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         mock_retrieve_customer.return_value = {"id": "cus_123"}
         mock_get_customer_payment_methods.return_value = [{"id": "pm_123"}]
@@ -38,7 +38,7 @@ class TestPaymentMethodListView:
 class TestPaymentMethodUpdateView:
     viewname = "v1:payment-methods-detail"
 
-    def test_anon_user_cannot_create_payment_method(self, client):
+    def test_anon_user_cannot_create_payment_method(self, client) -> None:
         response = client.put(reverse(self.viewname, kwargs={"pk": "pm_123"}))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
@@ -46,7 +46,7 @@ class TestPaymentMethodUpdateView:
     @patch("baseapp_payments.views.StripeService.retrieve_customer")
     def test_user_can_update_payment_method(
         self, mock_retrieve_customer, mock_update_customer, user_client
-    ):
+    ) -> None:
         mock_retrieve_customer.return_value = {"id": "cus_123"}
         mock_update_customer.return_value = {"id": "pm_123"}
         CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
@@ -63,11 +63,11 @@ class TestPaymentMethodUpdateView:
 class TestPaymentMethodDeleteView:
     viewname = "v1:payment-methods-detail"
 
-    def test_anon_user_cannot_delete_payment_method(self, client):
+    def test_anon_user_cannot_delete_payment_method(self, client) -> None:
         response = client.delete(reverse(self.viewname, kwargs={"pk": "pm_123"}))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
-    def test_user_cannot_delete_payment_method_without_customer_id(self, user_client):
+    def test_user_cannot_delete_payment_method_without_customer_id(self, user_client) -> None:
         response = user_client.delete(reverse(self.viewname, kwargs={"pk": "pm_123"}))
         responseEquals(response, status.HTTP_400_BAD_REQUEST)
         assert response.json() == {"error": "Missing customer_id"}
@@ -75,7 +75,7 @@ class TestPaymentMethodDeleteView:
     @patch("baseapp_payments.views.StripeService.retrieve_customer")
     def test_user_cannot_delete_other_user_payment_method(
         self, mock_retrieve_customer, user_client
-    ):
+    ) -> None:
         mock_retrieve_customer.return_value = {"id": "cus_123"}
         CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.delete(
@@ -90,7 +90,7 @@ class TestPaymentMethodDeleteView:
     @patch("baseapp_payments.views.StripeService.delete_payment_method")
     def test_user_can_delete_payment_method(
         self, mock_delete_payment_method, mock_retrieve_customer, user_client
-    ):
+    ) -> None:
         mock_retrieve_customer.return_value = {"id": "cus_123"}
         mock_delete_payment_method.return_value = {}
         CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")

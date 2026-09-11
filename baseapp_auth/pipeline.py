@@ -39,7 +39,7 @@ def get_username(  # pragma: no cover
     return {"username": username}
 
 
-def set_avatar(is_new, backend, user, response, *args, **kwargs):
+def set_avatar(is_new, backend, user, response, *args, **kwargs) -> None:
     if not is_new:
         return
 
@@ -79,5 +79,5 @@ def set_avatar(is_new, backend, user, response, *args, **kwargs):
             profile.save()
 
 
-def set_is_new(is_new, user, *args, **kwargs):
+def set_is_new(is_new, user, *args, **kwargs) -> None:
     user.is_new = is_new

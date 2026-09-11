@@ -10,7 +10,7 @@ from .serializers import ChangeExpiredPasswordSerializer
 class ChangeExpiredPasswordViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):
     serializer_class = ChangeExpiredPasswordSerializer
 
-    def create(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs) -> response.Response:
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()

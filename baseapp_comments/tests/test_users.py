@@ -12,7 +12,7 @@ User = get_user_model()
 Comment = swapper.load_model("baseapp_comments", "Comment")
 
 
-def test_delete_user_with_comment():
+def test_delete_user_with_comment() -> None:
     user = UserFactory()
     user_id = user.pk
     CommentFactory.create_batch(2, user=user)

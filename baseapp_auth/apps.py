@@ -1,4 +1,5 @@
 from django.apps import AppConfig
+from django.utils.translation import gettext_lazy as _
 
 from .settings import JWT_CLAIM_SERIALIZER_CLASS, SIMPLE_JWT
 
@@ -7,10 +8,10 @@ class PackageConfig(AppConfig):
     default = True
     name = "baseapp_auth"
     label = "baseapp_auth"
-    verbose_name = "BaseApp Auth"
+    verbose_name = _("BaseApp Auth")
     default_auto_field = "django.db.models.BigAutoField"
 
-    def ready(self):
+    def ready(self) -> None:
         from django.conf import settings  # noqa
 
         # Set default settings

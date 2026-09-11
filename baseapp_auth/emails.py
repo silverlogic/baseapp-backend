@@ -17,7 +17,7 @@ from .tokens import (
 User = get_user_model()
 
 
-def send_welcome_email(user):
+def send_welcome_email(user) -> None:
     token = ConfirmEmailTokenGenerator().make_token(user)
     web_url = settings.FRONT_CONFIRM_EMAIL_URL.format(id=user.pk, token=token)
     try:
@@ -52,7 +52,7 @@ def send_welcome_email(user):
     )
 
 
-def send_password_reset_email(info):
+def send_password_reset_email(info) -> None:
     fallback_url = settings.FRONT_FORGOT_PASSWORD_URL.format(token=info["token"])
     try:
         deep_link = get_deep_link(
@@ -82,7 +82,7 @@ def send_password_reset_email(info):
     )
 
 
-def send_change_email_confirm_email(user):
+def send_change_email_confirm_email(user) -> None:
     token = ChangeEmailConfirmTokenGenerator().make_token(user)
     fallback_url = settings.FRONT_CHANGE_EMAIL_CONFIRM_URL.format(id=user.id, token=token)
     try:
@@ -117,7 +117,7 @@ def send_change_email_confirm_email(user):
     )
 
 
-def send_change_email_verify_email(user):
+def send_change_email_verify_email(user) -> None:
     token = ChangeEmailVerifyTokenGenerator().make_token(user)
     fallback_url = settings.FRONT_CHANGE_EMAIL_VERIFY_URL.format(id=user.id, token=token)
     try:
@@ -152,7 +152,7 @@ def send_change_email_verify_email(user):
     )
 
 
-def new_superuser_notification_email(new_superuser, assigner):
+def new_superuser_notification_email(new_superuser, assigner) -> None:
     context = {"assigner": assigner, "assignee": new_superuser}
     superusers = (
         User.objects.filter(is_superuser=True)
@@ -180,7 +180,7 @@ def new_superuser_notification_email(new_superuser, assigner):
         )
 
 
-def remove_superuser_notification_email(non_superuser, assigner):
+def remove_superuser_notification_email(non_superuser, assigner) -> None:
     context = {"assigner": assigner, "assignee": non_superuser}
     superusers = (
         User.objects.filter(is_superuser=True)
@@ -211,7 +211,7 @@ def remove_superuser_notification_email(non_superuser, assigner):
         )
 
 
-def send_password_expired_email(user):
+def send_password_expired_email(user) -> None:
     token = ChangeExpiredPasswordTokenGenerator().make_token(user)
     url = settings.FRONT_CHANGE_EXPIRED_PASSWORD_URL.format(token=token)
     context = {"url": url}
@@ -227,7 +227,7 @@ def send_password_expired_email(user):
     )
 
 
-def send_anonymize_user_success_email(user_email):
+def send_anonymize_user_success_email(user_email) -> None:
     context = {"user_email": user_email}
     # Email to the user
     subject = render_to_string("users/emails/anonymize-user-success-subject.txt.j2").strip()
@@ -263,7 +263,7 @@ def send_anonymize_user_success_email(user_email):
         )
 
 
-def send_anonymize_user_error_email(user_email):
+def send_anonymize_user_error_email(user_email) -> None:
     context = {"user_email": user_email}
 
     # Email to the user

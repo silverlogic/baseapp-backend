@@ -15,19 +15,19 @@ Profile = swapper.load_model("baseapp_profiles", "Profile")
 # ---------------------------------------------------------------------------
 
 
-def test_user_creation_creates_profile():
+def test_user_creation_creates_profile() -> None:
     user = UserFactory(first_name="John", last_name="Doe")
     user.refresh_from_db()
     assert user.profile_id is not None
 
 
-def test_user_creation_sets_profile_name():
+def test_user_creation_sets_profile_name() -> None:
     user = UserFactory(first_name="John", last_name="Doe")
     user.refresh_from_db()
     assert user.profile.name == "John Doe"
 
 
-def test_user_creation_profile_name_is_trimmed():
+def test_user_creation_profile_name_is_trimmed() -> None:
     # Leading/trailing whitespace on the outer edges of the concatenated name is removed.
     # e.g. empty first_name produces " Doe" which becomes "Doe" after TRIM.
     user = UserFactory(first_name="", last_name="Doe")
@@ -35,20 +35,20 @@ def test_user_creation_profile_name_is_trimmed():
     assert user.profile.name == "Doe"
 
 
-def test_user_creation_sets_profile_owner():
+def test_user_creation_sets_profile_owner() -> None:
     user = UserFactory(first_name="John", last_name="Doe")
     user.refresh_from_db()
     assert user.profile.owner_id == user.pk
 
 
-def test_user_creation_sets_profile_target():
+def test_user_creation_sets_profile_target() -> None:
     user = UserFactory(first_name="John", last_name="Doe")
     user.refresh_from_db()
     profile = user.profile
     assert profile.target_object_id == user.pk
 
 
-def test_user_creation_reuses_existing_profile_on_conflict():
+def test_user_creation_reuses_existing_profile_on_conflict() -> None:
     """
     When a Profile with the same (target_content_type, target_object_id) already
     exists before the User is inserted, the trigger's ON CONFLICT … DO UPDATE branch
@@ -95,7 +95,7 @@ def test_user_creation_reuses_existing_profile_on_conflict():
 # ---------------------------------------------------------------------------
 
 
-def test_user_first_name_update_syncs_profile_name():
+def test_user_first_name_update_syncs_profile_name() -> None:
     user = UserFactory(first_name="John", last_name="Doe")
     user.refresh_from_db()
 
@@ -106,7 +106,7 @@ def test_user_first_name_update_syncs_profile_name():
     assert user.profile.name == "Jane Doe"
 
 
-def test_user_last_name_update_syncs_profile_name():
+def test_user_last_name_update_syncs_profile_name() -> None:
     user = UserFactory(first_name="John", last_name="Doe")
     user.refresh_from_db()
 
@@ -117,7 +117,7 @@ def test_user_last_name_update_syncs_profile_name():
     assert user.profile.name == "John Smith"
 
 
-def test_user_update_profile_name_is_trimmed():
+def test_user_update_profile_name_is_trimmed() -> None:
     # Setting last_name to empty string leaves "John " which TRIM reduces to "John".
     user = UserFactory(first_name="John", last_name="Doe")
     user.refresh_from_db()
@@ -129,7 +129,7 @@ def test_user_update_profile_name_is_trimmed():
     assert user.profile.name == "John"
 
 
-def test_unrelated_user_update_does_not_affect_other_profile():
+def test_unrelated_user_update_does_not_affect_other_profile() -> None:
     user1 = UserFactory(first_name="Alice", last_name="A")
     user2 = UserFactory(first_name="Bob", last_name="B")
     user1.refresh_from_db()

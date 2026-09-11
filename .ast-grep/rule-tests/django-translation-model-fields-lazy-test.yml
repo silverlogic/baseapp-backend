@@ -1,0 +1,13 @@
+id: django-translation-model-fields-lazy
+valid:
+  - |
+    name = models.CharField(max_length=255, verbose_name=_("Name"), help_text=_("Display name."))
+  - |
+    email = forms.EmailField(label=_("Your Email"))
+invalid:
+  - |
+    name = models.CharField(max_length=255, verbose_name="Name")
+  - |
+    name = models.CharField(max_length=255, help_text="Enter the display name.")
+  - |
+    email = forms.EmailField(label="Your Email")

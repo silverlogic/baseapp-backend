@@ -21,15 +21,15 @@ from testproject.testapp.tests.factories import (
 @pytest.mark.django_db
 class TestPkGraphQLResolverStrategy:
     @pytest.fixture
-    def resolver(self):
+    def resolver(self) -> PkGraphQLResolverStrategy:
         return PkGraphQLResolverStrategy(id_resolver=LegacyIdResolverStrategy())
 
-    def test_to_global_id_uses_id_resolver(self, resolver: PkGraphQLResolverStrategy):
+    def test_to_global_id_uses_id_resolver(self, resolver: PkGraphQLResolverStrategy) -> None:
         dummy_instance = DummyLegacyModelFactory()
         result = resolver.to_global_id(dummy_instance, "DummyLegacyModel", dummy_instance.pk)
         assert result == to_global_id("DummyLegacyModel", dummy_instance.pk)
 
-    def test_get_node_from_global_id_using_pk(self, resolver: PkGraphQLResolverStrategy):
+    def test_get_node_from_global_id_using_pk(self, resolver: PkGraphQLResolverStrategy) -> None:
         info = MagicMock()
         dummy_instance = DummyLegacyModelFactory()
         only_type_mock = MagicMock()
@@ -43,7 +43,7 @@ class TestPkGraphQLResolverStrategy:
 
     def test_get_node_from_global_id_using_global_id(
         self, resolver: PkGraphQLResolverStrategy, monkeypatch
-    ):
+    ) -> None:
         info = MagicMock()
         dummy_instance = DummyLegacyModelFactory()
         global_id = to_global_id("DummyLegacyModel", dummy_instance.pk)
@@ -58,7 +58,7 @@ class TestPkGraphQLResolverStrategy:
 
     def test_get_from_global_id_using_pk_without_only_type(
         self, resolver: PkGraphQLResolverStrategy
-    ):
+    ) -> None:
         info = MagicMock()
         dummy_instance = DummyLegacyModelFactory()
         with pytest.raises(Exception) as e:
@@ -67,7 +67,7 @@ class TestPkGraphQLResolverStrategy:
 
     def test_get_from_global_id_using_global_id_without_only_type(
         self, resolver: PkGraphQLResolverStrategy
-    ):
+    ) -> None:
         info = MagicMock()
         dummy_instance = DummyLegacyModelFactory()
         global_id = to_global_id("DummyLegacyModel", dummy_instance.pk)
@@ -84,22 +84,22 @@ class TestPkGraphQLResolverStrategy:
 @pytest.mark.django_db
 class TestPkDRFResolverStrategy:
     @pytest.fixture
-    def resolver(self):
+    def resolver(self) -> PkDRFResolverStrategy:
         return PkDRFResolverStrategy(id_resolver=PublicIdResolverStrategy())
 
-    def test_resolve_public_id_to_pk_returns_object_id(self, resolver):
+    def test_resolve_public_id_to_pk_returns_object_id(self, resolver) -> None:
         dummy = DummyPublicIdModelFactory()
         result = resolver.resolve_public_id_to_pk(str(dummy.public_id), expected_model=type(dummy))
         assert result == dummy.pk
 
-    def test_cant_resolve_invalid_public_id(self, resolver):
+    def test_cant_resolve_invalid_public_id(self, resolver) -> None:
         invalid_public_id = "invalid-uuid"
         with pytest.raises(Exception):
             resolver.resolve_public_id_to_pk(
                 invalid_public_id, expected_model=DummyPublicIdModelFactory._meta.model
             )
 
-    def test_cant_resolve_public_id_of_different_model(self, resolver):
+    def test_cant_resolve_public_id_of_different_model(self, resolver) -> None:
         dummy = DummyPublicIdModelFactory()
         with pytest.raises(Exception):
             resolver.resolve_public_id_to_pk(

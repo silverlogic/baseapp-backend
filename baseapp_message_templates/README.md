@@ -39,21 +39,15 @@ INSTALLED_APPS += ["ckeditor"]
 
 ### Prose editor requirements (admin)
 
-`django-prose-editor` uses importmaps for its JavaScript. Ensure your Django
-templates include the importmap context processor:
+`django-prose-editor` uses importmaps for its JavaScript. Since
+`django-js-asset` 4.0 the widget carries its own `ImportMap` in its `Media`,
+which `js_asset.Media` merges and renders automatically. No context processor
+and no template override are required.
 
-```py
-"context_processors": [
-    "django.template.context_processors.debug",
-    "django.template.context_processors.request",
-    "django.contrib.auth.context_processors.auth",
-    "django.contrib.messages.context_processors.messages",
-    "js_asset.context_processors.importmap",
-],
-```
-
-This package already renders `{{ importmap }}` on the EmailTemplate admin
-change form. If you override that template, keep the `{{ importmap }}` block.
+Do not add `js_asset.context_processors.importmap` to `context_processors`:
+that module was removed in `django-js-asset` 4.0 and referencing it raises
+`ModuleNotFoundError` on every Django-template render, including
+`/admin/login/`.
 
 ### Sanitization (recommended)
 
@@ -154,7 +148,6 @@ TEMPLATES  =  [
 				"django.template.context_processors.request",
 				"django.contrib.auth.context_processors.auth",
 				"django.contrib.messages.context_processors.messages",
-				"js_asset.context_processors.importmap",
 			],
 			"libraries": {
 				"filter": "baseapp_message_templates.filters",

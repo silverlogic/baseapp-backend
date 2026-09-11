@@ -28,7 +28,7 @@ class ReactionToggle(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ReactionToggle":
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
         target_document = DocumentId.get_or_create_for_object(target)
         reaction_type = input["reaction_type"]

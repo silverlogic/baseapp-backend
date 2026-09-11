@@ -28,7 +28,7 @@ class BaseJSONFormatter(JSONFormatter):
 
         return extra
 
-    def to_json(self, record):
+    def to_json(self, record) -> str:
         # Performance increase a lot by removing the request. Otherwise, it
         # tries to parse a very huge json data
         record.pop("request", None)

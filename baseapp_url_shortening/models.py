@@ -16,7 +16,7 @@ class ShortUrl(TimeStampedModel):
     def public_short_url(self) -> str:
         return self.short_url_path.replace("/v1/", "/")
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         creating = not self.pk
         super().save(*args, **kwargs)
         if creating:

@@ -18,14 +18,14 @@ from baseapp_core.models import *  # noqa
 class CaseInsensitiveCharField(models.CharField):
     description = _("Case insensitive character")
 
-    def db_type(self, connection):
+    def db_type(self, connection) -> str:
         return "citext"
 
 
 class CaseInsensitiveTextField(models.TextField):
     description = _("Case insensitive text")
 
-    def db_type(self, connection):
+    def db_type(self, connection) -> str:
         return "citext"
 
 
@@ -35,10 +35,10 @@ class CaseInsensitiveEmailField(CaseInsensitiveTextField, models.EmailField):
 
 @deconstructible
 class random_name_in(object):
-    def __init__(self, dir):
+    def __init__(self, dir) -> None:
         self.dir = dir
 
-    def __call__(self, instance, filename):
+    def __call__(self, instance, filename) -> str:
         ext = filename.split(".")[-1]
         filename = "{}.{}".format(uuid.uuid4(), ext)
         return os.path.join(self.dir, filename)
@@ -50,10 +50,10 @@ class random_dir_in(object):
     Upload a file to a directory with a randomly generated name, but keep the real file name.
     """
 
-    def __init__(self, base_dir):
+    def __init__(self, base_dir) -> None:
         self.base_dir = base_dir
 
-    def __call__(self, instance, filename):
+    def __call__(self, instance, filename) -> str:
         return os.path.join(self.base_dir, str(uuid.uuid4()), filename)
 
 
@@ -85,11 +85,11 @@ class DocumentId(TimeStampedModel):
         verbose_name = "Document ID"
         verbose_name_plural = "Document IDs"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.content_type.model}:{self.object_id} -> {self.public_id}"
 
     @classmethod
-    def get_public_id_from_object(cls, obj):
+    def get_public_id_from_object(cls, obj) -> uuid.UUID | None:
         if not obj or not obj.pk:
             return None
 
@@ -102,7 +102,7 @@ class DocumentId(TimeStampedModel):
             return None
 
     @classmethod
-    def get_object_by_public_id(cls, public_id, model_class=None):
+    def get_object_by_public_id(cls, public_id, model_class=None) -> models.Model | None:
         try:
             mapping = cls.objects.select_related("content_type").get(public_id=public_id)
 
@@ -122,7 +122,7 @@ class DocumentId(TimeStampedModel):
             return None
 
     @classmethod
-    def get_or_create_for_object(cls, obj):
+    def get_or_create_for_object(cls, obj) -> "DocumentId | None":
         """
         Return the DocumentId for the given object, creating it if it does not exist.
 
@@ -163,7 +163,7 @@ class DocumentIdMixin(models.Model):
         abstract = True
 
     @property
-    def public_id(self):
+    def public_id(self) -> uuid.UUID | int | None:
         from baseapp_core.hashids.strategies import (
             get_hashids_strategy_from_instance_or_cls,
         )
@@ -172,7 +172,7 @@ class DocumentIdMixin(models.Model):
         return strategy.id_resolver.get_id_from_instance(self)
 
     @classmethod
-    def get_by_public_id(cls, public_id):
+    def get_by_public_id(cls, public_id) -> models.Model | None:
         from baseapp_core.hashids.strategies import (
             get_hashids_strategy_from_instance_or_cls,
         )
@@ -248,7 +248,7 @@ class DocumentIdTargetMixin(models.Model):
     class Meta:
         abstract = True
 
-    def _get_target(self):
+    def _get_target(self) -> models.Model | None:
         if not self.target_document_id:
             return None
         if hasattr(self, "_target_object_cache"):
@@ -258,7 +258,7 @@ class DocumentIdTargetMixin(models.Model):
 
     _get_target.short_description = _("target")
 
-    def _set_target(self, value):
+    def _set_target(self, value) -> None:
         if not value:
             self.target_document = None
             self._target_object_cache = None
@@ -269,19 +269,19 @@ class DocumentIdTargetMixin(models.Model):
     target = property(_get_target, _set_target)
 
     @property
-    def target_content_type(self):
+    def target_content_type(self) -> ContentType | None:
         if self.target_document_id:
             return self.target_document.content_type
         return None
 
     @property
-    def target_content_type_id(self):
+    def target_content_type_id(self) -> int | None:
         if self.target_document_id:
             return self.target_document.content_type_id
         return None
 
     @property
-    def target_object_id(self):
+    def target_object_id(self) -> int | None:
         if self.target_document_id:
             return self.target_document.object_id
         return None
@@ -336,7 +336,7 @@ class DocumentIdFunc(pgtrigger.Func):
         )
 
 
-def insert_document_id_trigger():
+def insert_document_id_trigger() -> pgtrigger.Trigger:
     """
     Trigger to automatically insert a DocumentId when a model using DocumentIdMixin is inserted.
     """
@@ -360,7 +360,7 @@ def insert_document_id_trigger():
     )
 
 
-def delete_document_id_trigger():
+def delete_document_id_trigger() -> pgtrigger.Trigger:
     """
     Trigger to automatically delete the DocumentId when a model using DocumentIdMixin is deleted.
     """
@@ -380,7 +380,7 @@ def delete_document_id_trigger():
 
 
 @receiver(class_prepared)
-def add_document_id_trigger(sender, **kwargs):
+def add_document_id_trigger(sender, **kwargs) -> None:
     """
     Add the document ID triggers to the model when it is prepared through the class_prepared signal.
     """

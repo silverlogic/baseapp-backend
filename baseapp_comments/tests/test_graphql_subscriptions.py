@@ -35,7 +35,7 @@ SUBSCRIPTION_QUERY = textwrap.dedent("""
 
 
 @pytest.mark.asyncio
-async def test_user_recieves_created_comment_subscription_event(graphql_ws_user_client):
+async def test_user_recieves_created_comment_subscription_event(graphql_ws_user_client) -> None:
     # Establish & initialize WebSocket GraphQL connection.
     client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
 
@@ -67,7 +67,7 @@ async def test_user_recieves_created_comment_subscription_event(graphql_ws_user_
 
 
 @pytest.mark.asyncio
-async def test_user_recieves_updated_comment_subscription_event(graphql_ws_user_client):
+async def test_user_recieves_updated_comment_subscription_event(graphql_ws_user_client) -> None:
     # Establish & initialize WebSocket GraphQL connection.
     client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
 
@@ -105,7 +105,7 @@ async def test_user_recieves_updated_comment_subscription_event(graphql_ws_user_
 
 
 @pytest.mark.asyncio
-async def test_user_recieves_deleted_comment_subscription_event(graphql_ws_user_client):
+async def test_user_recieves_deleted_comment_subscription_event(graphql_ws_user_client) -> None:
     # Establish & initialize WebSocket GraphQL connection.
     client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
 
@@ -140,7 +140,7 @@ async def test_user_recieves_deleted_comment_subscription_event(graphql_ws_user_
 
 
 @pytest.mark.asyncio
-async def test_anon_recieves_created_comment_subscription_event(graphql_websocket):
+async def test_anon_recieves_created_comment_subscription_event(graphql_websocket) -> None:
     # Establish & initialize WebSocket GraphQL connection.
     client = graphql_websocket(consumer_attrs={"strict_ordering": True})
 
@@ -173,7 +173,7 @@ async def test_anon_recieves_created_comment_subscription_event(graphql_websocke
 
 @pytest.mark.asyncio
 @override_settings(BASEAPP_COMMENTS_CAN_ANONYMOUS_VIEW_COMMENTS=False)
-async def test_anon_cant_recieve_created_comment_subscription_event(graphql_websocket):
+async def test_anon_cant_recieve_created_comment_subscription_event(graphql_websocket) -> None:
     # Establish & initialize WebSocket GraphQL connection.
     client = graphql_websocket(consumer_attrs={"strict_ordering": True})
 
@@ -202,7 +202,7 @@ async def test_anon_cant_recieve_created_comment_subscription_event(graphql_webs
     await client.finalize()
 
 
-def test_comment_subscription_when_target_is_not_found():
+def test_comment_subscription_when_target_is_not_found() -> None:
     comment = CommentFactory()
     missing_target_doc = DocumentId.objects.create(
         content_type=ContentType.objects.get_for_model(comment),

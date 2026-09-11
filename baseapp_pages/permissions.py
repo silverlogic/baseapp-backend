@@ -6,7 +6,7 @@ page_app_label = Page._meta.app_label
 
 
 class PagesPermissionsBackend(BaseBackend):
-    def has_perm(self, user_obj, perm, obj=None):
+    def has_perm(self, user_obj, perm, obj=None) -> bool | None:
         if perm == f"{page_app_label}.view_page":
             if not obj:
                 # Anyone can view a page

@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import swapper
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline, GenericTabularInline
@@ -5,6 +7,9 @@ from translated_fields import TranslatedFieldAdmin
 
 from baseapp_core.admin_helpers import ModelAdmin, StackedInline, TabularInline
 from baseapp_pages.models import Metadata, URLPath
+
+if TYPE_CHECKING:
+    from django.db.models import Model
 
 Page = swapper.load_model("baseapp_pages", "Page")
 
@@ -23,7 +28,7 @@ class URLPathAdmin(ModelAdmin):
     list_filter = ("target_content_type", "language", "is_active")
 
     @admin.display(description="target")
-    def view_target(self, obj):
+    def view_target(self, obj) -> "Model | str":
         try:
             return obj.target if obj.target else "-"
         except AttributeError:

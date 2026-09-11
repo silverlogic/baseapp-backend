@@ -89,7 +89,7 @@ class BlockLookupService(SharedServiceProvider):
             | Q(actor_id__in=profile_ids_b, target_id__in=profile_ids_a)
         ).exists()
 
-    def get_blocked_profile_ids(self, profile_id):
+    def get_blocked_profile_ids(self, profile_id) -> models.QuerySet:
         """Return a queryset of profile ids that `profile_id` blocks.
 
         NULL targets are excluded so the result is safe to use inside an
@@ -101,7 +101,7 @@ class BlockLookupService(SharedServiceProvider):
             "target_id", flat=True
         )
 
-    def get_blocker_profile_ids(self, profile_id):
+    def get_blocker_profile_ids(self, profile_id) -> models.QuerySet:
         """Return a queryset of profile ids that block `profile_id` (NULL-safe,
         see :meth:`get_blocked_profile_ids`)."""
         Block = swapper.load_model("baseapp_blocks", "Block")
@@ -124,14 +124,14 @@ class BlockableMetadataService(SharedServiceProvider):
     def is_available(self) -> bool:
         return apps.is_installed("baseapp_blocks")
 
-    def _get_model(self):
+    def _get_model(self) -> type[models.Model]:
         return swapper.load_model("baseapp_blocks", "BlockableMetadata")
 
-    def get_metadata(self, obj):
+    def get_metadata(self, obj) -> models.Model | None:
         """Return `BlockableMetadata` for `obj`, or `None` if not found."""
         return self._get_model().get_for_object(obj)
 
-    def get_or_create_metadata(self, obj):
+    def get_or_create_metadata(self, obj) -> models.Model | None:
         """Return or create `BlockableMetadata` for `obj`."""
         return self._get_model().get_or_create_for_object(obj)
 
@@ -176,7 +176,7 @@ class BlockableMetadataService(SharedServiceProvider):
             metadata.blocking_count = count
             metadata.save(update_fields=["blocking_count", "modified"])
 
-    def annotate_queryset(self, queryset):
+    def annotate_queryset(self, queryset) -> models.QuerySet:
         """Bulk-annotate `queryset` with both counts. Useful for non-GraphQL
         callers (admin, DRF, management commands). The GraphQL path attaches
         each annotation on-demand via the field-level optimizer hooks below."""
@@ -185,7 +185,7 @@ class BlockableMetadataService(SharedServiceProvider):
     # --- Correlated subquery builders, used by both `annotate_queryset` on the
     #     metadata model and the optimizer-compiler hooks below. -------------
 
-    def _blockers_count_subquery(self, model_cls):
+    def _blockers_count_subquery(self, model_cls) -> Coalesce:
         """Correlated subquery producing `blockers_count` for a row of `model_cls`."""
         BlockableMetadata = self._get_model()
         ct_id = ContentType.objects.get_for_model(model_cls).pk
@@ -201,7 +201,7 @@ class BlockableMetadataService(SharedServiceProvider):
             Value(0),
         )
 
-    def _blocking_count_subquery(self, model_cls):
+    def _blocking_count_subquery(self, model_cls) -> Coalesce:
         """Correlated subquery producing `blocking_count` for a row of `model_cls`."""
         BlockableMetadata = self._get_model()
         ct_id = ContentType.objects.get_for_model(model_cls).pk
@@ -217,7 +217,7 @@ class BlockableMetadataService(SharedServiceProvider):
             Value(0),
         )
 
-    def annotate_blockers_count_in_optimizer_compiler(self, compiler: OptimizationCompiler):
+    def annotate_blockers_count_in_optimizer_compiler(self, compiler: OptimizationCompiler) -> None:
         """Attach `_blockable_blockers_count` to the parent optimizer's annotations.
 
         Wired from `BlocksInterface.blockers_count.optimizer_hook` so the
@@ -234,7 +234,7 @@ class BlockableMetadataService(SharedServiceProvider):
             "_blockable_blockers_count", self._blockers_count_subquery(parent.model)
         )
 
-    def annotate_blocking_count_in_optimizer_compiler(self, compiler: OptimizationCompiler):
+    def annotate_blocking_count_in_optimizer_compiler(self, compiler: OptimizationCompiler) -> None:
         """Attach `_blockable_blocking_count` to the parent optimizer's annotations.
 
         Wired from `BlocksInterface.blocking_count.optimizer_hook` — same mechanism

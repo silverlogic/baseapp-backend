@@ -13,10 +13,10 @@ class Command(  # NOSONAR - S8443: inherits BaseCommand via BasePDFCommand
 ):  # pragma: no cover
     help = "Render Example Template to PDF"
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super(Command, self).__init__(*args, **kwargs)
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser) -> None:
         parser.add_argument(
             "--destination", type=str, help="The destination directory_path. Defaults to cwd."
         )
@@ -27,7 +27,7 @@ class Command(  # NOSONAR - S8443: inherits BaseCommand via BasePDFCommand
             raise ValueError(f"Destination must be a directory! {destination}")
         self.render_example_template_to_pdf(destination=destination)
 
-    def render_example_template_to_pdf(self, destination: Path):
+    def render_example_template_to_pdf(self, destination: Path) -> None:
         context = {
             "pdf_title": "Example PDF",
             "pdf_margins": "1cm 1cm",

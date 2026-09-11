@@ -10,7 +10,7 @@ UserFactory = h.get_user_factory()
 pytestmark = pytest.mark.django_db
 
 
-def test_remove_superuser_notification_email(outbox):
+def test_remove_superuser_notification_email(outbox) -> None:
     UserFactory(is_superuser=True)
     user = UserFactory(is_superuser=True)
     assigner = UserFactory(is_superuser=True)
@@ -22,7 +22,7 @@ def test_remove_superuser_notification_email(outbox):
 @override_settings(
     FRONT_CHANGE_EXPIRED_PASSWORD_URL="https://example.com/change/{token}"  # NOSONAR - S2068
 )
-def test_send_password_expired_email(outbox):
+def test_send_password_expired_email(outbox) -> None:
     user = UserFactory()
     send_password_expired_email(user)
     assert len(outbox) == 1

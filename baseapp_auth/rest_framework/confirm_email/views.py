@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 from django.contrib.auth import get_user_model
 from django.http import Http404
 from django.utils.translation import gettext_lazy as _
@@ -9,6 +11,9 @@ from baseapp_core.rest_framework.decorators import action
 
 from .serializers import ConfirmEmailSerializer
 
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+
 User = get_user_model()
 
 
@@ -16,10 +21,10 @@ class ConfirmEmailViewSet(mixins.UpdateModelMixin, viewsets.GenericViewSet):
     serializer_class = ConfirmEmailSerializer
     permission_classes = [permissions.AllowAny]
 
-    def get_queryset(self):
+    def get_queryset(self) -> "QuerySet[User]":
         return User.objects.all()
 
-    def update(self, request, *args, **kwargs):
+    def update(self, request, *args, **kwargs) -> Response:
         try:
             user = self.get_object()
         except Http404:
@@ -30,7 +35,7 @@ class ConfirmEmailViewSet(mixins.UpdateModelMixin, viewsets.GenericViewSet):
         return Response({}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["POST"], permission_classes=[permissions.IsAuthenticated])
-    def resend_confirm(self, request, *args, **kwargs):
+    def resend_confirm(self, request, *args, **kwargs) -> Response:
         user = request.user
         if user.is_email_verified:
             raise serializers.ValidationError(

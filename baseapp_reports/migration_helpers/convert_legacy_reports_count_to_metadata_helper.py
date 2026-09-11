@@ -23,8 +23,13 @@ Notes
   database — same pattern the baseapp_follows / baseapp_comments helpers use.
 """
 
+from typing import TYPE_CHECKING
 
-def _alias_pinned_managers(schema_editor, *models):
+if TYPE_CHECKING:
+    from django.db.models import Manager, QuerySet
+
+
+def _alias_pinned_managers(schema_editor, *models) -> "tuple[Manager | QuerySet, ...]":
     # Pin every read/write to the alias the schema editor is operating on so the
     # source-model scan, content-type lookup, DocumentId upserts, and
     # ReportableMetadata writes all hit the same database — same pattern the
@@ -44,7 +49,7 @@ def migrate_legacy_reports_count_to_metadata(
     metadata_app_label: str = "baseapp_reports",
     metadata_model_name: str = "ReportableMetadata",
     reports_count_field: str = "reports_count",
-):
+) -> None:
     SourceModel = apps.get_model(source_app_label, source_model_name)
     ContentType = apps.get_model("contenttypes", "ContentType")
     DocumentId = apps.get_model("baseapp_core", "DocumentId")
@@ -86,7 +91,7 @@ def reverse_migrate_legacy_reports_count_from_metadata(
     metadata_app_label: str = "baseapp_reports",
     metadata_model_name: str = "ReportableMetadata",
     reports_count_field: str = "reports_count",
-):
+) -> None:
     SourceModel = apps.get_model(source_app_label, source_model_name)
     ContentType = apps.get_model("contenttypes", "ContentType")
     ReportableMetadata = apps.get_model(metadata_app_label, metadata_model_name)

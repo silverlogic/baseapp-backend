@@ -1,5 +1,6 @@
 import json
 import logging
+from collections.abc import Generator
 from contextlib import contextmanager
 
 import pghistory
@@ -17,7 +18,7 @@ except ModuleNotFoundError:
 
 
 @contextmanager
-def sentry_graphql_span(operation_name, operation_type):
+def sentry_graphql_span(operation_name, operation_type) -> Generator[None, None, None]:
     if sentry_sdk:
         op = OP.GRAPHQL_QUERY
         if operation_type == "mutation":
@@ -34,7 +35,7 @@ def sentry_graphql_span(operation_name, operation_type):
 class GraphQLView(GrapheneGraphQLView):
     def execute_graphql_request(
         self, request, data, query, variables, operation_name, show_graphiql=False
-    ):
+    ) -> ExecutionResult | None:
         if not query:
             if show_graphiql:
                 return None

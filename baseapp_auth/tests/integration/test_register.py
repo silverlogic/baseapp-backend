@@ -23,16 +23,16 @@ class TestRegister(ApiMixin):
     view_name = "register-list"
 
     @pytest.fixture
-    def data(self):
+    def data(self) -> dict[str, str]:
         return {"email": "john@doe.com", "password": "1234"}  # NOSONAR
 
-    def test_can_register(self, client, data, outbox):
+    def test_can_register(self, client, data, outbox) -> None:
         r = client.post(self.reverse(), data)
         h.responseCreated(r)
         assert User.objects.count() == 1
         assert len(outbox) == 1
 
-    def test_registered_user_email_is_lower_case(self, client, data, outbox):
+    def test_registered_user_email_is_lower_case(self, client, data, outbox) -> None:
         r = client.post(
             self.reverse(),
             {
@@ -46,33 +46,33 @@ class TestRegister(ApiMixin):
         assert user.email == data["email"]
         assert len(outbox) == 1
 
-    def test_user_can_request_deep_link_error(self, user_client, outbox, data):
+    def test_user_can_request_deep_link_error(self, user_client, outbox, data) -> None:
         with patch("baseapp_auth.emails.get_deep_link") as m:
             m.side_effect = DeepLinkFetchError
             r = user_client.post(self.reverse(), data)
             h.responseCreated(r)
             assert len(outbox) == 1
 
-    def test_sends_register_email(self, user_client, data):
+    def test_sends_register_email(self, user_client, data) -> None:
         with patch("baseapp_auth.rest_framework.register.views.send_welcome_email") as mock:
             r = user_client.post(self.reverse(), data)
             h.responseCreated(r)
             assert mock.called
 
-    def test_sets_password(self, client, data):
+    def test_sets_password(self, client, data) -> None:
         r = client.post(self.reverse(), data)
         h.responseCreated(r)
         user = User.objects.get()
         assert user.check_password(data["password"])
 
-    def test_cant_use_duplicate_email(self, client, data):
+    def test_cant_use_duplicate_email(self, client, data) -> None:
         UserFactory(email=data["email"])
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)
         assert r.data["email"] == ["That email is already in use.  Choose another."]
 
     @skip_if_no_referrals
-    def test_can_be_referred(self, client, data):
+    def test_can_be_referred(self, client, data) -> None:
         referrer = UserFactory()
         data["referral_code"] = get_referral_code(referrer)
         r = client.post(self.reverse(), data)
@@ -81,7 +81,7 @@ class TestRegister(ApiMixin):
         referee.referred_by
 
     @skip_if_no_referrals
-    def test_when_referral_code_is_invalid(self, client, data):
+    def test_when_referral_code_is_invalid(self, client, data) -> None:
         data["referral_code"] = "18a9sdf891203"
         r = client.post(self.reverse(), data)
         h.responseBadRequest(r)

@@ -5,6 +5,7 @@ import swapper
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models import Model
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from baseapp_core.plugins import shared_services
@@ -48,7 +49,7 @@ def send_message(
     action_object=None,
     extra_data=None,
     in_reply_to=None,
-):
+) -> "Message":
     message = Message.objects.create(
         user=user,
         profile=profile,
@@ -71,6 +72,38 @@ def send_message(
     ChatRoomOnMessage.new_message(room_id=room_id or room.relay_id, message=message)
 
     return message
+
+
+def add_profiles_to_room(room: Model, profile_pks: Iterable[int | str]) -> list[Model]:
+    """Add profiles as MEMBER participants to a room, silently skipping existing members.
+
+    Returns the created ChatRoomParticipant rows. Callers own the update of
+    room.participants_count. The check-then-insert is only idempotent while the
+    room row is locked — callers that can run concurrently must hold a lock on
+    the room (e.g. select_for_update) before calling.
+    """
+    ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
+
+    unique_profile_pks = {int(pk) for pk in profile_pks}
+    existing_profile_pks = set(
+        ChatRoomParticipant.objects.filter(
+            room=room, profile__pk__in=unique_profile_pks
+        ).values_list("profile__pk", flat=True)
+    )
+
+    new_profile_pks = unique_profile_pks - existing_profile_pks
+
+    return ChatRoomParticipant.objects.bulk_create(
+        [
+            ChatRoomParticipant(
+                profile_id=profile_pk,
+                room=room,
+                role=ChatRoomParticipant.ChatRoomParticipantRoles.MEMBER,
+                accepted_at=timezone.now(),
+            )
+            for profile_pk in new_profile_pks
+        ]
+    )
 
 
 def escape_format_braces(value: str) -> str:
@@ -135,7 +168,7 @@ def send_chatroom_update_system_messages(
             )
 
 
-def send_new_chat_message_notification(room, message, info):
+def send_new_chat_message_notification(room, message, info) -> None:
     if service := shared_services.get("notifications"):
         for participant in room.participants.all():
             recipients = participant.profile.get_all_users()

@@ -1,7 +1,12 @@
+from typing import TYPE_CHECKING, Any
+
 from channels.db import database_sync_to_async
 from channels.middleware import BaseMiddleware
 
 from baseapp_core.authentication import authenticate_jwt_async
+
+if TYPE_CHECKING:
+    from rest_framework.authtoken.models import Token
 
 # WS auth subprotocols arrive as adjacent key/value pairs; these are the recognized keys,
 # used to tell a key apart from a value when a key is sent without one.
@@ -9,7 +14,7 @@ SUBPROTOCOL_KEYS = ("Authorization", "Refresh")
 
 
 @database_sync_to_async
-def get_token_from_db(token_str):
+def get_token_from_db(token_str) -> "Token | None":
     if not token_str:
         return None
 
@@ -22,7 +27,7 @@ def get_token_from_db(token_str):
 
 
 class TokenAuthMiddleware(BaseMiddleware):
-    async def __call__(self, scope, receive, send):
+    async def __call__(self, scope, receive, send) -> Any:
         if "Authorization" not in scope["subprotocols"]:
             raise ValueError("Missing token")
 
@@ -43,7 +48,7 @@ class TokenAuthMiddleware(BaseMiddleware):
 
 
 class JWTAuthMiddleware(BaseMiddleware):
-    async def __call__(self, scope, receive, send):
+    async def __call__(self, scope, receive, send) -> Any:
         subprotocols = scope["subprotocols"]
         if "Authorization" not in subprotocols:
             raise ValueError("Missing token")

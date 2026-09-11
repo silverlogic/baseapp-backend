@@ -35,18 +35,18 @@ from testproject.testapp.tests.factories import (
 
 @pytest.mark.django_db
 class TestPublicIdLogicEnabled:
-    def test_is_public_id_logic_enabled_returns_true_when_config_enabled(self):
+    def test_is_public_id_logic_enabled_returns_true_when_config_enabled(self) -> None:
         with override_config(ENABLE_PUBLIC_ID_LOGIC=True):
             assert _is_public_id_logic_enabled() is True
 
-    def test_is_public_id_logic_enabled_returns_false_when_config_disabled(self):
+    def test_is_public_id_logic_enabled_returns_false_when_config_disabled(self) -> None:
         with override_config(ENABLE_PUBLIC_ID_LOGIC=False):
             assert _is_public_id_logic_enabled() is False
 
 
 @pytest.mark.django_db
 class TestStrategyGetters:
-    def test_get_legacy_strategy_returns_correct_bundle(self):
+    def test_get_legacy_strategy_returns_correct_bundle(self) -> None:
         strategy = get_legacy_strategy()
 
         assert isinstance(strategy, HashidsStrategyBundle)
@@ -54,7 +54,7 @@ class TestStrategyGetters:
         assert isinstance(strategy.graphql_resolver, LegacyGraphQLResolverStrategy)
         assert isinstance(strategy.queryset_annotator, LegacyQuerysetAnnotatorStrategy)
 
-    def test_get_public_id_strategy_returns_correct_bundle(self):
+    def test_get_public_id_strategy_returns_correct_bundle(self) -> None:
         strategy = get_public_id_strategy()
 
         assert isinstance(strategy, HashidsStrategyBundle)
@@ -62,7 +62,7 @@ class TestStrategyGetters:
         assert isinstance(strategy.graphql_resolver, PublicIdGraphQLResolverStrategy)
         assert isinstance(strategy.queryset_annotator, PublicIdQuerysetAnnotatorStrategy)
 
-    def test_get_legacy_strategy_returns_different_instances(self):
+    def test_get_legacy_strategy_returns_different_instances(self) -> None:
         strategy1 = get_legacy_strategy()
         strategy2 = get_legacy_strategy()
 
@@ -72,7 +72,7 @@ class TestStrategyGetters:
         assert strategy1.graphql_resolver is not strategy2.graphql_resolver
         assert strategy1.queryset_annotator is not strategy2.queryset_annotator
 
-    def test_get_public_id_strategy_returns_different_instances(self):
+    def test_get_public_id_strategy_returns_different_instances(self) -> None:
         strategy1 = get_public_id_strategy()
         strategy2 = get_public_id_strategy()
 
@@ -85,7 +85,7 @@ class TestStrategyGetters:
 
 @pytest.mark.django_db
 class TestGetHashidsStrategyFromInstanceOrCls:
-    def test_returns_public_id_strategy_for_public_id_model_when_enabled(self):
+    def test_returns_public_id_strategy_for_public_id_model_when_enabled(self) -> None:
         with patch(
             "baseapp_core.hashids.strategies._is_public_id_logic_enabled", return_value=True
         ):
@@ -97,7 +97,7 @@ class TestGetHashidsStrategyFromInstanceOrCls:
             assert isinstance(strategy.graphql_resolver, PublicIdGraphQLResolverStrategy)
             assert isinstance(strategy.queryset_annotator, PublicIdQuerysetAnnotatorStrategy)
 
-    def test_returns_public_id_strategy_for_public_id_model_class_when_enabled(self):
+    def test_returns_public_id_strategy_for_public_id_model_class_when_enabled(self) -> None:
         with patch(
             "baseapp_core.hashids.strategies._is_public_id_logic_enabled", return_value=True
         ):
@@ -108,7 +108,7 @@ class TestGetHashidsStrategyFromInstanceOrCls:
             assert isinstance(strategy.graphql_resolver, PublicIdGraphQLResolverStrategy)
             assert isinstance(strategy.queryset_annotator, PublicIdQuerysetAnnotatorStrategy)
 
-    def test_returns_legacy_strategy_for_public_id_model_when_disabled(self):
+    def test_returns_legacy_strategy_for_public_id_model_when_disabled(self) -> None:
         with patch(
             "baseapp_core.hashids.strategies._is_public_id_logic_enabled", return_value=False
         ):
@@ -120,7 +120,7 @@ class TestGetHashidsStrategyFromInstanceOrCls:
             assert isinstance(strategy.graphql_resolver, LegacyGraphQLResolverStrategy)
             assert isinstance(strategy.queryset_annotator, LegacyQuerysetAnnotatorStrategy)
 
-    def test_returns_legacy_strategy_for_legacy_model_when_enabled(self):
+    def test_returns_legacy_strategy_for_legacy_model_when_enabled(self) -> None:
         with patch(
             "baseapp_core.hashids.strategies._is_public_id_logic_enabled", return_value=True
         ):
@@ -132,7 +132,7 @@ class TestGetHashidsStrategyFromInstanceOrCls:
             assert isinstance(strategy.graphql_resolver, LegacyGraphQLResolverStrategy)
             assert isinstance(strategy.queryset_annotator, LegacyQuerysetAnnotatorStrategy)
 
-    def test_returns_legacy_strategy_for_legacy_model_when_disabled(self):
+    def test_returns_legacy_strategy_for_legacy_model_when_disabled(self) -> None:
         with patch(
             "baseapp_core.hashids.strategies._is_public_id_logic_enabled", return_value=False
         ):
@@ -144,7 +144,7 @@ class TestGetHashidsStrategyFromInstanceOrCls:
             assert isinstance(strategy.graphql_resolver, LegacyGraphQLResolverStrategy)
             assert isinstance(strategy.queryset_annotator, LegacyQuerysetAnnotatorStrategy)
 
-    def test_returns_legacy_strategy_for_legacy_model_class(self):
+    def test_returns_legacy_strategy_for_legacy_model_class(self) -> None:
         with patch(
             "baseapp_core.hashids.strategies._is_public_id_logic_enabled", return_value=True
         ):
@@ -158,7 +158,7 @@ class TestGetHashidsStrategyFromInstanceOrCls:
 
 @pytest.mark.django_db
 class TestGraphQLToGlobalIdUsingStrategy:
-    def test_uses_public_id_strategy_when_enabled(self):
+    def test_uses_public_id_strategy_when_enabled(self) -> None:
         with patch(
             "baseapp_core.hashids.strategies._is_public_id_logic_enabled", return_value=True
         ):
@@ -170,7 +170,7 @@ class TestGraphQLToGlobalIdUsingStrategy:
 
             assert result == str(dummy_instance.public_id)
 
-    def test_uses_legacy_strategy_when_disabled(self):
+    def test_uses_legacy_strategy_when_disabled(self) -> None:
         with patch(
             "baseapp_core.hashids.strategies._is_public_id_logic_enabled", return_value=False
         ):
@@ -186,7 +186,7 @@ class TestGraphQLToGlobalIdUsingStrategy:
 
 @pytest.mark.django_db
 class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
-    def test_uses_public_id_strategy_for_uuid4_global_id(self):
+    def test_uses_public_id_strategy_for_uuid4_global_id(self) -> None:
         dummy_instance = DummyPublicIdModelFactory()
         test_uuid = dummy_instance.public_id
         graphene_type_mock = MagicMock()
@@ -203,7 +203,7 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
         assert result.pk == dummy_instance.pk
         assert result.public_id == dummy_instance.public_id
 
-    def test_uses_public_id_strategy_for_uuid4_with_only_type(self):
+    def test_uses_public_id_strategy_for_uuid4_with_only_type(self) -> None:
         dummy_instance = DummyPublicIdModelFactory()
         test_uuid = dummy_instance.public_id
         mock_info = MagicMock()
@@ -220,7 +220,7 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
         assert result.pk == dummy_instance.pk
         assert result.public_id == dummy_instance.public_id
 
-    def test_returns_none_when_public_id_strategy_get_node_returns_none(self):
+    def test_returns_none_when_public_id_strategy_get_node_returns_none(self) -> None:
         dummy_instance = DummyPublicIdModelFactory()
         test_uuid = dummy_instance.public_id
         graphene_type_mock = MagicMock()
@@ -236,7 +236,7 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
 
         assert result is None
 
-    def test_returns_none_and_falls_back_to_legacy_for_nonexistent_uuid4(self):
+    def test_returns_none_and_falls_back_to_legacy_for_nonexistent_uuid4(self) -> None:
         test_uuid = str(uuid.uuid4())  # Non-existent UUID4
         mock_info = MagicMock()
 
@@ -246,7 +246,7 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
 
         assert "Unable to parse global ID" in str(e.value)
 
-    def test_uses_legacy_strategy_for_non_uuid4_global_id(self):
+    def test_uses_legacy_strategy_for_non_uuid4_global_id(self) -> None:
         dummy_instance = DummyLegacyModelFactory()
         global_id = to_global_id("DummyLegacyModel", dummy_instance.pk)
         mock_info = MagicMock()
@@ -263,7 +263,7 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
 
         assert result.pk == dummy_instance.pk
 
-    def test_uses_legacy_strategy_for_integer_id_should_fail(self):
+    def test_uses_legacy_strategy_for_integer_id_should_fail(self) -> None:
         dummy_instance = DummyLegacyModelFactory()
         mock_info = MagicMock()
         mock_only_type = MagicMock()
@@ -279,7 +279,7 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
             e.value
         )
 
-    def test_users_legacy_with_pk_model_with_pk_strategy(self):
+    def test_users_legacy_with_pk_model_with_pk_strategy(self) -> None:
         dummy_instance = DummyLegacyWithPkModelFactory()
         mock_info = MagicMock()
         mock_only_type = MagicMock()
@@ -293,7 +293,7 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
         )
         assert result.pk == dummy_instance.pk
 
-    def test_returns_none_when_pk_strategy_get_node_returns_none(self):
+    def test_returns_none_when_pk_strategy_get_node_returns_none(self) -> None:
         dummy_instance = DummyLegacyWithPkModelFactory()
         mock_info = MagicMock()
         mock_only_type = MagicMock()
@@ -311,7 +311,7 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
 
 @pytest.mark.django_db
 class TestHashidsStrategyIntegrationScenarios:
-    def test_public_id_model_with_public_id_logic_enabled_uses_public_id_strategy(self):
+    def test_public_id_model_with_public_id_logic_enabled_uses_public_id_strategy(self) -> None:
         with override_config(ENABLE_PUBLIC_ID_LOGIC=True):
             dummy_instance = DummyPublicIdModelFactory()
             strategy = get_hashids_strategy_from_instance_or_cls(dummy_instance)
@@ -325,7 +325,7 @@ class TestHashidsStrategyIntegrationScenarios:
             resolved_instance = strategy.id_resolver.resolve_id(dummy_instance.public_id)
             assert resolved_instance.pk == dummy_instance.pk
 
-    def test_public_id_model_with_public_id_logic_disabled_uses_legacy_strategy(self):
+    def test_public_id_model_with_public_id_logic_disabled_uses_legacy_strategy(self) -> None:
         with override_config(ENABLE_PUBLIC_ID_LOGIC=False):
             dummy_instance = DummyPublicIdModelFactory()
             strategy = get_hashids_strategy_from_instance_or_cls(dummy_instance)
@@ -341,7 +341,7 @@ class TestHashidsStrategyIntegrationScenarios:
             )
             assert resolved_instance.pk == dummy_instance.pk
 
-    def test_legacy_model_always_uses_legacy_strategy(self):
+    def test_legacy_model_always_uses_legacy_strategy(self) -> None:
         for config_value in [True, False, None, ""]:
             with override_config(ENABLE_PUBLIC_ID_LOGIC=config_value):
                 dummy_instance = DummyLegacyModelFactory()
@@ -353,7 +353,7 @@ class TestHashidsStrategyIntegrationScenarios:
                 resolved_id = strategy.id_resolver.get_id_from_instance(dummy_instance)
                 assert resolved_id == dummy_instance.pk
 
-    def test_uuid4_global_id_flow_with_public_id_logic_enabled(self):
+    def test_uuid4_global_id_flow_with_public_id_logic_enabled(self) -> None:
         with override_config(ENABLE_PUBLIC_ID_LOGIC=True):
             dummy_instance = DummyPublicIdModelFactory()
             test_uuid = str(dummy_instance.public_id)
@@ -371,7 +371,7 @@ class TestHashidsStrategyIntegrationScenarios:
             assert result.pk == dummy_instance.pk
             assert result.public_id == dummy_instance.public_id
 
-    def test_non_uuid4_global_id_uses_legacy_strategy_directly(self):
+    def test_non_uuid4_global_id_uses_legacy_strategy_directly(self) -> None:
         dummy_instance = DummyLegacyModelFactory()
         global_id = to_global_id("DummyLegacyModel", dummy_instance.pk)
         mock_info = MagicMock()
@@ -388,7 +388,7 @@ class TestHashidsStrategyIntegrationScenarios:
 
         assert result.pk == dummy_instance.pk
 
-    def test_mixed_strategy_usage_in_same_test(self):
+    def test_mixed_strategy_usage_in_same_test(self) -> None:
         public_id_instance = DummyPublicIdModelFactory()
         legacy_instance = DummyLegacyModelFactory()
 

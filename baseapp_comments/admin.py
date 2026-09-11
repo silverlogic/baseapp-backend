@@ -1,9 +1,14 @@
+from typing import TYPE_CHECKING
+
 import swapper
 from django.contrib import admin
 from django.template.defaultfilters import truncatewords
 
 from baseapp_core.admin_helpers import ModelAdmin
 from baseapp_core.plugins import apply_if_installed
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
 CommentableMetadata = swapper.load_model("baseapp_comments", "CommentableMetadata")
@@ -30,7 +35,7 @@ class CommentAdmin(ModelAdmin):
         "created",
     )
 
-    def get_queryset(self, request):
+    def get_queryset(self, request) -> "QuerySet":
         return (
             super()
             .get_queryset(request)
@@ -43,7 +48,7 @@ class CommentAdmin(ModelAdmin):
             .prefetch_related("target_document__content_object")
         )
 
-    def truncated_body(self, obj):
+    def truncated_body(self, obj) -> str:
         return truncatewords(obj.body, 10)
 
     truncated_body.short_description = "body"

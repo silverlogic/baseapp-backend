@@ -16,13 +16,13 @@ ReactionTypes = Reaction.ReactionTypes
 pytestmark = pytest.mark.django_db
 
 
-def _call():
+def _call() -> str:
     out = StringIO()
     call_command("update_reactions_count", stdout=out)
     return out.getvalue()
 
 
-def test_command_recomputes_metadata_from_existing_reactions():
+def test_command_recomputes_metadata_from_existing_reactions() -> None:
     """Even with stale metadata rows, the command should produce per-type counts
     that match the live `Reaction` rows."""
     target = CommentFactory()
@@ -42,7 +42,7 @@ def test_command_recomputes_metadata_from_existing_reactions():
     assert "Recomputed reactions_count for 1 target(s)" in output
 
 
-def test_command_iterates_over_distinct_targets_only():
+def test_command_iterates_over_distinct_targets_only() -> None:
     """A target with multiple reactions should only be recomputed once."""
     target_a = CommentFactory()
     target_b = CommentFactory()
@@ -60,7 +60,7 @@ def test_command_iterates_over_distinct_targets_only():
     assert sorted(targets_recomputed) == sorted([target_a.pk, target_b.pk])
 
 
-def test_command_skips_targets_when_content_object_is_missing():
+def test_command_skips_targets_when_content_object_is_missing() -> None:
     """If `DocumentId.content_object` resolves to None (orphaned content type),
     the command should skip without crashing."""
     target = CommentFactory()
@@ -74,6 +74,6 @@ def test_command_skips_targets_when_content_object_is_missing():
     assert "skipped 1" in output
 
 
-def test_command_no_op_when_no_reactions():
+def test_command_no_op_when_no_reactions() -> None:
     output = _call()
     assert "Recomputed reactions_count for 0 target(s)" in output

@@ -1,3 +1,5 @@
+from django.utils.translation import gettext_lazy as _
+
 from baseapp_core.plugins import BaseAppConfig
 
 
@@ -5,5 +7,5 @@ class ContentFeedConfig(BaseAppConfig):
     default = True
     name = "baseapp.content_feed"
     label = "baseapp_content_feed"
-    verbose_name = "BaseApp Content Feed"
+    verbose_name = _("BaseApp Content Feed")
     default_auto_field = "django.db.models.BigAutoField"

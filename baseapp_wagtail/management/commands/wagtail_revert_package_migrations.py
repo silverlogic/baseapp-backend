@@ -13,7 +13,7 @@ from baseapp_wagtail.settings import (
 class Command(BaseCommand):
     help = "Reverts all migrations for the Wagtail package apps"
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options) -> None:
         if not options.get("no_input", False):
             self.stdout.write(
                 self.style.WARNING(
@@ -38,14 +38,14 @@ class Command(BaseCommand):
             except CommandError as e:
                 self.stdout.write(self.style.ERROR(f"Failed to revert migrations for {app}: {e}"))
 
-    def _get_app_label(self, app_name):
+    def _get_app_label(self, app_name) -> str:
         all_apps = apps.get_app_configs()
         for app_config in all_apps:
             if app_config.name == app_name:
                 return app_config.label
         raise CommandError(f"App with name {app_name} not found")
 
-    def _remove_permissions(self, app_label):
+    def _remove_permissions(self, app_label) -> None:
         """
         Some apps use django.contrib.auth.models.Permission to manage permissions. To revert their
         migrations, we need to remove the permissions first.

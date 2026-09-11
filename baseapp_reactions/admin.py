@@ -1,8 +1,13 @@
+from typing import TYPE_CHECKING
+
 import swapper
 from django.contrib import admin
 
 from baseapp_core.admin_helpers import ModelAdmin
 from baseapp_core.plugins import apply_if_installed
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
 
@@ -28,7 +33,7 @@ class ReactionAdmin(ModelAdmin):
         *apply_if_installed("baseapp_profiles", ["profile"]),
     )
 
-    def get_queryset(self, request):
+    def get_queryset(self, request) -> "QuerySet":
         return (
             super()
             .get_queryset(request)

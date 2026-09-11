@@ -9,10 +9,10 @@ class Command(  # NOSONAR - S8443: inherits BaseCommand via BasePDFCommand
 ):  # pragma: no cover
     help = "Render to PDF"
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super(Command, self).__init__(*args, **kwargs)
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser) -> None:
         parser.add_argument(
             "--source", type=str, required=True, help="Local html file path or a url string"
         )

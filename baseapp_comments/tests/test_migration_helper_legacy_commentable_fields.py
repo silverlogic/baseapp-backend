@@ -1,4 +1,6 @@
+from collections.abc import Iterator
 from types import SimpleNamespace
+from typing import Any
 
 import factory
 
@@ -36,10 +38,10 @@ class _DocumentRowFactory(factory.Factory):
 
 
 class _LegacyQuerySet:
-    def __init__(self, rows):
+    def __init__(self, rows) -> None:
         self._rows = list(rows)
 
-    def exclude(self, **kwargs):
+    def exclude(self, **kwargs) -> "_LegacyQuerySet":
         rows = self._rows
         for key, value in kwargs.items():
             if key.endswith("__isnull"):
@@ -49,37 +51,37 @@ class _LegacyQuerySet:
                 rows = [r for r in rows if getattr(r, key) != value]
         return _LegacyQuerySet(rows)
 
-    def only(self, *_args):
+    def only(self, *_args) -> "_LegacyQuerySet":
         return self
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[SimpleNamespace]:
         return iter(self._rows)
 
 
 class _UpdateQuerySet:
-    def __init__(self, log, pk):
+    def __init__(self, log, pk) -> None:
         self._log = log
         self._pk = pk
 
-    def update(self, **kwargs):
+    def update(self, **kwargs) -> None:
         self._log.append((self._pk, kwargs))
 
 
 class _SourceManager:
-    def __init__(self, rows):
+    def __init__(self, rows) -> None:
         self._rows = rows
         self.update_log = []
 
-    def exclude(self, **kwargs):
+    def exclude(self, **kwargs) -> _LegacyQuerySet:
         return _LegacyQuerySet(self._rows).exclude(**kwargs)
 
-    def filter(self, **kwargs):
+    def filter(self, **kwargs) -> _UpdateQuerySet:
         if "pk" in kwargs:
             return _UpdateQuerySet(self.update_log, kwargs["pk"])
         raise AssertionError("Unexpected filter call")
 
 
-def test_migrate_legacy_commentable_fields_to_metadata_creates_metadata_rows():
+def test_migrate_legacy_commentable_fields_to_metadata_creates_metadata_rows() -> None:
     source_rows = [
         _ModelRowFactory(
             pk=1,
@@ -103,12 +105,12 @@ def test_migrate_legacy_commentable_fields_to_metadata_creates_metadata_rows():
     metadata_updates = []
 
     class ContentTypeManager:
-        def get_or_create(self, **kwargs):
+        def get_or_create(self, **kwargs) -> tuple[SimpleNamespace, bool]:
             assert kwargs == {"app_label": "pages", "model": "page"}
             return ct, False
 
     class DocumentIdManager:
-        def get_or_create(self, **kwargs):
+        def get_or_create(self, **kwargs) -> tuple[SimpleNamespace, bool]:
             doc = _DocumentRowFactory(
                 id=1000 + kwargs["object_id"],
                 content_type_id=kwargs["content_type_id"],
@@ -118,12 +120,12 @@ def test_migrate_legacy_commentable_fields_to_metadata_creates_metadata_rows():
             return doc, True
 
     class CommentableMetadataManager:
-        def update_or_create(self, **kwargs):
+        def update_or_create(self, **kwargs) -> tuple[SimpleNamespace, bool]:
             metadata_updates.append(kwargs)
             return SimpleNamespace(), True
 
     class FakeApps:
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             mapping = {
                 ("pages", "Page"): source_model,
                 ("contenttypes", "ContentType"): SimpleNamespace(objects=ContentTypeManager()),
@@ -163,7 +165,7 @@ def test_migrate_legacy_commentable_fields_to_metadata_creates_metadata_rows():
     ]
 
 
-def test_reverse_migrate_legacy_commentable_fields_from_metadata_restores_source_fields():
+def test_reverse_migrate_legacy_commentable_fields_from_metadata_restores_source_fields() -> None:
     source_model = SimpleNamespace(
         _meta=SimpleNamespace(app_label="pages", model_name="page"),
         objects=_SourceManager([]),
@@ -178,32 +180,32 @@ def test_reverse_migrate_legacy_commentable_fields_from_metadata_restores_source
     ]
 
     class _MetadataQuerySet:
-        def __init__(self, rows):
+        def __init__(self, rows) -> None:
             self._rows = rows
 
-        def select_related(self, *_args):
+        def select_related(self, *_args) -> "_MetadataQuerySet":
             return self
 
-        def __iter__(self):
+        def __iter__(self) -> Iterator[SimpleNamespace]:
             return iter(self._rows)
 
     class ContentTypeManager:
-        def filter(self, **kwargs):
+        def filter(self, **kwargs) -> Any:
             assert kwargs == {"app_label": "pages", "model": "page"}
 
             class _Filtered:
-                def first(_self):
+                def first(_self) -> SimpleNamespace:
                     return ct
 
             return _Filtered()
 
     class MetadataManager:
-        def filter(self, **kwargs):
+        def filter(self, **kwargs) -> "_MetadataQuerySet":
             assert kwargs == {"target__content_type_id": 77}
             return _MetadataQuerySet(metadata_rows)
 
     class FakeApps:
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             mapping = {
                 ("pages", "Page"): source_model,
                 ("contenttypes", "ContentType"): SimpleNamespace(objects=ContentTypeManager()),
@@ -236,54 +238,56 @@ def test_reverse_migrate_legacy_commentable_fields_from_metadata_restores_source
 # ---------------------------------------------------------------------------
 
 
-def _alias_tracking_apps(*, source_rows, ct, source_meta=("pages", "page")):
+def _alias_tracking_apps(
+    *, source_rows, ct, source_meta=("pages", "page")
+) -> tuple[Any, Any, Any, Any, Any]:
     """Build a FakeApps where every manager records its `.using(alias)` calls in a
     `using_log`. Returns (apps, source_manager, ct_manager, doc_manager, metadata_manager)
     so the test can assert every layer was pinned to the alias."""
     source_app_label, source_model_name = source_meta
 
     class _AliasManager:
-        def __init__(self):
+        def __init__(self) -> None:
             self.using_log = []
 
-        def using(self, alias):
+        def using(self, alias) -> "_AliasManager":
             self.using_log.append(alias)
             return self
 
     class SourceManager(_AliasManager):
-        def __init__(self, rows):
+        def __init__(self, rows) -> None:
             super().__init__()
             self._rows = rows
             self.update_log = []
 
-        def exclude(self, **kwargs):
+        def exclude(self, **kwargs) -> _LegacyQuerySet:
             return _LegacyQuerySet(self._rows).exclude(**kwargs)
 
-        def filter(self, **kwargs):
+        def filter(self, **kwargs) -> _UpdateQuerySet:
             assert "pk" in kwargs
             return _UpdateQuerySet(self.update_log, kwargs["pk"])
 
     class ContentTypeManager(_AliasManager):
-        def get_or_create(self, **kwargs):
+        def get_or_create(self, **kwargs) -> tuple[SimpleNamespace, bool]:
             assert kwargs == {"app_label": source_app_label, "model": source_model_name}
             return ct, False
 
-        def filter(self, **kwargs):
+        def filter(self, **kwargs) -> Any:
             assert kwargs == {"app_label": source_app_label, "model": source_model_name}
             row = ct
 
             class _Filtered:
-                def first(_self):
+                def first(_self) -> SimpleNamespace:
                     return row
 
             return _Filtered()
 
     class DocumentIdManager(_AliasManager):
-        def __init__(self):
+        def __init__(self) -> None:
             super().__init__()
             self.created = []
 
-        def get_or_create(self, **kwargs):
+        def get_or_create(self, **kwargs) -> tuple[SimpleNamespace, bool]:
             doc = _DocumentRowFactory(
                 id=1000 + kwargs["object_id"],
                 content_type_id=kwargs["content_type_id"],
@@ -293,24 +297,24 @@ def _alias_tracking_apps(*, source_rows, ct, source_meta=("pages", "page")):
             return doc, True
 
     class MetadataManager(_AliasManager):
-        def __init__(self):
+        def __init__(self) -> None:
             super().__init__()
             self.updates = []
             self.metadata_rows = []
 
-        def update_or_create(self, **kwargs):
+        def update_or_create(self, **kwargs) -> tuple[SimpleNamespace, bool]:
             self.updates.append(kwargs)
             return SimpleNamespace(), True
 
-        def filter(self, **kwargs):
+        def filter(self, **kwargs) -> Any:
             class _MetadataQuerySet:
-                def __init__(self, rows):
+                def __init__(self, rows) -> None:
                     self._rows = rows
 
-                def select_related(self, *_args):
+                def select_related(self, *_args) -> "_MetadataQuerySet":
                     return self
 
-                def __iter__(self):
+                def __iter__(self) -> Iterator[SimpleNamespace]:
                     return iter(self._rows)
 
             return _MetadataQuerySet([])
@@ -326,7 +330,7 @@ def _alias_tracking_apps(*, source_rows, ct, source_meta=("pages", "page")):
     )
 
     class FakeApps:
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             mapping = {
                 (source_app_label, source_model_name.title()): source_model,
                 ("contenttypes", "ContentType"): SimpleNamespace(objects=ct_manager),
@@ -338,7 +342,7 @@ def _alias_tracking_apps(*, source_rows, ct, source_meta=("pages", "page")):
     return FakeApps(), source_manager, ct_manager, doc_manager, metadata_manager
 
 
-def test_migrate_uses_db_alias_from_schema_editor():
+def test_migrate_uses_db_alias_from_schema_editor() -> None:
     source_rows = [_ModelRowFactory(pk=1)]
     ct = _ContentTypeRowFactory()
     apps, source_m, ct_m, doc_m, meta_m = _alias_tracking_apps(source_rows=source_rows, ct=ct)
@@ -357,7 +361,7 @@ def test_migrate_uses_db_alias_from_schema_editor():
     assert meta_m.using_log == ["replica"]
 
 
-def test_reverse_migrate_uses_db_alias_from_schema_editor():
+def test_reverse_migrate_uses_db_alias_from_schema_editor() -> None:
     apps, source_m, ct_m, _, meta_m = _alias_tracking_apps(
         source_rows=[], ct=_ContentTypeRowFactory()
     )

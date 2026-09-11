@@ -50,7 +50,7 @@ REACTION_TOGGLE_GRAPHQL = """
 @override_settings(BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS=True)
 async def test_reaction_created_subscription_has_correct_unread_count(
     django_user_client, graphql_ws_user_client
-):
+) -> None:
     # Setup: User A (django_user_client.user) owns a comment (the reaction target)
     target = await database_sync_to_async(CommentFactory)(user=django_user_client.user)
     target_relay_id = await database_sync_to_async(lambda: target.relay_id)()

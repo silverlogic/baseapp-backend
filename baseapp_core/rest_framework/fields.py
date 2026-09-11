@@ -13,11 +13,11 @@ except InvalidCacheBackendError:
 
 
 class ThumbnailImageField(Base64ImageField):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         self.sizes = kwargs.pop("sizes", {})
         super(ThumbnailImageField, self).__init__(*args, **kwargs)
 
-    def _get_cache_key(self, value):
+    def _get_cache_key(self, value) -> str:
         sizes = []
         for name, size in self.sizes.items():
             size_string = "-".join(map(str, size))
@@ -25,7 +25,7 @@ class ThumbnailImageField(Base64ImageField):
         sizes_string = "_".join(sizes)
         return f"et:thumbnail:{value.url}:{sizes_string}"
 
-    def to_representation(self, value):
+    def to_representation(self, value) -> dict[str, str] | None:
         if not value:
             return None
 

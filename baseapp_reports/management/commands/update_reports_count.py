@@ -13,7 +13,7 @@ class Command(BaseCommand):
 
     help = "Recompute reports_count metadata for every reported target."
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options) -> None:
         Report = swapper.load_model("baseapp_reports", "Report")
 
         target_doc_ids = list(

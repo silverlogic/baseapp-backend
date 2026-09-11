@@ -14,7 +14,7 @@ class OnNewActivityLogMessage(channels_graphql_ws.Subscription):
         room_id = graphene.ID(required=True)
 
     @staticmethod
-    def subscribe(root, info, room_id):
+    def subscribe(root, info, room_id) -> list[str]:
         room = database_sync_to_async(get_obj_from_relay_id)(info, room_id)
 
         user = info.context.channels_scope["user"]
@@ -25,7 +25,7 @@ class OnNewActivityLogMessage(channels_graphql_ws.Subscription):
         return [room_id]
 
     @staticmethod
-    def publish(payload, info, room_id):
+    def publish(payload, info, room_id) -> "OnNewActivityLogMessage | None":
         message = payload["message"]
         user = info.context.channels_scope["user"]
 
@@ -39,7 +39,7 @@ class OnNewActivityLogMessage(channels_graphql_ws.Subscription):
     @classmethod
     def new_message(
         cls, message, room_id
-    ):  # NOSONAR - calls parent class broadcast(), not recursive
+    ) -> None:  # NOSONAR - calls parent class broadcast(), not recursive
         cls.broadcast(
             group=room_id,
             payload={"message": message},

@@ -1,0 +1,47 @@
+id: django-translation-model-fields-lazy
+snapshots:
+  ? |
+    email = forms.EmailField(label="Your Email")
+  : labels:
+    - source: label="Your Email"
+      style: primary
+      start: 25
+      end: 43
+    - source: label
+      style: secondary
+      start: 25
+      end: 30
+    - source: '"Your Email"'
+      style: secondary
+      start: 31
+      end: 43
+  ? |
+    name = models.CharField(max_length=255, help_text="Enter the display name.")
+  : labels:
+    - source: help_text="Enter the display name."
+      style: primary
+      start: 40
+      end: 75
+    - source: help_text
+      style: secondary
+      start: 40
+      end: 49
+    - source: '"Enter the display name."'
+      style: secondary
+      start: 50
+      end: 75
+  ? |
+    name = models.CharField(max_length=255, verbose_name="Name")
+  : labels:
+    - source: verbose_name="Name"
+      style: primary
+      start: 40
+      end: 59
+    - source: verbose_name
+      style: secondary
+      start: 40
+      end: 52
+    - source: '"Name"'
+      style: secondary
+      start: 53
+      end: 59
