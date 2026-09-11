@@ -1,3 +1,5 @@
+from typing import Any
+
 import swapper
 from django.apps import apps
 from notifications.signals import notify
@@ -32,7 +34,7 @@ class NotificationService(SharedServiceProvider):
         push_title=None,
         push_description=None,
         **kwargs,
-    ):
+    ) -> list[tuple[Any, Any]]:
         NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationSetting")
         notifications = []
 

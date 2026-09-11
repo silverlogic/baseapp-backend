@@ -19,7 +19,7 @@ comment_created = Signal()
 comment_deleted = Signal()
 
 
-def on_comment_saved_graphql_subscription(sender, instance, created, **kwargs):
+def on_comment_saved_graphql_subscription(sender, instance, created, **kwargs) -> None:
     from baseapp_comments.graphql.subscriptions import OnCommentChange
 
     if created:
@@ -28,7 +28,7 @@ def on_comment_saved_graphql_subscription(sender, instance, created, **kwargs):
         OnCommentChange.send_updated_comment(comment=instance)
 
 
-def on_comment_deleted_graphql_subscription(sender, instance, **kwargs):
+def on_comment_deleted_graphql_subscription(sender, instance, **kwargs) -> None:
     from baseapp_comments.graphql.subscriptions import OnCommentChange
 
     comment_replay_id = instance.relay_id
@@ -55,7 +55,7 @@ if getattr(settings, "BASEAPP_COMMENTS_ENABLE_GRAPHQL_SUBSCRIPTIONS", True):
     )
 
 
-def _recompute_and_save_comments_count(CommentableMetadata, obj, recompute):
+def _recompute_and_save_comments_count(CommentableMetadata, obj, recompute) -> None:
     """
     Recompute and persist `comments_count` for `obj` under a row lock to avoid
     read-compute-write races when many comments change concurrently.
@@ -69,13 +69,13 @@ def _recompute_and_save_comments_count(CommentableMetadata, obj, recompute):
         metadata.save(update_fields=["comments_count"])
 
 
-def update_comments_count(sender, instance, created=False, **kwargs):
+def update_comments_count(sender, instance, created=False, **kwargs) -> None:
     CommentableMetadata = swapper.load_model("baseapp_comments", "CommentableMetadata")
 
     if instance.in_reply_to_id:
         parent = instance.in_reply_to
 
-        def recompute_for_parent():
+        def recompute_for_parent() -> dict[str, int]:
             qs = sender.objects_visible.filter(in_reply_to_id=instance.in_reply_to_id)
             counts = {
                 "total": qs.count(),
@@ -93,7 +93,7 @@ def update_comments_count(sender, instance, created=False, **kwargs):
     target = instance.target
     if target:
 
-        def recompute_for_target():
+        def recompute_for_target() -> dict[str, int]:
             qs = sender.objects_visible.for_target(target, root_only=False)
             total = qs.count()
             replies = qs.filter(in_reply_to__isnull=False).count()
@@ -112,7 +112,7 @@ post_save.connect(update_comments_count, sender=Comment, dispatch_uid="update_co
 post_delete.connect(update_comments_count, sender=Comment, dispatch_uid="update_comments_count")
 
 
-def on_comment_deleted(sender, instance, **kwargs):
+def on_comment_deleted(sender, instance, **kwargs) -> None:
     if instance.target:
         target_doc = DocumentId.get_or_create_for_object(instance.target)
         if target_doc:
@@ -126,7 +126,7 @@ def on_comment_deleted(sender, instance, **kwargs):
 post_delete.connect(on_comment_deleted, sender=Comment, dispatch_uid="on_comment_deleted")
 
 
-def notify_on_comment_created(sender, instance, created, **kwargs):
+def notify_on_comment_created(sender, instance, created, **kwargs) -> None:
     if not getattr(settings, "BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS", True):
         return
 

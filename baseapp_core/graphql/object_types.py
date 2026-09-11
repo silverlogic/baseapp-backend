@@ -14,7 +14,7 @@ class DjangoObjectType(OptimizerDjangoObjectType):
         abstract = True
 
     @classmethod
-    def __init_subclass_with_meta__(cls, **kwargs):
+    def __init_subclass_with_meta__(cls, **kwargs) -> None:
         model = kwargs.get("model")
 
         # Make ObjectType's name be identical to the model's name
@@ -37,7 +37,7 @@ class DjangoObjectType(OptimizerDjangoObjectType):
         Also checks only_fields to avoid unnecessary annotations.
         """
 
-        def recursive_set_annotations(opt: QueryOptimizer, model_cls: TModel):
+        def recursive_set_annotations(opt: QueryOptimizer, model_cls: TModel) -> None:
             # Only add the annotations if the id field is in the only_fields
             only_fields_set = set(opt.only_fields)
             if "id" in only_fields_set:

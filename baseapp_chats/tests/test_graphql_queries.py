@@ -136,7 +136,7 @@ ROOM_IS_SOLE_ADMIN_GRAPHQL = """
     """
 
 
-def test_user_can_list_rooms(graphql_user_client, django_user_client):
+def test_user_can_list_rooms(graphql_user_client, django_user_client) -> None:
     user_profie = ProfileFactory()
     friend_profile = ProfileFactory()
 
@@ -163,7 +163,7 @@ def test_user_can_list_rooms(graphql_user_client, django_user_client):
     assert len(content["data"]["me"]["profile"]["chatRooms"]["edges"]) == 2
 
 
-def test_unread_messages_count(graphql_user_client, django_user_client):
+def test_unread_messages_count(graphql_user_client, django_user_client) -> None:
     my_profile = django_user_client.user.profile
     friend_profile = ProfileFactory()
     room = ChatRoomFactory(created_by=django_user_client.user)
@@ -186,7 +186,7 @@ def test_unread_messages_count(graphql_user_client, django_user_client):
     )
 
 
-def test_filter_rooms_with_unread_messages(graphql_user_client, django_user_client):
+def test_filter_rooms_with_unread_messages(graphql_user_client, django_user_client) -> None:
     my_profile = django_user_client.user.profile
     friend_in_room_with_unread = ProfileFactory()
     friend_in_room_with_read = ProfileFactory()
@@ -219,7 +219,7 @@ def test_filter_rooms_with_unread_messages(graphql_user_client, django_user_clie
     )
 
 
-def test_archived_chats(django_client):
+def test_archived_chats(django_client) -> None:
     me = UserFactory()
     my_profile = me.profile
     friend = UserFactory()
@@ -252,7 +252,7 @@ def test_archived_chats(django_client):
     assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 0
 
 
-def test_can_filter_by_room_title(django_client):
+def test_can_filter_by_room_title(django_client) -> None:
     user_1 = UserFactory(first_name="Luke", last_name="Skywalker")
     profile_1 = user_1.profile
 
@@ -317,7 +317,7 @@ def test_can_filter_by_room_title(django_client):
     assert room_4.relay_id not in room_ids  # room name 'Star Wars'
 
 
-def test_can_filter_unread_rooms_by_title(django_client):
+def test_can_filter_unread_rooms_by_title(django_client) -> None:
     user_1 = UserFactory(first_name="Luke", last_name="Skywalker (Artist)")
     profile_1 = user_1.profile
     profile_2 = ProfileFactory(name="Darth Vader")
@@ -377,7 +377,7 @@ def test_can_filter_unread_rooms_by_title(django_client):
     assert room_5.relay_id not in room_ids  # room name 'Star Wars, Part I', but no unread messages
 
 
-def test_can_filter_archived_rooms_by_title(django_client):
+def test_can_filter_archived_rooms_by_title(django_client) -> None:
     user_1 = UserFactory(first_name="Tester", last_name="11")
     profile_1 = user_1.profile
     profile_2 = ProfileFactory(name="Shrek")
@@ -429,7 +429,7 @@ def test_can_filter_archived_rooms_by_title(django_client):
     assert room_5.relay_id in room_ids  # room name 'Oceans 11'
 
 
-def test_cant_list_rooms_if_not_participating(graphql_user_client):
+def test_cant_list_rooms_if_not_participating(graphql_user_client) -> None:
     user = UserFactory()
 
     user_room = ChatRoomFactory(created_by=user)
@@ -446,7 +446,9 @@ def test_cant_list_rooms_if_not_participating(graphql_user_client):
     assert len(content["data"]["me"]["profile"]["chatRooms"]["edges"]) == 0
 
 
-def test_rooms_list_are_ordered_by_last_message_time(graphql_user_client, django_user_client):
+def test_rooms_list_are_ordered_by_last_message_time(
+    graphql_user_client, django_user_client
+) -> None:
     user = UserFactory()
     user_2 = UserFactory()
     user_3 = UserFactory()
@@ -485,7 +487,7 @@ def test_rooms_list_are_ordered_by_last_message_time(graphql_user_client, django
     assert content["data"]["me"]["profile"]["chatRooms"]["edges"][2]["node"]["id"] == room_3_id
 
 
-def test_can_list_messages_from_participating_room(graphql_user_client, django_user_client):
+def test_can_list_messages_from_participating_room(graphql_user_client, django_user_client) -> None:
     band = ProfileFactory()
     room = ChatRoomFactory(created_by=band.owner)
 
@@ -510,7 +512,7 @@ def test_can_list_messages_from_participating_room(graphql_user_client, django_u
     )
 
 
-def test_cant_list_messages_from_non_participating_room(graphql_user_client):
+def test_cant_list_messages_from_non_participating_room(graphql_user_client) -> None:
     user = UserFactory()
     room = ChatRoomFactory(created_by=user)
 
@@ -525,7 +527,7 @@ def test_cant_list_messages_from_non_participating_room(graphql_user_client):
     assert content["data"]["chatRoom"] is None
 
 
-def test_user_cant_list_rooms_if_blocked(graphql_user_client, django_user_client):
+def test_user_cant_list_rooms_if_blocked(graphql_user_client, django_user_client) -> None:
     band = ProfileFactory()
     room = ChatRoomFactory(created_by=django_user_client.user)
 
@@ -549,7 +551,7 @@ def test_user_cant_list_rooms_if_blocked(graphql_user_client, django_user_client
     assert len(content["data"]["me"]["profile"]["chatRooms"]["edges"]) == 0
 
 
-def test_user_can_list_rooms_that_are_not_blocked(graphql_user_client, django_user_client):
+def test_user_can_list_rooms_that_are_not_blocked(graphql_user_client, django_user_client) -> None:
     band = ProfileFactory()
     user_2 = UserFactory()
 
@@ -582,7 +584,7 @@ def test_user_can_list_rooms_that_are_not_blocked(graphql_user_client, django_us
     assert len(content["data"]["me"]["profile"]["chatRooms"]["edges"]) == 1
 
 
-def test_user_cant_open_room_if_blocked(graphql_user_client, django_user_client):
+def test_user_cant_open_room_if_blocked(graphql_user_client, django_user_client) -> None:
     band = ProfileFactory()
     room = ChatRoomFactory(created_by=django_user_client.user)
 
@@ -603,7 +605,7 @@ def test_user_cant_open_room_if_blocked(graphql_user_client, django_user_client)
 
 def test_new_participant_cant_list_previous_messages_when_joining_group_room(
     graphql_user_client, django_user_client, django_client
-):
+) -> None:
     with freeze_time("2024-12-01 10:00:00") as frozen_time:
         existing_profile_1 = ProfileFactory()
         existing_profile_2 = ProfileFactory()
@@ -649,7 +651,7 @@ def test_new_participant_cant_list_previous_messages_when_joining_group_room(
         assert len(content["data"]["chatRoom"]["allMessages"]["edges"]) == 4
 
 
-def test_filter_participants_by_name(django_client):
+def test_filter_participants_by_name(django_client) -> None:
     user = UserFactory(first_name="Alice", last_name="Test")
     profile_1 = ProfileFactory(name="John Doe")
     profile_2 = ProfileFactory(name="Jane Smith")
@@ -718,7 +720,7 @@ def test_filter_participants_by_name(django_client):
 
 def test_sender_sees_empty_1on1_chat_but_recipient_does_not(
     graphql_user_client, django_user_client, django_client
-):
+) -> None:
     """
     Test that:
     - Sender sees empty 1-on-1 chat room in their chat list
@@ -770,7 +772,7 @@ def test_sender_sees_empty_1on1_chat_but_recipient_does_not(
 
 def test_group_chats_visible_to_all_participants_even_when_empty(
     graphql_user_client, django_user_client, django_client
-):
+) -> None:
     """
     Test that group chats are visible to all participants even if empty
     (filtering only applies to 1-on-1 chats)
@@ -819,7 +821,7 @@ def test_group_chats_visible_to_all_participants_even_when_empty(
     assert len(content["data"]["profile"]["chatRooms"]["edges"]) == 1
 
 
-def test_resolve_title_for_1on1_chat_returns_other_participant_name(django_client):
+def test_resolve_title_for_1on1_chat_returns_other_participant_name(django_client) -> None:
     """
     Test that resolve_title returns the other participant's profile name for 1-on-1 chats
     """
@@ -843,7 +845,7 @@ def test_resolve_title_for_1on1_chat_returns_other_participant_name(django_clien
     assert content["data"]["chatRoom"]["title"] == "Batman"
 
 
-def test_resolve_title_for_group_chat_returns_group_title(django_client):
+def test_resolve_title_for_group_chat_returns_group_title(django_client) -> None:
     """
     Test that resolve_title returns the group title for group chats
     """
@@ -865,7 +867,7 @@ def test_resolve_title_for_group_chat_returns_group_title(django_client):
     assert content["data"]["chatRoom"]["title"] == "Justice League"
 
 
-def test_resolve_title_returns_none_when_other_participant_has_no_profile(django_client):
+def test_resolve_title_returns_none_when_other_participant_has_no_profile(django_client) -> None:
     """
     Test that resolve_title returns None when other participant exists but has no profile
     """
@@ -893,7 +895,7 @@ def test_resolve_title_returns_none_when_other_participant_has_no_profile(django
 
 def test_resolve_image_for_1on1_chat_returns_other_participant_image(
     django_client, image_djangofile
-):
+) -> None:
     """
     Test that resolve_image returns the other participant's profile image for 1-on-1 chats
     """
@@ -919,7 +921,7 @@ def test_resolve_image_for_1on1_chat_returns_other_participant_image(
     assert "100x100" in content["data"]["chatRoom"]["image"]["url"]
 
 
-def test_resolve_image_for_group_chat_returns_group_image(django_client, image_djangofile):
+def test_resolve_image_for_group_chat_returns_group_image(django_client, image_djangofile) -> None:
     """
     Test that resolve_image returns the group image for group chats
     """
@@ -943,7 +945,7 @@ def test_resolve_image_for_group_chat_returns_group_image(django_client, image_d
     assert "100x100" in content["data"]["chatRoom"]["image"]["url"]
 
 
-def test_resolve_image_returns_none_when_other_participant_has_no_image(django_client):
+def test_resolve_image_returns_none_when_other_participant_has_no_image(django_client) -> None:
     """
     Test that resolve_image returns None when other participant has no profile image
     """
@@ -966,7 +968,7 @@ def test_resolve_image_returns_none_when_other_participant_has_no_image(django_c
     assert content["data"]["chatRoom"]["image"] is None
 
 
-def test_resolve_image_returns_none_when_other_participant_has_no_profile(django_client):
+def test_resolve_image_returns_none_when_other_participant_has_no_profile(django_client) -> None:
     """
     Test that resolve_image returns None when other participant exists but has no profile
     """
@@ -992,7 +994,7 @@ def test_resolve_image_returns_none_when_other_participant_has_no_profile(django
     assert content["data"]["chatRoom"]["image"] is None
 
 
-def test_resolve_other_participant_for_1on1_chat_returns_other_participant(django_client):
+def test_resolve_other_participant_for_1on1_chat_returns_other_participant(django_client) -> None:
     """
     Test that resolve_other_participant returns the other participant for 1-on-1 chats
     """
@@ -1018,7 +1020,7 @@ def test_resolve_other_participant_for_1on1_chat_returns_other_participant(djang
     assert content["data"]["chatRoom"]["otherParticipant"]["profile"]["name"] == "Robin"
 
 
-def test_resolve_other_participant_for_group_chat_returns_none(django_client):
+def test_resolve_other_participant_for_group_chat_returns_none(django_client) -> None:
     """
     Test that resolve_other_participant returns None for group chats
     """
@@ -1043,7 +1045,7 @@ def test_resolve_other_participant_for_group_chat_returns_none(django_client):
     assert content["data"]["chatRoom"]["otherParticipant"] is None
 
 
-def test_resolve_other_participant_returns_none_when_user_not_participant(django_client):
+def test_resolve_other_participant_returns_none_when_user_not_participant(django_client) -> None:
     """
     Test that resolve_other_participant returns None when current user is not a participant
     """
@@ -1067,7 +1069,7 @@ def test_resolve_other_participant_returns_none_when_user_not_participant(django
     assert content["data"]["chatRoom"] is None
 
 
-def test_resolve_other_participant_excludes_current_user(django_client):
+def test_resolve_other_participant_excludes_current_user(django_client) -> None:
     """
     Test that resolve_other_participant properly excludes the current user's profile
     """
@@ -1106,7 +1108,7 @@ def test_resolve_other_participant_excludes_current_user(django_client):
     assert content["data"]["chatRoom"]["otherParticipant"]["profile"]["name"] == "Alfred"
 
 
-def test_resolve_is_sole_admin_returns_false_for_1on1_chat(django_client):
+def test_resolve_is_sole_admin_returns_false_for_1on1_chat(django_client) -> None:
     """
     Test that resolve_is_sole_admin returns False for 1-on-1 chats
     """
@@ -1130,7 +1132,7 @@ def test_resolve_is_sole_admin_returns_false_for_1on1_chat(django_client):
     assert content["data"]["chatRoom"]["isSoleAdmin"] is False
 
 
-def test_resolve_is_sole_admin_returns_true_when_user_is_only_admin(django_client):
+def test_resolve_is_sole_admin_returns_true_when_user_is_only_admin(django_client) -> None:
     """
     Test that resolve_is_sole_admin returns True when current user is the only admin
     """
@@ -1160,7 +1162,7 @@ def test_resolve_is_sole_admin_returns_true_when_user_is_only_admin(django_clien
     assert content["data"]["chatRoom"]["isSoleAdmin"] is True
 
 
-def test_resolve_is_sole_admin_returns_false_when_multiple_admins(django_client):
+def test_resolve_is_sole_admin_returns_false_when_multiple_admins(django_client) -> None:
     """
     Test that resolve_is_sole_admin returns False when there are multiple admins
     """
@@ -1190,7 +1192,7 @@ def test_resolve_is_sole_admin_returns_false_when_multiple_admins(django_client)
     assert content["data"]["chatRoom"]["isSoleAdmin"] is False
 
 
-def test_resolve_is_sole_admin_returns_false_when_user_is_not_admin(django_client):
+def test_resolve_is_sole_admin_returns_false_when_user_is_not_admin(django_client) -> None:
     """
     Test that resolve_is_sole_admin returns False when current user is not an admin
     """
@@ -1217,7 +1219,7 @@ def test_resolve_is_sole_admin_returns_false_when_user_is_not_admin(django_clien
     assert content["data"]["chatRoom"]["isSoleAdmin"] is False
 
 
-def test_resolve_is_sole_admin_returns_false_when_user_not_participant(django_client):
+def test_resolve_is_sole_admin_returns_false_when_user_not_participant(django_client) -> None:
     """
     Test that resolve_is_sole_admin returns False when current user is not a participant
     """
@@ -1245,7 +1247,9 @@ def test_resolve_is_sole_admin_returns_false_when_user_not_participant(django_cl
     assert content["data"]["chatRoom"] is None
 
 
-def test_resolve_is_sole_admin_when_admin_leaves_and_another_becomes_sole_admin(django_client):
+def test_resolve_is_sole_admin_when_admin_leaves_and_another_becomes_sole_admin(
+    django_client,
+) -> None:
     """
     Test that resolve_is_sole_admin correctly reflects when one admin leaves
     """

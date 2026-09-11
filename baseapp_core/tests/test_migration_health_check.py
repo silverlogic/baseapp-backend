@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 from django.apps import apps
 from django.db import DEFAULT_DB_ALIAS, connections
@@ -12,7 +13,7 @@ from django.test import TestCase
 
 
 class MigrationJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
+    def default(self, obj) -> Any:
         if isinstance(obj, Field):  # django field
             return "__cant_serialize__"
         if isinstance(obj, Migration) or isinstance(obj, Operation) or isinstance(obj, Index):
@@ -30,12 +31,12 @@ class TestMigrationHealthCheck(TestCase):
     Try to pre-empt migration woes.
     """
 
-    def migration_progress_callback(*args, **kwargs):
+    def migration_progress_callback(*args, **kwargs) -> None:
         # This is a no-op to keep the MigrationExecutor's
         # constructor happy
         pass
 
-    def test_for_uncreated_migrations(self):
+    def test_for_uncreated_migrations(self) -> None:
         """
         Migrations are created and added to the repo, so the CI detects if any
         migrations were created but not pushed to the git branch.

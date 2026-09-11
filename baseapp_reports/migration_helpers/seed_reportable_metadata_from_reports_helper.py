@@ -26,14 +26,19 @@ Notes
   same database — same pattern the baseapp_follows / baseapp_comments helpers use.
 """
 
+from typing import TYPE_CHECKING
+
 from baseapp_core.swapper import get_apps_model
 
+if TYPE_CHECKING:
+    from django.db.models import Manager, QuerySet
 
-def _default_reports_count():
+
+def _default_reports_count() -> dict[str, int]:
     return {"total": 0}
 
 
-def _alias_pinned_managers(schema_editor, *models):
+def _alias_pinned_managers(schema_editor, *models) -> "tuple[Manager | QuerySet, ...]":
     if schema_editor is not None and getattr(schema_editor, "connection", None) is not None:
         alias = schema_editor.connection.alias
         return tuple(model.objects.using(alias) for model in models)
@@ -46,7 +51,7 @@ def seed_reportable_metadata_from_reports(
     *,
     metadata_app_label: str = "baseapp_reports",
     metadata_model_name: str = "ReportableMetadata",
-):
+) -> None:
     """
     Create or update one `ReportableMetadata` row per `DocumentId` that has any
     `Report` rows pointing at it, populating `reports_count` from a fresh count of
@@ -87,7 +92,7 @@ def reverse_seed_reportable_metadata(
     *,
     metadata_app_label: str = "baseapp_reports",
     metadata_model_name: str = "ReportableMetadata",
-):
+) -> None:
     """
     Drop `ReportableMetadata` rows that were seeded from existing `Report` data.
 

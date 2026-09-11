@@ -24,8 +24,15 @@ Notes
   test DB where `post_migrate` hasn't populated ContentType yet.
 """
 
+from typing import TYPE_CHECKING
 
-def _alias_pinned_managers(schema_editor, *models):
+if TYPE_CHECKING:
+    from django.db import models as db_models
+
+
+def _alias_pinned_managers(
+    schema_editor, *models
+) -> "tuple[db_models.Manager | db_models.QuerySet, ...]":
     if schema_editor is not None and getattr(schema_editor, "connection", None) is not None:
         alias = schema_editor.connection.alias
         return tuple(model.objects.using(alias) for model in models)
@@ -42,7 +49,7 @@ def migrate_legacy_block_counts_to_metadata(
     metadata_model_name: str = "BlockableMetadata",
     blockers_count_field: str = "blockers_count",
     blocking_count_field: str = "blocking_count",
-):
+) -> None:
     SourceModel = apps.get_model(source_app_label, source_model_name)
     ContentType = apps.get_model("contenttypes", "ContentType")
     DocumentId = apps.get_model("baseapp_core", "DocumentId")
@@ -91,7 +98,7 @@ def reverse_migrate_legacy_block_counts_from_metadata(
     metadata_model_name: str = "BlockableMetadata",
     blockers_count_field: str = "blockers_count",
     blocking_count_field: str = "blocking_count",
-):
+) -> None:
     SourceModel = apps.get_model(source_app_label, source_model_name)
     ContentType = apps.get_model("contenttypes", "ContentType")
     BlockableMetadata = apps.get_model(metadata_app_label, metadata_model_name)

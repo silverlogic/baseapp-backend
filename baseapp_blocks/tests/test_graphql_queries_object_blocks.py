@@ -72,7 +72,9 @@ EXPECTED_BLOCKS_INTERFACE_NESTED_LIST_QUERY_COUNT = 9
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_block_counts_are_flat_regardless_of_block_volume(django_user_client, graphql_user_client):
+def test_block_counts_are_flat_regardless_of_block_volume(
+    django_user_client, graphql_user_client
+) -> None:
     """`blockersCount` / `blockingCount` on a Profile node take the same number
     of queries for 3 blocks as for 20."""
     django_user_client.user.is_superuser = True
@@ -108,7 +110,7 @@ def test_block_counts_are_flat_regardless_of_block_volume(django_user_client, gr
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_block_counts_zero_when_no_blocks_does_not_extra_query(
     django_user_client, graphql_user_client
-):
+) -> None:
     """A Profile with no blocks resolves in the same query budget as one with
     blocks — the missing metadata row falls through `Coalesce` to zero."""
     django_user_client.user.is_superuser = True
@@ -140,7 +142,7 @@ def test_block_counts_zero_when_no_blocks_does_not_extra_query(
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_block_counts_perm_denied_path_is_flat(graphql_user_client):
+def test_block_counts_perm_denied_path_is_flat(graphql_user_client) -> None:
     """A non-superuser sees `null` for both counts and the perm-check path
     stays flat regardless of block volume."""
     target_small = ProfileFactory()
@@ -171,7 +173,9 @@ def test_block_counts_perm_denied_path_is_flat(graphql_user_client):
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_block_list_with_target_blockers_count_is_flat(django_user_client, graphql_user_client):
+def test_block_list_with_target_blockers_count_is_flat(
+    django_user_client, graphql_user_client
+) -> None:
     """Listing a Profile's `blocking` connection with `target.blockersCount` on
     each edge takes the same number of queries for 3 blocks as for 20."""
     django_user_client.user.is_superuser = True

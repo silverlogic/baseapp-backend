@@ -10,16 +10,16 @@ pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
-def base_dir():
+def base_dir() -> str:
     return "/test/base/dir"
 
 
 @pytest.fixture
-def filename():
+def filename() -> str:
     return "testfile.txt"
 
 
-def test_random_name_in():
+def test_random_name_in() -> None:
     directory = "test_dir"
     filename = "example.txt"
     random_name = random_name_in(directory)
@@ -41,12 +41,12 @@ def test_random_name_in():
         pytest.fail(f"Generated filename '{generated_filename}' is not a valid UUID")
 
 
-def test_random_dir_in_initialization(base_dir):
+def test_random_dir_in_initialization(base_dir) -> None:
     random_dir = random_dir_in(base_dir)
     assert random_dir.base_dir == base_dir
 
 
-def test_random_dir_in_call(base_dir, filename):
+def test_random_dir_in_call(base_dir, filename) -> None:
     random_dir = random_dir_in(base_dir)
     instance = mock.Mock()
 

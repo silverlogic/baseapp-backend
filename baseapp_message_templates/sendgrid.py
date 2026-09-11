@@ -12,7 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 class SengridMessage(EmailMessage):
-    def __init__(self, template_id, personalizations: Iterable[Personalization], from_email=None):
+    def __init__(
+        self, template_id, personalizations: Iterable[Personalization], from_email=None
+    ) -> None:
         self.personalizations = personalizations
         self.template_id = template_id
 
@@ -22,7 +24,7 @@ class SengridMessage(EmailMessage):
         super().__init__(from_email=from_email, to=to)
 
 
-def send_personalized_mail(copy_template, personalization: Personalization, attachments=[]):
+def send_personalized_mail(copy_template, personalization: Personalization, attachments=[]) -> int:
     template_id = copy_template.sendgrid_template_id
     attachments = list(copy_template.static_attachments.all()) + attachments
 
@@ -36,7 +38,7 @@ def send_personalized_mail(copy_template, personalization: Personalization, atta
 
 def mass_send_personalized_mail(
     copy_template, personalizations: Iterable[Personalization], attachments=[]
-):
+) -> None:
     """
     Easy wrapper for sending personalized messages of the same Sendgrid template.
     Recipients data is configured through Sendgrid personalizations.
@@ -53,7 +55,7 @@ def mass_send_personalized_mail(
             logger.exception(f"Error: {e} while sending mass email")
 
 
-def get_personalization(recipient_email: str, context={}):
+def get_personalization(recipient_email: str, context={}) -> Personalization:
     personalization = Personalization()
     personalization.add_to(To(recipient_email))
     personalization.dynamic_template_data = context

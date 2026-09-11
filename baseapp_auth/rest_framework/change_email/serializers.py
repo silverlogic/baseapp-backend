@@ -13,13 +13,13 @@ User = get_user_model()
 class ChangeEmailRequestSerializer(serializers.Serializer):
     new_email = serializers.EmailField()
 
-    def validate_new_email(self, new_email):
+    def validate_new_email(self, new_email) -> str:
         new_email = new_email.lower()
         if User.objects.filter(email=new_email).exists():
             raise serializers.ValidationError(_("That email is already in use."))
         return new_email
 
-    def create(self, validated_data):
+    def create(self, validated_data) -> "User":
         user = self.context["request"].user
         user.new_email = validated_data["new_email"]
         user.save()
@@ -29,12 +29,12 @@ class ChangeEmailRequestSerializer(serializers.Serializer):
 class ChangeEmailConfirmSerializer(serializers.Serializer):
     token = serializers.CharField()
 
-    def validate_token(self, token):
+    def validate_token(self, token) -> str:
         if not ChangeEmailConfirmTokenGenerator().check_token(self.instance, token):
             raise serializers.ValidationError(_("Invalid token."))
         return token
 
-    def update(self, instance, validated_data):
+    def update(self, instance, validated_data) -> "User":
         instance.is_new_email_confirmed = True
         instance.save()
         return instance
@@ -43,12 +43,12 @@ class ChangeEmailConfirmSerializer(serializers.Serializer):
 class ChangeEmailVerifySerializer(serializers.Serializer):
     token = serializers.CharField()
 
-    def validate_token(self, token):
+    def validate_token(self, token) -> str:
         if not ChangeEmailVerifyTokenGenerator().check_token(self.instance, token):
             raise serializers.ValidationError(_("Invalid token."))
         return token
 
-    def update(self, instance, validated_data):
+    def update(self, instance, validated_data) -> "User":
         instance.email = instance.new_email
         instance.new_email = ""
         instance.is_new_email_confirmed = False

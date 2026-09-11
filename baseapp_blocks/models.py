@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import swapper
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
@@ -10,6 +12,9 @@ from model_utils.models import TimeStampedModel
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import DocumentIdMixin, DocumentIdUniqueTargetMixin
 from baseapp_core.plugins import shared_services
+
+if TYPE_CHECKING:
+    from baseapp_core.graphql import DjangoObjectType
 
 ProfileModel = swapper.get_model_name("baseapp_profiles", "Profile")
 
@@ -46,10 +51,10 @@ class AbstractBlock(DocumentIdMixin, RelayModel, TimeStampedModel):
         indexes = [models.Index(fields=["target", "actor"])]
         unique_together = [("actor", "target")]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{} blocked {}".format(self.actor, self.target)
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         created = self._state.adding
         super().save(*args, **kwargs)  # Save the instance first
 
@@ -57,7 +62,7 @@ class AbstractBlock(DocumentIdMixin, RelayModel, TimeStampedModel):
             self.update_blockers_count(self.target)
             self.update_blocking_count(self.actor)
 
-    def delete(self, *args, **kwargs):
+    def delete(self, *args, **kwargs) -> None:
         actor = self.actor
         target = self.target
         super().delete(*args, **kwargs)
@@ -66,12 +71,12 @@ class AbstractBlock(DocumentIdMixin, RelayModel, TimeStampedModel):
         self.update_blocking_count(actor)
 
     @classmethod
-    def get_graphql_object_type(cls):
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
         from .graphql.object_types import BlockObjectType
 
         return BlockObjectType
 
-    def update_blockers_count(self, target):
+    def update_blockers_count(self, target) -> None:
         if not target:
             return
         service = shared_services.get("blockable_metadata")
@@ -79,7 +84,7 @@ class AbstractBlock(DocumentIdMixin, RelayModel, TimeStampedModel):
             return
         service.recompute_blockers_count(target)
 
-    def update_blocking_count(self, actor):
+    def update_blocking_count(self, actor) -> None:
         if not actor:
             return
         service = shared_services.get("blockable_metadata")
@@ -104,11 +109,11 @@ class AbstractBlockableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
         verbose_name = _("blockable metadata")
         verbose_name_plural = _("blockable metadata")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"BlockableMetadata for {self.target}"
 
     @classmethod
-    def annotate_queryset(cls, queryset):
+    def annotate_queryset(cls, queryset) -> models.QuerySet:
         """
         Annotate `queryset` with blockable metadata so resolvers don't N+1.
         Adds `_blockable_blockers_count` and `_blockable_blocking_count`,

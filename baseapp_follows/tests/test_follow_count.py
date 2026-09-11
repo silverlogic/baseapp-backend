@@ -15,7 +15,7 @@ pytestmark = pytest.mark.django_db
 User = get_user_model()
 
 
-def test_follow_and_unfollow():
+def test_follow_and_unfollow() -> None:
     profile1 = ProfileFactory()
     profile2 = ProfileFactory()
 
@@ -42,7 +42,7 @@ def test_follow_and_unfollow():
     assert stats2.followers_count == 0
 
 
-def test_target_is_following_back():
+def test_target_is_following_back() -> None:
     profile1 = ProfileFactory()
     profile2 = ProfileFactory()
 
@@ -82,11 +82,11 @@ def test_target_is_following_back():
     assert original.target_is_following_back is False  # profile2 no longer follows back profile1
 
 
-def _captured_sql(ctx):
+def _captured_sql(ctx) -> list[str]:
     return [q["sql"] for q in ctx.captured_queries]
 
 
-def test_save_does_not_count_or_lock_followable_metadata_after_first_follow():
+def test_save_does_not_count_or_lock_followable_metadata_after_first_follow() -> None:
     """The steady-state save path must increment FollowableMetadata via an F
     expression — no COUNT(*) on follows_follow and no SELECT FOR UPDATE on
     followable_metadata. Both regress on hot targets: COUNT serializes writers
@@ -134,7 +134,7 @@ def test_save_does_not_count_or_lock_followable_metadata_after_first_follow():
     ), f"Expected a followable_metadata UPDATE; captured: {sql}"
 
 
-def test_delete_does_not_count_or_lock_followable_metadata():
+def test_delete_does_not_count_or_lock_followable_metadata() -> None:
     """Delete is always steady-state by definition — the FollowableMetadata row
     must exist (we incremented it on save), so the F-1 path always hits the
     UPDATE branch and never falls through to update_or_create."""
@@ -155,7 +155,7 @@ def test_delete_does_not_count_or_lock_followable_metadata():
     assert not any("FOR UPDATE" in q.upper() for q in sql)
 
 
-def test_target_is_following_back_does_not_re_enter_save():
+def test_target_is_following_back_does_not_re_enter_save() -> None:
     """The reciprocal target_is_following_back flip must use queryset .update(),
     not self.save(update_fields=...). The recursive-save pattern that was here before
     only worked because `created` was False on the second pass — fragile.
@@ -179,7 +179,7 @@ def test_target_is_following_back_does_not_re_enter_save():
     assert len(inserts) == 1, f"Unexpected INSERT count on follows_follow: {inserts}"
 
 
-def test_recount_helpers_reconcile_drifted_metadata():
+def test_recount_helpers_reconcile_drifted_metadata() -> None:
     """`recount_followers_count` / `recount_following_count` are the periodic
     reconciliation helpers — they re-derive the counter from the live row count.
     Drift the counter manually, then prove recount fixes it."""

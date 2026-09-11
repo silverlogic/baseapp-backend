@@ -8,7 +8,7 @@ class BannerBlockTests(BlocksHelper, TestPageContextMixin):
     block_type = "banner_block"
     block_class = BannerBlock
 
-    def test_banner_section_block(self):
+    def test_banner_section_block(self) -> None:
         self.generate_block(
             {
                 "title": "Banner",

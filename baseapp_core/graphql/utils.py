@@ -1,9 +1,11 @@
 import logging as _logging
 import traceback
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import graphene
 import sqlparse
@@ -17,8 +19,13 @@ from graphene_django.registry import get_global_registry
 
 from .decorators import graphql_schema_required
 
+if TYPE_CHECKING:
+    from django.db.models import Model
 
-def get_pk_from_relay_id(relay_id):
+    from .object_types import DjangoObjectType
+
+
+def get_pk_from_relay_id(relay_id) -> int | str:
     from baseapp_core.hashids.strategies import (
         graphql_get_pk_from_global_id_using_strategy,
     )
@@ -26,7 +33,7 @@ def get_pk_from_relay_id(relay_id):
     return graphql_get_pk_from_global_id_using_strategy(relay_id)
 
 
-def get_obj_from_relay_id(info: graphene.ResolveInfo, relay_id, get_node=False):
+def get_obj_from_relay_id(info: graphene.ResolveInfo, relay_id, get_node=False) -> "Model":
     from baseapp_core.hashids.strategies import (
         graphql_get_instance_from_global_id_using_strategy,
     )
@@ -35,7 +42,7 @@ def get_obj_from_relay_id(info: graphene.ResolveInfo, relay_id, get_node=False):
 
 
 @graphql_schema_required
-def get_obj_relay_id(obj):
+def get_obj_relay_id(obj) -> str:
     from baseapp_core.hashids.strategies import graphql_to_global_id_using_strategy
 
     object_type = _cache_object_type(obj)
@@ -44,7 +51,7 @@ def get_obj_relay_id(obj):
     return graphql_to_global_id_using_strategy(obj, object_type._meta.name, obj.pk)
 
 
-def _cache_object_type(obj):
+def _cache_object_type(obj) -> "type[DjangoObjectType] | None":
     if not hasattr(obj, "_graphql_object_type"):
         registry = get_global_registry()
         obj._graphql_object_type = registry.get_type_for_model(obj._meta.concrete_model)
@@ -56,8 +63,8 @@ def _cache_object_type(obj):
     return obj._graphql_object_type
 
 
-def get_object_type_for_model(model):
-    def get_object_type():
+def get_object_type_for_model(model) -> Callable[[], "type[DjangoObjectType]"]:
+    def get_object_type() -> "type[DjangoObjectType]":
         return model.get_graphql_object_type()
 
     return get_object_type
@@ -68,7 +75,7 @@ def resolve_document_content_object(
     info: "graphene.ResolveInfo",
     *,
     cache_attr: str = "_document_content_object_cache",
-):
+) -> "Model | None":
     """
     Resolve a `DocumentId.content_object` through a request-scoped cache so a
     connection of objects (each pointing at a `DocumentId`) doesn't hit the DB once
@@ -170,7 +177,7 @@ def db_query_logger(
     many,  # noqa: FBT001
     context,
     query_data: QueryData,
-):
+) -> Any:
     """
     A database query logger for capturing executed database queries.
     Used to check that query optimizations work as expected.
@@ -226,7 +233,7 @@ def get_stack_info() -> str:
 
 # Credit to MrThearMan https://github.com/MrThearMan/graphene-django-query-optimizer/blob/fa240c4816f5d36f709933b6b00bc51d4dff6af5/example_project/app/utils.py#L134
 @contextmanager
-def capture_database_queries():
+def capture_database_queries() -> Generator[QueryData, None, None]:
     """Capture results of what database queries were executed. `DEBUG` needs to be set to True."""
     query_data = QueryData(queries=[], stacks=[])
     query_logger = partial(db_query_logger, query_data=query_data)

@@ -55,10 +55,10 @@ LIST_ACTIVITY_LOG_WITH_PROFILE_PK_FILTER_GRAPHQL = """
 """
 
 
-def _build_activity_log_schema_without_profiles_branch():
+def _build_activity_log_schema_without_profiles_branch() -> graphene.Schema:
     original_is_installed = django_apps.is_installed
 
-    def _is_installed_without_profiles(app_name):
+    def _is_installed_without_profiles(app_name) -> bool:
         if app_name == "baseapp_profiles":
             return False
         return original_is_installed(app_name)
@@ -84,7 +84,7 @@ class TestActivityLogWithoutBaseappProfiles:
         with_disabled_apps,
         django_user_client,
         graphql_user_client,
-    ):
+    ) -> None:
         response = graphql_user_client(
             PROFILE_ACTIVITY_LOG_GRAPHQL,
             variables={"nodeId": django_user_client.user.profile.relay_id},
@@ -96,7 +96,7 @@ class TestActivityLogWithoutBaseappProfiles:
 
     def test_activity_logs_query_hides_profile_field_when_profiles_are_disabled(
         self, with_disabled_apps, graphql_user_client
-    ):
+    ) -> None:
         schema = _build_activity_log_schema_without_profiles_branch()
         with (
             patch.object(graphene_settings, "SCHEMA", schema),
@@ -113,7 +113,7 @@ class TestActivityLogWithoutBaseappProfiles:
 
     def test_activity_logs_query_hides_profile_pk_argument_when_profiles_are_disabled(
         self, with_disabled_apps, graphql_user_client
-    ):
+    ) -> None:
         schema = _build_activity_log_schema_without_profiles_branch()
         with (
             patch.object(graphene_settings, "SCHEMA", schema),
@@ -132,7 +132,7 @@ class TestActivityLogWithoutBaseappProfiles:
         self,
         with_disabled_apps,
         django_user_client,
-    ):
+    ) -> None:
         import importlib
 
         importlib.reload(importlib.import_module("baseapp.activity_log.permissions"))
@@ -154,7 +154,7 @@ class TestActivityLogWithoutBaseappProfiles:
                 is False
             )
 
-    def test_user_name_filter_uses_user_email_without_profiles(self, with_disabled_apps):
+    def test_user_name_filter_uses_user_email_without_profiles(self, with_disabled_apps) -> None:
         queryset = Mock()
         queryset.filter.return_value = queryset
         filterset = ActivityLogFilter(data={}, queryset=queryset)

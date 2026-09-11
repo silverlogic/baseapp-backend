@@ -42,19 +42,11 @@ class EmailTemplateAdminForm(forms.ModelForm):
             self.fields["plain_text_content"].widget = CKEditorWidget()
 
 
-EDITOR = getattr(settings, "MESSAGE_TEMPLATES_EDITOR", "prose")
-
-
 class EmailTemplateAdmin(admin.ModelAdmin):
     form = EmailTemplateAdminForm
     list_display = ("id", "name")
     inlines = [AttachmentsInline]
     readonly_fields = ("raw_html",)
-    change_form_template = (
-        "admin/baseapp_message_templates/emailtemplate/change_form.html"
-        if EDITOR == "prose"
-        else None
-    )
     fieldsets = (
         (
             None,
@@ -77,7 +69,7 @@ class EmailTemplateAdmin(admin.ModelAdmin):
         ),
     )
 
-    def raw_html(self, obj):
+    def raw_html(self, obj) -> str | None:
         return obj.html_content
 
 

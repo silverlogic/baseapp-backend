@@ -45,7 +45,7 @@ CONTENT_POST_CREATE_GRAPHQL = """
 """
 
 
-def test_anon_cant_create(graphql_client):
+def test_anon_cant_create(graphql_client) -> None:
     response = graphql_client(
         CONTENT_POST_CREATE_GRAPHQL,
         variables={"input": {"content": "Content", "isReactionsEnabled": True}},
@@ -57,7 +57,7 @@ def test_anon_cant_create(graphql_client):
     assert ContentPost.objects.count() == 0
 
 
-def test_user_can_create(django_user_client, graphql_user_client):
+def test_user_can_create(django_user_client, graphql_user_client) -> None:
     response = graphql_user_client(
         CONTENT_POST_CREATE_GRAPHQL,
         variables={"input": {"content": "Content", "isReactionsEnabled": True}},
@@ -72,7 +72,7 @@ def test_user_can_create(django_user_client, graphql_user_client):
     assert ContentPost.objects.all().first().user.pk == django_user_client.user.pk
 
 
-def test_user_can_create_post_with_images(django_user_client, graphql_user_client):
+def test_user_can_create_post_with_images(django_user_client, graphql_user_client) -> None:
     images = {
         "images.0": ImageFile(BytesIO(base64.b64decode(IMAGE_BASE64)), name="image0.png"),
         "images.1": ImageFile(BytesIO(base64.b64decode(IMAGE_BASE64)), name="image1.png"),

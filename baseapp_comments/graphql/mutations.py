@@ -43,7 +43,7 @@ class CommentCreate(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "CommentCreate":
         activity_name = f"{app_label}.add_comment"
 
         if service := shared_services.get("activity_log"):
@@ -122,7 +122,7 @@ class CommentUpdate(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "CommentUpdate":
         mentioned_profile_ids = input.pop("mentioned_profile_ids", None)
         pk = get_pk_from_relay_id(input.get("id"))
         comment = Comment.objects.get(pk=pk)
@@ -169,7 +169,7 @@ class CommentPin(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "CommentPin":
         pk = get_pk_from_relay_id(input.get("id"))
         comment = Comment.objects.get(pk=pk)
         activity_name = f"{app_label}.pin_comment"
@@ -218,7 +218,7 @@ class CommentDelete(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "CommentDelete":
         relay_id = input.get("id")
         pk = get_pk_from_relay_id(relay_id)
         obj = Comment.objects.get(pk=pk)

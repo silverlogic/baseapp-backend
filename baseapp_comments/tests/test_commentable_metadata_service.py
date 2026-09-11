@@ -1,5 +1,7 @@
 """Tests for CommentableMetadataService and AbstractCommentableMetadata.annotate_queryset."""
 
+from typing import TYPE_CHECKING
+
 import pytest
 import swapper
 from django.apps import apps
@@ -11,6 +13,9 @@ from baseapp_core.plugins import shared_services
 
 from .factories import CommentFactory
 
+if TYPE_CHECKING:
+    from baseapp_comments.services import CommentableMetadataService
+
 pytestmark = pytest.mark.django_db
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
@@ -18,16 +23,16 @@ CommentableMetadata = swapper.load_model("baseapp_comments", "CommentableMetadat
 
 
 @pytest.fixture
-def commentable_metadata_service():
+def commentable_metadata_service() -> "CommentableMetadataService | None":
     return shared_services.get("commentable_metadata")
 
 
-def test_service_name_and_availability(commentable_metadata_service):
+def test_service_name_and_availability(commentable_metadata_service) -> None:
     assert commentable_metadata_service.service_name == "commentable_metadata"
     assert commentable_metadata_service.is_available() is True
 
 
-def test_get_comments_count_reflects_thread(commentable_metadata_service):
+def test_get_comments_count_reflects_thread(commentable_metadata_service) -> None:
     target = CommentFactory()
     parent = CommentFactory(target=target)
     CommentFactory.create_batch(target=target, in_reply_to=parent, size=3)
@@ -41,12 +46,12 @@ def test_get_comments_count_reflects_thread(commentable_metadata_service):
     assert commentable_metadata_service.get_comments_count(reply)["total"] == 1
 
 
-def test_commentable_metadata_get_for_object_edge_cases():
+def test_commentable_metadata_get_for_object_edge_cases() -> None:
     assert CommentableMetadata.get_for_object(None) is None
     assert CommentableMetadata.get_for_object(object()) is None
 
 
-def test_get_metadata_and_get_or_create(commentable_metadata_service):
+def test_get_metadata_and_get_or_create(commentable_metadata_service) -> None:
     comment = CommentFactory()
     created = commentable_metadata_service.get_or_create_metadata(comment)
     assert created is not None
@@ -55,7 +60,7 @@ def test_get_metadata_and_get_or_create(commentable_metadata_service):
     assert fetched.pk == created.pk
 
 
-def test_is_comments_enabled_prefers_annotation(commentable_metadata_service):
+def test_is_comments_enabled_prefers_annotation(commentable_metadata_service) -> None:
     comment = CommentFactory(is_comments_enabled=False)
     qs = commentable_metadata_service.annotate_queryset(Comment.objects.filter(pk=comment.pk))
     row = qs.get()
@@ -65,7 +70,7 @@ def test_is_comments_enabled_prefers_annotation(commentable_metadata_service):
     assert commentable_metadata_service.is_comments_enabled(comment_no_ann) is False
 
 
-def test_get_comments_count_prefers_annotation(commentable_metadata_service):
+def test_get_comments_count_prefers_annotation(commentable_metadata_service) -> None:
     target = CommentFactory()
     parent = CommentFactory(target=target)
     CommentFactory.create_batch(target=target, in_reply_to=parent, size=2)
@@ -75,7 +80,9 @@ def test_get_comments_count_prefers_annotation(commentable_metadata_service):
     assert commentable_metadata_service.get_comments_count(row)["total"] == 2
 
 
-def test_get_comments_count_annotation_none_falls_back_to_default(commentable_metadata_service):
+def test_get_comments_count_annotation_none_falls_back_to_default(
+    commentable_metadata_service,
+) -> None:
     comment = CommentFactory()
     ct = ContentType.objects.get_for_model(Comment)
     CommentableMetadata.objects.filter(
@@ -91,7 +98,9 @@ def test_get_comments_count_annotation_none_falls_back_to_default(commentable_me
     assert out["main"] == 0
 
 
-def test_annotate_queryset_comment_includes_replies_count_total(commentable_metadata_service):
+def test_annotate_queryset_comment_includes_replies_count_total(
+    commentable_metadata_service,
+) -> None:
     target = CommentFactory()
     parent = CommentFactory(target=target)
     CommentFactory.create_batch(target=target, in_reply_to=parent, size=2)
@@ -106,7 +115,7 @@ def test_annotate_queryset_comment_includes_replies_count_total(commentable_meta
 
 def test_annotate_queryset_comment_without_metadata_replies_total_zero(
     commentable_metadata_service,
-):
+) -> None:
     comment = CommentFactory()
     ct = ContentType.objects.get_for_model(Comment)
     CommentableMetadata.objects.filter(
@@ -119,7 +128,7 @@ def test_annotate_queryset_comment_without_metadata_replies_total_zero(
     assert row.replies_count_total == 0
 
 
-def test_annotate_queryset_evaluates_in_single_query(commentable_metadata_service):
+def test_annotate_queryset_evaluates_in_single_query(commentable_metadata_service) -> None:
     target = CommentFactory()
     comments = CommentFactory.create_batch(target=target, size=4)
     ids = [c.pk for c in comments]
@@ -134,7 +143,7 @@ def test_annotate_queryset_evaluates_in_single_query(commentable_metadata_servic
         assert hasattr(r, "_commentable_is_comments_enabled")
 
 
-def test_service_annotate_queryset_matches_model_classmethod(commentable_metadata_service):
+def test_service_annotate_queryset_matches_model_classmethod(commentable_metadata_service) -> None:
     c = CommentFactory()
     qs1 = commentable_metadata_service.annotate_queryset(Comment.objects.filter(pk=c.pk))
     qs2 = CommentableMetadata.annotate_queryset(Comment.objects.filter(pk=c.pk))
@@ -143,7 +152,9 @@ def test_service_annotate_queryset_matches_model_classmethod(commentable_metadat
     )
 
 
-def test_annotate_queryset_resolves_content_type_after_clear_cache(commentable_metadata_service):
+def test_annotate_queryset_resolves_content_type_after_clear_cache(
+    commentable_metadata_service,
+) -> None:
     """One django_content_type lookup when building annotations after clear_cache()."""
     CommentFactory()
     ContentType.objects.clear_cache()
@@ -159,7 +170,9 @@ def test_annotate_queryset_resolves_content_type_after_clear_cache(commentable_m
     not apps.is_installed("baseapp_pages"),
     reason="Page model needed for non-Comment annotate_queryset",
 )
-def test_annotate_queryset_page_has_metadata_but_no_replies_total(commentable_metadata_service):
+def test_annotate_queryset_page_has_metadata_but_no_replies_total(
+    commentable_metadata_service,
+) -> None:
     from baseapp_pages.tests.factories import PageFactory
 
     page = PageFactory()

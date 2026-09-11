@@ -38,8 +38,13 @@ Notes
 - Uses `apps.get_model(...)` exclusively for historical migration safety.
 """
 
+from typing import TYPE_CHECKING
 
-def _alias_pinned_managers(schema_editor, *models):
+if TYPE_CHECKING:
+    from django.db.models import Manager, QuerySet
+
+
+def _alias_pinned_managers(schema_editor, *models) -> "tuple[Manager | QuerySet, ...]":
     # Pin every read/write to the alias the schema editor is operating on so the
     # source-model scan, content-type lookup, DocumentId upserts, and
     # CommentableMetadata writes all hit the same database — same pattern the
@@ -60,7 +65,7 @@ def migrate_legacy_commentable_fields_to_metadata(
     metadata_model_name: str = "CommentableMetadata",
     comments_count_field: str = "comments_count",
     is_comments_enabled_field: str = "is_comments_enabled",
-):
+) -> None:
     SourceModel = apps.get_model(source_app_label, source_model_name)
     ContentType = apps.get_model("contenttypes", "ContentType")
     DocumentId = apps.get_model("baseapp_core", "DocumentId")
@@ -106,7 +111,7 @@ def reverse_migrate_legacy_commentable_fields_from_metadata(
     metadata_model_name: str = "CommentableMetadata",
     comments_count_field: str = "comments_count",
     is_comments_enabled_field: str = "is_comments_enabled",
-):
+) -> None:
     SourceModel = apps.get_model(source_app_label, source_model_name)
     ContentType = apps.get_model("contenttypes", "ContentType")
     CommentableMetadata = apps.get_model(metadata_app_label, metadata_model_name)

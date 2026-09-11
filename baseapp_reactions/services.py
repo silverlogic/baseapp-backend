@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import swapper
 from django.apps import apps
 
 from baseapp_core.plugins import SharedServiceProvider
+
+if TYPE_CHECKING:
+    from django.db.models import Model, QuerySet
 
 
 class ReactableMetadataService(SharedServiceProvider):
@@ -20,7 +25,7 @@ class ReactableMetadataService(SharedServiceProvider):
     def is_available(self) -> bool:
         return apps.is_installed("baseapp_reactions")
 
-    def _get_model(self):
+    def _get_model(self) -> type[Model]:
         return swapper.load_model("baseapp_reactions", "ReactableMetadata")
 
     def _default_counts(self) -> dict:
@@ -28,11 +33,11 @@ class ReactableMetadataService(SharedServiceProvider):
 
         return default_reactions_count()
 
-    def get_metadata(self, obj):
+    def get_metadata(self, obj) -> Model | None:
         """Return `ReactableMetadata` for `obj`, or `None` if not found."""
         return self._get_model().get_for_object(obj)
 
-    def get_or_create_metadata(self, obj):
+    def get_or_create_metadata(self, obj) -> Model | None:
         """Return or create `ReactableMetadata` for `obj`."""
         return self._get_model().get_or_create_for_object(obj)
 
@@ -65,5 +70,5 @@ class ReactableMetadataService(SharedServiceProvider):
             metadata.is_reactions_enabled = bool(value)
             metadata.save(update_fields=["is_reactions_enabled", "modified"])
 
-    def annotate_queryset(self, queryset):
+    def annotate_queryset(self, queryset) -> QuerySet:
         return self._get_model().annotate_queryset(queryset)

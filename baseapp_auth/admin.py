@@ -1,9 +1,16 @@
+from typing import TYPE_CHECKING
+
 from constance import config
 from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+
+if TYPE_CHECKING:
+    from django.http import HttpResponse
+
+    from .querysets import UserQuerySet
 
 from .emails import (
     new_superuser_notification_email,
@@ -75,11 +82,11 @@ class AbstractUserAdmin(UserAdmin):
     filter_horizontal = ()
     actions = ["force_expire_password"]
 
-    def get_queryset(self, request):
+    def get_queryset(self, request) -> "UserQuerySet":
         qs = super().get_queryset(request)
         return qs.add_is_password_expired()
 
-    def force_expire_password(self, request, queryset):
+    def force_expire_password(self, request, queryset) -> None:
         if not request.user.mfa_methods.filter(is_active=True).exists():
             self.message_user(
                 request,
@@ -97,10 +104,10 @@ class AbstractUserAdmin(UserAdmin):
 
     force_expire_password.short_description = "Expire password"
 
-    def is_password_expired(self, obj):
+    def is_password_expired(self, obj) -> bool:
         return obj.password_expired
 
-    def save_model(self, request, obj, form, change):
+    def save_model(self, request, obj, form, change) -> None:
         if change and hasattr(obj, "tracker") and obj.tracker.has_changed("is_superuser"):
             SuperuserUpdateLog.objects.create(
                 assigner=request.user,
@@ -121,10 +128,12 @@ class SuperuserUpdateLogAdmin(admin.ModelAdmin):
     list_display_links = None
     list_display = ("assigner", "assignee", "made_superuser", "created")
 
-    def has_add_permission(self, request, obj=None):
+    def has_add_permission(self, request, obj=None) -> bool:
         return False
 
-    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+    def changeform_view(
+        self, request, object_id=None, form_url="", extra_context=None
+    ) -> "HttpResponse":
         extra_context = extra_context or {}
         extra_context["show_save_and_continue"] = False
         extra_context["show_save"] = False
@@ -132,7 +141,7 @@ class SuperuserUpdateLogAdmin(admin.ModelAdmin):
             request, object_id, extra_context=extra_context
         )
 
-    def has_delete_permission(self, request, obj=None):
+    def has_delete_permission(self, request, obj=None) -> bool:
         if request.user.is_superuser:
             return True
         return False

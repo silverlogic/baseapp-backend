@@ -11,7 +11,7 @@ ReportableMetadata = swapper.load_model("baseapp_reports", "ReportableMetadata")
 pytestmark = pytest.mark.django_db
 
 
-def test_report_save_creates_metadata_and_increments_count():
+def test_report_save_creates_metadata_and_increments_count() -> None:
     """Creating a Report through the ORM should populate ReportableMetadata for the target
     and increment `reports_count[type.key]` and `reports_count["total"]`."""
     target = ProfileFactory()
@@ -25,7 +25,7 @@ def test_report_save_creates_metadata_and_increments_count():
     assert metadata.reports_count["total"] == 1
 
 
-def test_report_delete_decrements_count():
+def test_report_delete_decrements_count() -> None:
     """Deleting a Report should reduce both the per-type and total counters."""
     target = ProfileFactory()
     report_type = ReportTypeFactory(key="fake_test", label="Fake test")
@@ -50,7 +50,7 @@ def test_report_delete_decrements_count():
     assert metadata.reports_count["total"] == 0
 
 
-def test_reports_count_buckets_per_report_type():
+def test_reports_count_buckets_per_report_type() -> None:
     """Reports against the same target with different `ReportType` keys should land in
     different buckets, with the total reflecting the sum."""
     target = ProfileFactory()
@@ -67,7 +67,7 @@ def test_reports_count_buckets_per_report_type():
     assert metadata.reports_count["total"] == 3
 
 
-def test_reports_count_isolated_per_target():
+def test_reports_count_isolated_per_target() -> None:
     """Reports against profile A must not bleed into profile B's metadata."""
     target_a = ProfileFactory()
     target_b = ProfileFactory()
@@ -82,7 +82,7 @@ def test_reports_count_isolated_per_target():
     assert metadata_b is None or metadata_b.reports_count["total"] == 0
 
 
-def test_update_reports_count_recomputes_from_existing_reports(django_user_client):
+def test_update_reports_count_recomputes_from_existing_reports(django_user_client) -> None:
     """Calling `Report.update_reports_count(target)` directly should recompute counters
     from the live `Report` rows even if the metadata row is out of sync."""
     target = ProfileFactory()
@@ -104,6 +104,6 @@ def test_update_reports_count_recomputes_from_existing_reports(django_user_clien
     assert report.pk == Report.objects.get(target_document_id=metadata.target_id).pk
 
 
-def test_update_reports_count_no_op_when_target_is_none():
+def test_update_reports_count_no_op_when_target_is_none() -> None:
     """`update_reports_count(None)` should silently no-op rather than crash."""
     Report.update_reports_count(None)  # should not raise

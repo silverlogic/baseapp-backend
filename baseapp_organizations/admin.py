@@ -19,6 +19,6 @@ class OrganizationAdmin(admin.ModelAdmin):
     autocomplete_fields = ("profile",)
     readonly_fields = ("profile",)
 
-    def save_model(self, request, obj, form, change):
+    def save_model(self, request, obj, form, change) -> None:
         super().save_model(request, obj, form, change)
         update_or_create_profile(obj, request.user, obj.name)

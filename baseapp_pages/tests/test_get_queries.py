@@ -40,7 +40,7 @@ GET_PAGE_BY_PATH = """
 """
 
 
-def test_fallback_meta_title(django_user_client, graphql_user_client):
+def test_fallback_meta_title(django_user_client, graphql_user_client) -> None:
     page = PageFactory(user=django_user_client.user)
     url_path = URLPathFactory(target=page, language="en", path="/test-page/", is_active=True)
 
@@ -51,7 +51,7 @@ def test_fallback_meta_title(django_user_client, graphql_user_client):
     assert content["data"]["urlPath"]["target"]["metadata"]["metaTitle"] == page.title
 
 
-def test_return_active_url_path(django_user_client, graphql_user_client):
+def test_return_active_url_path(django_user_client, graphql_user_client) -> None:
     page = PageFactory(user=django_user_client.user)
     deactivated_url_path = URLPathFactory(
         target=page, language="en", path="/deactivated/", is_active=False
@@ -66,7 +66,7 @@ def test_return_active_url_path(django_user_client, graphql_user_client):
     assert content["data"]["urlPath"]["path"] == activated_url_path.path
 
 
-def test_active_url_path_no_language(django_user_client, graphql_user_client):
+def test_active_url_path_no_language(django_user_client, graphql_user_client) -> None:
     page = PageFactory(user=django_user_client.user)
     url_path = URLPathFactory(target=page, language=None, path="/test-page/", is_active=True)
 
@@ -76,7 +76,7 @@ def test_active_url_path_no_language(django_user_client, graphql_user_client):
     assert content["data"]["urlPath"]["path"] == url_path.path
 
 
-def test_active_url_path_on_object_type(django_user_client, graphql_user_client):
+def test_active_url_path_on_object_type(django_user_client, graphql_user_client) -> None:
     page = PageFactory(user=django_user_client.user)
     URLPathFactory(target=page, language=None, path="/old-test-page/", is_active=False)
     url_path = URLPathFactory(target=page, language=None, path="/test-page/", is_active=True)
@@ -99,7 +99,7 @@ def test_active_url_path_on_object_type(django_user_client, graphql_user_client)
     assert content["data"]["page"]["urlPath"]["path"] == url_path.path
 
 
-def test_deliver_localized_title_and_body(django_user_client, graphql_user_client):
+def test_deliver_localized_title_and_body(django_user_client, graphql_user_client) -> None:
     title_en = "About"
     body_en = "This is the about page"
     title_pt = "Sobre"
@@ -132,7 +132,7 @@ def test_deliver_localized_title_and_body(django_user_client, graphql_user_clien
     assert content["data"]["page"]["body"] == body_pt
 
 
-def test_deliver_localized_title_and_body_by_path(django_user_client, graphql_user_client):
+def test_deliver_localized_title_and_body_by_path(django_user_client, graphql_user_client) -> None:
     title_en = "About"
     body_en = "This is the about page"
     title_pt = "Sobre"
@@ -160,7 +160,7 @@ def test_deliver_localized_title_and_body_by_path(django_user_client, graphql_us
     assert content["data"]["urlPath"]["target"]["body"] == body_pt
 
 
-def test_anon_can_view_page(graphql_client):
+def test_anon_can_view_page(graphql_client) -> None:
     page = PageFactory()
 
     response = graphql_client(
@@ -179,7 +179,7 @@ def test_anon_can_view_page(graphql_client):
     assert content["data"]["page"]["pk"] == page.pk
 
 
-def test_owner_can_view_unpublished_page(django_user_client, graphql_user_client):
+def test_owner_can_view_unpublished_page(django_user_client, graphql_user_client) -> None:
     page = PageFactory(user=django_user_client.user, status=Page.PageStatus.DRAFT)
 
     response = graphql_user_client(
@@ -198,7 +198,7 @@ def test_owner_can_view_unpublished_page(django_user_client, graphql_user_client
     assert content["data"]["page"]["pk"] == page.pk
 
 
-def test_anon_cant_view_unpublished_page(graphql_client):
+def test_anon_cant_view_unpublished_page(graphql_client) -> None:
     page = PageFactory(status=Page.PageStatus.DRAFT)
 
     response = graphql_client(
@@ -217,7 +217,7 @@ def test_anon_cant_view_unpublished_page(graphql_client):
     assert content["data"]["page"] is None
 
 
-def test_another_user_cant_view_unpublished_page(graphql_user_client):
+def test_another_user_cant_view_unpublished_page(graphql_user_client) -> None:
     page = PageFactory(status=Page.PageStatus.DRAFT)
 
     response = graphql_user_client(
@@ -236,7 +236,7 @@ def test_another_user_cant_view_unpublished_page(graphql_user_client):
     assert content["data"]["page"] is None
 
 
-def test_anon_cant_view_unpublished_page_by_url(graphql_client):
+def test_anon_cant_view_unpublished_page_by_url(graphql_client) -> None:
     page = PageFactory(status=Page.PageStatus.DRAFT)
     url_path = URLPathFactory(target=page, language="en", path="/test-page/", is_active=True)
 
@@ -246,7 +246,7 @@ def test_anon_cant_view_unpublished_page_by_url(graphql_client):
     assert content["data"]["urlPath"]["target"] is None
 
 
-def test_user_cant_view_unpublished_page_by_url(graphql_user_client):
+def test_user_cant_view_unpublished_page_by_url(graphql_user_client) -> None:
     page = PageFactory(status=Page.PageStatus.DRAFT)
     url_path = URLPathFactory(target=page, language="en", path="/test-page/", is_active=True)
 
@@ -256,7 +256,7 @@ def test_user_cant_view_unpublished_page_by_url(graphql_user_client):
     assert content["data"]["urlPath"]["target"] is None
 
 
-def test_owner_can_view_unpublished_page_by_url(django_user_client, graphql_user_client):
+def test_owner_can_view_unpublished_page_by_url(django_user_client, graphql_user_client) -> None:
     page = PageFactory(user=django_user_client.user, status=Page.PageStatus.DRAFT)
     url_path = URLPathFactory(target=page, language="en", path="/test-page/", is_active=True)
 
@@ -266,7 +266,7 @@ def test_owner_can_view_unpublished_page_by_url(django_user_client, graphql_user
     assert content["data"]["urlPath"]["target"]["pk"] == page.pk
 
 
-def test_owner_can_change_page(django_user_client, graphql_user_client):
+def test_owner_can_change_page(django_user_client, graphql_user_client) -> None:
     page = PageFactory(
         user=django_user_client.user,
     )
@@ -293,7 +293,7 @@ def test_owner_can_change_page(django_user_client, graphql_user_client):
     assert content["data"]["page"]["canDeleteFull"]
 
 
-def test_another_user_cant_change_page(graphql_user_client):
+def test_another_user_cant_change_page(graphql_user_client) -> None:
     page = PageFactory()
 
     response = graphql_user_client(

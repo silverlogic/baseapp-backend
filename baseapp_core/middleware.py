@@ -1,11 +1,13 @@
 import threading
 import uuid
 import zoneinfo
+from collections.abc import Callable
 
 import pghistory
 from django.conf import settings
 from django.core.handlers.asgi import ASGIRequest as DjangoASGIRequest
 from django.core.handlers.wsgi import WSGIRequest as DjangoWSGIRequest
+from django.http import HttpRequest, HttpResponse
 from django.utils import timezone
 from django.utils.deprecation import MiddlewareMixin
 from ipware import get_client_ip
@@ -40,7 +42,7 @@ IPWARE_META_PRECEDENCE_ORDER = (
 
 
 class AdminTimezoneMiddleware(MiddlewareMixin):
-    def process_request(self, request):
+    def process_request(self, request) -> None:
         # Accessing request.user will activate the sessions/auth middleware.  This
         # causes the Vary: Cookie header to be set.  If this happens on an API call
         # it will greatly reduce the effectiveness of http caching (e.g. using varnish).
@@ -51,7 +53,7 @@ class AdminTimezoneMiddleware(MiddlewareMixin):
 
 
 class ThreadAttachedRequestLocalMiddleware(MiddlewareMixin):
-    def __call__(self, request):
+    def __call__(self, request) -> HttpResponse:
         request_trace = {"trace.id": uuid.uuid4()}
         if request.user:
             request_trace["user.id"] = request.user.id
@@ -73,7 +75,7 @@ class DjangoRequest:
     the request.user attribute is updated.
     """
 
-    def __setattr__(self, attr, value):
+    def __setattr__(self, attr, value) -> None:
         if attr == "user":
             pghistory.context(user=value.pk if value and hasattr(value, "pk") else None)
 
@@ -88,8 +90,8 @@ class ASGIRequest(DjangoRequest, DjangoASGIRequest):
     pass
 
 
-def HistoryMiddleware(get_response):
-    def middleware(request):
+def HistoryMiddleware(get_response) -> Callable[[HttpRequest], HttpResponse]:
+    def middleware(request) -> HttpResponse:
         if request.method in config.middleware_methods():
             user = (
                 request.user.pk

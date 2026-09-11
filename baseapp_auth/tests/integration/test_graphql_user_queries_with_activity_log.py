@@ -49,7 +49,7 @@ query UserWithActivityLogs($id: ID!) {
 """
 
 
-def test_user_node_resolves_activity_logs(graphql_user_client, django_user_client):
+def test_user_node_resolves_activity_logs(graphql_user_client, django_user_client) -> None:
     """A User node implements UserActivityLogInterface and returns matching activity rows."""
     verb = f"{Comment._meta.app_label}.add_comment"
     user = django_user_client.user
@@ -79,7 +79,7 @@ def test_user_node_resolves_activity_logs(graphql_user_client, django_user_clien
     assert edges[0]["node"]["visibility"] == VisibilityTypes.PUBLIC.name
 
 
-def test_user_activity_logs_only_include_own_user(graphql_user_client, django_user_client):
+def test_user_activity_logs_only_include_own_user(graphql_user_client, django_user_client) -> None:
     """Each user is scoped to their own activity_logs; other users' rows are excluded."""
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
@@ -114,7 +114,9 @@ def test_user_activity_logs_only_include_own_user(graphql_user_client, django_us
     assert len(edges) == 1
 
 
-def test_user_root_query_exposes_activity_logs_field(graphql_user_client, django_user_client):
+def test_user_root_query_exposes_activity_logs_field(
+    graphql_user_client, django_user_client
+) -> None:
     """UserObjectType surfaces activityLogs from UserActivityLogInterface on the user query."""
     verb = f"{Comment._meta.app_label}.add_comment"
     user = django_user_client.user

@@ -14,7 +14,7 @@ class VisibilityTypes(models.IntegerChoices):
     INTERNAL = 2, _("internal")
 
     @property
-    def description(self):
+    def description(self) -> str:
         return self.label
 
 

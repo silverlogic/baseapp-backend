@@ -89,11 +89,13 @@ COMMENT_UPDATE_GRAPHQL = """
 """
 
 
-def _profile_node_ids(payload):
+def _profile_node_ids(payload) -> set[str]:
     return {edge["node"]["profile"]["id"] for edge in payload["mentions"]["edges"]}
 
 
-def test_comment_create_persists_mentioned_profiles(django_user_client, graphql_user_client):
+def test_comment_create_persists_mentioned_profiles(
+    django_user_client, graphql_user_client
+) -> None:
     target = CommentFactory()
     a = ProfileFactory()
     b = ProfileFactory()
@@ -118,7 +120,7 @@ def test_comment_create_persists_mentioned_profiles(django_user_client, graphql_
     assert _profile_node_ids(payload) == {a.relay_id, b.relay_id}
 
 
-def test_comment_create_without_mention_field_is_a_noop(graphql_user_client):
+def test_comment_create_without_mention_field_is_a_noop(graphql_user_client) -> None:
     target = CommentFactory()
 
     response = graphql_user_client(
@@ -137,7 +139,7 @@ def test_comment_create_without_mention_field_is_a_noop(graphql_user_client):
     assert mention_count(comment) == 0
 
 
-def test_comment_create_with_empty_list_persists_no_mentions(graphql_user_client):
+def test_comment_create_with_empty_list_persists_no_mentions(graphql_user_client) -> None:
     target = CommentFactory()
 
     graphql_user_client(
@@ -155,7 +157,7 @@ def test_comment_create_with_empty_list_persists_no_mentions(graphql_user_client
     assert mention_count(comment) == 0
 
 
-def test_comment_create_excludes_self_mention(django_user_client, graphql_user_client):
+def test_comment_create_excludes_self_mention(django_user_client, graphql_user_client) -> None:
     target = CommentFactory()
     me = ProfileFactory(owner=django_user_client.user)
     friend = ProfileFactory()
@@ -177,7 +179,7 @@ def test_comment_create_excludes_self_mention(django_user_client, graphql_user_c
     assert mentioned_profile_ids(comment) == {friend.pk}
 
 
-def test_comment_create_drops_malformed_mention_ids(graphql_user_client):
+def test_comment_create_drops_malformed_mention_ids(graphql_user_client) -> None:
     target = CommentFactory()
     real = ProfileFactory()
 
@@ -196,7 +198,9 @@ def test_comment_create_drops_malformed_mention_ids(graphql_user_client):
     assert mentioned_profile_ids(comment) == {real.pk}
 
 
-def test_comment_update_replaces_mentioned_profiles(django_user_client, graphql_user_client):
+def test_comment_update_replaces_mentioned_profiles(
+    django_user_client, graphql_user_client
+) -> None:
     user = django_user_client.user
     comment = CommentFactory(user=user)
     a = ProfileFactory()
@@ -219,7 +223,9 @@ def test_comment_update_replaces_mentioned_profiles(django_user_client, graphql_
     assert mentioned_profile_ids(comment) == {c.pk}
 
 
-def test_comment_update_with_empty_list_clears_mentions(django_user_client, graphql_user_client):
+def test_comment_update_with_empty_list_clears_mentions(
+    django_user_client, graphql_user_client
+) -> None:
     user = django_user_client.user
     comment = CommentFactory(user=user)
     a = ProfileFactory()
@@ -242,7 +248,7 @@ def test_comment_update_with_empty_list_clears_mentions(django_user_client, grap
 
 def test_comment_update_without_mention_field_preserves_existing(
     django_user_client, graphql_user_client
-):
+) -> None:
     """`None` (field omitted) is the contract for "leave mentions alone" — only an
     explicit list (including `[]`) replaces them."""
     user = django_user_client.user

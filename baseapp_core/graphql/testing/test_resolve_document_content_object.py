@@ -25,18 +25,18 @@ class _DocumentRowFactory(factory.Factory):
     content_object = None
 
 
-def _make_info(context=None):
+def _make_info(context=None) -> SimpleNamespace:
     if context is None:
         context = SimpleNamespace()
     return SimpleNamespace(context=context)
 
 
-def test_returns_none_when_document_is_none():
+def test_returns_none_when_document_is_none() -> None:
     info = _make_info()
     assert resolve_document_content_object(None, info) is None
 
 
-def test_resolves_via_content_object_descriptor_on_first_call():
+def test_resolves_via_content_object_descriptor_on_first_call() -> None:
     profile = object()
     document = _DocumentRowFactory(content_type_id=10, object_id=1, content_object=profile)
     info = _make_info()
@@ -46,7 +46,7 @@ def test_resolves_via_content_object_descriptor_on_first_call():
     assert result is profile
 
 
-def test_caches_resolution_on_info_context():
+def test_caches_resolution_on_info_context() -> None:
     profile = object()
     document = _DocumentRowFactory(content_type_id=10, object_id=1, content_object=profile)
     info = _make_info()
@@ -57,7 +57,7 @@ def test_caches_resolution_on_info_context():
     assert cache == {(10, 1): profile}
 
 
-def test_returns_cached_value_without_touching_descriptor_again():
+def test_returns_cached_value_without_touching_descriptor_again() -> None:
     """
     A second call for the same `(content_type_id, object_id)` must not re-read
     `document.content_object` — that's the whole point of the cache.
@@ -79,7 +79,7 @@ def test_returns_cached_value_without_touching_descriptor_again():
     assert result is cached_profile
 
 
-def test_distinct_cache_keys_each_get_their_own_entry():
+def test_distinct_cache_keys_each_get_their_own_entry() -> None:
     a = object()
     b = object()
     doc_a = _DocumentRowFactory(content_type_id=10, object_id=1, content_object=a)
@@ -91,7 +91,7 @@ def test_distinct_cache_keys_each_get_their_own_entry():
     assert info.context._document_content_object_cache == {(10, 1): a, (10, 2): b}
 
 
-def test_different_content_types_with_same_object_id_do_not_collide():
+def test_different_content_types_with_same_object_id_do_not_collide() -> None:
     profile = object()
     page = object()
     doc_profile = _DocumentRowFactory(content_type_id=10, object_id=1, content_object=profile)
@@ -102,7 +102,7 @@ def test_different_content_types_with_same_object_id_do_not_collide():
     assert resolve_document_content_object(doc_page, info) is page
 
 
-def test_custom_cache_attr_writes_to_separate_namespace():
+def test_custom_cache_attr_writes_to_separate_namespace() -> None:
     profile = object()
     document = _DocumentRowFactory(content_type_id=10, object_id=1, content_object=profile)
     info = _make_info()
@@ -114,7 +114,7 @@ def test_custom_cache_attr_writes_to_separate_namespace():
     assert not hasattr(info.context, "_document_content_object_cache")
 
 
-def test_caches_none_result_so_a_missing_target_is_not_re_queried():
+def test_caches_none_result_so_a_missing_target_is_not_re_queried() -> None:
     """
     A deleted target with a stale `DocumentId` resolves to `None`. The helper
     must remember that `None` so subsequent calls don't keep hitting the DB

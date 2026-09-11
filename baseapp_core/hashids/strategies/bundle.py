@@ -20,7 +20,7 @@ class HashidsStrategyBundle:
         graphql_resolver: Type[GraphQLResolverStrategy],
         queryset_annotator: Type[QuerysetAnnotatorStrategy],
         drf_resolver: Type[DRFResolverStrategy],
-    ):
+    ) -> None:
         self.id_resolver = id_resolver()
         self.graphql_resolver = graphql_resolver(id_resolver=self.id_resolver)
         self.drf_resolver = drf_resolver(id_resolver=self.id_resolver)

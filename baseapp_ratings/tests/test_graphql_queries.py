@@ -27,7 +27,7 @@ VIEW_QUERY = """
 """
 
 
-def test_user_can_see_rating_indicators(graphql_user_client):
+def test_user_can_see_rating_indicators(graphql_user_client) -> None:
     user = UserFactory()
     RateFactory(target=user, value=4)
     RateFactory(target=user, value=5)
@@ -39,7 +39,7 @@ def test_user_can_see_rating_indicators(graphql_user_client):
     assert content["data"]["node"]["ratingsAverage"] == pytest.approx(4.5)
 
 
-def test_user_can_list_ratings(graphql_user_client):
+def test_user_can_list_ratings(graphql_user_client) -> None:
     user = UserFactory()
     RateFactory(target=user, value=4)
     RateFactory(target=user, value=5)

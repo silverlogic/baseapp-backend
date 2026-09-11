@@ -1,15 +1,20 @@
+from typing import TYPE_CHECKING
+
 from django.contrib.auth import get_user_model
 from django.db.models import ObjectDoesNotExist
 from hashids import Hashids
 
+if TYPE_CHECKING:
+    from django.contrib.auth.models import AbstractBaseUser
+
 hashids = Hashids(salt="referral-codes", min_length=4)
 
 
-def get_referral_code(user):
+def get_referral_code(user) -> str:
     return hashids.encode(user.pk)
 
 
-def get_user_from_referral_code(referral_code):
+def get_user_from_referral_code(referral_code) -> "AbstractBaseUser | None":
     """Returns the user related to the referral code or None."""
     pk = hashids.decode(referral_code)
     if pk:

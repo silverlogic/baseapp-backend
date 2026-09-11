@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
@@ -11,6 +13,14 @@ from baseapp_core.graphql import get_object_type_for_model
 
 from ..utils import can_user_receive_notification
 from .filters import NotificationFilter
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+
+    from baseapp_notifications.models import (
+        AbstractNotification,
+        AbstractNotificationSetting,
+    )
 
 Notification = swapper.load_model("notifications", "Notification")
 NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationSetting")
@@ -28,24 +38,24 @@ class NotificationsInterface(RelayNode):
         channel=NotificationChannelTypesEnum(required=True),
     )
 
-    def resolve_notifications_unread_count(self, info):
+    def resolve_notifications_unread_count(self, info) -> int:
         if info.context.user.is_authenticated and info.context.user == self:
             return Notification.objects.filter(recipient=self, unread=True).count()
         return 0
 
-    def resolve_notifications(self, info, **kwargs):
+    def resolve_notifications(self, info, **kwargs) -> "QuerySet":
         if info.context.user.is_authenticated and info.context.user == self:
             return Notification.objects.filter(recipient=info.context.user).order_by(
                 "-unread", "-timestamp"
             )
         return Notification.objects.none()
 
-    def resolve_notification_settings(self, info, **kwargs):
+    def resolve_notification_settings(self, info, **kwargs) -> "QuerySet":
         if info.context.user.is_authenticated and info.context.user == self:
             return NotificationSetting.objects.filter(user=info.context.user)
         return NotificationSetting.objects.none()
 
-    def resolve_is_notification_setting_active(self, info, verb, channel, **kwargs):
+    def resolve_is_notification_setting_active(self, info, verb, channel, **kwargs) -> bool:
         if info.context.user.is_authenticated and info.context.user == self:
             return can_user_receive_notification(info.context.user.id, verb, channel)
         return False
@@ -63,7 +73,7 @@ class BaseNotificationNode:
         fields = "__all__"
 
     @classmethod
-    def get_node(cls, info, id):
+    def get_node(cls, info, id) -> "AbstractNotification | None":
         if not info.context.user.is_authenticated:
             return None
 
@@ -74,7 +84,7 @@ class BaseNotificationNode:
             return None
 
     @classmethod
-    def get_queryset(cls, queryset, info):
+    def get_queryset(cls, queryset, info) -> "QuerySet":
         if not info.context.user.is_authenticated:
             return queryset.none()
 
@@ -97,14 +107,14 @@ class BaseNotificationSettingNode:
         interfaces = (RelayNode,)
 
     @classmethod
-    def get_queryset(cls, queryset, info):
+    def get_queryset(cls, queryset, info) -> "QuerySet":
         if not info.context.user.is_authenticated:
             return queryset.none()
 
         return super().get_queryset(queryset.filter(user=info.context.user), info)
 
     @classmethod
-    def get_node(cls, info, id):
+    def get_node(cls, info, id) -> "AbstractNotificationSetting | None":
         if not info.context.user.is_authenticated:
             return None
 

@@ -1,4 +1,5 @@
 import logging
+from typing import TYPE_CHECKING
 
 import swapper
 from django.conf import settings
@@ -22,6 +23,9 @@ from .triggers import (
     set_last_message_on_insert_trigger,
     update_last_message_on_delete_trigger,
 )
+
+if TYPE_CHECKING:
+    from baseapp_core.graphql import DjangoObjectType
 
 logger = logging.getLogger(__name__)
 
@@ -62,11 +66,11 @@ class AbstractBaseChatRoom(TimeStampedModel, DocumentIdMixin, RelayModel):
         ordering = ["-last_message_time", "-created"]
         swappable = swapper.swappable_setting("baseapp_chats", "ChatRoom")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.pk)
 
     @classmethod
-    def get_graphql_object_type(cls):
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
         from .graphql.object_types import ChatRoomObjectType
 
         return ChatRoomObjectType
@@ -81,7 +85,7 @@ class AbstractBaseMessage(TimeStampedModel, DocumentIdMixin, RelayModel):
         SYSTEM_GENERATED = 2, _("System message")
 
     @property
-    def description(self):
+    def description(self) -> str:
         return self.label
 
     content = models.TextField(null=True, blank=True)
@@ -151,7 +155,7 @@ class AbstractBaseMessage(TimeStampedModel, DocumentIdMixin, RelayModel):
         ordering = ["-created"]
         swappable = swapper.swappable_setting("baseapp_chats", "Message")
 
-    def __str__(self):
+    def __str__(self) -> str:
         ctx = {
             "actor": (
                 self.profile if self.message_type == self.MessageType.USER_MESSAGE else "The system"
@@ -171,7 +175,7 @@ class AbstractBaseMessage(TimeStampedModel, DocumentIdMixin, RelayModel):
             return _("%(actor)s %(verb)s %(action_object)s %(timesince)s ago") % ctx
         return _("%(actor)s %(verb)s %(timesince)s ago") % ctx
 
-    def timesince(self, now=None):
+    def timesince(self, now=None) -> str:
         """
         Shortcut for the ``django.utils.timesince.timesince`` function of the
         current timestamp.
@@ -181,12 +185,12 @@ class AbstractBaseMessage(TimeStampedModel, DocumentIdMixin, RelayModel):
         )
 
     @classmethod
-    def get_graphql_object_type(cls):
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
         from .graphql.object_types import MessageObjectType
 
         return MessageObjectType
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         created = self._state.adding
         super().save(*args, **kwargs)
 
@@ -202,7 +206,7 @@ class AbstractBaseMessage(TimeStampedModel, DocumentIdMixin, RelayModel):
         if not participants:
             return
 
-        def _broadcast_unread_counts():
+        def _broadcast_unread_counts() -> None:
             from baseapp_chats.graphql.subscriptions import (
                 ChatRoomOnMessagesCountUpdate,
             )
@@ -228,7 +232,7 @@ class AbstractChatRoomParticipant(TimeStampedModel, DocumentIdMixin, RelayModel)
         ADMIN = 2, _("admin")
 
         @property
-        def description(self):
+        def description(self) -> str:
             return self.label
 
     profile = models.ForeignKey(
@@ -254,7 +258,7 @@ class AbstractChatRoomParticipant(TimeStampedModel, DocumentIdMixin, RelayModel)
         swappable = swapper.swappable_setting("baseapp_chats", "ChatRoomParticipant")
 
     @classmethod
-    def get_graphql_object_type(cls):
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
         from .graphql.object_types import ChatRoomParticipantObjectType
 
         return ChatRoomParticipantObjectType

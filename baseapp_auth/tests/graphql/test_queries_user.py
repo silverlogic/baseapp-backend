@@ -86,7 +86,7 @@ QUERY_USERS_LIST_WITH_FILTERS = """
 """
 
 
-def test_anon_cannot_query_user_by_pk(graphql_client):
+def test_anon_cannot_query_user_by_pk(graphql_client) -> None:
     user = UserFactory()
     response = graphql_client(QUERY, variables={"id": user.pk})
     content = response.json()
@@ -94,7 +94,7 @@ def test_anon_cannot_query_user_by_pk(graphql_client):
     assert content["errors"][0]["message"] == "User is not compatible with the PK strategy"
 
 
-def test_user_can_query_user_by_relay_id(django_user_client, graphql_user_client):
+def test_user_can_query_user_by_relay_id(django_user_client, graphql_user_client) -> None:
     user = UserFactory()
     response = graphql_user_client(QUERY, variables={"id": user.relay_id})
     content = response.json()
@@ -103,7 +103,7 @@ def test_user_can_query_user_by_relay_id(django_user_client, graphql_user_client
     assert content["data"]["user"]["isAuthenticated"] is False
 
 
-def test_user_cant_view_others_private_field(django_user_client, graphql_user_client):
+def test_user_cant_view_others_private_field(django_user_client, graphql_user_client) -> None:
     user = UserFactory()
     response = graphql_user_client(QUERY, variables={"id": user.relay_id})
     content = response.json()
@@ -111,7 +111,7 @@ def test_user_cant_view_others_private_field(django_user_client, graphql_user_cl
     assert content["data"]["user"]["email"] is None
 
 
-def test_staff_can_view_others_private_field(django_user_client, graphql_user_client):
+def test_staff_can_view_others_private_field(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_staff = True
     django_user_client.user.save()
 
@@ -122,7 +122,7 @@ def test_staff_can_view_others_private_field(django_user_client, graphql_user_cl
     assert content["data"]["user"]["email"] == user.email
 
 
-def test_superuser_can_view_others_private_field(django_user_client, graphql_user_client):
+def test_superuser_can_view_others_private_field(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
 
@@ -133,7 +133,9 @@ def test_superuser_can_view_others_private_field(django_user_client, graphql_use
     assert content["data"]["user"]["email"] == user.email
 
 
-def test_user_with_perm_can_view_others_private_field(django_user_client, graphql_user_client):
+def test_user_with_perm_can_view_others_private_field(
+    django_user_client, graphql_user_client
+) -> None:
     user = UserFactory()
 
     perm = Permission.objects.get(
@@ -147,7 +149,7 @@ def test_user_with_perm_can_view_others_private_field(django_user_client, graphq
     assert content["data"]["user"]["email"] == user.email
 
 
-def test_overcomplex_queries_are_not_executed(graphql_client_with_queries):
+def test_overcomplex_queries_are_not_executed(graphql_client_with_queries) -> None:
     response, queries = graphql_client_with_queries(MALICIOUS_QUERY)
     content = response.json()
 
@@ -156,7 +158,7 @@ def test_overcomplex_queries_are_not_executed(graphql_client_with_queries):
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=False)
-def test_anon_can_query_users_list_with_optimized_query(graphql_client_with_queries):
+def test_anon_can_query_users_list_with_optimized_query(graphql_client_with_queries) -> None:
     UserFactory.create_batch(10)
     ContentType.objects.clear_cache()
 
@@ -181,7 +183,9 @@ def test_anon_can_query_users_list_with_optimized_query(graphql_client_with_quer
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_anon_can_query_users_list_with_optimized_query_with_public_id(graphql_client_with_queries):
+def test_anon_can_query_users_list_with_optimized_query_with_public_id(
+    graphql_client_with_queries,
+) -> None:
     UserFactory.create_batch(10)
     ContentType.objects.clear_cache()
     response, queries = graphql_client_with_queries(QUERY_USERS_LIST)
@@ -202,7 +206,7 @@ def test_anon_can_query_users_list_with_optimized_query_with_public_id(graphql_c
     # 7. Same as #4 for the page's profiles
 
 
-def test_anon_can_query_users_list_with_filter_by_email(graphql_client_with_queries):
+def test_anon_can_query_users_list_with_filter_by_email(graphql_client_with_queries) -> None:
     UserFactory.create_batch(2)
     UserFactory(email="test@test.com")
     response, queries = graphql_client_with_queries(
@@ -213,7 +217,7 @@ def test_anon_can_query_users_list_with_filter_by_email(graphql_client_with_quer
     assert len(content["data"]["users"]["edges"]) == 1
 
 
-def test_anon_can_query_users_list_with_filter_by_profile_name(graphql_client_with_queries):
+def test_anon_can_query_users_list_with_filter_by_profile_name(graphql_client_with_queries) -> None:
     UserFactory.create_batch(2)
     user_1 = UserFactory()
     user_1.profile.name = "test"

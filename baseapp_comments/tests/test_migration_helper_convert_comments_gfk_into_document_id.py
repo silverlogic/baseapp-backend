@@ -1,4 +1,6 @@
+from collections.abc import Iterator
 from types import SimpleNamespace
+from typing import Any, NoReturn
 
 import factory
 import pytest
@@ -15,22 +17,22 @@ from baseapp_comments.migration_helpers.convert_comments_gfk_into_document_id_he
 
 
 class _FakeQuerySet:
-    def __init__(self, rows):
+    def __init__(self, rows) -> None:
         self._rows = list(rows)
 
-    def using(self, _alias):
+    def using(self, _alias) -> "_FakeQuerySet":
         return self
 
-    def count(self):
+    def count(self) -> int:
         return len(self._rows)
 
-    def exclude(self, **kwargs):
+    def exclude(self, **kwargs) -> "_FakeQuerySet":
         return self._apply(**kwargs, exclude=True)
 
-    def filter(self, **kwargs):
+    def filter(self, **kwargs) -> "_FakeQuerySet":
         return self._apply(**kwargs, exclude=False)
 
-    def _apply(self, exclude=False, **kwargs):
+    def _apply(self, exclude=False, **kwargs) -> "_FakeQuerySet":
         rows = self._rows
         for key, value in kwargs.items():
             if key.endswith("__isnull"):
@@ -43,27 +45,27 @@ class _FakeQuerySet:
                 rows = [r for r in rows if getattr(r, key) == value]
         return _FakeQuerySet(rows)
 
-    def values_list(self, *fields):
+    def values_list(self, *fields) -> "_FakeValueList":
         return _FakeValueList([tuple(getattr(r, f) for f in fields) for r in self._rows])
 
-    def select_related(self, *_args):
+    def select_related(self, *_args) -> "_FakeQuerySet":
         return self
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[SimpleNamespace]:
         return iter(self._rows)
 
-    def first(self):
+    def first(self) -> SimpleNamespace | None:
         return self._rows[0] if self._rows else None
 
-    def iterator(self):
+    def iterator(self) -> Iterator[SimpleNamespace]:
         return iter(self._rows)
 
 
 class _FakeValueList:
-    def __init__(self, rows):
+    def __init__(self, rows) -> None:
         self._rows = rows
 
-    def distinct(self):
+    def distinct(self) -> list[tuple[Any, ...]]:
         seen = []
         for row in self._rows:
             if row not in seen:
@@ -72,18 +74,18 @@ class _FakeValueList:
 
 
 class _FakeUpdateQuerySet:
-    def __init__(self, manager, pk, update_log):
+    def __init__(self, manager, pk, update_log) -> None:
         self._manager = manager
         self._pk = pk
         self._update_log = update_log
 
-    def first(self):
+    def first(self) -> SimpleNamespace | None:
         for row in self._manager._rows:
             if getattr(row, "pk", None) == self._pk:
                 return row
         return None
 
-    def update(self, **kwargs):
+    def update(self, **kwargs) -> None:
         self._update_log.append((self._pk, kwargs))
         for row in self._manager._rows:
             if getattr(row, "pk", None) == self._pk:
@@ -93,19 +95,19 @@ class _FakeUpdateQuerySet:
 
 
 class _FakeManager:
-    def __init__(self, rows):
+    def __init__(self, rows) -> None:
         self._rows = list(rows)
         self.update_log = []
         self.using_log = []
 
-    def using(self, alias):
+    def using(self, alias) -> "_FakeManager":
         self.using_log.append(alias)
         return self
 
-    def exclude(self, **kwargs):
+    def exclude(self, **kwargs) -> _FakeQuerySet:
         return _FakeQuerySet(self._rows).exclude(**kwargs)
 
-    def filter(self, **kwargs):
+    def filter(self, **kwargs) -> _FakeUpdateQuerySet | _FakeQuerySet:
         if "pk" in kwargs:
             return _FakeUpdateQuerySet(self, kwargs["pk"], self.update_log)
         return _FakeQuerySet(self._rows).filter(**kwargs)
@@ -141,7 +143,7 @@ class _DocumentIdRowFactory(factory.Factory):
     object_id = 100
 
 
-def test_migrate_comment_targets_to_document_id_maps_rows_and_creates_missing_doc():
+def test_migrate_comment_targets_to_document_id_maps_rows_and_creates_missing_doc() -> None:
     comments = [
         _CommentLegacyFactory(pk=1, target_content_type_id=10, target_object_id=100),
         _CommentLegacyFactory(pk=2, target_content_type_id=11, target_object_id=200),
@@ -152,24 +154,24 @@ def test_migrate_comment_targets_to_document_id_maps_rows_and_creates_missing_do
     ]
 
     class FakeDocumentIdManager:
-        def __init__(self):
+        def __init__(self) -> None:
             self.created = []
 
-        def values(self, *_args):
+        def values(self, *_args) -> list[dict[str, int]]:
             return [_DocumentIdRowFactory(id=900, content_type_id=10, object_id=100)]
 
-        def create(self, content_type_id, object_id):
+        def create(self, content_type_id, object_id) -> SimpleNamespace:
             doc = SimpleNamespace(id=901, content_type_id=content_type_id, object_id=object_id)
             self.created.append(doc)
             return doc
 
     class FakeApps:
-        def __init__(self):
+        def __init__(self) -> None:
             self.document_manager = FakeDocumentIdManager()
             self.comment_model = SimpleNamespace(objects=_FakeManager(comments))
             self.event_model = SimpleNamespace(objects=_FakeManager(events))
 
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             if (app_label, model_name) == ("comments", "Comment"):
                 return self.comment_model
             if (app_label, model_name) == ("comments", "CommentEvent"):
@@ -194,7 +196,7 @@ def test_migrate_comment_targets_to_document_id_maps_rows_and_creates_missing_do
     ]
 
 
-def test_migrate_copies_target_document_onto_event_from_pghistory_comment():
+def test_migrate_copies_target_document_onto_event_from_pghistory_comment() -> None:
     """
     GFK backfill skips events with NULL target_content_type; pghistory backfill
     should still set target_document from the snapshot comment (pgh_obj).
@@ -213,24 +215,24 @@ def test_migrate_copies_target_document_onto_event_from_pghistory_comment():
     ]
 
     class FakeDocumentIdManager:
-        def __init__(self):
+        def __init__(self) -> None:
             self.created = []
 
-        def values(self, *_args):
+        def values(self, *_args) -> list[dict[str, int]]:
             return [_DocumentIdRowFactory(id=900, content_type_id=10, object_id=100)]
 
-        def create(self, content_type_id, object_id):
+        def create(self, content_type_id, object_id) -> SimpleNamespace:
             doc = SimpleNamespace(id=901, content_type_id=content_type_id, object_id=object_id)
             self.created.append(doc)
             return doc
 
     class FakeApps:
-        def __init__(self):
+        def __init__(self) -> None:
             self.document_manager = FakeDocumentIdManager()
             self.comment_model = SimpleNamespace(objects=_FakeManager(comments))
             self.event_model = SimpleNamespace(objects=_FakeManager(events))
 
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             if (app_label, model_name) == ("comments", "Comment"):
                 return self.comment_model
             if (app_label, model_name) == ("comments", "CommentEvent"):
@@ -247,7 +249,7 @@ def test_migrate_copies_target_document_onto_event_from_pghistory_comment():
     ]
 
 
-def test_assert_all_comment_rows_have_target_document_passes_for_filled_column():
+def test_assert_all_comment_rows_have_target_document_passes_for_filled_column() -> None:
     comments = [
         _CommentLegacyFactory(
             pk=1, target_content_type_id=10, target_object_id=100, target_document_id=1
@@ -256,7 +258,7 @@ def test_assert_all_comment_rows_have_target_document_passes_for_filled_column()
     comment_model = SimpleNamespace(objects=_FakeManager(comments))
 
     class FakeApps:
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             if (app_label, model_name) == ("comments", "Comment"):
                 return comment_model
             raise AssertionError("Unexpected model lookup")
@@ -264,7 +266,7 @@ def test_assert_all_comment_rows_have_target_document_passes_for_filled_column()
     assert_all_comment_rows_have_target_document(FakeApps(), schema_editor=None)
 
 
-def test_assert_all_comment_rows_have_target_document_uses_db_alias_from_schema_editor():
+def test_assert_all_comment_rows_have_target_document_uses_db_alias_from_schema_editor() -> None:
     comments = [
         _CommentLegacyFactory(
             pk=1, target_content_type_id=10, target_object_id=100, target_document_id=1
@@ -274,7 +276,7 @@ def test_assert_all_comment_rows_have_target_document_uses_db_alias_from_schema_
     se = SimpleNamespace(connection=SimpleNamespace(alias="replica"))
 
     class FakeApps:
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             if (app_label, model_name) == ("comments", "Comment"):
                 return comment_model
             raise AssertionError("Unexpected model lookup")
@@ -282,7 +284,7 @@ def test_assert_all_comment_rows_have_target_document_uses_db_alias_from_schema_
     assert_all_comment_rows_have_target_document(FakeApps(), schema_editor=se)
 
 
-def test_assert_all_comment_rows_have_target_document_raises_when_still_empty():
+def test_assert_all_comment_rows_have_target_document_raises_when_still_empty() -> None:
     comments = [
         _CommentLegacyFactory(
             pk=1,
@@ -294,7 +296,7 @@ def test_assert_all_comment_rows_have_target_document_raises_when_still_empty():
     comment_model = SimpleNamespace(objects=_FakeManager(comments))
 
     class FakeApps:
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             if (app_label, model_name) == ("comments", "Comment"):
                 return comment_model
             raise AssertionError("Unexpected model lookup")
@@ -303,7 +305,7 @@ def test_assert_all_comment_rows_have_target_document_raises_when_still_empty():
         assert_all_comment_rows_have_target_document(FakeApps(), schema_editor=None)
 
 
-def test_assert_all_commentevent_rows_have_target_document_passes_for_filled_column():
+def test_assert_all_commentevent_rows_have_target_document_passes_for_filled_column() -> None:
     events = [
         _CommentEventLegacyFactory(
             pk=1, target_content_type_id=10, target_object_id=100, target_document_id=1
@@ -312,7 +314,7 @@ def test_assert_all_commentevent_rows_have_target_document_passes_for_filled_col
     event_model = SimpleNamespace(objects=_FakeManager(events))
 
     class FakeApps:
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             if (app_label, model_name) == ("comments", "CommentEvent"):
                 return event_model
             raise AssertionError("Unexpected model lookup")
@@ -320,7 +322,7 @@ def test_assert_all_commentevent_rows_have_target_document_passes_for_filled_col
     assert_all_commentevent_rows_have_target_document(FakeApps(), schema_editor=None)
 
 
-def test_assert_all_commentevent_rows_have_target_document_raises_when_still_empty():
+def test_assert_all_commentevent_rows_have_target_document_raises_when_still_empty() -> None:
     events = [
         _CommentEventLegacyFactory(
             pk=1,
@@ -332,7 +334,7 @@ def test_assert_all_commentevent_rows_have_target_document_raises_when_still_emp
     event_model = SimpleNamespace(objects=_FakeManager(events))
 
     class FakeApps:
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             if (app_label, model_name) == ("comments", "CommentEvent"):
                 return event_model
             raise AssertionError("Unexpected model lookup")
@@ -341,7 +343,7 @@ def test_assert_all_commentevent_rows_have_target_document_raises_when_still_emp
         assert_all_commentevent_rows_have_target_document(FakeApps(), schema_editor=None)
 
 
-def test_migrate_comment_targets_raises_at_assert_when_gfk_both_null():
+def test_migrate_comment_targets_raises_at_assert_when_gfk_both_null() -> None:
     """Orphan comments (no GFK) keep NULL target_document; end-of-migrate assert must fail."""
     comments = [
         _CommentLegacyFactory(
@@ -354,19 +356,19 @@ def test_migrate_comment_targets_raises_at_assert_when_gfk_both_null():
     events = []
 
     class FakeDocumentIdManager:
-        def values(self, *_args):
+        def values(self, *_args) -> list[dict[str, int]]:
             return []
 
-        def create(self, content_type_id, object_id):
+        def create(self, content_type_id, object_id) -> SimpleNamespace:
             return SimpleNamespace(id=1, content_type_id=content_type_id, object_id=object_id)
 
     class FakeApps:
-        def __init__(self):
+        def __init__(self) -> None:
             self.document_manager = FakeDocumentIdManager()
             self.comment_model = SimpleNamespace(objects=_FakeManager(comments))
             self.event_model = SimpleNamespace(objects=_FakeManager(events))
 
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             if (app_label, model_name) == ("comments", "Comment"):
                 return self.comment_model
             if (app_label, model_name) == ("comments", "CommentEvent"):
@@ -379,7 +381,7 @@ def test_migrate_comment_targets_raises_at_assert_when_gfk_both_null():
         migrate_comment_targets_to_document_id(FakeApps(), schema_editor=None)
 
 
-def test_reverse_migrate_comment_targets_to_generic_fk_restores_legacy_columns():
+def test_reverse_migrate_comment_targets_to_generic_fk_restores_legacy_columns() -> None:
     comments = [
         _CommentLegacyFactory(
             pk=1,
@@ -403,7 +405,7 @@ def test_reverse_migrate_comment_targets_to_generic_fk_restores_legacy_columns()
     event_model = SimpleNamespace(objects=_FakeManager(events))
 
     class FakeApps:
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             if (app_label, model_name) == ("comments", "Comment"):
                 return comment_model
             if (app_label, model_name) == ("comments", "CommentEvent"):
@@ -420,10 +422,10 @@ def test_reverse_migrate_comment_targets_to_generic_fk_restores_legacy_columns()
     ]
 
 
-def test_migrate_ends_by_calling_post_backfill_assert(monkeypatch):
+def test_migrate_ends_by_calling_post_backfill_assert(monkeypatch) -> None:
     calls = []
 
-    def capture(apps, schema_editor=None):
+    def capture(apps, schema_editor=None) -> None:
         calls.append((apps, schema_editor))
 
     monkeypatch.setattr(gfk, "assert_all_comment_rows_have_target_document", capture)
@@ -436,19 +438,19 @@ def test_migrate_ends_by_calling_post_backfill_assert(monkeypatch):
     m_event = _FakeManager(events)
 
     class FakeDocumentIdManager:
-        def values(self, *_args):
+        def values(self, *_args) -> list[dict[str, int]]:
             return [_DocumentIdRowFactory(id=900, content_type_id=10, object_id=100)]
 
-        def create(self, *args, **kwargs):
+        def create(self, *args, **kwargs) -> NoReturn:
             raise AssertionError("should not need new doc")
 
     class FakeApps:
-        def __init__(self):
+        def __init__(self) -> None:
             self.document_manager = FakeDocumentIdManager()
             self.comment_model = SimpleNamespace(objects=m)
             self.event_model = SimpleNamespace(objects=m_event)
 
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             if (app_label, model_name) == ("comments", "Comment"):
                 return self.comment_model
             if (app_label, model_name) == ("comments", "CommentEvent"):
@@ -464,7 +466,7 @@ def test_migrate_ends_by_calling_post_backfill_assert(monkeypatch):
     assert calls[1][1] is se
 
 
-def test_migrate_uses_db_alias_from_schema_editor(monkeypatch):
+def test_migrate_uses_db_alias_from_schema_editor(monkeypatch) -> None:
     """Comment / CommentEvent / DocumentId reads and writes must all be pinned to the
     schema editor's alias on a multi-db migration run, mirroring the assert helpers."""
     monkeypatch.setattr(gfk, "assert_all_comment_rows_have_target_document", lambda *a, **kw: None)
@@ -481,23 +483,23 @@ def test_migrate_uses_db_alias_from_schema_editor(monkeypatch):
     event_manager = _FakeManager(events)
 
     class _AliasTrackingDocumentIdManager:
-        def __init__(self):
+        def __init__(self) -> None:
             self.using_log = []
 
-        def using(self, alias):
+        def using(self, alias) -> "_AliasTrackingDocumentIdManager":
             self.using_log.append(alias)
             return self
 
-        def values(self, *_args):
+        def values(self, *_args) -> list[dict[str, int]]:
             return [_DocumentIdRowFactory(id=900, content_type_id=10, object_id=100)]
 
-        def create(self, *args, **kwargs):  # pragma: no cover - not exercised
+        def create(self, *args, **kwargs) -> NoReturn:  # pragma: no cover - not exercised
             raise AssertionError("should not need new doc")
 
     document_manager = _AliasTrackingDocumentIdManager()
 
     class FakeApps:
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             mapping = {
                 ("comments", "Comment"): SimpleNamespace(objects=comment_manager),
                 ("comments", "CommentEvent"): SimpleNamespace(objects=event_manager),
@@ -513,7 +515,7 @@ def test_migrate_uses_db_alias_from_schema_editor(monkeypatch):
     assert document_manager.using_log == ["replica"]
 
 
-def test_reverse_migrate_uses_db_alias_from_schema_editor():
+def test_reverse_migrate_uses_db_alias_from_schema_editor() -> None:
     comments = [
         _CommentLegacyFactory(
             pk=1,
@@ -528,7 +530,7 @@ def test_reverse_migrate_uses_db_alias_from_schema_editor():
     event_manager = _FakeManager(events)
 
     class FakeApps:
-        def get_model(self, app_label, model_name):
+        def get_model(self, app_label, model_name) -> SimpleNamespace:
             mapping = {
                 ("comments", "Comment"): SimpleNamespace(objects=comment_manager),
                 ("comments", "CommentEvent"): SimpleNamespace(objects=event_manager),

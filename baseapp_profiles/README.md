@@ -126,9 +126,9 @@ Two post-save signal handlers are available for features that still require Pyth
 
 ## URL paths
 
-When `baseapp_pages` is installed, each profile owns a URL handle (e.g. `/JonathanDoe`). Handle generation lives on the model; uniqueness/collision resolution lives in the `pages.url_path` shared service.
+When `baseapp_pages` is installed, each profile owns a URL handle (e.g. `/jonathandoe`). Handles are always lowercase. Handle generation lives on the model; uniqueness/collision resolution lives in the `pages.url_path` shared service.
 
-- `profile.generate_url_path(profile_name=None)` — builds the handle (with leading slash) from `profile_name` or `self.name`. The name is folded to a URL-safe ASCII handle via `baseapp_profiles.utils.to_ascii_handle` (accents transliterated — `Döe` → `Doe`; emoji and other non-alphanumerics dropped). When the name folds to nothing (e.g. an emoji-only name), it falls back to the local-part of the owner's email; as a last resort `pad_handle` pads with random digits to an 8-char minimum. The result is **not** collision-checked.
+- `profile.generate_url_path(profile_name=None)` — builds the handle (with leading slash) from `profile_name` or `self.name`. The name is folded to a lowercase URL-safe ASCII handle via `baseapp_profiles.utils.to_ascii_handle` (accents transliterated and case folded — `Döe` → `doe`; emoji and other non-alphanumerics dropped). When the name folds to nothing (e.g. an emoji-only name), it falls back to the local-part of the owner's email; as a last resort `pad_handle` pads with random digits to an 8-char minimum. The result is **not** collision-checked.
 - `profile.create_url_path(profile_name=None)` — builds the handle, then asks the `pages.url_path` service to resolve uniqueness (appending a numeric suffix when taken) before persisting the `URLPath`.
 - `Profile.generate_url_path_str(profile_name)` *(classmethod)* — collision-resolved suggestion for an arbitrary string (no owner context, so no email fallback). Used by `ProfileUpdateSerializer.validate_url_path` to suggest a free handle when the requested one is taken.
 

@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import graphene
 from django.conf import settings
 from django.core.cache import InvalidCacheBackendError, caches
@@ -16,7 +18,7 @@ class File(graphene.ObjectType):
 
 
 class ThumbnailField(graphene.Field):
-    def __init__(self, type=File, **kwargs):
+    def __init__(self, type=File, **kwargs) -> None:
         kwargs.update(
             {
                 "args": {
@@ -27,10 +29,10 @@ class ThumbnailField(graphene.Field):
         )
         super(ThumbnailField, self).__init__(type, **kwargs)
 
-    def get_resolver(self, parent_resolver):
+    def get_resolver(self, parent_resolver) -> Callable:
         resolver = self.resolver or parent_resolver
 
-        def built_thumbnail(instance, info, width, height, **kwargs):
+        def built_thumbnail(instance, info, width, height, **kwargs) -> File | None:
             instance = resolver(instance, info, **kwargs)
 
             if not instance:
@@ -53,5 +55,5 @@ class ThumbnailField(graphene.Field):
 
         return built_thumbnail
 
-    def _get_cache_key(self, instance, width, height):
+    def _get_cache_key(self, instance, width, height) -> str:
         return f"et:thumbnail:{instance.url}:{width}:{height}"

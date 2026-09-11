@@ -1,11 +1,13 @@
+from collections.abc import Callable
+
 from ipware import get_client_ip
 
 from .models import IpRestriction
 from .settings import PermissionSettings
 
 
-def get_permission_loader(permissions):
-    def load_permissions_data(apps, schema_editor):
+def get_permission_loader(permissions) -> Callable[..., None]:
+    def load_permissions_data(apps, schema_editor) -> None:
         Permission = apps.get_model("auth", "Permission")
         Group = apps.get_model("auth", "Group")
         for perm_group in permissions:
@@ -19,8 +21,8 @@ def get_permission_loader(permissions):
     return load_permissions_data
 
 
-def get_permission_remover(permissions, remove_group=False):
-    def remove_permissions_data(apps, schema_editor):
+def get_permission_remover(permissions, remove_group=False) -> Callable[..., None]:
+    def remove_permissions_data(apps, schema_editor) -> None:
         """
         The group will not be deleted if the remove_group is False
         """
@@ -40,7 +42,7 @@ def get_permission_remover(permissions, remove_group=False):
     return remove_permissions_data
 
 
-def client_ip_address_is_restricted(request):
+def client_ip_address_is_restricted(request) -> bool:
     """
     Check if the client IP address is restricted
     """

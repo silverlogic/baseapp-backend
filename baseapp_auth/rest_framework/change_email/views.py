@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 from django.contrib.auth import get_user_model
 from django.http import Http404
 from django.utils.translation import gettext_lazy as _
@@ -16,6 +18,9 @@ from .serializers import (
     ChangeEmailVerifySerializer,
 )
 
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+
 User = get_user_model()
 
 
@@ -23,10 +28,10 @@ class ChangeEmailViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = ChangeEmailRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_queryset(self):
+    def get_queryset(self) -> "QuerySet[User]":
         return User.objects.all()
 
-    def create(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs) -> Response:
         """step 1"""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -40,7 +45,7 @@ class ChangeEmailViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         serializer_class=ChangeEmailConfirmSerializer,
         permission_classes=[],
     )
-    def confirm(self, request, *args, **kwargs):
+    def confirm(self, request, *args, **kwargs) -> Response:
         """step 2"""
         try:
             user = self.get_object()
@@ -58,7 +63,7 @@ class ChangeEmailViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         serializer_class=ChangeEmailVerifySerializer,
         permission_classes=[],
     )
-    def verify(self, request, *args, **kwargs):
+    def verify(self, request, *args, **kwargs) -> Response:
         """step 3"""
         try:
             user = self.get_object()
@@ -70,7 +75,7 @@ class ChangeEmailViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         return Response({}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["POST"])
-    def resend_confirm(self, request, *args, **kwargs):
+    def resend_confirm(self, request, *args, **kwargs) -> Response:
         user = request.user
         if not user.new_email:
             raise serializers.ValidationError(
@@ -84,7 +89,7 @@ class ChangeEmailViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         return Response({}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["POST"])
-    def resend_verify(self, request, *args, **kwargs):
+    def resend_verify(self, request, *args, **kwargs) -> Response:
         user = request.user
         if not user.is_new_email_confirmed:
             raise serializers.ValidationError(
@@ -94,7 +99,7 @@ class ChangeEmailViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         return Response({}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["POST"])
-    def cancel(self, request, *args, **kwrgs):
+    def cancel(self, request, *args, **kwrgs) -> Response:
         user = request.user
         user.new_email = ""
         user.is_new_email_confirmed = False

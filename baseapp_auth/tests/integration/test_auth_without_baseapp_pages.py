@@ -18,7 +18,7 @@ ME_WITH_METADATA_GRAPHQL = """
 class TestAuthWithoutBaseappPages:
     def test_me_query_without_metadata(
         self, with_disabled_apps, graphql_user_client, django_user_client
-    ):
+    ) -> None:
         response = graphql_user_client(ME_WITH_METADATA_GRAPHQL)
         content = response.json()
         assert content["data"]["me"]["fullName"] == django_user_client.user.get_full_name()

@@ -52,7 +52,7 @@ mutation ProfileUserRoleUpdateMutation($input: ProfileUserRoleUpdateInput!) {
 """
 
 
-def test_anon_cant_update_profile(graphql_client):
+def test_anon_cant_update_profile(graphql_client) -> None:
     profile = ProfileFactory()
     old_biography = profile.biography
 
@@ -66,7 +66,7 @@ def test_anon_cant_update_profile(graphql_client):
     assert profile.biography == old_biography
 
 
-def test_user_cant_update_any_profile(graphql_user_client):
+def test_user_cant_update_any_profile(graphql_user_client) -> None:
     profile = ProfileFactory()
     old_biography = profile.biography
 
@@ -80,7 +80,7 @@ def test_user_cant_update_any_profile(graphql_user_client):
     assert profile.biography == old_biography
 
 
-def test_owner_can_update_profile(django_user_client, graphql_user_client):
+def test_owner_can_update_profile(django_user_client, graphql_user_client) -> None:
     profile = ProfileFactory(owner=django_user_client.user)
     new_biography = "my edited profile"
 
@@ -94,7 +94,7 @@ def test_owner_can_update_profile(django_user_client, graphql_user_client):
     assert profile.biography == new_biography
 
 
-def test_owner_can_update_profile_url_path(django_user_client, graphql_user_client):
+def test_owner_can_update_profile_url_path(django_user_client, graphql_user_client) -> None:
     profile = ProfileFactory(owner=django_user_client.user)
     graphql_user_client(
         PROFILE_UPDATE_GRAPHQL,
@@ -103,7 +103,9 @@ def test_owner_can_update_profile_url_path(django_user_client, graphql_user_clie
     assert profile.url_paths.all().count() == 1
 
 
-def test_owner_can_update_profile_url_path_already_in_use(django_user_client, graphql_user_client):
+def test_owner_can_update_profile_url_path_already_in_use(
+    django_user_client, graphql_user_client
+) -> None:
     url_path = "existingpath"
     URLPathFactory(path=f"/{url_path}")
     profile = ProfileFactory(owner=django_user_client.user)
@@ -119,7 +121,9 @@ def test_owner_can_update_profile_url_path_already_in_use(django_user_client, gr
     )
 
 
-def test_owner_can_update_profile_image(django_user_client, graphql_user_client, image_djangofile):
+def test_owner_can_update_profile_image(
+    django_user_client, graphql_user_client, image_djangofile
+) -> None:
     profile = ProfileFactory(owner=django_user_client.user)
     response = graphql_user_client(
         PROFILE_UPDATE_GRAPHQL,
@@ -134,7 +138,7 @@ def test_owner_can_update_profile_image(django_user_client, graphql_user_client,
 
 def test_owner_can_update_profile_banner_image(
     django_user_client, graphql_user_client, image_djangofile
-):
+) -> None:
     profile = ProfileFactory(owner=django_user_client.user)
     response = graphql_user_client(
         PROFILE_UPDATE_GRAPHQL,
@@ -149,7 +153,7 @@ def test_owner_can_update_profile_banner_image(
     )
 
 
-def test_owner_can_delete_profile_image(django_user_client, graphql_user_client):
+def test_owner_can_delete_profile_image(django_user_client, graphql_user_client) -> None:
     profile = ProfileFactory(owner=django_user_client.user)
     response = graphql_user_client(
         PROFILE_UPDATE_GRAPHQL,
@@ -160,7 +164,7 @@ def test_owner_can_delete_profile_image(django_user_client, graphql_user_client)
     assert content["data"]["profileUpdate"]["profile"]["image"] is None
 
 
-def test_owner_can_delete_profile_banner_image(django_user_client, graphql_user_client):
+def test_owner_can_delete_profile_banner_image(django_user_client, graphql_user_client) -> None:
     profile = ProfileFactory(owner=django_user_client.user)
     response = graphql_user_client(
         PROFILE_UPDATE_GRAPHQL,
@@ -173,7 +177,7 @@ def test_owner_can_delete_profile_banner_image(django_user_client, graphql_user_
 
 def test_owner_can_update_profile_banner_image_camel_case(
     django_user_client, graphql_user_client, image_djangofile
-):
+) -> None:
     profile = ProfileFactory(owner=django_user_client.user)
     response = graphql_user_client(
         PROFILE_UPDATE_GRAPHQL,
@@ -188,7 +192,7 @@ def test_owner_can_update_profile_banner_image_camel_case(
     )
 
 
-def test_superuser_can_update_profile(django_user_client, graphql_user_client):
+def test_superuser_can_update_profile(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
     new_biography = "my edited profile"
@@ -205,7 +209,7 @@ def test_superuser_can_update_profile(django_user_client, graphql_user_client):
     assert profile.biography == new_biography
 
 
-def test_user_with_permission_can_update_profile(django_user_client, graphql_user_client):
+def test_user_with_permission_can_update_profile(django_user_client, graphql_user_client) -> None:
     perm = Permission.objects.get(
         content_type__app_label=Profile._meta.app_label, codename="change_profile"
     )
@@ -224,7 +228,7 @@ def test_user_with_permission_can_update_profile(django_user_client, graphql_use
     assert profile.biography == new_biography
 
 
-def test_user_profile_owner_can_update_role(django_user_client, graphql_user_client):
+def test_user_profile_owner_can_update_role(django_user_client, graphql_user_client) -> None:
 
     perm = Permission.objects.get(
         content_type__app_label=ProfileUserRole._meta.app_label, codename="change_profileuserrole"
@@ -249,7 +253,7 @@ def test_user_profile_owner_can_update_role(django_user_client, graphql_user_cli
     profile.refresh_from_db()
 
 
-def test_user_with_permission_can_update_role(django_user_client, graphql_user_client):
+def test_user_with_permission_can_update_role(django_user_client, graphql_user_client) -> None:
 
     perm = Permission.objects.get(
         content_type__app_label=ProfileUserRole._meta.app_label, codename="change_profileuserrole"
@@ -276,7 +280,7 @@ def test_user_with_permission_can_update_role(django_user_client, graphql_user_c
     profile.refresh_from_db()
 
 
-def test_user_without_permission_cant_update_role(django_user_client, graphql_user_client):
+def test_user_without_permission_cant_update_role(django_user_client, graphql_user_client) -> None:
 
     perm = Permission.objects.get(
         content_type__app_label=ProfileUserRole._meta.app_label, codename="change_profileuserrole"

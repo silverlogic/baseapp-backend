@@ -10,14 +10,14 @@ class OnNotificationChange(channels_graphql_ws.Subscription):
     deleted_notification_id = graphene.ID()
 
     @staticmethod
-    def subscribe(root, info):
+    def subscribe(root, info) -> list[str]:
         user = info.context.channels_scope["user"]
         if not user.is_authenticated:
             return []
         return [str(user.pk)]
 
     @staticmethod
-    def publish(payload, info):
+    def publish(payload, info) -> "OnNotificationChange | None":
         created_notification = payload.get("created_notification", None)
         updated_notification = payload.get("updated_notification", None)
         deleted_notification_id = payload.get("deleted_notification_id", None)
@@ -37,21 +37,21 @@ class OnNotificationChange(channels_graphql_ws.Subscription):
         )
 
     @classmethod
-    def send_created_notification(cls, notification):
+    def send_created_notification(cls, notification) -> None:
         cls.broadcast(
             group=str(notification.recipient_id),
             payload={"created_notification": notification},
         )
 
     @classmethod
-    def send_updated_notification(cls, notification):
+    def send_updated_notification(cls, notification) -> None:
         cls.broadcast(
             group=str(notification.recipient_id),
             payload={"updated_notification": notification},
         )
 
     @classmethod
-    def send_delete_notification(cls, recipient_id, notification_id):
+    def send_delete_notification(cls, recipient_id, notification_id) -> None:
         cls.broadcast(
             group=str(recipient_id),
             payload={"deleted_notification_id": notification_id},

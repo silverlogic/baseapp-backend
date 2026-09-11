@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Any
 
 import requests
 from django.conf import settings
@@ -7,26 +8,26 @@ from django.conf import settings
 
 class StreamClient:
     @property
-    def _api_url(self):
+    def _api_url(self) -> str:
         return (
             f"https://api.cloudflare.com/client/v4/accounts/{settings.CLOUDFLARE_ACCOUNT_ID}/stream"
         )
 
     @property
-    def request_headers(self):
+    def request_headers(self) -> dict[str, str]:
         return {
             "Authorization": f"Bearer {settings.CLOUDFLARE_API_TOKEN}",
             "Content-Type": "application/json",
         }
 
-    def get_video_data(self, video_uid):
+    def get_video_data(self, video_uid) -> dict[str, Any]:
         res = requests.get(
             f"{self._api_url}/{video_uid}",
             headers=self.request_headers,
         )
         return res.json()["result"]
 
-    def upload_via_link(self, link, meta={}):
+    def upload_via_link(self, link, meta={}) -> dict[str, Any]:
         res = requests.post(
             f"{self._api_url}/copy",
             headers=self.request_headers,
@@ -34,7 +35,7 @@ class StreamClient:
         )
         return res.json()["result"]
 
-    def update_video_data(self, video_uid, data={}):
+    def update_video_data(self, video_uid, data={}) -> dict[str, Any]:
         res = requests.post(
             f"{self._api_url}/{video_uid}",
             headers=self.request_headers,
@@ -42,7 +43,7 @@ class StreamClient:
         )
         return res.json()["result"]
 
-    def upload_caption_file(self, video_uid, language_code, caption_file):
+    def upload_caption_file(self, video_uid, language_code, caption_file) -> dict[str, Any]:
         res = requests.put(
             f"{self._api_url}/{video_uid}/captions/{language_code}",
             headers={**self.request_headers, "Content-Type": "multipart/form-data"},
@@ -50,14 +51,14 @@ class StreamClient:
         )
         return res.json()
 
-    def delete_video_data(self, video_uid):
+    def delete_video_data(self, video_uid) -> requests.Response:
         res = requests.delete(
             f"{self._api_url}/{video_uid}",
             headers=self.request_headers,
         )
         return res
 
-    def list_videos(self, params=None):
+    def list_videos(self, params=None) -> dict[str, Any]:
         # params to paginate ?before=last-video-created
         res = requests.get(
             f"{self._api_url}",
@@ -66,14 +67,14 @@ class StreamClient:
         )
         return res.json()
 
-    def download_video(self, video_uid):
+    def download_video(self, video_uid) -> dict[str, Any]:
         res = requests.post(
             f"{self._api_url}/{video_uid}/downloads",
             headers=self.request_headers,
         )
         return res.json()
 
-    def clip_video(self, data={}):
+    def clip_video(self, data={}) -> dict[str, Any] | None:
         res = requests.post(
             f"{self._api_url}/clip",
             headers=self.request_headers,

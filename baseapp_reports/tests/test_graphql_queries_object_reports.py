@@ -45,7 +45,7 @@ COUNTS_ONLY_QUERY = """
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_reports_count_is_flat_regardless_of_report_volume(
     django_user_client, graphql_client_with_queries
-):
+) -> None:
     """`reportsCount` should be a flat query path: regardless of how many `Report`
     rows point at the target, the GraphQL query should make the same number of DB
     round-trips. This locks in the `ReportableMetadataService.annotate_queryset`
@@ -84,7 +84,7 @@ def test_anon_reports_count_is_flat_regardless_of_report_volume(
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_reports_count_zero_when_no_reports_does_not_extra_query(
     django_user_client, graphql_client_with_queries
-):
+) -> None:
     """When a profile has no reports, `reportsCount` should still resolve in the
     same query budget as a profile with reports — the metadata row simply doesn't
     exist yet, and the annotated COALESCE returns the default `{"total": 0}` dict

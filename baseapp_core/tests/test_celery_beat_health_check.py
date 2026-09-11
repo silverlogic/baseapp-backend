@@ -5,7 +5,7 @@ from django.utils.module_loading import import_string
 
 
 @pytest.mark.parametrize("name, schedule", settings.CELERY_BEAT_SCHEDULE.items())
-def test_celery_beat_tasks_exist(name, schedule):
+def test_celery_beat_tasks_exist(name, schedule) -> None:
     """
     Tasks added in celery exists in settings exists in the code, so it avoids
     when a developer has a beat working but fail when push to a live server
@@ -27,7 +27,7 @@ def test_celery_beat_tasks_exist(name, schedule):
 
 
 @pytest.mark.parametrize("schedule", settings.CELERY_BEAT_SCHEDULE.values())
-def test_celery_beat_tasks_have_expires(schedule):
+def test_celery_beat_tasks_have_expires(schedule) -> None:
     """
     Tasks added in celery have expiration time, so we don't have a task being
     created several times and running duplicates.

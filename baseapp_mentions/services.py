@@ -1,4 +1,4 @@
-from typing import Iterable, List, Optional
+from typing import TYPE_CHECKING, Iterable, List, Optional
 
 import swapper
 from django.apps import apps
@@ -15,6 +15,11 @@ from baseapp_core.models import DocumentId
 from baseapp_core.plugins import SharedServiceProvider
 
 from .signals import mentions_changed
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+
+    from .models import AbstractBaseMention
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
@@ -39,7 +44,7 @@ class MentionsService(SharedServiceProvider):
         target_obj,
         mentioned_profile_ids: Iterable[str],
         exclude_profile: Optional["Profile"] = None,
-    ):
+    ) -> "list[AbstractBaseMention]":
         """Replace the Mention rows for `target_obj` with the resolved profile set.
 
         Mirrors `m2m.set(...)` semantics: inserts new, deletes removed, leaves
@@ -146,7 +151,7 @@ class MentionableMetadataService(SharedServiceProvider):
     def is_available(self) -> bool:
         return apps.is_installed("baseapp_mentions")
 
-    def _mention_model(self):
+    def _mention_model(self) -> "type[AbstractBaseMention]":
         return swapper.load_model("baseapp_mentions", "Mention")
 
     def get_mentions_count(self, obj) -> int:
@@ -161,7 +166,7 @@ class MentionableMetadataService(SharedServiceProvider):
             return 0
         return self._mention_model().objects.filter(target_document=doc).count()
 
-    def _mentions_count_subquery(self, model_cls):
+    def _mentions_count_subquery(self, model_cls) -> Coalesce:
         """Correlated subquery that produces the mentions count for a row of `model_cls`."""
         Mention = self._mention_model()
         ct_id = ContentType.objects.get_for_model(model_cls).pk
@@ -177,7 +182,7 @@ class MentionableMetadataService(SharedServiceProvider):
         )
         return Coalesce(Subquery(count_qs[:1]), Value(0))
 
-    def _target_doc_id_subquery(self, model_cls):
+    def _target_doc_id_subquery(self, model_cls) -> Subquery:
         """Correlated subquery that produces the DocumentId pk for a row of `model_cls`."""
         ct_id = ContentType.objects.get_for_model(model_cls).pk
         doc_qs = DocumentId.objects.filter(
@@ -186,7 +191,7 @@ class MentionableMetadataService(SharedServiceProvider):
         )
         return Subquery(doc_qs.values("id")[:1])
 
-    def annotate_queryset(self, queryset):
+    def annotate_queryset(self, queryset) -> "QuerySet":
         """Annotate `queryset` with `_mentions_count` + `_mention_target_doc_id`.
 
         Both annotations key off the consuming model's `(content_type, pk)` so
@@ -200,7 +205,7 @@ class MentionableMetadataService(SharedServiceProvider):
             _mentions_count=self._mentions_count_subquery(queryset.model),
         )
 
-    def annotate_mentions_count_in_optimizer_compiler(self, compiler: OptimizationCompiler):
+    def annotate_mentions_count_in_optimizer_compiler(self, compiler: OptimizationCompiler) -> None:
         """Attach `_mentions_count` to the parent optimizer's annotations.
 
         Wired from `MentionsInterface.mentions_count.optimizer_hook` so the
@@ -214,7 +219,7 @@ class MentionableMetadataService(SharedServiceProvider):
             "_mentions_count", self._mentions_count_subquery(parent.model)
         )
 
-    def annotate_target_doc_id_in_optimizer_compiler(self, compiler: OptimizationCompiler):
+    def annotate_target_doc_id_in_optimizer_compiler(self, compiler: OptimizationCompiler) -> None:
         """Attach `_mention_target_doc_id` to the parent optimizer's annotations.
 
         Wired from `MentionsInterface.is_mentioning_profile.optimizer_hook` so
@@ -230,7 +235,7 @@ class MentionableMetadataService(SharedServiceProvider):
             "_mention_target_doc_id", self._target_doc_id_subquery(parent.model)
         )
 
-    def prefetch_mentions_in_optimizer_compiler(self, compiler: OptimizationCompiler):
+    def prefetch_mentions_in_optimizer_compiler(self, compiler: OptimizationCompiler) -> None:
         """
         Walks the parent optimizer through ``document__<reverse>`` (the
         project-specific reverse accessor; see

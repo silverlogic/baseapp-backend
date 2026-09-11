@@ -12,7 +12,7 @@ ReactionTypes = Reaction.ReactionTypes
 pytestmark = pytest.mark.django_db
 
 
-def test_reaction_save_creates_metadata_and_increments_count():
+def test_reaction_save_creates_metadata_and_increments_count() -> None:
     """Creating a Reaction through the ORM should populate `ReactableMetadata`
     for the target with a fresh per-type count dict (LIKE bucket + total)."""
     target = CommentFactory()
@@ -26,7 +26,7 @@ def test_reaction_save_creates_metadata_and_increments_count():
     assert metadata.reactions_count["DISLIKE"] == 0
 
 
-def test_reaction_save_aggregates_multiple_reactions_per_type():
+def test_reaction_save_aggregates_multiple_reactions_per_type() -> None:
     """Multiple reactions of the same type should accumulate in that bucket and total."""
     target = CommentFactory()
 
@@ -40,7 +40,7 @@ def test_reaction_save_aggregates_multiple_reactions_per_type():
     assert metadata.reactions_count["DISLIKE"] == 1
 
 
-def test_reaction_delete_decrements_count():
+def test_reaction_delete_decrements_count() -> None:
     target = CommentFactory()
     ReactionFactory(target=target, reaction_type=ReactionTypes.LIKE)
     second = ReactionFactory(target=target, reaction_type=ReactionTypes.LIKE)
@@ -55,7 +55,7 @@ def test_reaction_delete_decrements_count():
     assert metadata.reactions_count["LIKE"] == 1
 
 
-def test_reaction_delete_resets_to_zero_when_no_reactions_left():
+def test_reaction_delete_resets_to_zero_when_no_reactions_left() -> None:
     target = CommentFactory()
     reaction = ReactionFactory(target=target, reaction_type=ReactionTypes.DISLIKE)
 
@@ -70,7 +70,7 @@ def test_reaction_delete_resets_to_zero_when_no_reactions_left():
     assert metadata.reactions_count["DISLIKE"] == 0
 
 
-def test_reactions_count_isolated_per_target():
+def test_reactions_count_isolated_per_target() -> None:
     """Reactions against target A must not bleed into target B's metadata."""
     target_a = CommentFactory()
     target_b = CommentFactory()
@@ -84,7 +84,7 @@ def test_reactions_count_isolated_per_target():
     assert metadata_b is None or metadata_b.reactions_count["total"] == 0
 
 
-def test_update_reactions_count_recomputes_from_existing_rows():
+def test_update_reactions_count_recomputes_from_existing_rows() -> None:
     """`Reaction.update_reactions_count(target)` should recompute the per-type
     counts from the live `Reaction` rows even if the metadata row is stale."""
     target = CommentFactory()
@@ -104,6 +104,6 @@ def test_update_reactions_count_recomputes_from_existing_rows():
     assert metadata.reactions_count["DISLIKE"] == 1
 
 
-def test_update_reactions_count_no_op_when_target_is_none():
+def test_update_reactions_count_no_op_when_target_is_none() -> None:
     """`update_reactions_count(None)` should silently no-op rather than crash."""
     Reaction.update_reactions_count(None)  # should not raise

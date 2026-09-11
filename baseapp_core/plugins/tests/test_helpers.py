@@ -4,12 +4,12 @@ from baseapp_core.plugins.helpers import apply_if_installed
 
 
 class TestApplyIfInstalled:
-    def test_returns_response_when_app_is_installed(self, monkeypatch):
+    def test_returns_response_when_app_is_installed(self, monkeypatch) -> None:
         monkeypatch.setattr("baseapp_core.plugins.helpers.apps.is_installed", lambda _: True)
 
         assert apply_if_installed("baseapp_profiles", ["profile"]) == ["profile"]
 
-    def test_executes_response_callable_when_app_is_installed(self, monkeypatch):
+    def test_executes_response_callable_when_app_is_installed(self, monkeypatch) -> None:
         monkeypatch.setattr("baseapp_core.plugins.helpers.apps.is_installed", lambda _: True)
 
         result = apply_if_installed(
@@ -22,7 +22,7 @@ class TestApplyIfInstalled:
 
         assert result == "profiles-enabled"
 
-    def test_returns_callable_without_executing_when_flag_is_false(self, monkeypatch):
+    def test_returns_callable_without_executing_when_flag_is_false(self, monkeypatch) -> None:
         monkeypatch.setattr("baseapp_core.plugins.helpers.apps.is_installed", lambda _: True)
 
         response = lambda: "profiles-enabled"  # noqa: E731
@@ -47,12 +47,12 @@ class TestApplyIfInstalled:
         monkeypatch,
         response,
         expected,
-    ):
+    ) -> None:
         monkeypatch.setattr("baseapp_core.plugins.helpers.apps.is_installed", lambda _: False)
 
         assert apply_if_installed("baseapp_profiles", response) == expected
 
-    def test_returns_explicit_fallback_when_type_matching_is_disabled(self, monkeypatch):
+    def test_returns_explicit_fallback_when_type_matching_is_disabled(self, monkeypatch) -> None:
         monkeypatch.setattr("baseapp_core.plugins.helpers.apps.is_installed", lambda _: False)
 
         assert apply_if_installed(
@@ -62,7 +62,7 @@ class TestApplyIfInstalled:
             fallback_match_response_type=False,
         ) == ["user"]
 
-    def test_executes_fallback_callable_when_app_is_not_installed(self, monkeypatch):
+    def test_executes_fallback_callable_when_app_is_not_installed(self, monkeypatch) -> None:
         monkeypatch.setattr("baseapp_core.plugins.helpers.apps.is_installed", lambda _: False)
 
         result = apply_if_installed(

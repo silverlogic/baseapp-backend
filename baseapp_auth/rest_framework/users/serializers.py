@@ -1,4 +1,5 @@
 from datetime import timedelta
+from typing import Any
 
 from constance import config
 from django.contrib.auth import get_user_model
@@ -68,10 +69,10 @@ class UserBaseSerializer(ModelSerializer):
             "is_superuser",
         )
 
-    def get_email_verification_required(self, user):
+    def get_email_verification_required(self, user) -> bool:
         return config.EMAIL_VERIFICATION_REQUIRED
 
-    def get_referral_code(self, user):
+    def get_referral_code(self, user) -> str:
         if use_referrals():
             return get_referral_code(user)
         return ""
@@ -81,7 +82,7 @@ class UserSerializer(UserBaseSerializer):
     class Meta(UserBaseSerializer.Meta):
         pass
 
-    def validate_referred_by_code(self, referred_by_code):
+    def validate_referred_by_code(self, referred_by_code) -> str:
         if use_referrals() and referred_by_code:
             self.referrer = get_user_from_referral_code(referred_by_code)
             if not self.referrer:
@@ -96,7 +97,7 @@ class UserSerializer(UserBaseSerializer):
                 raise serializers.ValidationError(_("You have already been referred by somebody."))
         return referred_by_code
 
-    def update(self, instance, validated_data):
+    def update(self, instance, validated_data) -> "User":
         if use_referrals() and hasattr(self, "referrer"):
             get_user_referral_model().objects.create(referrer=self.referrer, referee=instance)
 
@@ -112,7 +113,7 @@ class UserSerializer(UserBaseSerializer):
 
         return super().update(instance, validated_data)
 
-    def to_representation(self, user):
+    def to_representation(self, user) -> dict[str, Any]:
         request = self.context["request"]
         if request.user.is_authenticated and request.user.pk == user.pk:
             return super().to_representation(user)
@@ -132,17 +133,17 @@ class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField()
     new_password = serializers.CharField()
 
-    def validate_current_password(self, current_password):
+    def validate_current_password(self, current_password) -> str:
         user = self.context["request"].user
         if not user.check_password(current_password):
             raise serializers.ValidationError(_("That is not your current password."))
         return current_password
 
-    def validate_new_password(self, new_password):
+    def validate_new_password(self, new_password) -> str:
         apply_password_validators(new_password)
         return new_password
 
-    def save(self):
+    def save(self) -> None:
         user = self.context["request"].user
         user.set_password(self.data["new_password"])
         user.save()
@@ -171,7 +172,7 @@ class UserManagePermissionSerializer(serializers.ModelSerializer):
             "codename": {"required": False},
         }
 
-    def create(self, validated_data):
+    def create(self, validated_data) -> Permission | dict[str, Any]:
         user = self.context["user"]
         if not user:
             raise serializers.ValidationError({"user": _("User does not exist.")})

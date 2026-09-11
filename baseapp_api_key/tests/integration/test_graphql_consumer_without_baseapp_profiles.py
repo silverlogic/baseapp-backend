@@ -1,4 +1,6 @@
+from collections.abc import Callable
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -9,7 +11,7 @@ from baseapp_api_key.graphql.consumers import BaseGraphqlWsAPIKeyAuthenticatedCo
 pytestmark = pytest.mark.django_db
 
 
-def _build_api_key_model(api_key):
+def _build_api_key_model(api_key) -> tuple[SimpleNamespace, Mock]:
     queryset = Mock()
     queryset.filter.return_value = queryset
     queryset.first.return_value = api_key
@@ -19,8 +21,8 @@ def _build_api_key_model(api_key):
     return SimpleNamespace(objects=manager), queryset
 
 
-def _sync_to_async(func):
-    async def runner(*args, **kwargs):
+def _sync_to_async(func) -> Callable[..., Any]:
+    async def runner(*args, **kwargs) -> Any:
         return func(*args, **kwargs)
 
     return runner
@@ -31,7 +33,7 @@ class TestApiKeyGraphqlConsumerWithoutBaseappProfiles:
     @pytest.mark.asyncio
     async def test_on_connect_authenticates_user_and_ignores_current_profile_header(
         self, with_disabled_apps
-    ):
+    ) -> None:
         user = SimpleNamespace(is_active=True)
         api_key = SimpleNamespace(is_expired=False, user=user)
         api_key_model, queryset = _build_api_key_model(api_key)
@@ -57,7 +59,9 @@ class TestApiKeyGraphqlConsumerWithoutBaseappProfiles:
         load_model_mock.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_on_connect_sets_anonymous_when_api_key_is_missing(self, with_disabled_apps):
+    async def test_on_connect_sets_anonymous_when_api_key_is_missing(
+        self, with_disabled_apps
+    ) -> None:
         consumer = SimpleNamespace(scope={})
         payload = {}
 

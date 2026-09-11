@@ -16,7 +16,7 @@ User = get_user_model()
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
-    def validate_email(self, email):
+    def validate_email(self, email) -> str:
         self.user = User.objects.filter(email=email).first()
         return email
 
@@ -25,20 +25,20 @@ class ResetPasswordBaseSerializer(serializers.Serializer):
     new_password = serializers.CharField()
     token = serializers.CharField()
 
-    def validate_token(self, token):
+    def validate_token(self, token) -> None:
         pass
 
-    def validate_new_password(self, new_password):
+    def validate_new_password(self, new_password) -> str:
         apply_password_validators(new_password)
         return new_password
 
-    def save(self):
+    def save(self) -> None:
         self.user.set_password(self.data["new_password"])
         self.user.save()
 
 
 class ResetPasswordSerializer(ResetPasswordBaseSerializer):
-    def validate_token(self, token):
+    def validate_token(self, token) -> str:
         try:
             decoded_token = urlsafe_base64_decode(token)
             user_id, user_token = signing.loads(decoded_token.decode())
@@ -56,7 +56,7 @@ class ResetPasswordSerializer(ResetPasswordBaseSerializer):
 
 
 class ResetPasswordJwtSerializer(ResetPasswordBaseSerializer):
-    def validate_token(self, token):
+    def validate_token(self, token) -> str:
         authenticator = JWTAuthentication()
         validated_token = authenticator.get_validated_token(token)
         self.user = authenticator.get_user(validated_token)

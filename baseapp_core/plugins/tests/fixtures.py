@@ -2,6 +2,7 @@
 Pytest fixtures for plugin tests.
 """
 
+from collections.abc import Generator
 from contextlib import contextmanager
 from unittest.mock import patch
 
@@ -14,7 +15,7 @@ from baseapp_core.plugins.registry import plugin_registry
 
 
 @pytest.fixture(autouse=True)
-def mock_apply_pghistory_tracks():
+def mock_apply_pghistory_tracks() -> Generator[None, None, None]:
     """
     Mock apply_pghistory_tracks to avoid errors when apps are not installed.
 
@@ -26,7 +27,7 @@ def mock_apply_pghistory_tracks():
 
 
 @pytest.fixture
-def minimal_installed_apps():
+def minimal_installed_apps() -> list[str]:
     """
     Fixture providing minimal INSTALLED_APPS required for plugin tests.
 
@@ -44,7 +45,7 @@ def minimal_installed_apps():
 
 
 @pytest.fixture
-def installed_apps_with_test_plugin(minimal_installed_apps):
+def installed_apps_with_test_plugin(minimal_installed_apps) -> list[str]:
     """
     Fixture providing INSTALLED_APPS including the test plugin.
 
@@ -63,7 +64,7 @@ def _reset_plugin_runtime_state() -> None:
 def with_disabled_apps_context(
     disabled_apps: list[str],
     swapped_models: dict[str, str] | None = None,
-):
+) -> Generator[None, None, None]:
     """
     Temporarily disable app(s) and optionally override swappable models.
 
@@ -88,7 +89,7 @@ def with_disabled_apps_context(
 
 
 @pytest.fixture
-def with_disabled_apps(request):
+def with_disabled_apps(request) -> Generator[None, None, None]:
     disabled_apps = request.param
     with with_disabled_apps_context(disabled_apps):
         yield

@@ -12,12 +12,12 @@ pytestmark = pytest.mark.django_db
 UserReferral = swapper.load_model("baseapp_referrals", "UserReferral")
 
 
-def _strategy(data):
+def _strategy(data) -> SimpleNamespace:
     """Minimal social-auth strategy stub exposing `strategy.request.data`."""
     return SimpleNamespace(request=SimpleNamespace(data=data))
 
 
-def test_links_new_user_to_referrer():
+def test_links_new_user_to_referrer() -> None:
     referrer = UserFactory()
     referee = UserFactory()
     strategy = _strategy({"referral_code": get_referral_code(referrer)})
@@ -28,7 +28,7 @@ def test_links_new_user_to_referrer():
     assert referral.referrer == referrer
 
 
-def test_noop_when_user_is_not_new():
+def test_noop_when_user_is_not_new() -> None:
     referrer = UserFactory()
     referee = UserFactory()
     strategy = _strategy({"referral_code": get_referral_code(referrer)})
@@ -38,7 +38,7 @@ def test_noop_when_user_is_not_new():
     assert not UserReferral.objects.filter(referee=referee).exists()
 
 
-def test_noop_when_no_referral_code():
+def test_noop_when_no_referral_code() -> None:
     referee = UserFactory()
     strategy = _strategy({})
 

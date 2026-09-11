@@ -26,7 +26,7 @@ from baseapp_core.graphql.optimizer import (
 
 class TestNestedConnectionInfoProxy:
     @pytest.fixture
-    def mock_info(self):
+    def mock_info(self) -> MagicMock:
         info = MagicMock(spec=GQLInfo)
         info.schema.query_type = MagicMock()
         info.parent_type = MagicMock()
@@ -34,11 +34,11 @@ class TestNestedConnectionInfoProxy:
         return info
 
     @pytest.fixture
-    def mock_field_nodes(self):
+    def mock_field_nodes(self) -> list[MagicMock]:
         field_node = MagicMock(spec=FieldNode)
         return [field_node]
 
-    def test_init_without_field_nodes(self, mock_info):
+    def test_init_without_field_nodes(self, mock_info) -> None:
         proxy = NestedConnectionInfoProxy(mock_info)
 
         assert proxy._info == mock_info
@@ -47,7 +47,7 @@ class TestNestedConnectionInfoProxy:
         assert proxy._connection_field_nodes is None
         assert proxy._use_mode == "queryset"
 
-    def test_init_with_queryset_field_nodes(self, mock_info, mock_field_nodes):
+    def test_init_with_queryset_field_nodes(self, mock_info, mock_field_nodes) -> None:
         proxy = NestedConnectionInfoProxy(mock_info, queryset_field_nodes=mock_field_nodes)
 
         assert proxy._info == mock_info
@@ -55,7 +55,7 @@ class TestNestedConnectionInfoProxy:
         assert proxy._queryset_field_nodes == mock_field_nodes
         assert proxy._connection_field_nodes is None
 
-    def test_init_with_connection_field_nodes(self, mock_info, mock_field_nodes):
+    def test_init_with_connection_field_nodes(self, mock_info, mock_field_nodes) -> None:
         proxy = NestedConnectionInfoProxy(mock_info, connection_field_nodes=mock_field_nodes)
 
         assert proxy._info == mock_info
@@ -63,29 +63,29 @@ class TestNestedConnectionInfoProxy:
         assert proxy._queryset_field_nodes is None
         assert proxy._connection_field_nodes == mock_field_nodes
 
-    def test_parent_type_property(self, mock_info):
+    def test_parent_type_property(self, mock_info) -> None:
         proxy = NestedConnectionInfoProxy(mock_info)
         assert proxy.parent_type == mock_info.schema.query_type
 
-    def test_original_parent_type_property(self, mock_info):
+    def test_original_parent_type_property(self, mock_info) -> None:
         proxy = NestedConnectionInfoProxy(mock_info)
         assert proxy.original_parent_type == mock_info.parent_type
 
-    def test_field_nodes_property_without_custom_nodes(self, mock_info):
+    def test_field_nodes_property_without_custom_nodes(self, mock_info) -> None:
         proxy = NestedConnectionInfoProxy(mock_info)
         assert proxy.field_nodes == mock_info.field_nodes
 
-    def test_field_nodes_property_with_queryset_nodes(self, mock_info, mock_field_nodes):
+    def test_field_nodes_property_with_queryset_nodes(self, mock_info, mock_field_nodes) -> None:
         proxy = NestedConnectionInfoProxy(mock_info, queryset_field_nodes=mock_field_nodes)
         assert proxy.field_nodes == mock_field_nodes
 
-    def test_field_nodes_property_with_connection_nodes(self, mock_info, mock_field_nodes):
+    def test_field_nodes_property_with_connection_nodes(self, mock_info, mock_field_nodes) -> None:
         proxy = NestedConnectionInfoProxy(
             mock_info, connection_field_nodes=mock_field_nodes, use_mode="filter_info"
         )
         assert proxy.field_nodes == mock_field_nodes
 
-    def test_get_info_proxy(self, mock_info, mock_field_nodes):
+    def test_get_info_proxy(self, mock_info, mock_field_nodes) -> None:
         queryset_nodes = [MagicMock(spec=FieldNode)]
         connection_nodes = [MagicMock(spec=FieldNode)]
         proxy = NestedConnectionInfoProxy(
@@ -105,7 +105,7 @@ class TestNestedConnectionInfoProxy:
         assert queryset_proxy._use_mode == "queryset"
         assert queryset_proxy.field_nodes == queryset_nodes
 
-    def test_getattr_delegates_to_info(self, mock_info):
+    def test_getattr_delegates_to_info(self, mock_info) -> None:
         mock_info.some_attribute = "test_value"
         proxy = NestedConnectionInfoProxy(mock_info)
 
@@ -114,18 +114,18 @@ class TestNestedConnectionInfoProxy:
 
 class TestGraphQLASTWalkerPatchMixin:
     @pytest.fixture
-    def mock_info(self):
+    def mock_info(self) -> MagicMock:
         info = MagicMock(spec=GQLInfo)
         info.parent_type = MagicMock()
         info.field_nodes = [MagicMock()]
         return info
 
     @pytest.fixture
-    def mock_proxy_info(self, mock_info):
+    def mock_proxy_info(self, mock_info) -> NestedConnectionInfoProxy:
         return NestedConnectionInfoProxy(mock_info)
 
     @pytest.fixture
-    def walker_with_regular_info(self, mock_info):
+    def walker_with_regular_info(self, mock_info) -> GraphQLASTWalkerPatchMixin:
         walker = MagicMock()
         walker.info = mock_info
         walker.handle_selections = MagicMock(return_value="result")
@@ -139,7 +139,7 @@ class TestGraphQLASTWalkerPatchMixin:
         )()
 
     @pytest.fixture
-    def walker_with_proxy_info(self, mock_proxy_info):
+    def walker_with_proxy_info(self, mock_proxy_info) -> GraphQLASTWalkerPatchMixin:
         return type(
             "TestWalker",
             (GraphQLASTWalkerPatchMixin,),
@@ -149,7 +149,7 @@ class TestGraphQLASTWalkerPatchMixin:
             },
         )()
 
-    def test_run_with_regular_info(self, walker_with_regular_info, mock_info):
+    def test_run_with_regular_info(self, walker_with_regular_info, mock_info) -> None:
         result = walker_with_regular_info.run()
 
         assert result == "result"
@@ -157,7 +157,7 @@ class TestGraphQLASTWalkerPatchMixin:
             mock_info.parent_type, mock_info.field_nodes
         )
 
-    def test_run_with_proxy_info(self, walker_with_proxy_info, mock_proxy_info):
+    def test_run_with_proxy_info(self, walker_with_proxy_info, mock_proxy_info) -> None:
         result = walker_with_proxy_info.run()
 
         assert result == "result"
@@ -168,18 +168,18 @@ class TestGraphQLASTWalkerPatchMixin:
 
 class TestOptimizationCompilerPatch:
     @pytest.fixture
-    def mock_info(self):
+    def mock_info(self) -> MagicMock:
         info = MagicMock(spec=GQLInfo)
         info.schema.query_type = MagicMock()
         info.parent_type = MagicMock()
         info.field_nodes = [MagicMock()]
         return info
 
-    def test_inherits_from_mixin_and_compiler(self):
+    def test_inherits_from_mixin_and_compiler(self) -> None:
         assert issubclass(OptimizationCompilerPatch, GraphQLASTWalkerPatchMixin)
         assert issubclass(OptimizationCompilerPatch, OptimizationCompiler)
 
-    def test_run_with_proxy_switches_to_queryset_mode(self, mock_info):
+    def test_run_with_proxy_switches_to_queryset_mode(self, mock_info) -> None:
         queryset_nodes = [MagicMock(spec=FieldNode)]
         proxy = NestedConnectionInfoProxy(
             mock_info, queryset_field_nodes=queryset_nodes, use_mode="filter_info"
@@ -194,7 +194,7 @@ class TestOptimizationCompilerPatch:
         assert compiler.info._use_mode == "queryset"
         compiler.handle_selections.assert_called_once()
 
-    def test_compile_swaps_info_when_hint_present(self, mock_info):
+    def test_compile_swaps_info_when_hint_present(self, mock_info) -> None:
         """When NESTED_INFO_PROXY_HINT is in queryset._hints, compile() should
         replace self.info with the proxy so the AST walker uses the correct
         field nodes for nested comments -> comments structures."""
@@ -216,7 +216,7 @@ class TestOptimizationCompilerPatch:
         # Hint is read with .get() (not .pop()), so it remains
         assert NESTED_INFO_PROXY_HINT in qs._hints
 
-    def test_compile_keeps_info_when_hint_absent(self, mock_info):
+    def test_compile_keeps_info_when_hint_absent(self, mock_info) -> None:
         """When no NESTED_INFO_PROXY_HINT exists, compile() should not mutate
         self.info — behaving identically to the base OptimizationCompiler."""
         qs = MagicMock(spec=["_hints", "model", "_result_cache"])
@@ -231,7 +231,7 @@ class TestOptimizationCompilerPatch:
 
         assert compiler.info is original_info
 
-    def test_compile_with_list_input_does_not_crash(self, mock_info):
+    def test_compile_with_list_input_does_not_crash(self, mock_info) -> None:
         """When compile() receives a list (from prefetch to_attr), it should
         skip the hints check and delegate to the base class without error."""
         compiler = OptimizationCompilerPatch(mock_info, max_complexity=None)
@@ -246,18 +246,18 @@ class TestOptimizationCompilerPatch:
 
 class TestFilterInfoCompilerPatch:
     @pytest.fixture
-    def mock_info(self):
+    def mock_info(self) -> MagicMock:
         info = MagicMock(spec=GQLInfo)
         info.schema.query_type = MagicMock()
         info.parent_type = MagicMock()
         info.field_nodes = [MagicMock()]
         return info
 
-    def test_inherits_from_mixin_and_compiler(self):
+    def test_inherits_from_mixin_and_compiler(self) -> None:
         assert issubclass(FilterInfoCompilerPatch, GraphQLASTWalkerPatchMixin)
         assert issubclass(FilterInfoCompilerPatch, FilterInfoCompiler)
 
-    def test_run_with_proxy_switches_to_filter_info_mode(self, mock_info):
+    def test_run_with_proxy_switches_to_filter_info_mode(self, mock_info) -> None:
         connection_nodes = [MagicMock(spec=FieldNode)]
         proxy = NestedConnectionInfoProxy(
             mock_info, connection_field_nodes=connection_nodes, use_mode="queryset"
@@ -298,12 +298,12 @@ class TestConnectionFieldNodeExtractor:
         return path
 
     @pytest.fixture
-    def mock_info_basic(self):
+    def mock_info_basic(self) -> MagicMock:
         info = MagicMock(spec=GQLInfo)
         info.fragments = {}
         return info
 
-    def test_path_to_field_names_single_key(self, mock_info_basic):
+    def test_path_to_field_names_single_key(self, mock_info_basic) -> None:
         path = self._create_path(["comments"])
         # Create extractor with minimal required fields to test the method directly
         extractor = ConnectionFieldNodeExtractor.__new__(ConnectionFieldNodeExtractor)
@@ -312,7 +312,7 @@ class TestConnectionFieldNodeExtractor:
 
         assert result == ["comments"]
 
-    def test_path_to_field_names_multiple_keys(self, mock_info_basic):
+    def test_path_to_field_names_multiple_keys(self, mock_info_basic) -> None:
         path = self._create_path(["node", "comments"])
         # Create extractor with minimal required fields to test the method directly
         extractor = ConnectionFieldNodeExtractor.__new__(ConnectionFieldNodeExtractor)
@@ -321,7 +321,7 @@ class TestConnectionFieldNodeExtractor:
 
         assert result == ["node", "comments"]
 
-    def test_path_to_field_names_none(self, mock_info_basic):
+    def test_path_to_field_names_none(self, mock_info_basic) -> None:
         # Create extractor with minimal required fields to test the method directly
         extractor = ConnectionFieldNodeExtractor.__new__(ConnectionFieldNodeExtractor)
         extractor._info = mock_info_basic
@@ -329,7 +329,7 @@ class TestConnectionFieldNodeExtractor:
 
         assert result == []
 
-    def test_response_name_without_alias(self, mock_info_basic):
+    def test_response_name_without_alias(self, mock_info_basic) -> None:
         field = self._create_field_node("comments")
         # Create extractor with minimal required fields to test the method directly
         extractor = ConnectionFieldNodeExtractor.__new__(ConnectionFieldNodeExtractor)
@@ -337,7 +337,7 @@ class TestConnectionFieldNodeExtractor:
 
         assert extractor._response_name(field) == "comments"
 
-    def test_response_name_with_alias(self, mock_info_basic):
+    def test_response_name_with_alias(self, mock_info_basic) -> None:
         field = self._create_field_node("comments", alias="myComments")
         # Create extractor with minimal required fields to test the method directly
         extractor = ConnectionFieldNodeExtractor.__new__(ConnectionFieldNodeExtractor)
@@ -345,7 +345,7 @@ class TestConnectionFieldNodeExtractor:
 
         assert extractor._response_name(field) == "myComments"
 
-    def test_iter_matching_fields_finds_field_node(self, mock_info_basic):
+    def test_iter_matching_fields_finds_field_node(self, mock_info_basic) -> None:
         field1 = self._create_field_node("edges")
         field2 = self._create_field_node("other")
         selections = [field1, field2]
@@ -357,7 +357,7 @@ class TestConnectionFieldNodeExtractor:
         assert len(results) == 1
         assert results[0] == field1
 
-    def test_iter_matching_fields_with_inline_fragment(self, mock_info_basic):
+    def test_iter_matching_fields_with_inline_fragment(self, mock_info_basic) -> None:
         inner_field = self._create_field_node("edges")
         selection_set = self._create_selection_set([inner_field])
         inline_fragment = InlineFragmentNode(selection_set=selection_set)
@@ -370,7 +370,7 @@ class TestConnectionFieldNodeExtractor:
         assert len(results) == 1
         assert results[0] == inner_field
 
-    def test_iter_matching_fields_with_fragment_spread(self, mock_info_basic):
+    def test_iter_matching_fields_with_fragment_spread(self, mock_info_basic) -> None:
         inner_field = self._create_field_node("edges")
         selection_set = self._create_selection_set([inner_field])
         fragment_def = FragmentDefinitionNode(
@@ -390,7 +390,7 @@ class TestConnectionFieldNodeExtractor:
         assert len(results) == 1
         assert results[0] == inner_field
 
-    def test_extract_connection_resolver_root_field_simple(self, mock_info_basic):
+    def test_extract_connection_resolver_root_field_simple(self, mock_info_basic) -> None:
         # Create AST structure: comments { edges { node { comments { id } } } }
         inner_comments = self._create_field_node("comments")
         inner_selection_set = self._create_selection_set([inner_comments])
@@ -409,7 +409,7 @@ class TestConnectionFieldNodeExtractor:
         assert len(result) == 1
         assert result[0] == inner_comments
 
-    def test_extract_connection_resolver_root_field_with_alias(self, mock_info_basic):
+    def test_extract_connection_resolver_root_field_with_alias(self, mock_info_basic) -> None:
         # Create AST: myComments: comments { edges { node { myComments { id } } } }
         # The inner field should also have the alias to match the path
         inner_comments = self._create_field_node("comments", alias="myComments")
@@ -431,7 +431,7 @@ class TestConnectionFieldNodeExtractor:
         assert len(result) == 1
         assert result[0] == inner_comments
 
-    def test_extract_connection_resolver_root_field_no_selection_set(self, mock_info_basic):
+    def test_extract_connection_resolver_root_field_no_selection_set(self, mock_info_basic) -> None:
         outer_comments = self._create_field_node("comments", selection_set=None)
         mock_info_basic.field_nodes = [outer_comments]
         mock_info_basic.path = self._create_path(["comments"])
@@ -441,7 +441,7 @@ class TestConnectionFieldNodeExtractor:
 
         assert result == []
 
-    def test_extract_connection_resolver_root_field_no_edges(self, mock_info_basic):
+    def test_extract_connection_resolver_root_field_no_edges(self, mock_info_basic) -> None:
         other_field = self._create_field_node("other")
         selection_set = self._create_selection_set([other_field])
         outer_comments = self._create_field_node("comments", selection_set=selection_set)
@@ -454,7 +454,7 @@ class TestConnectionFieldNodeExtractor:
 
         assert result == []
 
-    def test_extract_connection_resolver_root_field_multiple_matches(self, mock_info_basic):
+    def test_extract_connection_resolver_root_field_multiple_matches(self, mock_info_basic) -> None:
         # Create structure with two matching inner comments fields
         inner_comments1 = self._create_field_node("comments")
         inner_comments2 = self._create_field_node("comments")

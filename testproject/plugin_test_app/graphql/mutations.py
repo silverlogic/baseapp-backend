@@ -10,6 +10,6 @@ class TestMutations:
 
     test_mutation = graphene.String()
 
-    def resolve_test_mutation(self, info):
+    def resolve_test_mutation(self, info) -> str:
         """Resolve test mutation."""
         return "test_result"

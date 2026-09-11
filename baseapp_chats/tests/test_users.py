@@ -14,7 +14,7 @@ Message = swapper.load_model("baseapp_chats", "Message")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
 
 
-def test_delete_user_with_message():
+def test_delete_user_with_message() -> None:
     user = UserFactory()
     user_id = user.pk
     room = ChatRoomFactory()

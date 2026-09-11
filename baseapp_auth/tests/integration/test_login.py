@@ -1,6 +1,7 @@
 import pytest
 from constance.test import override_config
 from django.utils import timezone
+from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import RefreshToken
 from trench.backends.provider import get_mfa_handler
@@ -17,51 +18,53 @@ UserFactory = h.get_user_factory()
 class TestLoginBase(ApiMixin):
     login_endpoint_path = ""
 
-    def get_mfa_code(self, user):
+    def get_mfa_code(self, user) -> str:
         handler = get_mfa_handler(mfa_method=user.mfa_methods.get())
         return handler.create_code()
 
-    def get_mfa_ephemeral_token(self, user):
+    def get_mfa_ephemeral_token(self, user) -> str:
         return UserTokenGenerator().make_token(user)
 
-    def send_login_request(self, client, data):
+    def send_login_request(self, client, data) -> Response:
         return client.post(self.login_endpoint_path, data)
 
-    def assert_simple_token_response(self, r):
+    def assert_simple_token_response(self, r) -> None:
         assert r.data.get("token") is not None
 
-    def assert_jwt_token_response(self, r):
+    def assert_jwt_token_response(self, r) -> None:
         assert set(r.data.keys()) == {"access", "refresh"}
 
-    def check_receives_auth_simple_token(self, client, data):
+    def check_receives_auth_simple_token(self, client, data) -> None:
         UserFactory(email=data["email"], password=data["password"])
         r = self.send_login_request(client, data)
         h.responseOk(r)
         self.assert_simple_token_response(r)
 
-    def check_receives_auth_jwt_token(self, client, data):
+    def check_receives_auth_jwt_token(self, client, data) -> None:
         UserFactory(email=data["email"], password=data["password"])
         r = self.send_login_request(client, data)
         h.responseOk(r)
         self.assert_jwt_token_response(r)
 
-    def check_when_email_doesnt_exist(self, client, data):
+    def check_when_email_doesnt_exist(self, client, data) -> None:
         r = self.send_login_request(client, data)
         h.responseUnauthorized(r)
 
-    def check_when_password_doesnt_match(self, client, data):
+    def check_when_password_doesnt_match(self, client, data) -> None:
         UserFactory(email=data["email"], password="not password")  # NOSONAR
         r = self.send_login_request(client, data)
         h.responseUnauthorized(r)
 
     @override_config(USER_PASSWORD_EXPIRATION_INTERVAL=1)
-    def check_can_login_with_not_expired_password(self, client, data):
+    def check_can_login_with_not_expired_password(self, client, data) -> None:
         UserFactory(email=data["email"], password=data["password"])
         r = self.send_login_request(client, data)
         h.responseOk(r)
 
     @override_config(USER_PASSWORD_EXPIRATION_INTERVAL=1)
-    def check_login_with_expired_password_redirects_to_change_expired_password(self, client, data):
+    def check_login_with_expired_password_redirects_to_change_expired_password(
+        self, client, data
+    ) -> None:
         user = UserFactory(email=data["email"], password=data["password"])
         user.password_changed_date = timezone.now() - timezone.timedelta(days=1)
         user.save()
@@ -70,7 +73,7 @@ class TestLoginBase(ApiMixin):
         assert "change-expired-password" in r.data["redirect_url"]
 
     @override_config(USER_PASSWORD_EXPIRATION_INTERVAL=0)
-    def check_can_login_with_expired_password_when_interval_is_zero(self, client, data):
+    def check_can_login_with_expired_password_when_interval_is_zero(self, client, data) -> None:
         user = UserFactory(email=data["email"], password=data["password"])
         user.password_changed_date = timezone.now() - timezone.timedelta(days=1)
         user.save()
@@ -83,32 +86,34 @@ class TestLoginAuthToken(TestLoginBase):
     login_endpoint_path = "/v1/auth/authtoken/login"
 
     @pytest.fixture
-    def data(self):
+    def data(self) -> dict[str, str]:
         return {"email": "john@doe.com", "password": "1234567890"}  # NOSONAR
 
-    def test_can_login(self, client, data):
+    def test_can_login(self, client, data) -> None:
         self.check_receives_auth_simple_token(client, data)
 
-    def test_when_email_doesnt_exist(self, client, data):
+    def test_when_email_doesnt_exist(self, client, data) -> None:
         self.check_when_email_doesnt_exist(client, data)
 
-    def test_when_password_doesnt_match(self, client, data):
+    def test_when_password_doesnt_match(self, client, data) -> None:
         self.check_when_password_doesnt_match(client, data)
 
-    def test_can_login_with_not_expired_password(self, client, data):
+    def test_can_login_with_not_expired_password(self, client, data) -> None:
         self.check_can_login_with_not_expired_password(client, data)
 
-    def test_login_with_expired_password_redirects_to_change_expired_password(self, client, data):
+    def test_login_with_expired_password_redirects_to_change_expired_password(
+        self, client, data
+    ) -> None:
         self.check_login_with_expired_password_redirects_to_change_expired_password(client, data)
 
-    def test_can_login_with_expired_password_when_interval_is_zero(self, client, data):
+    def test_can_login_with_expired_password_when_interval_is_zero(self, client, data) -> None:
         self.check_can_login_with_expired_password_when_interval_is_zero(client, data)
 
 
 class TestJwtRefresh(ApiMixin):
     login_endpoint_path = "/v1/auth/jwt/refresh"
 
-    def test_receives_new_access_token(self, client):
+    def test_receives_new_access_token(self, client) -> None:
         user = UserFactory()
         refresh = RefreshToken.for_user(user)
         refresh_token = str(refresh)
@@ -121,28 +126,30 @@ class TestLoginJwt(TestLoginBase):
     login_endpoint_path = "/v1/auth/jwt/login"
 
     @pytest.fixture
-    def data(self):
+    def data(self) -> dict[str, str]:
         return {"email": "john@doe.com", "password": "1234567890"}  # NOSONAR
 
-    def test_can_login(self, client, data):
+    def test_can_login(self, client, data) -> None:
         self.check_receives_auth_jwt_token(client, data)
 
-    def test_when_email_doesnt_exist(self, client, data):
+    def test_when_email_doesnt_exist(self, client, data) -> None:
         self.check_when_email_doesnt_exist(client, data)
 
-    def test_when_password_doesnt_match(self, client, data):
+    def test_when_password_doesnt_match(self, client, data) -> None:
         self.check_when_password_doesnt_match(client, data)
 
-    def test_can_login_with_not_expired_password(self, client, data):
+    def test_can_login_with_not_expired_password(self, client, data) -> None:
         self.check_can_login_with_not_expired_password(client, data)
 
-    def test_login_with_expired_password_redirects_to_change_expired_password(self, client, data):
+    def test_login_with_expired_password_redirects_to_change_expired_password(
+        self, client, data
+    ) -> None:
         self.check_login_with_expired_password_redirects_to_change_expired_password(client, data)
 
-    def test_can_login_with_expired_password_when_interval_is_zero(self, client, data):
+    def test_can_login_with_expired_password_when_interval_is_zero(self, client, data) -> None:
         self.check_can_login_with_expired_password_when_interval_is_zero(client, data)
 
-    def test_jwt_token_contains_user_data(self, client, data):
+    def test_jwt_token_contains_user_data(self, client, data) -> None:
         user = UserFactory(email=data["email"], password=data["password"])
         r = self.send_login_request(client, data)
         authenticator = JWTAuthentication()
@@ -162,29 +169,35 @@ class TestLoginMfaAuthToken(TestLoginBase):
     login_endpoint_path = "/v1/auth/mfa/login"
 
     @pytest.fixture
-    def data(self):
+    def data(self) -> dict[str, str]:
         return {"email": "john@doe.com", "password": "1234567890"}  # NOSONAR
 
-    def test_when_email_doesnt_exist(self, client, data):
+    def test_when_email_doesnt_exist(self, client, data) -> None:
         self.check_when_email_doesnt_exist(client, data)
 
-    def test_when_password_doesnt_match(self, client, data):
+    def test_when_password_doesnt_match(self, client, data) -> None:
         self.check_when_password_doesnt_match(client, data)
 
-    def test_can_login_with_not_expired_password(self, client, data):
+    def test_can_login_with_not_expired_password(self, client, data) -> None:
         self.check_can_login_with_not_expired_password(client, data)
 
-    def test_login_with_expired_password_redirects_to_change_expired_password(self, client, data):
+    def test_login_with_expired_password_redirects_to_change_expired_password(
+        self, client, data
+    ) -> None:
         self.check_login_with_expired_password_redirects_to_change_expired_password(client, data)
 
-    def test_receives_first_step_mfa_response(self, client, active_user_with_application_otp):
+    def test_receives_first_step_mfa_response(
+        self, client, active_user_with_application_otp
+    ) -> None:
         user = active_user_with_application_otp
         data = {"email": user.email, "password": "1234567890"}  # NOSONAR
         r = self.send_login_request(client, data)
         h.responseOk(r)
         assert set(r.data.keys()) == {"ephemeral_token", "method"}
 
-    def test_receives_second_step_mfa_response(self, client, active_user_with_application_otp):
+    def test_receives_second_step_mfa_response(
+        self, client, active_user_with_application_otp
+    ) -> None:
         user = active_user_with_application_otp
         ephemeral_token = self.get_mfa_ephemeral_token(user)
         code = self.get_mfa_code(user)
@@ -201,29 +214,35 @@ class TestLoginMfaJwt(TestLoginBase):
     login_endpoint_path = "/v1/auth/mfa/jwt/login"
 
     @pytest.fixture
-    def data(self):
+    def data(self) -> dict[str, str]:
         return {"email": "john@doe.com", "password": "1234567890"}  # NOSONAR
 
-    def test_when_email_doesnt_exist(self, client, data):
+    def test_when_email_doesnt_exist(self, client, data) -> None:
         self.check_when_email_doesnt_exist(client, data)
 
-    def test_when_password_doesnt_match(self, client, data):
+    def test_when_password_doesnt_match(self, client, data) -> None:
         self.check_when_password_doesnt_match(client, data)
 
-    def test_can_login_with_not_expired_password(self, client, data):
+    def test_can_login_with_not_expired_password(self, client, data) -> None:
         self.check_can_login_with_not_expired_password(client, data)
 
-    def test_login_with_expired_password_redirects_to_change_expired_password(self, client, data):
+    def test_login_with_expired_password_redirects_to_change_expired_password(
+        self, client, data
+    ) -> None:
         self.check_login_with_expired_password_redirects_to_change_expired_password(client, data)
 
-    def test_receives_first_step_mfa_response(self, client, active_user_with_application_otp):
+    def test_receives_first_step_mfa_response(
+        self, client, active_user_with_application_otp
+    ) -> None:
         user = active_user_with_application_otp
         data = {"email": user.email, "password": "1234567890"}  # NOSONAR
         r = self.send_login_request(client, data)
         h.responseOk(r)
         assert set(r.data.keys()) == {"ephemeral_token", "method"}
 
-    def test_receives_second_step_mfa_jwt_response(self, client, active_user_with_application_otp):
+    def test_receives_second_step_mfa_jwt_response(
+        self, client, active_user_with_application_otp
+    ) -> None:
         user = active_user_with_application_otp
         ephemeral_token = self.get_mfa_ephemeral_token(user)
         code = self.get_mfa_code(user)

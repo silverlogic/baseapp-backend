@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import swapper
 from django.apps import apps
 
 from baseapp_core.plugins import SharedServiceProvider
 
 from .models import default_comments_count
+
+if TYPE_CHECKING:
+    from django.db import models
+
+    from .models import AbstractCommentableMetadata
 
 
 class CommentableMetadataService(SharedServiceProvider):
@@ -21,15 +28,15 @@ class CommentableMetadataService(SharedServiceProvider):
     def is_available(self) -> bool:
         return apps.is_installed("baseapp_comments")
 
-    def _get_model(self):
+    def _get_model(self) -> type[AbstractCommentableMetadata]:
         return swapper.load_model("baseapp_comments", "CommentableMetadata")
 
-    def get_metadata(self, obj):
+    def get_metadata(self, obj) -> AbstractCommentableMetadata | None:
         """Return CommentableMetadata for obj, or None if not found."""
         CommentableMetadata = self._get_model()
         return CommentableMetadata.get_for_object(obj)
 
-    def get_or_create_metadata(self, obj):
+    def get_or_create_metadata(self, obj) -> AbstractCommentableMetadata | None:
         """Return or create CommentableMetadata for obj."""
         CommentableMetadata = self._get_model()
         return CommentableMetadata.get_or_create_for_object(obj)
@@ -50,7 +57,7 @@ class CommentableMetadataService(SharedServiceProvider):
         metadata = self.get_metadata(obj)
         return metadata.comments_count if metadata else default_comments_count()
 
-    def annotate_queryset(self, queryset):
+    def annotate_queryset(self, queryset) -> models.QuerySet:
         """Annotate queryset with commentable metadata for N+1 prevention."""
         CommentableMetadata = self._get_model()
         return CommentableMetadata.annotate_queryset(queryset)

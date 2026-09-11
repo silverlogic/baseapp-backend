@@ -1,4 +1,9 @@
+from typing import TYPE_CHECKING
+
 from baseapp_core.plugins.base import BaseAppPlugin, PackageSettings
+
+if TYPE_CHECKING:
+    from django.urls import URLResolver
 
 
 class UrlShorteningPlugin(BaseAppPlugin):
@@ -24,7 +29,7 @@ class UrlShorteningPlugin(BaseAppPlugin):
             v1_urlpatterns=self.v1_urlpatterns,
         )
 
-    def v1_urlpatterns(self, include, path, re_path):
+    def v1_urlpatterns(self, include, path, re_path) -> list["URLResolver"]:
         return [
             path(r"", include("baseapp_url_shortening.urls")),
         ]

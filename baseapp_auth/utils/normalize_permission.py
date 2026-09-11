@@ -1,4 +1,4 @@
-def normalize_permission(perm, model):
+def normalize_permission(perm, model) -> str:
     """
     Normalize a permission string into `app_label.codename`.
 

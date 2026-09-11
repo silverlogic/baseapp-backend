@@ -25,7 +25,7 @@ COMMENT_PIN_GRAPHQL = """
 """
 
 
-def test_user_cant_pin_own_comment(django_user_client, graphql_user_client):
+def test_user_cant_pin_own_comment(django_user_client, graphql_user_client) -> None:
     target = CommentFactory()
     comment = CommentFactory(target=target, user=django_user_client.user)
 
@@ -39,7 +39,7 @@ def test_user_cant_pin_own_comment(django_user_client, graphql_user_client):
     assert comment.is_pinned is False
 
 
-def test_user_cant_pin_others_comment(graphql_user_client):
+def test_user_cant_pin_others_comment(graphql_user_client) -> None:
     target = CommentFactory()
     comment = CommentFactory(target=target)
 
@@ -53,7 +53,7 @@ def test_user_cant_pin_others_comment(graphql_user_client):
     assert comment.is_pinned is False
 
 
-def test_superuser_can_pin_comment(django_user_client, graphql_user_client):
+def test_superuser_can_pin_comment(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
 
@@ -72,7 +72,7 @@ def test_superuser_can_pin_comment(django_user_client, graphql_user_client):
     assert comment.is_pinned is True
 
 
-def test_user_with_permission_can_pin_comment(django_user_client, graphql_user_client):
+def test_user_with_permission_can_pin_comment(django_user_client, graphql_user_client) -> None:
     Comment = swapper.load_model("baseapp_comments", "Comment")
     app_label = Comment._meta.app_label
     perm = Permission.objects.get(content_type__app_label=app_label, codename="pin_comment")
@@ -93,7 +93,9 @@ def test_user_with_permission_can_pin_comment(django_user_client, graphql_user_c
 
 
 @override_settings(BASEAPP_COMMENTS_MAX_PINS_PER_THREAD=1)
-def test_cant_pin_more_than_maximum_per_main_thread(django_user_client, graphql_user_client):
+def test_cant_pin_more_than_maximum_per_main_thread(
+    django_user_client, graphql_user_client
+) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
 
@@ -113,7 +115,9 @@ def test_cant_pin_more_than_maximum_per_main_thread(django_user_client, graphql_
 
 
 @override_settings(BASEAPP_COMMENTS_MAX_PINS_PER_THREAD=1)
-def test_cant_pin_more_than_maximum_per_reply_thread(django_user_client, graphql_user_client):
+def test_cant_pin_more_than_maximum_per_reply_thread(
+    django_user_client, graphql_user_client
+) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
 

@@ -41,7 +41,7 @@ query AllComments {
 class TestCommentsWithoutBaseappProfiles:
     def test_comment_create_uses_user_path_without_profile_permission_branch(
         self, with_disabled_apps, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         Comment = swapper.load_model("baseapp_comments", "Comment")
         target = Comment(pk=10)  # is_comments_enabled defaults to True via CommentableMetadata
         target.refresh_from_db = Mock()
@@ -81,7 +81,7 @@ class TestCommentsWithoutBaseappProfiles:
 
     def test_all_comments_query_uses_blocks_lookup_service_without_profiles(
         self, with_disabled_apps, django_user_client, graphql_user_client
-    ):
+    ) -> None:
         Comment = swapper.load_model("baseapp_comments", "Comment")
         base_queryset = Comment.objects.none()
         filtered_queryset = Comment.objects.none()
@@ -109,7 +109,7 @@ class TestCommentsWithoutBaseappProfiles:
 
     def test_add_comment_with_profile_permission_is_disabled_without_profiles(
         self, with_disabled_apps
-    ):
+    ) -> None:
         backend = CommentsPermissionsBackend()
         user = SimpleNamespace(
             is_authenticated=True,

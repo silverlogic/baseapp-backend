@@ -9,6 +9,6 @@ class GroupedPermissionField(ModelMultipleChoiceField):
 
     widget = GroupedPermissionWidget
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         kwargs.setdefault("queryset", Permission.objects.select_related("content_type").all())
         super().__init__(*args, **kwargs)

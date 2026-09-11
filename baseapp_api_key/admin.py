@@ -1,6 +1,7 @@
 from django.apps import apps
 from django.contrib import admin
 from django.contrib.auth import get_user_model
+from django.forms import ModelForm
 
 from baseapp_core.admin_helpers import ModelAdmin
 
@@ -12,16 +13,16 @@ User = get_user_model()
 class BaseAPIKeyAdmin(ModelAdmin):
     list_display = ("id", "user", "name", "encrypted_api_key", "is_expired")
 
-    def is_expired(self, obj):
+    def is_expired(self, obj) -> bool:
         return obj.is_expired
 
-    def get_form(self, request, obj=None, **kwargs):
+    def get_form(self, request, obj=None, **kwargs) -> type[ModelForm]:
         form = super().get_form(request, obj, **kwargs)
         if obj is None:  # Only set default for new objects
             form.base_fields["user"].initial = request.user
         return form
 
-    def save_model(self, request, obj, form, change):
+    def save_model(self, request, obj, form, change) -> None:
         if obj.pk is None:
             unencrypted_api_key = obj.__class__.objects.generate_unencrypted_api_key()
             encrypted_api_key = obj.__class__.objects.encrypt(unencrypted_value=unencrypted_api_key)

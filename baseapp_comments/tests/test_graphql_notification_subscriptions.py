@@ -51,7 +51,7 @@ COMMENT_CREATE_GRAPHQL = """
 @override_settings(BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS=True)
 async def test_comment_created_subscription_has_correct_unread_count(
     django_user_client, graphql_ws_user_client
-):
+) -> None:
     # Setup: django_user_client.user (User A) owns a comment target
     target = await database_sync_to_async(CommentFactory)(user=django_user_client.user)
     target_relay_id = await database_sync_to_async(lambda: target.relay_id)()
@@ -99,7 +99,7 @@ async def test_comment_created_subscription_has_correct_unread_count(
 @override_settings(BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS=True)
 async def test_comment_reply_subscription_has_correct_unread_count(
     django_user_client, graphql_ws_user_client
-):
+) -> None:
     # Setup: User C owns a target, User A (django_user_client.user) writes a parent comment on it
     target_owner = await database_sync_to_async(UserFactory)()
     target = await database_sync_to_async(CommentFactory)(user=target_owner)

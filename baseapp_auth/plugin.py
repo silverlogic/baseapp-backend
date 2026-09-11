@@ -5,7 +5,12 @@ Contributes urlpatterns as a string module path so the registry and Django
 load the URLconf at resolve time; plugin.py never imports views or urls.
 """
 
+from typing import TYPE_CHECKING
+
 from baseapp_core.plugins.base import BaseAppPlugin, PackageSettings
+
+if TYPE_CHECKING:
+    from django.urls import URLResolver
 
 
 class AuthPlugin(BaseAppPlugin):
@@ -24,7 +29,7 @@ class AuthPlugin(BaseAppPlugin):
         )
 
     @staticmethod
-    def v1_urlpatterns(include, path, re_path):
+    def v1_urlpatterns(include, path, re_path) -> "list[URLResolver]":
         from baseapp_auth.rest_framework.routers.account import (
             account_router,
             users_router_nested,

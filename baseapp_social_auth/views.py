@@ -1,5 +1,6 @@
 import importlib
 import json
+from typing import TYPE_CHECKING
 from urllib.parse import urljoin, urlparse
 
 from django.conf import settings
@@ -21,12 +22,15 @@ from social_core.utils import parse_qs, user_is_authenticated
 from .cache.models import SocialAuthAccessTokenCache
 from .serializers import SocialAuthOAuth1Serializer, SocialAuthOAuth2Serializer
 
+if TYPE_CHECKING:
+    from django.contrib.auth.models import AbstractBaseUser
+
 
 class SocialAuthViewSet(SocialTokenOnlyAuthView, viewsets.GenericViewSet):
     oauth1_serializer_class_in = SocialAuthOAuth1Serializer
     oauth2_serializer_class_in = SocialAuthOAuth2Serializer
 
-    def create(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs) -> Response | HttpResponse:
         pipeline_module = importlib.import_module(settings.SOCIAL_AUTH_PIPELINE_MODULE)
         try:
             return self.do(request, *args, **kwargs)
@@ -38,7 +42,7 @@ class SocialAuthViewSet(SocialTokenOnlyAuthView, viewsets.GenericViewSet):
             raise serializers.ValidationError({"email": "email_already_in_use"})
 
     @method_decorator(never_cache)
-    def do(self, request, *args, **kwargs):
+    def do(self, request, *args, **kwargs) -> Response | HttpResponse:
         input_data = self.get_serializer_in_data()
         provider_name = self.get_provider_name(input_data)
         if not provider_name:
@@ -75,7 +79,7 @@ class SocialAuthViewSet(SocialTokenOnlyAuthView, viewsets.GenericViewSet):
 
         return Response(data)
 
-    def get_object(self):
+    def get_object(self) -> "AbstractBaseUser | HttpResponse | None":
         user = self.request.user
         manual_redirect_uri = self.request.auth_data.pop("redirect_uri", None)
         manual_redirect_uri = self.get_redirect_uri(manual_redirect_uri)
@@ -133,7 +137,7 @@ class SocialAuthViewSet(SocialTokenOnlyAuthView, viewsets.GenericViewSet):
 
         return user
 
-    def respond_error(self, error):
+    def respond_error(self, error) -> Response:
         if isinstance(error, (AuthException, HTTPError)):
             raise serializers.ValidationError({"non_field_errors": "invalid_credentials"})
         return Response(status=status.HTTP_400_BAD_REQUEST)

@@ -1,3 +1,6 @@
+from collections.abc import Callable
+
+from django.db.models import Model
 from rest_framework import permissions
 from rest_framework.permissions import DjangoModelPermissions
 
@@ -40,7 +43,7 @@ class DjangoActionPermissions(DjangoModelPermissions):
         "destroy": ["%(app_label)s.delete_%(model_name)s"],
     }
 
-    def generate_perms_map_action(self, view):
+    def generate_perms_map_action(self, view) -> None:
         action = view.action
         if action:
             action = action.replace(
@@ -56,16 +59,16 @@ class DjangoActionPermissions(DjangoModelPermissions):
             self.perms_map_action[action] = [perm_str]
 
     # pylint: disable=protected-access
-    def get_origin_model(self, model_cls):
+    def get_origin_model(self, model_cls) -> type[Model]:
         """Return origin model even if proxy has been received."""
         return model_cls._meta.proxy_for_model or model_cls._meta.model
 
-    def get_required_permissions(self, method, model_cls):
+    def get_required_permissions(self, method, model_cls) -> list[str]:
         """Add ability to define origin model even via proxy."""
         model_cls = self.get_origin_model(model_cls)
         return super().get_required_permissions(method, model_cls)
 
-    def get_perms_list(self, view, obj=None):
+    def get_perms_list(self, view, obj=None) -> list[str | Callable]:
         """Return permission list for action from backend and view."""
         perms_map_name = "perms_map_action"
         view_perms_map = getattr(view, perms_map_name, {})
@@ -77,7 +80,7 @@ class DjangoActionPermissions(DjangoModelPermissions):
         return backend_perms_map.get(view.action) or []
 
     # pylint: disable=protected-access
-    def get_required_action_permissions(self, view, model_cls, obj=None):
+    def get_required_action_permissions(self, view, model_cls, obj=None) -> list[str | Callable]:
         """Given a model and an action, return the list of permission codes."""
         model_cls = self.get_origin_model(model_cls)
         kwargs = {
@@ -89,7 +92,7 @@ class DjangoActionPermissions(DjangoModelPermissions):
             for perm in self.get_perms_list(view, obj)
         ]
 
-    def user_has_action_perm(self, user, view, perm, obj=None):
+    def user_has_action_perm(self, user, view, perm, obj=None) -> bool:
         """Check if user has single permission for particular view action."""
         assert callable(perm) or isinstance(perm, str), "Permission must be function or string"
 
@@ -98,7 +101,7 @@ class DjangoActionPermissions(DjangoModelPermissions):
 
         return user.has_perm(perm)
 
-    def get_model_cls(self, view):
+    def get_model_cls(self, view) -> type[Model]:
         model_cls = getattr(view, "model_class", None)
         if not model_cls:
             queryset = self._queryset(view)
@@ -107,13 +110,13 @@ class DjangoActionPermissions(DjangoModelPermissions):
 
         return model_cls
 
-    def has_action_permission(self, request, view, obj=None):
+    def has_action_permission(self, request, view, obj=None) -> bool:
         """Check action specific permissions ignoring custom method."""
         model_cls = self.get_model_cls(view)
         perms = self.get_required_action_permissions(view, model_cls, obj)
         return all(self.user_has_action_perm(request.user, view, perm, obj) for perm in perms)
 
-    def has_permission(self, request, view):
+    def has_permission(self, request, view) -> bool:
         """Apply action permission without object and with ignoring method."""
         if getattr(view, "_ignore_model_permissions", False):
             return True
@@ -134,7 +137,7 @@ class DjangoActionPermissions(DjangoModelPermissions):
 
         return self.has_action_permission(request, view)
 
-    def has_object_permission(self, request, view, obj):
+    def has_object_permission(self, request, view, obj) -> bool:
         """Apply action permission with object and with ignoring method."""
         return self.has_action_permission(request, view, obj)
 
@@ -142,7 +145,7 @@ class DjangoActionPermissions(DjangoModelPermissions):
 class IpAddressPermission(permissions.IsAuthenticated):
     message = "restricted by IP address"
 
-    def has_permission(self, request, view):
+    def has_permission(self, request, view) -> bool:
         if super().has_permission(request, view):
             return not client_ip_address_is_restricted(request)
         return False

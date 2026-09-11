@@ -10,10 +10,10 @@ from baseapp_wagtail.tests.utils.blocks_helpers import BlocksHelper
 class CustomImageChooserBlockTests(BlocksHelper, TestPageContextMixin):
     block_type = "custom_image_chooser_block"
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.image = f.ImageFactory()
 
-    def test_image_selection(self):
+    def test_image_selection(self) -> None:
         self.insert_block(self.page, self.image)
         r = self.get_page(self.page)
         blocks = self.get_response_body_blocks(r)
@@ -22,7 +22,7 @@ class CustomImageChooserBlockTests(BlocksHelper, TestPageContextMixin):
         self.assertEqual(blocks[0]["value"]["id"], self.image.id)
         self.assertEqual(blocks[0]["value"]["image_sizes"].keys(), DEFAULT_IMAGE_SIZES.keys())
 
-    def test_image_selection_with_image_sizes(self):
+    def test_image_selection_with_image_sizes(self) -> None:
         block = CustomImageChooserBlock(image_sizes={"test": "fill-100x100"})
         data = block.get_api_representation(self.image, context=None)
 

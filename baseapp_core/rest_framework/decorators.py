@@ -1,8 +1,12 @@
+from collections.abc import Callable
+
 from django.forms.utils import pretty_name
 from rest_framework.decorators import MethodMapper
 
 
-def action(methods=None, detail=None, url_path=None, url_name=None, **kwargs):
+def action(
+    methods=None, detail=None, url_path=None, url_name=None, **kwargs
+) -> Callable[[Callable], Callable]:
     """
     using this decorator instead of @action from rest_framework.decorators to replace _ with - for the url_path
     """
@@ -15,7 +19,7 @@ def action(methods=None, detail=None, url_path=None, url_name=None, **kwargs):
     if "name" in kwargs and "suffix" in kwargs:
         raise TypeError("`name` and `suffix` are mutually exclusive arguments.")
 
-    def decorator(func):
+    def decorator(func) -> Callable:
         func.mapping = MethodMapper(func, methods)
 
         func.detail = detail

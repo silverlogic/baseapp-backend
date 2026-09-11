@@ -69,7 +69,7 @@ SINGLE_COMMENT_MENTIONS = """
 """
 
 
-def test_mentions_resolver_returns_persisted_mentions(graphql_user_client):
+def test_mentions_resolver_returns_persisted_mentions(graphql_user_client) -> None:
     comment = CommentFactory()
     a = ProfileFactory()
     b = ProfileFactory()
@@ -87,7 +87,7 @@ def test_mentions_resolver_returns_persisted_mentions(graphql_user_client):
 
 def test_paginated_comments_with_mentions_does_not_explode_query_count(
     graphql_user_client,
-):
+) -> None:
     """Regression guard for N+1 on the `mentions` connection.
 
     With 5 comments each carrying 3 mentions, the resolver batches the
@@ -142,7 +142,7 @@ def test_paginated_comments_with_mentions_does_not_explode_query_count(
     )
 
 
-def test_is_mentioning_profile_returns_true_when_mention_exists(graphql_user_client):
+def test_is_mentioning_profile_returns_true_when_mention_exists(graphql_user_client) -> None:
     comment = CommentFactory()
     profile = ProfileFactory()
     seed_mentions(comment, [profile])
@@ -163,7 +163,7 @@ def test_is_mentioning_profile_returns_true_when_mention_exists(graphql_user_cli
     assert response.json()["data"]["node"]["isMentioningProfile"] is True
 
 
-def test_is_mentioning_profile_returns_false_when_no_mention(graphql_user_client):
+def test_is_mentioning_profile_returns_false_when_no_mention(graphql_user_client) -> None:
     comment = CommentFactory()
     profile = ProfileFactory()
 

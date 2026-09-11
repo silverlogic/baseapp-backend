@@ -25,7 +25,7 @@ class DocumentIdBackfiller:
         apps: "Apps | None" = None,
         batch_size: int = 1000,
         dry_run: bool = False,
-    ):
+    ) -> None:
         self.apps = apps or django_apps
         self.batch_size = batch_size
         self.dry_run = dry_run

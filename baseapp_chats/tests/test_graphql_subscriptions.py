@@ -18,7 +18,7 @@ pytestmark = pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 async def test_user_recieves_news_message_subscription_event___2(
     django_user_client, graphql_ws_user_client
-):
+) -> None:
     room = await database_sync_to_async(ChatRoomFactory)(created_by=django_user_client.user)
     await database_sync_to_async(ChatRoomParticipantFactory)(
         profile=django_user_client.user.profile, room=room
@@ -80,7 +80,7 @@ async def test_user_recieves_news_message_subscription_event___2(
 @pytest.mark.asyncio
 async def test_sender_does_not_receive_own_message_on_subscription(
     django_user_client, graphql_ws_user_client
-):
+) -> None:
     """The author of a message must not get it echoed back over their own subscription."""
     room = await database_sync_to_async(ChatRoomFactory)(created_by=django_user_client.user)
     await database_sync_to_async(ChatRoomParticipantFactory)(
@@ -138,7 +138,7 @@ async def test_sender_does_not_receive_own_message_on_subscription(
 @pytest.mark.asyncio
 async def test_build_absolute_uri_on_graphql_subscription(
     django_user_client, graphql_ws_user_client, image_djangofile
-):
+) -> None:
     room = await database_sync_to_async(ChatRoomFactory)(created_by=django_user_client.user)
     await database_sync_to_async(ChatRoomParticipantFactory)(
         profile=django_user_client.user.profile, room=room
@@ -207,7 +207,9 @@ async def test_build_absolute_uri_on_graphql_subscription(
 
 
 @pytest.mark.asyncio
-async def test_user_recieves_message_count_update(django_user_client, graphql_ws_user_client):
+async def test_user_recieves_message_count_update(
+    django_user_client, graphql_ws_user_client
+) -> None:
     room = await database_sync_to_async(ChatRoomFactory)(created_by=django_user_client.user)
     await database_sync_to_async(ChatRoomParticipantFactory)(
         profile=django_user_client.user.profile, room=room
@@ -264,7 +266,7 @@ async def test_user_recieves_message_count_update(django_user_client, graphql_ws
 
 
 @pytest.mark.asyncio
-async def test_current_profile_ws_context(django_user_client, graphql_ws_user_client):
+async def test_current_profile_ws_context(django_user_client, graphql_ws_user_client) -> None:
     room = await database_sync_to_async(ChatRoomFactory)(created_by=django_user_client.user)
     await database_sync_to_async(ChatRoomParticipantFactory)(
         profile=django_user_client.user.profile, room=room

@@ -10,7 +10,7 @@ Message = swapper.load_model("baseapp_chats", "Message")
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
-def test_func_render_compatible_with_pgtrigger_template_kwargs():
+def test_func_render_compatible_with_pgtrigger_template_kwargs() -> None:
     meta = Message._meta
     func = Func(
         "table={meta.db_table} model={model._meta.model_name} field={fields.id.name} column={columns.id}"

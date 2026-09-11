@@ -34,7 +34,7 @@ COMMENT_CREATE_GRAPHQL = """
 
 
 @pytest.mark.celery_app
-def test_add_comment_is_public(django_user_client, graphql_user_client, celery_config):
+def test_add_comment_is_public(django_user_client, graphql_user_client, celery_config) -> None:
     target = CommentFactory()
 
     graphql_user_client(
@@ -74,7 +74,7 @@ PROFILE_UPDATE_GRAPHQL = """
 
 
 @pytest.mark.celery_app
-def test_update_profile_is_public(django_user_client, graphql_user_client, celery_config):
+def test_update_profile_is_public(django_user_client, graphql_user_client, celery_config) -> None:
     profile = ProfileFactory(owner=django_user_client.user)
 
     graphql_user_client(

@@ -41,7 +41,7 @@ SEARCH_PROFILES_BY_QUERY_PARAM = """
 """
 
 
-def test_profile_metadata(graphql_user_client, image_djangofile):
+def test_profile_metadata(graphql_user_client, image_djangofile) -> None:
     profile = ProfileFactory(image=image_djangofile)
 
     response = graphql_user_client(GET_PROFILE_BY_PATH, variables={"id": profile.relay_id})
@@ -52,7 +52,7 @@ def test_profile_metadata(graphql_user_client, image_djangofile):
     assert content["data"]["profile"]["metadata"]["metaOgImage"]["url"].startswith("http") is True
 
 
-def test_owner_can_change_profile(django_user_client, graphql_user_client):
+def test_owner_can_change_profile(django_user_client, graphql_user_client) -> None:
     response = graphql_user_client(
         query=f"""
             query Profile($id: ID!) {{
@@ -75,7 +75,7 @@ def test_owner_can_change_profile(django_user_client, graphql_user_client):
     assert content["data"]["profile"]["canDeleteFull"]
 
 
-def test_another_user_cant_change_profile(graphql_user_client):
+def test_another_user_cant_change_profile(graphql_user_client) -> None:
     profile = ProfileFactory()
 
     response = graphql_user_client(
@@ -100,7 +100,7 @@ def test_another_user_cant_change_profile(graphql_user_client):
     assert not content["data"]["profile"]["canDeleteFull"]
 
 
-def test_owner_can_view_members(django_user_client, graphql_user_client):
+def test_owner_can_view_members(django_user_client, graphql_user_client) -> None:
     response = graphql_user_client(
         query="""
             query Profile($id: ID!) {
@@ -123,7 +123,7 @@ def test_owner_can_view_members(django_user_client, graphql_user_client):
     assert content["data"]["profile"]["members"]
 
 
-def test_another_user_cant_view_members(graphql_user_client):
+def test_another_user_cant_view_members(graphql_user_client) -> None:
     profile = ProfileFactory()
 
     response = graphql_user_client(
@@ -148,7 +148,7 @@ def test_another_user_cant_view_members(graphql_user_client):
     assert content["data"]["profile"]["members"]
 
 
-def test_members_ordered_by_status(django_user_client, graphql_user_client):
+def test_members_ordered_by_status(django_user_client, graphql_user_client) -> None:
     user = django_user_client.user
     profile = ProfileFactory(owner=user)
     ProfileUserRoleFactory(
@@ -194,7 +194,7 @@ def test_members_ordered_by_status(django_user_client, graphql_user_client):
     assert statuses == ["PENDING", "INACTIVE", "ACTIVE", "ACTIVE"]
 
 
-def test_members_not_ordered_by_status(django_user_client, graphql_user_client):
+def test_members_not_ordered_by_status(django_user_client, graphql_user_client) -> None:
     user = django_user_client.user
     profile = ProfileFactory(owner=user)
     ProfileUserRoleFactory(
@@ -240,7 +240,7 @@ def test_members_not_ordered_by_status(django_user_client, graphql_user_client):
     assert statuses == ["ACTIVE", "PENDING", "ACTIVE", "INACTIVE"]
 
 
-def test_search_profiles(graphql_user_client):
+def test_search_profiles(graphql_user_client) -> None:
     profile1 = ProfileFactory(name="David")
     profile2 = ProfileFactory(name="Daniel")
     profile3 = ProfileFactory(name="Mark")
@@ -266,7 +266,7 @@ def test_search_profiles(graphql_user_client):
     assert profile5.relay_id not in profiles
 
 
-def test_me_profiles_not_duplicated_by_members(django_user_client, graphql_user_client):
+def test_me_profiles_not_duplicated_by_members(django_user_client, graphql_user_client) -> None:
     # Regression: an owned profile must appear exactly once in `me.profiles` even when it
     # has several members. resolve_profiles ORs owner_id with the to-many `members` relation,
     # so without distinct() the owned profile was returned once per member row (it grew by one
@@ -298,7 +298,7 @@ def test_me_profiles_not_duplicated_by_members(django_user_client, graphql_user_
     assert len(ids) == len(set(ids))
 
 
-def test_search_members_filters_by_name(django_user_client, graphql_user_client):
+def test_search_members_filters_by_name(django_user_client, graphql_user_client) -> None:
     user = django_user_client.user
     profile = ProfileFactory(owner=user)
     p1 = ProfileUserRoleFactory(
@@ -337,7 +337,7 @@ def test_search_members_filters_by_name(django_user_client, graphql_user_client)
     assert members[0]["node"]["status"] == "ACTIVE"
 
 
-def test_search_members_filters_by_last_name(django_user_client, graphql_user_client):
+def test_search_members_filters_by_last_name(django_user_client, graphql_user_client) -> None:
     django_user_client.user.last_name = "Owner"
     django_user_client.user.save()
     user = django_user_client.user
@@ -378,7 +378,9 @@ def test_search_members_filters_by_last_name(django_user_client, graphql_user_cl
     assert members[0]["node"]["status"] == "ACTIVE"
 
 
-def test_search_members_returns_all_members_if_empty_query(django_user_client, graphql_user_client):
+def test_search_members_returns_all_members_if_empty_query(
+    django_user_client, graphql_user_client
+) -> None:
     user = django_user_client.user
     profile = ProfileFactory(owner=user)
     ProfileUserRoleFactory(

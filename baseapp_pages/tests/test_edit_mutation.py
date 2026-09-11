@@ -23,7 +23,7 @@ EDIT_MUTATION_QUERY = """
 """
 
 
-def test_user_cant_edit_page(graphql_user_client):
+def test_user_cant_edit_page(graphql_user_client) -> None:
     page = PageFactory()
 
     response = graphql_user_client(
@@ -42,7 +42,7 @@ def test_user_cant_edit_page(graphql_user_client):
     assert content["errors"][0]["message"] == "You don't have permission to edit this page"
 
 
-def test_superuser_can_edit_page_localized(django_user_client, graphql_user_client):
+def test_superuser_can_edit_page_localized(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
 
@@ -75,7 +75,7 @@ def test_superuser_can_edit_page_localized(django_user_client, graphql_user_clie
     assert url_path.path == "/sobre"
 
 
-def test_owner_can_edit_page(django_user_client, graphql_user_client):
+def test_owner_can_edit_page(django_user_client, graphql_user_client) -> None:
     page = PageFactory(
         user=django_user_client.user,
         title_en="Title",
@@ -98,7 +98,7 @@ def test_owner_can_edit_page(django_user_client, graphql_user_client):
     assert page.body_en == make_text_into_quill("Edited body")
 
 
-def test_user_with_permission_can_edit_page(django_user_client, graphql_user_client):
+def test_user_with_permission_can_edit_page(django_user_client, graphql_user_client) -> None:
     perm = Permission.objects.get(content_type__app_label=page_app_label, codename="change_page")
     django_user_client.user.user_permissions.add(perm)
 

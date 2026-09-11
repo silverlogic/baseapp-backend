@@ -1,4 +1,5 @@
 import importlib
+from types import ModuleType
 from unittest.mock import Mock, patch
 
 import graphene
@@ -43,12 +44,12 @@ CONTENT_POSTS_WITH_PROFILE_FIELD_GRAPHQL = """
 """
 
 
-def _build_content_feed_schema_without_profiles_branch():
+def _build_content_feed_schema_without_profiles_branch() -> tuple[graphene.Schema, ModuleType]:
     from django.apps import apps as django_apps
 
     original_is_installed = django_apps.is_installed
 
-    def _is_installed_without_profiles(app_name):
+    def _is_installed_without_profiles(app_name) -> bool:
         if app_name == "baseapp_profiles":
             return False
         return original_is_installed(app_name)
@@ -78,7 +79,7 @@ class TestContentFeedWithoutBaseappProfiles:
         with_disabled_apps,
         django_user_client,
         graphql_user_client,
-    ):
+    ) -> None:
         ContentPost = swapper.load_model("baseapp_content_feed", "ContentPost")
         instance = ContentPost(pk=101, content="without profiles")
         instance.save = Mock()
@@ -94,7 +95,7 @@ class TestContentFeedWithoutBaseappProfiles:
         reactable_service = Mock()
         reactable_service.is_reactions_enabled.return_value = True
 
-        def _shared_services_get(name):
+        def _shared_services_get(name) -> Mock | None:
             if name == "reactable_metadata":
                 return reactable_service
             return None
@@ -144,7 +145,7 @@ class TestContentFeedWithoutBaseappProfiles:
         self,
         with_disabled_apps,
         graphql_user_client,
-    ):
+    ) -> None:
         schema, _ = _build_content_feed_schema_without_profiles_branch()
         with (
             patch.object(graphene_settings, "SCHEMA", schema),

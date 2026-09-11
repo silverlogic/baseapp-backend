@@ -1,3 +1,5 @@
+from django.utils.translation import gettext_lazy as _
+
 from baseapp_core.plugins import BaseAppConfig
 
 
@@ -5,5 +7,5 @@ class PackageConfig(BaseAppConfig):
     default = True
     name = "baseapp_api_key"
     label = "baseapp_api_key"
-    verbose_name = "BaseApp API Key"
+    verbose_name = _("BaseApp API Key")
     default_auto_field = "django.db.models.AutoField"

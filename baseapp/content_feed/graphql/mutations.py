@@ -38,7 +38,7 @@ class ContentPostCreate(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ContentPostCreate":
         mentioned_profile_ids = input.pop("mentioned_profile_ids", None) or []
         form = ContentPostForm(data=input)
         images = [v for k, v in info.context.FILES.items() if k.startswith("images")]

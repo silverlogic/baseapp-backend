@@ -88,7 +88,7 @@ def migrate_follow_profile_fks_to_document_id(
     *,
     source_app_label: str = "baseapp_profiles",
     source_model_name: str = "Profile",
-):
+) -> None:
     """
     Remap `Follow.actor_id` and `Follow.target_id` from the source model's primary keys
     (typically `Profile`) to `DocumentId` primary keys.
@@ -133,7 +133,7 @@ def migrate_follow_profile_fks_to_document_id(
     survivors_buffer = []
     orphan_pks = []
 
-    def _flush_survivors():
+    def _flush_survivors() -> None:
         if survivors_buffer:
             follow_qs.bulk_update(
                 survivors_buffer, ["actor_id", "target_id"], batch_size=_CHUNK_SIZE
@@ -166,7 +166,7 @@ def reverse_migrate_follow_document_id_fks_to_profile(
     *,
     source_app_label: str = "baseapp_profiles",
     source_model_name: str = "Profile",
-):
+) -> None:
     """
     Restore `Follow.actor_id` and `Follow.target_id` from `DocumentId` primary keys back
     to the source model's primary keys.
@@ -208,7 +208,7 @@ def reverse_migrate_follow_document_id_fks_to_profile(
     # rows rather than dropping them.
     survivors_buffer = []
 
-    def _flush_survivors():
+    def _flush_survivors() -> None:
         if survivors_buffer:
             follow_qs.bulk_update(
                 survivors_buffer, ["actor_id", "target_id"], batch_size=_CHUNK_SIZE

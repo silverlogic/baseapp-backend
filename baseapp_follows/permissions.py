@@ -7,7 +7,7 @@ profile_app_label = Profile._meta.app_label
 
 
 class FollowsPermissionsBackend(BaseBackend):
-    def has_perm(self, user_obj, perm, obj=None):
+    def has_perm(self, user_obj, perm, obj=None) -> bool | None:
         if perm == "baseapp_follows.add_follow":
             # TO DO: check if not blocked?
             return user_obj.is_authenticated

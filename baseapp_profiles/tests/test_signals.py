@@ -14,14 +14,14 @@ from baseapp_profiles.signals import create_profile_url_path, update_user_profil
 # ---------------------------------------------------------------------------
 
 
-def test_create_profile_url_path_ignores_updates():
+def test_create_profile_url_path_ignores_updates() -> None:
     """Signal called with created=False must do nothing."""
     instance = MagicMock()
     create_profile_url_path(instance, created=False)
     instance.refresh_from_db.assert_not_called()
 
 
-def test_create_profile_url_path_skips_when_pages_not_installed():
+def test_create_profile_url_path_skips_when_pages_not_installed() -> None:
     """When baseapp_pages is not installed the handler returns early."""
     instance = MagicMock()
     with patch("baseapp_profiles.signals.apps.is_installed", return_value=False):
@@ -29,7 +29,7 @@ def test_create_profile_url_path_skips_when_pages_not_installed():
     instance.refresh_from_db.assert_not_called()
 
 
-def test_create_profile_url_path_skips_url_creation_when_no_profile_id():
+def test_create_profile_url_path_skips_url_creation_when_no_profile_id() -> None:
     """After refresh, if profile_id is still falsy, create_url_path is not called."""
     instance = MagicMock()
     instance.profile_id = None
@@ -41,7 +41,7 @@ def test_create_profile_url_path_skips_url_creation_when_no_profile_id():
     instance.profile.create_url_path.assert_not_called()
 
 
-def test_create_profile_url_path_calls_create_url_path_when_profile_exists():
+def test_create_profile_url_path_calls_create_url_path_when_profile_exists() -> None:
     """After refresh, if profile_id is set, create_url_path must be called."""
     instance = MagicMock()
     instance.profile_id = 42
@@ -58,14 +58,14 @@ def test_create_profile_url_path_calls_create_url_path_when_profile_exists():
 # ---------------------------------------------------------------------------
 
 
-def test_update_user_profile_ignores_updates():
+def test_update_user_profile_ignores_updates() -> None:
     """Signal called with created=False must do nothing."""
     instance = MagicMock()
     update_user_profile(instance, created=False)
     instance.refresh_from_db.assert_not_called()
 
 
-def test_update_user_profile_returns_early_when_profile_already_exists():
+def test_update_user_profile_returns_early_when_profile_already_exists() -> None:
     """When the DB trigger already set profile_id, no further action is taken."""
     instance = MagicMock()
     instance.first_name = "John"
@@ -79,7 +79,7 @@ def test_update_user_profile_returns_early_when_profile_already_exists():
     mock_uoc.assert_not_called()
 
 
-def test_update_user_profile_creates_profile_when_trigger_not_installed():
+def test_update_user_profile_creates_profile_when_trigger_not_installed() -> None:
     """When no DB trigger ran (profile_id is None), the signal creates the profile."""
     instance = MagicMock()
     instance.first_name = "Jane"

@@ -1,3 +1,5 @@
+from django.utils.translation import gettext_lazy as _
+
 from baseapp_core.plugins import BaseAppConfig, GraphQLContributor, ServicesContributor
 
 
@@ -5,7 +7,7 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
     default = True
     name = "baseapp_notifications"
     label = "baseapp_notifications"
-    verbose_name = "BaseApp Notifications"
+    verbose_name = _("BaseApp Notifications")
     default_auto_field = "django.db.models.AutoField"
 
     def ready(self) -> None:
@@ -21,12 +23,12 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
 
         notify.connect(notify_handler, dispatch_uid="notifications.models.notification")
 
-    def register_shared_services(self, registry):
+    def register_shared_services(self, registry) -> None:
         from .services import NotificationService
 
         registry.register(NotificationService())
 
-    def register_graphql_shared_interfaces(self, registry):
+    def register_graphql_shared_interfaces(self, registry) -> None:
         from .graphql.interfaces import get_notifications_interface
 
         registry.register("NotificationsInterface", get_notifications_interface)

@@ -23,7 +23,9 @@ GET_PROFILE_BY_PATH = """
 
 @pytest.mark.parametrize("with_disabled_apps", [["baseapp_pages"]], indirect=True)
 class TestProfilesQueriesWithoutBaseappPages:
-    def test_profiles_queries_without_baseapp_pages(self, with_disabled_apps, graphql_user_client):
+    def test_profiles_queries_without_baseapp_pages(
+        self, with_disabled_apps, graphql_user_client
+    ) -> None:
         get_profile_metadata_type.cache_clear()
         try:
             profile = ProfileFactory()

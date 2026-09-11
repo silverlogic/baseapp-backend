@@ -48,7 +48,7 @@ query ProfileWithActivityLogs($id: ID!) {
 """
 
 
-def test_profile_node_resolves_activity_logs(graphql_user_client, django_user_client):
+def test_profile_node_resolves_activity_logs(graphql_user_client, django_user_client) -> None:
     """A Profile node implements ProfileActivityLogInterface and returns matching activity rows."""
     django_user_client.user.is_superuser = True
     django_user_client.user.save(update_fields=["is_superuser"])
@@ -82,7 +82,9 @@ def test_profile_node_resolves_activity_logs(graphql_user_client, django_user_cl
     assert edges[0]["node"]["visibility"] == VisibilityTypes.PUBLIC.name
 
 
-def test_profile_activity_logs_only_include_own_profile(graphql_user_client, django_user_client):
+def test_profile_activity_logs_only_include_own_profile(
+    graphql_user_client, django_user_client
+) -> None:
     """Each profile is scoped to its own activity_logs; other profiles' rows are excluded."""
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
@@ -119,7 +121,9 @@ def test_profile_activity_logs_only_include_own_profile(graphql_user_client, dja
     assert len(edges) == 1
 
 
-def test_profile_root_query_exposes_activity_logs_field(graphql_user_client, django_user_client):
+def test_profile_root_query_exposes_activity_logs_field(
+    graphql_user_client, django_user_client
+) -> None:
     """ProfileObjectType surfaces activityLogs from ProfileActivityLogInterface on the profile query."""
     django_user_client.user.is_superuser = True
     django_user_client.user.save(update_fields=["is_superuser"])

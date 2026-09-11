@@ -7,7 +7,7 @@ from baseapp_cloudflare_stream_field.tasks import generate_download_url
 pytestmark = pytest.mark.django_db
 
 
-def test_generate_download_url_not_ready(setup_video_not_ready):
+def test_generate_download_url_not_ready(setup_video_not_ready) -> None:
     content_type, obj = setup_video_not_ready
 
     with patch(
@@ -30,7 +30,7 @@ def test_generate_download_url_not_ready(setup_video_not_ready):
 @patch("baseapp_cloudflare_stream_field.tasks.stream_client.update_video_data")
 def test_generate_download_url_ready_no_download_url(
     mock_update_video_data, mock_download_video, setup_video_ready_no_url
-):
+) -> None:
     content_type, obj = setup_video_ready_no_url
 
     mock_download_video.return_value = {
@@ -44,7 +44,7 @@ def test_generate_download_url_ready_no_download_url(
     mock_update_video_data.assert_called_once_with(obj.video["uid"], {"meta": obj.video["meta"]})
 
 
-def test_generate_download_url_ready_with_download_url(setup_video_ready_with_url):
+def test_generate_download_url_ready_with_download_url(setup_video_ready_with_url) -> None:
     content_type, obj = setup_video_ready_with_url
 
     with patch(

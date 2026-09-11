@@ -142,7 +142,7 @@ SIMPLIFIED_QUERY_FOR_TESTING_OPTIMIZATION = """
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_anon_see_comments_and_replies(django_user_client, graphql_client_with_queries):
+def test_anon_see_comments_and_replies(django_user_client, graphql_client_with_queries) -> None:
     target = CommentFactory()
     user = django_user_client.user
     replying_user = UserFactory()
@@ -189,7 +189,7 @@ def test_anon_see_comments_and_replies(django_user_client, graphql_client_with_q
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_see_comments_and_replies_with_pagination(
     django_user_client, graphql_client_with_queries
-):
+) -> None:
     target = CommentFactory()
     user = django_user_client.user
     replying_user = UserFactory()
@@ -215,7 +215,7 @@ def test_anon_see_comments_and_replies_with_pagination(
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_top_level_comments_pagination_on_page_target(django_user_client, graphql_client):
+def test_top_level_comments_pagination_on_page_target(django_user_client, graphql_client) -> None:
     """Reproduces the FE bug: when using first=5 on the top-level comments
     of a Page (matching the FE CommentsList query), hasNextPage must be True
     when there are more than 5 comments."""
@@ -236,7 +236,9 @@ def test_top_level_comments_pagination_on_page_target(django_user_client, graphq
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_top_level_comments_pagination_on_comment_target(django_user_client, graphql_client):
+def test_top_level_comments_pagination_on_comment_target(
+    django_user_client, graphql_client
+) -> None:
     """Same bug but with a Comment as target (how baseapp tests are structured)."""
     target = CommentFactory()
     user = UserFactory()
@@ -257,7 +259,7 @@ def test_top_level_comments_pagination_on_comment_target(django_user_client, gra
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_logged_user_replies_to_a_page_comment_has_next_page_true_when_more_than_5_replies(
     django_user_client, graphql_user_client
-):
+) -> None:
     page = PageFactory(user=django_user_client.user)
     user = UserFactory()
     comment = CommentFactory(target=page, user=user)
@@ -286,7 +288,9 @@ def test_logged_user_replies_to_a_page_comment_has_next_page_true_when_more_than
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_get_queryset_skips_filtering_only_when_hint_set(django_user_client, graphql_user_client):
+def test_get_queryset_skips_filtering_only_when_hint_set(
+    django_user_client, graphql_user_client
+) -> None:
     """get_queryset() must rely on the explicit _BLOCKED_PROFILES_FILTERED_HINT
     flag — NOT on _result_cache — to decide whether to skip blocked-profile
     filtering.  A queryset whose _result_cache is populated but lacks the hint
@@ -308,12 +312,12 @@ def test_get_queryset_skips_filtering_only_when_hint_set(django_user_client, gra
 
     # Build a fake info object with the authenticated user + current_profile
     class FakeRequest:
-        def __init__(self, user, profile):
+        def __init__(self, user, profile) -> None:
             self.user = user
             self.user.current_profile = profile
 
     class FakeInfo:
-        def __init__(self, request):
+        def __init__(self, request) -> None:
             self.context = request
 
     info = FakeInfo(FakeRequest(django_user_client.user, current_profile))
@@ -345,7 +349,7 @@ def test_get_queryset_skips_filtering_only_when_hint_set(django_user_client, gra
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_blocked_profiles_excluded_with_pagination(django_user_client, graphql_user_client):
+def test_blocked_profiles_excluded_with_pagination(django_user_client, graphql_user_client) -> None:
     """Blocked/blocking profiles are excluded and pagination still works correctly."""
     page = PageFactory(user=django_user_client.user)
     current_profile = ProfileFactory(owner=django_user_client.user)
@@ -379,7 +383,7 @@ def test_blocked_profiles_excluded_with_pagination(django_user_client, graphql_u
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_top_level_comments_second_page_with_cursor(django_user_client, graphql_client):
+def test_top_level_comments_second_page_with_cursor(django_user_client, graphql_client) -> None:
     """Fetching the second page with an `after` cursor returns the remaining comments."""
     page = PageFactory(user=django_user_client.user)
     user = UserFactory()
@@ -410,7 +414,7 @@ def test_top_level_comments_second_page_with_cursor(django_user_client, graphql_
     assert first_page_pks.isdisjoint(second_page_pks)
 
 
-def test_anon_cant_see_comments_when_disabled(graphql_client):
+def test_anon_cant_see_comments_when_disabled(graphql_client) -> None:
     target = CommentFactory(is_comments_enabled=False)
     CommentFactory(target=target)
 
@@ -420,7 +424,7 @@ def test_anon_cant_see_comments_when_disabled(graphql_client):
     assert len(content["data"]["node"]["comments"]["edges"]) == 0
 
 
-def test_search(graphql_client):
+def test_search(graphql_client) -> None:
     target = CommentFactory()
     CommentFactory(target=target)
     comment = CommentFactory(target=target, body="the s1lv3r logic")
@@ -432,7 +436,7 @@ def test_search(graphql_client):
     assert content["data"]["node"]["comments"]["edges"][0]["node"]["id"] == comment.relay_id
 
 
-def test_order_by_pinned_first(graphql_client):
+def test_order_by_pinned_first(graphql_client) -> None:
     target = CommentFactory()
     CommentFactory(target=target)
     comment = CommentFactory(target=target, is_pinned=True)
@@ -446,7 +450,7 @@ def test_order_by_pinned_first(graphql_client):
     assert content["data"]["node"]["comments"]["edges"][0]["node"]["id"] == comment.relay_id
 
 
-def test_order_by_pinned_last(graphql_client):
+def test_order_by_pinned_last(graphql_client) -> None:
     target = CommentFactory()
     CommentFactory(target=target)
     comment = CommentFactory(target=target, is_pinned=True)
@@ -460,7 +464,7 @@ def test_order_by_pinned_last(graphql_client):
     assert content["data"]["node"]["comments"]["edges"][-1]["node"]["id"] == comment.relay_id
 
 
-def test_order_by_reactions_total_desc(graphql_client):
+def test_order_by_reactions_total_desc(graphql_client) -> None:
     target = CommentFactory()
     CommentFactory(target=target)
     comment = CommentFactory(target=target)
@@ -474,7 +478,7 @@ def test_order_by_reactions_total_desc(graphql_client):
     assert content["data"]["node"]["comments"]["edges"][0]["node"]["id"] == comment.relay_id
 
 
-def test_order_by_reactions_total_asc(graphql_client):
+def test_order_by_reactions_total_asc(graphql_client) -> None:
     target = CommentFactory()
     CommentFactory(target=target)
     comment = CommentFactory(target=target)
@@ -489,7 +493,7 @@ def test_order_by_reactions_total_asc(graphql_client):
     assert content["data"]["node"]["comments"]["edges"][-1]["node"]["id"] == comment.relay_id
 
 
-def test_order_by_replies_total_desc(graphql_client):
+def test_order_by_replies_total_desc(graphql_client) -> None:
     target = CommentFactory()
     CommentFactory(target=target)
     comment = CommentFactory(target=target)
@@ -503,7 +507,7 @@ def test_order_by_replies_total_desc(graphql_client):
     assert content["data"]["node"]["comments"]["edges"][0]["node"]["id"] == comment.relay_id
 
 
-def test_order_by_replies_total_asc(graphql_client):
+def test_order_by_replies_total_asc(graphql_client) -> None:
     target = CommentFactory()
     CommentFactory(target=target)
     comment = CommentFactory(target=target, is_pinned=True)
@@ -519,7 +523,7 @@ def test_order_by_replies_total_asc(graphql_client):
 
 
 @override_settings(BASEAPP_COMMENTS_CAN_ANONYMOUS_VIEW_COMMENTS=False)
-def test_anon_cant_see_comments(graphql_client):
+def test_anon_cant_see_comments(graphql_client) -> None:
     target = CommentFactory()
     CommentFactory(target=target)
 
@@ -530,7 +534,9 @@ def test_anon_cant_see_comments(graphql_client):
 
 
 @override_config(ENABLE_PUBLIC_ID_LOGIC=False)
-def test_comments_query_is_partially_optimized(django_user_client, graphql_client_with_queries):
+def test_comments_query_is_partially_optimized(
+    django_user_client, graphql_client_with_queries
+) -> None:
     first_comment = CommentFactory()
     target = CommentFactory(
         user=django_user_client.user, body="test body", in_reply_to=first_comment
@@ -569,7 +575,7 @@ def test_comments_query_is_partially_optimized(django_user_client, graphql_clien
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_comments_query_is_optimized_with_nested_replies(
     django_user_client, graphql_client_with_queries
-):
+) -> None:
     first_comment = CommentFactory()
     target = CommentFactory(
         user=django_user_client.user, body="test body", in_reply_to=first_comment
@@ -613,7 +619,7 @@ def test_comments_query_is_optimized_with_nested_replies(
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_comments_query_is_partially_optimized_with_public_id(
     django_user_client, graphql_client_with_queries
-):
+) -> None:
     first_comment = CommentFactory()
     target = CommentFactory(
         user=django_user_client.user, body="test body", in_reply_to=first_comment
@@ -653,7 +659,7 @@ def test_comments_query_is_partially_optimized_with_public_id(
 @override_config(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_comments_query_is_partially_optimized_with_public_id_and_pagination(
     django_user_client, graphql_client_with_queries
-):
+) -> None:
     first_comment = CommentFactory()
     target = CommentFactory(
         user=django_user_client.user, body="test body", in_reply_to=first_comment
@@ -684,7 +690,7 @@ def test_comments_query_is_partially_optimized_with_public_id_and_pagination(
 def test_comments_query_from_foreigh_target_is_partially_optimized_with_public_id(
     django_user_client,
     graphql_client_with_queries,
-):
+) -> None:
     target = PageFactory(user=django_user_client.user)
 
     user = UserFactory()

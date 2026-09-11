@@ -3,7 +3,7 @@ import swapper
 from .utils import get_user_from_referral_code
 
 
-def link_user_to_referrer(is_new, strategy, user, *args, **kwargs):
+def link_user_to_referrer(is_new, strategy, user, *args, **kwargs) -> None:
     if not is_new:
         return
 

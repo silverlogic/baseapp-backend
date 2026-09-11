@@ -49,7 +49,7 @@ def send_message(
     action_object=None,
     extra_data=None,
     in_reply_to=None,
-):
+) -> "Message":
     message = Message.objects.create(
         user=user,
         profile=profile,
@@ -168,7 +168,7 @@ def send_chatroom_update_system_messages(
             )
 
 
-def send_new_chat_message_notification(room, message, info):
+def send_new_chat_message_notification(room, message, info) -> None:
     if service := shared_services.get("notifications"):
         for participant in room.participants.all():
             recipients = participant.profile.get_all_users()

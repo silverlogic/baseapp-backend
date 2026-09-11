@@ -9,7 +9,7 @@ pytestmark = pytest.mark.django_db
 
 @patch("baseapp_cloudflare_stream_field.tasks.stream_client.get_video_data")
 @patch("baseapp_cloudflare_stream_field.tasks.stream_client.delete_video_data")
-def test_delete_original_trimmed_video_ready(mock_delete_video_data, mock_get_video_data):
+def test_delete_original_trimmed_video_ready(mock_delete_video_data, mock_get_video_data) -> None:
     mock_get_video_data.return_value = {
         "status": {"state": "ready"},
         "meta": {},
@@ -22,7 +22,7 @@ def test_delete_original_trimmed_video_ready(mock_delete_video_data, mock_get_vi
 
 
 @patch("baseapp_cloudflare_stream_field.tasks.stream_client.get_video_data")
-def test_delete_original_trimmed_video_retry(mock_get_video_data):
+def test_delete_original_trimmed_video_retry(mock_get_video_data) -> None:
     mock_get_video_data.return_value = {
         "status": {"state": "pending"},
         "meta": {},

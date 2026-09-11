@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import swapper
 from django.apps import apps
 from django.conf import settings
@@ -17,8 +19,11 @@ from baseapp_core.models import (
 )
 from baseapp_core.plugins import apply_if_installed
 
+if TYPE_CHECKING:
+    from baseapp_core.graphql import DjangoObjectType
 
-def default_reactions_count():
+
+def default_reactions_count() -> dict[str, int]:
     """Default value for `ReactableMetadata.reactions_count`. Returns a fresh dict
     keyed by `Reaction.ReactionTypes` enum names plus a `total` slot, all zero."""
     ReactionModel = swapper.load_model(
@@ -61,7 +66,7 @@ class AbstractReaction(
         DISLIKE = -1, _("dislike")
 
         @property
-        def description(self):
+        def description(self) -> str:
             return self.label
 
     user = models.ForeignKey(
@@ -83,24 +88,24 @@ class AbstractReaction(
             )
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Reaction (%s) #%s by %s" % (
             self.reaction_type,
             self.id,
             self.user.first_name,
         )
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         super().save(*args, **kwargs)
         self.update_reactions_count(self.target)
 
-    def delete(self, *args, **kwargs):
+    def delete(self, *args, **kwargs) -> None:
         target = self.target
         super().delete(*args, **kwargs)
         self.update_reactions_count(target)
 
     @classmethod
-    def update_reactions_count(cls, target):
+    def update_reactions_count(cls, target) -> None:
         """Recompute per-type reaction counts for `target` on its `ReactableMetadata` row."""
         if not target:
             return
@@ -129,7 +134,7 @@ class AbstractReaction(
         metadata.save(update_fields=["reactions_count", "modified"])
 
     @classmethod
-    def get_graphql_object_type(cls):
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
         from .graphql.object_types import ReactionObjectType
 
         return ReactionObjectType
@@ -151,11 +156,11 @@ class AbstractReactableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
         verbose_name = _("reactable metadata")
         verbose_name_plural = _("reactable metadata")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"ReactableMetadata for {self.target}"
 
     @classmethod
-    def annotate_queryset(cls, queryset):
+    def annotate_queryset(cls, queryset) -> models.QuerySet:
         """
         Annotate `queryset` with reactable metadata so resolvers don't N+1.
         Adds `_reactable_reactions_count`, `_reactable_is_reactions_enabled`,

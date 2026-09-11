@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import swapper
 from graphene_django.filter import DjangoFilterConnectionField
 
@@ -13,6 +15,9 @@ from baseapp_core.plugins import (
     graphql_shared_interfaces,
     shared_services,
 )
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
 
 ContentPost = swapper.load_model(
     "baseapp_content_feed", "ContentPost", required=False, require_ready=False
@@ -52,11 +57,11 @@ class ContentPostObjectType(DjangoObjectType):
         )
         filterset_class = ContentPostFilter
 
-    def resolve_images(self, info, **kwargs):
+    def resolve_images(self, info, **kwargs) -> "QuerySet":
         return ContentPostImage.objects.filter(post=self.pk)
 
     @classmethod
-    def get_queryset(cls, queryset, info):
+    def get_queryset(cls, queryset, info) -> "QuerySet":
         # Annotate reactable metadata so the ReactionsInterface resolvers
         # (`reactions_count`, `is_reactions_enabled`) don't N+1 per post.
         if service := shared_services.get("reactable_metadata"):

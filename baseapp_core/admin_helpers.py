@@ -2,7 +2,7 @@ from django.apps import apps
 from django.contrib import admin
 
 
-def get_model_admin_classes():
+def get_model_admin_classes() -> dict[str, type]:
     """
     Returns appropriate admin classes based on whether 'unfold' is installed.
     If unfold is available, use its enhanced admin classes, otherwise fallback to Django's default admin classes.

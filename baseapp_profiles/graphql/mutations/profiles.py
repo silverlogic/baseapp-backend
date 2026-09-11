@@ -1,4 +1,5 @@
 import string
+from typing import Any
 
 import graphene
 import swapper
@@ -32,7 +33,7 @@ class BaseProfileSerializer(serializers.ModelSerializer):
         model = Profile
         fields = ("owner", "name", "image", "banner_image", "biography", "url_path")
 
-    def validate_url_path(self, value):
+    def validate_url_path(self, value) -> str:
         if len(value) < 8:
             raise serializers.ValidationError(_("Username must be at least 8 characters long."))
         if value in string.punctuation:
@@ -64,7 +65,7 @@ class ProfileCreateSerializer(BaseProfileSerializer):
             "target_object_id",
         )
 
-    def create(self, validated_data):
+    def create(self, validated_data) -> "Profile":
         url_path = validated_data.pop("url_path", None)
         instance = super().create(validated_data)
         if apps.is_installed("baseapp_pages") and url_path:
@@ -80,10 +81,10 @@ class ProfileUpdateSerializer(BaseProfileSerializer):
     class Meta(BaseProfileSerializer.Meta):
         fields = BaseProfileSerializer.Meta.fields + ("phone_number",)
 
-    def should_delete_field(self, data, field_name):
+    def should_delete_field(self, data, field_name) -> bool:
         return field_name in data and not data[field_name]
 
-    def update(self, instance, validated_data):
+    def update(self, instance, validated_data) -> "Profile":
         original_data = validated_data.copy()
         url_path = validated_data.pop("url_path", None)
         phone_number = validated_data.pop("phone_number", None)
@@ -115,7 +116,7 @@ class ProfileCreate(SerializerMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ProfileCreate":
         if not info.context.user.has_perm(f"{profile_app_label}.add_profile"):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
@@ -125,7 +126,7 @@ class ProfileCreate(SerializerMutation):
         return super().mutate_and_get_payload(root, info, **input)
 
     @classmethod
-    def perform_mutate(cls, serializer, info):
+    def perform_mutate(cls, serializer, info) -> "ProfileCreate":
         ProfileObjectType = Profile.get_graphql_object_type()
         # TODO: get target using get_obj_from_relay_id and inject into the serializer to be used
         # by validate and create methods
@@ -146,7 +147,7 @@ class ProfileUpdate(SerializerMutation):
         id = graphene.ID(required=True)
 
     @classmethod
-    def get_serializer_kwargs(cls, root, info, id, **input):
+    def get_serializer_kwargs(cls, root, info, id, **input) -> dict[str, Any]:
         kwargs = super().get_serializer_kwargs(root, info, **input)
         input = kwargs["data"]
 
@@ -170,7 +171,7 @@ class ProfileUpdate(SerializerMutation):
         }
 
     @classmethod
-    def perform_mutate(cls, serializer, info):
+    def perform_mutate(cls, serializer, info) -> "ProfileUpdate":
         obj = serializer.save()
         return cls(
             errors=None,
@@ -179,7 +180,7 @@ class ProfileUpdate(SerializerMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ProfileUpdate":
         activity_name = "baseapp_profiles.update_profile"
 
         if service := shared_services.get("activity_log"):
@@ -196,7 +197,7 @@ class ProfileDelete(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ProfileDelete":
         relay_id = input.get("id")
         pk = get_pk_from_relay_id(relay_id)
 

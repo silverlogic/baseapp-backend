@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from typing import Any
 
 from django.shortcuts import get_object_or_404
 from graphene.types import InputField
@@ -28,7 +29,7 @@ def fields_for_serializer(
     is_input=False,
     convert_choices_to_enum=True,
     lookup_field=None,
-):
+) -> OrderedDict[str, Any]:
     fields = OrderedDict()
     for name, field in serializer.fields.items():
         is_not_in_only = only_fields and name not in only_fields
@@ -68,7 +69,7 @@ class SerializerMutation(RelayMutation):
         convert_choices_to_enum=True,
         _meta=None,
         **options,
-    ):
+    ) -> None:
         if not serializer_class:
             raise Exception("serializer_class is required for the SerializerMutation")
 
@@ -108,7 +109,7 @@ class SerializerMutation(RelayMutation):
         super().__init_subclass_with_meta__(_meta=_meta, input_fields=input_fields, **options)
 
     @classmethod
-    def get_serializer_kwargs(cls, root, info, **input):
+    def get_serializer_kwargs(cls, root, info, **input) -> dict[str, Any]:
         lookup_field = cls._meta.lookup_field
         model_class = cls._meta.model_class
 
@@ -140,7 +141,7 @@ class SerializerMutation(RelayMutation):
         return {"data": input, "context": {"request": info.context}}
 
     @classmethod
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "SerializerMutation":
         kwargs = cls.get_serializer_kwargs(root, info, **input)
         serializer = cls._meta.serializer_class(**kwargs)
 
@@ -167,7 +168,7 @@ class SerializerMutation(RelayMutation):
             return cls(errors=errors)
 
     @classmethod
-    def perform_mutate(cls, serializer, info):
+    def perform_mutate(cls, serializer, info) -> "SerializerMutation":
         obj = serializer.save()
 
         kwargs = {}

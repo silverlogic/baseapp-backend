@@ -7,7 +7,7 @@ pytestmark = pytest.mark.django_db
 NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationSetting")
 
 
-def test_user_can_query_notifications_unread_count(django_user_client, graphql_user_client):
+def test_user_can_query_notifications_unread_count(django_user_client, graphql_user_client) -> None:
     NotificationFactory(recipient=django_user_client.user)
 
     response = graphql_user_client("query { me { notificationsUnreadCount } }")
@@ -15,7 +15,7 @@ def test_user_can_query_notifications_unread_count(django_user_client, graphql_u
     assert content["data"]["me"]["notificationsUnreadCount"] == 1
 
 
-def test_user_can_query_notifications(django_user_client, graphql_user_client):
+def test_user_can_query_notifications(django_user_client, graphql_user_client) -> None:
     notification = NotificationFactory(recipient=django_user_client.user)
 
     response = graphql_user_client("query { me { notifications { edges { node { id } }} } }")
@@ -23,14 +23,14 @@ def test_user_can_query_notifications(django_user_client, graphql_user_client):
     assert content["data"]["me"]["notifications"]["edges"][0]["node"]["id"] == notification.relay_id
 
 
-def test_another_user_cant_query_notifications(graphql_user_client):
+def test_another_user_cant_query_notifications(graphql_user_client) -> None:
     NotificationFactory()
     response = graphql_user_client("query { me { notifications { edges { node { id } }} } }")
     content = response.json()
     assert len(content["data"]["me"]["notifications"]["edges"]) == 0
 
 
-def test_user_can_query_notification_settings(django_user_client, graphql_user_client):
+def test_user_can_query_notification_settings(django_user_client, graphql_user_client) -> None:
     notification_setting = NotificationSettingFactory(
         user=django_user_client.user,
         is_active=True,
@@ -53,7 +53,9 @@ def test_user_can_query_notification_settings(django_user_client, graphql_user_c
     )
 
 
-def test_user_can_query_for_is_notification_setting_active(django_user_client, graphql_user_client):
+def test_user_can_query_for_is_notification_setting_active(
+    django_user_client, graphql_user_client
+) -> None:
     NotificationSettingFactory(
         user=django_user_client.user,
         is_active=True,
@@ -70,7 +72,7 @@ def test_user_can_query_for_is_notification_setting_active(django_user_client, g
 
 def test_user_can_query_for_is_notification_setting_active_when_channel_all_exists(
     django_user_client, graphql_user_client
-):
+) -> None:
     NotificationSettingFactory(
         user=django_user_client.user,
         is_active=True,

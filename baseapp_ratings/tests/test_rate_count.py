@@ -11,7 +11,7 @@ RatableMetadata = swapper.load_model("baseapp_ratings", "RatableMetadata")
 pytestmark = pytest.mark.django_db
 
 
-def test_rate_save_creates_metadata_and_increments_count():
+def test_rate_save_creates_metadata_and_increments_count() -> None:
     """Creating a Rate through the ORM should populate `RatableMetadata` for the
     target with a fresh count/sum/average."""
     target = ProfileFactory()
@@ -25,7 +25,7 @@ def test_rate_save_creates_metadata_and_increments_count():
     assert metadata.ratings_average == pytest.approx(4.0)
 
 
-def test_rate_save_aggregates_multiple_ratings():
+def test_rate_save_aggregates_multiple_ratings() -> None:
     target = ProfileFactory()
 
     RateFactory(target=target, value=2)
@@ -38,7 +38,7 @@ def test_rate_save_aggregates_multiple_ratings():
     assert metadata.ratings_average == pytest.approx(3.0)
 
 
-def test_rate_delete_decrements_count_and_recomputes_average():
+def test_rate_delete_decrements_count_and_recomputes_average() -> None:
     target = ProfileFactory()
 
     RateFactory(target=target, value=5)
@@ -56,7 +56,7 @@ def test_rate_delete_decrements_count_and_recomputes_average():
     assert metadata.ratings_average == pytest.approx(5.0)
 
 
-def test_rate_delete_resets_metadata_to_zero_when_no_ratings_left():
+def test_rate_delete_resets_metadata_to_zero_when_no_ratings_left() -> None:
     target = ProfileFactory()
     rate = RateFactory(target=target, value=3)
 
@@ -71,7 +71,7 @@ def test_rate_delete_resets_metadata_to_zero_when_no_ratings_left():
     assert metadata.ratings_average == 0
 
 
-def test_ratings_count_isolated_per_target():
+def test_ratings_count_isolated_per_target() -> None:
     """Ratings against profile A must not bleed into profile B's metadata."""
     target_a = ProfileFactory()
     target_b = ProfileFactory()
@@ -85,7 +85,7 @@ def test_ratings_count_isolated_per_target():
     assert metadata_b is None or metadata_b.ratings_count == 0
 
 
-def test_update_ratings_indicators_recomputes_from_existing_rates():
+def test_update_ratings_indicators_recomputes_from_existing_rates() -> None:
     """Calling `Rate.update_ratings_indicators(target)` directly should recompute
     counters from the live `Rate` rows even if the metadata row is out of sync."""
     target = ProfileFactory()
@@ -106,6 +106,6 @@ def test_update_ratings_indicators_recomputes_from_existing_rates():
     assert metadata.ratings_average == pytest.approx(4.0)
 
 
-def test_update_ratings_indicators_no_op_when_target_is_none():
+def test_update_ratings_indicators_no_op_when_target_is_none() -> None:
     """`update_ratings_indicators(None)` should silently no-op rather than crash."""
     Rate.update_ratings_indicators(None)  # should not raise

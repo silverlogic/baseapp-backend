@@ -22,7 +22,7 @@ class BaseGraphqlWsAPIKeyAuthenticatedConsumer(channels_graphql_ws.GraphqlWsCons
 
     schema = graphene_settings.SCHEMA
 
-    async def on_connect(self, payload):
+    async def on_connect(self, payload) -> None:
         if "user" in self.scope:
             # do nothing if already authenticated
             return

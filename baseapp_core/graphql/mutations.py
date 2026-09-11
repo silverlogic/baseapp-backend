@@ -23,7 +23,7 @@ class DeleteNode(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "DeleteNode":
         relay_id = input.get("id")
         obj = get_obj_from_relay_id(info, relay_id)
 
