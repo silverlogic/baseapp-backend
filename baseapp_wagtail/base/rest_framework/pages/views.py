@@ -1,5 +1,6 @@
 from django.http import Http404
 from django.urls import path
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from wagtail.api.v2.views import PagesAPIViewSet
 from wagtail.models import Locale
@@ -10,6 +11,11 @@ from .serializers import CustomPageSerializer
 class CustomPagesAPIEndpoint(PagesAPIViewSet):
     base_serializer_class = CustomPageSerializer
     path_view_queryset = None
+
+    # Wagtail's BaseAPIViewSet sets no permission_classes, so it inherits
+    # REST_FRAMEWORK["DEFAULT_PERMISSION_CLASSES"]. These endpoints serve public pages;
+    # pin them so a future tightening of that default cannot 401 the public site.
+    permission_classes = (AllowAny,)
 
     meta_fields = PagesAPIViewSet.meta_fields + [
         "url_path",

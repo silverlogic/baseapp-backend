@@ -1,6 +1,7 @@
 from django.urls import path
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from wagtail.api.v2.views import PagesAPIViewSet
 
@@ -18,6 +19,11 @@ class SitemapAPIViewSet(PagesAPIViewSet):
         "last_published_at",
     ]
     meta_fields = []
+
+    # Wagtail's BaseAPIViewSet sets no permission_classes, so it inherits
+    # REST_FRAMEWORK["DEFAULT_PERMISSION_CLASSES"]. These endpoints serve public pages;
+    # pin them so a future tightening of that default cannot 401 the public site.
+    permission_classes = (AllowAny,)
 
     @method_decorator(cache_page(60 * 60 * 1))  # 1 hour
     def listing_view(self, request):

@@ -1,5 +1,6 @@
 from django.http import Http404
 from django.utils.encoding import uri_to_iri
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from wagtail.contrib.redirects import models
 from wagtail.contrib.redirects.api import RedirectsAPIViewSet
@@ -16,6 +17,11 @@ class CustomRedirectsAPIViewSet(RedirectsAPIViewSet):
     listing_default_fields = RedirectsAPIViewSet.listing_default_fields + [
         "is_permanent",
     ]
+
+    # Wagtail's BaseAPIViewSet sets no permission_classes, so it inherits
+    # REST_FRAMEWORK["DEFAULT_PERMISSION_CLASSES"]. These endpoints serve public pages;
+    # pin them so a future tightening of that default cannot 401 the public site.
+    permission_classes = (AllowAny,)
 
     def find_view(self, request):
         queryset = self.get_queryset()
