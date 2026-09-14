@@ -1,9 +1,20 @@
 from django.apps import AppConfig
+from django.utils.translation import gettext_lazy as _
 
 
 class PackageConfig(AppConfig):
     default = True
     name = "baseapp_core"
     label = "baseapp_core"
-    verbose_name = "BaseApp Core"
+    verbose_name = _("BaseApp Core")
     default_auto_field = "django.db.models.BigAutoField"
+
+    def ready(self) -> None:
+        from .pghelpers import apply_pghistory_tracks, apply_pgtrigger_tracks
+
+        # Apply all registered pghistory tracks
+        apply_pghistory_tracks()
+
+        # Apply all registered pgtrigger domain triggers (chats, etc.).
+        # Runs before makemigrations autodetection sees `_meta.triggers`.
+        apply_pgtrigger_tracks()

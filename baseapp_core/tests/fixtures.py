@@ -1,11 +1,14 @@
 import base64
+from collections.abc import AsyncGenerator, Generator
 from io import BytesIO
+from typing import Any
 
 import pytest
 import responses
 from asgiref.sync import sync_to_async
 from django.core.files.base import ContentFile
 from django.core.files.images import ImageFile
+from django.core.mail import EmailMessage
 from django.test import AsyncClient as DjangoAsyncClient
 from django.test import Client as DjClient
 from rest_framework.test import APIClient
@@ -16,39 +19,39 @@ IMAGE_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAMAAAAM7l6QAAAARVBMVEXPACr///8H
 
 
 class Client(APIClient):
-    def force_authenticate(self, user):
+    def force_authenticate(self, user) -> None:
         self.user = user
         super().force_authenticate(user)
 
 
 class DjangoClient(DjClient):
-    def force_login(self, user, backend=None):
+    def force_login(self, user, backend=None) -> None:
         self.user = user
         super().force_login(user, backend=backend)
 
 
 class AsyncClient(DjangoAsyncClient):
-    def force_authenticate(self, user):
+    def force_authenticate(self, user) -> None:
         self.user = user
 
 
 @pytest.fixture
-def client():
+def client() -> Client:
     return Client()
 
 
 @pytest.fixture
-def django_client():
+def django_client() -> DjangoClient:
     return DjangoClient()
 
 
 @pytest.fixture
-def outbox(mailoutbox):
+def outbox(mailoutbox) -> list[EmailMessage]:
     return mailoutbox
 
 
 @pytest.fixture
-def user_client():
+def user_client() -> Client:
     user = f.UserFactory()
     client = Client()
     client.force_authenticate(user)
@@ -56,7 +59,7 @@ def user_client():
 
 
 @pytest.fixture
-def django_user_client():
+def django_user_client() -> DjangoClient:
     user = f.UserFactory()
     client = DjangoClient()
     client.force_login(user)
@@ -64,7 +67,7 @@ def django_user_client():
 
 
 @pytest.fixture
-async def async_user_client():
+async def async_user_client() -> AsyncGenerator[AsyncClient, None]:
     user = await sync_to_async(f.UserFactory)()
     token = await sync_to_async(f.TokenFactory)(user=user)
     client = AsyncClient()
@@ -76,29 +79,29 @@ async def async_user_client():
 
 
 @pytest.fixture(autouse=True)
-def responses_mock():
+def responses_mock() -> Generator[responses.RequestsMock, None, None]:
     with responses.RequestsMock() as r:
         yield r
 
 
 @pytest.fixture
-def image_base64():
+def image_base64() -> str:
     return IMAGE_BASE64
 
 
 @pytest.fixture
-def image_djangofile(image_base64):
+def image_djangofile(image_base64) -> ImageFile:
     i = BytesIO(base64.b64decode(image_base64))
     return ImageFile(i, name="image.png")
 
 
 @pytest.fixture
-def corrupted_image():
+def corrupted_image() -> ContentFile:
     return ContentFile("corrupted", name="image.png")
 
 
 @pytest.fixture
-def deep_link_mock_success(responses_mock):
+def deep_link_mock_success(responses_mock) -> None:
     responses_mock.add(
         responses.POST,
         "https://api.branch.io/v1/url",
@@ -108,12 +111,12 @@ def deep_link_mock_success(responses_mock):
 
 
 @pytest.fixture
-def deep_link_mock_error(responses_mock):
+def deep_link_mock_error(responses_mock) -> None:
     responses_mock.add(responses.POST, "https://api.branch.io/v1/url", status=400)
 
 
 @pytest.fixture(scope="session")
-def celery_config():
+def celery_config() -> Any:
     from celery import Celery
 
     app = Celery("apps")

@@ -1,12 +1,11 @@
-from django.db import models
-
-from baseapp_blocks.base import AbstractBaseBlock
+from baseapp_blocks.models import AbstractBlock, AbstractBlockableMetadata
 
 
-class Block(AbstractBaseBlock):
+class Block(AbstractBlock):
+    class Meta(AbstractBlock.Meta):
+        pass
 
-    class Meta:
-        indexes = [
-            models.Index(fields=["target", "actor"]),
-        ]
-        unique_together = [("actor", "target")]
+
+class BlockableMetadata(AbstractBlockableMetadata):
+    class Meta(AbstractBlockableMetadata.Meta):
+        pass

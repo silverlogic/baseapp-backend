@@ -1,8 +1,8 @@
 from django.http import Http404
-from django.urls import path
+from django.urls import URLPattern, path
 from rest_framework.response import Response
 from wagtail.api.v2.views import PagesAPIViewSet
-from wagtail.models import Locale
+from wagtail.models import Locale, Page
 
 from .serializers import CustomPageSerializer
 
@@ -16,7 +16,7 @@ class CustomPagesAPIEndpoint(PagesAPIViewSet):
         "ancestors",
     ]
 
-    def path_view(self, request):
+    def path_view(self, request) -> Response:
         queryset = self.get_queryset()
         try:
             obj = self.find_object(queryset, request)
@@ -31,7 +31,7 @@ class CustomPagesAPIEndpoint(PagesAPIViewSet):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
-    def _maybe_get_translated_page(self, request, page):
+    def _maybe_get_translated_page(self, request, page) -> Page:
         lang_code = request.GET.get("locale")
         if not lang_code:
             return page
@@ -47,13 +47,13 @@ class CustomPagesAPIEndpoint(PagesAPIViewSet):
 
         return translation
 
-    def get_object(self):
+    def get_object(self) -> Page:
         if self.path_view_queryset:
             return self.path_view_queryset.specific
         return super().get_object()
 
     @classmethod
-    def get_urlpatterns(cls):
+    def get_urlpatterns(cls) -> list[URLPattern]:
         return [
             path("", cls.as_view({"get": "listing_view"}), name="listing"),
             path("<int:pk>/", cls.as_view({"get": "detail_view"}), name="detail"),

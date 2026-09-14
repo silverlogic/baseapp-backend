@@ -9,6 +9,7 @@ Profile = swapper.load_model("baseapp_profiles", "Profile")
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
 Message = swapper.load_model("baseapp_chats", "Message")
+profile_app_label = Profile._meta.app_label
 MessageObjectType = Message.get_graphql_object_type()
 ProfileObjectType = Profile.get_graphql_object_type()
 ChatRoomObjectType = ChatRoom.get_graphql_object_type()
@@ -24,17 +25,20 @@ class ChatRoomOnRoomUpdate(channels_graphql_ws.Subscription):
         profile_id = graphene.ID(required=True)
 
     @staticmethod
-    async def subscribe(root, info, profile_id):
+    async def subscribe(root, info, profile_id) -> list[str]:
         user = info.context.channels_scope["user"]
         profile = await database_sync_to_async(get_obj_from_relay_id)(info, profile_id)
-        if not user.is_authenticated or not database_sync_to_async(user.has_perm)(
-            "baseapp_profiles.use_profile", profile
-        ):
+        if not user.is_authenticated or not profile:
+            return []
+        has_permission = await database_sync_to_async(user.has_perm)(
+            f"{profile_app_label}.use_profile", profile
+        )
+        if not has_permission:
             return []
         return [str(profile.pk)]
 
     @staticmethod
-    def publish(payload, info, profile_id):
+    def publish(payload, info, profile_id) -> "ChatRoomOnRoomUpdate":
         return ChatRoomOnRoomUpdate(
             room=ChatRoomObjectType._meta.connection.Edge(node=payload["room"]),
             removed_participants=payload["removed_participants"],
@@ -42,11 +46,11 @@ class ChatRoomOnRoomUpdate(channels_graphql_ws.Subscription):
         )
 
     @classmethod
-    def new_message(cls, message):
+    def new_message(cls, message) -> None:
         cls.room_updated(message.room)
 
     @classmethod
-    def room_updated(cls, room, removed_participants=[], added_participants=[]):
+    def room_updated(cls, room, removed_participants=[], added_participants=[]) -> None:
         participant_ids = list(room.participants.values_list("profile_id", flat=True))
         removed_ids = [participant.profile.id for participant in removed_participants]
         for id in participant_ids + removed_ids:
@@ -67,25 +71,28 @@ class ChatRoomOnMessagesCountUpdate(channels_graphql_ws.Subscription):
         profile_id = graphene.ID(required=True)
 
     @staticmethod
-    def subscribe(root, info, profile_id):
+    async def subscribe(root, info, profile_id) -> list[str]:
         user = info.context.channels_scope["user"]
-        profile = database_sync_to_async(get_obj_from_relay_id)(info, profile_id)
+        profile = await database_sync_to_async(get_obj_from_relay_id)(info, profile_id)
 
         # TO DO: change to a better permission check, maybe baseapp_chats.view_chatroom
-        if not user.is_authenticated or not database_sync_to_async(user.has_perm)(
-            "baseapp_profiles.use_profile", profile
-        ):
+        if not user.is_authenticated or not profile:
+            return []
+        has_permission = await database_sync_to_async(user.has_perm)(
+            f"{profile_app_label}.use_profile", profile
+        )
+        if not has_permission:
             return []
         return [profile_id]
 
     @staticmethod
-    def publish(payload, info, profile_id):
+    def publish(payload, info, profile_id) -> "ChatRoomOnMessagesCountUpdate":
         profile = payload["profile"]
 
         return ChatRoomOnMessagesCountUpdate(profile=profile)
 
     @classmethod
-    def send_updated_chat_count(cls, profile, profile_id):
+    def send_updated_chat_count(cls, profile, profile_id) -> None:
         cls.broadcast(
             group=profile_id,
             payload={"profile": profile},
@@ -100,37 +107,47 @@ class ChatRoomOnMessage(channels_graphql_ws.Subscription):
         profile_id = graphene.ID(required=True)
 
     @staticmethod
-    async def subscribe(root, info, room_id, profile_id):
+    async def subscribe(root, info, room_id, profile_id) -> list[str]:
         room = await database_sync_to_async(get_obj_from_relay_id)(info, room_id)
         user = info.context.channels_scope["user"]
         profile = await database_sync_to_async(get_obj_from_relay_id)(info, profile_id)
 
-        if not user.is_authenticated or not database_sync_to_async(user.has_perm)(
-            "baseapp_profiles.use_profile", profile
-        ):
+        if not user.is_authenticated or not profile or not room:
             return []
 
-        if not database_sync_to_async(room.participants.filter(profile=profile).exists)():
+        has_profile_permission = await database_sync_to_async(user.has_perm)(
+            f"{profile_app_label}.use_profile", profile
+        )
+        if not has_profile_permission:
             return []
 
-        if not database_sync_to_async(user.has_perm)("baseapp_chats.view_chatroom", room):
+        is_participant = await database_sync_to_async(
+            room.participants.filter(profile=profile).exists
+        )()
+        if not is_participant:
+            return []
+
+        can_view_room = await database_sync_to_async(user.has_perm)(
+            "baseapp_chats.view_chatroom", room
+        )
+        if not can_view_room:
             return []
         return [room_id]
 
     @staticmethod
-    def publish(payload, info, room_id, profile_id):
+    def publish(payload, info, room_id, profile_id) -> "ChatRoomOnMessage | None":
         message = payload["message"]
         user = info.context.channels_scope["user"]
 
         if not user.is_authenticated:
             return None
-        if str(message.profile_id) == get_pk_from_relay_id(profile_id):
+        if str(message.profile_id) == str(get_pk_from_relay_id(profile_id)):
             return None
 
         return ChatRoomOnMessage(message=MessageObjectType._meta.connection.Edge(node=message))
 
     @classmethod
-    def new_message(cls, message, room_id):
+    def new_message(cls, message, room_id) -> None:
         cls.broadcast(
             group=room_id,
             payload={"message": message},
@@ -138,7 +155,7 @@ class ChatRoomOnMessage(channels_graphql_ws.Subscription):
         ChatRoomOnRoomUpdate.new_message(message=message)
 
     @classmethod
-    def edit_message(cls, message, room_id):
+    def edit_message(cls, message, room_id) -> None:
         cls.broadcast(
             group=room_id,
             payload={"message": message},

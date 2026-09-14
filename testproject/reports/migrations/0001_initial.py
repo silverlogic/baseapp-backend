@@ -16,6 +16,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+        ("baseapp_core", "0001_initial"),
         ("contenttypes", "0002_remove_content_type_name"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
@@ -62,7 +63,6 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                "db_table": "baseapp_reports_reporttype",
                 "abstract": False,
             },
             bases=(baseapp_core.models.DocumentIdMixin, models.Model),
@@ -122,7 +122,6 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                "db_table": "baseapp_reports_report",
                 "abstract": False,
             },
             bases=(baseapp_core.models.DocumentIdMixin, models.Model),
@@ -136,7 +135,7 @@ class Migration(migrations.Migration):
                     hash="e35faf1a1ffa498f880c4261f7340a9c278dbab5",
                     operation="INSERT",
                     pgid="pgtrigger_insert_document_id_0b1de",
-                    table="baseapp_reports_reporttype",
+                    table="reports_reporttype",
                     when="AFTER",
                 ),
             ),
@@ -150,7 +149,7 @@ class Migration(migrations.Migration):
                     hash="930ac3d29d1ecae0be8f63e33ab278f14dc92303",
                     operation="DELETE",
                     pgid="pgtrigger_delete_document_id_6c04a",
-                    table="baseapp_reports_reporttype",
+                    table="reports_reporttype",
                     when="AFTER",
                 ),
             ),
@@ -175,7 +174,7 @@ class Migration(migrations.Migration):
                     hash="0ebc93d438d00fb612ea6b19ea35246cf5d11af6",
                     operation="INSERT",
                     pgid="pgtrigger_insert_document_id_4154d",
-                    table="baseapp_reports_report",
+                    table="reports_report",
                     when="AFTER",
                 ),
             ),
@@ -189,7 +188,7 @@ class Migration(migrations.Migration):
                     hash="693bfda67f3c33af8ba8f7d634b3936dbed6710d",
                     operation="DELETE",
                     pgid="pgtrigger_delete_document_id_9d810",
-                    table="baseapp_reports_report",
+                    table="reports_report",
                     when="AFTER",
                 ),
             ),

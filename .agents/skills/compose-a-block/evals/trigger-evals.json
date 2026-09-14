@@ -1,0 +1,25 @@
+[
+  { "query": "add a new baseapp package for user badges", "should_trigger": true },
+  { "query": "scaffold baseapp_bookmarks with a swappable model", "should_trigger": true },
+  { "query": "how do i register a plugin so its settings get picked up", "should_trigger": true },
+  { "query": "my new block's graphql queries arent showing up in the schema", "should_trigger": true },
+  { "query": "this chatrooms list is doing a query per row, whats wrong", "should_trigger": true },
+  { "query": "add a pre_optimization_hook to the message object type", "should_trigger": true },
+  { "query": "i need a followersCount field that doesnt hit the db per profile", "should_trigger": true },
+  { "query": "expose reactions on content posts without importing baseapp_reactions", "should_trigger": true },
+  { "query": "should i use DjangoConnectionField or DjangoFilterConnectionField here", "should_trigger": true },
+  { "query": "write a test that pins the query count for the comments listing", "should_trigger": true },
+  { "query": "make the Rate model swappable so projects can extend it", "should_trigger": true },
+  { "query": "annotate_queryset isnt applying on this list, any idea", "should_trigger": true },
+  { "query": "how do i register a shared service in ready()", "should_trigger": true },
+  { "query": "why does my interface field get skipped by the optimizer", "should_trigger": true },
+
+  { "query": "bump django from 5.2.13 to 5.2.14", "should_trigger": false },
+  { "query": "fix the typo in the readme", "should_trigger": false },
+  { "query": "add a new viewset in apps/social for the project", "should_trigger": false },
+  { "query": "whats the difference between celery and rq", "should_trigger": false },
+  { "query": "reformat this file with black", "should_trigger": false },
+  { "query": "update the changelog for the release", "should_trigger": false },
+  { "query": "add a react component for the comment list", "should_trigger": false },
+  { "query": "what port is the backend running on in this worktree", "should_trigger": false }
+]

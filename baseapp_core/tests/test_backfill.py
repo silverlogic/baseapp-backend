@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from django.contrib.contenttypes.models import ContentType
 
@@ -14,7 +16,7 @@ from testproject.testapp.tests.factories import DummyPublicIdModelFactory
 
 @pytest.mark.django_db
 class TestGetModelsWithDocumentIdMixin:
-    def test_returns_models_with_document_id_mixin(self):
+    def test_returns_models_with_document_id_mixin(self) -> None:
         """Test that it returns models that inherit from DocumentIdMixin and have auto-increment PKs."""
         models = get_models_with_document_id_mixin()
 
@@ -27,14 +29,14 @@ class TestGetModelsWithDocumentIdMixin:
         for model in models:
             assert issubclass(model, DocumentIdMixin)
 
-    def test_excludes_abstract_models(self):
+    def test_excludes_abstract_models(self) -> None:
         """Test that abstract models are not included."""
         models = get_models_with_document_id_mixin()
 
         for model in models:
             assert not model._meta.abstract
 
-    def test_excludes_models_without_autoincrement_pk(self):
+    def test_excludes_models_without_autoincrement_pk(self) -> None:
         """Test that models with UUID or other non-autoincrement PKs are excluded."""
         from django.db import models as django_models
 
@@ -49,7 +51,7 @@ class TestGetModelsWithDocumentIdMixin:
 @pytest.mark.django_db
 class TestBackfillModelDocumentIds:
     @pytest.fixture
-    def dummy_instances(self):
+    def dummy_instances(self) -> list[DummyPublicIdModel]:
         """Create multiple dummy instances without document IDs."""
         # Clear any existing document IDs
         DocumentId.objects.all().delete()
@@ -62,7 +64,7 @@ class TestBackfillModelDocumentIds:
 
         return instances
 
-    def test_creates_document_ids_for_model(self, dummy_instances):
+    def test_creates_document_ids_for_model(self, dummy_instances) -> None:
         """Test that backfill creates document IDs for all instances of a model."""
         created_count = backfill_model_document_ids(
             model=DummyPublicIdModel,
@@ -80,7 +82,7 @@ class TestBackfillModelDocumentIds:
                 content_type__model="dummypublicidmodel",
             ).exists()
 
-    def test_dry_run_does_not_create_mappings(self, dummy_instances):
+    def test_dry_run_does_not_create_mappings(self, dummy_instances) -> None:
         """Test that dry_run mode doesn't actually create mappings."""
         created_count = backfill_model_document_ids(
             model=DummyPublicIdModel,
@@ -99,7 +101,7 @@ class TestBackfillModelDocumentIds:
                 content_type__model="dummypublicidmodel",
             ).exists()
 
-    def test_skips_existing_document_ids(self, dummy_instances):
+    def test_skips_existing_document_ids(self, dummy_instances) -> None:
         """Test that it doesn't recreate existing document IDs."""
         # Create document ID for first instance
         first_instance = dummy_instances[0]
@@ -120,7 +122,7 @@ class TestBackfillModelDocumentIds:
         doc_id = DocumentId.objects.get(object_id=first_instance.pk)
         assert doc_id.public_id == existing_doc_id.public_id
 
-    def test_batch_processing(self, dummy_instances):
+    def test_batch_processing(self, dummy_instances) -> None:
         """Test that batch_size parameter works correctly."""
         created_count = backfill_model_document_ids(
             model=DummyPublicIdModel,
@@ -135,11 +137,11 @@ class TestBackfillModelDocumentIds:
 @pytest.mark.django_db
 class TestBackfillAllModels:
     @pytest.fixture(autouse=True)
-    def setup(self):
+    def setup(self) -> None:
         """Clear mappings before each test."""
         DocumentId.objects.all().delete()
 
-    def test_backfills_all_models_with_mixin(self):
+    def test_backfills_all_models_with_mixin(self) -> None:
         """Test that it backfills all models with DocumentIdMixin."""
         # Create instances
         instances = [DummyPublicIdModelFactory() for _ in range(3)]
@@ -157,7 +159,7 @@ class TestBackfillAllModels:
         # Should create at least the mappings for our test instances
         assert total_created >= len(instances)
 
-    def test_apps_filter_limits_to_specific_apps(self):
+    def test_apps_filter_limits_to_specific_apps(self) -> None:
         """Test that apps_filter parameter limits backfill to specific apps."""
         # Create test instances
         instances = [DummyPublicIdModelFactory() for _ in range(2)]
@@ -176,7 +178,7 @@ class TestBackfillAllModels:
         # Should have created mappings for testapp models
         assert total_created >= len(instances)
 
-    def test_dry_run_returns_count_without_creating(self):
+    def test_dry_run_returns_count_without_creating(self) -> None:
         """Test dry_run mode doesn't create mappings."""
         instances = [DummyPublicIdModelFactory() for _ in range(2)]
 
@@ -201,13 +203,13 @@ class TestBackfillAllModels:
 @pytest.mark.django_db
 class TestBackfillSingleInstance:
     @pytest.fixture
-    def dummy_instance(self):
+    def dummy_instance(self) -> DummyPublicIdModel:
         """Create a dummy instance without mapping."""
         instance = DummyPublicIdModelFactory()
         DocumentId.objects.filter(object_id=instance.pk).delete()
         return instance
 
-    def test_creates_document_id_for_single_instance(self, dummy_instance):
+    def test_creates_document_id_for_single_instance(self, dummy_instance) -> None:
         """Test that it creates document ID for a specific instance."""
         success = backfill_single_instance(
             app_label="testapp",
@@ -224,7 +226,7 @@ class TestBackfillSingleInstance:
             content_type__model="dummypublicidmodel",
         ).exists()
 
-    def test_dry_run_does_not_create_document_id(self, dummy_instance):
+    def test_dry_run_does_not_create_document_id(self, dummy_instance) -> None:
         """Test dry_run mode for single instance."""
         success = backfill_single_instance(
             app_label="testapp",
@@ -238,7 +240,7 @@ class TestBackfillSingleInstance:
         # No document ID should be created
         assert not DocumentId.objects.filter(object_id=dummy_instance.pk).exists()
 
-    def test_returns_false_for_nonexistent_instance(self):
+    def test_returns_false_for_nonexistent_instance(self) -> None:
         """Test that it returns False for instance that doesn't exist."""
         success = backfill_single_instance(
             app_label="testapp",
@@ -249,7 +251,7 @@ class TestBackfillSingleInstance:
 
         assert success is False
 
-    def test_returns_false_for_existing_mapping(self, dummy_instance):
+    def test_returns_false_for_existing_mapping(self, dummy_instance) -> None:
         """Test that it returns False if mapping already exists."""
         # Create mapping first
         ct = ContentType.objects.get_for_model(dummy_instance.__class__)
@@ -264,7 +266,7 @@ class TestBackfillSingleInstance:
 
         assert success is False
 
-    def test_returns_false_for_invalid_model(self):
+    def test_returns_false_for_invalid_model(self) -> None:
         """Test that it returns False for invalid model name."""
         success = backfill_single_instance(
             app_label="testapp",
@@ -275,7 +277,7 @@ class TestBackfillSingleInstance:
 
         assert success is False
 
-    def test_returns_false_for_model_without_document_id_mixin(self):
+    def test_returns_false_for_model_without_document_id_mixin(self) -> None:
         """Test that it returns False for models that don't have DocumentIdMixin."""
         success = backfill_single_instance(
             app_label="contenttypes",
@@ -286,7 +288,7 @@ class TestBackfillSingleInstance:
 
         assert success is False
 
-    def test_handles_invalid_pk_format(self, dummy_instance):
+    def test_handles_invalid_pk_format(self, dummy_instance) -> None:
         """Test that it handles invalid PK format gracefully."""
         success = backfill_single_instance(
             app_label="testapp",
@@ -296,3 +298,37 @@ class TestBackfillSingleInstance:
         )
 
         assert success is False
+
+    def test_handles_document_id_create_failure(self, dummy_instance) -> None:
+        """Test that DocumentId creation failure is handled gracefully."""
+        with patch.object(DocumentId.objects, "create", side_effect=Exception("DB write error")):
+            success = backfill_single_instance(
+                app_label="testapp",
+                model_name="DummyPublicIdModel",
+                pk=dummy_instance.pk,
+                dry_run=False,
+            )
+
+        assert success is False
+
+
+@pytest.mark.django_db
+class TestBackfillModelExceptionPaths:
+    @pytest.fixture
+    def dummy_instances(self) -> list[DummyPublicIdModel]:
+        DocumentId.objects.all().delete()
+        instances = [DummyPublicIdModelFactory() for _ in range(3)]
+        DocumentId.objects.filter(object_id__in=[i.pk for i in instances]).delete()
+        return instances
+
+    def test_handles_bulk_create_failure(self, dummy_instances) -> None:
+        """Test that bulk_create failures are handled gracefully (lines 143-148)."""
+        with patch.object(DocumentId.objects, "bulk_create", side_effect=Exception("DB error")):
+            created_count = backfill_model_document_ids(
+                model=DummyPublicIdModel,
+                DocumentId=DocumentId,
+                batch_size=10,
+                dry_run=False,
+            )
+
+        assert created_count == 0

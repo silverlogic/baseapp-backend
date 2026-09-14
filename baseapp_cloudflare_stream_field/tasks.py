@@ -7,7 +7,7 @@ stream_client = StreamClient()
 
 
 @shared_task
-def refresh_from_cloudflare(content_type_pk, object_pk, attname, retries=1):
+def refresh_from_cloudflare(content_type_pk, object_pk, attname, retries=1) -> None:
     from django.contrib.contenttypes.models import ContentType
 
     content_type = ContentType.objects.get(pk=content_type_pk)
@@ -60,7 +60,7 @@ def refresh_from_cloudflare(content_type_pk, object_pk, attname, retries=1):
 
 
 @shared_task
-def generate_download_url(content_type_pk, object_pk, attname, retries=1):
+def generate_download_url(content_type_pk, object_pk, attname, retries=1) -> None:
     from django.contrib.contenttypes.models import ContentType
 
     content_type = ContentType.objects.get(pk=content_type_pk)
@@ -92,7 +92,7 @@ def generate_download_url(content_type_pk, object_pk, attname, retries=1):
 
 
 @shared_task
-def clip_video(content_type_pk, object_pk, attname, retries=1):
+def clip_video(content_type_pk, object_pk, attname, retries=1) -> None:
     from django.contrib.contenttypes.models import ContentType
 
     content_type = ContentType.objects.get(pk=content_type_pk)
@@ -120,7 +120,7 @@ def clip_video(content_type_pk, object_pk, attname, retries=1):
 
 
 @shared_task
-def delete_original_trimmed_video(old_video_uid, new_video_uid, retries=1):
+def delete_original_trimmed_video(old_video_uid, new_video_uid, retries=1) -> None:
     new_video = stream_client.get_video_data(new_video_uid)
 
     if new_video["status"]["state"] == "ready":

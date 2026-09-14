@@ -16,7 +16,7 @@ private_field_perms = [
 
 
 class UsersPermissionsBackend(BaseBackend):
-    def has_perm(self, user_obj, perm, obj=None):
+    def has_perm(self, user_obj, perm, obj=None) -> bool | None:
         if perm == f"{User._meta.app_label}.view_user":
             # every body can view all users
             # TO DO: maybe check if user is_active

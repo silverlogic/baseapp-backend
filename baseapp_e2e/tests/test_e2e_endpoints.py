@@ -1,15 +1,17 @@
 import json
+from typing import Any
 
 import pytest
 import swapper
-import tests.helpers as h
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.core.serializers import serialize
 from django.test import TransactionTestCase, override_settings
-from tests.mixins import ApiMixin
 
 from baseapp_core.tests.factories import UserFactory
+
+from . import helpers as h
+from .mixins import ApiMixin
 
 User = get_user_model()
 Profile = swapper.load_model("baseapp_profiles", "Profile")
@@ -26,7 +28,7 @@ class TestBaseE2E(ApiMixin):
     @override_settings(
         E2E={"ENABLED": False}, REST_FRAMEWORK={"DEFAULT_AUTHENTICATION_CLASSES": []}
     )
-    def test_e2e_disabled(self, client):
+    def test_e2e_disabled(self, client) -> None:
         if not self.endpoint_url:
             pytest.skip("No endpoint_url defined")
         else:
@@ -39,17 +41,20 @@ class TestLoadData(TestBaseE2E):
     endpoint_url = "/e2e/load-data"
 
     @pytest.fixture
-    def data(self):
+    def data(self) -> dict[str, Any]:
         UserFactory.create_batch(10)
         data = json.loads(serialize("json", User.objects.all()))
         Profile.objects.all().delete()
         User.objects.all().delete()
+        # Clear stale profile references so the DB trigger recreates profiles on load
+        for obj in data:
+            obj["fields"]["profile"] = None
         return {
             "objects": data,
         }
 
     @override_settings(REST_FRAMEWORK={"DEFAULT_AUTHENTICATION_CLASSES": []})
-    def test_load_data(self, data, client):
+    def test_load_data(self, data, client) -> None:
         assert User.objects.count() == 0
         r = client.post(self.endpoint_url, data=json.dumps(data), content_type="application/json")
         h.responseOk(r)
@@ -61,7 +66,7 @@ class TestFlushData(TestBaseE2E):
     endpoint_url = "/e2e/flush-data"
 
     @override_settings(REST_FRAMEWORK={"DEFAULT_AUTHENTICATION_CLASSES": []})
-    def test_flush_data(self, client):
+    def test_flush_data(self, client) -> None:
         objects = UserFactory.create_batch(10)
         assert User.objects.count() == len(objects)
         client.post(self.endpoint_url)
@@ -72,7 +77,7 @@ class TestLoadScript(TestBaseE2E):
     endpoint_url = "/e2e/load-script"
 
     @override_settings(REST_FRAMEWORK={"DEFAULT_AUTHENTICATION_CLASSES": []})
-    def test_load_script(self, client, monkeypatch):
+    def test_load_script(self, client, monkeypatch) -> None:
         scripts = ["hello", "world"]
         expected_hello_user_count = 5
         expected_world_user_count = 10

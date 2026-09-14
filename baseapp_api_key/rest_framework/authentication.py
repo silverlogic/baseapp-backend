@@ -7,6 +7,9 @@ from rest_framework.authentication import BaseAuthentication
 
 from baseapp_api_key.models import APIKey, BaseAPIKey
 
+if typing.TYPE_CHECKING:
+    from django.contrib.auth.models import AbstractBaseUser
+
 
 class BaseAPIKeyAuthentication(BaseAuthentication):
     """
@@ -15,7 +18,7 @@ class BaseAPIKeyAuthentication(BaseAuthentication):
 
     APIKeyModel: typing.Type[BaseAPIKey]
 
-    def authenticate(self, request):
+    def authenticate(self, request) -> "tuple[AbstractBaseUser, None] | None":
         """
         Authenticate the request and return a two-tuple of (user, token).
         """
@@ -43,7 +46,7 @@ class BaseAPIKeyAuthentication(BaseAuthentication):
 
         return None
 
-    def authenticate_header(self, request):
+    def authenticate_header(self, request) -> str:
         return settings.BA_API_KEY_REQUEST_HEADER
 
 

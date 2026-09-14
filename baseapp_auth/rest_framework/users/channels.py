@@ -2,7 +2,7 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 
 class UsersConsumer(AsyncJsonWebsocketConsumer):
-    async def connect(self):
+    async def connect(self) -> None:
         if "user" in self.scope:
             user_id = self.scope["user"].id
             self.group_name = f"user-{user_id}-notifications"
@@ -12,6 +12,6 @@ class UsersConsumer(AsyncJsonWebsocketConsumer):
         else:
             await self.close()
 
-    async def disconnect(self, close_code):
+    async def disconnect(self, close_code) -> None:
         if hasattr(self, "group_name"):
             await self.channel_layer.group_discard(self.group_name, self.channel_name)

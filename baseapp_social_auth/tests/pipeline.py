@@ -1,5 +1,6 @@
 import re
 from io import BytesIO
+from typing import Any, Dict, Optional
 
 import requests
 import swapper
@@ -18,7 +19,14 @@ class EmailNotProvidedError(Exception):
     pass
 
 
-def get_username(strategy, details, response, user=None, *args, **kwargs):
+def get_username(
+    strategy: Any,
+    details: Dict[str, Any],
+    response: Any,
+    user: Optional[Any] = None,
+    *args: Any,
+    **kwargs: Any,
+) -> Dict[str, str]:  # NOSONAR - response is required by python-social-auth pipeline interface
     storage = strategy.storage
 
     if not user:
@@ -36,7 +44,7 @@ def get_username(strategy, details, response, user=None, *args, **kwargs):
     return {"username": username}
 
 
-def set_avatar(is_new, backend, user, response, *args, **kwargs):
+def set_avatar(is_new, backend, user, response, *args, **kwargs) -> None:
     if not is_new:
         return
 
@@ -68,15 +76,16 @@ def set_avatar(is_new, backend, user, response, *args, **kwargs):
         response = requests.get(image_url, params=image_params)
         image = BytesIO(response.content)
         user.refresh_from_db()
-        user.profile.image = ImageFile(image, name="pic.jpg")
-        user.profile.save(update_fields=["image"])
+        if profile := getattr(user, "profile", None):
+            profile.image = ImageFile(image, name="pic.jpg")
+            profile.save(update_fields=["image"])
 
 
-def set_is_new(is_new, user, *args, **kwargs):
+def set_is_new(is_new, user, *args, **kwargs) -> None:
     user.is_new = is_new
 
 
-def link_user_to_referrer(is_new, strategy, user, *args, **kwargs):
+def link_user_to_referrer(is_new, strategy, user, *args, **kwargs) -> None:
     if not is_new:
         return
 

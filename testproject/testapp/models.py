@@ -2,7 +2,11 @@ from django.db import models
 
 from baseapp_cloudflare_stream_field import CloudflareStreamField
 from baseapp_core.hashids.models import LegacyWithPkMixin
-from baseapp_core.models import DocumentIdMixin
+from baseapp_core.models import (
+    DocumentIdMixin,
+    DocumentIdTargetMixin,
+    DocumentIdUniqueTargetMixin,
+)
 
 
 # This model is only used for CloudflareStreamField tests.
@@ -25,3 +29,13 @@ class DummyLegacyWithPkModel(LegacyWithPkMixin, models.Model):
 
 class DummyLegacyModel(models.Model):
     name = models.CharField(max_length=100)
+
+
+# Used for testing baseapp_core.models.DocumentIdUniqueTargetMixin.
+class DummyUniqueDocumentTarget(DocumentIdUniqueTargetMixin, models.Model):
+    counter = models.PositiveIntegerField(default=0)
+
+
+# Used for testing baseapp_core.models.DocumentIdTargetMixin.
+class DummyDocumentTarget(DocumentIdTargetMixin, models.Model):
+    label = models.CharField(max_length=100, blank=True)

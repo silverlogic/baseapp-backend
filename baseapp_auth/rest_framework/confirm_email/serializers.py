@@ -1,13 +1,18 @@
+from typing import TYPE_CHECKING
+
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from baseapp_auth.tokens import ConfirmEmailTokenGenerator
 
+if TYPE_CHECKING:
+    from django.contrib.auth.models import AbstractBaseUser
+
 
 class ConfirmEmailSerializer(serializers.Serializer):
     token = serializers.CharField()
 
-    def validate_token(self, token):
+    def validate_token(self, token) -> str:
         try:
             if not ConfirmEmailTokenGenerator().check_token(self.instance, token):
                 raise serializers.ValidationError(_("Invalid token."))
@@ -15,7 +20,7 @@ class ConfirmEmailSerializer(serializers.Serializer):
         except ValueError:
             raise serializers.ValidationError(_("Invalid token."))
 
-    def update(self, instance, validated_data):
+    def update(self, instance, validated_data) -> "AbstractBaseUser":
         instance.is_email_verified = True
         instance.save()
         return instance

@@ -1,0 +1,30 @@
+id: django-use-timezone-now
+snapshots:
+  ? |
+    created_at = datetime.datetime.now()
+  : labels:
+    - source: datetime.datetime.now()
+      style: primary
+      start: 13
+      end: 36
+  ? |
+    created_at = datetime.now()
+  : labels:
+    - source: datetime.now()
+      style: primary
+      start: 13
+      end: 27
+  ? |
+    created_at = datetime.utcnow()
+  : labels:
+    - source: datetime.utcnow()
+      style: primary
+      start: 13
+      end: 30
+  ? |
+    today = date.today()
+  : labels:
+    - source: date.today()
+      style: primary
+      start: 8
+      end: 20

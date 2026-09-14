@@ -1,7 +1,7 @@
 from urllib.parse import urlparse
 
 from django.conf import settings
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 from wagtail.admin.panels import FieldPanel
 from wagtail.api import APIField
 from wagtail.models import Page, PageBase
@@ -16,7 +16,7 @@ from .stream_fields import (
 
 
 class HeadlessPageBase(PageBase):
-    def __init__(cls, *args, **kwargs):
+    def __init__(cls, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         # Guarantee that the jinja2 template will be empty.
         cls.template = "pages/empty.html"
@@ -24,7 +24,7 @@ class HeadlessPageBase(PageBase):
 
 class HeadlessPageMixin(HeadlessPreviewMixin):
     @property
-    def headless_url(self, request=None, current_site=None):
+    def headless_url(self, request=None, current_site=None) -> str | None:
         url = self.get_url(request, current_site)
         if (root_url := settings.FRONT_HEADLESS_URL) and url and self._has_no_domain(url):
             return root_url + url

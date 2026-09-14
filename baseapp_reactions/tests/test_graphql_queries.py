@@ -26,7 +26,7 @@ VIEW_QUERY = """
 """
 
 
-def test_user_can_see_reactions(django_user_client, graphql_user_client):
+def test_user_can_see_reactions(django_user_client, graphql_user_client) -> None:
     comment = CommentFactory(user=django_user_client.user)
     ReactionFactory(target=comment)
     response = graphql_user_client(VIEW_QUERY, variables={"id": comment.relay_id})

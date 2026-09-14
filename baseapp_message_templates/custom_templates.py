@@ -7,16 +7,16 @@ from django.template import Context, Template
 from django.template.loader import render_to_string
 
 
-def _get_text_from_html(html):
+def _get_text_from_html(html) -> str:
     soup = BeautifulSoup(html.replace("<br/>", "\n"), features="lxml")
     return soup.get_text().strip()
 
 
-def _clean_extra_white_space(copy):
+def _clean_extra_white_space(copy) -> str:
     return str(re.sub(" +", " ", copy)).strip()
 
 
-def _produce(content, context):
+def _produce(content, context) -> str:
     render_template = Template(content)
     return _clean_extra_white_space(render_template.render(context))
 
@@ -25,7 +25,7 @@ def _wrap_in_base_template(
     html,
     plain_text,
     extended_with,
-):
+) -> tuple[str, str]:
     attributes = deepcopy(nh3.ALLOWED_ATTRIBUTES)
     tags = deepcopy(nh3.ALLOWED_TAGS)
     # add "class" attribute to all allowed tags
@@ -64,7 +64,7 @@ def get_full_copy_template(
     context={},
     use_base_template=False,
     extended_with="",
-):
+) -> tuple[str, str, str]:
     # if custom plain text hasn't been provided, we create it automatically from the HTML
     plain_text = (
         copy_template.plain_text_content
@@ -95,6 +95,6 @@ def get_full_copy_template(
 def get_sms_template_message(
     copy_template,
     context={},
-):
+) -> str:
     message = _produce(copy_template.message, Context(context))
     return message

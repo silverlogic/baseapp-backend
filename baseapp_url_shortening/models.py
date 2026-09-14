@@ -10,13 +10,13 @@ class ShortUrl(TimeStampedModel):
 
     @property
     def short_url_path(self) -> str:
-        return reverse("v1:short_url_redirect_full_url", kwargs=dict(short_code=self.short_code))
+        return reverse("v1:short_url_redirect_full_url", kwargs={"short_code": self.short_code})
 
     @property
     def public_short_url(self) -> str:
         return self.short_url_path.replace("/v1/", "/")
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs) -> None:
         creating = not self.pk
         super().save(*args, **kwargs)
         if creating:

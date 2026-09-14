@@ -1,4 +1,5 @@
 import logging
+from typing import Any, NoReturn
 
 import swapper
 
@@ -9,7 +10,7 @@ profile_app_label = Profile._meta.app_label
 
 
 class CurrentProfileMiddleware(object):
-    def on_error(self, error):
+    def on_error(self, error) -> NoReturn:
         # need to raise error again to get access to traceback
         try:
             raise error
@@ -17,7 +18,7 @@ class CurrentProfileMiddleware(object):
             logging.exception(error)
             raise error
 
-    def resolve(self, next, root, info, **args):
+    def resolve(self, next, root, info, **args) -> Any:
         current_profile_header = info.context.headers.get("Current-Profile")
 
         if not info.context.user.is_authenticated:

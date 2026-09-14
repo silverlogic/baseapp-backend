@@ -7,7 +7,7 @@ from .models import SocialAuthAccessTokenCache
 
 
 @shared_task
-def clean_up_social_auth_cache():
+def clean_up_social_auth_cache() -> None:
     SocialAuthAccessTokenCache.objects.filter(
         created__lte=timezone.now() - timedelta(hours=1)
     ).delete()

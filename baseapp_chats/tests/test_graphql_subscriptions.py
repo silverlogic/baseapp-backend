@@ -18,7 +18,7 @@ pytestmark = pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 async def test_user_recieves_news_message_subscription_event___2(
     django_user_client, graphql_ws_user_client
-):
+) -> None:
     room = await database_sync_to_async(ChatRoomFactory)(created_by=django_user_client.user)
     await database_sync_to_async(ChatRoomParticipantFactory)(
         profile=django_user_client.user.profile, room=room
@@ -39,8 +39,7 @@ async def test_user_recieves_news_message_subscription_event___2(
     sub_id = await client.send(
         msg_type="subscribe",
         payload={
-            "query": textwrap.dedent(
-                """
+            "query": textwrap.dedent("""
                 subscription op_name($roomId: ID!, $profileId: ID!) {
                   chatRoomOnMessage(roomId: $roomId, profileId: $profileId) {
                     message {
@@ -51,8 +50,7 @@ async def test_user_recieves_news_message_subscription_event___2(
                     }
                   }
                 }
-                """
-            ),
+                """),
             "variables": {
                 "roomId": room_relay_id,
                 "profileId": client_profile_id,
@@ -80,9 +78,67 @@ async def test_user_recieves_news_message_subscription_event___2(
 
 
 @pytest.mark.asyncio
+async def test_sender_does_not_receive_own_message_on_subscription(
+    django_user_client, graphql_ws_user_client
+) -> None:
+    """The author of a message must not get it echoed back over their own subscription."""
+    room = await database_sync_to_async(ChatRoomFactory)(created_by=django_user_client.user)
+    await database_sync_to_async(ChatRoomParticipantFactory)(
+        profile=django_user_client.user.profile, room=room
+    )
+
+    client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
+
+    room_relay_id = await database_sync_to_async(lambda: room.relay_id)()
+    client_profile_id = await database_sync_to_async(
+        lambda: django_user_client.user.profile.relay_id
+    )()
+
+    await client.send(
+        msg_type="subscribe",
+        payload={
+            "query": textwrap.dedent("""
+                subscription op_name($roomId: ID!, $profileId: ID!) {
+                  chatRoomOnMessage(roomId: $roomId, profileId: $profileId) {
+                    message {
+                      node {
+                        id
+                        content
+                      }
+                    }
+                  }
+                }
+                """),
+            "variables": {
+                "roomId": room_relay_id,
+                "profileId": client_profile_id,
+            },
+            "operationName": "op_name",
+        },
+    )
+
+    await client.assert_no_messages()
+
+    # Message authored by the same profile that is subscribed.
+    await database_sync_to_async(send_message)(
+        profile=django_user_client.user.profile,
+        content="Hi!",
+        room=room,
+        user=django_user_client.user,
+        verb=Verbs.SENT_MESSAGE,
+    )
+
+    # The sender relies on the mutation response (+ Relay connections) to render
+    # their own message, so the subscription must stay silent for them.
+    await client.assert_no_messages()
+
+    await client.finalize()
+
+
+@pytest.mark.asyncio
 async def test_build_absolute_uri_on_graphql_subscription(
     django_user_client, graphql_ws_user_client, image_djangofile
-):
+) -> None:
     room = await database_sync_to_async(ChatRoomFactory)(created_by=django_user_client.user)
     await database_sync_to_async(ChatRoomParticipantFactory)(
         profile=django_user_client.user.profile, room=room
@@ -106,8 +162,7 @@ async def test_build_absolute_uri_on_graphql_subscription(
     sub_id = await client.send(
         msg_type="subscribe",
         payload={
-            "query": textwrap.dedent(
-                """
+            "query": textwrap.dedent("""
                 subscription op_name($roomId: ID!, $profileId: ID!) {
                   chatRoomOnMessage(roomId: $roomId, profileId: $profileId) {
                     message {
@@ -121,8 +176,7 @@ async def test_build_absolute_uri_on_graphql_subscription(
                     }
                   }
                 }
-                """
-            ),
+                """),
             "variables": {
                 "roomId": room_relay_id,
                 "profileId": client_profile_id,
@@ -153,7 +207,9 @@ async def test_build_absolute_uri_on_graphql_subscription(
 
 
 @pytest.mark.asyncio
-async def test_user_recieves_message_count_update(django_user_client, graphql_ws_user_client):
+async def test_user_recieves_message_count_update(
+    django_user_client, graphql_ws_user_client
+) -> None:
     room = await database_sync_to_async(ChatRoomFactory)(created_by=django_user_client.user)
     await database_sync_to_async(ChatRoomParticipantFactory)(
         profile=django_user_client.user.profile, room=room
@@ -173,8 +229,7 @@ async def test_user_recieves_message_count_update(django_user_client, graphql_ws
     sub_id = await client.send(
         msg_type="subscribe",
         payload={
-            "query": textwrap.dedent(
-                """
+            "query": textwrap.dedent("""
                 subscription op_name($profileId: ID!) {
                   chatRoomOnMessagesCountUpdate(profileId: $profileId) {
                     profile {
@@ -184,8 +239,7 @@ async def test_user_recieves_message_count_update(django_user_client, graphql_ws
                     }
                   }
                 }
-                """
-            ),
+                """),
             "variables": {"profileId": client_profile_id},
             "operationName": "op_name",
         },
@@ -212,7 +266,7 @@ async def test_user_recieves_message_count_update(django_user_client, graphql_ws
 
 
 @pytest.mark.asyncio
-async def test_current_profile_ws_context(django_user_client, graphql_ws_user_client):
+async def test_current_profile_ws_context(django_user_client, graphql_ws_user_client) -> None:
     room = await database_sync_to_async(ChatRoomFactory)(created_by=django_user_client.user)
     await database_sync_to_async(ChatRoomParticipantFactory)(
         profile=django_user_client.user.profile, room=room
@@ -233,8 +287,7 @@ async def test_current_profile_ws_context(django_user_client, graphql_ws_user_cl
     sub_id = await client.send(
         msg_type="subscribe",
         payload={
-            "query": textwrap.dedent(
-                """
+            "query": textwrap.dedent("""
                 subscription op_name($profileId: ID!) {
                   chatRoomOnMessagesCountUpdate(profileId: $profileId) {
                     profile {
@@ -255,8 +308,7 @@ async def test_current_profile_ws_context(django_user_client, graphql_ws_user_cl
                     }
                   }
                 }
-                """
-            ),
+                """),
             "variables": {"profileId": client_profile_id},
             "operationName": "op_name",
         },

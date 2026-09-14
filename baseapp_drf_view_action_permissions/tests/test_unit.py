@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from django.contrib.auth.models import Permission
 
@@ -7,7 +9,7 @@ pytestmark = pytest.mark.django_db
 
 
 class TestUserPermissions:
-    def test_get_permissions_directly_assigned_to_role(self):
+    def test_get_permissions_directly_assigned_to_role(self) -> None:
         permission_1 = Permission.objects.filter(codename="list_tests").first()
         permission_2 = Permission.objects.filter(codename="test_disable").first()
         permissions = [permission_1, permission_2]
@@ -18,7 +20,7 @@ class TestUserPermissions:
             [f"{p.content_type.app_label}.{p.codename}" for p in permissions]
         )
 
-    def test_get_permissions_from_permission_groups_in_role(self):
+    def test_get_permissions_from_permission_groups_in_role(self) -> None:
         permission_1 = Permission.objects.filter(codename="list_tests").first()
         permission_2 = Permission.objects.filter(codename="test_disable").first()
         role = f.RoleFactory(
@@ -36,7 +38,7 @@ class TestUserPermissions:
             ]
         )
 
-    def test_get_permissions_from_permission_groups_directly_assigned_to_user(self):
+    def test_get_permissions_from_permission_groups_directly_assigned_to_user(self) -> None:
         permission_1 = Permission.objects.filter(codename="list_tests").first()
         permission_2 = Permission.objects.filter(codename="test_disable").first()
         permission_groups = [
@@ -52,7 +54,7 @@ class TestUserPermissions:
             ]
         )
 
-    def test_exclude_permissions_for_role(self):
+    def test_exclude_permissions_for_role(self) -> None:
         permission_1 = Permission.objects.filter(codename="list_tests").first()
         permission_2 = Permission.objects.filter(codename="test_disable").first()
         role = f.RoleFactory(
@@ -66,7 +68,7 @@ class TestUserPermissions:
             [f"{permission_2.content_type.app_label}.{permission_2.codename}"]
         )
 
-    def test_user_has_perms(self):
+    def test_user_has_perms(self) -> None:
         permission_1 = Permission.objects.filter(codename="list_tests").first()
         permission_2 = Permission.objects.filter(codename="test_disable").first()
         permissions = [permission_1, permission_2]
@@ -81,7 +83,7 @@ class TestUserPermissions:
             ]
         )
 
-    def test_user_has_perms_override_for_super_user(self):
+    def test_user_has_perms_override_for_super_user(self) -> None:
         user = f.UserFactory(is_superuser=True)
         assert user.has_perm("baseapp_drf_view_action_permissions_tests.list_tests")
         assert user.has_perms(
@@ -90,3 +92,14 @@ class TestUserPermissions:
                 "baseapp_drf_view_action_permissions_tests.test_disable",
             ]
         )
+
+    def test_get_permission_list_returns_empty_set_on_exception(self) -> None:
+        role = f.RoleFactory()
+        with patch(
+            "baseapp_drf_view_action_permissions.models.Role.groups",
+            new_callable=lambda: property(
+                lambda self: (_ for _ in ()).throw(Exception("db error"))
+            ),
+        ):
+            result = role.get_permission_list()
+        assert result == set()

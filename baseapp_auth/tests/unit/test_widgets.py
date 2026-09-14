@@ -10,7 +10,7 @@ from baseapp_auth.utils.app_and_model_verbose_names import (
 
 
 @pytest.mark.django_db
-def test_get_app_and_model_verbose_names_returns_verbose_names():
+def test_get_app_and_model_verbose_names_returns_verbose_names() -> None:
     ct = ContentType.objects.get_for_model(Group)
 
     app_verbose, model_verbose = get_app_and_model_verbose_names(ct)
@@ -20,7 +20,7 @@ def test_get_app_and_model_verbose_names_returns_verbose_names():
 
 
 @pytest.mark.django_db
-def test_get_app_and_model_verbose_names_fallback_for_missing_model():
+def test_get_app_and_model_verbose_names_fallback_for_missing_model() -> None:
     ct = ContentType.objects.get_for_model(Group)
 
     # Simulate missing model lookup
@@ -33,7 +33,7 @@ def test_get_app_and_model_verbose_names_fallback_for_missing_model():
 
 
 @pytest.mark.django_db
-def test_widget_groups_permissions_by_app_and_model(permission_factory):
+def test_widget_groups_permissions_by_app_and_model(permission_factory) -> None:
     permission_factory(Group, "custom_perm_1", "Can do thing A")
     permission_factory(Group, "custom_perm_2", "Can do thing B")
 
@@ -56,7 +56,7 @@ def test_widget_groups_permissions_by_app_and_model(permission_factory):
 
 @pytest.mark.django_db
 @override_settings(PERMISSIONS_HIDE_APPS={"auth"})
-def test_widget_hides_apps(permission_factory):
+def test_widget_hides_apps(permission_factory) -> None:
     perm = permission_factory(
         Group,
         "hidden_perm",
@@ -90,7 +90,7 @@ def test_widget_hides_apps(permission_factory):
 
 @pytest.mark.django_db
 @override_settings(PERMISSIONS_HIDE_MODELS={"auth.group"})
-def test_widget_hides_specific_models(permission_factory):
+def test_widget_hides_specific_models(permission_factory) -> None:
     permission_factory(Group, "hidden_perm", "Hidden permission")
 
     field = GroupedPermissionField()

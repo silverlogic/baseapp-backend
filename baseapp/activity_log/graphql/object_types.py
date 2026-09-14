@@ -1,7 +1,11 @@
+from datetime import datetime
+from typing import Any, Optional
+
 import graphene
 import swapper
 from django.apps import apps
 from django.contrib.auth import get_user_model
+from django.db.models import Model, QuerySet
 from graphene.types.generic import GenericScalar
 from graphene_django.filter import DjangoFilterConnectionField
 from pghistory.models import MiddlewareEvents
@@ -14,7 +18,6 @@ from ..models import ActivityLog, VisibilityTypes
 from .filters import ActivityLogFilter, MiddlewareEventFilter
 
 User = get_user_model()
-Profile = swapper.load_model("baseapp_profiles", "Profile")
 VisibilityTypesEnum = graphene.Enum.from_enum(VisibilityTypes)
 
 
@@ -40,40 +43,59 @@ class NodeLogEventObjectType(DjangoObjectType):
         )
         filterset_class = MiddlewareEventFilter
 
-    def resolve_data(self, info, **kwargs):
+    def resolve_data(self, info, **kwargs) -> dict[str, Any] | None:
         if info.context.user.has_perm("activity_log.view_nodelogevent-data", self):
             return self.pgh_data
 
-    def resolve_obj(self, info, **kwargs):
+    def resolve_obj(self, info, **kwargs) -> Model | None:
         Model = apps.get_model(self.pgh_obj_model)
         try:
             return Model.objects.get(pk=self.pgh_obj_id)
         except Model.DoesNotExist:
             return None
 
-    def resolve_created_at(self, info, **kwargs):
+    def resolve_created_at(self, info, **kwargs) -> datetime:
         return self.pgh_created_at
 
-    def resolve_diff(self, info, **kwargs):
+    def resolve_diff(self, info, **kwargs) -> dict[str, Any] | None:
         if info.context.user.has_perm("activity_log.view_nodelogevent-diff", self):
             return self.pgh_diff
 
-    def resolve_label(self, info, **kwargs):
+    def resolve_label(self, info, **kwargs) -> str:
         return self.pgh_label
+
+
+interfaces = []
+
+if apps.is_installed("baseapp_profiles"):
+    Profile = swapper.load_model("baseapp_profiles", "Profile")
+
+    class ActivityLogWithProfileInterface(graphene.Interface):
+        profile = graphene.Field(get_object_type_for_model(Profile))
+
+        def resolve_profile(self, info, **kwargs) -> Model | None:
+            profile_id = getattr(self, "profile_id", None)
+            if profile_id is not None:
+                try:
+                    return Profile.objects.get(pk=profile_id)
+                except Profile.DoesNotExist:
+                    return None
+            return getattr(self, "profile", None)
+
+    interfaces.append(ActivityLogWithProfileInterface)
 
 
 class BaseActivityLogObjectType:
     metadata = GenericScalar()
     events = DjangoFilterConnectionField(lambda: NodeLogEventObjectType)
     user = graphene.Field(get_object_type_for_model(User))
-    profile = graphene.Field(get_object_type_for_model(Profile))
     visibility = graphene.Field(VisibilityTypesEnum)
     verb = graphene.String()
     ip_address = graphene.String()
     url = graphene.String()
 
     @classmethod
-    def get_node(cls, info, id):
+    def get_node(cls, info, id) -> ActivityLog | None:
         try:
             obj = cls._meta.model.objects.get(id=id)
             if not info.context.user.has_perm("activity_log.view_activitylog", obj):
@@ -84,13 +106,13 @@ class BaseActivityLogObjectType:
             return None
 
     @classmethod
-    def get_queryset(cls, queryset, info):
+    def get_queryset(cls, queryset, info) -> QuerySet:
         if not info.context.user.has_perm("activity_log.list_activitylog_any_visibility"):
             queryset = queryset.filter(visibility=VisibilityTypes.PUBLIC)
         return queryset
 
     class Meta:
-        interfaces = (RelayNode,)
+        interfaces = (RelayNode, *interfaces)
         model = ActivityLog
         fields = (
             "id",
@@ -106,10 +128,10 @@ class BaseActivityLogObjectType:
         )
         filterset_class = ActivityLogFilter
 
-    def resolve_events(self, info, **kwargs):
+    def resolve_events(self, info: graphene.ResolveInfo, **kwargs: Any) -> QuerySet:  # NOSONAR
         return MiddlewareEvents.objects.filter(pgh_context_id=self.pk)
 
-    def resolve_user(self, info, **kwargs):
+    def resolve_user(self, info: graphene.ResolveInfo, **kwargs: Any) -> Optional[User]:  # NOSONAR
         user_id = getattr(self, "user_id", None)
         if user_id is not None:
             try:
@@ -117,15 +139,6 @@ class BaseActivityLogObjectType:
             except User.DoesNotExist:
                 return None
         return getattr(self, "user", None)
-
-    def resolve_profile(self, info, **kwargs):
-        profile_id = getattr(self, "profile_id", None)
-        if profile_id is not None:
-            try:
-                return Profile.objects.get(pk=profile_id)
-            except Profile.DoesNotExist:
-                return None
-        return getattr(self, "profile", None)
 
 
 class ActivityLogObjectType(BaseActivityLogObjectType, DjangoObjectType):

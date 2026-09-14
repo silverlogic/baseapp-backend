@@ -1,10 +1,13 @@
+from collections.abc import Callable
+from typing import Any
+
 import factory
 import swapper
 from django.contrib.contenttypes.models import ContentType
 
 
-def get_content_type(field_name):
-    def _obj_content_type(obj):
+def get_content_type(field_name) -> Callable[[Any], ContentType | None]:
+    def _obj_content_type(obj) -> ContentType | None:
         if not hasattr(obj, field_name):
             return None
         fk_obj = getattr(obj, "target", None)
@@ -14,8 +17,8 @@ def get_content_type(field_name):
     return _obj_content_type
 
 
-def get_obj_pk(field_name):
-    def _obj_id(obj):
+def get_obj_pk(field_name) -> Callable[[Any], Any]:
+    def _obj_id(obj) -> Any:
         if not hasattr(obj, field_name):
             return None
         return getattr(obj, field_name).pk

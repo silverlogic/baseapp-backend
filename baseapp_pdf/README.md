@@ -1,93 +1,80 @@
 # BaseApp PDF Generation
 
-Reusable Django app for PDF generation and rendering. This package leverages google-chrome to print to pdf.
-This means you can render any webpage or any local rendered html files with full css support.
+Reusable Django app for PDF generation and rendering. It drives a headless **Google Chrome** to print to PDF, so you can render any webpage, local HTML file, or Django template with full CSS support.
+
+`baseapp_pdf` follows the [plugin architecture](../baseapp_core/plugins/README.md): it registers itself as a plugin so it participates in `INSTALLED_APPS` aggregation. It's a pure utility package — no models, migrations, URLs, or GraphQL — so there's nothing else to wire.
 
 ## Features
 
 - Render URLs to PDF
 - Render local HTML files to PDF
 - Render Django templates to PDF
-- Command-line utilities for PDF generation
-- Support for custom templates and styling
+- Management commands for PDF generation
 - Example template with invoice-like formatting
 
-## How to install:
+## Requirements
 
-Install in your environment:
+The rendering engine is **Google Chrome** invoked as `google-chrome` (headless). It must be installed and on `PATH` in the environment that runs the rendering (the project's dev/CI images already provide it). When it's missing, the utilities raise `BaseAppBackendPDFChromeNotInstalledException`.
 
-```bash
-pip install baseapp-backend[pdf]
-```
+## How to install
 
-And run provision or manually `pip install -r requirements/base.ext`
+Install the package with `pip install baseapp-backend[pdf]`.
 
 If you want to develop, [install using this other guide](#how-to-develop).
 
+## How to setup
+
+Add `baseapp_pdf` to `INSTALLED_APPS`:
+
+```python
+INSTALLED_APPS = [
+    # ...
+    "baseapp_pdf",
+    # ...
+]
+```
+
 ## How to use
 
-Add `baseapp_pdf` to your project's `INSTALLED_APPS`
+### In your code
 
-### Basic Usage
-
-You can use the provided management commands to generate PDFs:
-
-1. Convert an HTML file to PDF:
-```bash
-python manage.py render_to_pdf --source path/to/your/file.html --destination /path/to/output/dir
-# OR
-python manage.py render_to_pdf --source http://your_url.com --destination /path/to/output/dir
-```
-
-2. Generate a PDF from the example template:
-```bash
-python manage.py render_example_template_to_pdf --destination /path/to/output/dir
-```
-
-### Using in Your Code
-
-You can use the utility functions directly in your code:
+The two helpers in `baseapp_pdf.utils` are **context managers** that yield a `Path` to a temporary PDF; the file (and Chrome's scratch files) are cleaned up on exit, so read the bytes inside the `with` block:
 
 ```python
 from baseapp_pdf.utils import render_to_pdf, render_template_to_pdf
 
-# Convert HTML file to PDF
-with render_to_pdf(source="path/to/file.html") as pdf_file:
-    # pdf_file is a Path object pointing to the generated PDF
+# A local HTML file path or a URL string.
+with render_to_pdf(source="path/to/file.html") as pdf_file:      # or source="https://example.com"
     pdf_bytes = pdf_file.read_bytes()
 
-# Render a template to PDF
-context = {
-    "pdf_title": "My PDF",
-    "pdf_margins": "1cm 1cm",
-    # Add your template context here
-}
-with render_template_to_pdf(source="template-path", context=context) as pdf_file:
+# A Django template name (or a Template object) + context.
+context = {"pdf_title": "My PDF", "pdf_margins": "1cm 1cm"}       # plus your template variables
+with render_template_to_pdf(source="pdfs/my-template.html", context=context) as pdf_file:
     pdf_bytes = pdf_file.read_bytes()
 ```
 
-## Example Template
+Output is validated before being yielded: an empty file, or one whose text contains Chrome render errors (`ERR_FILE_NOT_FOUND` for a missing local file, `DNS_PROBE_FINISHED_NXDOMAIN` for an unresolvable URL), raises `BaseAppBackendPDFRenderToPDFException`. All exceptions derive from `BaseAppBackendPDFException` (`baseapp_pdf.exceptions`).
 
-The app includes an example template that demonstrates how to create PDFs with:
-- Custom headers and footers
-- Tables and formatting
-- Dynamic content
-- Professional invoice-like layout
+### Management commands
 
-You can use this as a starting point for your own templates.
+Render a local HTML file or URL to a PDF written into a destination directory (defaults to the cwd):
+
+```bash
+python manage.py render_to_pdf --source path/to/file.html --destination /path/to/output/dir
+# or
+python manage.py render_to_pdf --source https://example.com --destination /path/to/output/dir
+```
+
+Generate a PDF from the bundled example template:
+
+```bash
+python manage.py render_example_template_to_pdf --destination /path/to/output/dir
+```
+
+## Example template
+
+The package bundles [`templates/pdfs/render-template-to-pdf-example.html`](templates/pdfs/render-template-to-pdf-example.html), an invoice-like layout demonstrating custom headers/footers, tables, and dynamic content. `render_example_template_to_pdf` renders it with sample context — use it as a starting point for your own templates.
 
 ## How to develop
 
-Clone the project inside your project's backend dir:
-
-```bash
-git clone git@github.com:silverlogic/baseapp-backend.git
-```
-
-And manually install the package:
-
-```bash
-pip install -e baseapp-backend/baseapp-pdf
-```
-
-The `-e` flag will make it so any changes you make in the cloned repo files will affect the project.
+General development instructions can be found in the [main README](../README.md#how-to-develop).

@@ -1,4 +1,6 @@
 # TODO Get the router from the settings or something like that
+from typing import Any, Dict, List
+
 from apps.api.v1.router import router as v1_router
 from django.core.management.base import BaseCommand
 
@@ -8,7 +10,7 @@ from baseapp_core.constants import DEFAULT_ACTIONS
 class Command(BaseCommand):
     help = "List routes with extra information"
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser) -> None:
         parser.add_argument(
             "-npc",
             "--no-permission-classes",
@@ -16,7 +18,9 @@ class Command(BaseCommand):
             help="List only routes without permission_classes",
         )
 
-    def get_actions(self, viewset, debug):
+    def get_actions(
+        self, viewset: Any, debug: bool
+    ) -> List[Dict[str, Any]]:  # NOSONAR  # pragma: no cover
         actions = []
         has_empty_permission_classes = False
         default_permissions = [permission.__class__ for permission in viewset().get_permissions()]
@@ -35,7 +39,7 @@ class Command(BaseCommand):
 
         return actions, has_empty_permission_classes
 
-    def handle(self, *args, **kwargs):
+    def handle(self, *args, **kwargs) -> None:
         registry = v1_router.registry
         write_always = not kwargs["no_permission_classes"]
         paths = []

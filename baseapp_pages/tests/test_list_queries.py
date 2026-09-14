@@ -20,7 +20,7 @@ LIST_PAGES = """
 """
 
 
-def test_anon_can_list_pages(graphql_client):
+def test_anon_can_list_pages(graphql_client) -> None:
     page = PageFactory()
 
     response = graphql_client(
@@ -32,7 +32,7 @@ def test_anon_can_list_pages(graphql_client):
     assert content["data"]["allPages"]["edges"][0]["node"]["pk"] == page.pk
 
 
-def test_owner_can_list_unpublished_pages(django_user_client, graphql_user_client):
+def test_owner_can_list_unpublished_pages(django_user_client, graphql_user_client) -> None:
     page = PageFactory(user=django_user_client.user, status=Page.PageStatus.DRAFT)
 
     response = graphql_user_client(
@@ -44,7 +44,7 @@ def test_owner_can_list_unpublished_pages(django_user_client, graphql_user_clien
     assert content["data"]["allPages"]["edges"][0]["node"]["pk"] == page.pk
 
 
-def test_anon_cant_list_unpublished_pages(graphql_client):
+def test_anon_cant_list_unpublished_pages(graphql_client) -> None:
     PageFactory(status=Page.PageStatus.DRAFT)
 
     response = graphql_client(
@@ -56,7 +56,7 @@ def test_anon_cant_list_unpublished_pages(graphql_client):
     assert len(content["data"]["allPages"]["edges"]) == 0
 
 
-def test_another_user_cant_list_unpublished_pages(graphql_user_client):
+def test_another_user_cant_list_unpublished_pages(graphql_user_client) -> None:
     PageFactory(status=Page.PageStatus.DRAFT)
 
     response = graphql_user_client(

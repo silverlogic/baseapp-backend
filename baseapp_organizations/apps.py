@@ -1,9 +1,16 @@
-from django.apps import AppConfig
+from django.utils.translation import gettext_lazy as _
+
+from baseapp_core.plugins import BaseAppConfig, ServicesContributor
 
 
-class PackageConfig(AppConfig):
+class PackageConfig(BaseAppConfig, ServicesContributor):
     default = True
     name = "baseapp_organizations"
     label = "baseapp_organizations"
-    verbose_name = "BaseApp Organizations"
+    verbose_name = _("BaseApp Organizations")
     default_auto_field = "django.db.models.AutoField"
+
+    def register_shared_services(self, registry) -> None:
+        from .services import OrganizationAccountService
+
+        registry.register(OrganizationAccountService())

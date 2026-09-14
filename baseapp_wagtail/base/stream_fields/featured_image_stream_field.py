@@ -6,7 +6,7 @@ from baseapp_wagtail.base.blocks import CustomImageBlock
 
 class FeaturedImageStreamField(StreamField):
     @staticmethod
-    def create(*args, **kwargs):
+    def create(*args, **kwargs) -> "FeaturedImageStreamField":
         kwargs.setdefault("verbose_name", "Featured Image")
         kwargs.setdefault("null", True)
         kwargs.setdefault("blank", True)

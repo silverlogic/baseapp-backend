@@ -1,0 +1,15 @@
+id: drf-filters-in-viewset
+valid:
+  - |
+    class ProductViewSet(viewsets.GenericViewSet):
+        filter_backends = (DjangoFilterBackend,)
+        filterset_class = ProductFilterSet
+invalid:
+  - |
+    queryset = self.get_queryset().filter(name=request.GET.get("name"))
+  - |
+    queryset = self.get_queryset().filter(name=request.GET["name"])
+  - |
+    queryset = self.get_queryset().filter(name=request.query_params.get("name"))
+  - |
+    queryset = self.get_queryset().exclude(status=request.query_params["status"])

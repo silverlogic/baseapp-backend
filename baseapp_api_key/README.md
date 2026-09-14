@@ -2,6 +2,8 @@
 
 Reusable Django app for secure API key authentication and management. This package provides encrypted API key storage with support for both REST Framework and GraphQL authentication.
 
+`baseapp_api_key` follows the [plugin architecture](../baseapp_core/plugins/README.md): it registers itself as a plugin and contributes its settings (`BA_API_KEY_REQUEST_HEADER`, `BA_API_KEY_ENCRYPTION_KEY`) from environment variables via the registry. It ships a ready-to-use concrete `APIKey` model (subclass `BaseAPIKey` for custom variants) — no swapper required. With `baseapp_profiles` installed, the authenticated request's `current_profile` is loaded from the API key.
+
 ## Features
 
 - **Encrypted API Key Storage**: API keys are encrypted using AES-SIV encryption before being stored in the database
@@ -21,8 +23,6 @@ Install in your environment:
 pip install baseapp-backend[api_key]
 ```
 
-And run provision or manually `pip install -r requirements/base.ext`
-
 If you want to develop, [install using this other guide](#how-to-develop).
 
 ## How to use
@@ -38,15 +38,12 @@ INSTALLED_APPS = [
 
 ### Configuration
 
-Add the required settings to your Django settings:
+The plugin already contributes both settings from environment variables, so you normally just provide the env vars rather than editing `settings.py`:
 
-```python
-# Required: Encryption key for API keys (generate using management command)
-BA_API_KEY_ENCRYPTION_KEY = env("BA_API_KEY_ENCRYPTION_KEY")
-
-# Required: HTTP header name for API key authentication
-BA_API_KEY_REQUEST_HEADER = env("BA_API_KEY_REQUEST_HEADER", default="HTTP_API_KEY")
-```
+| Setting | Env var | Default | Purpose |
+|---|---|---|---|
+| `BA_API_KEY_ENCRYPTION_KEY` | `BA_API_KEY_ENCRYPTION_KEY` | `None` | AES-SIV key used to encrypt/decrypt stored API keys (required to authenticate). |
+| `BA_API_KEY_REQUEST_HEADER` | `BA_API_KEY_REQUEST_HEADER` | `HTTP_API_KEY` | The request header (WSGI/`META` name) the API key is read from. |
 
 Generate an encryption key using the management command:
 

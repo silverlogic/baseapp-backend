@@ -1,6 +1,7 @@
 import pytest
 import swapper
 
+from baseapp_core.plugins import shared_services
 from baseapp_profiles.tests.factories import ProfileFactory
 
 from .factories import ReportTypeFactory
@@ -23,7 +24,7 @@ mutation ReportCreate($input: ReportCreateInput!) {
 """
 
 
-def test_anon_cant_report(graphql_client):
+def test_anon_cant_report(graphql_client) -> None:
     other_profile = ProfileFactory()
     report_type = ReportTypeFactory()
 
@@ -42,7 +43,7 @@ def test_anon_cant_report(graphql_client):
     assert Report.objects.count() == 0
 
 
-def test_user_can_report(django_user_client, graphql_user_client):
+def test_user_can_report(django_user_client, graphql_user_client) -> None:
     other_profile = ProfileFactory()
     report_type = ReportTypeFactory()
 
@@ -60,10 +61,11 @@ def test_user_can_report(django_user_client, graphql_user_client):
     assert Report.objects.count() == 1
 
     other_profile.refresh_from_db()
-    assert other_profile.reports_count["total"] == 1
+    metadata_service = shared_services.get("reportable_metadata")
+    assert metadata_service.get_reports_count(other_profile)["total"] == 1
 
 
-def test_user_profile_cant_self_report(django_user_client, graphql_user_client):
+def test_user_profile_cant_self_report(django_user_client, graphql_user_client) -> None:
     profile = django_user_client.user.profile
     report_type = ReportTypeFactory()
 
@@ -81,6 +83,7 @@ def test_user_profile_cant_self_report(django_user_client, graphql_user_client):
     assert Report.objects.count() == 0
 
     profile.refresh_from_db()
-    assert profile.reports_count["total"] == 0
+    metadata_service = shared_services.get("reportable_metadata")
+    assert metadata_service.get_reports_count(profile)["total"] == 0
 
     assert content["errors"][0]["message"] == "You cannot report yourself"

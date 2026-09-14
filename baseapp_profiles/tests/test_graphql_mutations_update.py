@@ -36,8 +36,8 @@ PROFILE_UPDATE_GRAPHQL = """
 """
 
 PROFILE_ROLE_UPDATE_GRAPHQL = """
-mutation ProfileRoleUpdateMutation($input: RoleUpdateInput!) {
-    profileRoleUpdate(input: $input) {
+mutation ProfileUserRoleUpdateMutation($input: ProfileUserRoleUpdateInput!) {
+    profileUserRoleUpdate(input: $input) {
         profileUserRole {
             id
             role
@@ -51,16 +51,8 @@ mutation ProfileRoleUpdateMutation($input: RoleUpdateInput!) {
 }
 """
 
-PROFILE_MEMBER_REMOVE_GRAPHQL = """
-mutation ProfileRemoveMemberMutation($input: ProfileRemoveMemberInput!) {
-    profileRemoveMember(input: $input) {
-        deletedId
-    }
-}
-"""
 
-
-def test_anon_cant_update_profile(graphql_client):
+def test_anon_cant_update_profile(graphql_client) -> None:
     profile = ProfileFactory()
     old_biography = profile.biography
 
@@ -74,7 +66,7 @@ def test_anon_cant_update_profile(graphql_client):
     assert profile.biography == old_biography
 
 
-def test_user_cant_update_any_profile(graphql_user_client):
+def test_user_cant_update_any_profile(graphql_user_client) -> None:
     profile = ProfileFactory()
     old_biography = profile.biography
 
@@ -88,7 +80,7 @@ def test_user_cant_update_any_profile(graphql_user_client):
     assert profile.biography == old_biography
 
 
-def test_owner_can_update_profile(django_user_client, graphql_user_client):
+def test_owner_can_update_profile(django_user_client, graphql_user_client) -> None:
     profile = ProfileFactory(owner=django_user_client.user)
     new_biography = "my edited profile"
 
@@ -102,7 +94,7 @@ def test_owner_can_update_profile(django_user_client, graphql_user_client):
     assert profile.biography == new_biography
 
 
-def test_owner_can_update_profile_url_path(django_user_client, graphql_user_client):
+def test_owner_can_update_profile_url_path(django_user_client, graphql_user_client) -> None:
     profile = ProfileFactory(owner=django_user_client.user)
     graphql_user_client(
         PROFILE_UPDATE_GRAPHQL,
@@ -111,7 +103,9 @@ def test_owner_can_update_profile_url_path(django_user_client, graphql_user_clie
     assert profile.url_paths.all().count() == 1
 
 
-def test_owner_can_update_profile_url_path_already_in_use(django_user_client, graphql_user_client):
+def test_owner_can_update_profile_url_path_already_in_use(
+    django_user_client, graphql_user_client
+) -> None:
     url_path = "existingpath"
     URLPathFactory(path=f"/{url_path}")
     profile = ProfileFactory(owner=django_user_client.user)
@@ -127,7 +121,9 @@ def test_owner_can_update_profile_url_path_already_in_use(django_user_client, gr
     )
 
 
-def test_owner_can_update_profile_image(django_user_client, graphql_user_client, image_djangofile):
+def test_owner_can_update_profile_image(
+    django_user_client, graphql_user_client, image_djangofile
+) -> None:
     profile = ProfileFactory(owner=django_user_client.user)
     response = graphql_user_client(
         PROFILE_UPDATE_GRAPHQL,
@@ -142,7 +138,7 @@ def test_owner_can_update_profile_image(django_user_client, graphql_user_client,
 
 def test_owner_can_update_profile_banner_image(
     django_user_client, graphql_user_client, image_djangofile
-):
+) -> None:
     profile = ProfileFactory(owner=django_user_client.user)
     response = graphql_user_client(
         PROFILE_UPDATE_GRAPHQL,
@@ -152,10 +148,12 @@ def test_owner_can_update_profile_banner_image(
     )
 
     content = response.json()
-    assert content["data"]["profileUpdate"]["profile"]["bannerImage"]["url"].startswith("http://")
+    assert content["data"]["profileUpdate"]["profile"]["bannerImage"]["url"].startswith(
+        "http://"  # NOSONAR
+    )
 
 
-def test_owner_can_delete_profile_image(django_user_client, graphql_user_client):
+def test_owner_can_delete_profile_image(django_user_client, graphql_user_client) -> None:
     profile = ProfileFactory(owner=django_user_client.user)
     response = graphql_user_client(
         PROFILE_UPDATE_GRAPHQL,
@@ -166,7 +164,7 @@ def test_owner_can_delete_profile_image(django_user_client, graphql_user_client)
     assert content["data"]["profileUpdate"]["profile"]["image"] is None
 
 
-def test_owner_can_delete_profile_banner_image(django_user_client, graphql_user_client):
+def test_owner_can_delete_profile_banner_image(django_user_client, graphql_user_client) -> None:
     profile = ProfileFactory(owner=django_user_client.user)
     response = graphql_user_client(
         PROFILE_UPDATE_GRAPHQL,
@@ -179,7 +177,7 @@ def test_owner_can_delete_profile_banner_image(django_user_client, graphql_user_
 
 def test_owner_can_update_profile_banner_image_camel_case(
     django_user_client, graphql_user_client, image_djangofile
-):
+) -> None:
     profile = ProfileFactory(owner=django_user_client.user)
     response = graphql_user_client(
         PROFILE_UPDATE_GRAPHQL,
@@ -189,10 +187,12 @@ def test_owner_can_update_profile_banner_image_camel_case(
     )
 
     content = response.json()
-    assert content["data"]["profileUpdate"]["profile"]["bannerImage"]["url"].startswith("http://")
+    assert content["data"]["profileUpdate"]["profile"]["bannerImage"]["url"].startswith(
+        "http://"  # NOSONAR
+    )
 
 
-def test_superuser_can_update_profile(django_user_client, graphql_user_client):
+def test_superuser_can_update_profile(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
     new_biography = "my edited profile"
@@ -209,7 +209,7 @@ def test_superuser_can_update_profile(django_user_client, graphql_user_client):
     assert profile.biography == new_biography
 
 
-def test_user_with_permission_can_update_profile(django_user_client, graphql_user_client):
+def test_user_with_permission_can_update_profile(django_user_client, graphql_user_client) -> None:
     perm = Permission.objects.get(
         content_type__app_label=Profile._meta.app_label, codename="change_profile"
     )
@@ -228,7 +228,7 @@ def test_user_with_permission_can_update_profile(django_user_client, graphql_use
     assert profile.biography == new_biography
 
 
-def test_user_profile_owner_can_update_role(django_user_client, graphql_user_client):
+def test_user_profile_owner_can_update_role(django_user_client, graphql_user_client) -> None:
 
     perm = Permission.objects.get(
         content_type__app_label=ProfileUserRole._meta.app_label, codename="change_profileuserrole"
@@ -249,11 +249,11 @@ def test_user_profile_owner_can_update_role(django_user_client, graphql_user_cli
     )
     content = response.json()
 
-    assert content["data"]["profileRoleUpdate"]["profileUserRole"]["role"] == "ADMIN"
+    assert content["data"]["profileUserRoleUpdate"]["profileUserRole"]["role"] == "ADMIN"
     profile.refresh_from_db()
 
 
-def test_user_with_permission_can_update_role(django_user_client, graphql_user_client):
+def test_user_with_permission_can_update_role(django_user_client, graphql_user_client) -> None:
 
     perm = Permission.objects.get(
         content_type__app_label=ProfileUserRole._meta.app_label, codename="change_profileuserrole"
@@ -276,11 +276,11 @@ def test_user_with_permission_can_update_role(django_user_client, graphql_user_c
     )
     content = response.json()
 
-    assert content["data"]["profileRoleUpdate"]["profileUserRole"]["role"] == "ADMIN"
+    assert content["data"]["profileUserRoleUpdate"]["profileUserRole"]["role"] == "ADMIN"
     profile.refresh_from_db()
 
 
-def test_user_without_permission_cant_update_role(django_user_client, graphql_user_client):
+def test_user_without_permission_cant_update_role(django_user_client, graphql_user_client) -> None:
 
     perm = Permission.objects.get(
         content_type__app_label=ProfileUserRole._meta.app_label, codename="change_profileuserrole"
@@ -304,76 +304,3 @@ def test_user_without_permission_cant_update_role(django_user_client, graphql_us
     content = response.json()
     assert content["errors"][0]["message"] == "You don't have permission to perform this action"
     profile.refresh_from_db()
-
-
-def test_user_profile_owner_can_remove_profile_member(django_user_client, graphql_user_client):
-    perm = Permission.objects.get(
-        content_type__app_label=ProfileUserRole._meta.app_label, codename="delete_profileuserrole"
-    )
-
-    user = django_user_client.user
-    user_2 = UserFactory()
-
-    user.user_permissions.add(perm)
-    profile = ProfileFactory(owner=user)
-    profile_user_role = ProfileUserRoleFactory(
-        profile=profile, user=user_2, role=ProfileUserRole.ProfileRoles.MANAGER
-    )
-    profile_user_role_relay_id = profile_user_role.relay_id
-
-    response = graphql_user_client(
-        PROFILE_MEMBER_REMOVE_GRAPHQL,
-        variables={"input": {"userId": user_2.relay_id, "profileId": profile.relay_id}},
-    )
-    content = response.json()
-
-    assert content["data"]["profileRemoveMember"]["deletedId"] == profile_user_role_relay_id
-    assert not ProfileUserRole.objects.filter(id=profile_user_role.id).exists()
-
-
-def test_user_with_permission_can_remove_profile_member(django_user_client, graphql_user_client):
-    perm = Permission.objects.get(
-        content_type__app_label=ProfileUserRole._meta.app_label, codename="delete_profileuserrole"
-    )
-
-    user = django_user_client.user
-    user.user_permissions.add(perm)
-    user_2 = UserFactory()
-    user_3 = UserFactory()
-
-    profile = ProfileFactory(owner=user_2)
-    ProfileUserRoleFactory(profile=profile, user=user, role=ProfileUserRole.ProfileRoles.ADMIN)
-    profile_user_role = ProfileUserRoleFactory(
-        profile=profile, user=user_3, role=ProfileUserRole.ProfileRoles.MANAGER
-    )
-    profile_user_role_relay_id = profile_user_role.relay_id
-
-    response = graphql_user_client(
-        PROFILE_MEMBER_REMOVE_GRAPHQL,
-        variables={"input": {"userId": user_3.relay_id, "profileId": profile.relay_id}},
-    )
-    content = response.json()
-    assert content["data"]["profileRemoveMember"]["deletedId"] == profile_user_role_relay_id
-    assert not ProfileUserRole.objects.filter(id=profile_user_role.id).exists()
-
-
-def test_user_without_permission_cant_remove_profile_member(
-    django_user_client, graphql_user_client
-):
-    user = django_user_client.user
-    user_2 = UserFactory()
-    user_3 = UserFactory()
-
-    profile = ProfileFactory(owner=user_2)
-    ProfileUserRoleFactory(profile=profile, user=user, role=ProfileUserRole.ProfileRoles.MANAGER)
-    profile_user_role = ProfileUserRoleFactory(
-        profile=profile, user=user_3, role=ProfileUserRole.ProfileRoles.MANAGER
-    )
-
-    response = graphql_user_client(
-        PROFILE_MEMBER_REMOVE_GRAPHQL,
-        variables={"input": {"userId": user_3.relay_id, "profileId": profile.relay_id}},
-    )
-    content = response.json()
-    assert content["errors"][0]["extensions"]["code"] == "permission_required"
-    assert ProfileUserRole.objects.filter(id=profile_user_role.id).exists()

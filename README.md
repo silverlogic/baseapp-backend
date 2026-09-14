@@ -121,8 +121,8 @@ psql -U postgres -c 'create database backend;'
 # Exit db container
 exit
 
-# Enter backend docker container
-docker compose exec backend bash
+# Enter web docker container
+docker compose exec web bash
 ```
 
 If you're switching between projects and you want to wipe the DB you can do
@@ -131,14 +131,10 @@ psql -U postgres -c 'drop database backend;'
 psql -U postgres -c 'create database backend;'
 ```
 
-Run testproject inside the backend docker container:
+Run testproject inside the web docker container:
 
 ```bash
-# Install baseapp-backend's testproject dependencies
-pip3 install -r testproject/requirements.txt
-
-# Change folder to your app's testproject:
-python manage.py runserver 0.0.0.0:8000
+uv run python manage.py runserver 0.0.0.0:8000
 ```
 
 ### How to develop with a specific project
@@ -152,7 +148,8 @@ git clone git@github.com:silverlogic/baseapp-backend.git
 And manually install the package:
 
 ```bash
-pip install -e baseapp-backend
+cd baseapp-backend && uv sync --all-extras
+# Or: pip install -e baseapp-backend  # pip still works
 ```
 
 The `-e` flag will make it like any change you make in the cloned files will effect into the project, even with django's auto reload.
@@ -195,7 +192,7 @@ To do this, assuming you've opened the folder at the root of the repo, just add 
 Running unit tests:
 
 ```bash
-docker compose exec backend pytest baseapp_APPNAME/tests
+docker compose exec web pytest baseapp_APPNAME/tests
 ```
 
 ### Implementation
@@ -217,8 +214,8 @@ baseapp/
 - In the testproject dir:
   - Change the settings.py file to enable your app
     - Add your app to the `INSTALLED_APPS` list
-  - If your app needs a new dependency, add it to the "extras_require" of the main `setup.cfg`.
-    - Change `testproject/requirements.txt` to include your new dependency from your "extras_require" using `pip install -e .[your_extra]`
+  - If your app needs a new dependency, add it to `[project.optional-dependencies]` in `pyproject.toml`.
+    - Use `uv add --optional your_extra package-name` or add to the appropriate extra in `pyproject.toml`.
 
 ## Publishing baseapp-backend package to pypi registry
 

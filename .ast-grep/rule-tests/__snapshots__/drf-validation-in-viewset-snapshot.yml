@@ -1,0 +1,48 @@
+id: drf-validation-in-viewset
+snapshots:
+  ? |
+    class MyView(APIView):
+        def post(self, request):
+            amount = request.data["amount"]
+  : labels:
+    - source: request.data["amount"]
+      style: primary
+      start: 69
+      end: 91
+    - source: (APIView)
+      style: secondary
+      start: 12
+      end: 21
+    - source: |-
+        class MyView(APIView):
+            def post(self, request):
+                amount = request.data["amount"]
+      style: secondary
+      start: 0
+      end: 91
+  ? |
+    class MyViewSet(viewsets.GenericViewSet):
+        @action(detail=False, methods=["POST"])
+        def custom(self, request):
+            amount = request.data.get("amount")
+            if not isinstance(amount, int):
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+  : labels:
+    - source: request.data.get("amount")
+      style: primary
+      start: 134
+      end: 160
+    - source: (viewsets.GenericViewSet)
+      style: secondary
+      start: 15
+      end: 40
+    - source: |-
+        class MyViewSet(viewsets.GenericViewSet):
+            @action(detail=False, methods=["POST"])
+            def custom(self, request):
+                amount = request.data.get("amount")
+                if not isinstance(amount, int):
+                    return Response(status=status.HTTP_400_BAD_REQUEST)
+      style: secondary
+      start: 0
+      end: 264

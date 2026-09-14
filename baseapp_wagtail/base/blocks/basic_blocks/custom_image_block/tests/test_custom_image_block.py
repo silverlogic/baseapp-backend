@@ -6,10 +6,10 @@ from baseapp_wagtail.tests.utils.blocks_helpers import BlocksHelper
 class CustomImageBlockTests(BlocksHelper, TestPageContextMixin):
     block_type = "custom_image_block"
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.image = f.ImageFactory()
 
-    def test_custom_image_block(self):
+    def test_custom_image_block(self) -> None:
         self.insert_block(self.page, {"image": self.image, "alt_text": "Test alt text"})
 
         r = self.get_page(self.page)

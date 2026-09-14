@@ -7,7 +7,7 @@ from baseapp_reactions.notifications import send_reaction_created_notification
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
 
 
-def notify_on_reaction_created(sender, instance, created, **kwargs):
+def notify_on_reaction_created(sender, instance, created, **kwargs) -> None:
     if not getattr(settings, "BASEAPP_REACTIONS_ENABLE_NOTIFICATIONS", True):
         return
 

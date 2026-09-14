@@ -174,7 +174,7 @@ class StripeSubscriptionSerializer(serializers.Serializer):
             )
             data["current_subscription"] = current_subscription
         except Exception as e:
-            logger.error(f"Failed to validate payment method: {str(e)}")
+            logger.exception(f"Failed to validate payment method: {str(e)}")
             raise serializers.ValidationError("Invalid payment method ID.")
         return data
 
@@ -193,7 +193,7 @@ class StripeSubscriptionSerializer(serializers.Serializer):
                         payment_method_id, billing_details=billing_details
                     )
                 except Exception as e:
-                    logger.error(f"Failed to update payment method: {str(e)}")
+                    logger.exception(f"Failed to update payment method: {str(e)}")
                     # Continue with subscription creation even if billing update fails
             kwargs = {"customer_id": customer.remote_customer_id, "price_id": price_id}
             if payment_method_id:
@@ -397,8 +397,12 @@ class StripePaymentMethodSerializer(serializers.Serializer):
             )
             return {"id": setup_intent["id"], "client_secret": setup_intent["client_secret"]}
         except Exception as e:
-            logger.error(f"Failed to create setup intent: {str(e)}")
-            serializers.ValidationError("An internal error has occurred. Please try again later.")
+            logger.exception(f"Failed to create setup intent: {str(e)}")
+            # Without the raise this returned None and the view answered 201, so a
+            # failed Stripe call looked like a card had been added.
+            raise serializers.ValidationError(
+                "An internal error has occurred. Please try again later."
+            ) from e
 
     def update(self, validated_data):
         stripe_service = StripeService()

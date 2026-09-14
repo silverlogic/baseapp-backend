@@ -12,11 +12,11 @@ class BaseAPIKey(TimeStampedModel):
     )
     name = models.CharField(max_length=256, null=False, blank=False)
     encrypted_api_key = models.BinaryField(null=False, blank=False, default=None)
-    expiry_date = models.DateField(
+    expiry_date = models.DateTimeField(
         blank=True,
         null=True,
         verbose_name=_("Expiry Date"),
-        help_text=_("The date the API Key expires."),
+        help_text=_("The datetime the API Key expires."),
     )
 
     objects = BaseAPIKeyManager(api_key_prefix="BA")

@@ -1,4 +1,5 @@
 import re
+from typing import Any, Optional
 
 from django.contrib.auth.password_validation import (
     get_password_validators,
@@ -11,10 +12,10 @@ from baseapp_auth.models import PasswordValidation
 
 
 class MustContainCapitalLetterValidator:
-    def __init__(self, min_length=1):
+    def __init__(self, min_length=1) -> None:
         self.min_length = min_length
 
-    def validate(self, password, user=None):
+    def validate(self, password: str, user: Optional[Any] = None) -> None:  # NOSONAR
         if len(re.findall(r"[A-Z]", password)) < self.min_length:
             raise ValidationError(
                 _("This password must contain at least %(min_length)d capital letter characters."),
@@ -22,7 +23,7 @@ class MustContainCapitalLetterValidator:
                 params={"min_length": self.min_length},
             )
 
-    def get_help_text(self):
+    def get_help_text(self) -> str:
         return _(
             "Your password must contain at least %(min_length)d capital letter characters."
             % {"min_length": self.min_length}
@@ -30,10 +31,10 @@ class MustContainCapitalLetterValidator:
 
 
 class MustContainSpecialCharacterValidator:
-    def __init__(self, min_length=1):
+    def __init__(self, min_length=1) -> None:
         self.min_length = min_length
 
-    def validate(self, password, user=None):
+    def validate(self, password: str, user: Optional[Any] = None) -> None:  # NOSONAR
         if len(re.findall(r"[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?]", password)) < self.min_length:
             raise ValidationError(
                 _("This password must contain at least %(min_length)d special characters."),
@@ -41,14 +42,14 @@ class MustContainSpecialCharacterValidator:
                 params={"min_length": self.min_length},
             )
 
-    def get_help_text(self):
+    def get_help_text(self) -> str:
         return _(
             "Your password must contain at least %(min_length)d special characters."
             % {"min_length": self.min_length}
         )
 
 
-def apply_password_validators(password, user=None):
+def apply_password_validators(password, user=None) -> None:
     validators = PasswordValidation.objects.filter(is_active=True)
     password_validators = []
 

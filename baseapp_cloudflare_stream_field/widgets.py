@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 from django.conf import settings
 from django.forms import CheckboxInput, ClearableFileInput, forms
@@ -10,7 +11,7 @@ from baseapp_cloudflare_stream_field.stream import StreamClient
 class CloudflareStreamAdminWidget(ClearableFileInput):
     template_name = "baseapp_cloudflare_stream_field/admin_async_file_input.html"
 
-    def format_value(self, value):
+    def format_value(self, value) -> str | None:
         self.full_value = {}
         if value and isinstance(value, str):
             value = json.loads(value)
@@ -18,7 +19,7 @@ class CloudflareStreamAdminWidget(ClearableFileInput):
             self.full_value = value
             return value["uid"]
 
-    def get_context(self, name, value, attrs):
+    def get_context(self, name, value, attrs) -> dict[str, Any]:
         context = super().get_context(name, value, attrs)
         if self.full_value:
             uid = self.full_value.get("uid")
@@ -33,7 +34,7 @@ class CloudflareStreamAdminWidget(ClearableFileInput):
             )
         return context
 
-    def value_from_datadict(self, data, files, name):
+    def value_from_datadict(self, data, files, name) -> Any:
         if not self.is_required and CheckboxInput().value_from_datadict(
             data, files, self.clear_checkbox_name(name)
         ):
@@ -49,7 +50,7 @@ class CloudflareStreamAdminWidget(ClearableFileInput):
         return file_value or ""
 
     @property
-    def media(self):
+    def media(self) -> forms.Media:
         js = ["tus.js", "baseapp_cloudflare_stream_field.js"]
         return forms.Media(
             js=[static("baseapp_cloudflare_stream_field/js/%s" % path) for path in js]

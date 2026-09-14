@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext as _
 from rest_framework import serializers
@@ -17,26 +19,26 @@ class RegisterSerializer(serializers.Serializer):
     password = serializers.CharField()
     referral_code = serializers.CharField(required=False, allow_blank=True)
 
-    def validate_email(self, email):
+    def validate_email(self, email) -> str:
         email = email.lower()
         if User.objects.filter(email=email).exists():
             raise serializers.ValidationError(_("That email is already in use.  Choose another."))
         return email
 
-    def validate_referral_code(self, referral_code):
+    def validate_referral_code(self, referral_code) -> str:
         if use_referrals() and referral_code:
             self.referrer = get_user_from_referral_code(referral_code)
             if not self.referrer:
                 raise serializers.ValidationError(_("Invalid referral code."))
         return referral_code
 
-    def validate(self, data):
+    def validate(self, data) -> dict[str, Any]:
         data.pop("referral_code", None)
         password = data.get("password")
         apply_password_validators(password)
         return data
 
-    def save(self):
+    def save(self) -> "User":
         validated_data = self.validated_data
         names = validated_data.pop("name", "").split(" ")
         if not validated_data.get("first_name") and not validated_data.get("last_name") and names:

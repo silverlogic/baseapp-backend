@@ -1,4 +1,4 @@
-from typing import Any, Generator, Literal, Optional
+from typing import TYPE_CHECKING, Any, Generator, Literal, Optional
 
 from django.db.models import QuerySet
 from graphql.language.ast import (
@@ -12,6 +12,15 @@ from query_optimizer.compiler import OptimizationCompiler
 from query_optimizer.filter_info import FilterInfoCompiler
 from query_optimizer.typing import GQLInfo
 from query_optimizer.utils import mark_optimized
+
+if TYPE_CHECKING:
+    from query_optimizer.optimizer import QueryOptimizer
+
+# Key used to store a NestedConnectionInfoProxy on a queryset's _hints dict.
+# This lets resolve_comments pass the proxy to the DjangoConnectionField's
+# OptimizationCompiler without calling optimize() eagerly (which would
+# evaluate the queryset and break pagination).
+NESTED_INFO_PROXY_HINT = "_nested_info_proxy"
 
 
 class NestedConnectionInfoProxy:
@@ -118,6 +127,16 @@ class OptimizationCompilerPatch(GraphQLASTWalkerPatchMixin, OptimizationCompiler
     resolvers.
     """
 
+    def compile(self, queryset) -> "QueryOptimizer | None":
+        # If a NestedConnectionInfoProxy was stashed on the queryset by
+        # resolve_comments, swap it in so the AST walker uses the correct
+        # field nodes for nested comments -> comments structures.
+        if not isinstance(queryset, list):
+            proxy = queryset._hints.get(NESTED_INFO_PROXY_HINT, None)
+            if proxy is not None:
+                self.info = proxy
+        return super().compile(queryset)
+
     def run(self) -> Any:
         if isinstance(self.info, NestedConnectionInfoProxy):
             self.info = self.info.get_info_proxy("queryset")
@@ -173,7 +192,7 @@ class ConnectionFieldNodeExtractor:
     object type from within connection resolvers.
     """
 
-    def __init__(self, info: GQLInfo):
+    def __init__(self, info: GQLInfo) -> None:
         self._info = info
 
     def _path_to_field_names(self, path: Path | None) -> list[str]:

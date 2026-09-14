@@ -1,0 +1,12 @@
+id: graphql-use-relay-model
+snapshots:
+  ? |
+    class User(models.Model):
+        email = models.EmailField(unique=True)
+  : labels:
+    - source: |-
+        class User(models.Model):
+            email = models.EmailField(unique=True)
+      style: primary
+      start: 0
+      end: 68

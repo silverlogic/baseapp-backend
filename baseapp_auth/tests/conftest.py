@@ -6,6 +6,8 @@ from os.path import dirname as d
 root_dir = d(d(abspath(__file__)))
 sys.path.append(root_dir)
 
+from baseapp_core.graphql.testing.fixtures import *  # noqa
+from baseapp_core.plugins.tests.fixtures import with_disabled_apps  # noqa
 from baseapp_core.tests.fixtures import *  # noqa
 
 from .fixtures import *  # noqa

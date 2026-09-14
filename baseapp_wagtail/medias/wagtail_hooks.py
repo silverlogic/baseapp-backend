@@ -6,7 +6,7 @@ from wagtail.documents.rich_text import DocumentLinkHandler
 
 
 @hooks.register("register_rich_text_features", order=1)
-def register_document_feature(features):
+def register_document_feature(features) -> None:
     features.register_link_type(CustomDocumentLinkHandler)
 
 
