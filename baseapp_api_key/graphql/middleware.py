@@ -1,3 +1,5 @@
+from typing import Any
+
 from baseapp_api_key.rest_framework.authentication import (
     APIKeyAuthentication as RestAPIKeyAuthentication,
 )
@@ -6,7 +8,7 @@ from baseapp_api_key.rest_framework.authentication import (
 class APIKeyAuthentication(RestAPIKeyAuthentication):
     authenticated = False
 
-    def resolve(self, next, root, info, **kwargs):
+    def resolve(self, next, root, info, **kwargs) -> Any:
         if not self.authenticated:
             auth = self.authenticate(info.context)
             if auth:

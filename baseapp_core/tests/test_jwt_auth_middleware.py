@@ -1,4 +1,5 @@
-from unittest.mock import MagicMock, patch
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from channels.middleware import BaseMiddleware
@@ -10,13 +11,13 @@ pytestmark = pytest.mark.django_db
 
 
 class TestBaseMiddleware(BaseMiddleware):
-    async def __call__(self, scope, receive, send):
+    async def __call__(self, scope, receive, send) -> None:
         pass
 
 
 class TestJWTAuthMiddleware:
     @pytest.fixture
-    def middleware(self):
+    def middleware(self) -> JWTAuthMiddleware:
         return JWTAuthMiddleware(TestBaseMiddleware(inner=None))
 
     @pytest.mark.asyncio
@@ -24,7 +25,7 @@ class TestJWTAuthMiddleware:
     @patch("rest_framework_simplejwt.authentication.JWTAuthentication.get_user")
     async def test_jwt_auth_middleware_valid_token(
         self, mock_get_user, mock_get_validated_token, middleware
-    ):
+    ) -> None:
         """
         Scenario:
             - A valid JWT token is provided in the Authorization header.
@@ -39,10 +40,10 @@ class TestJWTAuthMiddleware:
 
         scope = {"subprotocols": ["Authorization", "Bearer valid_jwt_token"]}
 
-        async def mock_receive():
+        async def mock_receive() -> dict[str, Any]:
             return {}
 
-        async def mock_send(message):
+        async def mock_send(message) -> None:
             pass
 
         # Act
@@ -58,7 +59,7 @@ class TestJWTAuthMiddleware:
     @patch("rest_framework_simplejwt.authentication.JWTAuthentication.get_user")
     async def test_jwt_auth_middleware_invalid_token(
         self, mock_get_user, mock_get_validated_token, middleware
-    ):
+    ) -> None:
         """
         Scenario:
             - An invalid JWT token is provided in the Authorization header.
@@ -70,10 +71,10 @@ class TestJWTAuthMiddleware:
 
         scope = {"subprotocols": ["Authorization", "Bearer invalid_jwt_token"]}
 
-        async def mock_receive():
+        async def mock_receive() -> dict[str, Any]:
             return {}
 
-        async def mock_send(message):
+        async def mock_send(message) -> None:
             pass
 
         await middleware(scope, mock_receive, mock_send)
@@ -85,10 +86,10 @@ class TestJWTAuthMiddleware:
     @pytest.mark.asyncio
     @patch("rest_framework_simplejwt.authentication.JWTAuthentication.get_validated_token")
     @patch("rest_framework_simplejwt.authentication.JWTAuthentication.get_user")
-    @patch("baseapp_core.channels.JWTAuthMiddleware.refresh_access_token")
+    @patch("baseapp_core.authentication.refresh_access_token")
     async def test_jwt_auth_middleware_refresh_token(
         self, mock_refresh_access_token, mock_get_user, mock_get_validated_token, middleware
-    ):
+    ) -> None:
         """
         Scenario:
             - An invalid JWT token is provided, but a valid refresh token is available.
@@ -111,10 +112,10 @@ class TestJWTAuthMiddleware:
             ]
         }
 
-        async def mock_receive():
+        async def mock_receive() -> dict[str, Any]:
             return {}
 
-        async def mock_send(message):
+        async def mock_send(message) -> None:
             pass
 
         await middleware(scope, mock_receive, mock_send)
@@ -127,7 +128,7 @@ class TestJWTAuthMiddleware:
         mock_get_user.assert_called_with("new_valid_token")
 
     @pytest.mark.asyncio
-    async def test_jwt_auth_middleware_missing_token(self, middleware):
+    async def test_jwt_auth_middleware_missing_token(self, middleware) -> None:
         """
         Scenario:
             - No Authorization token is provided in the subprotocols.
@@ -137,10 +138,10 @@ class TestJWTAuthMiddleware:
 
         scope = {"subprotocols": []}
 
-        async def mock_receive():
+        async def mock_receive() -> dict[str, Any]:
             return {}
 
-        async def mock_send(message):
+        async def mock_send(message) -> None:
             pass
 
         with pytest.raises(ValueError, match="Missing token"):
@@ -151,7 +152,7 @@ class TestJWTAuthMiddleware:
     @patch("rest_framework_simplejwt.authentication.JWTAuthentication.get_user")
     async def test_jwt_auth_middleware_inactive_user(
         self, mock_get_user, mock_get_validated_token, middleware
-    ):
+    ) -> None:
         """
         Scenario:
             - A valid JWT token is provided, but the corresponding user is inactive.
@@ -166,11 +167,104 @@ class TestJWTAuthMiddleware:
 
         scope = {"subprotocols": ["Authorization", "Bearer valid_jwt_token"]}
 
-        async def mock_receive():
+        async def mock_receive() -> dict[str, Any]:
             return {}
 
-        async def mock_send(message):
+        async def mock_send(message) -> None:
             pass
 
         with pytest.raises(ValueError, match="User inactive or deleted"):
             await middleware(scope, mock_receive, mock_send)
+
+    @pytest.mark.asyncio
+    async def test_jwt_auth_middleware_authorization_without_value(self, middleware) -> None:
+        """
+        Scenario:
+            - The 'Authorization' subprotocol key is present but has no value after it.
+        Expected behavior:
+            - No crash, and no user is set in the scope (treated as unauthenticated).
+        """
+        scope = {"subprotocols": ["Authorization"]}
+
+        async def mock_receive() -> dict[str, Any]:
+            return {}
+
+        async def mock_send(message) -> None:
+            pass
+
+        await middleware(scope, mock_receive, mock_send)
+
+        assert "user" not in scope
+
+    @pytest.mark.asyncio
+    @patch("rest_framework_simplejwt.authentication.JWTAuthentication.get_validated_token")
+    @patch("baseapp_core.authentication.refresh_access_token")
+    async def test_jwt_auth_middleware_refresh_failure(
+        self, mock_refresh_access_token, mock_get_validated_token, middleware
+    ) -> None:
+        """
+        Scenario:
+            - The access token is invalid and the refresh attempt also fails.
+        Expected behavior:
+            - No user is set, and the subprotocols list is left unchanged.
+        """
+        mock_get_validated_token.side_effect = InvalidToken("Invalid token")
+        mock_refresh_access_token.return_value = None
+
+        scope = {"subprotocols": ["Authorization", "bad_access", "Refresh", "bad_refresh"]}
+
+        async def mock_receive() -> dict[str, Any]:
+            return {}
+
+        async def mock_send(message) -> None:
+            pass
+
+        await middleware(scope, mock_receive, mock_send)
+
+        assert "user" not in scope
+        assert scope["subprotocols"] == ["Authorization", "bad_access", "Refresh", "bad_refresh"]
+        mock_refresh_access_token.assert_called_once_with("bad_refresh")
+
+    def test_subprotocol_value_treats_adjacent_key_as_missing_value(self) -> None:
+        """
+        Scenario:
+            - 'Authorization' is present but the next item is the 'Refresh' key, not a value.
+        Expected behavior:
+            - Parsing 'Authorization' returns None (no value); 'Refresh' returns its value.
+        """
+        subprotocols = ["Authorization", "Refresh", "refresh_token_value"]
+
+        assert JWTAuthMiddleware._subprotocol_value(subprotocols, "Authorization") is None
+        assert (
+            JWTAuthMiddleware._subprotocol_value(subprotocols, "Refresh") == "refresh_token_value"
+        )
+
+    @pytest.mark.asyncio
+    @patch("baseapp_core.channels.authenticate_jwt_async", new_callable=AsyncMock)
+    async def test_jwt_auth_middleware_keeps_pair_layout_when_authorization_has_no_value(
+        self, mock_authenticate, middleware
+    ) -> None:
+        """
+        Scenario:
+            - 'Authorization' has no value (next item is the 'Refresh' key); refresh succeeds.
+        Expected behavior:
+            - Access is parsed as None (auth falls back to the refresh token), and the
+              refreshed token does NOT overwrite the 'Refresh' key — pair layout preserved.
+        """
+        mock_user = MagicMock()
+        mock_user.is_active = True
+        mock_authenticate.return_value = (mock_user, "new_access_token")
+
+        scope = {"subprotocols": ["Authorization", "Refresh", "refresh_token_value"]}
+
+        async def mock_receive() -> dict[str, Any]:
+            return {}
+
+        async def mock_send(message) -> None:
+            pass
+
+        await middleware(scope, mock_receive, mock_send)
+
+        mock_authenticate.assert_awaited_once_with(None, "refresh_token_value")
+        assert scope["subprotocols"] == ["Authorization", "Refresh", "refresh_token_value"]
+        assert scope["user"] == mock_user

@@ -8,7 +8,7 @@ class ApiMixin:
     url_kwargs = None
     api_version = "v1"
 
-    def reverse(self, view_name=None, query_params=None, **kwargs):
+    def reverse(self, view_name=None, query_params=None, **kwargs) -> str:
         if self.url_kwargs is not None:
             kwargs.setdefault("kwargs", self.url_kwargs)
 

@@ -32,7 +32,7 @@ VIEW_ALL_QUERY = """
 """
 
 
-def test_anon_see_nothing(graphql_client):
+def test_anon_see_nothing(graphql_client) -> None:
     CommentFactory()
     response = graphql_client(VIEW_ALL_QUERY)
     content = response.json()
@@ -40,7 +40,7 @@ def test_anon_see_nothing(graphql_client):
     assert len(content["data"]["allComments"]["edges"]) == 0
 
 
-def test_user_see_nothing(graphql_user_client):
+def test_user_see_nothing(graphql_user_client) -> None:
     CommentFactory()
     response = graphql_user_client(VIEW_ALL_QUERY)
     content = response.json()
@@ -48,7 +48,7 @@ def test_user_see_nothing(graphql_user_client):
     assert len(content["data"]["allComments"]["edges"]) == 0
 
 
-def test_superuser_can_list(django_user_client, graphql_user_client):
+def test_superuser_can_list(django_user_client, graphql_user_client) -> None:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
 
@@ -61,7 +61,7 @@ def test_superuser_can_list(django_user_client, graphql_user_client):
     assert content["data"]["allComments"]["edges"][0]["node"]["body"] == comment.body
 
 
-def test_user_with_permission_can_list(django_user_client, graphql_user_client):
+def test_user_with_permission_can_list(django_user_client, graphql_user_client) -> None:
     Comment = swapper.load_model("baseapp_comments", "Comment")
     app_label = Comment._meta.app_label
     perm = Permission.objects.get(content_type__app_label=app_label, codename="view_all_comments")

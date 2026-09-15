@@ -1,10 +1,11 @@
 from django.contrib import admin
 
+from baseapp_core.admin_helpers import ModelAdmin
 from baseapp_core.models import DocumentId
 
 
 @admin.register(DocumentId)
-class DocumentIdAdmin(admin.ModelAdmin):
+class DocumentIdAdmin(ModelAdmin):
     list_display = ("public_id", "content_type", "object_id")
     search_fields = ("public_id", "content_type__model", "object_id")
     list_filter = ("content_type",)
@@ -15,11 +16,11 @@ class DocumentIdAdmin(admin.ModelAdmin):
 
     readonly_fields = ("public_id", "content_type", "object_id", "created")
 
-    def has_add_permission(self, request):
+    def has_add_permission(self, request) -> bool:
         return False
 
-    def has_change_permission(self, request, obj=None):
+    def has_change_permission(self, request, obj=None) -> bool:
         return False
 
-    def has_delete_permission(self, request, obj=None):
+    def has_delete_permission(self, request, obj=None) -> bool:
         return False

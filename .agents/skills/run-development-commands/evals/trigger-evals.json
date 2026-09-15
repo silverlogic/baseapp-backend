@@ -1,0 +1,58 @@
+[
+  {
+    "query": "Run pytest for the chats app.",
+    "should_trigger": true
+  },
+  {
+    "query": "Make migrations for the users app.",
+    "should_trigger": true
+  },
+  {
+    "query": "Apply pending migrations to the local database.",
+    "should_trigger": true
+  },
+  {
+    "query": "Open a Django shell so I can poke at the User model.",
+    "should_trigger": true
+  },
+  {
+    "query": "Install celery==5.3 in this project.",
+    "should_trigger": true
+  },
+  {
+    "query": "Format the codebase with black and isort.",
+    "should_trigger": true
+  },
+  {
+    "query": "Start the dev server so I can hit the API at localhost.",
+    "should_trigger": true
+  },
+  {
+    "query": "Run the full test suite with coverage.",
+    "should_trigger": true
+  },
+  {
+    "query": "Add django-storages as a dev dependency.",
+    "should_trigger": true
+  },
+  {
+    "query": "Open a database shell on the local Postgres.",
+    "should_trigger": true
+  },
+  {
+    "query": "Explain how Django migrations work.",
+    "should_trigger": false
+  },
+  {
+    "query": "What does the AUTH_USER_MODEL setting do?",
+    "should_trigger": false
+  },
+  {
+    "query": "Review this PR description and tell me if it's clear.",
+    "should_trigger": false
+  },
+  {
+    "query": "Rename the variable `usr` to `user` in this function.",
+    "should_trigger": false
+  }
+]

@@ -2,8 +2,8 @@ from baseapp_core.hashids.strategies.interfaces.id_resolver import IdResolverStr
 
 
 class DRFResolverStrategy:
-    def __init__(self, id_resolver: IdResolverStrategy):
+    def __init__(self, id_resolver: IdResolverStrategy) -> None:
         self.id_resolver = id_resolver
 
-    def resolve_public_id_to_pk(self, public_id):
+    def resolve_public_id_to_pk(self, public_id) -> int | str:
         raise NotImplementedError

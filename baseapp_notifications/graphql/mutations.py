@@ -21,7 +21,7 @@ class NotificationsMarkAllAsRead(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, read, **input):
+    def mutate_and_get_payload(cls, root, info, read, **input) -> "NotificationsMarkAllAsRead":
         qs = Notification.objects.filter(recipient=info.context.user)
 
         if read:
@@ -44,7 +44,9 @@ class NotificationsMarkAsRead(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, notification_ids, read, **input):
+    def mutate_and_get_payload(
+        cls, root, info, notification_ids, read, **input
+    ) -> "NotificationsMarkAsRead":
         notifications_ids = [
             get_pk_from_relay_id(notification_relay_id)
             for notification_relay_id in notification_ids
@@ -72,7 +74,9 @@ class NotificationSettingToggle(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, verb, channel, **input):
+    def mutate_and_get_payload(
+        cls, root, info, verb, channel, **input
+    ) -> "NotificationSettingToggle":
         # Determine if a setting other than 'ALL' exists for the given verb
         is_channel_all = channel == NotificationSetting.NotificationChannelTypes.ALL
 

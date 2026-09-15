@@ -1,11 +1,9 @@
 import graphene
 import swapper
-from django.apps import apps
 from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from query_optimizer import DjangoConnectionField, optimize
-from query_optimizer.prefetch_hack import evaluate_with_prefetch_hack
+from query_optimizer import DjangoConnectionField
+from query_optimizer.typing import GQLInfo
 
 from baseapp_auth.graphql import PermissionsInterface
 from baseapp_core.graphql import (
@@ -14,8 +12,17 @@ from baseapp_core.graphql import (
     NestedConnectionInfoProxy,
 )
 from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.graphql import get_object_type_for_model, skip_ast_walker
-from baseapp_reactions.graphql.object_types import ReactionsInterface
+from baseapp_core.graphql import (
+    get_object_type_for_model,
+    resolve_document_content_object,
+    skip_ast_walker,
+)
+from baseapp_core.graphql.optimizer import NESTED_INFO_PROXY_HINT
+from baseapp_core.plugins import (
+    apply_if_installed,
+    graphql_shared_interfaces,
+    shared_services,
+)
 
 from ..models import CommentStatus, default_comments_count
 from .filters import CommentFilter
@@ -26,7 +33,7 @@ app_label = Comment._meta.app_label
 CommentStatusEnum = graphene.Enum.from_enum(CommentStatus)
 
 
-def create_object_type_from_dict(name, d):
+def create_object_type_from_dict(name, d) -> type[graphene.ObjectType]:
     fields = {}
     for key_name in d.keys():
         fields[key_name] = graphene.Int(required=False)
@@ -44,14 +51,24 @@ class CommentsInterface(RelayNode):
     class Meta:
         model = Comment
 
-    def resolve_comments(root, info, **kwargs):
+    def resolve_comments_count(root, info: GQLInfo, **kwargs) -> dict:
+        if service := shared_services.get("commentable_metadata"):
+            return service.get_comments_count(root)
+        return default_comments_count()
+
+    def resolve_is_comments_enabled(root, info: GQLInfo, **kwargs) -> bool:
+        if service := shared_services.get("commentable_metadata"):
+            return service.is_comments_enabled(root)
+        return True
+
+    def resolve_comments(root, info: GQLInfo, **kwargs) -> models.QuerySet:
         # if root is a comment and is attached to a target use root.comments so it can be filtered
         # by using ForeignKey related field
         # if not then assume its another object type, like a post
         # this is used in the tests because we treat those comment as the target for other comments
         # so we can test the package without having to create a new model
-
-        if not getattr(root, "is_comments_enabled", True):
+        service = shared_services.get("commentable_metadata")
+        if service and not service.is_comments_enabled(root):
             return skip_ast_walker(Comment.objects.none())
 
         CAN_ANONYMOUS_VIEW_COMMENTS = getattr(
@@ -61,44 +78,35 @@ class CommentsInterface(RelayNode):
             return skip_ast_walker(Comment.objects.none())
 
         is_root_a_comment = isinstance(root, Comment)
-
-        if is_root_a_comment and (root.target_object_id or root.in_reply_to_id):
-            qs = root.comments.filter(status=CommentStatus.PUBLISHED)
-            # The root.comments were already optimized. But because of the new filter, we need to
-            # re-evaluate the queryset so it can be properly paginated.
-            evaluate_with_prefetch_hack(qs)
-            return qs
-
         if is_root_a_comment:
-            # When the root is a comment, we need to trick the optimizer to properly walk the AST.
-            # The ast walker doesn't work properly with nested elements (comments -> comments).
+            qs = Comment.objects_visible.filter(
+                models.Q(in_reply_to_id=root.id)
+                | models.Q(
+                    target_document__content_type__app_label=app_label,
+                    target_document__content_type__model=Comment._meta.model_name,
+                    target_document__object_id=root.id,
+                    in_reply_to__isnull=True,
+                )
+            )
+
+            # When the root is a comment used as a target, the AST walker can't handle the
+            # nested comments -> comments structure with the regular info.  Stash a
+            # NestedConnectionInfoProxy on the queryset hints so the patched
+            # OptimizationCompilerPatch (in baseapp_core.graphql.optimizer) picks it up
+            # when the DjangoConnectionField compiles the optimisation.  This avoids calling
+            # optimize() eagerly, which would evaluate the queryset and break pagination.
             queryset_field_nodes = ConnectionFieldNodeExtractor(info).get_sliced_field_nodes()
             info_proxy = NestedConnectionInfoProxy(info, queryset_field_nodes=queryset_field_nodes)
+            qs._hints[NESTED_INFO_PROXY_HINT] = info_proxy
         else:
-            info_proxy = info
+            qs = Comment.objects_visible.for_target(root, root_only=True)
 
-        target_content_type = ContentType.objects.get_for_model(root)
-        return optimize(
-            Comment.objects_visible.filter(
-                target_content_type=target_content_type,
-                target_object_id=root.pk,
-                in_reply_to__isnull=True,
-            ),
-            info_proxy,
-        )
+        if service := shared_services.get("blocks.lookup"):
+            qs = service.exclude_blocked_from_foreign_queryset(qs, info)
 
-
-comment_interfaces = (
-    RelayNode,
-    CommentsInterface,
-    ReactionsInterface,
-    PermissionsInterface,
-)
-
-if apps.is_installed("baseapp.activity_log"):
-    from baseapp.activity_log.graphql.interfaces import NodeActivityLogInterface
-
-    comment_interfaces += (NodeActivityLogInterface,)
+        # Return the un-evaluated queryset so the DjangoConnectionField handles both
+        # optimization and pagination (first/after slicing).
+        return qs
 
 
 class BaseCommentObjectType:
@@ -106,12 +114,19 @@ class BaseCommentObjectType:
     status = graphene.Field(CommentStatusEnum)
 
     class Meta:
-        interfaces = comment_interfaces
+        interfaces = graphql_shared_interfaces.get(
+            RelayNode,
+            CommentsInterface,
+            PermissionsInterface,
+            "ReactionsInterface",
+            "MentionsInterface",
+            "NodeActivityLogInterface",
+        )
         model = Comment
         fields = (
             "pk",
             "user",
-            "profile",
+            *apply_if_installed("baseapp_profiles", ["profile"]),
             "body",
             "created",
             "modified",
@@ -125,58 +140,52 @@ class BaseCommentObjectType:
         filterset_class = CommentFilter
 
     @classmethod
-    def get_node(self, info, id):
-        node = super().get_node(info, id)
+    def get_node(cls, info: GQLInfo, node_id: str) -> "Comment | None":
+        node = super().get_node(info, node_id)
         if not info.context.user.has_perm(f"{app_label}.view_comment", node):
             return None
         return node
 
-    @classmethod
-    def pre_optimization_hook(cls, queryset, optimizer):
-        queryset = super().pre_optimization_hook(queryset, optimizer)
+    def resolve_target(root, info, **kwargs) -> models.Model | None:
+        if not root.target_document_id:
+            return None
+        return resolve_document_content_object(
+            root.target_document, info, cache_attr="_comment_target_cache"
+        )
 
-        # Needed in the CommentsInterface.resolve_comments.
+    @classmethod
+    def pre_optimization_hook(cls, queryset, optimizer) -> models.QuerySet:
+        queryset = super().pre_optimization_hook(queryset, optimizer)
+        queryset = queryset.select_related("target_document", "target_document__content_type")
+
+        # Required for CommentsInterface.resolve_comments checks (no longer a column).
         required_fields = [
             "id",
-            "target_object_id",
+            "target_document_id",
             "in_reply_to_id",
-            "is_comments_enabled",
             "status",
         ]
         optimizer.only_fields.extend(required_fields)
         if "comments" in optimizer.prefetch_related:
-            required_fields = [
-                "status",
-            ]
             required_fields_set = set(
-                [*optimizer.prefetch_related["comments"].only_fields, *required_fields]
+                [*optimizer.prefetch_related["comments"].only_fields, "status"]
             )
             optimizer.prefetch_related["comments"].only_fields = list(required_fields_set)
 
-        # In order to otimize custom filers from django_filters properly, we need to annotate them in the queryset.
-        queryset = queryset.annotate(
-            replies_count_total=models.F("comments_count__total"),
-            reactions_count_total=models.F("reactions_count__total"),
-        )
+        # Annotate commentable metadata (includes replies_count_total for CommentFilter).
+        if service := shared_services.get("commentable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+
+        # Annotate reactable metadata (includes reactions_count_total for CommentFilter).
+        if service := shared_services.get("reactable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+
         return queryset
 
     @classmethod
-    def get_queryset(cls, queryset, info):
-        user = info.context.user
-        if user.is_anonymous:
-            return queryset
-
-        profile = user.current_profile
-
-        if not profile:
-            return queryset
-
-        bloked_profile_ids = profile.blocking.values_list("target_id", flat=True)
-        bloker_profile_ids = profile.blockers.values_list("actor_id", flat=True)
-
-        queryset = queryset.exclude(profile__id__in=bloked_profile_ids).exclude(
-            profile__id__in=bloker_profile_ids
-        )
+    def get_queryset(cls, queryset, info) -> models.QuerySet:
+        if service := shared_services.get("blocks.lookup"):
+            return service.exclude_blocked_from_foreign_queryset(queryset, info)
 
         return queryset
 

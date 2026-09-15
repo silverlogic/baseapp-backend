@@ -1,0 +1,16 @@
+id: drf-validation-in-viewset
+language: Python
+severity: warning
+message: "Don't read `request.data` fields directly in a ViewSet/APIView method. Validate with a Serializer (`is_valid(raise_exception=True)`) and read `serializer.validated_data`. See .claude/skills/backend-conventions/references/drf-file-layout.md"
+ignores:
+  - "**/migrations/**"
+rule:
+  any:
+    - pattern: request.data.get($$$ARGS)
+    - pattern: request.data[$KEY]
+  inside:
+    stopBy: end
+    kind: class_definition
+    has:
+      field: superclasses
+      regex: (ViewSet|APIView)

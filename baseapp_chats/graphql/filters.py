@@ -1,6 +1,6 @@
 import django_filters
 import swapper
-from django.db.models import Q
+from django.db.models import Q, QuerySet
 
 from baseapp_core.graphql import get_pk_from_relay_id
 
@@ -13,15 +13,24 @@ class ChatRoomFilter(django_filters.FilterSet):
     profile_id = django_filters.CharFilter(method="filter_profile_id")
     unread_messages = django_filters.BooleanFilter(method="filter_unread_messages")
     archived = django_filters.BooleanFilter(method="filter_archived")
+    manageable = django_filters.BooleanFilter(method="filter_manageable")
 
     order_by = django_filters.OrderingFilter(fields=(("created", "created"),))
     is_group = django_filters.BooleanFilter()
 
     class Meta:
         model = ChatRoom
-        fields = ["q", "order_by", "profile_id", "unread_messages", "archived", "is_group"]
+        fields = [
+            "q",
+            "order_by",
+            "profile_id",
+            "unread_messages",
+            "archived",
+            "is_group",
+            "manageable",
+        ]
 
-    def filter_q(self, queryset, name, value):
+    def filter_q(self, queryset, name, value) -> "QuerySet":
         if not value:
             return queryset
 
@@ -42,11 +51,11 @@ class ChatRoomFilter(django_filters.FilterSet):
             )
         ).distinct()
 
-    def filter_profile_id(self, queryset, name, value):
+    def filter_profile_id(self, queryset, name, value) -> "QuerySet":
         pk = get_pk_from_relay_id(value)
         return queryset.filter(participants__profile_id=pk)
 
-    def filter_unread_messages(self, queryset, name, value):
+    def filter_unread_messages(self, queryset, name, value) -> "QuerySet":
         if value:
             profile_id = self.data.get("profile_id", None)
             try:
@@ -69,7 +78,7 @@ class ChatRoomFilter(django_filters.FilterSet):
 
         return queryset
 
-    def filter_archived(self, queryset, name, value):
+    def filter_archived(self, queryset, name, value) -> "QuerySet":
         try:
             user_profile = self.request.user.current_profile
         except AttributeError:
@@ -77,6 +86,25 @@ class ChatRoomFilter(django_filters.FilterSet):
 
         return queryset.filter(
             participants__profile_id=user_profile.pk, participants__has_archived_room=value
+        ).distinct()
+
+    def filter_manageable(self, queryset: QuerySet, name: str, value: bool) -> QuerySet:
+        """Narrow to group rooms where the current profile has the ADMIN role."""
+        if not value:
+            return queryset
+
+        try:
+            user_profile = self.request.user.current_profile
+        except AttributeError:
+            return queryset.none()
+
+        if not user_profile:
+            return queryset.none()
+
+        return queryset.filter(
+            is_group=True,
+            participants__profile_id=user_profile.pk,
+            participants__role=ChatRoomParticipant.ChatRoomParticipantRoles.ADMIN,
         ).distinct()
 
 
@@ -87,7 +115,7 @@ class ChatRoomParticipantFilter(django_filters.FilterSet):
         model = ChatRoomParticipant
         fields = ["q"]
 
-    def filter_q(self, qs, name, value):
+    def filter_q(self, qs, name, value) -> "QuerySet":
         if not value:
             return qs
         return qs.filter(Q(profile__name__icontains=value)).distinct()

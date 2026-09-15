@@ -1,0 +1,85 @@
+{
+  "skill_name": "ensure-test-coverage",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just implemented a user profile update endpoint, I'm done",
+      "expected_output": "Agent does NOT accept the task as done. It requires writing tests, running pytest --cov inside Docker, and verifying coverage >= 75% before completing.",
+      "files": [],
+      "assertions": [
+        "Agent does not accept the task as complete without tests",
+        "Agent requires running pytest with --cov flag",
+        "Agent requires running commands inside Docker (docker compose), not on the host",
+        "Agent requires coverage to reach at least 75% before the task is done"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "fix the bug where notifications are sent twice",
+      "expected_output": "Agent follows the bug-fix workflow: write a failing regression test first, then fix the bug, then verify coverage >= 75% inside Docker.",
+      "files": [],
+      "assertions": [
+        "Agent mentions writing a regression test before or alongside the fix",
+        "Agent requires running pytest with --cov flag",
+        "Agent requires running commands inside Docker (docker compose), not on the host",
+        "Agent requires verifying coverage is still >= 75% after the fix"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "refactor the payments module to use the new base class",
+      "expected_output": "Agent runs the existing test suite first, then adds tests only where coverage drops, using Docker.",
+      "files": [],
+      "assertions": [
+        "Agent runs the existing test suite before or during the refactor",
+        "Agent requires running pytest with --cov flag",
+        "Agent requires running commands inside Docker (docker compose), not on the host",
+        "Agent checks that coverage remains >= 75% and adds tests if it drops"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I'm writing tests for the new subscription service. I want to mock the Django ORM so the tests are fast — patch the QuerySet and Model.save calls.",
+      "expected_output": "Agent pushes back on mocking the ORM/database. Mocks should be reserved for external I/O (HTTP, S3, email). Tests should hit a real DB via the project's fixtures/factories.",
+      "files": [],
+      "assertions": [
+        "Agent pushes back on mocking the Django ORM / database / QuerySet",
+        "Agent explains that mocks should be reserved for external I/O (HTTP, S3, email)",
+        "Agent recommends using the project's factories.py / fixtures.py instead of mocks for DB access"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "I just shipped a new posts feature with both a REST endpoint and a GraphQL mutation. I wrote tests for the REST endpoint — that should cover it, right?",
+      "expected_output": "Agent says no — the GraphQL mutation needs its own tests. Both API surfaces require coverage independently.",
+      "files": [],
+      "assertions": [
+        "Agent says REST tests alone are NOT sufficient when GraphQL is also exposed",
+        "Agent requires tests for the GraphQL mutation as well",
+        "Agent does not mark the task complete until both API surfaces are covered"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Coverage dropped to 72% because I added a new model. I'll write tests for the __str__ method and the auto-generated migration to bump it back up.",
+      "expected_output": "Agent pushes back on testing __str__ and auto-generated migrations. Recommends covering real logic, permissions, and edge cases instead.",
+      "files": [],
+      "assertions": [
+        "Agent pushes back on testing __str__ methods and/or auto-generated migrations as a way to inflate coverage",
+        "Agent recommends covering real logic, permissions, validators, or edge cases on the new model instead",
+        "Agent still requires coverage to reach >= 75% via meaningful tests"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Tests are taking forever to run after every small code change. Any way to speed them up?",
+      "expected_output": "Agent recommends `--reuse-db` (and optionally scoping with `-k` or path filters) while still running pytest --cov inside Docker. Does NOT suggest skipping coverage or running outside the container.",
+      "files": [],
+      "assertions": [
+        "Agent recommends pytest --reuse-db for faster local runs",
+        "Agent keeps the command inside Docker (docker compose), not on the host",
+        "Agent does NOT suggest skipping --cov or dropping below the 75% threshold to save time"
+      ]
+    }
+  ]
+}

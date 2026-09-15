@@ -1,3 +1,6 @@
+from typing import Any
+
+from django.http import HttpResponse
 from django.urls import reverse
 
 
@@ -5,13 +8,13 @@ class BlocksHelper:
     block_type = ""
     block_class = None
 
-    def generate_block(self, data, is_bulk=True):
+    def generate_block(self, data, is_bulk=True) -> None:
         if is_bulk:
             block = self.block_class()
             data = block.bulk_to_python([data])[0]
         self.insert_block(self.page, data)
 
-    def insert_block(self, page, block_obj):
+    def insert_block(self, page, block_obj) -> None:
         page.body.extend(
             [
                 (
@@ -22,7 +25,7 @@ class BlocksHelper:
         )
         page.save()
 
-    def get_page(self, page, extra_params=None):
+    def get_page(self, page, extra_params=None) -> HttpResponse:
         params = {"type": type(page)._meta.app_label + "." + type(page).__name__, "fields": "*"}
         if extra_params:
             params.update(extra_params)
@@ -30,7 +33,7 @@ class BlocksHelper:
             reverse("baseappwagtailapi_base:pages:detail", args=[page.id]), params
         )
 
-    def get_page_by_path(self, page, extra_params=None):
+    def get_page_by_path(self, page, extra_params=None) -> HttpResponse:
         url_parts = page.get_url_parts()
         _, _, page_path = url_parts
         params = {"html_path": page_path, "fields": "*"}
@@ -38,6 +41,6 @@ class BlocksHelper:
             params.update(extra_params)
         return self.client.get(reverse("baseappwagtailapi_base:pages:path"), params)
 
-    def get_response_body_blocks(self, response):
+    def get_response_body_blocks(self, response) -> list[dict[str, Any]]:
         body = response.json().get("body", [])
         return [block for block in body if block.get("type") == self.block_type]

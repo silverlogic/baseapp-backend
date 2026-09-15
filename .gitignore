@@ -39,5 +39,8 @@ db.sqlite3
 **/build/
 dist/
 
-# pyenv
-.python-version
+# Skill eval workspaces (raw run output, not committed)
+.agents/skills/*-workspace/
+
+# Claude Code local settings (may contain tokens)
+.claude/settings.local.json

@@ -9,7 +9,7 @@ def has_autoincrement_pk(model_cls: type) -> bool:
     )
 
 
-def get_content_type_by_natural_key(value):
+def get_content_type_by_natural_key(value) -> ContentType:
     value = value.lower()
 
     try:

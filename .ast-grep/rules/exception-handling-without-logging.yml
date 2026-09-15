@@ -1,0 +1,31 @@
+id: exception-handling-without-logging
+language: Python
+severity: warning
+message: "Broad `except Exception` must log with `logger.exception(...)` (or re-raise) and return a generic message — never swallow silently or leak exception details to the caller. See .claude/skills/backend-conventions/references/error-shape.md"
+ignores:
+  - "**/migrations/**"
+rule:
+  kind: except_clause
+  all:
+    - has:
+        any:
+          - pattern: Exception
+          - kind: tuple
+            has:
+              pattern: Exception
+          - kind: as_pattern
+            has:
+              any:
+                - pattern: Exception
+                - kind: tuple
+                  has:
+                    pattern: Exception
+    - not:
+        has:
+          stopBy: end
+          any:
+            - kind: call
+              has:
+                field: function
+                regex: (^|\.)((logger|log|logging)\.(exception|error)|capture_exception)$
+            - kind: raise_statement

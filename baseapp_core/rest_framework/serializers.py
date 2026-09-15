@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField as PhoneNumberModelField
 from phonenumber_field.serializerfields import PhoneNumberField
@@ -10,7 +12,9 @@ from .fields import ThumbnailImageField
 
 
 class ModelSerializer(OrigModelSerializer):
-    def build_url_field(self, field_name, model_class):
+    def build_url_field(
+        self, field_name, model_class
+    ) -> tuple[type[serializers.Field], dict[str, Any]]:
         """
         Create a field representing the object's own URL.
         """
@@ -22,7 +26,9 @@ class ModelSerializer(OrigModelSerializer):
         }
         return field_class, field_kwargs
 
-    def build_standard_field(self, field_name, model_field):
+    def build_standard_field(
+        self, field_name, model_field
+    ) -> tuple[type[serializers.Field], dict[str, Any]]:
         field_class, field_kwargs = super().build_standard_field(field_name, model_field)
         is_primary = bool(getattr(model_field, "primary_key", False))
 

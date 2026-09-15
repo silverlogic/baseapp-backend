@@ -1,3 +1,5 @@
+from typing import Any
+
 from constance import config
 from django.contrib.auth import authenticate, get_user_model
 from django.utils.translation import gettext_lazy as _
@@ -10,7 +12,7 @@ User = get_user_model()
 
 
 class LoginPasswordExpirationMixin:
-    def check_password_expiration(self, user):
+    def check_password_expiration(self, user) -> None:
         if config.USER_PASSWORD_EXPIRATION_INTERVAL == 0:
             return
         if user.password_expired:
@@ -21,7 +23,7 @@ class LoginSerializer(LoginPasswordExpirationMixin, serializers.Serializer):
     email = serializers.EmailField(write_only=True)
     password = serializers.CharField(write_only=True)
 
-    def validate(self, data):
+    def validate(self, data) -> dict[str, Any]:
         validated_data = super().validate(data)
         self.user = authenticate(
             username=validated_data["email"],
@@ -34,7 +36,7 @@ class LoginSerializer(LoginPasswordExpirationMixin, serializers.Serializer):
         self.check_password_expiration(self.user)
         return validated_data
 
-    def create(self, validated_data):
+    def create(self, validated_data) -> Token:
         return Token.objects.get_or_create(user=self.user)[0]
 
 

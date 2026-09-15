@@ -1,54 +1,30 @@
+from typing import TYPE_CHECKING, Any, Optional
+
 import graphene
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from query_optimizer import optimize
 
+if TYPE_CHECKING:
+    from datetime import datetime
+
+    from django.db.models import QuerySet
+    from django.db.models.fields.files import FieldFile
+
+    from baseapp_pages.graphql.object_types import MetadataObjectType
+
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import ThumbnailField
+from baseapp_core.plugins import graphql_shared_interfaces, shared_services
 
 from .filters import UsersFilter
 from .permissions import PermissionsInterface
 
 User = get_user_model()
 
-interfaces = (RelayNode, PermissionsInterface)
-inheritances = tuple()
 
-if apps.is_installed("baseapp_notifications"):
-    from baseapp_notifications.graphql.object_types import NotificationsInterface
-
-    interfaces += (NotificationsInterface,)
-
-
-if apps.is_installed("baseapp_pages"):
-    from baseapp_pages.graphql.object_types import MetadataObjectType, PageInterface
-
-    interfaces += (PageInterface,)
-
-
-if apps.is_installed("baseapp_ratings"):
-    from baseapp_ratings.graphql.object_types import RatingsInterface
-
-    interfaces += (RatingsInterface,)
-
-
-if apps.is_installed("baseapp_profiles"):
-    from baseapp_profiles.graphql.object_types import (
-        ProfileInterface,
-        ProfilesInterface,
-    )
-
-    interfaces += (ProfilesInterface, ProfileInterface)
-
-
-if apps.is_installed("baseapp.activity_log"):
-    from baseapp.activity_log.graphql.interfaces import UserActivityLog
-
-    inheritances += (UserActivityLog,)
-
-
-class AbstractUserObjectType(*inheritances, object):
+class AbstractUserObjectType(object):
     is_authenticated = graphene.Boolean()
     full_name = graphene.String()
 
@@ -91,51 +67,77 @@ class AbstractUserObjectType(*inheritances, object):
             "last_login",
             "profiles",
         )
-        interfaces = interfaces
+        interfaces = graphql_shared_interfaces.get(
+            RelayNode,
+            PermissionsInterface,
+            "RatingsInterface",
+            "UserActivityLogInterface",
+            "NotificationsInterface",
+            "ProfileInterface",
+            "ProfilesInterface",
+            "PageInterface",
+        )
         filterset_class = UsersFilter
 
-    def resolve_avatar(self, *args, **kwargs):
-        return self.profile.image
+    def resolve_avatar(self, *args, **kwargs) -> "FieldFile | None":
+        if profile := getattr(self, "profile", None):
+            return profile.image
+        return None
 
-    def resolve_metadata(self, *args, **kwargs):
-        return MetadataObjectType(
-            meta_title=self.get_full_name(),
-        )
+    def resolve_metadata(self, *args, **kwargs) -> "MetadataObjectType | None":
+        if apps.is_installed("baseapp_pages"):
+            from baseapp_pages.graphql.object_types import MetadataObjectType
 
-    def resolve_is_authenticated(self, info):
+            return MetadataObjectType(
+                meta_title=self.get_full_name(),
+            )
+
+        return None
+
+    def resolve_is_authenticated(self, info) -> bool:
         return info.context.user.is_authenticated and self.pk == info.context.user.pk
 
-    def resolve_full_name(self, *args, **kwargs):
-        return self.profile.name
+    def resolve_full_name(self, *args, **kwargs) -> str:
+        if profile := getattr(self, "profile", None):
+            return profile.name
+        return self.get_full_name()
 
-    def resolve_email(self, info):
+    def resolve_email(self, info) -> str | None:
         return view_user_private_field(self, info, "email")
 
-    def resolve_phone_number(self, info):
+    def resolve_phone_number(self, info) -> str | None:
         return view_user_private_field(self, info, "phone_number")
 
-    def resolve_is_superuser(self, info):
+    def resolve_is_superuser(self, info) -> bool | None:
         return view_user_private_field(self, info, "is_superuser")
 
-    def resolve_is_staff(self, info):
+    def resolve_is_staff(self, info) -> bool | None:
         return view_user_private_field(self, info, "is_staff")
 
-    def resolve_is_email_verified(self, info):
+    def resolve_is_email_verified(self, info) -> bool | None:
         return view_user_private_field(self, info, "is_email_verified")
 
-    def resolve_password_changed_date(self, info):
+    def resolve_password_changed_date(self, info) -> "datetime | None":
         return view_user_private_field(self, info, "password_changed_date")
 
-    def resolve_new_email(self, info):
+    def resolve_new_email(self, info) -> str | None:
         return view_user_private_field(self, info, "new_email")
 
-    def resolve_is_new_email_confirmed(self, info):
+    def resolve_is_new_email_confirmed(self, info) -> bool | None:
         return view_user_private_field(self, info, "is_new_email_confirmed")
 
     MAX_COMPLEXITY = 3
 
     @classmethod
-    def get_queryset(cls, queryset, info):
+    def pre_optimization_hook(cls, queryset, optimizer) -> "QuerySet[User]":
+        queryset = super().pre_optimization_hook(queryset, optimizer)
+        # Annotate ratable metadata
+        if service := shared_services.get("ratable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+        return queryset
+
+    @classmethod
+    def get_queryset(cls, queryset, info) -> "QuerySet[User]":
         if info.context.user.is_anonymous:
             return optimize(
                 queryset.filter(is_active=True), info, max_complexity=cls.MAX_COMPLEXITY
@@ -143,8 +145,10 @@ class AbstractUserObjectType(*inheritances, object):
         return optimize(queryset, info, max_complexity=cls.MAX_COMPLEXITY)
 
     @classmethod
-    def get_node(self, info, id):
-        node = super().get_node(info, id)
+    def get_node(
+        cls, info: graphene.ResolveInfo, node_id: str
+    ) -> Optional["AbstractUserObjectType"]:
+        node = super().get_node(info, node_id)
         if not info.context.user.has_perm(f"{User._meta.app_label}.view_user", node):
             return None
         return node
@@ -155,6 +159,6 @@ class UserObjectType(AbstractUserObjectType, DjangoObjectType):
         pass
 
 
-def view_user_private_field(user, info, field_name):
+def view_user_private_field(user, info, field_name) -> Any:
     if info.context.user.has_perm(f"{User._meta.app_label}.view_user_{field_name}", user):
         return getattr(user, field_name)

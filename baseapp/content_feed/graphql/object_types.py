@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import swapper
 from graphene_django.filter import DjangoFilterConnectionField
 
@@ -8,7 +10,14 @@ from baseapp.content_feed.graphql.filters import (
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql.fields import ThumbnailField
-from baseapp_reactions.graphql.object_types import ReactionsInterface
+from baseapp_core.plugins import (
+    apply_if_installed,
+    graphql_shared_interfaces,
+    shared_services,
+)
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
 
 ContentPost = swapper.load_model(
     "baseapp_content_feed", "ContentPost", required=False, require_ready=False
@@ -33,22 +42,28 @@ class ContentPostObjectType(DjangoObjectType):
     images = DjangoFilterConnectionField(lambda: ContentPostImageObjectType)
 
     class Meta:
-        interfaces = (
-            RelayNode,
-            ReactionsInterface,
+        interfaces = graphql_shared_interfaces.get(
+            RelayNode, "MentionsInterface", "ReactionsInterface"
         )
         model = ContentPost
         fields = (
             "pk",
             "user",
-            "profile",
+            *apply_if_installed("baseapp_profiles", ["profile"]),
             "content",
             "images",
             "created",
             "modified",
-            "is_reactions_enabled",
         )
         filterset_class = ContentPostFilter
 
-    def resolve_images(self, info, **kwargs):
+    def resolve_images(self, info, **kwargs) -> "QuerySet":
         return ContentPostImage.objects.filter(post=self.pk)
+
+    @classmethod
+    def get_queryset(cls, queryset, info) -> "QuerySet":
+        # Annotate reactable metadata so the ReactionsInterface resolvers
+        # (`reactions_count`, `is_reactions_enabled`) don't N+1 per post.
+        if service := shared_services.get("reactable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+        return queryset

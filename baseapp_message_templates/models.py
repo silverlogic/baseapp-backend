@@ -14,7 +14,7 @@ from .utils import attach_files, random_name_in
 class CaseInsensitiveCharField(models.CharField):
     description = "Case insensitive character"
 
-    def db_type(self, connection):
+    def db_type(self, connection) -> str:
         return "citext"
 
 
@@ -53,12 +53,12 @@ class EmailTemplate(TimeStampedModel):
     class Meta:
         ordering = ["-id"]
 
-    def send_via_sendgrid(self, personalization, attachments=[]):
+    def send_via_sendgrid(self, personalization, attachments=[]) -> None:
         if not self.sendgrid_template_id:
             raise Exception("SendGrid template ID required to send message via SendGrid")
         send_personalized_mail(self, personalization, attachments)
 
-    def mass_send_via_sendgrid(self, personalizations, attachments=[]):
+    def mass_send_via_sendgrid(self, personalizations, attachments=[]) -> None:
         if not self.sendgrid_template_id:
             raise Exception("SendGrid template ID required to send message via SendGrid")
         mass_send_personalized_mail(self, personalizations, attachments)
@@ -71,7 +71,7 @@ class EmailTemplate(TimeStampedModel):
         extended_with="",
         attachments=[],
         custom_subject="",
-    ):
+    ) -> None:
         if not self.html_content:
             raise Exception("HTML content required to send e-mail")
 

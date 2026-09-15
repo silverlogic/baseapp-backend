@@ -8,6 +8,13 @@ Subscription = swapper.load_model("baseapp_payments", "Subscription")
 payments_app_label = Customer._meta.app_label
 
 
+def payments_perm(codename: str) -> str:
+    # Under the plugin architecture the concrete Customer lives in the consuming
+    # project, so the app label is no longer "baseapp_payments". Hardcoding it here
+    # silently denied every request.
+    return f"{payments_app_label}.{codename}"
+
+
 class PaymentsPermissionsBackend(BaseBackend):
     def has_perm(self, user_obj, perm, obj=None):
         if perm in [
@@ -67,35 +74,35 @@ class DRFCustomerPermissions(BasePermission):
     def has_object_permission(self, request, view, obj):
         action = getattr(view, "action", None)
         if action == "create":
-            return request.user.has_perm("baseapp_payments.add_customer", obj)
+            return request.user.has_perm(payments_perm("add_customer"), obj)
         elif action == "retrieve":
-            return request.user.has_perm("baseapp_payments.view_customer", obj)
+            return request.user.has_perm(payments_perm("view_customer"), obj)
         elif action in ["update", "partial_update"]:
-            return request.user.has_perm("baseapp_payments.change_customer", obj)
+            return request.user.has_perm(payments_perm("change_customer"), obj)
         elif action == "destroy":
-            return request.user.has_perm("baseapp_payments.delete_customer", obj)
+            return request.user.has_perm(payments_perm("delete_customer"), obj)
         elif action == "invoices":
-            return request.user.has_perm("baseapp_payments.list_invoices", obj)
+            return request.user.has_perm(payments_perm("list_invoices"), obj)
         elif action == "payment_methods":
-            return request.user.has_perm("baseapp_payments.list_payment_methods", obj)
+            return request.user.has_perm(payments_perm("list_payment_methods"), obj)
         elif action == "create_payment_method":
-            return request.user.has_perm("baseapp_payments.add_payment_method", obj)
+            return request.user.has_perm(payments_perm("add_payment_method"), obj)
         elif action == "update_payment_method":
-            return request.user.has_perm("baseapp_payments.change_payment_method", obj)
+            return request.user.has_perm(payments_perm("change_payment_method"), obj)
         elif action == "delete_payment_method":
-            return request.user.has_perm("baseapp_payments.delete_payment_method", obj)
+            return request.user.has_perm(payments_perm("delete_payment_method"), obj)
 
 
 class DRFSubscriptionPermissions(BasePermission):
     def has_object_permission(self, request, view, obj):
         action = getattr(view, "action", None)
         if action == "create":
-            return request.user.has_perm("baseapp_payments.add_subscription", request.data)
+            return request.user.has_perm(payments_perm("add_subscription"), request.data)
         elif action == "retrieve":
-            return request.user.has_perm("baseapp_payments.view_subscription", obj)
+            return request.user.has_perm(payments_perm("view_subscription"), obj)
         elif action == "list":
-            return request.user.has_perm("baseapp_payments.list_subscription", request.data)
+            return request.user.has_perm(payments_perm("list_subscription"), request.data)
         elif action in ["update", "partial_update"]:
-            return request.user.has_perm("baseapp_payments.change_subscription", obj)
+            return request.user.has_perm(payments_perm("change_subscription"), obj)
         elif action == "destroy":
-            return request.user.has_perm("baseapp_payments.delete_subscription", obj)
+            return request.user.has_perm(payments_perm("delete_subscription"), obj)

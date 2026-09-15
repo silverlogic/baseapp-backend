@@ -1,11 +1,15 @@
 from celery import shared_task
+from django.apps import apps
 from django.utils.encoding import force_str
 
 
 @shared_task
 def send_push_notification(
     user_id, extra=None, push_title=None, push_description=None, level=None, **kwargs
-):
+) -> None:
+    if not apps.is_installed("push_notifications"):
+        return
+
     from push_notifications.models import (
         APNSDevice,
         GCMDevice,

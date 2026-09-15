@@ -1,4 +1,3 @@
-import abc
 import typing
 
 from django.conf import settings
@@ -12,8 +11,7 @@ from baseapp_api_key.models import APIKey, BaseAPIKey
 class BaseHasAPIKey(permissions.BasePermission):
     APIKeyModel: typing.Type[BaseAPIKey]
 
-    @abc.abstractmethod
-    def has_permission(self, request: HttpRequest, view: typing.Type[APIView]):
+    def has_permission(self, request: HttpRequest, view: typing.Type[APIView]) -> bool:
         unencrypted_api_key = request.META.get(settings.BA_API_KEY_REQUEST_HEADER, None)
 
         if isinstance(unencrypted_api_key, str):

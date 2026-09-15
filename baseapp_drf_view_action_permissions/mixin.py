@@ -21,14 +21,14 @@ class PermissionModelMixin(PermissionsMixin):
     class Meta:
         abstract = True
 
-    def has_perm(self, perm, obj=None):
+    def has_perm(self, perm, obj=None) -> bool:
         return super().has_perm(perm, obj) or perm in self.permission_list
 
-    def has_perms(self, perms, obj=None):
+    def has_perms(self, perms, obj=None) -> bool:
         return all(self.has_perm(perm, obj) for perm in perms)
 
     @cached_property
-    def permission_list(self):
+    def permission_list(self) -> set[str]:
         perms = super().get_all_permissions()
         excluded_perms = list(
             Permission.objects.filter(excluded_permission_users__email=self.email).values_list(

@@ -1,0 +1,16 @@
+id: drf-filters-in-viewset
+language: Python
+severity: warning
+message: "Don't filter querysets from query params manually. Declare a FilterSet in `filtersets.py` and wire it with `filterset_class` + `DjangoFilterBackend`. See .claude/skills/backend-conventions/references/drf-file-layout.md"
+ignores:
+  - "**/migrations/**"
+rule:
+  any:
+    - pattern: request.GET
+    - pattern: request.query_params
+  inside:
+    stopBy: end
+    kind: call
+    has:
+      field: function
+      regex: \.(filter|exclude)$

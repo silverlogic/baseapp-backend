@@ -8,7 +8,7 @@ from wagtail.fields import StreamField
 
 class PageBodyStreamField(StreamField):
     @staticmethod
-    def create(*args, **kwargs):
+    def create(*args, **kwargs) -> "PageBodyStreamField":
         kwargs["verbose_name"] = "Page body"
         kwargs["blank"] = True
         kwargs["use_json_field"] = True
@@ -19,7 +19,7 @@ class PageBodyStreamField(StreamField):
         )
         return PageBodyStreamField(section_stream_block, **kwargs)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
 
@@ -31,7 +31,7 @@ class SectionBlockAdapter(StreamBlockAdapter):
     js_constructor = "baseapp_wagtail.stream_blocks.SectionStreamBlock"
 
     @cached_property
-    def media(self):
+    def media(self) -> forms.Media:
         streamblock_media = super().media
         return forms.Media(
             js=streamblock_media._js + ["baseapp_wagtail/js/section-stream-block.js"],

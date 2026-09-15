@@ -1,3 +1,4 @@
+from django.http import HttpResponse
 from rest_framework import permissions, viewsets
 
 from .views import direct_creator_upload
@@ -6,5 +7,5 @@ from .views import direct_creator_upload
 class CloudflareStreamUploadViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
-    def create(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs) -> HttpResponse:
         return direct_creator_upload(request)

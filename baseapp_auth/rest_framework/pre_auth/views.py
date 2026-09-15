@@ -15,19 +15,19 @@ class PreAuthViewSet(viewsets.GenericViewSet):
         serializer_class=AuthTokenPreAuthSerializer,
         url_path="auth-token",
     )
-    def auth_token(self, request, *args, **kwargs):
+    def auth_token(self, request, *args, **kwargs) -> response.Response:
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
-        return response.Response(dict(token=instance.key))
+        return response.Response({"token": instance.key})
 
     @action(
         detail=False,
         methods=["POST"],
         serializer_class=JWTPreAuthSerializer,
     )
-    def jwt(self, request, *args, **kwargs):
+    def jwt(self, request, *args, **kwargs) -> response.Response:
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
-        return response.Response(dict(refresh=str(instance), access=str(instance.access_token)))
+        return response.Response({"refresh": str(instance), "access": str(instance.access_token)})

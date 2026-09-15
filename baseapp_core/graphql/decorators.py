@@ -1,20 +1,22 @@
+from collections.abc import Callable
 from functools import wraps
 from importlib import import_module
+from typing import Any
 
 from django.conf import settings
 from graphql.error import GraphQLError
 
 
-def user_passes_test(test_func):
+def user_passes_test(test_func) -> Callable[[Callable], Callable]:
     """
     Decorator for views that checks that the user passes the given test,
     redirecting to the log-in page if necessary. The test should be a callable
     that takes the user object and returns True if the user passes.
     """
 
-    def decorator(view_func):
+    def decorator(view_func) -> Callable:
         @wraps(view_func)
-        def _wrapped_view(cls, root, info, **data):
+        def _wrapped_view(cls, root, info, **data) -> Any:
             if test_func(info.context.user):
                 return view_func(cls, root, info, **data)
             raise GraphQLError(
@@ -27,7 +29,7 @@ def user_passes_test(test_func):
     return decorator
 
 
-def login_required(function):
+def login_required(function) -> Callable:
     actual_decorator = user_passes_test(
         lambda u: u.is_authenticated,
     )
@@ -39,7 +41,7 @@ def login_required(function):
 _graphql_loaded = False
 
 
-def _ensure_graphql_loaded():
+def _ensure_graphql_loaded() -> None:
     """
     Ensure the GraphQL schema module is imported so that the
     Graphene global registry is populated.
@@ -75,14 +77,14 @@ def _ensure_graphql_loaded():
     _graphql_loaded = True
 
 
-def graphql_schema_required(func):
+def graphql_schema_required(func) -> Callable:
     """
     Decorator that ensures the GraphQL schema is imported (and thus
     the Graphene registry is populated) before calling `func`.
     """
 
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args, **kwargs) -> Any:
         _ensure_graphql_loaded()
         return func(*args, **kwargs)
 

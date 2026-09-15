@@ -8,7 +8,7 @@ from baseapp_core.backfill import backfill_all_models, backfill_single_instance
 class Command(BaseCommand):
     help = "Backfill DocumentId rows for existing model instances that use DocumentIdMixin."
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser) -> None:
         parser.add_argument(
             "--batch-size",
             type=int,
@@ -33,7 +33,7 @@ class Command(BaseCommand):
             help="Backfill a single instance in the format app_label.Model:pk (example: users.User:1)",
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options) -> None:
         batch_size: int = options["batch_size"]
         apps_filter: list | None = options.get("apps")
         dry_run: bool = options.get("dry_run", False)

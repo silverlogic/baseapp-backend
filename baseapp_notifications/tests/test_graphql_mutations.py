@@ -8,7 +8,7 @@ import swapper
 NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationSetting")
 
 
-def test_user_can_notifications_mark_all_as_read(django_user_client, graphql_user_client):
+def test_user_can_notifications_mark_all_as_read(django_user_client, graphql_user_client) -> None:
     NotificationFactory(recipient=django_user_client.user)
     notification = NotificationFactory(recipient=django_user_client.user)
     assert notification.unread is True
@@ -26,7 +26,7 @@ def test_user_can_notifications_mark_all_as_read(django_user_client, graphql_use
     assert notification.unread is False
 
 
-def test_another_user_cant_notifications_mark_all_as_read(graphql_user_client):
+def test_another_user_cant_notifications_mark_all_as_read(graphql_user_client) -> None:
     notification = NotificationFactory()
     assert notification.unread is True
 
@@ -38,7 +38,7 @@ def test_another_user_cant_notifications_mark_all_as_read(graphql_user_client):
     assert notification.unread is True
 
 
-def test_user_can_notifications_mark_as_read(django_user_client, graphql_user_client):
+def test_user_can_notifications_mark_as_read(django_user_client, graphql_user_client) -> None:
     NotificationFactory(recipient=django_user_client.user)
     notification = NotificationFactory(recipient=django_user_client.user)
     assert notification.unread is True
@@ -55,7 +55,7 @@ def test_user_can_notifications_mark_as_read(django_user_client, graphql_user_cl
     assert notification.unread is False
 
 
-def test_another_user_cant_notifications_mark_as_read(graphql_user_client):
+def test_another_user_cant_notifications_mark_as_read(graphql_user_client) -> None:
     notification = NotificationFactory()
     assert notification.unread is True
 
@@ -84,7 +84,7 @@ NOTIFICATION_SETTINGS_TOGGLE_GRAPHQL = """
 """
 
 
-def test_user_can_enable_notification_setting(django_user_client, graphql_user_client):
+def test_user_can_enable_notification_setting(django_user_client, graphql_user_client) -> None:
     response = graphql_user_client(
         NOTIFICATION_SETTINGS_TOGGLE_GRAPHQL,
         variables={
@@ -107,7 +107,7 @@ def test_user_can_enable_notification_setting(django_user_client, graphql_user_c
     ).exists()
 
 
-def test_user_can_disable_notification_setting(django_user_client, graphql_user_client):
+def test_user_can_disable_notification_setting(django_user_client, graphql_user_client) -> None:
     notification_setting = NotificationSettingFactory(
         user=django_user_client.user,
         is_active=True,
@@ -135,7 +135,7 @@ def test_user_can_disable_notification_setting(django_user_client, graphql_user_
     assert notification_setting.is_active is False
 
 
-def test_user_can_enable_all_notification_setting(django_user_client, graphql_user_client):
+def test_user_can_enable_all_notification_setting(django_user_client, graphql_user_client) -> None:
     notification_setting = NotificationSettingFactory(
         user=django_user_client.user,
         is_active=False,
@@ -174,7 +174,7 @@ def test_user_can_enable_all_notification_setting(django_user_client, graphql_us
     ).exists()
 
 
-def test_user_can_disable_all_notification_setting(django_user_client, graphql_user_client):
+def test_user_can_disable_all_notification_setting(django_user_client, graphql_user_client) -> None:
     notification_setting = NotificationSettingFactory(
         user=django_user_client.user,
         is_active=True,
@@ -216,7 +216,7 @@ def test_user_can_disable_all_notification_setting(django_user_client, graphql_u
 
 def test_user_can_disable_all_notification_setting_first_time_with_active(
     django_user_client, graphql_user_client
-):
+) -> None:
     notification_setting = NotificationSettingFactory(
         user=django_user_client.user,
         is_active=True,
@@ -258,7 +258,7 @@ def test_user_can_disable_all_notification_setting_first_time_with_active(
 
 def test_user_can_disable_all_notification_setting_first_time_with_non_active(
     django_user_client, graphql_user_client
-):
+) -> None:
     notification_setting = NotificationSettingFactory(
         user=django_user_client.user,
         is_active=False,

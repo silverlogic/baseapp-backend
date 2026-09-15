@@ -1,28 +1,27 @@
 import graphene
 import swapper
 from django import forms
+from django.apps import apps
 from django.db import transaction
 from graphene_django.forms.mutation import _set_errors_flag_to_context
 from graphene_django.types import ErrorType
 from rest_framework import serializers
 
 from baseapp_core.graphql import RelayMutation, login_required
+from baseapp_core.plugins import shared_services
 
 ContentPost = swapper.load_model(
     "baseapp_content_feed", "ContentPost", required=False, require_ready=False
 )
-app_label = ContentPost._meta.app_label
 ContentPostImage = swapper.load_model("baseapp_content_feed", "ContentPostImage")
 
 ContentPostObjectType = ContentPost.get_graphql_object_type()
-
-ContentPostImageType = ContentPostImage.get_graphql_object_type()
 
 
 class ContentPostForm(forms.ModelForm):
     class Meta:
         model = ContentPost
-        fields = ("content", "is_reactions_enabled")
+        fields = ("content",)
 
 
 class ImageSerializer(serializers.Serializer):
@@ -35,10 +34,12 @@ class ContentPostCreate(RelayMutation):
     class Input:
         content = graphene.String(required=True)
         is_reactions_enabled = graphene.Boolean(required=True)
+        mentioned_profile_ids = graphene.List(graphene.ID, required=False)
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ContentPostCreate":
+        mentioned_profile_ids = input.pop("mentioned_profile_ids", None) or []
         form = ContentPostForm(data=input)
         images = [v for k, v in info.context.FILES.items() if k.startswith("images")]
 
@@ -46,8 +47,12 @@ class ContentPostCreate(RelayMutation):
             with transaction.atomic():
                 instance = form.save(commit=False)
                 instance.user = info.context.user
-                instance.profile = info.context.user.current_profile
+                if apps.is_installed("baseapp_profiles") and hasattr(instance, "profile"):
+                    instance.profile = info.context.user.current_profile
                 instance.save()
+
+                if (service := shared_services.get("reactable_metadata")) is not None:
+                    service.set_is_reactions_enabled(instance, input["is_reactions_enabled"])
 
                 created_images_list = []
 
@@ -63,6 +68,14 @@ class ContentPostCreate(RelayMutation):
                             image=serializer.validated_data["image"], post=instance
                         )
                     )
+
+                if mentioned_profile_ids:
+                    if service := shared_services.get("mentions"):
+                        service.update_mentions(
+                            instance,
+                            mentioned_profile_ids,
+                            exclude_profile=getattr(info.context.user, "current_profile", None),
+                        )
 
                 instance.refresh_from_db()
 

@@ -1,8 +1,10 @@
+import logging
+
 import graphene
 import swapper
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Model
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from graphene_django.types import ErrorType
@@ -15,10 +17,14 @@ from baseapp_chats.graphql.subscriptions import (
     ChatRoomOnRoomUpdate,
 )
 from baseapp_chats.utils import (
-    CONTENT_LINKED_PROFILE_ACTOR,
-    CONTENT_LINKED_PROFILE_TARGET,
+    SYSTEM_MESSAGE_GROUP_CREATED,
+    SYSTEM_MESSAGE_MADE_ADMIN,
+    add_profiles_to_room,
+    escape_format_braces,
+    send_chatroom_update_system_messages,
     send_message,
     send_new_chat_message_notification,
+    send_system_message,
 )
 from baseapp_core.graphql import (
     RelayMutation,
@@ -26,6 +32,9 @@ from baseapp_core.graphql import (
     get_pk_from_relay_id,
     login_required,
 )
+from baseapp_core.plugins import shared_services
+
+logger = logging.getLogger(__name__)
 
 ChatRoom = swapper.load_model("baseapp_chats", "ChatRoom")
 ChatRoomParticipant = swapper.load_model("baseapp_chats", "ChatRoomParticipant")
@@ -33,7 +42,6 @@ ChatRoomParticipantRoles = ChatRoomParticipant.ChatRoomParticipantRoles
 Message = swapper.load_model("baseapp_chats", "Message")
 MessageStatus = swapper.load_model("baseapp_chats", "MessageStatus")
 UnreadMessageCount = swapper.load_model("baseapp_chats", "UnreadMessageCount")
-Block = swapper.load_model("baseapp_blocks", "Block")
 User = get_user_model()
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 profile_app_label = Profile._meta.app_label
@@ -61,7 +69,9 @@ class ChatRoomCreate(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, profile_id, participants, is_group, **input):
+    def mutate_and_get_payload(
+        cls, root, info, profile_id, participants, is_group, **input
+    ) -> "ChatRoomCreate":
         profile = get_obj_from_relay_id(info, profile_id)
 
         if not info.context.user.has_perm(f"{profile_app_label}.use_profile", profile):
@@ -79,18 +89,16 @@ class ChatRoomCreate(RelayMutation):
         participants_ids = [participant.pk for participant in participants]
 
         # Check if participants are blocked
-        if Block.objects.filter(
-            Q(actor_id=profile.id, target_id__in=participants_ids)
-            | Q(actor_id__in=participants_ids, target_id=profile.id)
-        ).exists():
-            return ChatRoomCreate(
-                errors=[
-                    ErrorType(
-                        field="participants",
-                        messages=[_("You can't create a chatroom with those participants")],
-                    )
-                ]
-            )
+        if service := shared_services.get("blocks.lookup"):
+            if service.has_block_between([profile.id], participants_ids):
+                return ChatRoomCreate(
+                    errors=[
+                        ErrorType(
+                            field="participants",
+                            messages=[_("You can't create a chatroom with those participants")],
+                        )
+                    ]
+                )
 
         participants.append(profile)
 
@@ -181,13 +189,11 @@ class ChatRoomCreate(RelayMutation):
         room.save()
 
         if is_group:
-            send_message(
-                message_type=Message.MessageType.SYSTEM_GENERATED,
-                room=room,
-                profile=None,
-                user=None,
-                content=CONTENT_LINKED_PROFILE_ACTOR + ' created group "' + title + '"',
-                content_linked_profile_actor=profile,
+            safe_title = escape_format_braces(title)
+            send_system_message(
+                room,
+                SYSTEM_MESSAGE_GROUP_CREATED.replace("{title}", safe_title),
+                actor=profile,
             )
             ChatRoomOnRoomUpdate.room_updated(room)
 
@@ -225,7 +231,7 @@ class ChatRoomUpdate(RelayMutation):
         add_participants,
         remove_participants,
         **input,
-    ):
+    ) -> "ChatRoomUpdate":
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
         is_sole_admin = (
@@ -287,18 +293,16 @@ class ChatRoomUpdate(RelayMutation):
             )
 
         # Check if added participants are blocked
-        if Block.objects.filter(
-            Q(actor_id=profile.id, target_id__in=add_participants_pks)
-            | Q(actor_id__in=add_participants_pks, target_id=profile.id)
-        ).exists():
-            return ChatRoomUpdate(
-                errors=[
-                    ErrorType(
-                        field="add_participants",
-                        messages=[_("You can't add those participants to a chatroom")],
-                    )
-                ]
-            )
+        if service := shared_services.get("blocks.lookup"):
+            if service.has_block_between([profile.id], add_participants_pks):
+                return ChatRoomUpdate(
+                    errors=[
+                        ErrorType(
+                            field="add_participants",
+                            messages=[_("You can't add those participants to a chatroom")],
+                        )
+                    ]
+                )
 
         if not info.context.user.has_perm(
             "baseapp_chats.modify_chatroom",
@@ -327,6 +331,12 @@ class ChatRoomUpdate(RelayMutation):
                 errors=[ErrorType(field="image", messages=serializer.errors["image"])]
             )
 
+        # Capture pre-update state so we can emit accurate system messages below
+        previous_title = room.title
+        had_image = bool(room.image)
+        title_changed = title is not None and title != previous_title
+        image_changed = (image is not None) or (delete_image and had_image)
+
         with transaction.atomic():
             # Removing participants
             removed_participants = list(participants_to_remove)
@@ -342,28 +352,7 @@ class ChatRoomUpdate(RelayMutation):
                     oldest_remaining_participant.save(update_fields=["role"])
 
             # Adding new participants
-            unique_participants_pks = list(set(add_participants_pks))
-            existing_participants_pks = ChatRoomParticipant.objects.filter(
-                Q(room=room) & Q(profile__pk__in=unique_participants_pks)
-            ).values_list("profile__pk", flat=True)
-
-            new_participants = [
-                participant
-                for participant in unique_participants_pks
-                if int(participant) not in existing_participants_pks
-            ]
-
-            created_participants = ChatRoomParticipant.objects.bulk_create(
-                [
-                    ChatRoomParticipant(
-                        profile_id=participant,
-                        room=room,
-                        role=ChatRoomParticipantRoles.MEMBER,
-                        accepted_at=timezone.now(),
-                    )
-                    for participant in new_participants
-                ]
-            )
+            created_participants = add_profiles_to_room(room, add_participants_pks)
 
             room.participants_count = (
                 room.participants_count - len(removed_participants) + len(created_participants)
@@ -380,12 +369,231 @@ class ChatRoomUpdate(RelayMutation):
             room, removed_participants, added_participants=created_participants
         )
 
+        # Emit the system messages describing what changed in the group
+        send_chatroom_update_system_messages(
+            room,
+            profile,
+            new_title=title,
+            title_changed=title_changed,
+            image_changed=image_changed,
+            added_participants=created_participants,
+            removed_participants=removed_participants,
+            is_leaving=is_leaving_chatroom,
+        )
+
         return ChatRoomUpdate(
             room=ChatRoomObjectType._meta.connection.Edge(
                 node=room,
             ),
             removed_participants=removed_participants,
             added_participants=created_participants,
+        )
+
+
+class ChatRoomsAddParticipant(RelayMutation):
+    """Add one profile as a MEMBER participant to multiple group chat rooms at once.
+
+    All-or-nothing: if the acting profile can't add participants to any of the
+    requested rooms, nothing is written. Rooms where the profile is already a
+    participant are silently skipped (idempotent).
+    """
+
+    rooms = graphene.List(
+        ChatRoomObjectType,
+        description="All requested rooms, after the update.",
+    )
+    added_participants = graphene.List(
+        ChatRoomParticipantObjectType,
+        description="Participant rows actually created (already-member rooms are skipped).",
+    )
+
+    class Input:
+        profile_id = graphene.ID(
+            required=True, description="Relay id of the acting profile (must be manageable)."
+        )
+        participant_profile_id = graphene.ID(
+            required=True, description="Relay id of the profile to add to the rooms."
+        )
+        room_ids = graphene.List(
+            graphene.NonNull(graphene.ID),
+            required=True,
+            description="Relay ids of the group rooms to add the participant to.",
+        )
+
+    @classmethod
+    def _resolve_rooms(
+        cls, info: graphene.ResolveInfo, room_ids: list[str]
+    ) -> tuple[list[Model], ErrorType | None]:
+        """Resolve relay ids to unique group ChatRoom instances, preserving input order."""
+        rooms = []
+        seen_room_pks = set()
+        for room_id in room_ids:
+            try:
+                room = get_obj_from_relay_id(info, room_id)
+            except Exception:
+                room = None
+            if not room or not isinstance(room, ChatRoom) or not room.is_group:
+                return [], ErrorType(
+                    field="room_ids",
+                    messages=[_("Some rooms are not valid")],
+                )
+
+            if room.pk in seen_room_pks:
+                continue
+            seen_room_pks.add(room.pk)
+            rooms.append(room)
+
+        return rooms, None
+
+    @classmethod
+    def _check_rooms_permissions(
+        cls,
+        info: graphene.ResolveInfo,
+        profile: Model,
+        participant_profile: Model,
+        rooms: list[Model],
+    ) -> ErrorType | None:
+        """Return an error unless the actor can add the participant to every room."""
+        for room in rooms:
+            if not info.context.user.has_perm(
+                "baseapp_chats.modify_chatroom",
+                {
+                    "profile": profile,
+                    "room": room,
+                    "add_participants": [participant_profile.pk],
+                },
+            ):
+                return ErrorType(
+                    field="room_ids",
+                    messages=[
+                        _(
+                            "You don't have permission to add participants to one or "
+                            "more of the selected rooms"
+                        )
+                    ],
+                )
+        return None
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(
+        cls,
+        root,
+        info: graphene.ResolveInfo,
+        profile_id: str,
+        participant_profile_id: str,
+        room_ids: list[str],
+        **input,
+    ) -> "ChatRoomsAddParticipant":
+        profile = get_obj_from_relay_id(info, profile_id)
+
+        if not info.context.user.has_perm(f"{profile_app_label}.use_profile", profile):
+            return ChatRoomsAddParticipant(
+                errors=[
+                    ErrorType(
+                        field="profile_id",
+                        messages=[_("You don't have permission to act as this profile")],
+                    )
+                ]
+            )
+
+        try:
+            participant_profile = get_obj_from_relay_id(info, participant_profile_id)
+        except Exception:
+            participant_profile = None
+        if not isinstance(participant_profile, Profile):
+            return ChatRoomsAddParticipant(
+                errors=[
+                    ErrorType(
+                        field="participant_profile_id",
+                        messages=[_("This profile is not valid")],
+                    )
+                ]
+            )
+
+        # Check if the participant is blocked
+        if service := shared_services.get("blocks.lookup"):
+            if service.has_block_between([profile.id], [participant_profile.pk]):
+                return ChatRoomsAddParticipant(
+                    errors=[
+                        ErrorType(
+                            field="participant_profile_id",
+                            messages=[_("You can't add this participant to a chatroom")],
+                        )
+                    ]
+                )
+
+        # Resolve every room before any write (all-or-nothing)
+        rooms, resolve_error = cls._resolve_rooms(info, room_ids)
+        if resolve_error:
+            return ChatRoomsAddParticipant(errors=[resolve_error])
+
+        if not rooms:
+            return ChatRoomsAddParticipant(
+                errors=[
+                    ErrorType(
+                        field="room_ids",
+                        messages=[_("You need to select at least one room")],
+                    )
+                ]
+            )
+
+        added_participants = []
+        rooms_with_new_participant = []
+        with transaction.atomic():
+            # Lock the room rows in deterministic pk order to serialize concurrent
+            # participant adds (keeps add_profiles_to_room idempotent and the
+            # participants_count increments lossless under concurrency)
+            locked_rooms_by_pk = {
+                locked_room.pk: locked_room
+                for locked_room in ChatRoom.objects.select_for_update()
+                .filter(pk__in=[room.pk for room in rooms])
+                .order_by("pk")
+            }
+            if len(locked_rooms_by_pk) != len(rooms):
+                return ChatRoomsAddParticipant(
+                    errors=[
+                        ErrorType(
+                            field="room_ids",
+                            messages=[_("Some rooms are not valid")],
+                        )
+                    ]
+                )
+            rooms = [locked_rooms_by_pk[room.pk] for room in rooms]
+
+            # Validate permissions under the lock, before any write, so a
+            # concurrent demotion/removal committed after resolving the rooms
+            # is still taken into account (all-or-nothing)
+            permission_error = cls._check_rooms_permissions(
+                info, profile, participant_profile, rooms
+            )
+            if permission_error:
+                return ChatRoomsAddParticipant(errors=[permission_error])
+
+            for room in rooms:
+                created_participants = add_profiles_to_room(room, [participant_profile.pk])
+                if created_participants:
+                    room.participants_count = room.participants_count + len(created_participants)
+                    room.save(update_fields=["participants_count"])
+                    added_participants.extend(created_participants)
+                    rooms_with_new_participant.append((room, created_participants))
+
+        for room, created_participants in rooms_with_new_participant:
+            # Memberships are already committed: notification failures must not
+            # surface as mutation errors nor block the remaining rooms
+            try:
+                ChatRoomOnRoomUpdate.room_updated(room, added_participants=created_participants)
+                send_chatroom_update_system_messages(
+                    room, profile, added_participants=created_participants
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to send chat room update notifications for room %s", room.pk
+                )
+
+        return ChatRoomsAddParticipant(
+            rooms=rooms,
+            added_participants=added_participants,
         )
 
 
@@ -406,7 +614,7 @@ class ChatRoomToggleAdmin(RelayMutation):
         target_participant_id,
         profile_id,
         room_id,
-    ):
+    ) -> "ChatRoomToggleAdmin":
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 
@@ -479,15 +687,11 @@ class ChatRoomToggleAdmin(RelayMutation):
                 target_participant.save(update_fields=["role"])
 
         if not participant_is_admin:
-            send_message(
-                room=room,
-                profile=None,
-                user=None,
-                message_type=Message.MessageType.SYSTEM_GENERATED,
-                content=CONTENT_LINKED_PROFILE_TARGET + " now an admin",
-                content_linked_profile_actor=profile,
-                content_linked_profile_target=target_participant.profile,
-                extra_data={"include_verb": True},
+            send_system_message(
+                room,
+                SYSTEM_MESSAGE_MADE_ADMIN,
+                actor=profile,
+                target=target_participant.profile,
             )
 
         return ChatRoomToggleAdmin(
@@ -505,12 +709,13 @@ class ChatRoomSendMessage(RelayMutation):
         profile_id = graphene.ID(required=True)
         content = graphene.String(required=True)
         in_reply_to_id = graphene.ID(required=False)
+        mentioned_profile_ids = graphene.List(graphene.ID, required=False)
 
     @classmethod
     @login_required
     def mutate_and_get_payload(
         cls, root, info, room_id, content, profile_id, in_reply_to_id=None, **input
-    ):
+    ) -> "ChatRoomSendMessage":
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 
@@ -574,6 +779,15 @@ class ChatRoomSendMessage(RelayMutation):
             in_reply_to=in_reply_to,
         )
 
+        mentioned_profile_ids = input.pop("mentioned_profile_ids", None) or []
+        if mentioned_profile_ids:
+            if service := shared_services.get("mentions"):
+                service.update_mentions(
+                    message,
+                    mentioned_profile_ids,
+                    exclude_profile=profile,
+                )
+
         send_new_chat_message_notification(room, message, info)
         ChatRoomReadMessages.read_messages(room, profile)
 
@@ -590,10 +804,12 @@ class ChatRoomEditMessage(RelayMutation):
     class Input:
         id = graphene.ID(required=True)
         content = graphene.String(required=True)
+        mentioned_profile_ids = graphene.List(graphene.ID, required=False)
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ChatRoomEditMessage":
+        mentioned_profile_ids = input.pop("mentioned_profile_ids", None)
         pk = get_pk_from_relay_id(input.get("id"))
         try:
             message = Message.objects.get(pk=pk)
@@ -652,6 +868,14 @@ class ChatRoomEditMessage(RelayMutation):
         message.content = content
         message.save(update_fields=["content"])
 
+        if mentioned_profile_ids is not None:
+            if service := shared_services.get("mentions"):
+                service.update_mentions(
+                    message,
+                    mentioned_profile_ids,
+                    exclude_profile=profile,
+                )
+
         ChatRoomOnMessage.edit_message(room_id=message.room.relay_id, message=message)
 
         return ChatRoomEditMessage(
@@ -669,7 +893,7 @@ class ChatRoomDeleteMessage(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input):
+    def mutate_and_get_payload(cls, root, info, **input) -> "ChatRoomDeleteMessage":
         pk = get_pk_from_relay_id(input.get("id"))
         try:
             message = Message.objects.get(pk=pk)
@@ -739,7 +963,9 @@ class ChatRoomReadMessages(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, room_id, profile_id, message_ids=None, **input):
+    def mutate_and_get_payload(
+        cls, root, info, room_id, profile_id, message_ids=None, **input
+    ) -> "ChatRoomReadMessages":
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 
@@ -770,13 +996,13 @@ class ChatRoomReadMessages(RelayMutation):
         return cls.read_messages(room, profile, message_ids)
 
     @classmethod
-    def remove_marked_unread(cls, room, profile):
+    def remove_marked_unread(cls, room, profile) -> None:
         UnreadMessageCount.objects.filter(profile=profile, room=room, marked_unread=True).update(
             marked_unread=False
         )
 
     @classmethod
-    def read_messages(cls, room, profile, message_ids=None):
+    def read_messages(cls, room, profile, message_ids=None) -> "ChatRoomReadMessages":
         messages_status_qs = MessageStatus.objects.filter(
             profile_id=profile.pk,
             is_read=False,
@@ -815,7 +1041,7 @@ class ChatRoomUnread(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, room_id, profile_id, **input):
+    def mutate_and_get_payload(cls, root, info, room_id, profile_id, **input) -> "ChatRoomUnread":
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 
@@ -861,7 +1087,9 @@ class ChatRoomArchive(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, room_id, profile_id, archive, **input):
+    def mutate_and_get_payload(
+        cls, root, info, room_id, profile_id, archive, **input
+    ) -> "ChatRoomArchive":
         room = get_obj_from_relay_id(info, room_id)
         profile = get_obj_from_relay_id(info, profile_id)
 
@@ -903,6 +1131,7 @@ class ChatRoomArchive(RelayMutation):
 class ChatsMutations(object):
     chat_room_create = ChatRoomCreate.Field()
     chat_room_update = ChatRoomUpdate.Field()
+    chat_rooms_add_participant = ChatRoomsAddParticipant.Field()
     chat_room_send_message = ChatRoomSendMessage.Field()
     chat_room_edit_message = ChatRoomEditMessage.Field()
     chat_room_delete_message = ChatRoomDeleteMessage.Field()

@@ -26,10 +26,10 @@ APPS_DIR = BASE_DIR
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "secret-for-test-app"
+SECRET_KEY = "secret-for-test-app"  # NOSONAR
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = True  # NOSONAR - test settings only, never used in production
 
 ALLOWED_HOSTS = ["*"]
 
@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
     "rest_framework",
     "rest_framework.authtoken",
     "djmail",
@@ -228,7 +229,3 @@ REST_FRAMEWORK = {
 }
 
 BASEAPP_AUTH_USER_FACTORY = "baseapp_core.tests.factories.UserFactory"
-
-# Notifications
-DJANGO_NOTIFICATIONS_CONFIG = {"USE_JSONFIELD": True}
-NOTIFICATIONS_NOTIFICATION_MODEL = "baseapp_notifications.Notification"

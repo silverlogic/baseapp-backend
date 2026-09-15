@@ -5,8 +5,8 @@ from baseapp_profiles.tests.factories import ProfileFactory
 
 
 class UserFactory(factory.django.DjangoModelFactory):
-    email = factory.Faker("email")
-    password = factory.PostGenerationMethodCall("set_password", "default")
+    email = factory.Sequence(lambda n: f"user{n}@example.com")
+    password = factory.PostGenerationMethodCall("set_password", "default")  # NOSONAR
     first_name = factory.Faker("first_name")
     last_name = factory.Faker("last_name")
 

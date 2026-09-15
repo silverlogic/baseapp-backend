@@ -21,7 +21,7 @@ class OnCommentChange(channels_graphql_ws.Subscription):
         target_object_id = graphene.ID()
 
     @staticmethod
-    def subscribe(root, info, target_object_id=None):
+    def subscribe(root, info, target_object_id=None) -> list[str]:
         user = info.context.channels_scope.get("user", AnonymousUser())
         groups = []
 
@@ -41,7 +41,9 @@ class OnCommentChange(channels_graphql_ws.Subscription):
         return groups
 
     @staticmethod
-    def publish(payload, info, target_object_id=None, in_reply_to_id=None):
+    def publish(
+        payload, info, target_object_id=None, in_reply_to_id=None
+    ) -> "OnCommentChange | None":
         created_comment = payload.get("created_comment", None)
         updated_comment = payload.get("updated_comment", None)
         deleted_comment_id = payload.get("deleted_comment_id", None)
@@ -65,7 +67,7 @@ class OnCommentChange(channels_graphql_ws.Subscription):
         )
 
     @classmethod
-    def send_created_comment(cls, comment):
+    def send_created_comment(cls, comment) -> None:
         # if hasattr(comment, "_sent_created_comment_subscription_event"):
         #     return
         # comment._sent_created_comment_subscription_event = True
@@ -76,11 +78,9 @@ class OnCommentChange(channels_graphql_ws.Subscription):
         # with this we don't send replies if the user don't have replies open
         if comment.in_reply_to_id:
             groups.append(comment.in_reply_to.relay_id)
-        elif comment.target_object_id:
+        elif comment.target_document_id:
             try:
-                target = comment.target_content_type.get_object_for_this_type(
-                    pk=comment.target_object_id
-                )
+                target = comment.target
                 groups.append(target.relay_id)
             except ObjectDoesNotExist:
                 pass
@@ -92,13 +92,13 @@ class OnCommentChange(channels_graphql_ws.Subscription):
             )
 
     @classmethod
-    def send_updated_comment(cls, comment):
+    def send_updated_comment(cls, comment) -> None:
         # if hasattr(comment, "_sent_updated_comment_subscription_event"):
         #     return
         # comment._sent_updated_comment_subscription_event = True
 
         groups = ["all"]
-        if comment.target_object_id and comment.target and comment.target.relay_id:
+        if comment.target_document_id and comment.target and comment.target.relay_id:
             groups.append(comment.target.relay_id)
 
         if comment.in_reply_to_id:
@@ -111,7 +111,7 @@ class OnCommentChange(channels_graphql_ws.Subscription):
             )
 
     @classmethod
-    def send_delete_comment(cls, comment_replay_id, target_relay_id, in_reply_to_relay_id):
+    def send_delete_comment(cls, comment_replay_id, target_relay_id, in_reply_to_relay_id) -> None:
         # if hasattr(comment, "_sent_deleted_comment_subscription_event"):
         #     return
         # comment._sent_deleted_comment_subscription_event = True

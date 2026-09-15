@@ -19,33 +19,28 @@ Below is a database diagram illustrating the structure of the DocumentId model.
 
 ```mermaid
 erDiagram
-    PAGE ||--|| DOCUMENTID : "one per Page"
-    PROFILE ||--|| DOCUMENTID : "one per Profile"
-    CONTENTTYPE ||--o{ DOCUMENTID : "content_type_id"
-    
-    DOCUMENTID ||--o{ COMMENT : "target_id"
-    DOCUMENTID ||--|| COMMENTSTATS : "1:1 by PK"
-    
-    PAGE {
-        bigint id PK
-        string title
-    }
-    
+    CONTENTTYPE ||--o{ DOCUMENTID : "content_type"
+
+    PROFILE ||--|| DOCUMENTID : "registered as"
+    PAGE    ||--|| DOCUMENTID : "registered as"
+
+    DOCUMENTID ||--o{ COMMENT             : "commented on"
+    DOCUMENTID ||--o| COMMENTABLEMETADATA : "comment stats (1:1)"
+
     DOCUMENTID {
-        bigint id PK
-        int content_type_id FK
+        uuid public_id
+        int content_type FK
         bigint object_id
-        datetime last_activity_at
     }
-    
+
     COMMENT {
         bigint id PK
-        bigint target_id FK
+        bigint target_document FK
         text body
     }
 
-    COMMENTSTATS {
-        bigint target_id PK, FK
+    COMMENTABLEMETADATA {
+        bigint target PK "1:1 to DocumentId"
         json comments_count
         bool is_comments_enabled
     }

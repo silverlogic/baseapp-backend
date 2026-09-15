@@ -7,14 +7,14 @@ from .factories import UserFactory
 pytestmark = pytest.mark.django_db
 
 
-def _reset_graphql_loaded():
+def _reset_graphql_loaded() -> None:
     """
     Helper to reset the GraphQL loaded flag.
     """
     decorators._graphql_loaded = False
 
 
-def test_relay_id_triggers_schema_load():
+def test_relay_id_triggers_schema_load() -> None:
     _reset_graphql_loaded()
     assert decorators._graphql_loaded is False
 
@@ -25,7 +25,7 @@ def test_relay_id_triggers_schema_load():
     assert relay_id is not None
 
 
-def test_relay_id_loads_schema_when_argv_looks_like_shell(monkeypatch):
+def test_relay_id_loads_schema_when_argv_looks_like_shell(monkeypatch) -> None:
     _reset_graphql_loaded()
     assert decorators._graphql_loaded is False
 

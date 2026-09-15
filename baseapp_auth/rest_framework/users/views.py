@@ -1,5 +1,5 @@
-import swapper
-from django.apps import apps
+from typing import TYPE_CHECKING, Any
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.shortcuts import get_object_or_404
@@ -16,7 +16,11 @@ from rest_framework.exceptions import ValidationError
 from rest_framework_nested.viewsets import NestedViewSetMixin
 
 from baseapp_auth.utils.normalize_permission import normalize_permission
+from baseapp_core.plugins import shared_services
 from baseapp_core.rest_framework.decorators import action
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
 
 User = get_user_model()
 
@@ -35,7 +39,7 @@ from .serializers import (
 
 
 class UpdateSelfPermission(permissions.BasePermission):
-    def has_object_permission(self, request, view, obj):
+    def has_object_permission(self, request, view, obj) -> bool:
         if request.method in ("PUT", "PATCH"):
             if not request.user.is_authenticated or request.user != obj:
                 return False
@@ -58,7 +62,7 @@ class UsersViewSet(
     filter_backends = (filters.SearchFilter,)
     search_fields = ("first_name", "last_name")
 
-    def get_queryset(self):
+    def get_queryset(self) -> "QuerySet[User]":
         return User.objects.all().order_by("id")
 
     @action(
@@ -66,7 +70,7 @@ class UsersViewSet(
         methods=["GET"],
         permission_classes=[permissions.IsAuthenticated],
     )
-    def me(self, request):
+    def me(self, request) -> response.Response:
         user = request.user
         serializer = self.get_serializer(user)
         return response.Response(serializer.data)
@@ -78,7 +82,7 @@ class UsersViewSet(
         serializer_class=ChangePasswordSerializer,
         parser_classes=[SafeJSONParser],
     )
-    def change_password(self, request):
+    def change_password(self, request) -> response.Response:
         serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -89,22 +93,20 @@ class UsersViewSet(
         methods=["DELETE"],
         permission_classes=[permissions.IsAuthenticated],
     )
-    def delete_account(self, request):
+    def delete_account(self, request) -> response.Response:
         """
         TODO: When implementing full account deletion (not just anonymization), ensure all related data
         (e.g., profile pages, notifications, etc.) are thoroughly reviewed and deleted to avoid missing any user information.
         """
         user = request.user
 
-        if apps.is_installed("baseapp_organizations"):
-            Organization = swapper.load_model("baseapp_organizations", "Organization")
-            if Organization.objects.filter(profile__owner_id=user.id).exists():
+        # Other packages can veto account deletion via the shared-service registry,
+        # so baseapp_auth stays decoupled from them. baseapp_organizations registers
+        # "organizations.account" to block owners of an organization.
+        if service := shared_services.get("organizations.account"):
+            if block_reason := service.get_account_deletion_block_reason(user):
                 return response.Response(
-                    data={
-                        "detail": _(
-                            "Account cannot be deleted because you're the owner of an organization. Transfer ownership or delete the organization first."
-                        )
-                    },
+                    data={"detail": block_reason},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -121,7 +123,7 @@ class UsersViewSet(
         serializer_class=UserPermissionSerializer,
         url_path="me/permissions",
     )
-    def permissions_me(self, request):
+    def permissions_me(self, request) -> response.Response:
         user = request.user
 
         if request.method == "GET":
@@ -162,11 +164,11 @@ class PermissionsViewSet(
     ]
     parent_lookup_kwargs = {"user_pk": "user__id"}
 
-    def get_user(self):
+    def get_user(self) -> "User | None":
         user_pk = self.kwargs.get("user_pk", None)
         return get_object_or_404(User, pk=user_pk) if user_pk else None
 
-    def get_queryset(self):
+    def get_queryset(self) -> "QuerySet[Permission]":
         user = self.get_user()
         if user:
             if not self.request.user.has_perm("users.change_user"):
@@ -176,5 +178,5 @@ class PermissionsViewSet(
             return user.user_permissions.all().select_related("content_type")
         return Permission.objects.all().select_related("content_type")
 
-    def get_serializer_context(self):
+    def get_serializer_context(self) -> dict[str, Any]:
         return {**super().get_serializer_context(), "user": self.get_user()}

@@ -1,26 +1,28 @@
+from typing import Any
+
 from django.core.signing import BadSignature, dumps, loads
 from django.utils.encoding import DjangoUnicodeDecodeError, force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 
 class TokenGenerator(object):
-    def make_token(self, obj):
+    def make_token(self, obj) -> str:
         token = dumps(self.get_signing_value(obj), salt=self.key_salt)
         return urlsafe_base64_encode(force_bytes(token))
 
-    def get_signing_value(self, obj):
+    def get_signing_value(self, obj) -> Any:
         return obj.id
 
-    def check_token(self, obj, token):
+    def check_token(self, obj, token) -> bool:
         value = self.decode_token(token)
         if value is None:
             return False
         return self.is_value_valid(obj, value)
 
-    def is_value_valid(self, obj, value):
+    def is_value_valid(self, obj, value) -> bool:
         return self.get_signing_value(obj) == value
 
-    def decode_token(self, token):
+    def decode_token(self, token) -> Any:
         """Returns the decoded token or None if decoding fails."""
         try:
             decoded_token = urlsafe_base64_decode(token).decode("utf-8")
@@ -29,7 +31,7 @@ class TokenGenerator(object):
             return None
 
     @property
-    def key_salt(self):
+    def key_salt(self) -> str:
         raise NotImplementedError("Subclasses must define key_salt.")
 
     @property

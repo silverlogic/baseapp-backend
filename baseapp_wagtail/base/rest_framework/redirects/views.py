@@ -17,7 +17,7 @@ class CustomRedirectsAPIViewSet(RedirectsAPIViewSet):
         "is_permanent",
     ]
 
-    def find_view(self, request):
+    def find_view(self, request) -> Response:
         queryset = self.get_queryset()
         try:
             obj = self.find_object(queryset, request)
@@ -32,7 +32,7 @@ class CustomRedirectsAPIViewSet(RedirectsAPIViewSet):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
-    def find_object(self, queryset, request):
+    def find_object(self, queryset, request) -> models.Redirect | None:
         if "html_path" in request.GET and (html_path := request.GET["html_path"]):
             redirect = self.get_redirect(
                 request,
@@ -54,7 +54,7 @@ class CustomRedirectsAPIViewSet(RedirectsAPIViewSet):
 
         return super().find_object(queryset, request)
 
-    def get_redirect(self, request, path):
+    def get_redirect(self, request, path) -> models.Redirect | None:
         redirect = get_redirect(request, path)
         if redirect is None:
             redirect = self._get_redirect(request, path)
@@ -62,7 +62,7 @@ class CustomRedirectsAPIViewSet(RedirectsAPIViewSet):
                 redirect = self._get_redirect(request, uri_to_iri(path))
         return redirect
 
-    def _get_redirect(self, request, path):
+    def _get_redirect(self, request, path) -> models.Redirect | None:
         """
         If the default get_redirect fails, try to find it with a case insensitive query.
         """
@@ -72,7 +72,7 @@ class CustomRedirectsAPIViewSet(RedirectsAPIViewSet):
         site = Site.find_for_request(request)
         return models.Redirect.get_for_site(site).filter(old_path__iexact=path).first()
 
-    def get_object(self):
+    def get_object(self) -> models.Redirect:
         if self.html_path_queryset:
             return self.html_path_queryset
         return super().get_object()

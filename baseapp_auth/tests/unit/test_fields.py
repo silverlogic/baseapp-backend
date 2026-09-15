@@ -6,7 +6,7 @@ from baseapp_auth.widgets import GroupedPermissionWidget
 
 
 @pytest.mark.django_db
-def test_grouped_permission_field_initialization():
+def test_grouped_permission_field_initialization() -> None:
     field = GroupedPermissionField()
 
     assert isinstance(field, GroupedPermissionField)
@@ -14,7 +14,7 @@ def test_grouped_permission_field_initialization():
 
 
 @pytest.mark.django_db
-def test_grouped_permission_field_queryset():
+def test_grouped_permission_field_queryset() -> None:
     field = GroupedPermissionField()
 
     assert field.queryset.model is Permission
@@ -22,7 +22,7 @@ def test_grouped_permission_field_queryset():
 
 
 @pytest.mark.django_db
-def test_grouped_permission_field_queryset_has_content_type_loaded():
+def test_grouped_permission_field_queryset_has_content_type_loaded() -> None:
     field = GroupedPermissionField()
     permission = field.queryset.first()
 
@@ -30,7 +30,7 @@ def test_grouped_permission_field_queryset_has_content_type_loaded():
 
 
 @pytest.mark.django_db
-def test_widget_choices_are_bound_from_field_queryset():
+def test_widget_choices_are_bound_from_field_queryset() -> None:
     field = GroupedPermissionField()
     widget = field.widget
 

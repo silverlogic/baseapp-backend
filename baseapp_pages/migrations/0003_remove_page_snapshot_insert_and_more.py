@@ -2,9 +2,24 @@
 
 import pgtrigger.compiler
 import pgtrigger.migrations
+from django.apps import apps
 from django.db import migrations, models
 
-import baseapp_comments.models
+
+def _default_comments_count():
+    return {
+        "total": 0,
+        "main": 0,
+        "replies": 0,
+        "pinned": 0,
+        "reported": 0,
+    }
+
+
+if apps.is_installed("baseapp_comments"):
+    from baseapp_comments.models import default_comments_count
+else:
+    default_comments_count = _default_comments_count
 
 
 class Migration(migrations.Migration):
@@ -29,7 +44,7 @@ class Migration(migrations.Migration):
             model_name="page",
             name="comments_count",
             field=models.JSONField(
-                default=baseapp_comments.models.default_comments_count,
+                default=default_comments_count,
                 verbose_name="comments count",
             ),
         ),
@@ -42,7 +57,7 @@ class Migration(migrations.Migration):
             model_name="pageevent",
             name="comments_count",
             field=models.JSONField(
-                default=baseapp_comments.models.default_comments_count,
+                default=default_comments_count,
                 verbose_name="comments count",
             ),
         ),

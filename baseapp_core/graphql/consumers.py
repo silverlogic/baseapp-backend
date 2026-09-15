@@ -1,8 +1,8 @@
 import asyncio
 import contextvars
 import functools
-import logging
 import sys
+from typing import Any
 
 import channels_graphql_ws
 import swapper
@@ -11,6 +11,7 @@ from django.contrib.auth.models import AnonymousUser
 from graphene_django.settings import graphene_settings
 from rest_framework.authtoken.models import Token
 
+from baseapp_core.authentication import authenticate_jwt_async
 from baseapp_core.graphql import get_pk_from_relay_id
 
 python_version = sys.version_info
@@ -18,7 +19,7 @@ python_version = sys.version_info
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
-async def threadpool_for_sync_resolvers(next_middleware, root, info, *args, **kwds):
+async def threadpool_for_sync_resolvers(next_middleware, root, info, *args, **kwds) -> Any:
     if asyncio.iscoroutinefunction(next_middleware):
         result = await next_middleware(root, info, *args, **kwds)
     else:
@@ -37,7 +38,7 @@ class GraphqlWsAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
 
     schema = graphene_settings.SCHEMA
 
-    async def on_connect(self, payload):
+    async def on_connect(self, payload) -> None:
         if "user" in self.scope:
             # do nothing if already authenticated
             return
@@ -75,43 +76,18 @@ class GraphqlWsJWTAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
 
     schema = graphene_settings.SCHEMA
 
-    def __init__(self, *args, **kwargs):
-        from rest_framework_simplejwt.authentication import (
-            JWTAuthentication as RestJWTAuthentication,
-        )
-        from rest_framework_simplejwt.exceptions import (
-            AuthenticationFailed,
-            InvalidToken,
-            TokenError,
-        )
-
-        self._auth = RestJWTAuthentication()
-        self._exceptions = (AuthenticationFailed, InvalidToken, TokenError)
-
-        return super().__init__(*args, **kwargs)
-
-    @database_sync_to_async
-    def get_jwt_user_instance(self, token_key):
-        if self._auth is None or self._exceptions is None:
-            raise RuntimeError("_setup method has to be called before.")
-
-        try:
-            validated_token = self._auth.get_validated_token(token_key)
-            return self._auth.get_user(validated_token)
-        except self._exceptions as e:
-            logging.error(e)
-            return None
-
-    async def on_connect(self, payload):
+    async def on_connect(self, payload) -> None:
         if "user" in self.scope:
             # do nothing if already authenticated
             return
 
-        if "Authorization" not in payload:
+        if not payload.get("Authorization"):
             self.scope["user"] = AnonymousUser()
             return
 
-        user = await self.get_jwt_user_instance(payload["Authorization"])
+        # Refresh an expired access token instead of rejecting the connection, which —
+        # with client retries — drove an endless reconnect loop.
+        user, _ = await authenticate_jwt_async(payload["Authorization"], payload.get("Refresh"))
 
         if user and user.is_active:
             if "Current-Profile" in payload:
