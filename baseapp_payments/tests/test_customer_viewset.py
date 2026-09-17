@@ -65,3 +65,13 @@ class TestCustomerCreateView:
             entity_id=user_client.user.profile.id,
             entity_type=ContentType.objects.get_for_model(Profile),
         ).exists()
+
+
+class TestCustomerMeWithoutACustomer:
+    viewname = "v1:customers-detail"
+
+    def test_me_is_404_when_the_user_has_no_customer(self, user_client) -> None:
+        """The frontend reads this 404 as "create one"; it used to be a 500."""
+        response = user_client.get(reverse(self.viewname, kwargs={"entity_id": "me"}))
+
+        responseEquals(response, status.HTTP_404_NOT_FOUND)

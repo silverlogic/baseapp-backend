@@ -22,7 +22,11 @@ from .serializers import (
     StripeSubscriptionSerializer,
     StripeWebhookSerializer,
 )
-from .utils import StripeService, StripeWebhookHandler
+from .utils import (
+    STRIPE_SUBSCRIPTION_LIST_STATUSES,
+    StripeService,
+    StripeWebhookHandler,
+)
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
@@ -107,6 +111,13 @@ class StripeSubscriptionViewset(
         # default here is the narrower "active", with `?status=` to widen it - `all`
         # included, which Stripe understands as "canceled ones too".
         status_filter = request.query_params.get("status") or "active"
+        if status_filter not in STRIPE_SUBSCRIPTION_LIST_STATUSES:
+            # Unvalidated, this reached Stripe, raised, and left the caller with a 500
+            # for what is a malformed request.
+            return Response(
+                {"status": [f"'{status_filter}' is not a valid subscription status."]},
+                status=400,
+            )
         subscriptions = StripeService().list_subscriptions(
             customer.remote_customer_id, status=status_filter
         )
@@ -290,11 +301,18 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
 
     def update(self, request, pk=None) -> Response:
         customer = getattr(request._request, "customer", None)
+        stripe_service = StripeService()
+        # Applied to the customer's invoice_settings without ever passing through the
+        # `pk` check below, so it needs a check of its own.
+        default_payment_method_id = request.data.get("default_payment_method_id")
         try:
-            owns_payment_method = (
-                customer is not None
-                and StripeService().payment_method_belongs_to(pk, customer.remote_customer_id)
+            owns_payment_method = customer is not None and stripe_service.payment_method_belongs_to(
+                pk, customer.remote_customer_id
             )
+            if owns_payment_method and default_payment_method_id:
+                owns_payment_method = stripe_service.payment_method_belongs_to(
+                    default_payment_method_id, customer.remote_customer_id
+                )
         except stripe.StripeError as e:
             # A Stripe outage is not evidence the card is missing; 404 here told the
             # caller their payment method had been deleted.
@@ -302,7 +320,10 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
             return Response({"error": "Payment service unavailable"}, status=503)
         if not owns_payment_method:
             return Response({"error": "Payment method not found"}, status=404)
-        serializer = self.get_serializer(data={"pk": pk, **request.data})
+        # The URL id wins. `pk` is a writable serializer field, so spreading request.data
+        # over it let a caller authorize against a card they own and then have Stripe
+        # modify someone else's.
+        serializer = self.get_serializer(data={**request.data, "pk": pk})
         serializer.is_valid(raise_exception=True)
         try:
             customer = getattr(request._request, "customer", None)

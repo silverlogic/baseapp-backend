@@ -394,3 +394,33 @@ class TestSubscriptionDeleteView:
         responseEquals(response, status.HTTP_204_NO_CONTENT)
         assert not Subscription.objects.filter(id=subscription.id).exists()
         assert mock_delete_subscription.call_count == 1
+
+
+class TestSubscriptionListStatusFilter:
+    viewname = "v1:subscriptions-list"
+
+    @patch("baseapp_payments.views.StripeService.list_subscriptions")
+    def test_status_all_is_forwarded_to_stripe(self, mock_list_subscriptions, user_client):
+        """Dropping it fell back to Stripe's default, which excludes canceled ones."""
+        mock_list_subscriptions.return_value = stripe_list([])
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        response = user_client.get(
+            reverse(self.viewname),
+            data={"entity_id": customer.entity.relay_id, "status": "all"},
+        )
+
+        responseEquals(response, status.HTTP_200_OK)
+        assert mock_list_subscriptions.call_args.kwargs["status"] == "all"
+
+    @patch("baseapp_payments.views.StripeService.list_subscriptions")
+    def test_an_unknown_status_is_a_client_error_not_a_500(
+        self, mock_list_subscriptions, user_client
+    ):
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        response = user_client.get(
+            reverse(self.viewname),
+            data={"entity_id": customer.entity.relay_id, "status": "bogus"},
+        )
+
+        responseEquals(response, status.HTTP_400_BAD_REQUEST)
+        mock_list_subscriptions.assert_not_called()

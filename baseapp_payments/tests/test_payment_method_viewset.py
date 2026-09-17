@@ -74,7 +74,9 @@ class TestPaymentMethodUpdateView:
         self, mock_update_customer, mock_list_payment_methods, user_client
     ) -> None:
         mock_update_customer.return_value = {"id": "pm_123"}
-        mock_list_payment_methods.return_value = stripe_list([{"id": "pm_123"}])
+        # pm_456 has to be in the customer's own list: setting it as the invoice default
+        # is now checked for ownership, which is what stops a foreign card being used.
+        mock_list_payment_methods.return_value = stripe_list([{"id": "pm_123"}, {"id": "pm_456"}])
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.put(
             reverse(
@@ -203,3 +205,46 @@ class TestPaymentMethodOutageIsNotAMissingCard:
             + "?customer_id=cus_123",
         )
         responseEquals(response, status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+class TestPaymentMethodUpdateAuthorization:
+    """The URL id is what the ownership check sees, so it has to be what Stripe gets."""
+
+    viewname = "v1:customers-payment-methods"
+
+    @patch("baseapp_payments.views.StripeService.payment_method_belongs_to")
+    @patch("baseapp_payments.serializers.StripeService.update_payment_method")
+    def test_a_pk_in_the_body_cannot_redirect_the_update(
+        self, mock_update_payment_method, mock_belongs_to, user_client
+    ):
+        mock_belongs_to.return_value = True
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        response = user_client.patch(
+            reverse(
+                self.viewname,
+                kwargs={"entity_id": customer.entity_id, "payment_method_id": "pm_mine"},
+            ),
+            data={"pk": "pm_victim", "billing_details": {"name": "New Name"}},
+            format="json",
+        )
+
+        # responseEquals is not used here: this serializer branch returns None, so the
+        # body is empty and the helper rejects it. The status and the id are the point.
+        assert response.status_code == status.HTTP_200_OK
+        assert mock_update_payment_method.call_args.args[0] == "pm_mine"
+
+    @patch("baseapp_payments.views.StripeService.payment_method_belongs_to")
+    def test_a_foreign_default_payment_method_is_rejected(self, mock_belongs_to, user_client):
+        """It is written to the customer's invoice_settings without touching the pk path."""
+        mock_belongs_to.side_effect = lambda pm_id, _customer_id: pm_id == "pm_mine"
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        response = user_client.patch(
+            reverse(
+                self.viewname,
+                kwargs={"entity_id": customer.entity_id, "payment_method_id": "pm_mine"},
+            ),
+            data={"default_payment_method_id": "pm_victim"},
+            format="json",
+        )
+
+        responseEquals(response, status.HTTP_404_NOT_FOUND)
