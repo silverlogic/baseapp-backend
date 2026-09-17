@@ -59,3 +59,27 @@ class TestProductRetrieveView:
         }
         response = user_client.get(reverse(self.viewname, kwargs={"pk": "prod_123"}))
         responseEquals(response, status.HTTP_200_OK)
+
+    @patch("baseapp_payments.views.StripeService.retrieve_product")
+    def test_unknown_product_is_a_404(self, mock_retrieve_product, user_client):
+        mock_retrieve_product.return_value = None
+        response = user_client.get(reverse(self.viewname, kwargs={"pk": "prod_nope"}))
+        responseEquals(response, status.HTTP_404_NOT_FOUND)
+
+    @patch("baseapp_payments.views.StripeService.retrieve_product")
+    def test_stripe_failure_does_not_leak_details(self, mock_retrieve_product, user_client):
+        mock_retrieve_product.side_effect = Exception("stripe down: sk_test_secret")
+        response = user_client.get(reverse(self.viewname, kwargs={"pk": "prod_123"}))
+        responseEquals(response, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        assert response.data == {"error": "An internal error has occurred"}
+
+
+class TestProductListFailures:
+    viewname = "v1:products-list"
+
+    @patch("baseapp_payments.views.StripeService.list_products")
+    def test_stripe_failure_does_not_leak_details(self, mock_list_products, user_client):
+        mock_list_products.side_effect = Exception("stripe down: sk_test_secret")
+        response = user_client.get(reverse(self.viewname))
+        responseEquals(response, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        assert response.data == {"error": "An internal error has occurred"}
