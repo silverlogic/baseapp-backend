@@ -176,8 +176,6 @@ class TestPaymentMethodFailures:
 
 
 class TestPaymentMethodOutageIsNotAMissingCard:
-    """A Stripe failure during the ownership check must not read as a deleted card."""
-
     viewname = "v1:customers-payment-methods"
 
     @patch("baseapp_payments.views.StripeService.payment_method_belongs_to")

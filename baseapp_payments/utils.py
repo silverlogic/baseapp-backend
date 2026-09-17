@@ -13,8 +13,8 @@ Customer = swapper.load_model("baseapp_payments", "Customer")
 Subscription = swapper.load_model("baseapp_payments", "Subscription")
 
 
-# Stripe's accepted values for the subscription list `status` filter. Anything else
-# makes the API raise, which surfaced as a 500 for a caller-supplied query parameter.
+# Anything outside this set makes the Stripe API raise, which surfaced as a 500 for a
+# caller-supplied query parameter.
 STRIPE_SUBSCRIPTION_LIST_STATUSES = frozenset(
     {
         "active",
@@ -310,9 +310,9 @@ class StripeService:
 
     def list_subscriptions(self, customer_id, **kwargs) -> list:
         try:
-            # "all" is forwarded, not dropped. Stripe's own default for an absent status
-            # is "everything not canceled", so popping it returned the opposite of what
-            # `all` asks for - canceled subscriptions could never come back.
+            # Stripe's default for an absent status is "everything not canceled", so
+            # popping "all" returned the opposite of what it asks for - canceled
+            # subscriptions could never come back.
             kwargs.setdefault("status", "active")
             subscriptions = stripe.Subscription.list(customer=customer_id, **kwargs)
             return subscriptions

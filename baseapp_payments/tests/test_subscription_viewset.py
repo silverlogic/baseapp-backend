@@ -289,7 +289,6 @@ class TestSubscriptionChangePlanView:
         mock_update_payment_method,
         user_client,
     ):
-        """Swallowing this answered 200 with the billing details left stale."""
         mock_list_payment_methods.return_value = stripe_list([{"id": "pm_123"}])
         mock_retrieve_subscription.return_value = _AttrSubscription(
             id="sub_123",
