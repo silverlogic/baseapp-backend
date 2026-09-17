@@ -240,6 +240,79 @@ class TestSubscriptionChangePlanView:
         ]
         assert fields["default_payment_method"] == "pm_123"
 
+    @patch("baseapp_payments.views.StripeService.update_payment_method")
+    @patch("baseapp_payments.views.StripeService.update_subscription")
+    @patch("baseapp_payments.views.StripeService.retrieve_subscription")
+    @patch("baseapp_payments.views.StripeService.list_payment_methods")
+    def test_a_billing_only_change_succeeds_instead_of_reporting_nothing_to_update(
+        self,
+        mock_list_payment_methods,
+        mock_retrieve_subscription,
+        mock_update_subscription,
+        mock_update_payment_method,
+        user_client,
+    ):
+        """Stripe has already taken the billing change by this point.
+
+        The card is already the subscription default and no price is sent, so nothing
+        about the subscription itself changes. Answering "Nothing to update." here
+        reported a failure for work that had landed.
+        """
+        mock_list_payment_methods.return_value = stripe_list([{"id": "pm_123"}])
+        mock_retrieve_subscription.return_value = _AttrSubscription(
+            id="sub_123",
+            items={"data": [{"id": "si_1"}]},
+            default_payment_method="pm_123",
+        )
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        subscription = SubscriptionFactory(customer=customer)
+        response = user_client.patch(
+            reverse(
+                self.viewname,
+                kwargs={"remote_subscription_id": subscription.remote_subscription_id},
+            ),
+            data={"payment_method_id": "pm_123", "billing_details": {"name": "New Name"}},
+        )
+        responseEquals(response, status.HTTP_200_OK)
+        assert mock_update_payment_method.call_count == 1
+        mock_update_subscription.assert_not_called()
+
+    @patch("baseapp_payments.views.StripeService.update_payment_method")
+    @patch("baseapp_payments.views.StripeService.update_subscription")
+    @patch("baseapp_payments.views.StripeService.retrieve_subscription")
+    @patch("baseapp_payments.views.StripeService.list_payment_methods")
+    def test_a_failed_billing_update_is_not_reported_as_success(
+        self,
+        mock_list_payment_methods,
+        mock_retrieve_subscription,
+        mock_update_subscription,
+        mock_update_payment_method,
+        user_client,
+    ):
+        """Swallowing this answered 200 with the billing details left stale."""
+        mock_list_payment_methods.return_value = stripe_list([{"id": "pm_123"}])
+        mock_retrieve_subscription.return_value = _AttrSubscription(
+            id="sub_123",
+            items={"data": [{"id": "si_old"}]},
+            default_payment_method="pm_other",
+        )
+        mock_update_payment_method.side_effect = Exception("billing rejected")
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        subscription = SubscriptionFactory(customer=customer)
+        response = user_client.patch(
+            reverse(
+                self.viewname,
+                kwargs={"remote_subscription_id": subscription.remote_subscription_id},
+            ),
+            data={
+                "price_id": "price_new",
+                "payment_method_id": "pm_123",
+                "billing_details": {"name": "New Name"},
+            },
+        )
+        assert response.status_code != status.HTTP_200_OK
+        mock_update_subscription.assert_not_called()
+
     @patch("baseapp_payments.views.StripeService.retrieve_subscription")
     @patch("baseapp_payments.views.StripeService.list_payment_methods")
     def test_a_card_that_is_not_the_customers_is_rejected(

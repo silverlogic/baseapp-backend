@@ -1,6 +1,7 @@
 import logging
 from typing import TYPE_CHECKING
 
+import stripe
 import swapper
 from django.conf import settings
 from rest_framework import viewsets
@@ -289,9 +290,17 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
 
     def update(self, request, pk=None) -> Response:
         customer = getattr(request._request, "customer", None)
-        if customer is None or not StripeService().payment_method_belongs_to(
-            pk, customer.remote_customer_id
-        ):
+        try:
+            owns_payment_method = (
+                customer is not None
+                and StripeService().payment_method_belongs_to(pk, customer.remote_customer_id)
+            )
+        except stripe.StripeError as e:
+            # A Stripe outage is not evidence the card is missing; 404 here told the
+            # caller their payment method had been deleted.
+            logger.exception("Payment method ownership check failed: %s", e)
+            return Response({"error": "Payment service unavailable"}, status=503)
+        if not owns_payment_method:
             return Response({"error": "Payment method not found"}, status=404)
         serializer = self.get_serializer(data={"pk": pk, **request.data})
         serializer.is_valid(raise_exception=True)
@@ -308,9 +317,14 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
         customer = getattr(request._request, "customer", None)
         stripe_service = StripeService()
         # The route authorizes the customer; the card id itself is caller-supplied.
-        if customer is None or not stripe_service.payment_method_belongs_to(
-            pk, customer.remote_customer_id
-        ):
+        try:
+            owns_payment_method = customer is not None and stripe_service.payment_method_belongs_to(
+                pk, customer.remote_customer_id
+            )
+        except stripe.StripeError as e:
+            logger.exception("Payment method ownership check failed: %s", e)
+            return Response({"error": "Payment service unavailable"}, status=503)
+        if not owns_payment_method:
             return Response({"error": "Payment method not found"}, status=404)
         try:
             stripe_service.delete_payment_method(

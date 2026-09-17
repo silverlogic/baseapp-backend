@@ -35,8 +35,8 @@ class _AttrDict(dict):
     __getattr__ = dict.__getitem__
 
 
-def _invalid_request(message):
-    return stripe.error.InvalidRequestError(message, param=None)
+def _invalid_request(message, code=None):
+    return stripe.error.InvalidRequestError(message, param=None, code=code)
 
 
 @pytest.fixture
@@ -161,11 +161,29 @@ class TestPaymentMethodCalls:
             with pytest.raises(PaymentMethodNotFound):
                 service.retrieve_payment_method("pm_1")
 
-    def test_list_payment_methods_translates_failures(self, service):
+    def test_list_payment_methods_translates_a_missing_customer(self, service):
         with patch("baseapp_payments.utils.stripe.PaymentMethod.list") as mock_list:
-            mock_list.side_effect = Exception("boom")
+            mock_list.side_effect = _invalid_request("No such customer", code="resource_missing")
             with pytest.raises(CustomerNotFound):
                 service.list_payment_methods("cus_1")
+
+    def test_list_payment_methods_propagates_a_service_failure(self, service):
+        """An outage must not read as "no such customer".
+
+        payment_method_belongs_to() answers False for CustomerNotFound, so translating
+        every failure here made the update and delete routes reply 404 whenever Stripe
+        was slow or unreachable.
+        """
+        with patch("baseapp_payments.utils.stripe.PaymentMethod.list") as mock_list:
+            mock_list.side_effect = stripe.APIConnectionError("stripe unreachable")
+            with pytest.raises(stripe.APIConnectionError):
+                service.list_payment_methods("cus_1")
+
+    def test_belongs_to_propagates_a_service_failure(self, service):
+        with patch("baseapp_payments.utils.StripeService.list_payment_methods") as mock_list:
+            mock_list.side_effect = stripe.APIConnectionError("stripe unreachable")
+            with pytest.raises(stripe.APIConnectionError):
+                service.payment_method_belongs_to("pm_1", "cus_1")
 
     def test_belongs_to_finds_a_card_past_the_first_page(self, service):
         with patch("baseapp_payments.utils.StripeService.list_payment_methods") as mock_list:

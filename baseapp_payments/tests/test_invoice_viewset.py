@@ -40,3 +40,25 @@ class TestInvoiceListView:
         responseEquals(response, status.HTTP_200_OK)
 
         assert mock_list_invoices.call_count == 1
+
+
+class TestInvoiceClientSecret:
+    """`list_invoices` requests no expansion, so `payment_intent` arrives as an id string."""
+
+    def test_unexpanded_payment_intent_serializes_instead_of_raising(self, user_client):
+        from baseapp_payments.serializers import StripeInvoiceSerializer
+
+        invoice = {"id": "in_1", "payment_intent": "pi_123", "lines": {"data": []}}
+
+        assert StripeInvoiceSerializer(invoice).data["client_secret"] is None
+
+    def test_expanded_payment_intent_still_yields_the_secret(self, user_client):
+        from baseapp_payments.serializers import StripeInvoiceSerializer
+
+        invoice = {
+            "id": "in_1",
+            "payment_intent": {"client_secret": "pi_123_secret"},
+            "lines": {"data": []},
+        }
+
+        assert StripeInvoiceSerializer(invoice).data["client_secret"] == "pi_123_secret"

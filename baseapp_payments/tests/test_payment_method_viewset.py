@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+import stripe
 from django.urls import reverse
 from rest_framework import status
 
@@ -170,3 +171,35 @@ class TestPaymentMethodFailures:
         )
         assert response.status_code in (400, 500)
         assert "sk_test_secret" not in str(response.data)
+
+
+class TestPaymentMethodOutageIsNotAMissingCard:
+    """A Stripe failure during the ownership check must not read as a deleted card."""
+
+    viewname = "v1:customers-payment-methods"
+
+    @patch("baseapp_payments.views.StripeService.payment_method_belongs_to")
+    def test_update_answers_503_when_stripe_is_unreachable(self, mock_belongs_to, user_client):
+        mock_belongs_to.side_effect = stripe.APIConnectionError("stripe unreachable")
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        response = user_client.patch(
+            reverse(
+                self.viewname,
+                kwargs={"entity_id": customer.entity_id, "payment_method_id": "pm_123"},
+            ),
+            data={"billing_details": {"name": "New Name"}},
+        )
+        responseEquals(response, status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    @patch("baseapp_payments.views.StripeService.payment_method_belongs_to")
+    def test_delete_answers_503_when_stripe_is_unreachable(self, mock_belongs_to, user_client):
+        mock_belongs_to.side_effect = stripe.APIConnectionError("stripe unreachable")
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        response = user_client.delete(
+            reverse(
+                self.viewname,
+                kwargs={"entity_id": customer.entity_id, "payment_method_id": "pm_123"},
+            )
+            + "?customer_id=cus_123",
+        )
+        responseEquals(response, status.HTTP_503_SERVICE_UNAVAILABLE)

@@ -350,9 +350,15 @@ class StripeService:
                 type=type,
             )
             return payment_methods
-        except Exception as e:
-            logger.exception(e)
-            raise CustomerNotFound("Customer not found in Stripe")
+        except stripe.InvalidRequestError as e:
+            # Only a genuinely absent customer becomes CustomerNotFound. Translating
+            # every exception here meant payment_method_belongs_to() answered False for
+            # timeouts and outages, and the update/delete routes told the caller their
+            # card did not exist while Stripe was simply unreachable.
+            if getattr(e, "code", None) == "resource_missing":
+                logger.warning("Customer %s not found in Stripe", customer_id)
+                raise CustomerNotFound("Customer not found in Stripe") from e
+            raise
 
     def get_customer_payment_methods(self, remote_customer_id):
         customer = self.retrieve_customer(remote_customer_id)

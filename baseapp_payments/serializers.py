@@ -74,7 +74,14 @@ class StripeInvoiceSerializer(serializers.Serializer):
     client_secret = serializers.SerializerMethodField()
 
     def get_client_secret(self, instance):
-        return instance.get("payment_intent", {}).get("client_secret")
+        # list_invoices() requests no expansion, so Stripe sends payment_intent as a bare
+        # id string and calling .get() on it raised AttributeError, 500ing the whole list.
+        # Guarded rather than expanded: no consumer reads this field, so paying for
+        # expand=["data.payment_intent"] on every invoice page would buy nothing.
+        payment_intent = instance.get("payment_intent")
+        if not isinstance(payment_intent, dict):
+            return None
+        return payment_intent.get("client_secret")
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -235,19 +242,20 @@ class StripeSubscriptionSerializer(serializers.Serializer):
             billing_details = data.pop("billing_details")
         current_subscription = data.pop("current_subscription")
         stripe_service = StripeService()
+        billing_details_updated = False
         try:
             fields = {}
             if default_payment_method:
                 fields["default_payment_method"] = default_payment_method
             else:
                 if payment_method_id and billing_details:
-                    try:
-                        stripe_service.update_payment_method(
-                            payment_method_id, billing_details=billing_details
-                        )
-                    except Exception as e:
-                        logger.exception(f"Failed to update payment method: {str(e)}")
-                        # Continue with subscription update even if billing update fails
+                    # Not swallowed any more: logging and continuing meant a rejected
+                    # billing update still answered 200, telling the caller the new
+                    # address was saved when Stripe had refused it.
+                    stripe_service.update_payment_method(
+                        payment_method_id, billing_details=billing_details
+                    )
+                    billing_details_updated = True
                 price_id = data.get("price_id")
                 if price_id:
                     # Swap in one call so the customer is never briefly on both plans
@@ -265,11 +273,19 @@ class StripeSubscriptionSerializer(serializers.Serializer):
                 ):
                     fields["default_payment_method"] = payment_method_id
             if not fields:
+                if billing_details_updated:
+                    # Stripe has already accepted the billing change, so reporting
+                    # "nothing to update" would fail a request whose work landed.
+                    return current_subscription
                 raise serializers.ValidationError("Nothing to update.")
             subscription = stripe_service.update_subscription(
                 instance.remote_subscription_id, **fields
             )
             return subscription
+        except serializers.ValidationError:
+            # Re-raised as-is: the generic handler below used to rewrite "Nothing to
+            # update." into a Stripe failure the caller never actually hit.
+            raise
         except Exception as e:
             logger.exception("Failed to update subscription in Stripe: %s", e)
             raise serializers.ValidationError("Failed to update subscription in Stripe")
