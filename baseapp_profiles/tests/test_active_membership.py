@@ -199,6 +199,23 @@ class TestAssignableRoles:
     def test_every_declared_role_is_assignable_by_default(self) -> None:
         assert set(ProfileUserRole.assignable_roles()) == set(ProfileUserRole.ProfileRoles.values)
 
+    def test_the_validator_refuses_a_role_left_out(self) -> None:
+        # One validator for all three mutations that take a role, so the error shape
+        # cannot drift between them.
+        from graphql.error import GraphQLError
+
+        from baseapp_profiles.graphql.mutations.roles import validate_assignable_role
+
+        reserved = ProfileUserRole.ProfileRoles.MANAGER
+        allowed = [r for r in ProfileUserRole.ProfileRoles.values if r != reserved]
+
+        with patch.object(ProfileUserRole, "assignable_roles", classmethod(lambda cls: allowed)):
+            with pytest.raises(GraphQLError) as excinfo:
+                validate_assignable_role(reserved)
+            assert excinfo.value.extensions["code"] == "invalid_input"
+
+            validate_assignable_role(ProfileUserRole.ProfileRoles.ADMIN)  # does not raise
+
     def test_a_role_left_out_is_refused(self) -> None:
         reserved = ProfileUserRole.ProfileRoles.MANAGER
         allowed = [r for r in ProfileUserRole.ProfileRoles.values if r != reserved]

@@ -22,6 +22,22 @@ profile_user_role_app_label = ProfileUserRole._meta.app_label
 logger = logging.getLogger(__name__)
 
 
+def validate_assignable_role(role: int) -> None:
+    """
+    Refuse a role the model will not accept.
+
+    Every value a project declares reaches the API through `ProfileRoleTypesEnum`,
+    including any it reserves for a later phase. Without this the write goes through to
+    whatever constraint guards the column, and the caller gets an unhandled database
+    error instead of being told the role is invalid.
+    """
+    if role not in ProfileUserRole.assignable_roles():
+        raise GraphQLError(
+            str(_("Invalid role type")),
+            extensions={"code": "invalid_input"},
+        )
+
+
 class ProfileUserRoleCreate(RelayMutation):
     profile_user_roles = graphene.List(get_object_type_for_model(ProfileUserRole))
 
@@ -54,8 +70,8 @@ class ProfileUserRoleCreate(RelayMutation):
             )
         if not role_type:
             role_type = ProfileUserRole.ProfileRoles.MANAGER
-        elif role_type not in ProfileUserRole.assignable_roles():
-            raise GraphQLError(str(_("Invalid role type")))
+        else:
+            validate_assignable_role(role_type)
 
         # TODO on BA-2426: send invitation to new users emails
         if emails_to_invite:
@@ -140,8 +156,7 @@ class ProfileUserRoleUpdate(RelayMutation):
                 str(_("Role is required")),
                 extensions={"code": "invalid_input"},
             )
-        if role_type not in ProfileUserRole.assignable_roles():
-            raise GraphQLError(str(_("Invalid role type")))
+        validate_assignable_role(role_type)
         user_pk = get_pk_from_relay_id(user_id)
         profile_pk = get_pk_from_relay_id(profile_id)
 

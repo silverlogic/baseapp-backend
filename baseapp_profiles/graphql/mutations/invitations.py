@@ -17,6 +17,7 @@ from baseapp_core.graphql import (
 from baseapp_profiles.constants import INVITATION_EXPIRATION_DAYS
 
 from ..object_types import ProfileRoleTypesEnum
+from .roles import validate_assignable_role
 
 logger = logging.getLogger(__name__)
 
@@ -178,11 +179,7 @@ class ProfileSendInvitation(RelayMutation):
         emails = input.get("emails") or []
         role = input.get("role")
 
-        if role not in ProfileUserRole.assignable_roles():
-            raise GraphQLError(
-                str(_("Invalid role type")),
-                extensions={"code": "invalid_input"},
-            )
+        validate_assignable_role(role)
 
         profile_pk = get_pk_from_relay_id(profile_id)
         try:
