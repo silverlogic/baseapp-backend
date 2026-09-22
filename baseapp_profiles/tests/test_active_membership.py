@@ -6,6 +6,8 @@ These cover the boundary from both sides: that an ACTIVE member reaches the prof
 not, on their very next request and without waiting for them to sign out.
 """
 
+from unittest.mock import patch
+
 import pytest
 import swapper
 from django.contrib.auth.models import AnonymousUser
@@ -185,3 +187,22 @@ class TestProfileManager:
         ProfileUserRoleFactory(user=user, profile=profile)
 
         assert Profile.objects.get_if_member(user, pk=profile.pk) == profile
+
+
+class TestAssignableRoles:
+    """
+    A project may declare roles it is not ready to hand out — reserving the values while a
+    later phase decides what they reach. The mutations refuse those with a clear error
+    rather than letting the write reach a database constraint.
+    """
+
+    def test_every_declared_role_is_assignable_by_default(self) -> None:
+        assert set(ProfileUserRole.assignable_roles()) == set(ProfileUserRole.ProfileRoles.values)
+
+    def test_a_role_left_out_is_refused(self) -> None:
+        reserved = ProfileUserRole.ProfileRoles.MANAGER
+        allowed = [r for r in ProfileUserRole.ProfileRoles.values if r != reserved]
+
+        with patch.object(ProfileUserRole, "assignable_roles", classmethod(lambda cls: allowed)):
+            assert reserved not in ProfileUserRole.assignable_roles()
+            assert ProfileUserRole.ProfileRoles.ADMIN in ProfileUserRole.assignable_roles()

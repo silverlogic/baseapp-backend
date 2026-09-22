@@ -54,7 +54,7 @@ class ProfileUserRoleCreate(RelayMutation):
             )
         if not role_type:
             role_type = ProfileUserRole.ProfileRoles.MANAGER
-        elif role_type and role_type not in ProfileUserRole.ProfileRoles.values:
+        elif role_type not in ProfileUserRole.assignable_roles():
             raise GraphQLError(str(_("Invalid role type")))
 
         # TODO on BA-2426: send invitation to new users emails
@@ -140,6 +140,8 @@ class ProfileUserRoleUpdate(RelayMutation):
                 str(_("Role is required")),
                 extensions={"code": "invalid_input"},
             )
+        if role_type not in ProfileUserRole.assignable_roles():
+            raise GraphQLError(str(_("Invalid role type")))
         user_pk = get_pk_from_relay_id(user_id)
         profile_pk = get_pk_from_relay_id(profile_id)
 
