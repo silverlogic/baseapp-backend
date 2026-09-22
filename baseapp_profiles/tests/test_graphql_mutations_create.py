@@ -11,6 +11,7 @@ from .factories import ProfileFactory, ProfileUserRoleFactory
 
 pytestmark = pytest.mark.django_db
 
+Profile = swapper.load_model("baseapp_profiles", "Profile")
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
 
@@ -124,7 +125,7 @@ def test_integrity_error_that_is_not_a_duplicate_returns_a_generic_error(
 
     # An IntegrityError that is not an existing membership (e.g. a FK violation) must return a
     # generic error, not be misreported as "already_member".
-    with patch.object(ProfileUserRole.objects, "bulk_create", side_effect=IntegrityError("boom")):
+    with patch.object(ProfileUserRole.objects, "create", side_effect=IntegrityError("boom")):
         response = graphql_user_client(
             PROFILE_USER_ROLE_CREATE_GRAPHQL,
             variables={
@@ -160,3 +161,30 @@ def test_cannot_add_the_owner_as_a_member(django_user_client, graphql_user_clien
 
     assert content["errors"][0]["extensions"]["code"] == "cannot_add_owner"
     assert not ProfileUserRole.objects.filter(profile=profile, user=user).exists()
+
+
+def test_directly_added_member_is_active(django_user_client, graphql_user_client) -> None:
+    # A member added straight to a profile has no invitation to accept, so they are
+    # active from the start. Left on the field default (INACTIVE) they would be created
+    # unable to reach anything.
+    user = django_user_client.user
+    _add_member_permission(user)
+    profile = ProfileFactory(owner=user)
+    new_member = UserFactory()
+
+    response = graphql_user_client(
+        PROFILE_USER_ROLE_CREATE_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": profile.relay_id,
+                "usersIds": [new_member.relay_id],
+                "roleType": "MANAGER",
+            }
+        },
+    )
+    content = response.json()
+
+    assert "errors" not in content, content.get("errors")
+    membership = ProfileUserRole.objects.get(profile=profile, user=new_member)
+    assert membership.status == ProfileUserRole.ProfileRoleStatus.ACTIVE
+    assert new_member.has_perm(f"{Profile._meta.app_label}.use_profile", profile) is True

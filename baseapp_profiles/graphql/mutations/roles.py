@@ -81,12 +81,24 @@ class ProfileUserRoleCreate(RelayMutation):
 
         try:
             with transaction.atomic():
-                profile_user_roles = ProfileUserRole.objects.bulk_create(
-                    [
-                        ProfileUserRole(user_id=user_pk, profile_id=profile_pk, role=role_type)
-                        for user_pk in requested_user_pks
-                    ]
-                )
+                # Members added directly (rather than invited) are active immediately —
+                # there is no acceptance step for them to go through. Without an explicit
+                # status they would fall back to the field default of INACTIVE and reach
+                # nothing, since an inactive membership grants no access.
+                #
+                # Saved one at a time rather than with bulk_create: bulk_create issues no
+                # post_save, and consuming projects hang membership bookkeeping off that
+                # signal. The loop is bounded by the members named in a single call and
+                # already runs inside this transaction.
+                profile_user_roles = [
+                    ProfileUserRole.objects.create(
+                        user_id=user_pk,
+                        profile_id=profile_pk,
+                        role=role_type,
+                        status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
+                    )
+                    for user_pk in requested_user_pks
+                ]
         except IntegrityError as error:
             logger.exception("Failed to add members to profile %s", profile_pk)
             # Only report "already_member" if a membership actually exists now (race with the
