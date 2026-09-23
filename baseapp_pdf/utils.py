@@ -113,12 +113,22 @@ def render_to_pdf(*args, source: str | Path, **kwargs) -> typing.Generator[Path,
         ) from error
 
     try:
-        ensure_valid_pdf(file_path=output_file_path)
+        try:
+            ensure_valid_pdf(file_path=output_file_path)
+        except FileNotFoundError as error:
+            # Chrome can also fail by exiting zero and writing nothing at all, which is
+            # what an unreachable host looks like on some networks. That is a render
+            # failure like any other, so it is reported as one rather than as a missing
+            # file the caller never asked about.
+            raise BaseAppBackendPDFRenderToPDFException(
+                f"google-chrome produced no PDF for {source}"
+            ) from error
         yield output_file_path
-    except BaseException as e:
-        raise e
     finally:
-        output_file_path.unlink()
+        # `missing_ok` because this runs on the failure paths too, where there may be no
+        # file to remove — and an error raised in here would replace the one that
+        # actually explains the failure.
+        output_file_path.unlink(missing_ok=True)
         # Delete google-chrome generated tmp files
         for file_path in Path(tempfile.gettempdir()).glob("scoped_dir*"):
             if file_path.is_dir():
