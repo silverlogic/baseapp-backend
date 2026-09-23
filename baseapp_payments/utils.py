@@ -31,6 +31,27 @@ STRIPE_SUBSCRIPTION_LIST_STATUSES = frozenset(
 )
 
 
+def stripe_field(obj, field, default=None):
+    """``obj[field]``, tolerating ``obj`` arriving as a bare id string or None.
+
+    ``expand`` is a request, not a guarantee. The same field comes back as the object
+    on one call and as its id on the next, and reading the id like an object is what
+    raised ``'str' object has no attribute 'get'`` partway through subscribing.
+    """
+    if obj is None or isinstance(obj, str):
+        return default
+    if isinstance(obj, dict):
+        return obj.get(field, default)
+    return getattr(obj, field, default)
+
+
+def stripe_id(value):
+    """The id of an expandable field, whichever shape Stripe sent."""
+    if value is None or isinstance(value, str):
+        return value
+    return stripe_field(value, "id")
+
+
 def _empty_list_object(url: str) -> "stripe.ListObject":
     """An empty Stripe ``ListObject``.
 
@@ -277,8 +298,17 @@ class StripeService:
             )
             client_secret = None
             latest_invoice = subscription.get("latest_invoice")
+            # The expand above is a request, not a guarantee: Stripe answers with the
+            # bare id at either level often enough that reading it like an object
+            # crashed the whole subscribe call. Re-fetching rather than just skipping,
+            # because a None client_secret leaves the frontend unable to confirm the
+            # card and the subscription stuck as incomplete.
+            if isinstance(latest_invoice, str):
+                latest_invoice = stripe.Invoice.retrieve(latest_invoice, expand=["payment_intent"])
             if latest_invoice:
                 payment_intent = latest_invoice.get("payment_intent")
+                if isinstance(payment_intent, str):
+                    payment_intent = stripe.PaymentIntent.retrieve(payment_intent)
                 if payment_intent:
                     client_secret = payment_intent.get("client_secret")
             subscription["client_secret"] = client_secret
@@ -295,7 +325,9 @@ class StripeService:
                 return None
             logger.exception(e)
             raise SubscriptionNotFound("Error retrieving subscription in Stripe")
-        customer = subscription.get("customer", None)
+        # Expanded on some responses, so pass the id rather than the object to the
+        # preview call below.
+        customer = stripe_id(subscription.get("customer"))
         try:
             upcoming_invoice = stripe.Invoice.create_preview(
                 customer=customer, subscription=subscription_id
@@ -382,7 +414,11 @@ class StripeService:
         customer = self.retrieve_customer(remote_customer_id)
         if not customer:
             raise CustomerNotFound("Customer not found in Stripe")
-        default_payment_method = customer.get("invoice_settings", {}).get("default_payment_method")
+        # Compared against pm.id below: if Stripe expands it, an object never matches
+        # and no card is flagged as the default.
+        default_payment_method = stripe_id(
+            stripe_field(stripe_field(customer, "invoice_settings"), "default_payment_method")
+        )
         try:
             # Materialized: the flag below is written onto each item and the whole
             # set is handed back for serialization.

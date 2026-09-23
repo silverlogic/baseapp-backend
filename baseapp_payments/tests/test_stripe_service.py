@@ -283,3 +283,95 @@ class TestListingCalls:
         with patch("baseapp_payments.utils.stripe.Invoice.list") as mock_list:
             mock_list.return_value = stripe_list([{"id": "in_1"}])
             assert list(service.list_invoices("cus_1").auto_paging_iter()) == [{"id": "in_1"}]
+
+
+class TestIncompleteSubscriptionClientSecret:
+    """`expand=["latest_invoice.payment_intent"]` is not a guarantee.
+
+    When Stripe answers with the bare id at either level, reading it like an object
+    raised `'str' object has no attribute 'get'`, which the caller only ever saw as
+    "Error creating subscription intent in Stripe".
+    """
+
+    def test_latest_invoice_returned_as_an_id(self, service):
+        with (
+            patch("baseapp_payments.utils.stripe.Subscription.create") as mock_create,
+            patch("baseapp_payments.utils.stripe.Invoice.retrieve") as mock_invoice,
+        ):
+            mock_create.return_value = _AttrDict(id="sub_1", latest_invoice="in_1")
+            mock_invoice.return_value = _AttrDict(
+                id="in_1", payment_intent=_AttrDict(id="pi_1", client_secret="pi_1_secret")
+            )
+
+            result = service.create_incomplete_subscription("cus_1", "price_1")
+
+        assert result["client_secret"] == "pi_1_secret"
+
+    def test_payment_intent_returned_as_an_id(self, service):
+        with (
+            patch("baseapp_payments.utils.stripe.Subscription.create") as mock_create,
+            patch("baseapp_payments.utils.stripe.PaymentIntent.retrieve") as mock_pi,
+        ):
+            mock_create.return_value = _AttrDict(
+                id="sub_1", latest_invoice=_AttrDict(id="in_1", payment_intent="pi_1")
+            )
+            mock_pi.return_value = _AttrDict(id="pi_1", client_secret="pi_1_secret")
+
+            result = service.create_incomplete_subscription("cus_1", "price_1")
+
+        assert result["client_secret"] == "pi_1_secret"
+
+    def test_fully_expanded_response_needs_no_extra_call(self, service):
+        with (
+            patch("baseapp_payments.utils.stripe.Subscription.create") as mock_create,
+            patch("baseapp_payments.utils.stripe.Invoice.retrieve") as mock_invoice,
+            patch("baseapp_payments.utils.stripe.PaymentIntent.retrieve") as mock_pi,
+        ):
+            mock_create.return_value = _AttrDict(
+                id="sub_1",
+                latest_invoice=_AttrDict(
+                    id="in_1", payment_intent=_AttrDict(id="pi_1", client_secret="pi_1_secret")
+                ),
+            )
+
+            result = service.create_incomplete_subscription("cus_1", "price_1")
+
+        assert result["client_secret"] == "pi_1_secret"
+        mock_invoice.assert_not_called()
+        mock_pi.assert_not_called()
+
+
+class TestExpandableFieldHelpers:
+    """Every expandable field can arrive as the object or as its bare id."""
+
+    def test_stripe_field_tolerates_an_unexpanded_parent(self):
+        from baseapp_payments.utils import stripe_field
+
+        assert stripe_field({"product": {"id": "prod_1"}}, "product") == {"id": "prod_1"}
+        assert stripe_field("price_1", "product") is None
+        assert stripe_field(None, "product") is None
+        assert stripe_field(_AttrDict(product="prod_1"), "product") == "prod_1"
+
+    def test_stripe_id_accepts_either_shape(self):
+        from baseapp_payments.utils import stripe_id
+
+        assert stripe_id("prod_1") == "prod_1"
+        assert stripe_id({"id": "prod_1"}) == "prod_1"
+        assert stripe_id(_AttrDict(id="prod_1")) == "prod_1"
+        assert stripe_id(None) is None
+
+    def test_default_payment_method_matches_when_stripe_expands_it(self, service):
+        """Compared against pm.id, so an expanded object silently flagged nothing."""
+        with (
+            patch("baseapp_payments.utils.StripeService.retrieve_customer") as mock_customer,
+            patch("baseapp_payments.utils.StripeService.list_payment_methods") as mock_list,
+        ):
+            mock_customer.return_value = _AttrDict(
+                id="cus_1",
+                invoice_settings=_AttrDict(default_payment_method=_AttrDict(id="pm_1")),
+            )
+            mock_list.return_value = stripe_list([_AttrDict(id="pm_1")])
+
+            methods = service.get_customer_payment_methods("cus_1")
+
+        assert methods[0]["is_default"] is True

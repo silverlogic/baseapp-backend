@@ -9,7 +9,7 @@ from rest_framework import serializers
 
 from baseapp_core.graphql import get_pk_from_relay_id
 
-from .utils import StripeService
+from .utils import StripeService, stripe_field, stripe_id
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ class StripeSubscriptionSerializer(serializers.Serializer):
             price = stripe_service.retrieve_price(price_id)
             if not price:
                 raise serializers.ValidationError(f"Price not found: {price_id}")
-            new_product_id = price.get("product").get("id", None)
+            new_product_id = stripe_id(stripe_field(price, "product"))
             subscriptions = stripe_service.list_subscriptions(
                 customer.remote_customer_id, status="all"
             )
@@ -148,7 +148,7 @@ class StripeSubscriptionSerializer(serializers.Serializer):
             for subscription in subscriptions.auto_paging_iter():
                 if subscription["status"] in STRIPE_ACTIVE_SUBSCRIPTION_STATUSES:
                     sub_price = subscription["items"]["data"][0]["price"]
-                    sub_product_id = sub_price.get("product")
+                    sub_product_id = stripe_id(stripe_field(sub_price, "product"))
                     if sub_product_id == new_product_id:
                         raise serializers.ValidationError(
                             f"You already have an active subscription to this product. "
@@ -302,8 +302,8 @@ class StripeSubscriptionSerializer(serializers.Serializer):
     def get_product(self, instance):
         items = instance.get("items", {}).get("data", [])
         if items:
-            price = items[0].get("price", {})
-            product = price.get("product")
+            price = stripe_field(items[0], "price")
+            product = stripe_field(price, "product")
             if product:
                 if isinstance(product, dict):
                     return StripeProductSerializer(product).data
@@ -336,7 +336,7 @@ class StripeSubscriptionCustomerListSerializer(serializers.Serializer):
 
     def get_products_ids(self, instance):
         items = instance.get("items", {}).get("data", [])
-        return [item.get("price", {}).get("product", {}) for item in items]
+        return [stripe_id(stripe_field(stripe_field(item, "price"), "product")) for item in items]
 
 
 class StripeCustomerSerializer(serializers.Serializer):
