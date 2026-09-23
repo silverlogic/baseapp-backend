@@ -423,3 +423,75 @@ class TestSubscriptionListStatusFilter:
 
         responseEquals(response, status.HTTP_400_BAD_REQUEST)
         mock_list_subscriptions.assert_not_called()
+
+
+class TestChangePlanWithUnexpandedStripeShapes:
+    """Changing plan is a create for a customer who already has a subscription.
+
+    Every other create test mocks `product` expanded and an empty subscription list,
+    so the combination a real plan change hits - an existing subscription, and Stripe
+    answering with bare ids - went unexercised.
+    """
+
+    viewname = "v1:subscriptions-list"
+
+    @patch("baseapp_payments.views.StripeService.list_subscriptions")
+    @patch("baseapp_payments.views.StripeService.create_incomplete_subscription")
+    @patch("baseapp_payments.views.StripeService.retrieve_price")
+    def test_plan_change_survives_unexpanded_products(
+        self,
+        mock_retrieve_price,
+        mock_create_incomplete_subscription,
+        mock_list_subscriptions,
+        user_client,
+    ):
+        mock_retrieve_price.return_value = {"id": "price_new", "product": "prod_new"}
+        mock_list_subscriptions.return_value = stripe_list(
+            [
+                {
+                    "id": "sub_existing",
+                    "status": "active",
+                    "items": {"data": [{"price": {"id": "price_old", "product": "prod_old"}}]},
+                }
+            ]
+        )
+        mock_create_incomplete_subscription.return_value = {
+            "id": "sub_new",
+            "status": "incomplete",
+            "latest_invoice": "in_1",
+        }
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        response = user_client.post(
+            reverse(self.viewname),
+            data={
+                "entity_id": customer.entity.relay_id,
+                "price_id": "price_new",
+                "allow_incomplete": True,
+            },
+        )
+
+        responseEquals(response, status.HTTP_201_CREATED)
+
+    @patch("baseapp_payments.views.StripeService.list_subscriptions")
+    @patch("baseapp_payments.views.StripeService.retrieve_price")
+    def test_resubscribing_to_the_same_product_is_still_rejected(
+        self, mock_retrieve_price, mock_list_subscriptions, user_client
+    ):
+        """The duplicate check has to keep working across both shapes."""
+        mock_retrieve_price.return_value = {"id": "price_new", "product": {"id": "prod_same"}}
+        mock_list_subscriptions.return_value = stripe_list(
+            [
+                {
+                    "id": "sub_existing",
+                    "status": "active",
+                    "items": {"data": [{"price": {"id": "price_old", "product": "prod_same"}}]},
+                }
+            ]
+        )
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        response = user_client.post(
+            reverse(self.viewname),
+            data={"entity_id": customer.entity.relay_id, "price_id": "price_new"},
+        )
+
+        responseEquals(response, status.HTTP_400_BAD_REQUEST)

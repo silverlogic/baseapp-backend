@@ -78,7 +78,7 @@ class StripeInvoiceSerializer(serializers.Serializer):
         # id string and calling .get() on it raised AttributeError, 500ing the whole list.
         # Guarded rather than expanded: no consumer reads this field, so paying for
         # expand=["data.payment_intent"] on every invoice page would buy nothing.
-        payment_intent = instance.get("payment_intent")
+        payment_intent = stripe_field(instance, "payment_intent")
         if not isinstance(payment_intent, dict):
             return None
         return payment_intent.get("client_secret")
@@ -110,7 +110,7 @@ class StripeSubscriptionSerializer(serializers.Serializer):
     default_payment_method = serializers.CharField(required=False, write_only=True)
     id = serializers.CharField(read_only=True)
     client_secret = serializers.SerializerMethodField()
-    latest_invoice = StripeInvoiceSerializer(read_only=True)
+    latest_invoice = serializers.SerializerMethodField()
     status = serializers.CharField(read_only=True)
     product = serializers.SerializerMethodField()
     current_period_end = serializers.DateTimeField(read_only=True)
@@ -289,6 +289,16 @@ class StripeSubscriptionSerializer(serializers.Serializer):
         except Exception as e:
             logger.exception("Failed to update subscription in Stripe: %s", e)
             raise serializers.ValidationError("Failed to update subscription in Stripe")
+
+    def get_latest_invoice(self, instance):
+        latest_invoice = stripe_field(instance, "latest_invoice")
+        # Subscription.create and Subscription.modify ask for no expansion, so Stripe
+        # sends the bare id. Declaring this as a nested StripeInvoiceSerializer made
+        # DRF serialize that string as an invoice, which 500'd every plan change.
+        # Mirrors how get_default_price already answers for products.
+        if latest_invoice is None or isinstance(latest_invoice, str):
+            return latest_invoice
+        return StripeInvoiceSerializer(latest_invoice).data
 
     def get_client_secret(self, instance):
         latest_invoice = instance.get("latest_invoice", {})
