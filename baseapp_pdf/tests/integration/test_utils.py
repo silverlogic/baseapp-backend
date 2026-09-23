@@ -1,4 +1,6 @@
+import subprocess
 from random import randint
+from unittest import mock
 
 import pytest
 from django.utils import timezone
@@ -29,6 +31,30 @@ class TestUtils:
                 pass
         except BaseAppBackendPDFRenderToPDFException:
             pass
+
+    def test_utils_render_to_pdf_wraps_a_chrome_failure(self) -> None:
+        # Whether an unreachable URL makes Chrome exit non-zero or render an error page
+        # depends on the network the suite runs on, so the failing branch is driven
+        # directly rather than through DNS.
+        error = subprocess.CalledProcessError(
+            returncode=1, cmd=["google-chrome"], stderr=b"net::ERR_NAME_NOT_RESOLVED"
+        )
+        real_run = subprocess.run
+
+        def fail_only_the_render(command, *args, **kwargs) -> subprocess.CompletedProcess:
+            # `render_to_pdf` checks that Chrome is installed before rendering; that call
+            # has to go through for the test to reach the branch under test.
+            if "--version" in command:
+                return real_run(command, *args, **kwargs)
+            raise error
+
+        with mock.patch("baseapp_pdf.utils.subprocess.run", side_effect=fail_only_the_render):
+            with pytest.raises(BaseAppBackendPDFRenderToPDFException) as excinfo:
+                with render_to_pdf(source="https://not.a.url") as _:
+                    pass
+
+        assert "ERR_NAME_NOT_RESOLVED" in str(excinfo.value)
+        assert isinstance(excinfo.value.__cause__, subprocess.CalledProcessError)
 
     def test_utils_render_template_to_pdf(self) -> None:
         context = {

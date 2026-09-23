@@ -99,12 +99,18 @@ def render_to_pdf(*args, source: str | Path, **kwargs) -> typing.Generator[Path,
         source,
     ]
 
-    process = subprocess.run(
-        command,
-        capture_output=True,
-        check=True,
-    )
-    process.check_returncode()
+    try:
+        subprocess.run(command, capture_output=True, check=True)
+    except subprocess.CalledProcessError as error:
+        # Chrome exits non-zero for anything it could not load — a host that does not
+        # resolve, a refused connection, a timeout. Letting CalledProcessError out breaks
+        # this function's contract: callers are told to expect the exception below, and
+        # whether a given URL makes Chrome exit non-zero or render an error page to a
+        # valid PDF depends on the network it runs on.
+        stderr = (error.stderr or b"").decode(errors="replace").strip()
+        raise BaseAppBackendPDFRenderToPDFException(
+            f"google-chrome failed to render {source}: {stderr}"
+        ) from error
 
     try:
         ensure_valid_pdf(file_path=output_file_path)
