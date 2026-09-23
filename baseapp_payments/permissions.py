@@ -1,6 +1,9 @@
 import swapper
-from constance import config
+from django.apps import apps
+from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import BaseBackend
+from django.utils.module_loading import import_string
 from rest_framework.permissions import BasePermission
 
 Customer = swapper.load_model("baseapp_payments", "Customer")
@@ -49,25 +52,50 @@ SUBSCRIPTION_PERMS = [
 ]
 
 
+DEFAULT_ENTITY_OWNER_CHECK = "baseapp_payments.permissions.default_entity_owner_check"
+
+
+def profile_entity_owner(entity, user_obj) -> bool:
+    # Imported here rather than at module scope so `baseapp_profiles` stays optional:
+    # this function is only reached once the entity is known to be a Profile.
+    from baseapp_profiles.permissions import is_active_member
+
+    ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
+    own_profile_id = getattr(user_obj, "profile_id", None)
+    return (
+        entity.owner_id == user_obj.id
+        # A user's own profile is billable by them even where `owner` was left unset,
+        # which `profile_owner_sql = None` allows. The None check is belt-and-braces:
+        # `entity` reaches here from a saved `customer.entity`, but a bare `==` between
+        # two absent ids would read as ownership if that ever stopped being true.
+        or (own_profile_id is not None and own_profile_id == entity.id)
+        or is_active_member(entity, user_obj, role=ProfileUserRole.ProfileRoles.ADMIN)
+    )
+
+
+def default_entity_owner_check(entity, user_obj) -> bool:
+    if apps.is_installed("baseapp_profiles"):
+        Profile = swapper.load_model("baseapp_profiles", "Profile")
+        if isinstance(entity, Profile):
+            return profile_entity_owner(entity, user_obj)
+
+    if isinstance(entity, get_user_model()):
+        return entity.pk == user_obj.pk
+
+    # Nothing here can know who owns an arbitrary entity model, and guessing is how this
+    # went wrong before: comparing the entity's pk to the user's made organization 5 look
+    # owned by user 5. A project pointing STRIPE_CUSTOMER_ENTITY_MODEL at its own model
+    # has to supply BASEAPP_PAYMENTS_ENTITY_OWNER_CHECK.
+    return False
+
+
 def is_entity_owner(entity, user_obj) -> bool:
     """Whether `user_obj` owns, or actively administers, `entity`."""
     if entity is None or not getattr(user_obj, "is_authenticated", False):
         return False
-    if config.STRIPE_CUSTOMER_ENTITY_MODEL != "profiles.Profile":
-        return entity.id == user_obj.id
 
-    profile = getattr(user_obj, "profile", None)
-    if profile is not None and entity.id == profile.id:
-        return True
-
-    ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
-    # `members` are ProfileUserRole rows, so this filters on the row's user - not on
-    # the row's own pk - and only counts memberships that are still active.
-    return entity.members.filter(
-        user_id=user_obj.id,
-        role=ProfileUserRole.ProfileRoles.ADMIN,
-        status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
-    ).exists()
+    path = getattr(settings, "BASEAPP_PAYMENTS_ENTITY_OWNER_CHECK", DEFAULT_ENTITY_OWNER_CHECK)
+    return import_string(path)(entity, user_obj)
 
 
 def _customer_owner(customer, user_obj) -> bool:
