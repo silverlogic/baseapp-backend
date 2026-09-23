@@ -88,6 +88,38 @@ STRIPE_CUSTOMER_ENTITY_MODEL = "profiles.Profile"
 
 When a customer is created (via the API or the `customer.created` webhook), the entity is resolved from this model and linked to the Stripe customer.
 
+### Who may bill an entity
+
+Authorization for every customer and subscription route runs through
+`baseapp_payments.permissions.is_entity_owner`, which delegates to the callable named by
+`BASEAPP_PAYMENTS_ENTITY_OWNER_CHECK`:
+
+```python
+# settings.py — default
+BASEAPP_PAYMENTS_ENTITY_OWNER_CHECK = "baseapp_payments.permissions.default_entity_owner_check"
+```
+
+The default answers for the two entity models the package can reason about:
+
+| Entity | Billable by |
+| --- | --- |
+| `baseapp_profiles` Profile | its `owner`, the user whose own profile it is, or an active **ADMIN** member |
+| The user model | that user |
+| Anything else | **nobody** |
+
+`baseapp_profiles` is optional — the Profile branch is skipped entirely when the app is
+not installed.
+
+> ### ⚠️ Pointing `STRIPE_CUSTOMER_ENTITY_MODEL` at your own model
+>
+> The default check denies every request for an entity model it does not recognise, so
+> set `BASEAPP_PAYMENTS_ENTITY_OWNER_CHECK` to your own `check(entity, user) -> bool`
+> alongside it. It is only consulted for authenticated users, so it never has to handle
+> `AnonymousUser`.
+>
+> Denying is deliberate. The previous behaviour compared the entity's pk to the user's,
+> which made organization 5 appear to be owned by user 5.
+
 ## Models
 
 `BaseCustomer` and `BaseSubscription` are abstract + swappable, and the package ships **no** concrete models or migrations — your project must subclass them and point the swapper settings at the concrete models (see [How to develop](#how-to-develop)).

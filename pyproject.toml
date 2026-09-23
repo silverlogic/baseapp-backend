@@ -65,7 +65,7 @@ pages = [
     "django-quill-editor>=0.1.42",
     "django-translated-fields>=0.13",
 ]
-payments = ["stripe>=11.5.0"]
+payments = ["stripe>=11.5.0,<15"]
 notifications = [
     "django-notifications-community>=1.10",
     "firebase-admin>=6.5.0",
