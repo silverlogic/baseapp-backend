@@ -31,7 +31,28 @@ STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET")
 ```
 
-3. The plugin contributes its routes via `v1_urlpatterns`, so make sure your project's `urls.py` composes them through the registry (it does not need a manual `include` of the payments router):
+## Customer Integration
+
+A Customer represents any entity (such as a User, Organization, or any model with an email attribute) that will be billed through Stripe.
+
+By default we have configured to work with profiles, meaning it will get the email through `profile.target.email`, but you can also use other models if the model has a email field, simply changing the STRIPE_CUSTOMER_ENTITY_MODEL to your chosen model. Be aware that this model must have a ContentType though.
+
+With a provided `entity_id`, the `StripeCustomerSerializer` creates a customer in Stripe and our Customer model links them via the `remote_customer_id` and `entity_id`.
+
+## Subscription Management
+
+The Subscription model stores Stripe subscription details including:
+
+`customer` (a foreign key to the Customer that owns it)
+`remote_subscription_id`
+
+## Creating a Subscription
+
+To create a subscription, use the `payments/stripe/subscriptions/` (assuming your route is registered at `payments/`) endpoint. A validation will check that no active subscription exists for the same product and price id, to reduce duplicate subscriptions, and then creates a new subscription through the Stripe API. It returns the new `remote_subscription_id` upon success.
+
+## Configure URL Patterns
+
+The plugin contributes its routes via `v1_urlpatterns`, so your project's `urls.py` composes them through the registry - there is no manual `include` of the payments router:
 
 ```python
 from baseapp_core.plugins import plugin_registry
@@ -67,38 +88,74 @@ STRIPE_CUSTOMER_ENTITY_MODEL = "profiles.Profile"
 
 When a customer is created (via the API or the `customer.created` webhook), the entity is resolved from this model and linked to the Stripe customer.
 
+### Who may bill an entity
+
+Authorization for every customer and subscription route runs through
+`baseapp_payments.permissions.is_entity_owner`, which delegates to the callable named by
+`BASEAPP_PAYMENTS_ENTITY_OWNER_CHECK`:
+
+```python
+# settings.py — default
+BASEAPP_PAYMENTS_ENTITY_OWNER_CHECK = "baseapp_payments.permissions.default_entity_owner_check"
+```
+
+The default answers for the two entity models the package can reason about:
+
+| Entity | Billable by |
+| --- | --- |
+| `baseapp_profiles` Profile | its `owner`, the user whose own profile it is, or an active **ADMIN** member |
+| The user model | that user |
+| Anything else | **nobody** |
+
+`baseapp_profiles` is optional — the Profile branch is skipped entirely when the app is
+not installed.
+
+> ### ⚠️ Pointing `STRIPE_CUSTOMER_ENTITY_MODEL` at your own model
+>
+> The default check denies every request for an entity model it does not recognise, so
+> set `BASEAPP_PAYMENTS_ENTITY_OWNER_CHECK` to your own `check(entity, user) -> bool`
+> alongside it. It is only consulted for authenticated users, so it never has to handle
+> `AnonymousUser`.
+>
+> Denying is deliberate. The previous behaviour compared the entity's pk to the user's,
+> which made organization 5 appear to be owned by user 5.
+
 ## Models
 
 `BaseCustomer` and `BaseSubscription` are abstract + swappable, and the package ships **no** concrete models or migrations — your project must subclass them and point the swapper settings at the concrete models (see [How to develop](#how-to-develop)).
 
 | Abstract | Concrete reference | Purpose |
 |---|---|---|
-| `BaseCustomer` | `Customer` | Generic-FK `entity` (the billable model) + `remote_customer_id`. Unique per entity. |
-| `BaseSubscription` | `Subscription` | `remote_customer_id` + `remote_subscription_id`. Unique together. |
+| `BaseCustomer` | `Customer` | Generic-FK `entity` (the billable model) + `remote_customer_id`. |
+| `BaseSubscription` | `Subscription` | `customer` (FK to the concrete Customer) + `remote_subscription_id`. |
 
 > **Important:** `BaseCustomer.save()` requires the concrete model to declare `tracker = FieldTracker(["entity"])` (from `model_utils`) — it uses the tracker to populate `entity_type` / `entity_id` when the generic `entity` changes, and raises a `RuntimeError` if it's missing.
 
 ## API Endpoints
 
-All routes are mounted under `v1/payments/` (router uses no trailing slash). Authenticated endpoints require `IsAuthenticated`; the webhook is unauthenticated (verified by Stripe signature instead).
+All routes are mounted under `v1/payments/`. **The router is `DefaultRouter(trailing_slash=True)`, so every path ends in `/`** - an unslashed request does not resolve and only survives via Django's `APPEND_SLASH` redirect, which drops the body on writes.
+
+Authenticated endpoints require `IsAuthenticated` plus an object permission; the webhook is unauthenticated (verified by Stripe signature instead).
 
 | Method & path | Action |
 |---|---|
-| `POST v1/payments/stripe/subscriptions` | Create a subscription (rejects a duplicate active subscription for the same product/price). |
-| `GET v1/payments/stripe/subscriptions/{remote_subscription_id}` | Retrieve subscription details from Stripe. |
-| `PATCH v1/payments/stripe/subscriptions/{remote_subscription_id}` | Update a subscription. |
-| `DELETE v1/payments/stripe/subscriptions?remote_subscription_id=...` | Delete a subscription. |
-| `POST v1/payments/stripe/customers` | Create a customer. |
-| `GET v1/payments/stripe/customers/{pk}` | Retrieve a customer by `remote_customer_id`, or `me` to resolve the current user's customer (creating the local record from Stripe if needed). |
-| `GET v1/payments/stripe/products` | List Stripe products. |
-| `GET v1/payments/stripe/products/{remote_product_id}` | Retrieve a product. |
-| `GET v1/payments/stripe/payment-methods?customer_id=...` | List a customer's payment methods. |
-| `POST v1/payments/stripe/payment-methods` | Create a `SetupIntent` / attach a payment method. |
-| `PATCH v1/payments/stripe/payment-methods/{pk}` | Update a payment method. |
-| `DELETE v1/payments/stripe/payment-methods/{pk}?customer_id=...` | Delete a payment method. |
-| `POST v1/payments/stripe/webhooks` | Stripe webhook receiver. |
+| `GET v1/payments/stripe/subscriptions/?entity_id=...` | List an entity's subscriptions (`?status=` widens past the default `active`). |
+| `POST v1/payments/stripe/subscriptions/` | Create a subscription (rejects a duplicate active subscription for the same product/price). |
+| `GET v1/payments/stripe/subscriptions/{remote_subscription_id}/` | Retrieve subscription details from Stripe. |
+| `PATCH v1/payments/stripe/subscriptions/{remote_subscription_id}/` | Update a subscription. |
+| `DELETE v1/payments/stripe/subscriptions/{remote_subscription_id}/` | Cancel a subscription. |
+| `POST v1/payments/stripe/customers/` | Create a customer. |
+| `GET v1/payments/stripe/customers/{entity_id}/` | Retrieve a customer by entity relay id, or `me` for the current user. |
+| `GET v1/payments/stripe/customers/{entity_id}/invoices/` | List the customer's invoices (paginated). |
+| `GET v1/payments/stripe/customers/{entity_id}/payment-methods/` | List the customer's payment methods. |
+| `POST v1/payments/stripe/customers/{entity_id}/payment-methods/` | Create a `SetupIntent` to attach a payment method. |
+| `PUT v1/payments/stripe/customers/{entity_id}/payment-methods/{payment_method_id}/` | Update a payment method. |
+| `DELETE v1/payments/stripe/customers/{entity_id}/payment-methods/{payment_method_id}/` | Detach a payment method. |
+| `GET v1/payments/stripe/products/` | List Stripe products. |
+| `GET v1/payments/stripe/products/{product_id}/` | Retrieve a product. |
+| `POST v1/payments/stripe/webhooks/` | Stripe webhook receiver. |
 
-Payment-method endpoints verify the supplied `customer_id` belongs to the authenticated user (`StripeService.checkCustomerIdForUser`) and return `401` otherwise.
+Payment-method and invoice routes are nested under the customer, so the entity in the URL is authorized through `DRFCustomerPermissions` before Stripe is called.
 
 ## Stripe webhooks
 
