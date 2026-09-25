@@ -3,6 +3,8 @@ from typing import TYPE_CHECKING
 
 import stripe
 import swapper
+from constance import config
+from django.apps import apps
 from django.conf import settings
 from rest_framework import viewsets
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
@@ -13,7 +15,11 @@ from baseapp_core.graphql import get_pk_from_relay_id
 from baseapp_core.rest_framework.decorators import action
 from baseapp_core.rest_framework.mixins import DestroyModelMixin
 
-from .permissions import DRFCustomerPermissions, DRFSubscriptionPermissions
+from .permissions import (
+    DRFCustomerPermissions,
+    DRFSubscriptionPermissions,
+    is_entity_owner,
+)
 from .serializers import (
     StripeCustomerSerializer,
     StripeInvoiceSerializer,
@@ -29,7 +35,7 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
-    from django.db.models import QuerySet
+    from django.db.models import Model, QuerySet
     from django.http import JsonResponse
 
     from .models import BaseCustomer
@@ -213,6 +219,33 @@ class StripeCustomerViewset(
         # permission check inside super().get_object().
         self.check_object_permissions(self.request, obj)
         return obj
+
+    def create(self, request, *args, **kwargs) -> Response:
+        # CreateModelMixin never calls has_object_permission - there is no object yet -
+        # and what has to be checked is the entity being billed rather than a Customer,
+        # which DRFCustomerPermissions has no branch for. Without this the only gate is
+        # IsAuthenticated, so any entity_id had a Stripe customer created against it.
+        # StripeSubscriptionViewset.create guards its own route the same way.
+        entity = self._entity_from_entity_id(request.data.get("entity_id"))
+        if not is_entity_owner(entity, request.user):
+            raise PermissionDenied()
+        return super().create(request, *args, **kwargs)
+
+    def _entity_from_entity_id(self, entity_id) -> "Model":
+        """Resolve the entity a create request would bill, or raise the matching error."""
+        if not entity_id:
+            # The serializer only sets `entity` when entity_id is truthy but create()
+            # pops it unconditionally, so reaching it without one is a 500.
+            raise ValidationError({"entity_id": ["This field is required."]})
+        if isinstance(entity_id, str):
+            entity_id = get_pk_from_relay_id(entity_id) or None
+        if not entity_id:
+            raise NotFound("Entity not found")
+        entity_model = apps.get_model(config.STRIPE_CUSTOMER_ENTITY_MODEL)
+        entity = entity_model.objects.filter(pk=entity_id).first()
+        if not entity:
+            raise NotFound("Entity not found")
+        return entity
 
     @action(
         methods=["GET"],
