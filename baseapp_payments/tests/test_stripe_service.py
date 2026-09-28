@@ -6,6 +6,7 @@ Stripe error becomes which local exception, and which ones are answered with
 what is pinned here.
 """
 
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -135,6 +136,22 @@ class TestSubscriptionCalls:
             mock_retrieve.return_value = {"id": "sub_1", "customer": "cus_1"}
             mock_preview.side_effect = Exception("nothing upcoming")
             assert service.retrieve_subscription("sub_1")["id"] == "sub_1"
+
+    def test_missing_upcoming_invoice_still_logs_the_stripe_reason(self, service, caplog):
+        """retrieve_subscription previews through get_upcoming_invoice, which raises
+        InvoiceNotFound. That says only that the preview failed, so the warning has to
+        reach through to __cause__ for the Stripe message that says why.
+        """
+        with (
+            patch("baseapp_payments.utils.stripe.Subscription.retrieve") as mock_retrieve,
+            patch("baseapp_payments.utils.stripe.Invoice.create_preview") as mock_preview,
+        ):
+            mock_retrieve.return_value = {"id": "sub_1", "customer": "cus_1"}
+            mock_preview.side_effect = Exception("no upcoming invoice for this customer")
+            with caplog.at_level(logging.WARNING, logger="baseapp_payments.utils"):
+                service.retrieve_subscription("sub_1")
+
+        assert "no upcoming invoice for this customer" in caplog.text
 
     def test_list_subscriptions_for_an_unknown_customer_pages_as_empty(self, service):
         """A stale remote_customer_id must not crash callers that page the result."""

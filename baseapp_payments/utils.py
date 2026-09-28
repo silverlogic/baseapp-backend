@@ -330,15 +330,19 @@ class StripeService:
         # preview call below.
         customer = stripe_id(subscription.get("customer"))
         try:
-            upcoming_invoice = stripe.Invoice.create_preview(
-                customer=customer, subscription=subscription_id
-            )
+            upcoming_invoice = self.get_upcoming_invoice(customer, subscription_id)
             subscription["upcoming_invoice"] = {
                 "amount_due": upcoming_invoice.amount_due,
                 "next_payment_attempt": upcoming_invoice.next_payment_attempt,
             }
         except Exception as e:
-            logger.warning(f"Failed to retrieve upcoming invoice for customer {customer}: {str(e)}")
+            # InvoiceNotFound only says the preview failed; __cause__ carries the Stripe
+            # error that says why, which is the half worth logging.
+            logger.warning(
+                "Failed to retrieve upcoming invoice for customer %s: %s",
+                customer,
+                e.__cause__ or e,
+            )
         return subscription
 
     def list_subscriptions(self, customer_id, **kwargs) -> list:
@@ -557,8 +561,10 @@ class StripeService:
         try:
             return stripe.Invoice.create_preview(**params)
         except Exception as e:
-            logger.exception(e)
-            raise InvoiceNotFound("Error retrieving upcoming invoice in Stripe")
+            # Deliberately not logged here, unlike its neighbours: retrieve_subscription
+            # treats a missing upcoming invoice as routine, and a canceled subscription
+            # has none. `from e` keeps the cause for callers that do want to log it.
+            raise InvoiceNotFound("Error retrieving upcoming invoice in Stripe") from e
 
     def list_invoices(self, customer_id) -> "stripe.ListObject[stripe.Invoice]":
         try:
