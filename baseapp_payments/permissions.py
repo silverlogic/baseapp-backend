@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import swapper
 from django.apps import apps
 from django.conf import settings
@@ -5,6 +7,15 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import BaseBackend
 from django.utils.module_loading import import_string
 from rest_framework.permissions import BasePermission
+from rest_framework.request import Request
+from rest_framework.views import APIView
+
+if TYPE_CHECKING:
+    from django.contrib.auth.base_user import AbstractBaseUser
+    from django.contrib.auth.models import AnonymousUser
+    from django.db.models import Model
+
+    from .models import BaseCustomer, BaseSubscription
 
 Customer = swapper.load_model("baseapp_payments", "Customer")
 Subscription = swapper.load_model("baseapp_payments", "Subscription")
@@ -55,7 +66,7 @@ SUBSCRIPTION_PERMS = [
 DEFAULT_ENTITY_OWNER_CHECK = "baseapp_payments.permissions.default_entity_owner_check"
 
 
-def profile_entity_owner(entity, user_obj) -> bool:
+def profile_entity_owner(entity: "Model", user_obj: "AbstractBaseUser") -> bool:
     # Imported here rather than at module scope so `baseapp_profiles` stays optional:
     # this function is only reached once the entity is known to be a Profile.
     from baseapp_profiles.permissions import is_active_member
@@ -73,7 +84,7 @@ def profile_entity_owner(entity, user_obj) -> bool:
     )
 
 
-def default_entity_owner_check(entity, user_obj) -> bool:
+def default_entity_owner_check(entity: "Model", user_obj: "AbstractBaseUser") -> bool:
     if apps.is_installed("baseapp_profiles"):
         Profile = swapper.load_model("baseapp_profiles", "Profile")
         if isinstance(entity, Profile):
@@ -89,7 +100,7 @@ def default_entity_owner_check(entity, user_obj) -> bool:
     return False
 
 
-def is_entity_owner(entity, user_obj) -> bool:
+def is_entity_owner(entity: "Model | None", user_obj: "AbstractBaseUser | AnonymousUser") -> bool:
     """Whether `user_obj` owns, or actively administers, `entity`."""
     if entity is None or not getattr(user_obj, "is_authenticated", False):
         return False
@@ -98,12 +109,19 @@ def is_entity_owner(entity, user_obj) -> bool:
     return import_string(path)(entity, user_obj)
 
 
-def _customer_owner(customer, user_obj) -> bool:
+def _customer_owner(
+    customer: "BaseCustomer | None", user_obj: "AbstractBaseUser | AnonymousUser"
+) -> bool:
     return customer is not None and is_entity_owner(customer.entity, user_obj)
 
 
 class PaymentsPermissionsBackend(BaseBackend):
-    def has_perm(self, user_obj, perm, obj=None):
+    def has_perm(
+        self,
+        user_obj: "AbstractBaseUser | AnonymousUser",
+        perm: str,
+        obj: "Model | None" = None,
+    ) -> bool:
         if perm in [payments_perm(codename) for codename in CUSTOMER_PERMS]:
             if not isinstance(obj, Customer):
                 return False
@@ -116,7 +134,7 @@ class PaymentsPermissionsBackend(BaseBackend):
 
 
 class DRFCustomerPermissions(BasePermission):
-    def has_object_permission(self, request, view, obj):
+    def has_object_permission(self, request: Request, view: APIView, obj: "BaseCustomer") -> bool:
         action = getattr(view, "action", None)
         if action == "retrieve":
             return request.user.has_perm(payments_perm("view_customer"), obj)
@@ -134,7 +152,9 @@ class DRFCustomerPermissions(BasePermission):
 
 
 class DRFSubscriptionPermissions(BasePermission):
-    def has_object_permission(self, request, view, obj):
+    def has_object_permission(
+        self, request: Request, view: APIView, obj: "BaseCustomer | BaseSubscription"
+    ) -> bool:
         action = getattr(view, "action", None)
         # `create` and `list` have no subscription yet, so `obj` here is the Customer,
         # not a Subscription. Neither route reaches this class on its own - DRF only

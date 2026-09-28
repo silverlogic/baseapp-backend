@@ -1,8 +1,10 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from baseapp_core.plugins.base import BaseAppPlugin, PackageSettings
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from django.urls import URLResolver
 
 
@@ -45,7 +47,11 @@ class PaymentsPlugin(BaseAppPlugin):
         )
 
     @staticmethod
-    def v1_urlpatterns(include, path, re_path) -> "list[URLResolver]":
+    def v1_urlpatterns(
+        include: "Callable[..., Any]",
+        path: "Callable[..., Any]",
+        re_path: "Callable[..., Any]",
+    ) -> "list[URLResolver]":
         from baseapp_payments.router import payments_router
 
         return [

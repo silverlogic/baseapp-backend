@@ -37,33 +37,33 @@ class _AttrDict(dict):
     __getattr__ = dict.__getitem__
 
 
-def _invalid_request(message, code=None):
+def _invalid_request(message: str, code: str | None = None) -> "stripe.error.InvalidRequestError":
     return stripe.error.InvalidRequestError(message, param=None, code=code)
 
 
 @pytest.fixture
-def service():
+def service() -> StripeService:
     return StripeService()
 
 
 class TestCustomerCalls:
-    def test_create_customer_translates_failures(self, service):
+    def test_create_customer_translates_failures(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.Customer.create") as mock_create:
             mock_create.side_effect = Exception("boom")
             with pytest.raises(CustomerCreationError):
                 service.create_customer(email="a@example.com")
 
-    def test_retrieve_customer_by_id(self, service):
+    def test_retrieve_customer_by_id(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.Customer.retrieve") as mock_retrieve:
             mock_retrieve.return_value = {"id": "cus_1"}
             assert service.retrieve_customer("cus_1") == {"id": "cus_1"}
 
-    def test_unknown_customer_is_none_not_an_error(self, service):
+    def test_unknown_customer_is_none_not_an_error(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.Customer.retrieve") as mock_retrieve:
             mock_retrieve.side_effect = _invalid_request("No such customer: cus_x")
             assert service.retrieve_customer("cus_x") is None
 
-    def test_other_invalid_requests_still_raise(self, service):
+    def test_other_invalid_requests_still_raise(self, service: StripeService) -> None:
         """A malformed request is not the same as a missing customer; answering
         `None` for both would make a real failure look like an empty result."""
         with patch("baseapp_payments.utils.stripe.Customer.retrieve") as mock_retrieve:
@@ -71,13 +71,13 @@ class TestCustomerCalls:
             with pytest.raises(CustomerNotFound):
                 service.retrieve_customer("cus_x")
 
-    def test_lookup_by_email_returns_the_first_match(self, service):
+    def test_lookup_by_email_returns_the_first_match(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.Customer.search") as mock_search:
             mock_search.return_value = stripe_list([{"id": "cus_first"}, {"id": "cus_second"}])
             mock_search.return_value.data = [{"id": "cus_first"}, {"id": "cus_second"}]
             assert service.retrieve_customer(email="a@example.com") == {"id": "cus_first"}
 
-    def test_lookup_by_email_escapes_the_query(self, service):
+    def test_lookup_by_email_escapes_the_query(self, service: StripeService) -> None:
         """The address reaches Stripe's query DSL, so a quote in it must not be
         able to close the string it is embedded in."""
         with patch("baseapp_payments.utils.stripe.Customer.search") as mock_search:
@@ -86,37 +86,37 @@ class TestCustomerCalls:
             service.retrieve_customer(email="a'b@example.com")
             assert mock_search.call_args.kwargs["query"] == "email:'a\\'b@example.com'"
 
-    def test_lookup_by_email_with_no_match(self, service):
+    def test_lookup_by_email_with_no_match(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.Customer.search") as mock_search:
             mock_search.return_value = stripe_list([])
             mock_search.return_value.data = []
             assert service.retrieve_customer(email="nobody@example.com") is None
 
-    def test_update_customer_translates_failures(self, service):
+    def test_update_customer_translates_failures(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.Customer.modify") as mock_modify:
             mock_modify.side_effect = Exception("boom")
             with pytest.raises(CustomerUpdateError):
                 service.update_customer("cus_1", email="b@example.com")
 
-    def test_delete_unknown_customer_is_none(self, service):
+    def test_delete_unknown_customer_is_none(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.Customer.delete") as mock_delete:
             mock_delete.side_effect = _invalid_request("No such customer: cus_x")
             assert service.delete_customer("cus_x") is None
 
 
 class TestSubscriptionCalls:
-    def test_create_subscription_translates_failures(self, service):
+    def test_create_subscription_translates_failures(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.Subscription.create") as mock_create:
             mock_create.side_effect = Exception("boom")
             with pytest.raises(SubscriptionCreationError):
                 service.create_subscription("cus_1", "price_1")
 
-    def test_retrieve_unknown_subscription_is_none(self, service):
+    def test_retrieve_unknown_subscription_is_none(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.Subscription.retrieve") as mock_retrieve:
             mock_retrieve.side_effect = Exception("No such subscription: sub_x")
             assert service.retrieve_subscription("sub_x") is None
 
-    def test_retrieve_subscription_forwards_stripe_kwargs(self, service):
+    def test_retrieve_subscription_forwards_stripe_kwargs(self, service: StripeService) -> None:
         """The read serializer resolves client_secret and product out of expanded
         fields, so `expand` has to reach Stripe rather than be swallowed."""
         with (
@@ -128,7 +128,9 @@ class TestSubscriptionCalls:
             service.retrieve_subscription("sub_1", expand=["latest_invoice.payment_intent"])
             assert mock_retrieve.call_args.kwargs["expand"] == ["latest_invoice.payment_intent"]
 
-    def test_retrieve_subscription_survives_a_missing_upcoming_invoice(self, service):
+    def test_retrieve_subscription_survives_a_missing_upcoming_invoice(
+        self, service: StripeService
+    ) -> None:
         with (
             patch("baseapp_payments.utils.stripe.Subscription.retrieve") as mock_retrieve,
             patch("baseapp_payments.utils.stripe.Invoice.create_preview") as mock_preview,
@@ -137,7 +139,9 @@ class TestSubscriptionCalls:
             mock_preview.side_effect = Exception("nothing upcoming")
             assert service.retrieve_subscription("sub_1")["id"] == "sub_1"
 
-    def test_missing_upcoming_invoice_still_logs_the_stripe_reason(self, service, caplog):
+    def test_missing_upcoming_invoice_still_logs_the_stripe_reason(
+        self, service: StripeService, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """retrieve_subscription previews through get_upcoming_invoice, which raises
         InvoiceNotFound. That says only that the preview failed, so the warning has to
         reach through to __cause__ for the Stripe message that says why.
@@ -153,39 +157,45 @@ class TestSubscriptionCalls:
 
         assert "no upcoming invoice for this customer" in caplog.text
 
-    def test_list_subscriptions_for_an_unknown_customer_pages_as_empty(self, service):
+    def test_list_subscriptions_for_an_unknown_customer_pages_as_empty(
+        self, service: StripeService
+    ) -> None:
         """A stale remote_customer_id must not crash callers that page the result."""
         with patch("baseapp_payments.utils.stripe.Subscription.list") as mock_list:
             mock_list.side_effect = Exception("No such customer: cus_x")
             result = service.list_subscriptions("cus_x")
             assert list(result.auto_paging_iter()) == []
 
-    def test_list_subscriptions_translates_other_failures(self, service):
+    def test_list_subscriptions_translates_other_failures(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.Subscription.list") as mock_list:
             mock_list.side_effect = Exception("boom")
             with pytest.raises(SubscriptionNotFound):
                 service.list_subscriptions("cus_1")
 
-    def test_delete_unknown_subscription_is_none(self, service):
+    def test_delete_unknown_subscription_is_none(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.Subscription.cancel") as mock_cancel:
             mock_cancel.side_effect = Exception("No such subscription: sub_x")
             assert service.delete_subscription("sub_x") is None
 
 
 class TestPaymentMethodCalls:
-    def test_retrieve_payment_method_translates_failures(self, service):
+    def test_retrieve_payment_method_translates_failures(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.PaymentMethod.retrieve") as mock_retrieve:
             mock_retrieve.side_effect = Exception("boom")
             with pytest.raises(PaymentMethodNotFound):
                 service.retrieve_payment_method("pm_1")
 
-    def test_list_payment_methods_translates_a_missing_customer(self, service):
+    def test_list_payment_methods_translates_a_missing_customer(
+        self, service: StripeService
+    ) -> None:
         with patch("baseapp_payments.utils.stripe.PaymentMethod.list") as mock_list:
             mock_list.side_effect = _invalid_request("No such customer", code="resource_missing")
             with pytest.raises(CustomerNotFound):
                 service.list_payment_methods("cus_1")
 
-    def test_list_payment_methods_propagates_a_service_failure(self, service):
+    def test_list_payment_methods_propagates_a_service_failure(
+        self, service: StripeService
+    ) -> None:
         """An outage must not read as "no such customer".
 
         payment_method_belongs_to() answers False for CustomerNotFound, so translating
@@ -197,38 +207,40 @@ class TestPaymentMethodCalls:
             with pytest.raises(stripe.APIConnectionError):
                 service.list_payment_methods("cus_1")
 
-    def test_belongs_to_propagates_a_service_failure(self, service):
+    def test_belongs_to_propagates_a_service_failure(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.StripeService.list_payment_methods") as mock_list:
             mock_list.side_effect = stripe.APIConnectionError("stripe unreachable")
             with pytest.raises(stripe.APIConnectionError):
                 service.payment_method_belongs_to("pm_1", "cus_1")
 
-    def test_belongs_to_finds_a_card_past_the_first_page(self, service):
+    def test_belongs_to_finds_a_card_past_the_first_page(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.StripeService.list_payment_methods") as mock_list:
             mock_list.return_value = stripe_list([{"id": "pm_page_two"}])
             assert service.payment_method_belongs_to("pm_page_two", "cus_1") is True
 
-    def test_belongs_to_rejects_a_card_of_another_customer(self, service):
+    def test_belongs_to_rejects_a_card_of_another_customer(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.StripeService.list_payment_methods") as mock_list:
             mock_list.return_value = stripe_list([{"id": "pm_mine"}])
             assert service.payment_method_belongs_to("pm_theirs", "cus_1") is False
 
-    def test_belongs_to_is_false_without_both_ids(self, service):
+    def test_belongs_to_is_false_without_both_ids(self, service: StripeService) -> None:
         assert service.payment_method_belongs_to(None, "cus_1") is False
         assert service.payment_method_belongs_to("pm_1", None) is False
 
-    def test_belongs_to_is_false_for_an_unknown_customer(self, service):
+    def test_belongs_to_is_false_for_an_unknown_customer(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.StripeService.list_payment_methods") as mock_list:
             mock_list.side_effect = CustomerNotFound("gone")
             assert service.payment_method_belongs_to("pm_1", "cus_x") is False
 
-    def test_update_payment_method_translates_failures(self, service):
+    def test_update_payment_method_translates_failures(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.PaymentMethod.modify") as mock_modify:
             mock_modify.side_effect = Exception("boom")
             with pytest.raises(PaymentMethodUpdateError):
                 service.update_payment_method("pm_1", billing_details={})
 
-    def test_delete_payment_method_clears_the_default_only_when_asked(self, service):
+    def test_delete_payment_method_clears_the_default_only_when_asked(
+        self, service: StripeService
+    ) -> None:
         with (
             patch("baseapp_payments.utils.stripe.PaymentMethod.detach") as mock_detach,
             patch("baseapp_payments.utils.stripe.Customer.modify") as mock_modify,
@@ -242,13 +254,13 @@ class TestPaymentMethodCalls:
                 "default_payment_method": None
             }
 
-    def test_delete_payment_method_translates_failures(self, service):
+    def test_delete_payment_method_translates_failures(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.PaymentMethod.detach") as mock_detach:
             mock_detach.side_effect = Exception("boom")
             with pytest.raises(PaymentMethodDeletionError):
                 service.delete_payment_method("pm_1", "cus_1")
 
-    def test_get_customer_payment_methods_flags_the_default(self, service):
+    def test_get_customer_payment_methods_flags_the_default(self, service: StripeService) -> None:
         with (
             patch("baseapp_payments.utils.StripeService.retrieve_customer") as mock_retrieve,
             patch("baseapp_payments.utils.StripeService.list_payment_methods") as mock_list,
@@ -263,7 +275,9 @@ class TestPaymentMethodCalls:
             assert result[0]["is_default"] is True
             assert "is_default" not in result[1]
 
-    def test_get_customer_payment_methods_for_an_unknown_customer(self, service):
+    def test_get_customer_payment_methods_for_an_unknown_customer(
+        self, service: StripeService
+    ) -> None:
         with patch("baseapp_payments.utils.StripeService.retrieve_customer") as mock_retrieve:
             mock_retrieve.return_value = None
             with pytest.raises(CustomerNotFound):
@@ -271,19 +285,19 @@ class TestPaymentMethodCalls:
 
 
 class TestIntentAndPriceCalls:
-    def test_create_setup_intent_translates_failures(self, service):
+    def test_create_setup_intent_translates_failures(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.SetupIntent.create") as mock_create:
             mock_create.side_effect = Exception("boom")
             with pytest.raises(SetupIntentCreationError):
                 service.create_setup_intent("cus_1")
 
-    def test_get_payment_intent_translates_failures(self, service):
+    def test_get_payment_intent_translates_failures(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.PaymentIntent.retrieve") as mock_retrieve:
             mock_retrieve.side_effect = Exception("boom")
             with pytest.raises(PaymentIntendNotFound):
                 service.get_payment_intent("pi_1")
 
-    def test_retrieve_price_translates_failures(self, service):
+    def test_retrieve_price_translates_failures(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.Price.retrieve") as mock_retrieve:
             mock_retrieve.side_effect = Exception("boom")
             with pytest.raises(PriceRetrievalError):
@@ -291,13 +305,13 @@ class TestIntentAndPriceCalls:
 
 
 class TestListingCalls:
-    def test_list_products_defaults_to_active_and_pages(self, service):
+    def test_list_products_defaults_to_active_and_pages(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.Product.list") as mock_list:
             mock_list.return_value = stripe_list([{"id": "prod_1"}])
             service.list_products()
             assert mock_list.call_args.kwargs["active"] is True
 
-    def test_list_invoices_returns_a_pageable_result(self, service):
+    def test_list_invoices_returns_a_pageable_result(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.Invoice.list") as mock_list:
             mock_list.return_value = stripe_list([{"id": "in_1"}])
             assert list(service.list_invoices("cus_1").auto_paging_iter()) == [{"id": "in_1"}]
@@ -311,7 +325,7 @@ class TestIncompleteSubscriptionClientSecret:
     "Error creating subscription intent in Stripe".
     """
 
-    def test_latest_invoice_returned_as_an_id(self, service):
+    def test_latest_invoice_returned_as_an_id(self, service: StripeService) -> None:
         with (
             patch("baseapp_payments.utils.stripe.Subscription.create") as mock_create,
             patch("baseapp_payments.utils.stripe.Invoice.retrieve") as mock_invoice,
@@ -325,7 +339,7 @@ class TestIncompleteSubscriptionClientSecret:
 
         assert result["client_secret"] == "pi_1_secret"
 
-    def test_payment_intent_returned_as_an_id(self, service):
+    def test_payment_intent_returned_as_an_id(self, service: StripeService) -> None:
         with (
             patch("baseapp_payments.utils.stripe.Subscription.create") as mock_create,
             patch("baseapp_payments.utils.stripe.PaymentIntent.retrieve") as mock_pi,
@@ -339,7 +353,7 @@ class TestIncompleteSubscriptionClientSecret:
 
         assert result["client_secret"] == "pi_1_secret"
 
-    def test_fully_expanded_response_needs_no_extra_call(self, service):
+    def test_fully_expanded_response_needs_no_extra_call(self, service: StripeService) -> None:
         with (
             patch("baseapp_payments.utils.stripe.Subscription.create") as mock_create,
             patch("baseapp_payments.utils.stripe.Invoice.retrieve") as mock_invoice,
@@ -362,7 +376,7 @@ class TestIncompleteSubscriptionClientSecret:
 class TestExpandableFieldHelpers:
     """Every expandable field can arrive as the object or as its bare id."""
 
-    def test_stripe_field_tolerates_an_unexpanded_parent(self):
+    def test_stripe_field_tolerates_an_unexpanded_parent(self) -> None:
         from baseapp_payments.utils import stripe_field
 
         assert stripe_field({"product": {"id": "prod_1"}}, "product") == {"id": "prod_1"}
@@ -370,7 +384,7 @@ class TestExpandableFieldHelpers:
         assert stripe_field(None, "product") is None
         assert stripe_field(_AttrDict(product="prod_1"), "product") == "prod_1"
 
-    def test_stripe_id_accepts_either_shape(self):
+    def test_stripe_id_accepts_either_shape(self) -> None:
         from baseapp_payments.utils import stripe_id
 
         assert stripe_id("prod_1") == "prod_1"
@@ -378,7 +392,9 @@ class TestExpandableFieldHelpers:
         assert stripe_id(_AttrDict(id="prod_1")) == "prod_1"
         assert stripe_id(None) is None
 
-    def test_default_payment_method_matches_when_stripe_expands_it(self, service):
+    def test_default_payment_method_matches_when_stripe_expands_it(
+        self, service: StripeService
+    ) -> None:
         """Compared against pm.id, so an expanded object silently flagged nothing."""
         with (
             patch("baseapp_payments.utils.StripeService.retrieve_customer") as mock_customer,
@@ -401,7 +417,9 @@ class TestUpcomingInvoice:
     it used to call no longer exists in the pinned Stripe SDK.
     """
 
-    def test_scopes_the_preview_to_a_subscription_when_given_one(self, service):
+    def test_scopes_the_preview_to_a_subscription_when_given_one(
+        self, service: StripeService
+    ) -> None:
         with patch("baseapp_payments.utils.stripe.Invoice.create_preview") as mock_preview:
             mock_preview.return_value = _AttrDict(id="in_1", amount_due=500)
             invoice = service.get_upcoming_invoice("cus_1", "sub_1")
@@ -409,7 +427,7 @@ class TestUpcomingInvoice:
         assert mock_preview.call_args.kwargs == {"customer": "cus_1", "subscription": "sub_1"}
         assert invoice["amount_due"] == 500
 
-    def test_omits_the_subscription_when_not_given_one(self, service):
+    def test_omits_the_subscription_when_not_given_one(self, service: StripeService) -> None:
         # Stripe rejects subscription=None rather than ignoring it, so the key has to be
         # absent and not merely empty.
         with patch("baseapp_payments.utils.stripe.Invoice.create_preview") as mock_preview:
@@ -418,7 +436,7 @@ class TestUpcomingInvoice:
 
         assert mock_preview.call_args.kwargs == {"customer": "cus_1"}
 
-    def test_translates_failures(self, service):
+    def test_translates_failures(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.Invoice.create_preview") as mock_preview:
             mock_preview.side_effect = Exception("boom")
             with pytest.raises(InvoiceNotFound):

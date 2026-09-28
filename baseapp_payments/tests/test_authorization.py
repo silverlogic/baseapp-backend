@@ -7,14 +7,16 @@ client actually sends, returned the object unchecked. These mirror those tests
 with relay ids so the branch real traffic takes is the one under test.
 """
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from django.urls import reverse
 from rest_framework import status
 
 from baseapp_core.tests.factories import UserFactory
+from baseapp_core.tests.fixtures import Client
 from baseapp_core.tests.helpers import responseEquals
+from baseapp_payments.models import BaseCustomer
 from baseapp_payments.tests.factories import CustomerFactory
 from baseapp_payments.tests.helpers import stripe_list
 from baseapp_profiles.tests.factories import ProfileFactory
@@ -22,7 +24,7 @@ from baseapp_profiles.tests.factories import ProfileFactory
 pytestmark = pytest.mark.django_db
 
 
-def other_customer():
+def other_customer() -> BaseCustomer:
     return CustomerFactory(entity=ProfileFactory(), remote_customer_id="cus_victim")
 
 
@@ -30,8 +32,8 @@ class TestCustomerRoutesRejectRelayIdsOfOtherEntities:
     @patch("baseapp_payments.views.StripeService.retrieve_customer")
     @patch("baseapp_payments.views.StripeService.get_customer_payment_methods")
     def test_cannot_list_other_entity_payment_methods_by_relay_id(
-        self, mock_get_pms, mock_retrieve, user_client
-    ):
+        self, mock_get_pms: MagicMock, mock_retrieve: MagicMock, user_client: Client
+    ) -> None:
         mock_retrieve.return_value = {"id": "cus_victim"}
         mock_get_pms.return_value = [{"id": "pm_victim_card"}]
         victim = other_customer()
@@ -44,7 +46,9 @@ class TestCustomerRoutesRejectRelayIdsOfOtherEntities:
         responseEquals(response, status.HTTP_403_FORBIDDEN)
 
     @patch("baseapp_payments.views.StripeService.delete_payment_method")
-    def test_cannot_delete_other_entity_payment_method_by_relay_id(self, mock_delete, user_client):
+    def test_cannot_delete_other_entity_payment_method_by_relay_id(
+        self, mock_delete: MagicMock, user_client: Client
+    ) -> None:
         mock_delete.return_value = {}
         victim = other_customer()
         response = user_client.delete(
@@ -57,7 +61,9 @@ class TestCustomerRoutesRejectRelayIdsOfOtherEntities:
         assert not mock_delete.called
 
     @patch("baseapp_payments.utils.StripeService.list_invoices")
-    def test_cannot_list_other_entity_invoices_by_relay_id(self, mock_list_invoices, user_client):
+    def test_cannot_list_other_entity_invoices_by_relay_id(
+        self, mock_list_invoices: MagicMock, user_client: Client
+    ) -> None:
         mock_list_invoices.return_value = stripe_list([{"id": "in_victim"}])
         victim = other_customer()
         response = user_client.get(
@@ -65,7 +71,7 @@ class TestCustomerRoutesRejectRelayIdsOfOtherEntities:
         )
         responseEquals(response, status.HTTP_403_FORBIDDEN)
 
-    def test_can_still_reach_own_customer_by_relay_id(self, user_client):
+    def test_can_still_reach_own_customer_by_relay_id(self, user_client: Client) -> None:
         own = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_mine")
         with patch("baseapp_payments.utils.StripeService.list_invoices") as mock_list_invoices:
             mock_list_invoices.return_value = stripe_list([])
@@ -82,8 +88,12 @@ class TestSubscriptionCreateAuthorization:
     @patch("baseapp_payments.views.StripeService.list_subscriptions")
     @patch("baseapp_payments.views.StripeService.retrieve_price")
     def test_cannot_create_subscription_on_another_entity(
-        self, mock_price, mock_list_subs, mock_create, user_client
-    ):
+        self,
+        mock_price: MagicMock,
+        mock_list_subs: MagicMock,
+        mock_create: MagicMock,
+        user_client: Client,
+    ) -> None:
         mock_price.return_value = {"id": "price_1", "product": {"id": "prod_1"}}
         mock_list_subs.return_value = stripe_list([])
         mock_create.return_value = {"id": "sub_new", "status": "active"}
@@ -96,11 +106,11 @@ class TestSubscriptionCreateAuthorization:
         # The billing call is the thing that must not happen, not just the 403.
         assert not mock_create.called
 
-    def test_create_without_entity_id_is_rejected(self, user_client):
+    def test_create_without_entity_id_is_rejected(self, user_client: Client) -> None:
         response = user_client.post(reverse(self.viewname), data={"price_id": "price_1"})
         responseEquals(response, status.HTTP_400_BAD_REQUEST)
 
-    def test_create_with_unknown_entity_id_is_not_found(self, user_client):
+    def test_create_with_unknown_entity_id_is_not_found(self, user_client: Client) -> None:
         response = user_client.post(
             reverse(self.viewname),
             data={"entity_id": "not-a-relay-id", "price_id": "price_1"},
@@ -112,7 +122,9 @@ class TestSubscriptionListAuthorization:
     viewname = "v1:subscriptions-list"
 
     @patch("baseapp_payments.views.StripeService.list_subscriptions")
-    def test_cannot_list_other_entity_subscriptions(self, mock_list_subs, user_client):
+    def test_cannot_list_other_entity_subscriptions(
+        self, mock_list_subs: MagicMock, user_client: Client
+    ) -> None:
         mock_list_subs.return_value = stripe_list([{"id": "sub_victim", "status": "active"}])
         victim = other_customer()
         response = user_client.get(
@@ -120,7 +132,7 @@ class TestSubscriptionListAuthorization:
         )
         responseEquals(response, status.HTTP_403_FORBIDDEN)
 
-    def test_list_with_raw_integer_entity_id_is_not_found(self, user_client):
+    def test_list_with_raw_integer_entity_id_is_not_found(self, user_client: Client) -> None:
         # A non-relay id resolves to "", which used to reach the pk field and 500.
         response = user_client.get(reverse(self.viewname), data={"entity_id": "7"})
         responseEquals(response, status.HTTP_404_NOT_FOUND)
@@ -130,7 +142,9 @@ class TestCustomerCreateAuthorization:
     viewname = "v1:customers-list"
 
     @patch("baseapp_payments.serializers.StripeService.create_customer")
-    def test_cannot_create_customer_for_another_entity(self, mock_create, user_client):
+    def test_cannot_create_customer_for_another_entity(
+        self, mock_create: MagicMock, user_client: Client
+    ) -> None:
         mock_create.return_value = {"id": "cus_new"}
         # A real user's own profile, so target and email are populated and the
         # authorization check is the only thing standing between this request and a
@@ -143,21 +157,21 @@ class TestCustomerCreateAuthorization:
         # cannot be rolled back, so assert the billing call never happened.
         assert not mock_create.called
 
-    def test_create_without_entity_id_is_rejected(self, user_client):
+    def test_create_without_entity_id_is_rejected(self, user_client: Client) -> None:
         # Reaching the serializer without one used to pop a key that validate() only
         # sets when entity_id is truthy, turning a bad request into a 500.
         response = user_client.post(reverse(self.viewname), data={})
         responseEquals(response, status.HTTP_400_BAD_REQUEST)
 
-    def test_create_with_unknown_entity_id_is_not_found(self, user_client):
+    def test_create_with_unknown_entity_id_is_not_found(self, user_client: Client) -> None:
         response = user_client.post(reverse(self.viewname), data={"entity_id": "not-a-relay-id"})
         responseEquals(response, status.HTTP_404_NOT_FOUND)
 
     @patch("baseapp_payments.serializers.StripeService.list_subscriptions")
     @patch("baseapp_payments.serializers.StripeService.create_customer")
     def test_can_still_create_customer_for_own_profile(
-        self, mock_create, mock_list_subs, user_client
-    ):
+        self, mock_create: MagicMock, mock_list_subs: MagicMock, user_client: Client
+    ) -> None:
         mock_create.return_value = {"id": "cus_mine"}
         # The response serializer lists subscriptions for the customer it just made.
         mock_list_subs.return_value = stripe_list([])

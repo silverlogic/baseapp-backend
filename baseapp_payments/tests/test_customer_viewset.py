@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import swapper
@@ -7,6 +7,7 @@ from django.urls import reverse
 from rest_framework import status
 
 from baseapp_core.graphql.utils import get_obj_relay_id
+from baseapp_core.tests.fixtures import Client
 from baseapp_core.tests.helpers import responseEquals
 from baseapp_payments.tests.factories import CustomerFactory
 
@@ -20,19 +21,23 @@ Customer = swapper.load_model("baseapp_payments", "Customer")
 class TestCustomerRetrieveView:
     viewname = "v1:customers-detail"
 
-    def test_anon_user_cannot_get_customer(self, client) -> None:
+    def test_anon_user_cannot_get_customer(self, client: Client) -> None:
         response = client.get(reverse(self.viewname, kwargs={"entity_id": 1}))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
     @patch("baseapp_payments.views.StripeService.list_subscriptions")
-    def test_user_can_get_customer(self, mock_list_subscriptions, user_client) -> None:
+    def test_user_can_get_customer(
+        self, mock_list_subscriptions: MagicMock, user_client: Client
+    ) -> None:
         mock_list_subscriptions.return_value.data = []
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.get(reverse(self.viewname, kwargs={"entity_id": customer.entity_id}))
         responseEquals(response, status.HTTP_200_OK)
 
     @patch("baseapp_payments.views.StripeService.list_subscriptions")
-    def test_user_can_get_customer_me(self, mock_list_subscriptions, user_client) -> None:
+    def test_user_can_get_customer_me(
+        self, mock_list_subscriptions: MagicMock, user_client: Client
+    ) -> None:
         mock_list_subscriptions.return_value.data = []
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.get(reverse(self.viewname, kwargs={"entity_id": "me"}))
@@ -43,14 +48,17 @@ class TestCustomerRetrieveView:
 class TestCustomerCreateView:
     viewname = "v1:customers-list"
 
-    def test_anon_user_cannot_create_customer(self, client) -> None:
+    def test_anon_user_cannot_create_customer(self, client: Client) -> None:
         response = client.post(reverse(self.viewname, kwargs={}))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
     @patch("baseapp_payments.views.StripeService.list_subscriptions")
     @patch("baseapp_payments.views.StripeService.create_customer")
     def test_user_can_create_customer(
-        self, mock_create_customer, mock_list_subscriptions, user_client
+        self,
+        mock_create_customer: MagicMock,
+        mock_list_subscriptions: MagicMock,
+        user_client: Client,
     ) -> None:
         mock_list_subscriptions.return_value.data = []
         mock_create_customer.return_value = {"id": "cus_123"}
@@ -70,7 +78,7 @@ class TestCustomerCreateView:
 class TestCustomerMeWithoutACustomer:
     viewname = "v1:customers-detail"
 
-    def test_me_is_404_when_the_user_has_no_customer(self, user_client) -> None:
+    def test_me_is_404_when_the_user_has_no_customer(self, user_client: Client) -> None:
         """The frontend reads this 404 as "create one"; it used to be a 500."""
         response = user_client.get(reverse(self.viewname, kwargs={"entity_id": "me"}))
 

@@ -1,3 +1,5 @@
+from typing import Any
+
 import swapper
 from constance import config
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -7,7 +9,13 @@ from model_utils.models import TimeStampedModel
 
 
 class BaseCustomer(TimeStampedModel):
-    entity_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    entity_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        # Abstract and swappable, so a literal name would clash between the
+        # concrete Customer of any two apps that both subclass this.
+        related_name="%(app_label)s_%(class)ss",
+    )
     entity_id = models.PositiveIntegerField()
     entity = GenericForeignKey("entity_type", "entity_id")
     remote_customer_id = models.CharField(max_length=255)
@@ -19,7 +27,7 @@ class BaseCustomer(TimeStampedModel):
     def __str__(self) -> str:
         return f"{self.entity} - {self.remote_customer_id}"
 
-    def save(self, *args, **kwargs) -> None:
+    def save(self, *args: Any, **kwargs: Any) -> None:
         if not hasattr(self, "tracker"):
             raise RuntimeError(
                 'BaseCustomer requires `tracker = FieldTracker(["entity"])`.'

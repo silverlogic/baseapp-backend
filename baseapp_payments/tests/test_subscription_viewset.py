@@ -1,10 +1,11 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import swapper
 from django.urls import reverse
 from rest_framework import status
 
+from baseapp_core.tests.fixtures import Client
 from baseapp_core.tests.helpers import responseEquals
 from baseapp_payments.tests.factories import CustomerFactory, SubscriptionFactory
 from baseapp_payments.tests.helpers import stripe_list
@@ -27,11 +28,11 @@ Subscription = swapper.load_model("baseapp_payments", "Subscription")
 class TestSubscriptionRetrieveView:
     viewname = "v1:subscriptions-detail"
 
-    def test_anon_user_cannot_get_subscription(self, client):
+    def test_anon_user_cannot_get_subscription(self, client: Client) -> None:
         response = client.get(reverse(self.viewname, kwargs={"remote_subscription_id": "sub_123"}))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
-    def test_user_cannot_get_other_customer_subscription(self, user_client):
+    def test_user_cannot_get_other_customer_subscription(self, user_client: Client) -> None:
         customer = CustomerFactory(entity=ProfileFactory(), remote_customer_id="cus_123")
         subscription = SubscriptionFactory(customer=customer)
         response = user_client.get(
@@ -43,7 +44,9 @@ class TestSubscriptionRetrieveView:
         responseEquals(response, status.HTTP_403_FORBIDDEN)
 
     @patch("baseapp_payments.views.StripeService.retrieve_subscription")
-    def test_user_can_get_subscription(self, mock_retrieve_subscription, user_client):
+    def test_user_can_get_subscription(
+        self, mock_retrieve_subscription: MagicMock, user_client: Client
+    ) -> None:
         mock_retrieve_subscription.return_value = {
             "id": "sub_123",
             "status": "active",
@@ -64,12 +67,14 @@ class TestSubscriptionRetrieveView:
 class TestSubscriptionListView:
     viewname = "v1:subscriptions-list"
 
-    def test_anon_user_cannot_list_subscriptions(self, client):
+    def test_anon_user_cannot_list_subscriptions(self, client: Client) -> None:
         response = client.post(reverse(self.viewname, kwargs={}))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
     @patch("baseapp_payments.views.StripeService.list_subscriptions")
-    def test_user_can_list_subscriptions(self, mock_list_subscriptions, user_client):
+    def test_user_can_list_subscriptions(
+        self, mock_list_subscriptions: MagicMock, user_client: Client
+    ) -> None:
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         SubscriptionFactory(customer=CustomerFactory())
         subscription = SubscriptionFactory(customer=customer)
@@ -89,7 +94,7 @@ class TestSubscriptionListView:
 class TestSubscriptionCreateView:
     viewname = "v1:subscriptions-list"
 
-    def test_anon_user_cannot_create_subscription(self, client):
+    def test_anon_user_cannot_create_subscription(self, client: Client) -> None:
         response = client.post(reverse(self.viewname))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
@@ -97,8 +102,12 @@ class TestSubscriptionCreateView:
     @patch("baseapp_payments.views.StripeService.create_subscription")
     @patch("baseapp_payments.views.StripeService.retrieve_price")
     def test_user_can_create_subscription(
-        self, mock_retrieve_price, mock_create_subscription, mock_list_subscriptions, user_client
-    ):
+        self,
+        mock_retrieve_price: MagicMock,
+        mock_create_subscription: MagicMock,
+        mock_list_subscriptions: MagicMock,
+        user_client: Client,
+    ) -> None:
         mock_retrieve_price.return_value = {"id": "price_123", "product": {"id": "prod_123"}}
         mock_list_subscriptions.return_value = stripe_list([])
         mock_create_subscription.return_value = {
@@ -120,11 +129,11 @@ class TestSubscriptionCreateView:
     @patch("baseapp_payments.views.StripeService.retrieve_price")
     def test_user_can_create_incomplete_subscription(
         self,
-        mock_retrieve_price,
-        mock_create_incomplete_subscription,
-        mock_list_subscriptions,
-        user_client,
-    ):
+        mock_retrieve_price: MagicMock,
+        mock_create_incomplete_subscription: MagicMock,
+        mock_list_subscriptions: MagicMock,
+        user_client: Client,
+    ) -> None:
         mock_retrieve_price.return_value = {"id": "price_123", "product": {"id": "prod_123"}}
         mock_list_subscriptions.return_value = stripe_list([])
         mock_create_incomplete_subscription.return_value = {
@@ -151,13 +160,13 @@ class TestSubscriptionCreateView:
 class TestSubscriptionUpdateView:
     viewname = "v1:subscriptions-detail"
 
-    def test_anon_user_cannot_update_subscription(self, client):
+    def test_anon_user_cannot_update_subscription(self, client: Client) -> None:
         response = client.patch(
             reverse(self.viewname, kwargs={"remote_subscription_id": "sub_123"})
         )
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
-    def test_user_cannot_update_other_customer_subscription(self, user_client):
+    def test_user_cannot_update_other_customer_subscription(self, user_client: Client) -> None:
         customer = CustomerFactory(entity=ProfileFactory(), remote_customer_id="cus_123")
         subscription = SubscriptionFactory(customer=customer)
         response = user_client.patch(
@@ -174,11 +183,11 @@ class TestSubscriptionUpdateView:
     @patch("baseapp_payments.views.StripeService.retrieve_subscription")
     def test_user_can_update_subscription_payment_method(
         self,
-        mock_retrieve_subscription,
-        mock_list_payment_methods,
-        mock_update_subscription,
-        user_client,
-    ):
+        mock_retrieve_subscription: MagicMock,
+        mock_list_payment_methods: MagicMock,
+        mock_update_subscription: MagicMock,
+        user_client: Client,
+    ) -> None:
         mock_list_payment_methods.return_value = stripe_list([{"id": "pm_123", "type": "card"}])
         mock_update_subscription.return_value = {
             "id": "sub_123",
@@ -209,11 +218,11 @@ class TestSubscriptionChangePlanView:
     @patch("baseapp_payments.views.StripeService.list_payment_methods")
     def test_changing_plan_swaps_the_subscription_item(
         self,
-        mock_list_payment_methods,
-        mock_retrieve_subscription,
-        mock_update_subscription,
-        user_client,
-    ):
+        mock_list_payment_methods: MagicMock,
+        mock_retrieve_subscription: MagicMock,
+        mock_update_subscription: MagicMock,
+        user_client: Client,
+    ) -> None:
         mock_list_payment_methods.return_value = stripe_list([{"id": "pm_123"}])
         mock_retrieve_subscription.return_value = _AttrSubscription(
             id="sub_123",
@@ -246,12 +255,12 @@ class TestSubscriptionChangePlanView:
     @patch("baseapp_payments.views.StripeService.list_payment_methods")
     def test_a_billing_only_change_succeeds_instead_of_reporting_nothing_to_update(
         self,
-        mock_list_payment_methods,
-        mock_retrieve_subscription,
-        mock_update_subscription,
-        mock_update_payment_method,
-        user_client,
-    ):
+        mock_list_payment_methods: MagicMock,
+        mock_retrieve_subscription: MagicMock,
+        mock_update_subscription: MagicMock,
+        mock_update_payment_method: MagicMock,
+        user_client: Client,
+    ) -> None:
         """Stripe has already taken the billing change by this point.
 
         The card is already the subscription default and no price is sent, so nothing
@@ -283,12 +292,12 @@ class TestSubscriptionChangePlanView:
     @patch("baseapp_payments.views.StripeService.list_payment_methods")
     def test_a_failed_billing_update_is_not_reported_as_success(
         self,
-        mock_list_payment_methods,
-        mock_retrieve_subscription,
-        mock_update_subscription,
-        mock_update_payment_method,
-        user_client,
-    ):
+        mock_list_payment_methods: MagicMock,
+        mock_retrieve_subscription: MagicMock,
+        mock_update_subscription: MagicMock,
+        mock_update_payment_method: MagicMock,
+        user_client: Client,
+    ) -> None:
         mock_list_payment_methods.return_value = stripe_list([{"id": "pm_123"}])
         mock_retrieve_subscription.return_value = _AttrSubscription(
             id="sub_123",
@@ -315,8 +324,11 @@ class TestSubscriptionChangePlanView:
     @patch("baseapp_payments.views.StripeService.retrieve_subscription")
     @patch("baseapp_payments.views.StripeService.list_payment_methods")
     def test_a_card_that_is_not_the_customers_is_rejected(
-        self, mock_list_payment_methods, mock_retrieve_subscription, user_client
-    ):
+        self,
+        mock_list_payment_methods: MagicMock,
+        mock_retrieve_subscription: MagicMock,
+        user_client: Client,
+    ) -> None:
         mock_list_payment_methods.return_value = stripe_list([{"id": "pm_mine"}])
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         subscription = SubscriptionFactory(customer=customer)
@@ -335,11 +347,11 @@ class TestSubscriptionChangePlanView:
     @patch("baseapp_payments.views.StripeService.list_payment_methods")
     def test_both_payment_method_fields_can_be_sent_together(
         self,
-        mock_list_payment_methods,
-        mock_retrieve_subscription,
-        mock_update_subscription,
-        user_client,
-    ):
+        mock_list_payment_methods: MagicMock,
+        mock_retrieve_subscription: MagicMock,
+        mock_update_subscription: MagicMock,
+        user_client: Client,
+    ) -> None:
         """Both fields are validated against the same list. Iterating a generator
         twice would exhaust it and reject the second one every time."""
         mock_list_payment_methods.return_value = stripe_list([{"id": "pm_a"}, {"id": "pm_b"}])
@@ -362,13 +374,13 @@ class TestSubscriptionChangePlanView:
 class TestSubscriptionDeleteView:
     viewname = "v1:subscriptions-detail"
 
-    def test_anon_user_cannot_delete_subscription(self, client):
+    def test_anon_user_cannot_delete_subscription(self, client: Client) -> None:
         response = client.delete(
             reverse(self.viewname, kwargs={"remote_subscription_id": "sub_123"})
         )
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
-    def test_user_cannot_delete_other_customer_subscription(self, user_client):
+    def test_user_cannot_delete_other_customer_subscription(self, user_client: Client) -> None:
         customer = CustomerFactory(entity=ProfileFactory(), remote_customer_id="cus_124")
         subscription = SubscriptionFactory(customer=customer)
         response = user_client.delete(
@@ -380,7 +392,9 @@ class TestSubscriptionDeleteView:
         responseEquals(response, status.HTTP_403_FORBIDDEN)
 
     @patch("baseapp_payments.views.StripeService.delete_subscription")
-    def test_user_can_delete_subscription(self, mock_delete_subscription, user_client):
+    def test_user_can_delete_subscription(
+        self, mock_delete_subscription: MagicMock, user_client: Client
+    ) -> None:
         mock_delete_subscription.return_value = None
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         subscription = SubscriptionFactory(customer=customer)
@@ -399,7 +413,9 @@ class TestSubscriptionListStatusFilter:
     viewname = "v1:subscriptions-list"
 
     @patch("baseapp_payments.views.StripeService.list_subscriptions")
-    def test_status_all_is_forwarded_to_stripe(self, mock_list_subscriptions, user_client):
+    def test_status_all_is_forwarded_to_stripe(
+        self, mock_list_subscriptions: MagicMock, user_client: Client
+    ) -> None:
         """Dropping it fell back to Stripe's default, which excludes canceled ones."""
         mock_list_subscriptions.return_value = stripe_list([])
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
@@ -413,8 +429,8 @@ class TestSubscriptionListStatusFilter:
 
     @patch("baseapp_payments.views.StripeService.list_subscriptions")
     def test_an_unknown_status_is_a_client_error_not_a_500(
-        self, mock_list_subscriptions, user_client
-    ):
+        self, mock_list_subscriptions: MagicMock, user_client: Client
+    ) -> None:
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.get(
             reverse(self.viewname),
@@ -440,11 +456,11 @@ class TestChangePlanWithUnexpandedStripeShapes:
     @patch("baseapp_payments.views.StripeService.retrieve_price")
     def test_plan_change_survives_unexpanded_products(
         self,
-        mock_retrieve_price,
-        mock_create_incomplete_subscription,
-        mock_list_subscriptions,
-        user_client,
-    ):
+        mock_retrieve_price: MagicMock,
+        mock_create_incomplete_subscription: MagicMock,
+        mock_list_subscriptions: MagicMock,
+        user_client: Client,
+    ) -> None:
         mock_retrieve_price.return_value = {"id": "price_new", "product": "prod_new"}
         mock_list_subscriptions.return_value = stripe_list(
             [
@@ -475,8 +491,11 @@ class TestChangePlanWithUnexpandedStripeShapes:
     @patch("baseapp_payments.views.StripeService.list_subscriptions")
     @patch("baseapp_payments.views.StripeService.retrieve_price")
     def test_resubscribing_to_the_same_product_is_still_rejected(
-        self, mock_retrieve_price, mock_list_subscriptions, user_client
-    ):
+        self,
+        mock_retrieve_price: MagicMock,
+        mock_list_subscriptions: MagicMock,
+        user_client: Client,
+    ) -> None:
         """The duplicate check has to keep working across both shapes."""
         mock_retrieve_price.return_value = {"id": "price_new", "product": {"id": "prod_same"}}
         mock_list_subscriptions.return_value = stripe_list(

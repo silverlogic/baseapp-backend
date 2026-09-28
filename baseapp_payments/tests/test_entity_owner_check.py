@@ -6,11 +6,13 @@ by comparing the entity's pk to the user's, which makes organization 5 look owne
 user 5.
 """
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import swapper
+from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser
+from django.db.models import Model
 from django.test import override_settings
 
 from baseapp_core.tests.factories import UserFactory
@@ -23,38 +25,40 @@ ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 pytestmark = pytest.mark.django_db
 
 
-def allow_everything(entity, user_obj) -> bool:
+def allow_everything(entity: Model, user_obj: AbstractBaseUser | AnonymousUser) -> bool:
     return True
 
 
 class TestProfileEntities:
-    def test_owner_may_bill_their_profile(self):
+    def test_owner_may_bill_their_profile(self) -> None:
         user = UserFactory()
         assert is_entity_owner(ProfileFactory(owner=user), user) is True
 
-    def test_active_admin_member_may_bill(self):
+    def test_active_admin_member_may_bill(self) -> None:
         membership = ProfileUserRoleFactory(role=ProfileUserRole.ProfileRoles.ADMIN)
         assert is_entity_owner(membership.profile, membership.user) is True
 
-    def test_member_without_the_admin_role_may_not(self):
+    def test_member_without_the_admin_role_may_not(self) -> None:
         membership = ProfileUserRoleFactory(role=ProfileUserRole.ProfileRoles.MANAGER)
         assert is_entity_owner(membership.profile, membership.user) is False
 
-    def test_deactivated_admin_may_not(self):
+    def test_deactivated_admin_may_not(self) -> None:
         membership = ProfileUserRoleFactory(
             role=ProfileUserRole.ProfileRoles.ADMIN,
             status=ProfileUserRole.ProfileRoleStatus.INACTIVE,
         )
         assert is_entity_owner(membership.profile, membership.user) is False
 
-    def test_unrelated_user_may_not(self):
+    def test_unrelated_user_may_not(self) -> None:
         assert is_entity_owner(ProfileFactory(), UserFactory()) is False
 
-    def test_anonymous_user_owns_nothing(self):
+    def test_anonymous_user_owns_nothing(self) -> None:
         assert is_entity_owner(ProfileFactory(), AnonymousUser()) is False
 
     @patch("baseapp_payments.permissions.apps.is_installed", return_value=False)
-    def test_profiles_being_absent_denies_rather_than_crashes(self, _mock_is_installed):
+    def test_profiles_being_absent_denies_rather_than_crashes(
+        self, _mock_is_installed: MagicMock
+    ) -> None:
         # `baseapp_profiles` is optional, so the Profile branch has to be skippable —
         # and skipping it must not fall through to some looser comparison.
         user = UserFactory()
@@ -62,16 +66,16 @@ class TestProfileEntities:
 
 
 class TestUserEntities:
-    def test_a_user_entity_is_matched_by_pk(self):
+    def test_a_user_entity_is_matched_by_pk(self) -> None:
         user = UserFactory()
         assert is_entity_owner(user, user) is True
 
-    def test_another_user_is_not(self):
+    def test_another_user_is_not(self) -> None:
         assert is_entity_owner(UserFactory(), UserFactory()) is False
 
 
 class TestEntityModelsTheBlockCannotVouchFor:
-    def test_an_entity_sharing_a_pk_with_the_user_is_denied(self):
+    def test_an_entity_sharing_a_pk_with_the_user_is_denied(self) -> None:
         # The regression this check exists for: the old fallback compared these two pks
         # and called it ownership.
         user = UserFactory()
@@ -83,7 +87,7 @@ class TestEntityModelsTheBlockCannotVouchFor:
             "baseapp_payments.tests.test_entity_owner_check.allow_everything"
         )
     )
-    def test_a_project_supplied_check_replaces_the_default(self):
+    def test_a_project_supplied_check_replaces_the_default(self) -> None:
         user = UserFactory()
         organization = OrganizationFactory.build(id=user.pk)
         assert is_entity_owner(organization, user) is True
@@ -93,5 +97,5 @@ class TestEntityModelsTheBlockCannotVouchFor:
             "baseapp_payments.tests.test_entity_owner_check.allow_everything"
         )
     )
-    def test_a_project_supplied_check_still_cannot_authorize_anonymous(self):
+    def test_a_project_supplied_check_still_cannot_authorize_anonymous(self) -> None:
         assert is_entity_owner(OrganizationFactory.build(), AnonymousUser()) is False

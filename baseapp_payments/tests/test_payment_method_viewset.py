@@ -1,10 +1,11 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import stripe
 from django.urls import reverse
 from rest_framework import status
 
+from baseapp_core.tests.fixtures import Client
 from baseapp_core.tests.helpers import responseEquals
 from baseapp_payments.tests.factories import CustomerFactory
 from baseapp_payments.tests.helpers import stripe_list
@@ -16,13 +17,13 @@ pytestmark = pytest.mark.django_db
 class TestPaymentMethodListView:
     viewname = "v1:customers-payment-methods"
 
-    def test_anon_user_cannot_list_payment_methods(self, client) -> None:
+    def test_anon_user_cannot_list_payment_methods(self, client: Client) -> None:
         response = client.get(reverse(self.viewname, kwargs={"entity_id": 1}))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)
 
     @patch("baseapp_payments.views.StripeService.get_customer_payment_methods")
     def test_user_cannot_list_other_customer_payment_methods(
-        self, mock_get_customer_payment_methods, user_client
+        self, mock_get_customer_payment_methods: MagicMock, user_client: Client
     ) -> None:
         mock_get_customer_payment_methods.return_value = []
         customer = CustomerFactory(entity=ProfileFactory(), remote_customer_id="cus_123")
@@ -32,7 +33,10 @@ class TestPaymentMethodListView:
     @patch("baseapp_payments.views.StripeService.retrieve_customer")
     @patch("baseapp_payments.views.StripeService.get_customer_payment_methods")
     def test_user_can_list_self_payment_methods(
-        self, mock_get_customer_payment_methods, mock_retrieve_customer, user_client
+        self,
+        mock_get_customer_payment_methods: MagicMock,
+        mock_retrieve_customer: MagicMock,
+        user_client: Client,
     ) -> None:
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         mock_retrieve_customer.return_value = {"id": "cus_123"}
@@ -48,7 +52,7 @@ class TestPaymentMethodListView:
 class TestPaymentMethodUpdateView:
     viewname = "v1:customers-payment-methods"
 
-    def test_anon_user_cannot_create_payment_method(self, client) -> None:
+    def test_anon_user_cannot_create_payment_method(self, client: Client) -> None:
         response = client.put(
             reverse(self.viewname, kwargs={"entity_id": 1, "payment_method_id": "pm_123"})
         )
@@ -56,7 +60,7 @@ class TestPaymentMethodUpdateView:
 
     @patch("baseapp_payments.views.StripeService.get_customer_payment_methods")
     def test_user_cannot_update_other_customer_payment_method(
-        self, mock_get_customer_payment_methods, user_client
+        self, mock_get_customer_payment_methods: MagicMock, user_client: Client
     ) -> None:
         mock_get_customer_payment_methods.return_value = []
         customer = CustomerFactory(entity=ProfileFactory(), remote_customer_id="cus_123")
@@ -71,7 +75,10 @@ class TestPaymentMethodUpdateView:
     @patch("baseapp_payments.views.StripeService.list_payment_methods")
     @patch("baseapp_payments.views.StripeService.update_customer")
     def test_user_can_update_payment_method(
-        self, mock_update_customer, mock_list_payment_methods, user_client
+        self,
+        mock_update_customer: MagicMock,
+        mock_list_payment_methods: MagicMock,
+        user_client: Client,
     ) -> None:
         mock_update_customer.return_value = {"id": "pm_123"}
         # pm_456 has to be in the customer's own list: setting it as the invoice default
@@ -94,7 +101,7 @@ class TestPaymentMethodUpdateView:
 class TestPaymentMethodDeleteView:
     viewname = "v1:customers-payment-methods"
 
-    def test_anon_user_cannot_delete_payment_method(self, client) -> None:
+    def test_anon_user_cannot_delete_payment_method(self, client: Client) -> None:
         response = client.delete(
             reverse(self.viewname, kwargs={"entity_id": 1, "payment_method_id": "pm_123"})
         )
@@ -102,7 +109,7 @@ class TestPaymentMethodDeleteView:
 
     @patch("baseapp_payments.views.StripeService.delete_payment_method")
     def test_user_cannot_delete_other_user_payment_method(
-        self, mock_delete_payment_method, user_client
+        self, mock_delete_payment_method: MagicMock, user_client: Client
     ) -> None:
         mock_delete_payment_method.return_value = {}
         customer = CustomerFactory(entity=ProfileFactory(), remote_customer_id="cus_123")
@@ -120,10 +127,10 @@ class TestPaymentMethodDeleteView:
     @patch("baseapp_payments.views.StripeService.delete_payment_method")
     def test_user_can_delete_payment_method(
         self,
-        mock_delete_payment_method,
-        mock_retrieve_customer,
-        mock_list_payment_methods,
-        user_client,
+        mock_delete_payment_method: MagicMock,
+        mock_retrieve_customer: MagicMock,
+        mock_list_payment_methods: MagicMock,
+        user_client: Client,
     ) -> None:
         mock_retrieve_customer.return_value = {"id": "cus_123"}
         mock_delete_payment_method.return_value = {}
@@ -144,8 +151,8 @@ class TestPaymentMethodFailures:
 
     @patch("baseapp_payments.views.StripeService.get_customer_payment_methods")
     def test_listing_failure_does_not_leak_details(
-        self, mock_get_customer_payment_methods, user_client
-    ):
+        self, mock_get_customer_payment_methods: MagicMock, user_client: Client
+    ) -> None:
         mock_get_customer_payment_methods.side_effect = Exception("stripe down: sk_test_secret")
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.get(reverse(self.viewname, kwargs={"entity_id": customer.entity_id}))
@@ -153,7 +160,9 @@ class TestPaymentMethodFailures:
         assert response.data == {"error": "An internal error has occurred"}
 
     @patch("baseapp_payments.views.StripeService.create_setup_intent")
-    def test_creating_a_setup_intent(self, mock_create_setup_intent, user_client):
+    def test_creating_a_setup_intent(
+        self, mock_create_setup_intent: MagicMock, user_client: Client
+    ) -> None:
         mock_create_setup_intent.return_value = {"id": "seti_1", "client_secret": "cs_1"}
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.post(
@@ -164,8 +173,8 @@ class TestPaymentMethodFailures:
 
     @patch("baseapp_payments.views.StripeService.create_setup_intent")
     def test_setup_intent_failure_does_not_leak_details(
-        self, mock_create_setup_intent, user_client
-    ):
+        self, mock_create_setup_intent: MagicMock, user_client: Client
+    ) -> None:
         mock_create_setup_intent.side_effect = Exception("stripe down: sk_test_secret")
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.post(
@@ -179,7 +188,9 @@ class TestPaymentMethodOutageIsNotAMissingCard:
     viewname = "v1:customers-payment-methods"
 
     @patch("baseapp_payments.views.StripeService.payment_method_belongs_to")
-    def test_update_answers_503_when_stripe_is_unreachable(self, mock_belongs_to, user_client):
+    def test_update_answers_503_when_stripe_is_unreachable(
+        self, mock_belongs_to: MagicMock, user_client: Client
+    ) -> None:
         mock_belongs_to.side_effect = stripe.APIConnectionError("stripe unreachable")
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.patch(
@@ -192,7 +203,9 @@ class TestPaymentMethodOutageIsNotAMissingCard:
         responseEquals(response, status.HTTP_503_SERVICE_UNAVAILABLE)
 
     @patch("baseapp_payments.views.StripeService.payment_method_belongs_to")
-    def test_delete_answers_503_when_stripe_is_unreachable(self, mock_belongs_to, user_client):
+    def test_delete_answers_503_when_stripe_is_unreachable(
+        self, mock_belongs_to: MagicMock, user_client: Client
+    ) -> None:
         mock_belongs_to.side_effect = stripe.APIConnectionError("stripe unreachable")
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.delete(
@@ -213,8 +226,8 @@ class TestPaymentMethodUpdateAuthorization:
     @patch("baseapp_payments.views.StripeService.payment_method_belongs_to")
     @patch("baseapp_payments.serializers.StripeService.update_payment_method")
     def test_a_pk_in_the_body_cannot_redirect_the_update(
-        self, mock_update_payment_method, mock_belongs_to, user_client
-    ):
+        self, mock_update_payment_method: MagicMock, mock_belongs_to: MagicMock, user_client: Client
+    ) -> None:
         mock_belongs_to.return_value = True
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.patch(
@@ -232,7 +245,9 @@ class TestPaymentMethodUpdateAuthorization:
         assert mock_update_payment_method.call_args.args[0] == "pm_mine"
 
     @patch("baseapp_payments.views.StripeService.payment_method_belongs_to")
-    def test_a_foreign_default_payment_method_is_rejected(self, mock_belongs_to, user_client):
+    def test_a_foreign_default_payment_method_is_rejected(
+        self, mock_belongs_to: MagicMock, user_client: Client
+    ) -> None:
         """It is written to the customer's invoice_settings without touching the pk path."""
         mock_belongs_to.side_effect = lambda pm_id, _customer_id: pm_id == "pm_mine"
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")

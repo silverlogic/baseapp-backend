@@ -1,7 +1,9 @@
+from collections.abc import Iterable
+from typing import Any
 from unittest.mock import Mock
 
 
-def stripe_list(items) -> Mock:
+def stripe_list(items: Iterable[Any]) -> Mock:
     """Stand in for a Stripe ``ListObject``.
 
     The viewsets page through results with ``auto_paging_iter()`` while the
