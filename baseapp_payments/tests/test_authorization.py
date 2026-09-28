@@ -13,6 +13,7 @@ import pytest
 from django.urls import reverse
 from rest_framework import status
 
+from baseapp_core.tests.factories import UserFactory
 from baseapp_core.tests.helpers import responseEquals
 from baseapp_payments.tests.factories import CustomerFactory
 from baseapp_payments.tests.helpers import stripe_list
@@ -123,3 +124,46 @@ class TestSubscriptionListAuthorization:
         # A non-relay id resolves to "", which used to reach the pk field and 500.
         response = user_client.get(reverse(self.viewname), data={"entity_id": "7"})
         responseEquals(response, status.HTTP_404_NOT_FOUND)
+
+
+class TestCustomerCreateAuthorization:
+    viewname = "v1:customers-list"
+
+    @patch("baseapp_payments.serializers.StripeService.create_customer")
+    def test_cannot_create_customer_for_another_entity(self, mock_create, user_client):
+        mock_create.return_value = {"id": "cus_new"}
+        # A real user's own profile, so target and email are populated and the
+        # authorization check is the only thing standing between this request and a
+        # Stripe customer. A bare ProfileFactory() would 500 in the serializer first
+        # and hide whether the check ran at all.
+        victim = UserFactory().profile
+        response = user_client.post(reverse(self.viewname), data={"entity_id": victim.relay_id})
+        responseEquals(response, status.HTTP_403_FORBIDDEN)
+        # A Customer row is one half of it; the Stripe-side record is the half that
+        # cannot be rolled back, so assert the billing call never happened.
+        assert not mock_create.called
+
+    def test_create_without_entity_id_is_rejected(self, user_client):
+        # Reaching the serializer without one used to pop a key that validate() only
+        # sets when entity_id is truthy, turning a bad request into a 500.
+        response = user_client.post(reverse(self.viewname), data={})
+        responseEquals(response, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_with_unknown_entity_id_is_not_found(self, user_client):
+        response = user_client.post(reverse(self.viewname), data={"entity_id": "not-a-relay-id"})
+        responseEquals(response, status.HTTP_404_NOT_FOUND)
+
+    @patch("baseapp_payments.serializers.StripeService.list_subscriptions")
+    @patch("baseapp_payments.serializers.StripeService.create_customer")
+    def test_can_still_create_customer_for_own_profile(
+        self, mock_create, mock_list_subs, user_client
+    ):
+        mock_create.return_value = {"id": "cus_mine"}
+        # The response serializer lists subscriptions for the customer it just made.
+        mock_list_subs.return_value = stripe_list([])
+        response = user_client.post(
+            reverse(self.viewname),
+            data={"entity_id": user_client.user.profile.relay_id},
+        )
+        responseEquals(response, status.HTTP_201_CREATED)
+        assert mock_create.called
