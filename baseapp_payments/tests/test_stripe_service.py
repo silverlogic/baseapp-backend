@@ -6,6 +6,7 @@ Stripe error becomes which local exception, and which ones are answered with
 what is pinned here.
 """
 
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -15,6 +16,7 @@ from baseapp_payments.utils import (
     CustomerCreationError,
     CustomerNotFound,
     CustomerUpdateError,
+    InvoiceNotFound,
     PaymentIntendNotFound,
     PaymentMethodDeletionError,
     PaymentMethodNotFound,
@@ -134,6 +136,22 @@ class TestSubscriptionCalls:
             mock_retrieve.return_value = {"id": "sub_1", "customer": "cus_1"}
             mock_preview.side_effect = Exception("nothing upcoming")
             assert service.retrieve_subscription("sub_1")["id"] == "sub_1"
+
+    def test_missing_upcoming_invoice_still_logs_the_stripe_reason(self, service, caplog):
+        """retrieve_subscription previews through get_upcoming_invoice, which raises
+        InvoiceNotFound. That says only that the preview failed, so the warning has to
+        reach through to __cause__ for the Stripe message that says why.
+        """
+        with (
+            patch("baseapp_payments.utils.stripe.Subscription.retrieve") as mock_retrieve,
+            patch("baseapp_payments.utils.stripe.Invoice.create_preview") as mock_preview,
+        ):
+            mock_retrieve.return_value = {"id": "sub_1", "customer": "cus_1"}
+            mock_preview.side_effect = Exception("no upcoming invoice for this customer")
+            with caplog.at_level(logging.WARNING, logger="baseapp_payments.utils"):
+                service.retrieve_subscription("sub_1")
+
+        assert "no upcoming invoice for this customer" in caplog.text
 
     def test_list_subscriptions_for_an_unknown_customer_pages_as_empty(self, service):
         """A stale remote_customer_id must not crash callers that page the result."""
@@ -375,3 +393,33 @@ class TestExpandableFieldHelpers:
             methods = service.get_customer_payment_methods("cus_1")
 
         assert methods[0]["is_default"] is True
+
+
+class TestUpcomingInvoice:
+    """`get_upcoming_invoice` is public surface of the package, so downstream projects
+    call it directly. It previews through `Invoice.create_preview`: the `Invoice.upcoming`
+    it used to call no longer exists in the pinned Stripe SDK.
+    """
+
+    def test_scopes_the_preview_to_a_subscription_when_given_one(self, service):
+        with patch("baseapp_payments.utils.stripe.Invoice.create_preview") as mock_preview:
+            mock_preview.return_value = _AttrDict(id="in_1", amount_due=500)
+            invoice = service.get_upcoming_invoice("cus_1", "sub_1")
+
+        assert mock_preview.call_args.kwargs == {"customer": "cus_1", "subscription": "sub_1"}
+        assert invoice["amount_due"] == 500
+
+    def test_omits_the_subscription_when_not_given_one(self, service):
+        # Stripe rejects subscription=None rather than ignoring it, so the key has to be
+        # absent and not merely empty.
+        with patch("baseapp_payments.utils.stripe.Invoice.create_preview") as mock_preview:
+            mock_preview.return_value = _AttrDict(id="in_1")
+            service.get_upcoming_invoice("cus_1")
+
+        assert mock_preview.call_args.kwargs == {"customer": "cus_1"}
+
+    def test_translates_failures(self, service):
+        with patch("baseapp_payments.utils.stripe.Invoice.create_preview") as mock_preview:
+            mock_preview.side_effect = Exception("boom")
+            with pytest.raises(InvoiceNotFound):
+                service.get_upcoming_invoice("cus_1")
