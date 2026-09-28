@@ -15,6 +15,7 @@ from baseapp_payments.utils import (
     CustomerCreationError,
     CustomerNotFound,
     CustomerUpdateError,
+    InvoiceNotFound,
     PaymentIntendNotFound,
     PaymentMethodDeletionError,
     PaymentMethodNotFound,
@@ -375,3 +376,33 @@ class TestExpandableFieldHelpers:
             methods = service.get_customer_payment_methods("cus_1")
 
         assert methods[0]["is_default"] is True
+
+
+class TestUpcomingInvoice:
+    """`get_upcoming_invoice` is public surface of the package, so downstream projects
+    call it directly. It previews through `Invoice.create_preview`: the `Invoice.upcoming`
+    it used to call no longer exists in the pinned Stripe SDK.
+    """
+
+    def test_scopes_the_preview_to_a_subscription_when_given_one(self, service):
+        with patch("baseapp_payments.utils.stripe.Invoice.create_preview") as mock_preview:
+            mock_preview.return_value = _AttrDict(id="in_1", amount_due=500)
+            invoice = service.get_upcoming_invoice("cus_1", "sub_1")
+
+        assert mock_preview.call_args.kwargs == {"customer": "cus_1", "subscription": "sub_1"}
+        assert invoice["amount_due"] == 500
+
+    def test_omits_the_subscription_when_not_given_one(self, service):
+        # Stripe rejects subscription=None rather than ignoring it, so the key has to be
+        # absent and not merely empty.
+        with patch("baseapp_payments.utils.stripe.Invoice.create_preview") as mock_preview:
+            mock_preview.return_value = _AttrDict(id="in_1")
+            service.get_upcoming_invoice("cus_1")
+
+        assert mock_preview.call_args.kwargs == {"customer": "cus_1"}
+
+    def test_translates_failures(self, service):
+        with patch("baseapp_payments.utils.stripe.Invoice.create_preview") as mock_preview:
+            mock_preview.side_effect = Exception("boom")
+            with pytest.raises(InvoiceNotFound):
+                service.get_upcoming_invoice("cus_1")
