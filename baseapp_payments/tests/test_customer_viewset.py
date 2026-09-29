@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import swapper
 from django.contrib.contenttypes.models import ContentType
+from django.db import IntegrityError, transaction
 from django.urls import reverse
 from rest_framework import status
 
@@ -10,6 +11,7 @@ from baseapp_core.graphql.utils import get_obj_relay_id
 from baseapp_core.tests.fixtures import Client
 from baseapp_core.tests.helpers import responseEquals
 from baseapp_payments.tests.factories import CustomerFactory
+from baseapp_profiles.tests.factories import ProfileFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -83,3 +85,19 @@ class TestCustomerMeWithoutACustomer:
         response = user_client.get(reverse(self.viewname, kwargs={"entity_id": "me"}))
 
         responseEquals(response, status.HTTP_404_NOT_FOUND)
+
+
+class TestCustomerUniqueness:
+    def test_an_entity_cannot_have_two_customers(self) -> None:
+        """One row per billed entity.
+
+        The constraint was dropped incidentally by the invoice-endpoint commit (#305).
+        Without it two concurrent requests for the same profile each insert a row, and
+        each row goes on to get its own Stripe customer - so the profile is billed
+        through whichever one a later query happens to return first.
+        """
+        profile = ProfileFactory()
+        CustomerFactory(entity=profile)
+
+        with pytest.raises(IntegrityError), transaction.atomic():
+            CustomerFactory(entity=profile)

@@ -6,6 +6,7 @@ import swapper
 from constance import config
 from django.apps import apps
 from django.conf import settings
+from django.utils.translation import gettext_lazy as _
 from rest_framework import viewsets
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -91,7 +92,7 @@ class StripeSubscriptionViewset(
 
     def _customer_from_entity_id(self, entity_id: "str | int | None") -> "BaseCustomer":
         if not entity_id:
-            raise ValidationError({"entity_id": ["This field is required."]})
+            raise ValidationError({"entity_id": [_("This field is required.")]})
         if isinstance(entity_id, str):
             entity_id = get_pk_from_relay_id(entity_id) or None
         if not entity_id:
@@ -242,7 +243,7 @@ class StripeCustomerViewset(
         if not entity_id:
             # The serializer only sets `entity` when entity_id is truthy but create()
             # pops it unconditionally, so reaching it without one is a 500.
-            raise ValidationError({"entity_id": ["This field is required."]})
+            raise ValidationError({"entity_id": [_("This field is required.")]})
         if isinstance(entity_id, str):
             entity_id = get_pk_from_relay_id(entity_id) or None
         if not entity_id:

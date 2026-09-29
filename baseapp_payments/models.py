@@ -23,6 +23,10 @@ class BaseCustomer(TimeStampedModel):
     class Meta:
         abstract = True
         swappable = swapper.swappable_setting("baseapp_payments", "Customer")
+        # One Customer per billed entity. Dropped incidentally by the invoice-endpoint
+        # commit (#305); without it two concurrent requests for the same profile each
+        # create a row, and each row gets its own Stripe customer.
+        unique_together = ("entity_type", "entity_id")
 
     def __str__(self) -> str:
         return f"{self.entity} - {self.remote_customer_id}"
