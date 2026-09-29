@@ -131,6 +131,31 @@ not installed.
 
 > **Important:** `BaseCustomer.save()` requires the concrete model to declare `tracker = FieldTracker(["entity"])` (from `model_utils`) — it uses the tracker to populate `entity_type` / `entity_id` when the generic `entity` changes, and raises a `RuntimeError` if it's missing.
 
+## Upgrading: Subscription.customer
+
+`Subscription` used to carry the Stripe customer id as a string, `remote_customer_id`.
+It now points at the local `Customer` with a foreign key, because the webhook has to
+resolve the local row and matching on the Stripe id silently created orphans when it
+missed.
+
+A project that already has subscription rows needs a migration that resolves each one
+*before* the old column is dropped — the mapping only exists until then. The reference
+implementation is `0002_subscription_customer_fk` in the testproject:
+
+1. add the FK as `null=True`
+2. `RunPython` to set `customer` from `remote_customer_id`
+3. alter the FK to non-null
+4. remove `remote_customer_id`
+
+Two things that matter in step 2. Resolve the swappable model with
+`apps.get_model(settings.BASEAPP_PAYMENTS_CUSTOMER_MODEL)` rather than a hardcoded
+label. And **fail** on a subscription whose `remote_customer_id` matches no `Customer`,
+rather than defaulting it — a subscription attached to the wrong customer bills the
+wrong card, and once the column is gone there is nothing left to reconcile against.
+
+The migration is forward-only. Reversing re-adds `remote_customer_id` as a non-null
+column with no default, which the database rejects on any table that still has rows.
+
 ## API Endpoints
 
 All routes are mounted under `v1/payments/`. **The router is `DefaultRouter(trailing_slash=True)`, so every path ends in `/`** - an unslashed request does not resolve and only survives via Django's `APPEND_SLASH` redirect, which drops the body on writes.
