@@ -11,7 +11,12 @@ from rest_framework import serializers
 
 from baseapp_core.graphql import get_pk_from_relay_id
 
-from .utils import StripeService, stripe_field, stripe_id
+from .utils import (
+    STRIPE_LIVE_SUBSCRIPTION_STATUSES,
+    StripeService,
+    stripe_field,
+    stripe_id,
+)
 
 if TYPE_CHECKING:
     import stripe
@@ -455,8 +460,20 @@ class StripeCustomerSerializer(serializers.Serializer):
         return customer
 
     def get_subscriptions(self, instance: "BaseCustomer") -> list:
-        stripe_subscriptions = StripeService().list_subscriptions(instance.remote_customer_id)
-        return StripeSubscriptionCustomerListSerializer(stripe_subscriptions.data, many=True).data
+        # Asking Stripe for "active" alone excluded trialing, past_due, unpaid and
+        # incomplete, so the settings page told a customer mid-failed-renewal that they
+        # had no subscription - and incomplete is the state checkout itself produces.
+        # The status filter takes one value or "all", so the set is narrowed here.
+        # Paged rather than reading .data: with "all", canceled rows can fill page one.
+        stripe_subscriptions = StripeService().list_subscriptions(
+            instance.remote_customer_id, status="all"
+        )
+        live = [
+            subscription
+            for subscription in stripe_subscriptions.auto_paging_iter()
+            if stripe_field(subscription, "status") in STRIPE_LIVE_SUBSCRIPTION_STATUSES
+        ]
+        return StripeSubscriptionCustomerListSerializer(live, many=True).data
 
 
 class EntityIdSerializer(serializers.Serializer):

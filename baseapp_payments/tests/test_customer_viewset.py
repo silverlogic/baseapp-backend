@@ -11,6 +11,7 @@ from baseapp_core.graphql.utils import get_obj_relay_id
 from baseapp_core.tests.fixtures import Client
 from baseapp_core.tests.helpers import responseEquals
 from baseapp_payments.tests.factories import CustomerFactory, SubscriptionFactory
+from baseapp_payments.tests.helpers import stripe_list
 from baseapp_profiles.tests.factories import ProfileFactory
 
 pytestmark = pytest.mark.django_db
@@ -132,3 +133,44 @@ class TestCustomerEntityTypeFallback:
         customer.save()
 
         assert customer.entity_type == ContentType.objects.get_for_model(Profile)
+
+
+class TestCustomerSubscriptionStatuses:
+    viewname = "v1:customers-detail"
+
+    @patch("baseapp_payments.serializers.StripeService.list_subscriptions")
+    def test_live_statuses_are_returned_and_dead_ones_are_not(
+        self, mock_list_subscriptions: MagicMock, user_client: Client
+    ) -> None:
+        """Asking Stripe for "active" alone hid every other live state.
+
+        past_due is every failed renewal and incomplete is what checkout produces, so
+        the settings page rendered "Free Plan" for customers who did have a
+        subscription. canceled and incomplete_expired stay out.
+        """
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        mock_list_subscriptions.return_value = stripe_list(
+            [
+                {"id": "sub_active", "status": "active"},
+                {"id": "sub_past_due", "status": "past_due"},
+                {"id": "sub_incomplete", "status": "incomplete"},
+                {"id": "sub_unpaid", "status": "unpaid"},
+                {"id": "sub_trialing", "status": "trialing"},
+                {"id": "sub_canceled", "status": "canceled"},
+                {"id": "sub_expired", "status": "incomplete_expired"},
+            ]
+        )
+
+        response = user_client.get(reverse(self.viewname, kwargs={"entity_id": customer.entity_id}))
+
+        responseEquals(response, status.HTTP_200_OK)
+        # "all", because the filter takes a single value - the set is narrowed our side.
+        assert mock_list_subscriptions.call_args.kwargs["status"] == "all"
+        returned = {s["id"] for s in response.data["subscriptions"]}
+        assert returned == {
+            "sub_active",
+            "sub_past_due",
+            "sub_incomplete",
+            "sub_unpaid",
+            "sub_trialing",
+        }

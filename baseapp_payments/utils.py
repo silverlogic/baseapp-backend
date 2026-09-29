@@ -17,6 +17,14 @@ Customer = swapper.load_model("baseapp_payments", "Customer")
 Subscription = swapper.load_model("baseapp_payments", "Subscription")
 
 
+# The statuses that mean the customer still has a billing relationship. Stripe's list
+# filter takes one value or "all", so this cannot be handed to the API - callers ask for
+# "all" and narrow with this.
+STRIPE_LIVE_SUBSCRIPTION_STATUSES = frozenset(
+    {"active", "trialing", "past_due", "unpaid", "incomplete"}
+)
+
+
 # Anything outside this set makes the Stripe API raise, which surfaced as a 500 for a
 # caller-supplied query parameter.
 STRIPE_SUBSCRIPTION_LIST_STATUSES = frozenset(
