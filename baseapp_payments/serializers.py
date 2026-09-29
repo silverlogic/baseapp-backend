@@ -169,6 +169,9 @@ class StripeSubscriptionSerializer(serializers.Serializer):
                     sub_price = subscription["items"]["data"][0]["price"]
                     sub_product_id = stripe_id(stripe_field(sub_price, "product"))
                     if sub_product_id == new_product_id:
+                        if subscription["status"] == "incomplete":
+                            self._discard_incomplete_subscription(stripe_service, subscription)
+                            continue
                         raise serializers.ValidationError(
                             {
                                 "non_field_errors": [
@@ -193,6 +196,28 @@ class StripeSubscriptionSerializer(serializers.Serializer):
                     ]
                 }
             )
+
+    @staticmethod
+    def _discard_incomplete_subscription(
+        stripe_service: StripeService, subscription: "stripe.Subscription"
+    ) -> None:
+        """Cancel an abandoned incomplete subscription so the customer can retry.
+
+        `incomplete` means the first payment never cleared, and the usual cause is a
+        card confirmation that failed - after which the client secret only lived in page
+        state and was lost on reload. Stripe keeps the subscription for roughly a day,
+        and it matched the blocking check above, so the customer could not subscribe to
+        that product again until it expired on its own.
+
+        Cancelled without telling them: from the customer's side this is a retry of the
+        payment they already started, not an action against a subscription they have.
+        Nothing was ever charged - that is what incomplete means.
+        """
+        subscription_id = stripe_id(subscription)
+        stripe_service.delete_subscription(subscription_id)
+        # The webhook deletes this too, but it may not have arrived, and leaving the row
+        # behind would point the settings page at a subscription that no longer exists.
+        Subscription.objects.filter(remote_subscription_id=subscription_id).delete()
 
     def validate_update(self, instance: "BaseSubscription", data: dict[str, Any]) -> dict:
         try:

@@ -580,3 +580,85 @@ class TestSubscriptionUpdateFieldPlumbing:
 
         responseEquals(response, status.HTTP_200_OK)
         assert response.data["upcoming_invoice"]["next_payment_attempt"] is None
+
+
+class TestIncompleteSubscriptionDoesNotBlockRetry:
+    viewname = "v1:subscriptions-list"
+
+    @patch("baseapp_payments.serializers.StripeService.create_subscription")
+    @patch("baseapp_payments.serializers.StripeService.delete_subscription")
+    @patch("baseapp_payments.serializers.StripeService.list_subscriptions")
+    @patch("baseapp_payments.serializers.StripeService.retrieve_price")
+    def test_an_incomplete_subscription_is_cancelled_so_the_retry_succeeds(
+        self,
+        mock_retrieve_price: MagicMock,
+        mock_list_subscriptions: MagicMock,
+        mock_delete_subscription: MagicMock,
+        mock_create_subscription: MagicMock,
+        user_client: Client,
+    ) -> None:
+        """A failed card confirmation used to lock the customer out for ~23h.
+
+        createSubscription runs with allow_incomplete, so a confirmation that fails
+        leaves a real incomplete subscription behind. Its client secret only lived in
+        page state, so a reload lost it, and the retry then matched this blocking check
+        and got a 400 until Stripe expired the subscription on its own.
+        """
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        stale = SubscriptionFactory(customer=customer, remote_subscription_id="sub_incomplete")
+        mock_retrieve_price.return_value = {"id": "price_1", "product": {"id": "prod_1"}}
+        mock_list_subscriptions.return_value = stripe_list(
+            [
+                {
+                    "id": "sub_incomplete",
+                    "status": "incomplete",
+                    "items": {"data": [{"price": {"id": "price_1", "product": "prod_1"}}]},
+                }
+            ]
+        )
+        mock_create_subscription.return_value = {"id": "sub_new", "status": "active"}
+
+        response = user_client.post(
+            reverse(self.viewname),
+            data={"entity_id": customer.entity.relay_id, "price_id": "price_1"},
+        )
+
+        responseEquals(response, status.HTTP_201_CREATED)
+        # Cancelled silently: nothing in the response mentions it.
+        mock_delete_subscription.assert_called_once_with("sub_incomplete")
+        assert mock_create_subscription.called
+        assert not Subscription.objects.filter(pk=stale.pk).exists()
+
+    @patch("baseapp_payments.serializers.StripeService.create_subscription")
+    @patch("baseapp_payments.serializers.StripeService.delete_subscription")
+    @patch("baseapp_payments.serializers.StripeService.list_subscriptions")
+    @patch("baseapp_payments.serializers.StripeService.retrieve_price")
+    def test_an_active_subscription_still_blocks(
+        self,
+        mock_retrieve_price: MagicMock,
+        mock_list_subscriptions: MagicMock,
+        mock_delete_subscription: MagicMock,
+        mock_create_subscription: MagicMock,
+        user_client: Client,
+    ) -> None:
+        """Only `incomplete` is discarded - a paid subscription is still a conflict."""
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        mock_retrieve_price.return_value = {"id": "price_1", "product": {"id": "prod_1"}}
+        mock_list_subscriptions.return_value = stripe_list(
+            [
+                {
+                    "id": "sub_active",
+                    "status": "active",
+                    "items": {"data": [{"price": {"id": "price_1", "product": "prod_1"}}]},
+                }
+            ]
+        )
+
+        response = user_client.post(
+            reverse(self.viewname),
+            data={"entity_id": customer.entity.relay_id, "price_id": "price_1"},
+        )
+
+        responseEquals(response, status.HTTP_400_BAD_REQUEST)
+        assert not mock_delete_subscription.called
+        assert not mock_create_subscription.called
