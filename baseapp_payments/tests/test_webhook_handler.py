@@ -156,3 +156,29 @@ class TestSubscriptionEvents:
         )
         assert response.status_code == 200
         assert not Subscription.objects.filter(remote_subscription_id="sub_bye").exists()
+
+
+class TestWebhookUrlShape:
+    def test_the_unslashed_webhook_url_still_routes(self, client: "Client") -> None:
+        """Existing Stripe endpoints point at the unslashed URL.
+
+        Master routed these without a trailing slash and the README documented that
+        form. Stripe does not follow redirects, so a 301 here reads as a failed
+        delivery and every already-registered endpoint stops working.
+        """
+        response = client.post(
+            "/v1/payments/stripe/webhooks",
+            data="{}",
+            content_type="application/json",
+        )
+
+        assert response.status_code != 301, "unslashed webhook URL redirects; Stripe drops it"
+
+    def test_the_slashed_webhook_url_routes_too(self, client: "Client") -> None:
+        response = client.post(
+            "/v1/payments/stripe/webhooks/",
+            data="{}",
+            content_type="application/json",
+        )
+
+        assert response.status_code != 301

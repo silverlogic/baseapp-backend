@@ -514,3 +514,69 @@ class TestChangePlanWithUnexpandedStripeShapes:
         )
 
         responseEquals(response, status.HTTP_400_BAD_REQUEST)
+
+
+class TestSubscriptionUpdateFieldPlumbing:
+    viewname = "v1:subscriptions-detail"
+
+    @patch("baseapp_payments.views.StripeService.update_subscription")
+    @patch("baseapp_payments.views.StripeService.retrieve_subscription")
+    @patch("baseapp_payments.views.StripeService.list_payment_methods")
+    def test_default_payment_method_reaches_stripe(
+        self,
+        mock_list_payment_methods: MagicMock,
+        mock_retrieve_subscription: MagicMock,
+        mock_update_subscription: MagicMock,
+        user_client: Client,
+    ) -> None:
+        """The field was declared twice, the second time read_only.
+
+        The later declaration replaced the writable one, so DRF dropped the value from
+        validated_data and the update silently did nothing. Asserting on the Stripe
+        kwargs rather than the 200, which is what hid this.
+        """
+        mock_list_payment_methods.return_value = stripe_list([{"id": "pm_123"}])
+        mock_retrieve_subscription.return_value = _AttrSubscription(
+            id="sub_123", items={"data": [{"id": "si_1"}]}, default_payment_method="pm_old"
+        )
+        mock_update_subscription.return_value = {"id": "sub_123", "status": "active"}
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        subscription = SubscriptionFactory(customer=customer)
+
+        response = user_client.patch(
+            reverse(
+                self.viewname,
+                kwargs={"remote_subscription_id": subscription.remote_subscription_id},
+            ),
+            data={"default_payment_method": "pm_123"},
+        )
+
+        responseEquals(response, status.HTTP_200_OK)
+        assert mock_update_subscription.call_args.kwargs["default_payment_method"] == "pm_123"
+
+    @patch("baseapp_payments.views.StripeService.retrieve_subscription")
+    def test_a_null_next_payment_attempt_is_not_a_500(
+        self, mock_retrieve_subscription: MagicMock, user_client: Client
+    ) -> None:
+        """Stripe leaves it null when collection is not automatic.
+
+        datetime.fromtimestamp(None) is a TypeError, which surfaced as a 500 on an
+        ordinary subscription read.
+        """
+        mock_retrieve_subscription.return_value = _AttrSubscription(
+            id="sub_123",
+            status="active",
+            upcoming_invoice={"amount_due": 500, "next_payment_attempt": None},
+        )
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        subscription = SubscriptionFactory(customer=customer)
+
+        response = user_client.get(
+            reverse(
+                self.viewname,
+                kwargs={"remote_subscription_id": subscription.remote_subscription_id},
+            )
+        )
+
+        responseEquals(response, status.HTTP_200_OK)
+        assert response.data["upcoming_invoice"]["next_payment_attempt"] is None

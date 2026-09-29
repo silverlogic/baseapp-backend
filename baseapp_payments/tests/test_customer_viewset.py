@@ -117,3 +117,18 @@ class TestSubscriptionUniqueness:
 
         with pytest.raises(IntegrityError), transaction.atomic():
             SubscriptionFactory(remote_subscription_id="sub_1")
+
+
+class TestCustomerEntityTypeFallback:
+    def test_entity_type_is_resolved_from_the_configured_label(self) -> None:
+        """STRIPE_CUSTOMER_ENTITY_MODEL is a dotted label, not a class.
+
+        get_for_model reads model._meta, so handing it the string raised AttributeError
+        and the except turned that into a misleading configuration error - the fallback
+        could never succeed.
+        """
+        profile = ProfileFactory()
+        customer = Customer(entity_id=profile.id, remote_customer_id="cus_fallback")
+        customer.save()
+
+        assert customer.entity_type == ContentType.objects.get_for_model(Profile)

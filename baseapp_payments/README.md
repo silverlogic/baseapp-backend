@@ -168,13 +168,13 @@ Payment-method and invoice routes are nested under the customer, so the entity i
 
 ### Stripe dashboard configuration
 
-**Production:** In your [Stripe Dashboard](https://dashboard.stripe.com) → **Developers → Webhooks → Add endpoint**, point the endpoint at `https://yourdomain.com/v1/payments/stripe/webhooks`, subscribe to at least the four events above, then copy the **Signing secret** into `STRIPE_WEBHOOK_SECRET`.
+**Production:** In your [Stripe Dashboard](https://dashboard.stripe.com) → **Developers → Webhooks → Add endpoint**, point the endpoint at `https://yourdomain.com/v1/payments/stripe/webhooks/`, subscribe to at least the four events above, then copy the **Signing secret** into `STRIPE_WEBHOOK_SECRET`.
 
 **Local development:** Use the [Stripe CLI](https://stripe.com/docs/stripe-cli):
 
 ```bash
 stripe login
-stripe listen --forward-to localhost:8000/v1/payments/stripe/webhooks
+stripe listen --forward-to localhost:8000/v1/payments/stripe/webhooks/
 ```
 
 The CLI prints a `whsec_...` secret — set it as `STRIPE_WEBHOOK_SECRET` locally.

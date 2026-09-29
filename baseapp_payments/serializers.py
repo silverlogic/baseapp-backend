@@ -116,7 +116,7 @@ class StripeSubscriptionSerializer(serializers.Serializer):
     allow_incomplete = serializers.BooleanField(default=False, write_only=True)
     payment_method_id = serializers.CharField(required=False, write_only=True)
     billing_details = serializers.DictField(required=False, write_only=True)
-    default_payment_method = serializers.CharField(required=False, write_only=True)
+    default_payment_method = serializers.CharField(required=False)
     id = serializers.CharField(read_only=True)
     client_secret = serializers.SerializerMethodField()
     latest_invoice = serializers.SerializerMethodField()
@@ -124,7 +124,6 @@ class StripeSubscriptionSerializer(serializers.Serializer):
     product = serializers.SerializerMethodField()
     current_period_end = serializers.DateTimeField(read_only=True)
     upcoming_invoice = serializers.SerializerMethodField()
-    default_payment_method = serializers.CharField(read_only=True)
 
     def validate_create(self, data: dict[str, Any]) -> dict:
         entity_id = data["entity_id"]
@@ -273,9 +272,7 @@ class StripeSubscriptionSerializer(serializers.Serializer):
     def update(
         self, instance: "BaseSubscription", validated_data: dict[str, Any]
     ) -> "stripe.Subscription":
-        data = self.validate_update(
-            instance, validated_data if validated_data else self.initial_data
-        )
+        data = self.validate_update(instance, validated_data)
         default_payment_method = data.get("default_payment_method")
         payment_method_id = data.get("payment_method_id")
         billing_details = data.get("billing_details")
@@ -364,13 +361,19 @@ class StripeSubscriptionSerializer(serializers.Serializer):
         return None
 
     def get_upcoming_invoice(self, instance: "stripe.Subscription") -> dict:
-        upcoming_invoice = instance.get("upcoming_invoice", {})
-        if upcoming_invoice:
-            upcoming_invoice["amount_due"] = upcoming_invoice.get("amount_due")
-            upcoming_invoice["next_payment_attempt"] = datetime.fromtimestamp(
-                upcoming_invoice.get("next_payment_attempt"), tz=timezone.utc
-            )
-        return upcoming_invoice
+        upcoming_invoice = instance.get("upcoming_invoice") or {}
+        if not upcoming_invoice:
+            return upcoming_invoice
+        # Stripe leaves this null when collection is not automatic, and
+        # fromtimestamp(None) is a TypeError - a 500 on an ordinary subscription read.
+        # Returning a new dict rather than writing back into the instance.
+        next_attempt = upcoming_invoice.get("next_payment_attempt")
+        return {
+            "amount_due": upcoming_invoice.get("amount_due"),
+            "next_payment_attempt": (
+                datetime.fromtimestamp(next_attempt, tz=timezone.utc) if next_attempt else None
+            ),
+        }
 
     def to_representation(self, instance: "stripe.Subscription") -> dict:
         instance_period_end = instance.get("current_period_end")
@@ -513,7 +516,7 @@ class StripePaymentMethodSerializer(serializers.Serializer):
                 {"non_field_errors": [_("An internal error has occurred. Please try again later.")]}
             ) from e
 
-    def update(self, validated_data: dict[str, Any]) -> "stripe.Customer | None":
+    def update(self, validated_data: dict[str, Any]) -> "stripe.Customer | stripe.PaymentMethod":
         stripe_service = StripeService()
         default_payment_method_id = validated_data.get("default_payment_method_id")
         payment_method_id = validated_data.get("pk")
@@ -530,8 +533,20 @@ class StripePaymentMethodSerializer(serializers.Serializer):
                     {"non_field_errors": [_("Failed to update payment method")]}
                 )
         else:
+            # `pk` identifies which card to modify - forwarding it as a Stripe field
+            # made every billing update a 500 on an unknown parameter. billing_details
+            # is declared read_only so the response keeps its nested shape, which means
+            # the input has to be read off initial_data.
+            fields = {k: v for k, v in validated_data.items() if k != "pk"}
+            billing_details = self.initial_data.get("billing_details")
+            if billing_details:
+                fields["billing_details"] = billing_details
+            if not fields:
+                raise serializers.ValidationError({"non_field_errors": [_("Nothing to update.")]})
             try:
-                stripe_service.update_payment_method(payment_method_id, **validated_data)
+                # Returned, not discarded: answering None made the view send a 200 with
+                # an empty body, which responseEquals rejects outright.
+                return stripe_service.update_payment_method(payment_method_id, **fields)
             except Exception as e:
                 logger.exception(e)
                 raise serializers.ValidationError(

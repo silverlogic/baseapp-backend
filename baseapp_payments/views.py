@@ -204,7 +204,16 @@ class StripeCustomerViewset(
         lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
         relay_id = self.kwargs[lookup_url_kwarg]
         if relay_id == "me":
-            entity_id = self.request.user.profile.id
+            # STRIPE_CUSTOMER_ENTITY_MODEL is configurable. Hardcoding the profile
+            # looked up a profile id as an entity_id of whatever the configured model
+            # is, and 500'd outright for a user with no profile.
+            entity_model = apps.get_model(config.STRIPE_CUSTOMER_ENTITY_MODEL)
+            if isinstance(self.request.user, entity_model):
+                entity_id = self.request.user.pk
+            else:
+                entity_id = getattr(self.request.user, "profile_id", None)
+            if entity_id is None:
+                raise NotFound("Customer not found")
         else:
             try:
                 entity_id = get_pk_from_relay_id(relay_id)

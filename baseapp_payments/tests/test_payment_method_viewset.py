@@ -229,6 +229,10 @@ class TestPaymentMethodUpdateAuthorization:
         self, mock_update_payment_method: MagicMock, mock_belongs_to: MagicMock, user_client: Client
     ) -> None:
         mock_belongs_to.return_value = True
+        # A return_value is required, not decoration: the branch now answers with what
+        # Stripe returned, and rendering a bare MagicMock walks it until the process is
+        # OOM-killed.
+        mock_update_payment_method.return_value = {"id": "pm_mine"}
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.patch(
             reverse(
@@ -239,9 +243,7 @@ class TestPaymentMethodUpdateAuthorization:
             format="json",
         )
 
-        # responseEquals is not used here: this serializer branch returns None, so the
-        # body is empty and the helper rejects it. The status and the id are the point.
-        assert response.status_code == status.HTTP_200_OK
+        responseEquals(response, status.HTTP_200_OK)
         assert mock_update_payment_method.call_args.args[0] == "pm_mine"
 
     @patch("baseapp_payments.views.StripeService.payment_method_belongs_to")
@@ -261,3 +263,41 @@ class TestPaymentMethodUpdateAuthorization:
         )
 
         responseEquals(response, status.HTTP_404_NOT_FOUND)
+
+
+class TestPaymentMethodBillingUpdate:
+    viewname = "v1:customers-payment-methods"
+
+    @patch("baseapp_payments.views.StripeService.list_payment_methods")
+    @patch("baseapp_payments.serializers.StripeService.update_payment_method")
+    def test_billing_details_reach_stripe_and_pk_does_not(
+        self,
+        mock_update_payment_method: MagicMock,
+        mock_list_payment_methods: MagicMock,
+        user_client: Client,
+    ) -> None:
+        """`pk` names the card to modify; it is not a Stripe field.
+
+        Forwarding it made Stripe reject the call on an unknown parameter, so every
+        billing update was a 500 - and billing_details never arrived at all, because
+        the field is declared read_only for the response shape. The previous test
+        mocked the service and asserted only the status, which hid both halves.
+        """
+        mock_list_payment_methods.return_value = stripe_list([{"id": "pm_123"}])
+        mock_update_payment_method.return_value = {"id": "pm_123"}
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+
+        response = user_client.put(
+            reverse(
+                self.viewname,
+                kwargs={"entity_id": customer.entity_id, "payment_method_id": "pm_123"},
+            ),
+            data={"billing_details": {"name": "Ada Lovelace"}},
+            content_type="application/json",
+        )
+
+        responseEquals(response, status.HTTP_200_OK)
+        args, kwargs = mock_update_payment_method.call_args
+        assert args[0] == "pm_123"
+        assert kwargs["billing_details"] == {"name": "Ada Lovelace"}
+        assert "pk" not in kwargs

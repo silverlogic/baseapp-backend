@@ -8,6 +8,11 @@ from .views import (
 )
 
 payments_router = DefaultRouter(trailing_slash=True)
+# Master routed these without a trailing slash, so every Stripe endpoint already
+# registered in a dashboard points at the unslashed URL. Stripe does not follow
+# redirects and counts a 301 as a failed delivery, so requiring the slash would
+# silently stop webhook delivery on every existing deployment. `/?` accepts both.
+payments_router.trailing_slash = "/?"
 
 payments_router.register(
     r"stripe/subscriptions", StripeSubscriptionViewset, basename="subscriptions"

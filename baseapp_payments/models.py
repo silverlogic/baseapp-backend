@@ -2,6 +2,7 @@ from typing import Any
 
 import swapper
 from constance import config
+from django.apps import apps
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -40,10 +41,13 @@ class BaseCustomer(TimeStampedModel):
 
         if not self.entity_type_id:
             try:
-                entity_model = config.STRIPE_CUSTOMER_ENTITY_MODEL
+                # A dotted label, not a class. get_for_model reads model._meta, so
+                # handing it the string raised AttributeError and this except turned
+                # that into a config error - the fallback could never succeed.
+                entity_model = apps.get_model(config.STRIPE_CUSTOMER_ENTITY_MODEL)
                 self.entity_type = ContentType.objects.get_for_model(entity_model)
-            except (AttributeError, ValueError, ContentType.DoesNotExist) as e:
-                raise ValueError(f"Invalid STRIPE_CUSTOMER_ENTITY_MODEL configuration: {e}")
+            except (LookupError, ValueError) as e:
+                raise ValueError(f"Invalid STRIPE_CUSTOMER_ENTITY_MODEL configuration: {e}") from e
 
         if self.tracker.has_changed("entity") or not self.entity_id:
             if self.entity is not None:
