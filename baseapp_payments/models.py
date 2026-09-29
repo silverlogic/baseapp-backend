@@ -68,7 +68,12 @@ class BaseSubscription(TimeStampedModel):
         on_delete=models.CASCADE,
         related_name="subscriptions",
     )
-    remote_subscription_id = models.CharField(max_length=255)
+    # Unique on its own rather than paired with the customer: the viewset resolves a
+    # subscription with lookup_field="remote_subscription_id" and the webhook handler
+    # filters on it alone, so a second row with the same id is MultipleObjectsReturned
+    # on read and a multi-row delete on cancellation. A Stripe subscription id belongs
+    # to exactly one customer anyway, which the old (customer, id) pair did not say.
+    remote_subscription_id = models.CharField(max_length=255, unique=True)
 
     class Meta:
         abstract = True

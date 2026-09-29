@@ -10,7 +10,7 @@ from rest_framework import status
 from baseapp_core.graphql.utils import get_obj_relay_id
 from baseapp_core.tests.fixtures import Client
 from baseapp_core.tests.helpers import responseEquals
-from baseapp_payments.tests.factories import CustomerFactory
+from baseapp_payments.tests.factories import CustomerFactory, SubscriptionFactory
 from baseapp_profiles.tests.factories import ProfileFactory
 
 pytestmark = pytest.mark.django_db
@@ -101,3 +101,19 @@ class TestCustomerUniqueness:
 
         with pytest.raises(IntegrityError), transaction.atomic():
             CustomerFactory(entity=profile)
+
+
+class TestSubscriptionUniqueness:
+    def test_a_stripe_subscription_id_cannot_repeat(self) -> None:
+        """One row per Stripe subscription, across all customers.
+
+        StripeSubscriptionViewset resolves with lookup_field="remote_subscription_id"
+        and the webhook handler filters on it alone, so a duplicate is
+        MultipleObjectsReturned on read and a multi-row delete on cancellation. The
+        pair this replaces, (remote_customer_id, remote_subscription_id), allowed the
+        same Stripe id under two customers and so never ruled that out.
+        """
+        SubscriptionFactory(remote_subscription_id="sub_1")
+
+        with pytest.raises(IntegrityError), transaction.atomic():
+            SubscriptionFactory(remote_subscription_id="sub_1")
