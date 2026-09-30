@@ -13,11 +13,18 @@ def backfill_customer(apps, schema_editor) -> None:
     """
     Subscription = apps.get_model("payments", "Subscription")
     Customer = apps.get_model(settings.BASEAPP_PAYMENTS_CUSTOMER_MODEL)
+    # Every read and write here is pinned to the database migrate is targeting; the
+    # default router would otherwise answer from `default` under `migrate --database`.
+    database = schema_editor.connection.alias
 
-    for subscription in Subscription.objects.filter(customer__isnull=True).iterator():
-        customer = Customer.objects.filter(
-            remote_customer_id=subscription.remote_customer_id
-        ).first()
+    for subscription in (
+        Subscription.objects.using(database).filter(customer__isnull=True).iterator()
+    ):
+        customer = (
+            Customer.objects.using(database)
+            .filter(remote_customer_id=subscription.remote_customer_id)
+            .first()
+        )
         if customer is None:
             raise RuntimeError(
                 "Cannot migrate subscription "
@@ -26,7 +33,7 @@ def backfill_customer(apps, schema_editor) -> None:
                 "that row against Stripe before running this migration."
             )
         subscription.customer = customer
-        subscription.save(update_fields=["customer"])
+        subscription.save(using=database, update_fields=["customer"])
 
 
 class Migration(migrations.Migration):

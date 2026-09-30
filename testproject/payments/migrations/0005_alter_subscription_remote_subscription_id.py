@@ -17,8 +17,13 @@ def assert_no_duplicate_subscription_ids(apps, schema_editor) -> None:
     leaves the remaining row billing the wrong card. Only Stripe knows which is right.
     """
     Subscription = apps.get_model("payments", "Subscription")
+    # Pinned to the database migrate is actually targeting. The default router would
+    # answer from `default`, so with `migrate --database` this could clear a target that
+    # does have duplicates, or block one that does not.
+    database = schema_editor.connection.alias
     duplicated_ids = list(
-        Subscription.objects.values("remote_subscription_id")
+        Subscription.objects.using(database)
+        .values("remote_subscription_id")
         .annotate(row_count=Count("id"))
         .filter(row_count__gt=1)
         .order_by("remote_subscription_id")
