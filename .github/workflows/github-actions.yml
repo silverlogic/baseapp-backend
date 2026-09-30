@@ -7,9 +7,10 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.12"]
-        django-version: ["5.2"]
+        django-version: ["5.2", "6.1"]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,31 +47,33 @@ jobs:
         if: steps.ast_grep.outcome == 'success'
         id: requirements_installation
         run: |
-          docker compose exec -T web uv pip install --python ${{ matrix.python-version }} "Django~=${{ matrix.django-version }}"
+          docker compose exec -T web uv sync --python ${{ matrix.python-version }} --frozen
+          docker compose exec -T web uv pip install --python ${{ matrix.python-version }} "Django~=${{ matrix.django-version }}.0"
+          docker compose exec -T web uv run --no-sync python -c "import django; print(django.get_version())"
 
       - name: pytest
         if: steps.requirements_installation.outcome == 'success'
         run: |
-          docker compose exec -T web uv run --python ${{ matrix.python-version }} pytest --cov=./ --cov-report=xml --cov-branch .
+          docker compose exec -T web uv run --no-sync pytest --cov=./ --cov-report=xml --cov-branch .
 
       - name: pytest drf_view_action_permissions
         if: steps.requirements_installation.outcome == 'success'
         run: |
-          docker compose exec -T web uv run --python ${{ matrix.python-version }} pytest --cov=./ --cov-report=xml --cov-branch --cov-append baseapp_drf_view_action_permissions --ds=baseapp_drf_view_action_permissions.tests.settings
+          docker compose exec -T web uv run --no-sync pytest --cov=./ --cov-report=xml --cov-branch --cov-append baseapp_drf_view_action_permissions --ds=baseapp_drf_view_action_permissions.tests.settings
 
       - name: Install pip-audit
-        if: steps.requirements_installation.outcome == 'success' && startsWith(matrix.django-version, '5.2')
+        if: steps.requirements_installation.outcome == 'success' && matrix.django-version == '6.1'
         run: docker compose exec -T web uv tool install --python ${{ matrix.python-version }} pip-audit
       # Ignored vulnerabilities:
 
       # Name                   Version ID             Fix Versions
       # ---------------------- ------- -------------- ------------
       - name: Run pip-audit (installed dependencies)
-        if: steps.requirements_installation.outcome == 'success' && startsWith(matrix.django-version, '5.2')
+        if: steps.requirements_installation.outcome == 'success' && matrix.django-version == '6.1'
         run: docker compose exec -T web pip-audit --skip-editable
 
       - name: upload coverage report
-        if: matrix.python-version == '3.12' && startsWith(matrix.django-version, '5.2')
+        if: matrix.python-version == '3.12' && matrix.django-version == '6.1'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report

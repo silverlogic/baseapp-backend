@@ -423,8 +423,8 @@ testproject = [
 
 [package.metadata]
 requires-dist = [
-    { name = "baseapp-django-channels-graphql-ws", marker = "extra == 'graphql'", specifier = "==1.0.0rc9" },
-    { name = "baseapp-django-trench", marker = "extra == 'auth'", specifier = ">=0.4.4" },
+    { name = "baseapp-django-channels-graphql-ws", marker = "extra == 'graphql'", git = "https://github.com/silverlogic/DjangoChannelsGraphqlWs?rev=c9809ac427c5ca6b161901a911acde69ba8c3c26" },
+    { name = "baseapp-django-trench", marker = "extra == 'auth'", git = "https://github.com/silverlogic/django-trench?rev=073d5f11978253a36afa7df2baafacfb14fad2cf" },
     { name = "beautifulsoup4", marker = "extra == 'messagetemplates'", specifier = ">=4.6" },
     { name = "celery", specifier = ">=5.2.7" },
     { name = "channels", specifier = ">=4.3.1" },
@@ -447,7 +447,7 @@ requires-dist = [
     { name = "django-quill-editor", marker = "extra == 'pages'", specifier = ">=0.1.42" },
     { name = "django-sendgrid-v5", marker = "extra == 'messagetemplates'", specifier = ">=1.2" },
     { name = "django-translated-fields", marker = "extra == 'pages'", specifier = ">=0.13" },
-    { name = "djangorestframework", specifier = ">=3.17.2,<3.18" },
+    { name = "djangorestframework", specifier = ">=3.18.1,<3.19" },
     { name = "djangorestframework-expander", specifier = ">=0.2.3" },
     { name = "djangorestframework-simplejwt", extras = ["crypto"], marker = "extra == 'auth'", specifier = ">=5.2,<5.6" },
     { name = "djmail", specifier = ">=2.0" },
@@ -494,7 +494,7 @@ dev = [
     { name = "channels-redis", specifier = "==4.3.0" },
     { name = "django-notifications-community" },
     { name = "django-push-notifications", extras = ["apns-async", "fcm", "wp"], specifier = "==3.3.0" },
-    { name = "djangorestframework", specifier = "==3.17.2" },
+    { name = "djangorestframework", specifier = "==3.18.1" },
     { name = "djangorestframework-simplejwt", extras = ["crypto"], specifier = "==5.5.1" },
     { name = "drf-nested-routers", specifier = "==0.93.5" },
     { name = "easy-thumbnails", specifier = "==2.10.1" },
@@ -520,7 +520,7 @@ testproject = [
     { name = "channels-redis", specifier = "==4.3.0" },
     { name = "django-notifications-community" },
     { name = "django-push-notifications", extras = ["apns-async", "fcm", "wp"], specifier = "==3.3.0" },
-    { name = "djangorestframework", specifier = "==3.17.2" },
+    { name = "djangorestframework", specifier = "==3.18.1" },
     { name = "djangorestframework-simplejwt", extras = ["crypto"], specifier = "==5.5.1" },
     { name = "drf-nested-routers", specifier = "==0.93.5" },
     { name = "easy-thumbnails", specifier = "==2.10.1" },
@@ -543,7 +543,7 @@ testproject = [
 [[package]]
 name = "baseapp-django-channels-graphql-ws"
 version = "1.0.0rc9"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/silverlogic/DjangoChannelsGraphqlWs?rev=c9809ac427c5ca6b161901a911acde69ba8c3c26#c9809ac427c5ca6b161901a911acde69ba8c3c26" }
 dependencies = [
     { name = "aiohttp" },
     { name = "asgiref" },
@@ -553,25 +553,17 @@ dependencies = [
     { name = "graphql-core" },
     { name = "msgpack" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/31/ee/4fe18b890d007c1f1404017f2296c6162023e7bc30ae5a7c65f632990263/baseapp_django_channels_graphql_ws-1.0.0rc9.tar.gz", hash = "sha256:0ee8db6c8aac2c27d2984cc6f591a845f4dbc2a2367e99a097aed9a21cfc04dc", size = 28831, upload-time = "2024-04-11T14:27:26.631Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/4c/c2/365821f86375757f01a3699cda3311f3a56d0b4d6015b98c42a0bd3b4523/baseapp_django_channels_graphql_ws-1.0.0rc9-py3-none-any.whl", hash = "sha256:48cade346fb29bd4cc640ff627b33c13c38979eb3f093084269115139c762be2", size = 34278, upload-time = "2024-04-11T14:27:24.787Z" },
-]
 
 [[package]]
 name = "baseapp-django-trench"
-version = "0.4.4"
-source = { registry = "https://pypi.org/simple" }
+version = "0.4.5"
+source = { git = "https://github.com/silverlogic/django-trench?rev=073d5f11978253a36afa7df2baafacfb14fad2cf#073d5f11978253a36afa7df2baafacfb14fad2cf" }
 dependencies = [
     { name = "boto3" },
     { name = "pyotp" },
     { name = "smsapi-client" },
     { name = "twilio" },
     { name = "yubico-client" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/73/26/1deadc720b5015879f491690eec9c269a684a137661ec84ee16ecff565d8/baseapp-django-trench-0.4.4.tar.gz", hash = "sha256:b76795a893b01b217484192d7c9777a0ec4864ac775d179808194ac55568474a", size = 31442, upload-time = "2023-10-04T22:48:50.156Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f9/38/7a59082733305f5d3056ecac167c67b9ba261e1a9abec0d24767e7fa83b9/baseapp_django_trench-0.4.4-py3-none-any.whl", hash = "sha256:c751e0c5671d8dc0c50214e2ae08172c351034d3f1765d2f14b7c252552ef31a", size = 40641, upload-time = "2023-10-04T22:48:47.799Z" },
 ]
 
 [[package]]
@@ -1234,16 +1226,16 @@ wheels = [
 
 [[package]]
 name = "django"
-version = "5.2.17"
+version = "6.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "asgiref" },
     { name = "sqlparse" },
     { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d5/d8/43e9d000519adceb189620b6869ff88031e046df91c2e9da72f8f6918399/django-5.2.17.tar.gz", hash = "sha256:9d4d93be539a18ab80d058eb515900e10951e04c537c5a6b394fc49528d3251f", size = 10889740, upload-time = "2026-08-04T15:04:03.173Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/d4/8314b5bdef20832f0ac6ae3b3e4d4924e4759fa3b4af27609dd747e7a6be/django-6.1.1.tar.gz", hash = "sha256:7ab93536d8e677aa14554c56426290c69480bf2ee68d7513d4a22f57d6bfeb84", size = 11284905, upload-time = "2026-09-02T17:20:45.621Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/f8/ce120525ca78f12b07daf65786679c5d0b54a75285a8958d3ae55e39da35/django-5.2.17-py3-none-any.whl", hash = "sha256:f04fb3b36ee119e1af4fa1d397d5fd6cf12700f49321e84d4f4c642c5b1973db", size = 8315563, upload-time = "2026-08-04T15:03:59.1Z" },
+    { url = "https://files.pythonhosted.org/packages/8d/ca/c1040a4fd15754ede7df15fd72fc2e123045b473b253ab5f5284e11c651e/django-6.1.1-py3-none-any.whl", hash = "sha256:585fb82bf15053c42cf52e67c2f1b54a032dca384759315fd6678ab1870d1d72", size = 8419512, upload-time = "2026-09-02T17:20:39.153Z" },
 ]
 
 [[package]]
@@ -1571,14 +1563,14 @@ wheels = [
 
 [[package]]
 name = "djangorestframework"
-version = "3.17.2"
+version = "3.18.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3b/35/c96055e700fdff25da3a7b7756cfd1d4dc54f38b9bc6d6c5e19e3a0fdc20/djangorestframework-3.17.2.tar.gz", hash = "sha256:89ed713b6dc83e1539f214b7d10808ae19bb8511004beba886225da6d5c9dafa", size = 906683, upload-time = "2026-08-05T07:47:22.5Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8a/2e/b3ce9d449b1ed9f9dd74fb7dfbc5f20860d5f40c2b4b10a2c3eabd8ff579/djangorestframework-3.18.1.tar.gz", hash = "sha256:605d79fa2ec2f02905492e5ea13d903c2d842d0b4c915a57f7bf02ab9f3c91dd", size = 915653, upload-time = "2026-09-07T18:04:08.288Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a2/46/c14108e400b208c394325eb63fbae06c81341b6447fa1a6f9da718b17fe7/djangorestframework-3.17.2-py3-none-any.whl", hash = "sha256:cb0546a7415d5b46c04e0f4fe0a54b2109f4fdd5e83ca773c8c6183a6493d042", size = 899109, upload-time = "2026-08-05T07:47:20.853Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/83/5ed615e47339d8e65f62eb1a8133f8f046492eb3a25ad40d90acb9a208b3/djangorestframework-3.18.1-py3-none-any.whl", hash = "sha256:f1409d698967aaf82d5d98d76b549c8fba8bd92ebd0d83d24454508f72168dc2", size = 901373, upload-time = "2026-09-07T18:04:06.237Z" },
 ]
 
 [[package]]
