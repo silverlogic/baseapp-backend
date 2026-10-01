@@ -22,6 +22,22 @@ profile_user_role_app_label = ProfileUserRole._meta.app_label
 logger = logging.getLogger(__name__)
 
 
+def validate_assignable_role(role: int) -> None:
+    """
+    Refuse a role the model will not accept.
+
+    Every value a project declares reaches the API through `ProfileRoleTypesEnum`,
+    including any it reserves for a later phase. Without this the write goes through to
+    whatever constraint guards the column, and the caller gets an unhandled database
+    error instead of being told the role is invalid.
+    """
+    if role not in ProfileUserRole.assignable_roles():
+        raise GraphQLError(
+            str(_("Invalid role type")),
+            extensions={"code": "invalid_input"},
+        )
+
+
 class ProfileUserRoleCreate(RelayMutation):
     profile_user_roles = graphene.List(get_object_type_for_model(ProfileUserRole))
 
@@ -54,8 +70,8 @@ class ProfileUserRoleCreate(RelayMutation):
             )
         if not role_type:
             role_type = ProfileUserRole.ProfileRoles.MANAGER
-        elif role_type and role_type not in ProfileUserRole.ProfileRoles.values:
-            raise GraphQLError(str(_("Invalid role type")))
+        else:
+            validate_assignable_role(role_type)
 
         # TODO on BA-2426: send invitation to new users emails
         if emails_to_invite:
@@ -81,12 +97,24 @@ class ProfileUserRoleCreate(RelayMutation):
 
         try:
             with transaction.atomic():
-                profile_user_roles = ProfileUserRole.objects.bulk_create(
-                    [
-                        ProfileUserRole(user_id=user_pk, profile_id=profile_pk, role=role_type)
-                        for user_pk in requested_user_pks
-                    ]
-                )
+                # Members added directly (rather than invited) are active immediately —
+                # there is no acceptance step for them to go through. Without an explicit
+                # status they would fall back to the field default of INACTIVE and reach
+                # nothing, since an inactive membership grants no access.
+                #
+                # Saved one at a time rather than with bulk_create: bulk_create issues no
+                # post_save, and consuming projects hang membership bookkeeping off that
+                # signal. The loop is bounded by the members named in a single call and
+                # already runs inside this transaction.
+                profile_user_roles = [
+                    ProfileUserRole.objects.create(
+                        user_id=user_pk,
+                        profile_id=profile_pk,
+                        role=role_type,
+                        status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
+                    )
+                    for user_pk in requested_user_pks
+                ]
         except IntegrityError as error:
             logger.exception("Failed to add members to profile %s", profile_pk)
             # Only report "already_member" if a membership actually exists now (race with the
@@ -128,6 +156,7 @@ class ProfileUserRoleUpdate(RelayMutation):
                 str(_("Role is required")),
                 extensions={"code": "invalid_input"},
             )
+        validate_assignable_role(role_type)
         user_pk = get_pk_from_relay_id(user_id)
         profile_pk = get_pk_from_relay_id(profile_id)
 
