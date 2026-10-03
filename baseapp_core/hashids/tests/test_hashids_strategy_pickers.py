@@ -1,5 +1,5 @@
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from constance.test import override_config
@@ -7,6 +7,8 @@ from graphql_relay import to_global_id
 
 from baseapp_core.graphql.relay import Node
 from baseapp_core.hashids.strategies import (
+    DEFAULT_PUBLIC_ID_LOGIC_CACHE_SECONDS,
+    _clear_public_id_logic_memo,
     _is_public_id_logic_enabled,
     get_hashids_strategy_from_instance_or_cls,
     get_legacy_strategy,
@@ -42,6 +44,51 @@ class TestPublicIdLogicEnabled:
     def test_is_public_id_logic_enabled_returns_false_when_config_disabled(self) -> None:
         with override_config(ENABLE_PUBLIC_ID_LOGIC=False):
             assert _is_public_id_logic_enabled() is False
+
+    def test_the_config_is_read_once_per_memo_period(self) -> None:
+        _clear_public_id_logic_memo()
+        reads = PropertyMock(return_value=True)
+        with (
+            patch("baseapp_core.hashids.strategies.config") as config,
+            patch("baseapp_core.hashids.strategies.time.monotonic", return_value=100.0) as now,
+        ):
+            type(config).ENABLE_PUBLIC_ID_LOGIC = reads
+            results = [_is_public_id_logic_enabled() for _ in range(50)]
+            assert reads.call_count == 1
+
+            now.return_value = 100.0 + DEFAULT_PUBLIC_ID_LOGIC_CACHE_SECONDS
+            _is_public_id_logic_enabled()
+
+        assert results == [True] * 50
+        assert reads.call_count == 2
+        _clear_public_id_logic_memo()
+
+    def test_changes_through_constance_apply_immediately(self) -> None:
+        with override_config(ENABLE_PUBLIC_ID_LOGIC=True):
+            assert _is_public_id_logic_enabled() is True
+            with override_config(ENABLE_PUBLIC_ID_LOGIC=False):
+                assert _is_public_id_logic_enabled() is False
+            assert _is_public_id_logic_enabled() is True
+
+    def test_other_settings_do_not_clear_the_memo(self) -> None:
+        with override_config(ENABLE_PUBLIC_ID_LOGIC=True):
+            assert _is_public_id_logic_enabled() is True
+            with patch("baseapp_core.hashids.strategies.config") as config:
+                type(config).ENABLE_PUBLIC_ID_LOGIC = PropertyMock(return_value=False)
+                _clear_public_id_logic_memo(key="SOME_OTHER_SETTING")
+                assert _is_public_id_logic_enabled() is True
+            _clear_public_id_logic_memo()
+
+    def test_a_zero_period_disables_the_memo(self, settings) -> None:
+        settings.BASEAPP_PUBLIC_ID_LOGIC_CACHE_SECONDS = 0
+        _clear_public_id_logic_memo()
+        reads = PropertyMock(return_value=True)
+        with patch("baseapp_core.hashids.strategies.config") as config:
+            type(config).ENABLE_PUBLIC_ID_LOGIC = reads
+            _is_public_id_logic_enabled()
+            _is_public_id_logic_enabled()
+
+        assert reads.call_count == 2
 
 
 @pytest.mark.django_db

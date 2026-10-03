@@ -1,6 +1,9 @@
+import time
 from typing import TYPE_CHECKING, Any, Optional, Type
 
 from constance import config
+from constance.signals import config_updated
+from django.conf import settings
 
 from baseapp_core.hashids.models import LegacyWithPkMixin
 from baseapp_core.hashids.strategies.bundle import HashidsStrategyBundle
@@ -12,8 +15,42 @@ if TYPE_CHECKING:
     from django.db.models import Model
 
 
+# ENABLE_PUBLIC_ID_LOGIC is read for every ID resolved or rendered (each node of a GraphQL list,
+# each serialized object), and every constance read is a cache or database round trip. The value
+# is memoized in-process for BASEAPP_PUBLIC_ID_LOGIC_CACHE_SECONDS (0 disables it). Changes made
+# through this process (admin, `override_config`) clear the memo at once via constance's
+# `config_updated`; other processes pick them up when their memo expires.
+DEFAULT_PUBLIC_ID_LOGIC_CACHE_SECONDS = 5
+
+# (expires at, per time.monotonic(); value). Replaced as a whole, so concurrent readers never
+# see a half-updated memo.
+_public_id_logic_memo: tuple[float, bool] | None = None
+
+
+def _clear_public_id_logic_memo(sender: Any = None, key: str | None = None, **kwargs: Any) -> None:
+    global _public_id_logic_memo
+    if key in (None, "ENABLE_PUBLIC_ID_LOGIC"):
+        _public_id_logic_memo = None
+
+
+config_updated.connect(
+    _clear_public_id_logic_memo, dispatch_uid="baseapp_core.hashids.clear_public_id_logic_memo"
+)
+
+
 def _is_public_id_logic_enabled() -> bool:
-    return bool(config.ENABLE_PUBLIC_ID_LOGIC)
+    global _public_id_logic_memo
+    now = time.monotonic()
+    memo = _public_id_logic_memo
+    if memo is not None and now < memo[0]:
+        return memo[1]
+    value = bool(config.ENABLE_PUBLIC_ID_LOGIC)
+    ttl = getattr(
+        settings, "BASEAPP_PUBLIC_ID_LOGIC_CACHE_SECONDS", DEFAULT_PUBLIC_ID_LOGIC_CACHE_SECONDS
+    )
+    if ttl > 0:
+        _public_id_logic_memo = (now + ttl, value)
+    return value
 
 
 def _is_model_public_id_compatible(model_cls: type) -> bool:
