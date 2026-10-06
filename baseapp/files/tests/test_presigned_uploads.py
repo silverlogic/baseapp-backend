@@ -128,10 +128,10 @@ class TestPresignedUploadPart:
         assert "Invalid token for this file/part" in response.json()["error"]
 
     def test_expired_token(self, client, initiated_upload):
-        """A token older than 1 hour is rejected."""
+        """A token older than the configured lifetime is rejected."""
         file_obj = File.get_by_public_id(initiated_upload["id"])
 
-        with freeze_time(timezone.now() - timedelta(hours=2)):
+        with freeze_time(timezone.now() - timedelta(seconds=PresignedUploadToken.max_age() + 1)):
             token = PresignedUploadToken.mint(
                 file_id=file_obj.id,
                 part_number=1,

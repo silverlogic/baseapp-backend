@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import pgtrigger
 import swapper
 from django.apps import apps
@@ -21,6 +23,9 @@ from baseapp_core.pghelpers import pgtrigger_register_default_track
 from baseapp_core.swapper import init_swapped_models
 
 from .utils import default_files_count
+
+if TYPE_CHECKING:
+    from baseapp_core.graphql import DjangoObjectType
 
 
 class FileTargetCountFunc(pgtrigger.Func):
@@ -408,7 +413,7 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
         swappable = swapper.swappable_setting("baseapp_files", "File")
 
     @classmethod
-    def get_graphql_object_type(cls):
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
         from .graphql.object_types import FileObjectType
 
         return FileObjectType

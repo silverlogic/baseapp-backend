@@ -2,7 +2,6 @@ import logging
 
 import swapper
 from django.utils.translation import gettext_lazy as _
-from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -21,8 +20,11 @@ class PresignedUploadViewSet(viewsets.GenericViewSet):
     """
     ViewSet for handling presigned upload URLs (local storage fallback).
 
-    This ViewSet does NOT use session authentication or CSRF protection.
-    Instead, it validates signed tokens embedded in the URL.
+    This ViewSet does NOT use session authentication, so DRF's `as_view` leaves
+    it CSRF exempt (CSRF is only enforced by `SessionAuthentication`). There is
+    no ambient credential to forge against: the signed token in the URL is the
+    only thing authorizing the write, so an explicit `csrf_exempt` would be
+    redundant.
 
     Endpoints:
         PUT /v1/files/presigned-uploads/{file_id}/upload-part/{part_number}/?token=...
@@ -35,11 +37,6 @@ class PresignedUploadViewSet(viewsets.GenericViewSet):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.upload_service = UploadService()
-
-    @csrf_exempt
-    def dispatch(self, request, *args, **kwargs):
-        """Override dispatch to disable CSRF protection."""
-        return super().dispatch(request, *args, **kwargs)
 
     def perform_authentication(self, request):
         """
