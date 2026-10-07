@@ -10,8 +10,9 @@ FileTarget = swapper.load_model("baseapp_files", "FileTarget")
 @admin.register(File)
 class FileAdmin(ModelAdmin):
     list_display = ("pk", "name", "file_content_type", "parent", "created_by", "created")
-    search_fields = ("name",)
-    raw_id_fields = ("created_by",)
+    list_filter = ("created", "upload_status", "file_content_type")
+    search_fields = ("name", "description")
+    raw_id_fields = ("created_by", "profile")
 
 
 @admin.register(FileTarget)

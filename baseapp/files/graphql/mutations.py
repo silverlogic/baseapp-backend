@@ -35,7 +35,7 @@ class FileAttachToTarget(RelayMutation):
                     }
                 }
                 target {
-                    ... on CommentsInterface {
+                    ... on FilesInterface {
                         filesCount
                         isFilesEnabled
                     }
