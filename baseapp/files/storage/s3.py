@@ -1,25 +1,27 @@
+import posixpath
 from typing import Any, Dict, List, Optional
 
-import boto3
 from botocore.exceptions import ClientError
 from django.conf import settings
-
-from baseapp_core.models import random_name_in
+from django.core.files.storage import Storage, default_storage
+from django.utils.crypto import salted_hmac
 
 from .base import BaseUploadHandler
+
+S3_KEY_SALT = "baseapp.files.storage.s3.S3MultipartUploadHandler"
 
 
 class S3MultipartUploadHandler(BaseUploadHandler):
     """Production S3 multipart upload with presigned URLs."""
 
-    def __init__(self):
-        self.s3_client = boto3.client(
-            "s3",
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=getattr(settings, "AWS_S3_REGION_NAME", "us-east-1"),
-        )
-        self.bucket = settings.AWS_STORAGE_BUCKET_NAME
+    def __init__(self, storage: Optional[Storage] = None) -> None:
+        # Reuse the configured django-storages backend instead of building a bare boto3
+        # client, so endpoint (e.g. DigitalOcean Spaces), credentials, signature version,
+        # addressing style, bucket, location prefix and ACL all match what
+        # `FileField.url` and the rest of the project expect.
+        self.storage = storage or default_storage
+        self.s3_client = self.storage.connection.meta.client
+        self.bucket = self.storage.bucket_name
         self.url_expiration = getattr(settings, "FILE_UPLOAD_PRESIGNED_URL_EXPIRATION", 3600)
 
     def supports_multipart(self) -> bool:
@@ -37,6 +39,11 @@ class S3MultipartUploadHandler(BaseUploadHandler):
         # Get the S3 key for this file
         key = self._get_s3_key(file_obj)
 
+        extra_args = {}
+        default_acl = getattr(self.storage, "default_acl", None)
+        if default_acl:
+            extra_args["ACL"] = default_acl
+
         # Initiate multipart upload
         response = self.s3_client.create_multipart_upload(
             Bucket=self.bucket,
@@ -46,6 +53,7 @@ class S3MultipartUploadHandler(BaseUploadHandler):
                 "original_filename": file_obj.file_name or "",
                 "created_by": str(file_obj.created_by_id) if file_obj.created_by_id else "",
             },
+            **extra_args,
         )
 
         upload_id = response["UploadId"]
@@ -100,10 +108,11 @@ class S3MultipartUploadHandler(BaseUploadHandler):
             MultipartUpload=multipart_upload,
         )
 
-        # Return the file key (not full URL, FileField will handle that)
-        return key
+        # Return the storage name (without the storage `location` prefix); FileField
+        # resolves it back to the S3 key and URL through the same storage.
+        return self._get_file_name(file_obj)
 
-    def abort_upload(self, file_obj, upload_id: str):
+    def abort_upload(self, file_obj, upload_id: str) -> None:
         """Abort S3 multipart upload and cleanup parts."""
         key = self._get_s3_key(file_obj)
 
@@ -124,7 +133,24 @@ class S3MultipartUploadHandler(BaseUploadHandler):
             return file_obj.file.url
         return None
 
+    def _get_file_name(self, file_obj) -> str:
+        """
+        Storage name for ``file_obj``, stable across initiate, complete and abort.
+
+        Initiate, complete and abort run in separate requests and the S3 key is not persisted,
+        so it must be derived deterministically. An HMAC of the file's pk and creation time
+        keeps it stable per file while staying unguessable for public-read buckets.
+        """
+        ext = (file_obj.file_name or "file").split(".")[-1]
+        digest = salted_hmac(
+            S3_KEY_SALT,
+            f"{file_obj.pk}:{file_obj.created.isoformat()}",
+            algorithm="sha256",
+        ).hexdigest()[:32]
+        return posixpath.join("files", f"{digest}.{ext}")
+
     def _get_s3_key(self, file_obj) -> str:
-        """Generate S3 key from file object."""
-        # Use the same upload_to logic from the FileField
-        return random_name_in("files")(file_obj, file_obj.file_name or "file")
+        """Full S3 object key, including the storage's `location` prefix."""
+        location = (getattr(self.storage, "location", "") or "").strip("/")
+        name = self._get_file_name(file_obj)
+        return posixpath.join(location, name) if location else name

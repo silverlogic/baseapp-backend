@@ -1,3 +1,4 @@
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -5,7 +6,11 @@ import swapper
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.files.storage import FileSystemStorage
+from django.utils.functional import LazyObject
+from storages.backends.s3boto3 import S3Boto3Storage
 
+from baseapp.files.storage import get_upload_handler
 from baseapp.files.storage.base import BaseUploadHandler
 from baseapp.files.storage.local import LocalUploadHandler
 from baseapp.files.storage.s3 import S3MultipartUploadHandler
@@ -46,41 +51,109 @@ class TestBaseUploadHandler:
 
 
 @pytest.mark.django_db
-@pytest.mark.skipif(
-    not hasattr(settings, "AWS_ACCESS_KEY_ID"),
-    reason="AWS settings not configured - skipping S3 tests",
-)
 class TestS3MultipartUploadHandler:
     """Tests for S3 multipart upload handler."""
 
     @pytest.fixture
-    def mock_s3_client(self):
+    def mock_s3_client(self) -> MagicMock:
         """Mock boto3 S3 client."""
-        with patch("baseapp.files.storage.s3.boto3.client") as mock_client:
-            s3 = MagicMock()
-            mock_client.return_value = s3
+        s3 = MagicMock()
 
-            # Mock create_multipart_upload
-            s3.create_multipart_upload.return_value = {"UploadId": "test-upload-id-123"}
+        # Mock create_multipart_upload
+        s3.create_multipart_upload.return_value = {"UploadId": "test-upload-id-123"}
 
-            # Mock generate_presigned_url
-            s3.generate_presigned_url.return_value = (
-                "https://bucket.s3.amazonaws.com/test?signature=abc"
-            )
+        # Mock generate_presigned_url
+        s3.generate_presigned_url.return_value = (
+            "https://bucket.s3.amazonaws.com/test?signature=abc"
+        )
 
-            # Mock complete_multipart_upload
-            s3.complete_multipart_upload.return_value = {
-                "Location": "https://bucket.s3.amazonaws.com/files/test.mp4"
-            }
+        # Mock complete_multipart_upload
+        s3.complete_multipart_upload.return_value = {
+            "Location": "https://bucket.s3.amazonaws.com/files/test.mp4"
+        }
 
-            yield s3
+        return s3
 
     @pytest.fixture
-    def s3_handler(self, mock_s3_client):
-        """Create S3 handler with mocked client."""
-        handler = S3MultipartUploadHandler()
-        handler.s3_client = mock_s3_client
-        yield handler
+    def mock_storage(self, mock_s3_client) -> MagicMock:
+        """Mock django-storages S3 backend carrying the boto3 client."""
+        storage = MagicMock()
+        storage.connection.meta.client = mock_s3_client
+        storage.bucket_name = "test-bucket"
+        storage.location = "media"
+        storage.default_acl = "public-read"
+        return storage
+
+    @pytest.fixture
+    def s3_handler(self, mock_storage) -> S3MultipartUploadHandler:
+        """Create S3 handler backed by the mocked storage."""
+        return S3MultipartUploadHandler(storage=mock_storage)
+
+    def test_s3_handler_uses_storage_client_and_bucket(self, mock_storage, mock_s3_client) -> None:
+        """The handler reuses the storage's client so endpoint/signing config apply."""
+        handler = S3MultipartUploadHandler(storage=mock_storage)
+
+        assert handler.s3_client is mock_s3_client
+        assert handler.bucket == "test-bucket"
+
+    def test_s3_handler_defaults_to_default_storage(self, mock_storage, mock_s3_client) -> None:
+        """Without an explicit storage the handler uses Django's default_storage."""
+        with patch("baseapp.files.storage.s3.default_storage", mock_storage):
+            handler = S3MultipartUploadHandler()
+
+        assert handler.s3_client is mock_s3_client
+
+    def test_s3_key_is_stable_across_upload_lifecycle(
+        self, s3_handler, file_obj, mock_s3_client
+    ) -> None:
+        """Initiate, complete and abort must all address the same S3 object."""
+        s3_handler.initiate_upload(file_obj, num_parts=2, part_size=5242880)
+        file_name = s3_handler.complete_upload(
+            file_obj, "test-upload-id", [{"part_number": 1, "etag": "abc"}]
+        )
+        s3_handler.abort_upload(file_obj, "test-upload-id")
+
+        initiate_key = mock_s3_client.create_multipart_upload.call_args.kwargs["Key"]
+        presigned_key = mock_s3_client.generate_presigned_url.call_args.kwargs["Params"]["Key"]
+        complete_key = mock_s3_client.complete_multipart_upload.call_args.kwargs["Key"]
+        abort_key = mock_s3_client.abort_multipart_upload.call_args.kwargs["Key"]
+
+        assert initiate_key == presigned_key == complete_key == abort_key
+        assert initiate_key == f"media/{file_name}"
+        assert file_name.startswith("files/")
+        assert file_name.endswith(".mp4")
+
+    def test_s3_key_differs_per_file(self, s3_handler, file_obj, user) -> None:
+        """Different files never share an S3 key."""
+        other = File.objects.create(file_name="test.mp4", created_by=user)
+
+        assert s3_handler._get_s3_key(file_obj) != s3_handler._get_s3_key(other)
+
+    def test_s3_key_without_storage_location(self, mock_storage, file_obj) -> None:
+        """With no storage location the key is the storage name itself."""
+        mock_storage.location = ""
+        handler = S3MultipartUploadHandler(storage=mock_storage)
+
+        assert handler._get_s3_key(file_obj) == handler._get_file_name(file_obj)
+
+    def test_s3_initiate_upload_applies_storage_acl(
+        self, s3_handler, file_obj, mock_s3_client
+    ) -> None:
+        """Uploaded objects get the storage's default ACL (e.g. public-read media)."""
+        s3_handler.initiate_upload(file_obj, num_parts=1, part_size=1024)
+
+        assert mock_s3_client.create_multipart_upload.call_args.kwargs["ACL"] == "public-read"
+
+    def test_s3_initiate_upload_without_storage_acl(
+        self, mock_storage, file_obj, mock_s3_client
+    ) -> None:
+        """No ACL is sent when the storage has none (bucket policy decides)."""
+        mock_storage.default_acl = None
+        S3MultipartUploadHandler(storage=mock_storage).initiate_upload(
+            file_obj, num_parts=1, part_size=1024
+        )
+
+        assert "ACL" not in mock_s3_client.create_multipart_upload.call_args.kwargs
 
     def test_s3_handler_supports_multipart(self, s3_handler):
         """Test that S3 handler supports multipart."""
@@ -247,34 +320,49 @@ class TestLocalUploadHandler:
 class TestStorageFactory:
     """Tests for storage handler factory."""
 
-    @pytest.mark.skipif(
-        not hasattr(settings, "AWS_ACCESS_KEY_ID"),
-        reason="AWS settings not configured - skipping S3 factory test",
-    )
-    def test_factory_returns_s3_handler_for_s3_storage(self):
+    def test_factory_returns_s3_handler_for_s3_storage(self) -> None:
         """Test that factory returns S3 handler when using S3 storage."""
-        with patch("baseapp.files.storage.default_storage") as mock_storage:
-            # Mock S3 storage
-            mock_storage.__class__.__name__ = "S3Boto3Storage"
-
+        with patch("baseapp.files.storage.default_storage", S3Boto3Storage(bucket_name="b")):
             with patch("baseapp.files.storage.s3.S3MultipartUploadHandler") as mock_s3:
-                from baseapp.files.storage import get_upload_handler
-
                 get_upload_handler()
 
-                # Should instantiate S3 handler
                 mock_s3.assert_called_once()
 
-    def test_factory_returns_local_handler_for_file_system_storage(self):
-        """Test that factory returns local handler for non-S3 storage."""
-        with patch("baseapp.files.storage.default_storage") as mock_storage:
-            # Mock file system storage
-            mock_storage.__class__.__name__ = "FileSystemStorage"
+    def test_factory_returns_s3_handler_for_s3_storage_subclass(self) -> None:
+        """Subclasses such as s3_folder_storage's DefaultStorage must select S3 too."""
 
-            with patch("baseapp.files.storage.local.LocalUploadHandler") as mock_local:
-                from baseapp.files.storage import get_upload_handler
+        class DefaultStorage(S3Boto3Storage):
+            pass
 
+        with patch("baseapp.files.storage.default_storage", DefaultStorage(bucket_name="b")):
+            with patch("baseapp.files.storage.s3.S3MultipartUploadHandler") as mock_s3:
                 get_upload_handler()
 
-                # Should instantiate local handler
+                mock_s3.assert_called_once()
+
+    def test_factory_returns_s3_handler_through_lazy_default_storage(self) -> None:
+        """The real LazyObject `default_storage` proxies isinstance to the wrapped backend."""
+        lazy = LazyObject()
+        lazy._wrapped = S3Boto3Storage(bucket_name="b")
+
+        with patch("baseapp.files.storage.default_storage", lazy):
+            with patch("baseapp.files.storage.s3.S3MultipartUploadHandler") as mock_s3:
+                get_upload_handler()
+
+                mock_s3.assert_called_once()
+
+    def test_factory_returns_local_handler_for_file_system_storage(self) -> None:
+        """Test that factory returns local handler for non-S3 storage."""
+        with patch("baseapp.files.storage.default_storage", FileSystemStorage()):
+            with patch("baseapp.files.storage.local.LocalUploadHandler") as mock_local:
+                get_upload_handler()
+
+                mock_local.assert_called_once()
+
+    def test_factory_returns_local_handler_without_django_storages(self) -> None:
+        """Projects without django-storages installed fall back to local uploads."""
+        with patch.dict(sys.modules, {"storages.backends.s3boto3": None}):
+            with patch("baseapp.files.storage.local.LocalUploadHandler") as mock_local:
+                get_upload_handler()
+
                 mock_local.assert_called_once()

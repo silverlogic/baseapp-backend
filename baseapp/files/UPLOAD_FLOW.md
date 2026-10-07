@@ -164,6 +164,26 @@ AWS_S3_REGION_NAME = "us-east-1"
 - Uses `S3MultipartUploadHandler`
 - Generates presigned URLs for direct S3 upload
 - No backend file handling
+- Reuses `default_storage`'s boto3 client, bucket, `location` and `default_acl`, so
+  `AWS_S3_ENDPOINT_URL` (e.g. DigitalOcean Spaces), signature version and addressing
+  style apply to uploads exactly as they do to `FileField` URLs
+
+#### Bucket CORS (required)
+Browsers `PUT` parts straight to the bucket and read each part's `ETag` response
+header, so the bucket needs a CORS rule along these lines (scope `AllowedOrigins`
+to the web app's origin):
+
+```json
+{
+  "AllowedOrigins": ["https://app.example.com"],
+  "AllowedMethods": ["GET", "PUT"],
+  "AllowedHeaders": ["*"],
+  "ExposeHeaders": ["ETag"],
+  "MaxAgeSeconds": 3000
+}
+```
+
+Without it uploads fail in the browser with a CORS error and nothing reaches the bucket.
 
 ## Error Handling
 

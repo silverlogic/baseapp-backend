@@ -1,21 +1,32 @@
 from django.core.files.storage import default_storage
 
+from .base import BaseUploadHandler
 
-def get_upload_handler():
+
+def _is_s3_storage(storage) -> bool:
+    """
+    Whether ``storage`` is a django-storages S3 backend, including subclasses such as
+    ``s3_folder_storage.s3.DefaultStorage``.
+
+    ``default_storage`` is a LazyObject, which proxies ``__class__`` to the wrapped backend,
+    so ``isinstance`` sees the real storage class.
+    """
+    try:
+        from storages.backends.s3boto3 import S3Boto3Storage
+    except ImportError:
+        return False
+    return isinstance(storage, S3Boto3Storage)
+
+
+def get_upload_handler() -> BaseUploadHandler:
     """
     Factory to get appropriate upload handler based on storage backend.
     """
-    # `default_storage` is a LazyObject: type() returns the wrapper class, so
-    # use `__class__`, which LazyObject proxies to the wrapped backend, to
-    # detect the real storage backend.
-    storage_class_name = default_storage.__class__.__name__
-
-    # Check if using S3 storage
-    if "S3Boto3Storage" in storage_class_name:
+    if _is_s3_storage(default_storage):
         from .s3 import S3MultipartUploadHandler
 
         return S3MultipartUploadHandler()
-    else:
-        from .local import LocalUploadHandler
 
-        return LocalUploadHandler()
+    from .local import LocalUploadHandler
+
+    return LocalUploadHandler()
