@@ -11,8 +11,11 @@ FileTarget = swapper.load_model("baseapp_files", "FileTarget")
 class FileAdmin(ModelAdmin):
     list_display = ("pk", "name", "file_content_type", "parent", "created_by", "created")
     list_filter = ("created", "upload_status", "file_content_type")
+    list_select_related = ("parent__content_type", "created_by")
     search_fields = ("name", "description")
-    raw_id_fields = ("created_by", "profile")
+    # Autocomplete instead of <select>: `parent` points at the global DocumentId registry,
+    # and rendering every row as an option made the change form unusable.
+    autocomplete_fields = ("parent", "created_by")
 
 
 @admin.register(FileTarget)
@@ -24,4 +27,6 @@ class FileTargetAdmin(ModelAdmin):
         "files_count",
     )
     list_filter = ("is_files_enabled",)
+    list_select_related = ("target__content_type",)
     search_fields = ("target_id",)
+    autocomplete_fields = ("target",)

@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING
 
 import pgtrigger
 import swapper
-from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
@@ -255,27 +254,7 @@ class AbstractFileTarget(DocumentIdUniqueTargetMixin):
         )
 
 
-file_inheritances = []
-
-if apps.is_installed("baseapp_profiles"):
-
-    class ProfileMixin(models.Model):
-        profile = models.ForeignKey(
-            swapper.get_model_name("baseapp_profiles", "Profile"),
-            verbose_name=_("profile"),
-            related_name="files",
-            on_delete=models.SET_NULL,
-            null=True,
-            blank=True,
-        )
-
-        class Meta:
-            abstract = True
-
-    file_inheritances.append(ProfileMixin)
-
-
-class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedModel):
+class AbstractFile(DocumentIdMixin, RelayModel, TimeStampedModel):
     parent = models.ForeignKey(
         DocumentId,
         null=True,
