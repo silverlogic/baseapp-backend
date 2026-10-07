@@ -141,6 +141,7 @@ AUTHENTICATION_BACKENDS = [
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_chats"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_organizations"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_files"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_payments"),
 ]
 
 ADMIN_TIME_ZONE = "UTC"
@@ -172,7 +173,10 @@ CONSTANCE_CONFIG = OrderedDict(
         ),
         (
             "STRIPE_CUSTOMER_ENTITY_MODEL",
-            ("profiles.Profile", "The model to use for the Stripe customer entity."),
+            (
+                "profiles.Profile",
+                "The model used to link the Stripe customer entity. It must have an target field that point to an entity with an email field, or have an email field itself.",
+            ),
         ),
         (
             "ENABLE_PUBLIC_ID_LOGIC",
