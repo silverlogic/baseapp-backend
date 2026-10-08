@@ -64,8 +64,10 @@ def _value(data: bytes) -> str | float | int | bool | None:
             return struct.unpack("<f", raw)[0]
         if field == 3:
             return struct.unpack("<d", raw)[0]
-        if field in (4, 5):
+        if field == 4:  # int64: two's complement in the varint
             return raw if raw < 2**63 else raw - 2**64
+        if field == 5:  # uint64
+            return raw
         if field == 6:
             return _zigzag(raw)
         if field == 7:

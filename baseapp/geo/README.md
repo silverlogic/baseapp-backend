@@ -92,8 +92,8 @@ GET /v1/geo/tiles/{z}/{x}/{y}.mvt
 ```
 
 - **From zoom 13 up**, the tile's `features` layer holds every feature in it,
-  points as points and polygons as polygons, with `id` and `feature_type`
-  attributes.
+  points as points and polygons as polygons, with `id` (the feature's public ID,
+  the one the GraphQL API uses) and `feature_type` attributes.
 - **Below zoom 13**, the `clusters` layer aggregates features into a 16×16 grid
   per tile: one point per non-empty cell, at the centroid of its features, with
   a `point_count`. Each feature counts in exactly one tile, so totals add up.
@@ -104,6 +104,11 @@ GET /v1/geo/tiles/{z}/{x}/{y}.mvt
   default backend).
 - **Responses**: empty tiles return `204`. Tiles carry
   `Cache-Control: public, max-age=300`, so a CDN can absorb map pans.
+- **Cost of zooms 0–3**: those 85 tiles skip the spatial index (on tiles that
+  large, a geography envelope's great-circle edges diverge from the map's), so
+  each one scans every feature the filters allow. Fine for tens of thousands of
+  features; on much larger tables, cache those tiles in front of the API or set
+  the map's `minzoom` to 4.
 
 With MapLibre GL:
 

@@ -10,6 +10,7 @@ from rest_framework.test import APIRequestFactory
 
 from baseapp.geo.rest_framework.views import MVT_CONTENT_TYPE, GeoJSONFeatureTileView
 from baseapp.geo.tiles import MAX_ZOOM, WEB_MERCATOR_MAX_LATITUDE, Tile
+from baseapp_core.models import DocumentId
 
 from .factories import POINT_NYC, GeoJSONFeatureFactory
 from .mvt import decode
@@ -47,6 +48,10 @@ def inside(tile: Tile, x_share: float, y_share: float) -> Point:
     """A point at the given share of the tile's width (west to east) and height (south to north)."""
     west, south, east, north = tile.lonlat_bounds()
     return Point(west + (east - west) * x_share, south + (north - south) * y_share, srid=4326)
+
+
+def public_id(feature: GeoJSONFeature) -> str:
+    return str(DocumentId.get_public_id_from_object(feature))
 
 
 def get_tile(client, tile: Tile, query: str = "") -> dict:
@@ -89,11 +94,25 @@ class TestFeaturesTile:
 
         assert set(layers) == {"features"}
         features = {f["properties"]["id"]: f for f in layers["features"]["features"]}
-        assert set(features) == {point.pk, polygon.pk}
-        assert features[point.pk]["type"] == "Point"
-        assert features[point.pk]["properties"]["feature_type"] == "tree"
-        assert features[polygon.pk]["type"] == "Polygon"
-        assert features[polygon.pk]["properties"]["feature_type"] == "grove"
+        assert set(features) == {public_id(point), public_id(polygon)}
+        assert features[public_id(point)]["type"] == "Point"
+        assert features[public_id(point)]["properties"]["feature_type"] == "tree"
+        assert features[public_id(polygon)]["type"] == "Polygon"
+        assert features[public_id(polygon)]["properties"]["feature_type"] == "grove"
+
+    def test_ids_are_public_ids_one_per_feature(self, client) -> None:
+        # The id is the GraphQL one (not the sequential pk), and joining each feature's
+        # DocumentId doesn't duplicate rows.
+        created = [
+            GeoJSONFeatureFactory(geometry=offset(POINT_NYC, meters_east=meters))
+            for meters in (0, 10, 20)
+        ]
+
+        layers = get_tile(client, tile_for(POINT_NYC, FEATURES_ZOOM))
+
+        ids = [f["properties"]["id"] for f in layers["features"]["features"]]
+        assert sorted(ids) == sorted(public_id(feature) for feature in created)
+        assert all(str(feature.pk) != public_id(feature) for feature in created)
 
     def test_features_outside_the_tile_are_left_out(self, client) -> None:
         GeoJSONFeatureFactory(geometry=POINT_NYC)
@@ -101,7 +120,7 @@ class TestFeaturesTile:
 
         layers = get_tile(client, tile_for(POINT_NYC, FEATURES_ZOOM))
 
-        assert far.pk not in [f["properties"]["id"] for f in layers["features"]["features"]]
+        assert public_id(far) not in [f["properties"]["id"] for f in layers["features"]["features"]]
 
     def test_feature_properties_hook(self) -> None:
         class TileView(GeoJSONFeatureTileView):
@@ -190,7 +209,7 @@ class TestTileEndpoint:
 
         layers = get_tile(client, tile_for(POINT_NYC, FEATURES_ZOOM), "?feature_type=tree")
 
-        assert [f["properties"]["id"] for f in layers["features"]["features"]] == [tree.pk]
+        assert [f["properties"]["id"] for f in layers["features"]["features"]] == [public_id(tree)]
 
     def test_invalid_filter_is_a_bad_request_not_a_server_error(self, client) -> None:
         # The FilterSet raises django's ValidationError while the queryset is evaluated.

@@ -1,8 +1,7 @@
-import logging
-
 import swapper
 from django.core.exceptions import ValidationError
-from django.db.models import Expression, F, QuerySet
+from django.db.models import CharField, Expression, F, QuerySet
+from django.db.models.functions import Cast
 from django.http import Http404, HttpResponse
 from django.utils.translation import gettext_lazy as _
 from rest_framework import status
@@ -15,16 +14,14 @@ from baseapp.geo.tiles import Tile, build_clusters_tile, build_features_tile
 
 from .permissions import CanViewGeoJSONFeatures
 
-logger = logging.getLogger(__name__)
-
 MVT_CONTENT_TYPE = "application/vnd.mapbox-vector-tile"
 
 
 class GeoJSONFeatureTileView(APIView):
     """Mapbox Vector Tile of GeoJSON features: `GET .../geo/tiles/{z}/{x}/{y}.mvt`.
 
-    From `cluster_max_zoom` up, the tile's `features` layer holds every feature (with `id`,
-    `feature_type` and `get_feature_properties()` as attributes). Below it, the `clusters`
+    From `cluster_max_zoom` up, the tile's `features` layer holds every feature, with the
+    attributes of `get_feature_properties()` (by default its public `id` and `feature_type`). Below it, the `clusters`
     layer aggregates them into grid cells with a `point_count`. Query parameters are the same
     filters as the `geoFeatures` GraphQL connection (e.g. `feature_type`, `target_object_id`).
 
@@ -53,8 +50,16 @@ class GeoJSONFeatureTileView(APIView):
         return filterset.qs
 
     def get_feature_properties(self) -> dict[str, Expression]:
-        """MVT attributes of each feature: name → ORM expression (string, number or boolean)."""
-        return {"id": F("pk"), "feature_type": F("feature_type")}
+        """MVT attributes of each feature: name → ORM expression (string, number or boolean).
+
+        `id` is the feature's public ID (its DocumentId's UUID, as text): the same ID the
+        GraphQL API uses, and it doesn't reveal how many features exist. `document` joins at
+        most one DocumentId per feature (unique per content type and object).
+        """
+        return {
+            "id": Cast("document__public_id", output_field=CharField()),
+            "feature_type": F("feature_type"),
+        }
 
     def get(self, request: Request, z: int, x: int, y: int) -> HttpResponse:
         tile = Tile(z, x, y)
