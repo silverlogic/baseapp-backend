@@ -181,7 +181,9 @@ class TestS3MultipartUploadHandler:
         assert kwargs["ContentType"] == "video/mp4"
         assert kwargs["Metadata"]["source"] == "storage"
         assert kwargs["Metadata"]["original_filename"] == "test.mp4"
-        mock_storage.get_object_parameters.assert_called_once_with(handler._get_file_name(file_obj))
+        mock_storage.get_object_parameters.assert_called_once_with(
+            f"media/{handler._get_file_name(file_obj)}"
+        )
 
     @pytest.mark.parametrize(
         "file_name, expected_ext",

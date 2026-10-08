@@ -7,6 +7,7 @@ from django.contrib.admin.widgets import AutocompleteSelect
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldDoesNotExist
+from django.db.models import Model
 from django.test import Client, RequestFactory
 from django.urls import reverse
 
@@ -25,13 +26,13 @@ def superuser() -> User:
 
 
 @pytest.fixture
-def superuser_client(superuser) -> Client:
+def superuser_client(superuser: User) -> Client:
     client = Client()
     client.force_login(superuser)
     return client
 
 
-def document_for(obj) -> DocumentId:
+def document_for(obj: Model) -> DocumentId:
     return DocumentId.objects.get(
         content_type=ContentType.objects.get_for_model(obj), object_id=obj.pk
     )
@@ -43,7 +44,7 @@ def owner() -> User:
 
 
 @pytest.fixture
-def file_obj(owner) -> File:
+def file_obj(owner: User) -> File:
     parent_file = File.objects.create(file_name="parent.pdf", created_by=owner)
     return File.objects.create(
         file_name="a.png", name="a.png", created_by=owner, parent=document_for(parent_file)
@@ -57,7 +58,9 @@ def file_obj(owner) -> File:
         (FileTarget, ("target",)),
     ],
 )
-def test_relation_fields_use_autocomplete_widgets(superuser, model, fields) -> None:
+def test_relation_fields_use_autocomplete_widgets(
+    superuser: User, model: type[Model], fields: tuple[str, ...]
+) -> None:
     """Every FK/O2O on the files admins renders as an autocomplete, not a full <select>."""
     request = RequestFactory().get("/")
     request.user = superuser
@@ -70,7 +73,7 @@ def test_relation_fields_use_autocomplete_widgets(superuser, model, fields) -> N
 
 
 def test_file_change_view_does_not_enumerate_document_ids(
-    superuser_client, owner, file_obj
+    superuser_client: Client, owner: User, file_obj: File
 ) -> None:
     """The change form must not render every DocumentId row as an <option>."""
     others = [File.objects.create(file_name=f"other{i}.txt", created_by=owner) for i in range(5)]
@@ -86,7 +89,7 @@ def test_file_change_view_does_not_enumerate_document_ids(
         assert str(public_id) not in content
 
 
-def test_file_parent_autocomplete_endpoint(superuser_client, file_obj) -> None:
+def test_file_parent_autocomplete_endpoint(superuser_client: Client, file_obj: File) -> None:
     """DocumentIdAdmin.search_fields back the `parent` autocomplete lookups."""
     response = superuser_client.get(
         reverse("admin:autocomplete"),
@@ -103,7 +106,7 @@ def test_file_parent_autocomplete_endpoint(superuser_client, file_obj) -> None:
     assert [r["id"] for r in results] == [str(file_obj.parent_id)]
 
 
-def test_file_target_change_view_renders(superuser_client, file_obj) -> None:
+def test_file_target_change_view_renders(superuser_client: Client, file_obj: File) -> None:
     target, _ = FileTarget.objects.get_or_create(target=file_obj.parent)
 
     response = superuser_client.get(reverse("admin:files_filetarget_change", args=[target.pk]))
@@ -112,7 +115,7 @@ def test_file_target_change_view_renders(superuser_client, file_obj) -> None:
     assert "admin-autocomplete" in response.content.decode()
 
 
-def test_file_changelist_renders(superuser_client, file_obj) -> None:
+def test_file_changelist_renders(superuser_client: Client, file_obj: File) -> None:
     response = superuser_client.get(reverse("admin:files_file_changelist"))
 
     assert response.status_code == 200

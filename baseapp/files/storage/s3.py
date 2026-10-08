@@ -132,16 +132,17 @@ class S3MultipartUploadHandler(BaseUploadHandler):
         """
         Object parameters for ``create_multipart_upload``, matching django-storages' own writes.
 
-        Mirrors ``S3Boto3Storage._get_write_parameters``: the content type first, then the
-        storage's ``get_object_parameters()`` (``AWS_S3_OBJECT_PARAMETERS``: ACL, CacheControl,
-        server-side encryption, ...), and ``default_acl`` only when those set no ACL.
+        Mirrors ``S3Boto3Storage._save``/``_get_write_parameters``: the content type first, then
+        the storage's ``get_object_parameters()`` (``AWS_S3_OBJECT_PARAMETERS``: ACL,
+        CacheControl, server-side encryption, ...), and ``default_acl`` only when those set no
+        ACL. Like ``_save``, ``get_object_parameters`` receives the full, location-prefixed key.
         """
         params: Dict[str, Any] = {
             "ContentType": file_obj.file_content_type or "application/octet-stream"
         }
         get_object_parameters = getattr(self.storage, "get_object_parameters", None)
         if get_object_parameters:
-            params.update(get_object_parameters(self._get_file_name(file_obj)))
+            params.update(get_object_parameters(self._get_s3_key(file_obj)))
 
         default_acl = getattr(self.storage, "default_acl", None)
         if "ACL" not in params and default_acl:
