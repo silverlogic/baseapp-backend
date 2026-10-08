@@ -375,6 +375,7 @@ dev = [
     { name = "channels-redis" },
     { name = "django-notifications-community" },
     { name = "django-push-notifications", extra = ["apns-async", "fcm", "wp"] },
+    { name = "django-storages" },
     { name = "djangorestframework" },
     { name = "djangorestframework-simplejwt", extra = ["crypto"] },
     { name = "drf-nested-routers" },
@@ -494,6 +495,7 @@ dev = [
     { name = "channels-redis", specifier = "==4.3.0" },
     { name = "django-notifications-community" },
     { name = "django-push-notifications", extras = ["apns-async", "fcm", "wp"], specifier = "==3.3.0" },
+    { name = "django-storages", specifier = "==1.13.2" },
     { name = "djangorestframework", specifier = "==3.17.2" },
     { name = "djangorestframework-simplejwt", extras = ["crypto"], specifier = "==5.5.1" },
     { name = "drf-nested-routers", specifier = "==0.93.5" },
@@ -1504,6 +1506,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/5f/1d/810c15a408987262bf70fc1892d4d5c3b2c1ae62e8715b73592c8f46ed37/django_settings_holder-0.3.0.tar.gz", hash = "sha256:d41eb6d6023d61c08e395f2406fd6f047d1edff2f0346d04323f3681f12372ef", size = 8580, upload-time = "2025-04-27T13:15:42.069Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f5/e3/0759620f917f7f7585375c1edb2875ed6c95597cf6645c3f5a21e0d44046/django_settings_holder-0.3.0-py3-none-any.whl", hash = "sha256:97c69c47129fcd8be5fc351f80cf31c8f3f7ecaec418bc2c20200382a0be52c0", size = 8085, upload-time = "2025-04-27T13:15:40.817Z" },
+]
+
+[[package]]
+name = "django-storages"
+version = "1.13.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/cb/8a/3872af7e3d61a8eb7616872549cd74f7f1090de41792a059adb7ce6854dc/django-storages-1.13.2.tar.gz", hash = "sha256:cbadd15c909ceb7247d4ffc503f12a9bec36999df8d0bef7c31e57177d512688", size = 107522, upload-time = "2022-12-23T04:54:47.871Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/06/ed/6eef8d009138d4c58c63026bf24e946a7e09caac77aca33ab46a5e5bc51f/django_storages-1.13.2-py3-none-any.whl", hash = "sha256:31dc5a992520be571908c4c40d55d292660ece3a55b8141462b4e719aa38eab3", size = 46715, upload-time = "2022-12-23T04:54:45.041Z" },
 ]
 
 [[package]]
