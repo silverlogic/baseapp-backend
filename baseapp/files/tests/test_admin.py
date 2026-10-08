@@ -11,6 +11,7 @@ from django.test import Client, RequestFactory
 from django.urls import reverse
 
 from baseapp_core.models import DocumentId
+from baseapp_core.plugins import apply_if_installed
 
 File = swapper.load_model("baseapp_files", "File")
 FileTarget = swapper.load_model("baseapp_files", "FileTarget")
@@ -53,7 +54,7 @@ def file_obj(owner: User) -> File:
 @pytest.mark.parametrize(
     "model, fields",
     [
-        (File, ("parent", "created_by", "profile")),
+        (File, ("parent", "created_by", *apply_if_installed("baseapp_profiles", ["profile"]))),
         (FileTarget, ("target",)),
     ],
 )

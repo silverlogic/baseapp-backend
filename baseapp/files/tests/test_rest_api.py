@@ -10,6 +10,7 @@ from rest_framework import status
 
 from baseapp_comments.tests.factories import CommentFactory
 from baseapp_core.models import DocumentId
+from baseapp_core.tests.fixtures import Client
 
 File = swapper.load_model("baseapp_files", "File")
 User = get_user_model()
@@ -77,7 +78,9 @@ class TestFileUploadInitiation:
         # Verify S3 handler was called
         mock_s3_handler.initiate_upload.assert_called_once()
 
-    def test_initiate_upload_records_current_profile(self, user_client, mock_s3_handler):
+    def test_initiate_upload_records_current_profile(
+        self, user_client: Client, mock_s3_handler: MagicMock
+    ):
         """The profile selected with the Current-Profile header is recorded as the creator."""
         from baseapp_profiles.tests.factories import ProfileFactory
 
