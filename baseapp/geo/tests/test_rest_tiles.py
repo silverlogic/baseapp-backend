@@ -202,6 +202,29 @@ class TestTileEndpoint:
         response = client.get(tile_url(tile_for(POINT_NYC, FEATURES_ZOOM)))
 
         assert response["Cache-Control"] == "public, max-age=300"
+        # Other Vary values are appended by DRF/middleware; only ours has to be present.
+        assert "Authorization" in response["Vary"]
+
+    def test_cache_is_private_when_features_are_not_public(
+        self, django_user_client, monkeypatch
+    ) -> None:
+        """Under a backend that hides features from anonymous users, a shared cache must
+        not be allowed to serve one user's tile to the next requester."""
+        from baseapp.geo import permissions
+
+        monkeypatch.setattr(
+            permissions.GeoPermissionsBackend,
+            "has_perm",
+            lambda self, user_obj, perm, obj=None: bool(
+                getattr(user_obj, "is_authenticated", False)
+            ),
+        )
+        GeoJSONFeatureFactory(geometry=POINT_NYC)
+
+        response = django_user_client.get(tile_url(tile_for(POINT_NYC, FEATURES_ZOOM)))
+
+        assert response.status_code == 200, response.content
+        assert response["Cache-Control"] == "private, max-age=300"
 
     def test_filters_are_the_graphql_ones(self, client) -> None:
         tree = GeoJSONFeatureFactory(geometry=POINT_NYC, feature_type="tree")

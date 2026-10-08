@@ -1,4 +1,5 @@
 import swapper
+from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError
 from django.db.models import CharField, Expression, F, QuerySet
 from django.db.models.functions import Cast
@@ -61,6 +62,18 @@ class GeoJSONFeatureTileView(APIView):
             "feature_type": F("feature_type"),
         }
 
+    def get_cache_control(self) -> str:
+        """`public` only when anonymous users may view features.
+
+        The permission is overridable, and under a backend that hides features from
+        anonymous users a shared cache would otherwise hand one user's tile to the next
+        requester of the same z/x/y.
+        """
+        GeoJSONFeature = swapper.load_model("baseapp_geo", "GeoJSONFeature")
+        perm = f"{GeoJSONFeature._meta.app_label}.view_geojsonfeature"
+        visibility = "public" if AnonymousUser().has_perm(perm) else "private"
+        return f"{visibility}, max-age={self.cache_max_age}"
+
     def get(self, request: Request, z: int, x: int, y: int) -> HttpResponse:
         tile = Tile(z, x, y)
         if not tile.is_valid:
@@ -92,5 +105,7 @@ class GeoJSONFeatureTileView(APIView):
             content_type=MVT_CONTENT_TYPE,
             status=status.HTTP_200_OK if content else status.HTTP_204_NO_CONTENT,
         )
-        response["Cache-Control"] = f"public, max-age={self.cache_max_age}"
+        response["Cache-Control"] = self.get_cache_control()
+        # Token auth never touches the session, so nothing else would mark these apart.
+        response["Vary"] = "Authorization"
         return response
