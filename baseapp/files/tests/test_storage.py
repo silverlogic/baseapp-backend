@@ -8,12 +8,20 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.storage import FileSystemStorage
 from django.utils.functional import LazyObject
-from storages.backends.s3boto3 import S3Boto3Storage
 
 from baseapp.files.storage import get_upload_handler
 from baseapp.files.storage.base import BaseUploadHandler
 from baseapp.files.storage.local import LocalUploadHandler
 from baseapp.files.storage.s3 import S3MultipartUploadHandler
+
+try:
+    from storages.backends.s3boto3 import S3Boto3Storage
+except ImportError:  # django-storages is optional; consuming projects may not install it
+    S3Boto3Storage = None
+
+requires_django_storages = pytest.mark.skipif(
+    S3Boto3Storage is None, reason="django-storages is not installed"
+)
 
 File = swapper.load_model("baseapp_files", "File")
 User = get_user_model()
@@ -380,6 +388,7 @@ class TestLocalUploadHandler:
 class TestStorageFactory:
     """Tests for storage handler factory."""
 
+    @requires_django_storages
     def test_factory_returns_s3_handler_for_s3_storage(self) -> None:
         """Test that factory returns S3 handler when using S3 storage."""
         with patch("baseapp.files.storage.default_storage", S3Boto3Storage(bucket_name="b")):
@@ -388,6 +397,7 @@ class TestStorageFactory:
 
                 mock_s3.assert_called_once()
 
+    @requires_django_storages
     def test_factory_returns_s3_handler_for_s3_storage_subclass(self) -> None:
         """Subclasses such as s3_folder_storage's DefaultStorage must select S3 too."""
 
@@ -400,6 +410,7 @@ class TestStorageFactory:
 
                 mock_s3.assert_called_once()
 
+    @requires_django_storages
     def test_factory_returns_s3_handler_through_lazy_default_storage(self) -> None:
         """The real LazyObject `default_storage` proxies isinstance to the wrapped backend."""
         lazy = LazyObject()
