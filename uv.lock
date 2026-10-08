@@ -375,6 +375,7 @@ dev = [
     { name = "channels-redis" },
     { name = "django-notifications-community" },
     { name = "django-push-notifications", extra = ["apns-async", "fcm", "wp"] },
+    { name = "django-storages" },
     { name = "djangorestframework" },
     { name = "djangorestframework-simplejwt", extra = ["crypto"] },
     { name = "drf-nested-routers" },
@@ -478,7 +479,7 @@ requires-dist = [
     { name = "social-auth-app-django", marker = "extra == 'socialauth'", specifier = "==5.6.0" },
     { name = "social-auth-core", marker = "extra == 'socialauth'", specifier = ">=4.5.4" },
     { name = "stevedore", specifier = ">=5.7.0" },
-    { name = "stripe", marker = "extra == 'payments'", specifier = ">=11.5.0" },
+    { name = "stripe", marker = "extra == 'payments'", specifier = ">=11.5.0,<15" },
     { name = "swapper", specifier = ">=1.3" },
     { name = "wagtail", marker = "extra == 'wagtail'", specifier = ">=7.0" },
     { name = "wagtail-headless-preview", marker = "extra == 'wagtail'", specifier = "==0.8" },
@@ -494,6 +495,7 @@ dev = [
     { name = "channels-redis", specifier = "==4.3.0" },
     { name = "django-notifications-community" },
     { name = "django-push-notifications", extras = ["apns-async", "fcm", "wp"], specifier = "==3.3.0" },
+    { name = "django-storages", specifier = "==1.13.2" },
     { name = "djangorestframework", specifier = "==3.17.2" },
     { name = "djangorestframework-simplejwt", extras = ["crypto"], specifier = "==5.5.1" },
     { name = "drf-nested-routers", specifier = "==0.93.5" },
@@ -511,7 +513,7 @@ dev = [
     { name = "rest-social-auth", specifier = "==9.0.0" },
     { name = "testproject", editable = "testproject" },
     { name = "twisted", specifier = "==26.4.0" },
-    { name = "urllib3", specifier = "==2.7.0" },
+    { name = "urllib3", specifier = "==2.8.0" },
 ]
 testproject = [
     { name = "baseapp-backend", extras = ["auth", "graphql", "messagetemplates", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "urlshortening", "wagtail"], editable = "." },
@@ -537,7 +539,7 @@ testproject = [
     { name = "rest-social-auth", specifier = "==9.0.0" },
     { name = "testproject", editable = "testproject" },
     { name = "twisted", specifier = "==26.4.0" },
-    { name = "urllib3", specifier = "==2.7.0" },
+    { name = "urllib3", specifier = "==2.8.0" },
 ]
 
 [[package]]
@@ -1504,6 +1506,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/5f/1d/810c15a408987262bf70fc1892d4d5c3b2c1ae62e8715b73592c8f46ed37/django_settings_holder-0.3.0.tar.gz", hash = "sha256:d41eb6d6023d61c08e395f2406fd6f047d1edff2f0346d04323f3681f12372ef", size = 8580, upload-time = "2025-04-27T13:15:42.069Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f5/e3/0759620f917f7f7585375c1edb2875ed6c95597cf6645c3f5a21e0d44046/django_settings_holder-0.3.0-py3-none-any.whl", hash = "sha256:97c69c47129fcd8be5fc351f80cf31c8f3f7ecaec418bc2c20200382a0be52c0", size = 8085, upload-time = "2025-04-27T13:15:40.817Z" },
+]
+
+[[package]]
+name = "django-storages"
+version = "1.13.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/cb/8a/3872af7e3d61a8eb7616872549cd74f7f1090de41792a059adb7ce6854dc/django-storages-1.13.2.tar.gz", hash = "sha256:cbadd15c909ceb7247d4ffc503f12a9bec36999df8d0bef7c31e57177d512688", size = 107522, upload-time = "2022-12-23T04:54:47.871Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/06/ed/6eef8d009138d4c58c63026bf24e946a7e09caac77aca33ab46a5e5bc51f/django_storages-1.13.2-py3-none-any.whl", hash = "sha256:31dc5a992520be571908c4c40d55d292660ece3a55b8141462b4e719aa38eab3", size = 46715, upload-time = "2022-12-23T04:54:45.041Z" },
 ]
 
 [[package]]
@@ -3921,15 +3935,15 @@ wheels = [
 
 [[package]]
 name = "stripe"
-version = "15.5.1"
+version = "14.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/22/57/56f7b33b31bba203b6e9cb502a24659206c1dbf64cf8aa00c3268410e831/stripe-15.5.1.tar.gz", hash = "sha256:ee87b696419f4d65a0637c3158393de8a2201de81b589632418517713e4ec8ed", size = 1544797, upload-time = "2026-08-18T23:52:28.921Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/63/01/59d92650146c6340e333c22b8a238561b022e8641ba255298dfe46b4137d/stripe-14.4.1.tar.gz", hash = "sha256:e3eecfb336819326cd2ab9a93f98eb01b49c4d4d93c9d167a52a68ab99c19a88", size = 1473321, upload-time = "2026-03-06T22:59:45.822Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/58/48/8f018d19c6ecaee6881e8cc83484ba6f3b0f42fbf250808a5a1d171a0e77/stripe-15.5.1-py3-none-any.whl", hash = "sha256:5d76a311ae2ba636f3b42fa0766242cc7c9a844c5db73fe0b1702f81b5cdccd5", size = 2201139, upload-time = "2026-08-18T23:52:26.62Z" },
+    { url = "https://files.pythonhosted.org/packages/35/0f/547eab75052384a72771b396a484556e5636629c031e5eafa8dc27af89ed/stripe-14.4.1-py3-none-any.whl", hash = "sha256:d6722b985dc3b4d6da01ff4fa95a975d3694a89bba96895bf17aa858073ff2b8", size = 2116642, upload-time = "2026-03-06T22:59:43.72Z" },
 ]
 
 [[package]]
@@ -4153,11 +4167,11 @@ wheels = [
 
 [[package]]
 name = "urllib3"
-version = "2.7.0"
+version = "2.8.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/53/0c/06f8b233b8fd13b9e5ee11424ef85419ba0d8ba0b3138bf360be2ff56953/urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c", size = 433602, upload-time = "2026-05-07T16:13:18.596Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e3/05/b17359e1cefb4f909b5e40b1b90a496d987258916dbbf88e842c729f510e/urllib3-2.8.0.tar.gz", hash = "sha256:63bf2ead4c879426ebf22ef2a781eeb4aa3b4ae798a0435506f8687fd5bb9b63", size = 458972, upload-time = "2026-09-15T19:29:36.253Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7f/3e/5db95bcf282c52709639744ca2a8b149baccf648e39c8cc87553df9eae0c/urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897", size = 131087, upload-time = "2026-05-07T16:13:17.151Z" },
+    { url = "https://files.pythonhosted.org/packages/92/9d/c4e665119135114480843e7ab388fa94d8480650450e6f8e26b70d323a4c/urllib3-2.8.0-py3-none-any.whl", hash = "sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3", size = 135717, upload-time = "2026-09-15T19:29:34.577Z" },
 ]
 
 [[package]]

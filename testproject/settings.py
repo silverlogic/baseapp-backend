@@ -44,6 +44,7 @@ INSTALLED_APPS += [
     "baseapp_social_auth",
     "baseapp_social_auth.cache",
     "baseapp.content_feed",
+    "baseapp.files",
     "baseapp_pdf",
     "baseapp_api_key",
     *WAGTAIL_INSTALLED_APPS,
@@ -55,6 +56,7 @@ INSTALLED_APPS += [
     "testproject.profiles",
     "testproject.reactions",
     "testproject.content_feed",
+    "testproject.files",
     "testproject.follows",
     "testproject.blocks",
     "testproject.base",
@@ -142,6 +144,8 @@ AUTHENTICATION_BACKENDS = [
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_blocks"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_chats"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_organizations"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_files"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_payments"),
 ]
 
 ADMIN_TIME_ZONE = "UTC"
@@ -173,7 +177,10 @@ CONSTANCE_CONFIG = OrderedDict(
         ),
         (
             "STRIPE_CUSTOMER_ENTITY_MODEL",
-            ("profiles.Profile", "The model to use for the Stripe customer entity."),
+            (
+                "profiles.Profile",
+                "The model used to link the Stripe customer entity. It must have an target field that point to an entity with an email field, or have an email field itself.",
+            ),
         ),
         (
             "ENABLE_PUBLIC_ID_LOGIC",
@@ -244,6 +251,10 @@ BASEAPP_CHATS_CHATROOMPARTICIPANT_MODEL = "social_chats.ChatRoomParticipant"
 BASEAPP_CHATS_UNREADMESSAGECOUNT_MODEL = "social_chats.UnreadMessageCount"
 BASEAPP_CHATS_MESSAGE_MODEL = "social_chats.Message"
 BASEAPP_CHATS_MESSAGESTATUS_MODEL = "social_chats.MessageStatus"
+
+# Files
+BASEAPP_FILES_FILE_MODEL = "files.File"
+BASEAPP_FILES_FILETARGET_MODEL = "files.FileTarget"
 
 # Notifications
 NOTIFICATIONS_NOTIFICATION_MODEL = "notifications.Notification"
