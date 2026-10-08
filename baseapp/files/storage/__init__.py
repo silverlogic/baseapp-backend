@@ -1,9 +1,9 @@
-from django.core.files.storage import default_storage
+from django.core.files.storage import Storage, default_storage
 
 from .base import BaseUploadHandler
 
 
-def _is_s3_storage(storage) -> bool:
+def _is_s3_storage(storage: Storage) -> bool:
     """
     Whether ``storage`` is a django-storages S3 backend, including subclasses such as
     ``s3_folder_storage.s3.DefaultStorage``.

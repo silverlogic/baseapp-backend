@@ -75,28 +75,33 @@ class TestS3MultipartUploadHandler:
         return s3
 
     @pytest.fixture
-    def mock_storage(self, mock_s3_client) -> MagicMock:
+    def mock_storage(self, mock_s3_client: MagicMock) -> MagicMock:
         """Mock django-storages S3 backend carrying the boto3 client."""
         storage = MagicMock()
         storage.connection.meta.client = mock_s3_client
         storage.bucket_name = "test-bucket"
         storage.location = "media"
         storage.default_acl = "public-read"
+        storage.get_object_parameters.return_value = {}
         return storage
 
     @pytest.fixture
-    def s3_handler(self, mock_storage) -> S3MultipartUploadHandler:
+    def s3_handler(self, mock_storage: MagicMock) -> S3MultipartUploadHandler:
         """Create S3 handler backed by the mocked storage."""
         return S3MultipartUploadHandler(storage=mock_storage)
 
-    def test_s3_handler_uses_storage_client_and_bucket(self, mock_storage, mock_s3_client) -> None:
+    def test_s3_handler_uses_storage_client_and_bucket(
+        self, mock_storage: MagicMock, mock_s3_client: MagicMock
+    ) -> None:
         """The handler reuses the storage's client so endpoint/signing config apply."""
         handler = S3MultipartUploadHandler(storage=mock_storage)
 
         assert handler.s3_client is mock_s3_client
         assert handler.bucket == "test-bucket"
 
-    def test_s3_handler_defaults_to_default_storage(self, mock_storage, mock_s3_client) -> None:
+    def test_s3_handler_defaults_to_default_storage(
+        self, mock_storage: MagicMock, mock_s3_client: MagicMock
+    ) -> None:
         """Without an explicit storage the handler uses Django's default_storage."""
         with patch("baseapp.files.storage.s3.default_storage", mock_storage):
             handler = S3MultipartUploadHandler()
@@ -104,7 +109,7 @@ class TestS3MultipartUploadHandler:
         assert handler.s3_client is mock_s3_client
 
     def test_s3_key_is_stable_across_upload_lifecycle(
-        self, s3_handler, file_obj, mock_s3_client
+        self, s3_handler: S3MultipartUploadHandler, file_obj: File, mock_s3_client: MagicMock
     ) -> None:
         """Initiate, complete and abort must all address the same S3 object."""
         s3_handler.initiate_upload(file_obj, num_parts=2, part_size=5242880)
@@ -123,13 +128,15 @@ class TestS3MultipartUploadHandler:
         assert file_name.startswith("files/")
         assert file_name.endswith(".mp4")
 
-    def test_s3_key_differs_per_file(self, s3_handler, file_obj, user) -> None:
+    def test_s3_key_differs_per_file(
+        self, s3_handler: S3MultipartUploadHandler, file_obj: File, user: User
+    ) -> None:
         """Different files never share an S3 key."""
         other = File.objects.create(file_name="test.mp4", created_by=user)
 
         assert s3_handler._get_s3_key(file_obj) != s3_handler._get_s3_key(other)
 
-    def test_s3_key_without_storage_location(self, mock_storage, file_obj) -> None:
+    def test_s3_key_without_storage_location(self, mock_storage: MagicMock, file_obj: File) -> None:
         """With no storage location the key is the storage name itself."""
         mock_storage.location = ""
         handler = S3MultipartUploadHandler(storage=mock_storage)
@@ -137,7 +144,7 @@ class TestS3MultipartUploadHandler:
         assert handler._get_s3_key(file_obj) == handler._get_file_name(file_obj)
 
     def test_s3_initiate_upload_applies_storage_acl(
-        self, s3_handler, file_obj, mock_s3_client
+        self, s3_handler: S3MultipartUploadHandler, file_obj: File, mock_s3_client: MagicMock
     ) -> None:
         """Uploaded objects get the storage's default ACL (e.g. public-read media)."""
         s3_handler.initiate_upload(file_obj, num_parts=1, part_size=1024)
@@ -145,7 +152,7 @@ class TestS3MultipartUploadHandler:
         assert mock_s3_client.create_multipart_upload.call_args.kwargs["ACL"] == "public-read"
 
     def test_s3_initiate_upload_without_storage_acl(
-        self, mock_storage, file_obj, mock_s3_client
+        self, mock_storage: MagicMock, file_obj: File, mock_s3_client: MagicMock
     ) -> None:
         """No ACL is sent when the storage has none (bucket policy decides)."""
         mock_storage.default_acl = None
@@ -154,6 +161,57 @@ class TestS3MultipartUploadHandler:
         )
 
         assert "ACL" not in mock_s3_client.create_multipart_upload.call_args.kwargs
+
+    def test_s3_initiate_upload_applies_storage_object_parameters(
+        self, mock_storage: MagicMock, file_obj: File, mock_s3_client: MagicMock
+    ) -> None:
+        """AWS_S3_OBJECT_PARAMETERS apply to multipart uploads, and their ACL wins over default_acl."""
+        mock_storage.get_object_parameters.return_value = {
+            "ACL": "private",
+            "CacheControl": "max-age=86400",
+            "Metadata": {"source": "storage"},
+        }
+        handler = S3MultipartUploadHandler(storage=mock_storage)
+
+        handler.initiate_upload(file_obj, num_parts=1, part_size=1024)
+
+        kwargs = mock_s3_client.create_multipart_upload.call_args.kwargs
+        assert kwargs["ACL"] == "private"
+        assert kwargs["CacheControl"] == "max-age=86400"
+        assert kwargs["ContentType"] == "video/mp4"
+        assert kwargs["Metadata"]["source"] == "storage"
+        assert kwargs["Metadata"]["original_filename"] == "test.mp4"
+        mock_storage.get_object_parameters.assert_called_once_with(handler._get_file_name(file_obj))
+
+    @pytest.mark.parametrize(
+        "file_name, expected_ext",
+        [
+            ("clip.mp4", "mp4"),
+            ("photo.JPG", "JPG"),
+            ("dir/photo.png", "png"),
+            ("dir\\photo.png", "png"),
+            ("clip.mp4/../other", "bin"),
+            ("clip.mp4/x", "bin"),
+            ("README", "bin"),
+            ("", "bin"),
+            ("archive.toolongextension12345", "bin"),
+        ],
+    )
+    def test_s3_file_name_extension_is_sanitized(
+        self,
+        s3_handler: S3MultipartUploadHandler,
+        user: User,
+        file_name: str,
+        expected_ext: str,
+    ) -> None:
+        """The client-supplied file name never adds path segments to the S3 key."""
+        file_obj = File.objects.create(file_name=file_name, created_by=user)
+
+        name = s3_handler._get_file_name(file_obj)
+
+        assert name.count("/") == 1
+        assert name.startswith("files/")
+        assert name.endswith(f".{expected_ext}")
 
     def test_s3_handler_supports_multipart(self, s3_handler):
         """Test that S3 handler supports multipart."""
