@@ -25,7 +25,13 @@ class GeoPlugin(BaseAppPlugin):
             graphql_mutations=[
                 "baseapp.geo.graphql.mutations.GeoMutations",
             ],
+            # REST: vector tiles for maps
+            v1_urlpatterns=self.v1_urlpatterns,
             # Deps
             required_packages=[],
             optional_packages=[],
         )
+
+    @staticmethod
+    def v1_urlpatterns(include, path, re_path) -> list:
+        return [re_path(r"", include("baseapp.geo.rest_framework.urls"))]

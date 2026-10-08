@@ -80,6 +80,74 @@ Malformed filter values (wrong arity, out-of-range coordinates, radius over the
 cap, unknown target IDs) raise field-scoped validation errors instead of
 silently returning unfiltered results.
 
+### Vector tiles (maps)
+
+`geoFeatures` returns at most 100 features per page, which is too few to draw a
+dense map. For maps, the plugin also serves features as
+[Mapbox Vector Tiles](https://github.com/mapbox/vector-tile-spec) (MVT), built by
+PostGIS (`ST_AsMVT`), through the project's `v1` REST URLs:
+
+```
+GET /v1/geo/tiles/{z}/{x}/{y}.mvt
+```
+
+- **From zoom 13 up**, the tile's `features` layer holds every feature in it,
+  points as points and polygons as polygons, with `id` and `feature_type`
+  attributes.
+- **Below zoom 13**, the `clusters` layer aggregates features into a 16×16 grid
+  per tile: one point per non-empty cell, at the centroid of its features, with
+  a `point_count`. Each feature counts in exactly one tile, so totals add up.
+- **Filters**: the same query parameters as `geoFeatures` (`feature_type`,
+  `target_object_id`, `bbox`, `near`), e.g. `?feature_type=store`. Malformed
+  values return `400` with field errors.
+- **Access**: requires `view_geojsonfeature`, through `has_perm` (public with the
+  default backend).
+- **Responses**: empty tiles return `204`. Tiles carry
+  `Cache-Control: public, max-age=300`, so a CDN can absorb map pans.
+
+With MapLibre GL:
+
+```js
+map.addSource("features", {
+  type: "vector",
+  tiles: [`${API_URL}/v1/geo/tiles/{z}/{x}/{y}.mvt?feature_type=store`],
+});
+map.addLayer({
+  id: "clusters",
+  type: "circle",
+  source: "features",
+  "source-layer": "clusters",
+  paint: { "circle-radius": ["interpolate", ["linear"], ["get", "point_count"], 1, 4, 100, 18] },
+});
+map.addLayer({ id: "features", type: "circle", source: "features", "source-layer": "features" });
+```
+
+To add attributes or filters, subclass the view and route it in your project:
+
+```python
+# myproject/geo/views.py
+from django.db.models import F, Q
+from baseapp.geo.rest_framework.views import GeoJSONFeatureTileView
+
+
+class StoreTileView(GeoJSONFeatureTileView):
+    cluster_max_zoom = 12  # individual features from zoom 12
+    cluster_grid_size = 8  # fewer, larger clusters
+
+    def filter_queryset(self, queryset):
+        queryset = super().filter_queryset(queryset)
+        if self.request.query_params.get("open_now") == "true":
+            queryset = queryset.filter(Q(name__icontains="24h"))
+        return queryset
+
+    def get_feature_properties(self):
+        # Values must be strings, numbers or booleans.
+        return {**super().get_feature_properties(), "name": F("name")}
+```
+
+`baseapp.geo.tiles.build_features_tile` / `build_clusters_tile` build tiles from
+any `GeoJSONFeature` queryset, for projects that need their own endpoint.
+
 ### Geometry input
 
 Mutations accept geometry through the `Geometry` scalar as any of:
