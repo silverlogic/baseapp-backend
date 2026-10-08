@@ -35,6 +35,9 @@ class FilesPlugin(BaseAppPlugin):
             ],
             optional_packages=[
                 {
+                    "baseapp_profiles": "If enabled, File exposes the authoring Profile via the `profile` field."
+                },
+                {
                     "baseapp_comments": "If enabled, files expose comments through the CommentsInterface."
                 },
                 {

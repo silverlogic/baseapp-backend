@@ -1,4 +1,5 @@
 import swapper
+from django.apps import apps
 from django.contrib import admin
 
 from baseapp_core.admin_helpers import ModelAdmin
@@ -14,8 +15,11 @@ class FileAdmin(ModelAdmin):
     list_select_related = ("parent__content_type", "created_by")
     search_fields = ("name", "description")
     # Autocomplete instead of <select>: `parent` points at the global DocumentId registry,
-    # and rendering every row as an option made the change form unusable.
-    autocomplete_fields = ("parent", "created_by")
+    # and rendering every row as an option made the change form unusable. `profile` (the
+    # profile that created the file) only exists when baseapp_profiles is installed.
+    autocomplete_fields = ("parent", "created_by") + (
+        ("profile",) if apps.is_installed("baseapp_profiles") else ()
+    )
 
 
 @admin.register(FileTarget)

@@ -7,6 +7,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from baseapp_core.rest_framework.decorators import action
+from baseapp_profiles.rest_framework import CurrentProfileMixin
 
 from ...services.upload_service import UploadService
 from ..utils import enforce_can_attach_to_parent
@@ -23,7 +24,7 @@ file_app_label = File._meta.app_label
 file_model_name = File._meta.model_name.lower()
 
 
-class FileUploadViewSet(viewsets.GenericViewSet):
+class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
     """
     ViewSet for managing multipart file uploads.
 
@@ -91,8 +92,11 @@ class FileUploadViewSet(viewsets.GenericViewSet):
             enforce_can_attach_to_parent(request.user, parent_pk)
 
         try:
+            # Get user's profile if available
+            profile = request.user.current_profile
+
             file_obj, upload_data = self.upload_service.initiate_multipart_upload(
-                user=request.user, **serializer.validated_data
+                user=request.user, profile=profile, **serializer.validated_data
             )
 
             # Prepare response

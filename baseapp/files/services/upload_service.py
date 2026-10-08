@@ -28,6 +28,7 @@ class UploadService:
         num_parts: int,
         part_size: int,
         parent_id=None,
+        profile=None,
     ):
         """
         Initiate a multipart upload.
@@ -45,6 +46,7 @@ class UploadService:
             num_parts: Number of parts for multipart upload
             part_size: Size of each part in bytes
             parent_id: DocumentId primary key (optional)
+            profile: Profile object (optional)
 
         Returns:
             (file_obj, upload_data)
@@ -61,6 +63,7 @@ class UploadService:
             upload_status=File.UploadStatus.PENDING,
             total_parts=num_parts,
             created_by=user,
+            profile=profile,
             parent_id=parent_id,
             uploaded_parts={},
             upload_expires_at=timezone.now() + timedelta(hours=24),

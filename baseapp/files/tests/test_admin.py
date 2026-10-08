@@ -6,7 +6,6 @@ from django.contrib import admin
 from django.contrib.admin.widgets import AutocompleteSelect
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import FieldDoesNotExist
 from django.db.models import Model
 from django.test import Client, RequestFactory
 from django.urls import reverse
@@ -54,7 +53,7 @@ def file_obj(owner: User) -> File:
 @pytest.mark.parametrize(
     "model, fields",
     [
-        (File, ("parent", "created_by")),
+        (File, ("parent", "created_by", "profile")),
         (FileTarget, ("target",)),
     ],
 )
@@ -119,9 +118,3 @@ def test_file_changelist_renders(superuser_client: Client, file_obj: File) -> No
     response = superuser_client.get(reverse("admin:files_file_changelist"))
 
     assert response.status_code == 200
-
-
-def test_file_has_no_profile_field() -> None:
-    """A File never represents a profile; it only belongs to a parent document."""
-    with pytest.raises(FieldDoesNotExist):
-        File._meta.get_field("profile")

@@ -71,9 +71,34 @@ class TestFileUploadInitiation:
         assert file_obj.upload_status == File.UploadStatus.UPLOADING
         assert file_obj.total_parts == 2
         assert file_obj.created_by == user_client.user
+        # Without a Current-Profile header the creating profile is the user's default one
+        assert file_obj.profile == user_client.user.profile
 
         # Verify S3 handler was called
         mock_s3_handler.initiate_upload.assert_called_once()
+
+    def test_initiate_upload_records_current_profile(self, user_client, mock_s3_handler):
+        """The profile selected with the Current-Profile header is recorded as the creator."""
+        from baseapp_profiles.tests.factories import ProfileFactory
+
+        profile = ProfileFactory(owner=user_client.user)
+
+        response = user_client.post(
+            "/v1/files/uploads",
+            {
+                "file_name": "test-video.mp4",
+                "file_size": 1024,
+                "file_content_type": "video/mp4",
+                "num_parts": 1,
+                "part_size": 1024,
+            },
+            format="json",
+            HTTP_CURRENT_PROFILE=profile.relay_id,
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        file_obj = File.get_by_public_id(response.json()["id"])
+        assert file_obj.profile == profile
 
     def test_initiate_upload_with_parent(self, user_client, mock_s3_handler):
         """Test upload initiation with a files-enabled parent object."""
