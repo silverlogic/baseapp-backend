@@ -211,7 +211,9 @@ class TestGeoFeaturesConnection:
         content = response.json()
 
         assert content["data"]["geoFeatures"] is None
-        assert "exceeds the `first` limit of 100" in content["errors"][0]["message"]
+        # Message text comes from query_optimizer's DjangoConnectionField; the cap itself
+        # (100) is what this asserts, not the wording.
+        assert "exceeds the limit of 100" in content["errors"][0]["message"]
 
         # Explicit null: graphql_query's mutable `extra={}` default leaks the previous
         # call's variables, so omitting them here would silently resend first=200.
