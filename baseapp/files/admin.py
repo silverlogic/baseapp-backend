@@ -1,8 +1,8 @@
 import swapper
-from django.apps import apps
 from django.contrib import admin
 
 from baseapp_core.admin_helpers import ModelAdmin
+from baseapp_core.plugins import apply_if_installed
 
 File = swapper.load_model("baseapp_files", "File")
 FileTarget = swapper.load_model("baseapp_files", "FileTarget")
@@ -17,8 +17,10 @@ class FileAdmin(ModelAdmin):
     # Autocomplete instead of <select>: `parent` points at the global DocumentId registry,
     # and rendering every row as an option made the change form unusable. `profile` (the
     # profile that created the file) only exists when baseapp_profiles is installed.
-    autocomplete_fields = ("parent", "created_by") + (
-        ("profile",) if apps.is_installed("baseapp_profiles") else ()
+    autocomplete_fields = (
+        "parent",
+        "created_by",
+        *apply_if_installed("baseapp_profiles", ["profile"]),
     )
 
 
