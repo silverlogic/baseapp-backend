@@ -65,7 +65,7 @@ pages = [
     "django-quill-editor>=0.1.42",
     "django-translated-fields>=0.13",
 ]
-payments = ["stripe>=11.5.0"]
+payments = ["stripe>=11.5.0,<15"]
 notifications = [
     "django-notifications-community>=1.10",
     "firebase-admin>=6.5.0",
@@ -122,6 +122,7 @@ dev = [
     "baseapp-backend[auth,graphql,messagetemplates,notifications,pages,payments,pdf,referrals,socialauth,urlshortening,wagtail]",
     "ast-grep-cli>=0.42.3",
     "testproject",
+    "django-storages==1.13.2",
 ]
 
 testproject = [
@@ -216,6 +217,7 @@ baseapp_ratings = "baseapp_ratings.plugin:RatingsPlugin"
 baseapp_reactions = "baseapp_reactions.plugin:ReactionsPlugin"
 baseapp_blocks = "baseapp_blocks.plugin:BlocksPlugin"
 baseapp_content_feed = "baseapp.content_feed.plugin:ContentFeedPlugin"
+baseapp_files = "baseapp.files.plugin:FilesPlugin"
 baseapp_chats = "baseapp_chats.plugin:ChatsPlugin"
 
 [tool.black]
