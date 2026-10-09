@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 GeoJSONFeature = swapper.load_model("baseapp_geo", "GeoJSONFeature")
 app_label = GeoJSONFeature._meta.app_label
+# Derived so a swapped-in model's generated permissions still match.
+model_name = GeoJSONFeature._meta.model_name
 ObjectType = GeoJSONFeature.get_graphql_object_type()
 
 
@@ -95,7 +97,7 @@ class GeoJSONFeatureCreate(RelayMutation):
         cls, root, info: graphene.ResolveInfo, **input
     ) -> "GeoJSONFeatureCreate":
         """Permission-check, validate via GeoJSONFeatureForm, and create the feature."""
-        if not info.context.user.has_perm(f"{app_label}.add_geojsonfeature"):
+        if not info.context.user.has_perm(f"{app_label}.add_{model_name}"):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
@@ -157,7 +159,7 @@ class GeoJSONFeatureUpdate(RelayMutation):
     ) -> "GeoJSONFeatureUpdate":
         """Permission-check, overlay input onto instance values, validate and save."""
         instance = _get_feature(info, input.get("id"))
-        if not info.context.user.has_perm(f"{app_label}.change_geojsonfeature", instance):
+        if not info.context.user.has_perm(f"{app_label}.change_{model_name}", instance):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
@@ -204,7 +206,7 @@ class GeoJSONFeatureDelete(RelayMutation):
         """Permission-check, capture the target, and delete the feature."""
         relay_id = input.get("id")
         obj = _get_feature(info, relay_id)
-        if not info.context.user.has_perm(f"{app_label}.delete_geojsonfeature", obj):
+        if not info.context.user.has_perm(f"{app_label}.delete_{model_name}", obj):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},

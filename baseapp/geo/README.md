@@ -12,13 +12,13 @@ Requires PostGIS: the project database must use the
 `django.contrib.gis.db.backends.postgis` engine, and `django.contrib.gis` must
 be in `INSTALLED_APPS`.
 
-Add `baseapp_geo` to `INSTALLED_APPS`. The package registers itself as a plugin
+Add `baseapp.geo` to `INSTALLED_APPS`. The package registers itself as a plugin
 (see `baseapp.geo.plugin:GeoPlugin`), so:
 
 - `GeoQueries` / `GeoMutations` are contributed via
   `plugin_registry.get_all_graphql_queries()` / `get_all_graphql_mutations()`.
 - `GeoPermissionsBackend` is contributed via
-  `plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp.geo")` and spliced
+  `plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_geo")` and spliced
   into the project's `AUTHENTICATION_BACKENDS`.
 
 ```python
@@ -190,7 +190,7 @@ BASEAPP_GEO_GEOJSONFEATURE_MODEL = "geo.GeoJSONFeature"
 
 ## Writing test cases in your project
 
-`GeoJSONFeatureFactory` in `baseapp_geo.tests.factories` targets the swapped
+`GeoJSONFeatureFactory` in `baseapp.geo.tests.factories` targets the swapped
 model, so it works unchanged in consuming projects.
 
 ## How to develop

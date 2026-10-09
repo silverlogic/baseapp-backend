@@ -114,6 +114,21 @@ class TestGetNodePermissionGate:
         assert "errors" not in content
         assert content["data"]["geoFeature"] is None
 
+    @override_settings(
+        AUTHENTICATION_BACKENDS=["baseapp.geo.tests.test_permissions.DenyAllBackend"]
+    )
+    def test_connection_is_empty_when_view_perm_denied(self, graphql_client):
+        """DjangoConnectionField resolves edges from the queryset and never calls
+        get_node, so the list path needs its own gate."""
+        GeoJSONFeatureFactory.create_batch(3)
+
+        response = graphql_client("query { geoFeatures { totalCount edges { node { id } } } }")
+        content = response.json()
+
+        assert "errors" not in content, content
+        assert content["data"]["geoFeatures"]["edges"] == []
+        assert content["data"]["geoFeatures"]["totalCount"] == 0
+
 
 class TestHasPermInterfaceField:
     def test_has_perm_resolves_for_anonymous(self, graphql_client):

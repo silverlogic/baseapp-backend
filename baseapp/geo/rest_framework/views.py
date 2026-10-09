@@ -70,7 +70,8 @@ class GeoJSONFeatureTileView(APIView):
         requester of the same z/x/y.
         """
         GeoJSONFeature = swapper.load_model("baseapp_geo", "GeoJSONFeature")
-        perm = f"{GeoJSONFeature._meta.app_label}.view_geojsonfeature"
+        meta = GeoJSONFeature._meta
+        perm = f"{meta.app_label}.view_{meta.model_name}"
         visibility = "public" if AnonymousUser().has_perm(perm) else "private"
         return f"{visibility}, max-age={self.cache_max_age}"
 

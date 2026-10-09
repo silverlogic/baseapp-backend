@@ -65,6 +65,10 @@ def _resolve_target(value: str, field: str) -> tuple[ContentType, int]:
     # Depends on graphene-django's private `_registry` dict (no public type-name lookup API).
     for model, object_type in get_global_registry()._registry.items():
         if object_type._meta.name == type_name:
+            # Mirror the public-id branch: a well-formed ID for a row that doesn't exist
+            # is a validation error, not a silently empty result.
+            if not model._default_manager.filter(pk=object_id).exists():
+                raise ValidationError({field: [_("Target object does not exist.")]})
             return ContentType.objects.get_for_model(model), object_id
     raise ValidationError({field: [_("Invalid relay global ID.")]})
 

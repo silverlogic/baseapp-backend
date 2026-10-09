@@ -510,6 +510,34 @@ class TestTargetObjectIdFilter:
         assert content["data"]["geoFeatures"] is None
 
 
+class TestLegacyRelayIdTargets:
+    def test_legacy_id_for_a_missing_row_is_a_validation_error(self):
+        """The public-id branch rejects an unknown target; the base64 branch has to agree,
+        or a well-formed ID for a deleted row silently returns an empty list."""
+        user = UserFactory()
+        missing_pk = user.pk + 10_000
+        legacy_id = to_global_id("User", missing_pk)
+
+        filterset = GeoJSONFeatureFilter(
+            data={"target_object_id": legacy_id}, queryset=GeoJSONFeature.objects.all()
+        )
+
+        with pytest.raises(ValidationError):
+            filterset.qs
+
+    def test_legacy_id_for_an_existing_row_still_resolves(self):
+        user = UserFactory()
+        match = GeoJSONFeatureFactory(target=user)
+        GeoJSONFeatureFactory()
+
+        filterset = GeoJSONFeatureFilter(
+            data={"target_object_id": to_global_id("User", user.pk)},
+            queryset=GeoJSONFeature.objects.all(),
+        )
+
+        assert list(filterset.qs) == [match]
+
+
 class TestFilterSetDRFReusability:
     """AC-8.4: the FilterSet works outside graphene — instantiated directly (as DRF's
     DjangoFilterBackend does) it filters a queryset with no GraphQL context at all."""

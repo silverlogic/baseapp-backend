@@ -24,16 +24,19 @@ class GeoPermissionsBackend(BaseBackend):
     def has_perm(self, user_obj: UserType, perm: str, obj: Optional[Any] = None) -> bool:
         GeoJSONFeature = swapper.load_model("baseapp_geo", "GeoJSONFeature")
         app_label = GeoJSONFeature._meta.app_label
+        # Derived, not hardcoded: a project swapping in `MapFeature` gets
+        # `add_mapfeature`, and a literal `add_geojsonfeature` would never match.
+        model_name = GeoJSONFeature._meta.model_name
 
-        if perm == f"{app_label}.view_geojsonfeature":
+        if perm == f"{app_label}.view_{model_name}":
             return True
 
-        if perm == f"{app_label}.add_geojsonfeature":
+        if perm == f"{app_label}.add_{model_name}":
             return user_obj.is_authenticated
 
         if perm in (
-            f"{app_label}.change_geojsonfeature",
-            f"{app_label}.delete_geojsonfeature",
+            f"{app_label}.change_{model_name}",
+            f"{app_label}.delete_{model_name}",
         ):
             # With no obj this returns False so ModelBackend still decides the global
             # grant; with an obj the creator is allowed and everyone else needs it.

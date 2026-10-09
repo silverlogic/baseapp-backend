@@ -12,6 +12,7 @@ from query_optimizer.typing import TModel
 from baseapp_auth.graphql import PermissionsInterface
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
+from baseapp_core.graphql import skip_ast_walker
 from baseapp_core.graphql.utils import resolve_document_content_object
 
 from .filters import GeoJSONFeatureFilter
@@ -22,6 +23,8 @@ from .scalars import Geometry  # noqa: F401  isort:skip
 
 GeoJSONFeature = swapper.load_model("baseapp_geo", "GeoJSONFeature")
 app_label = GeoJSONFeature._meta.app_label
+# Derived so a swapped-in model's generated permissions still match.
+view_perm = f"{app_label}.view_{GeoJSONFeature._meta.model_name}"
 
 
 class GeometryObjectType(graphene.ObjectType):
@@ -137,9 +140,21 @@ class BaseGeoJSONFeatureObjectType:
     def get_node(
         cls, info: graphene.ResolveInfo, id: str
     ) -> Optional["BaseGeoJSONFeatureObjectType"]:
-        if not info.context.user.has_perm(f"{app_label}.view_geojsonfeature"):
+        if not info.context.user.has_perm(view_perm):
             return None
         return super().get_node(info, id)
+
+    @classmethod
+    def get_queryset(cls, queryset: QuerySet[TModel], info) -> QuerySet[TModel]:
+        """Enforce the read permission on list access too.
+
+        DjangoConnectionField resolves edges straight from the queryset and never calls
+        `get_node`, so without this a project that removes the public-read backend would
+        still have every feature readable through `geoFeatures`.
+        """
+        if not info.context.user.has_perm(view_perm):
+            return skip_ast_walker(queryset.none())
+        return super().get_queryset(queryset, info)
 
 
 class GeoJSONFeatureObjectType(BaseGeoJSONFeatureObjectType, DjangoObjectType):
