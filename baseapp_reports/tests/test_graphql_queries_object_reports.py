@@ -1,3 +1,5 @@
+from django.test import override_settings
+
 """
 Query-count tests for the `ReportsInterface`.
 
@@ -11,7 +13,6 @@ mix that briefly leaked through the optimizer.
 """
 
 import pytest
-from constance.test import override_config
 from django.contrib.contenttypes.models import ContentType
 
 from baseapp_core.tests.factories import UserFactory
@@ -42,7 +43,7 @@ COUNTS_ONLY_QUERY = """
 """
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_reports_count_is_flat_regardless_of_report_volume(
     django_user_client, graphql_client_with_queries
 ) -> None:
@@ -81,7 +82,7 @@ def test_anon_reports_count_is_flat_regardless_of_report_volume(
     assert small_count == EXPECTED_REPORTS_INTERFACE_QUERY_COUNT
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_reports_count_zero_when_no_reports_does_not_extra_query(
     django_user_client, graphql_client_with_queries
 ) -> None:

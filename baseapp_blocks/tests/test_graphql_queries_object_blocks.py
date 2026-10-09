@@ -1,3 +1,5 @@
+from django.test import override_settings
+
 """
 Query-count tests for `BlocksInterface`: assert the GraphQL `blockersCount` /
 `blockingCount` fields resolve in a flat number of DB queries regardless of how
@@ -6,7 +8,6 @@ nested `block.target.blockersCount` list path.
 """
 
 import pytest
-from constance.test import override_config
 from django.contrib.contenttypes.models import ContentType
 
 from baseapp_core.graphql.utils import capture_database_queries
@@ -71,7 +72,7 @@ EXPECTED_BLOCKS_INTERFACE_PERM_DENIED_UPPER_BOUND = 10
 EXPECTED_BLOCKS_INTERFACE_NESTED_LIST_QUERY_COUNT = 9
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_block_counts_are_flat_regardless_of_block_volume(
     django_user_client, graphql_user_client
 ) -> None:
@@ -107,7 +108,7 @@ def test_block_counts_are_flat_regardless_of_block_volume(
     assert small_count == EXPECTED_BLOCKS_INTERFACE_QUERY_COUNT
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_block_counts_zero_when_no_blocks_does_not_extra_query(
     django_user_client, graphql_user_client
 ) -> None:
@@ -141,7 +142,7 @@ def test_block_counts_zero_when_no_blocks_does_not_extra_query(
     assert queries_empty.count == EXPECTED_BLOCKS_INTERFACE_QUERY_COUNT
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_block_counts_perm_denied_path_is_flat(graphql_user_client) -> None:
     """A non-superuser sees `null` for both counts and the perm-check path
     stays flat regardless of block volume."""
@@ -172,7 +173,7 @@ def test_block_counts_perm_denied_path_is_flat(graphql_user_client) -> None:
     assert queries_small.count <= EXPECTED_BLOCKS_INTERFACE_PERM_DENIED_UPPER_BOUND
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_block_list_with_target_blockers_count_is_flat(
     django_user_client, graphql_user_client
 ) -> None:

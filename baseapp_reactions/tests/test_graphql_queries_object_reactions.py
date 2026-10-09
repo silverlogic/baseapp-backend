@@ -1,3 +1,5 @@
+from django.test import override_settings
+
 """
 Query-count tests for the `ReactionsInterface`.
 
@@ -9,7 +11,6 @@ regardless of how many `Reaction` rows exist for the target — locks in the
 """
 
 import pytest
-from constance.test import override_config
 from django.contrib.contenttypes.models import ContentType
 
 from baseapp_comments.tests.factories import CommentFactory
@@ -43,7 +44,7 @@ COUNTS_ONLY_QUERY = """
 """
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_reactions_count_is_flat_regardless_of_reaction_volume(
     graphql_client_with_queries,
 ) -> None:
@@ -76,7 +77,7 @@ def test_anon_reactions_count_is_flat_regardless_of_reaction_volume(
     assert small_count == EXPECTED_REACTIONS_INTERFACE_QUERY_COUNT
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_reactions_count_zero_when_no_reactions_does_not_extra_query(
     graphql_client_with_queries,
 ) -> None:
