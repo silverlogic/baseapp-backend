@@ -1,3 +1,5 @@
+from django.test import override_settings
+
 """
 Query-count tests for the `FilesInterface`.
 
@@ -9,7 +11,6 @@ regardless of how many `File` rows point at the target — locks in the
 
 import pytest
 import swapper
-from constance.test import override_config
 from django.contrib.contenttypes.models import ContentType
 
 from baseapp_comments.tests.factories import CommentFactory
@@ -69,7 +70,7 @@ def attach_files(target, amount: int) -> None:
         )
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_files_count_is_flat_regardless_of_file_volume(graphql_client_with_queries):
     """`filesCount` should be a flat query path: regardless of how many `File`
     rows point at the target, the GraphQL query should make the same number of
@@ -98,7 +99,7 @@ def test_files_count_is_flat_regardless_of_file_volume(graphql_client_with_queri
     assert small_count == EXPECTED_FILES_INTERFACE_QUERY_COUNT
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_files_count_zero_when_no_files_does_not_extra_query(graphql_client_with_queries):
     """A target with no files should resolve in the same query budget as one
     with files — the FileTarget row simply doesn't exist yet and the annotation
@@ -124,7 +125,7 @@ def test_files_count_zero_when_no_files_does_not_extra_query(graphql_client_with
     assert queries_empty.count == EXPECTED_FILES_INTERFACE_QUERY_COUNT
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_listing_comments_with_files_is_flat(graphql_client_with_queries):
     """Listing comments that each have files must not fan out one FileTarget
     query per comment — the files annotations ride along in the comment list
