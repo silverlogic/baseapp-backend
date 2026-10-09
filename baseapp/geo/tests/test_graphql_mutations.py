@@ -296,6 +296,112 @@ class TestGeoFeatureDelete:
         assert GeoJSONFeature.objects.count() == 0
 
 
+class TestOwnership:
+    """`created_by` / `profile`, and the object-level permissions they enable."""
+
+    def test_create_records_the_acting_user_and_their_profile(
+        self, django_user_client, graphql_user_client
+    ):
+        graphql_user_client(
+            CREATE_MUTATION,
+            variables={
+                "input": {
+                    "targetObjectId": django_user_client.user.relay_id,
+                    "geometry": POINT_GEOJSON,
+                }
+            },
+        )
+
+        feature = GeoJSONFeature.objects.get()
+        assert feature.created_by == django_user_client.user
+        # No Current-Profile header, so the middleware falls back to the user's own profile.
+        assert feature.profile == django_user_client.user.profile
+
+    def test_owner_updates_own_feature_without_the_model_permission(
+        self, django_user_client, graphql_user_client
+    ):
+        feature = GeoJSONFeatureFactory(created_by=django_user_client.user, name="Mine")
+
+        response = graphql_user_client(
+            UPDATE_MUTATION,
+            variables={"input": {"id": feature.relay_id, "name": "Renamed"}},
+        )
+
+        assert "errors" not in response.json(), response.json()
+        feature.refresh_from_db()
+        assert feature.name == "Renamed"
+
+    def test_owner_deletes_own_feature_without_the_model_permission(
+        self, django_user_client, graphql_user_client
+    ):
+        feature = GeoJSONFeatureFactory(created_by=django_user_client.user)
+
+        response = graphql_user_client(
+            DELETE_MUTATION, variables={"input": {"id": feature.relay_id}}
+        )
+
+        assert "errors" not in response.json(), response.json()
+        assert not GeoJSONFeature.objects.filter(pk=feature.pk).exists()
+
+    def test_anonymous_is_not_the_owner_of_an_unowned_feature(self, graphql_client):
+        """`created_by` is nullable and AnonymousUser.pk is None, so a naive owner
+        comparison makes every anonymous user the owner of every unowned feature."""
+        feature = GeoJSONFeatureFactory(created_by=None, name="Unowned")
+
+        response = graphql_client(
+            UPDATE_MUTATION,
+            variables={"input": {"id": feature.relay_id, "name": "Hijacked"}},
+        )
+        content = response.json()
+
+        assert content["errors"][0]["extensions"]["code"] == "permission_required"
+        feature.refresh_from_db()
+        assert feature.name == "Unowned"
+
+    def test_non_owner_cannot_update_someone_elses_feature(
+        self, django_user_client, graphql_user_client
+    ):
+        feature = GeoJSONFeatureFactory(created_by=UserFactory(), name="Theirs")
+
+        response = graphql_user_client(
+            UPDATE_MUTATION,
+            variables={"input": {"id": feature.relay_id, "name": "Hijacked"}},
+        )
+        content = response.json()
+
+        assert content["errors"][0]["extensions"]["code"] == "permission_required"
+        feature.refresh_from_db()
+        assert feature.name == "Theirs"
+
+    def test_non_owner_cannot_delete_someone_elses_feature(
+        self, django_user_client, graphql_user_client
+    ):
+        feature = GeoJSONFeatureFactory(created_by=UserFactory())
+
+        response = graphql_user_client(
+            DELETE_MUTATION, variables={"input": {"id": feature.relay_id}}
+        )
+
+        assert response.json()["errors"][0]["extensions"]["code"] == "permission_required"
+        assert GeoJSONFeature.objects.filter(pk=feature.pk).exists()
+
+    def test_global_permission_still_reaches_other_users_features(
+        self, django_user_client, graphql_user_client
+    ):
+        """A moderator holding the model permission is not restricted to their own rows."""
+        feature = GeoJSONFeatureFactory(created_by=UserFactory(), name="Theirs")
+        grant_model_perm(django_user_client.user, "change_geojsonfeature")
+
+        response = graphql_user_client(
+            UPDATE_MUTATION,
+            variables={"input": {"id": feature.relay_id, "name": "Moderated"}},
+        )
+
+        assert "errors" not in response.json(), response.json()
+        feature.refresh_from_db()
+        assert feature.name == "Moderated"
+
+
 class TestCrossModelRelayIds:
     """A relay ID of another model must not be writable through these mutations.
 

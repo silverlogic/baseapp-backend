@@ -3,6 +3,7 @@ import logging
 import graphene
 import swapper
 from django import forms
+from django.apps import apps
 from django.contrib.gis.geos import GEOSGeometry
 from django.utils.translation import gettext_lazy as _
 from graphene_django.forms.mutation import _set_errors_flag_to_context
@@ -106,7 +107,10 @@ class GeoJSONFeatureCreate(RelayMutation):
                 str(_("Target object not found")),
                 extensions={"code": "not_found"},
             )
-        instance = GeoJSONFeature(target=target)
+
+        instance = GeoJSONFeature(target=target, created_by=info.context.user)
+        if apps.is_installed("baseapp_profiles"):
+            instance.profile = getattr(info.context.user, "current_profile", None)
 
         form = GeoJSONFeatureForm(instance=instance, data=input)
         if form.is_valid():
@@ -152,13 +156,12 @@ class GeoJSONFeatureUpdate(RelayMutation):
         cls, root, info: graphene.ResolveInfo, **input
     ) -> "GeoJSONFeatureUpdate":
         """Permission-check, overlay input onto instance values, validate and save."""
-        if not info.context.user.has_perm(f"{app_label}.change_geojsonfeature"):
+        instance = _get_feature(info, input.get("id"))
+        if not info.context.user.has_perm(f"{app_label}.change_geojsonfeature", instance):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
             )
-
-        instance = _get_feature(info, input.get("id"))
 
         data = {
             field: input[field] if field in input else getattr(instance, field)
@@ -199,14 +202,13 @@ class GeoJSONFeatureDelete(RelayMutation):
         cls, root, info: graphene.ResolveInfo, **input
     ) -> "GeoJSONFeatureDelete":
         """Permission-check, capture the target, and delete the feature."""
-        if not info.context.user.has_perm(f"{app_label}.delete_geojsonfeature"):
+        relay_id = input.get("id")
+        obj = _get_feature(info, relay_id)
+        if not info.context.user.has_perm(f"{app_label}.delete_geojsonfeature", obj):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
             )
-
-        relay_id = input.get("id")
-        obj = _get_feature(info, relay_id)
 
         target = obj.target
 
