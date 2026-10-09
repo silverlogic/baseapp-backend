@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 import swapper
 from django.contrib.auth.models import Permission
@@ -292,6 +294,79 @@ class TestGeoFeatureDelete:
         assert payload["deletedId"] == relay_id
         assert payload["target"] == {"id": django_user_client.user.relay_id}
         assert GeoJSONFeature.objects.count() == 0
+
+
+class TestCrossModelRelayIds:
+    """A relay ID of another model must not be writable through these mutations.
+
+    `get_obj_from_relay_id` resolves a public ID through DocumentId and returns the object
+    of any registered model, so without a type check a user holding only the geo model
+    permissions could edit or delete rows belonging to other blocks.
+    """
+
+    def test_update_with_another_models_id_is_not_found_and_changes_nothing(
+        self, django_user_client, graphql_user_client
+    ):
+        victim = UserFactory(first_name="Untouched")
+        grant_model_perm(django_user_client.user, "change_geojsonfeature")
+
+        response = graphql_user_client(
+            UPDATE_MUTATION,
+            variables={
+                "input": {
+                    "id": victim.relay_id,
+                    "name": "Pwned",
+                    "description": "Pwned",
+                    "featureType": "pwned",
+                    "geometry": POINT_GEOJSON,
+                }
+            },
+        )
+        content = response.json()
+
+        assert content["errors"][0]["extensions"]["code"] == "not_found"
+        victim.refresh_from_db()
+        assert victim.first_name == "Untouched"
+
+    def test_delete_with_another_models_id_is_not_found_and_deletes_nothing(
+        self, django_user_client, graphql_user_client
+    ):
+        victim = UserFactory()
+        grant_model_perm(django_user_client.user, "delete_geojsonfeature")
+
+        response = graphql_user_client(
+            DELETE_MUTATION, variables={"input": {"id": victim.relay_id}}
+        )
+        content = response.json()
+
+        assert content["errors"][0]["extensions"]["code"] == "not_found"
+        assert type(victim).objects.filter(pk=victim.pk).exists()
+
+    def test_create_with_unknown_target_is_not_found_not_a_server_error(
+        self, django_user_client, graphql_user_client
+    ):
+        response = graphql_user_client(
+            CREATE_MUTATION,
+            variables={
+                "input": {
+                    "targetObjectId": str(uuid.uuid4()),
+                    "geometry": POINT_GEOJSON,
+                }
+            },
+        )
+        content = response.json()
+
+        assert content["errors"][0]["extensions"]["code"] == "not_found"
+        assert GeoJSONFeature.objects.count() == 0
+
+    def test_update_with_a_malformed_id_is_not_found(self, django_user_client, graphql_user_client):
+        grant_model_perm(django_user_client.user, "change_geojsonfeature")
+
+        response = graphql_user_client(
+            UPDATE_MUTATION, variables={"input": {"id": "not-a-relay-id", "name": "x"}}
+        )
+
+        assert response.json()["errors"][0]["extensions"]["code"] == "not_found"
 
 
 class TestWritePermissions:
