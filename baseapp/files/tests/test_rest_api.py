@@ -5,6 +5,7 @@ import pytest
 import swapper
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
 
@@ -209,6 +210,26 @@ class TestFileUploadInitiation:
         # DRF returns validation errors as dict with field names or non_field_errors
         error_message = str(response_data)
         assert "doesn't match" in error_message
+
+    @override_settings(MAX_FILE_UPLOAD_SIZE=10 * 1024 * 1024)
+    def test_initiate_upload_too_large_explains_the_limit(self, user_client, mock_s3_handler):
+        response = user_client.post(
+            "/v1/files/uploads",
+            {
+                "file_name": "big.pdf",
+                "file_size": 15 * 1024 * 1024,
+                "file_content_type": "application/pdf",
+                "num_parts": 3,
+                "part_size": 5242880,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.json() == {
+            "file_size": ["File is too large. The maximum size is 10.0\xa0MB."]
+        }
+        mock_s3_handler.initiate_upload.assert_not_called()
 
     def test_initiate_upload_too_many_parts(self, user_client, mock_s3_handler):
         """Test validation for maximum parts (10,000)."""

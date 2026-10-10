@@ -1,4 +1,6 @@
 import swapper
+from django.conf import settings
+from django.template.defaultfilters import filesizeformat
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
@@ -18,6 +20,17 @@ class InitiateUploadSerializer(serializers.Serializer):
 
     # Optional parent relationship via DocumentId public_id
     parent_id = serializers.UUIDField(required=False, allow_null=True)
+
+    def validate_file_size(self, value):
+        # Validated here, not only in UploadService, so the client gets the reason
+        # instead of the view's generic "Invalid upload parameters".
+        max_file_size = getattr(settings, "MAX_FILE_UPLOAD_SIZE", 5 * 1024 * 1024 * 1024)
+        if value > max_file_size:
+            raise serializers.ValidationError(
+                _("File is too large. The maximum size is %(max)s.")
+                % {"max": filesizeformat(max_file_size)}
+            )
+        return value
 
     def validate_parent_id(self, value):
         """Validate parent_id exists as a DocumentId public_id."""
