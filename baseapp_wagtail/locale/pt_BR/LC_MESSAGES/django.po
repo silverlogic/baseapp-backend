@@ -1,0 +1,82 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-12 15:29+0000\n"
+"PO-Revision-Date: 2026-10-12 15:10+0000\n"
+"Last-Translator: BaseApp i18n <dev@tsl.io>\n"
+"Language-Team: Portuguese (Brazil)\n"
+"Language: pt_BR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: apps.py
+msgid "BaseApp Wagtail"
+msgstr "BaseApp Wagtail"
+
+#: base/apps.py
+msgid "BaseApp Wagtail - Base"
+msgstr "BaseApp Wagtail - Base"
+
+#: base/blocks/basic_blocks/custom_image_block/block.py
+msgid ""
+"If this is a <a href=\"https://www.w3.org/WAI/tutorials/images/decorative/\" "
+"target=\"_blank\">decorative image</a>, please leave this field blank."
+msgstr ""
+"Se esta for uma <a href=\"https://www.w3.org/WAI/tutorials/images/decorative/"
+"\" target=\"_blank\">imagem decorativa</a>, deixe este campo em branco."
+
+#: base/blocks/custom_blocks/banner_block/block.py
+msgid "Left"
+msgstr "Esquerda"
+
+#: base/blocks/custom_blocks/banner_block/block.py
+msgid "Right"
+msgstr "Direita"
+
+#: base/blocks/custom_blocks/banner_block/block.py
+msgid "Image Position"
+msgstr "Posição da imagem"
+
+#: base/blocks/custom_blocks/banner_block/block.py
+msgid "This indicates the position of the image in the desktop view."
+msgstr "Indica a posição da imagem na visualização para desktop."
+
+#: base/models.py
+msgid "Standard page"
+msgstr "Página padrão"
+
+#: base/models.py
+msgid "Standard pages"
+msgstr "Páginas padrão"
+
+#: medias/apps.py
+msgid "BaseApp Wagtail - Medias"
+msgstr "BaseApp Wagtail - Mídias"
+
+#: medias/image_formats.py
+msgid "Full width"
+msgstr "Largura total"
+
+#: medias/image_formats.py
+msgid "Original size"
+msgstr "Tamanho original"
+
+#: medias/image_formats.py
+msgid "Centered"
+msgstr "Centralizado"
+
+#: templates/wagtailadmin/shared/page_status_tag.html
+msgid "Current page status:"
+msgstr "Status atual da página:"
+
+#: templates/wagtailadmin/shared/page_status_tag.html
+msgid "Visit the live page"
+msgstr "Visitar a página publicada"

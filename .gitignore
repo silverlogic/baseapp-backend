@@ -39,6 +39,9 @@ db.sqlite3
 **/build/
 dist/
 
+# compiled translation catalogs (built in CI / Docker from the .po sources)
+*.mo
+
 # Skill eval workspaces (raw run output, not committed)
 .agents/skills/*-workspace/
 

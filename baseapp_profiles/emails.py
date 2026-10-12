@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from baseapp_core.deep_links import get_deep_link
 from baseapp_core.exceptions import DeepLinkFetchError
+from baseapp_core.i18n import user_language
 
 from .constants import INVITATION_EXPIRATION_DAYS
 
@@ -73,9 +74,11 @@ def send_invitation_email(invitation, inviter) -> None:
         "expiration_date": invitation.invitation_expires_at.strftime("%B %d, %Y"),
     }
 
-    subject = render_to_string("profiles/emails/invitation-subject.txt.j2", context).strip()
-    message = render_to_string("profiles/emails/invitation-body.txt.j2", context)
-    html_message = render_to_string("profiles/emails/invitation-body.html.j2", context)
+    # Invitees without an account yet get the inviter's language.
+    with user_language(invitation.user or inviter):
+        subject = render_to_string("profiles/emails/invitation-subject.txt.j2", context).strip()
+        message = render_to_string("profiles/emails/invitation-body.txt.j2", context)
+        html_message = render_to_string("profiles/emails/invitation-body.html.j2", context)
 
     send_mail(
         subject,

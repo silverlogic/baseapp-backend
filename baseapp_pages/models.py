@@ -41,8 +41,8 @@ class URLPath(DocumentIdMixin, RelayModel, TimeStampedModel):
         indexes = [
             models.Index(fields=["target_content_type", "target_object_id"]),
         ]
-        verbose_name = "URL Path"
-        verbose_name_plural = "URL Paths"
+        verbose_name = _("URL path")
+        verbose_name_plural = _("URL paths")
         constraints = [
             models.UniqueConstraint(
                 condition=models.Q(is_active=True),

@@ -4,6 +4,7 @@ from importlib import import_module
 from typing import Any
 
 from django.conf import settings
+from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 
 
@@ -20,7 +21,7 @@ def user_passes_test(test_func) -> Callable[[Callable], Callable]:
             if test_func(info.context.user):
                 return view_func(cls, root, info, **data)
             raise GraphQLError(
-                "authentication required",
+                _("authentication required"),
                 extensions={"code": "authentication_required"},
             )
 

@@ -1,0 +1,132 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-12 16:10+0000\n"
+"PO-Revision-Date: 2026-10-12 15:10+0000\n"
+"Last-Translator: BaseApp i18n <dev@tsl.io>\n"
+"Language-Team: Portuguese (Brazil)\n"
+"Language: pt_BR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: apps.py
+msgid "BaseApp Payments"
+msgstr "BaseApp Pagamentos"
+
+#: models.py
+msgid "entity type"
+msgstr "tipo de entidade"
+
+#: models.py
+msgid "entity id"
+msgstr "id da entidade"
+
+#: models.py
+msgid "remote customer id"
+msgstr "id remoto do cliente"
+
+#: models.py
+msgid "customer"
+msgstr "cliente"
+
+#: models.py
+msgid "customers"
+msgstr "clientes"
+
+#: models.py
+msgid "remote subscription id"
+msgstr "id remoto da assinatura"
+
+#: models.py
+msgid "subscription"
+msgstr "assinatura"
+
+#: models.py
+msgid "subscriptions"
+msgstr "assinaturas"
+
+#: serializers.py
+msgid "Stripe price ID"
+msgstr "ID de preço do Stripe"
+
+#: serializers.py views.py
+msgid "This field is required."
+msgstr "Este campo é obrigatório."
+
+#: serializers.py
+msgid "Customer not found."
+msgstr "Cliente não encontrado."
+
+#: serializers.py
+#, python-format
+msgid "Price not found: %(price_id)s"
+msgstr "Preço não encontrado: %(price_id)s"
+
+#: serializers.py
+#, python-format
+msgid ""
+"You already have an active subscription to this product. Current "
+"subscription is on price: %(price_id)s"
+msgstr ""
+"Você já possui uma assinatura ativa para este produto. A assinatura atual "
+"está no preço: %(price_id)s"
+
+#: serializers.py
+msgid "An error occurred while checking existing subscriptions."
+msgstr "Ocorreu um erro ao verificar as assinaturas existentes."
+
+#: serializers.py
+msgid "The provided payment method ID does not belong to the customer."
+msgstr "O ID do método de pagamento informado não pertence ao cliente."
+
+#: serializers.py
+msgid "Invalid payment method ID."
+msgstr "ID de método de pagamento inválido."
+
+#: serializers.py
+msgid "Failed to create subscription"
+msgstr "Falha ao criar assinatura"
+
+#: serializers.py
+msgid "Nothing to update."
+msgstr "Nada para atualizar."
+
+#: serializers.py
+msgid "Failed to update subscription in Stripe"
+msgstr "Falha ao atualizar assinatura no Stripe"
+
+#: serializers.py
+msgid "Entity does not have a target with an email field."
+msgstr "A entidade não possui um alvo com campo de e-mail."
+
+#: serializers.py
+msgid "Entity does not have an email field."
+msgstr "A entidade não possui um campo de e-mail."
+
+#: serializers.py
+msgid "Failed to create customer"
+msgstr "Falha ao criar cliente"
+
+#: serializers.py
+msgid "An internal error has occurred. Please try again later."
+msgstr "Ocorreu um erro interno. Tente novamente mais tarde."
+
+#: serializers.py
+msgid "Failed to update payment method"
+msgstr "Falha ao atualizar método de pagamento"
+
+#: views.py
+msgid "Customer not found"
+msgstr "Cliente não encontrado"
+
+#: views.py
+msgid "Entity not found"
+msgstr "Entidade não encontrada"

@@ -3,6 +3,7 @@ from typing import List
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 from django_prose_editor.fields import ProseEditorField
 from model_utils.models import TimeStampedModel
 
@@ -12,7 +13,7 @@ from .utils import attach_files, random_name_in
 
 
 class CaseInsensitiveCharField(models.CharField):
-    description = "Case insensitive character"
+    description = _("Case insensitive character")
 
     def db_type(self, connection) -> str:
         return "citext"
@@ -22,7 +23,7 @@ class EmailTemplate(TimeStampedModel):
     name = CaseInsensitiveCharField(
         max_length=255,
         unique=True,
-        help_text="Unique name used to identify this message",
+        help_text=_("Unique name used to identify this message"),
     )
 
     # SendGrid
@@ -34,18 +35,18 @@ class EmailTemplate(TimeStampedModel):
 
     # Core
     subject = models.CharField(
-        max_length=255, blank=True, null=True, help_text="Email subject line"
+        max_length=255, blank=True, null=True, help_text=_("Email subject line")
     )
     html_content = ProseEditorField(
         blank=True,
-        help_text="Text that will be inputted into Template html version",
+        help_text=_("Text that will be inputted into Template html version"),
         null=True,
         extensions=getattr(settings, "PROSE_EDITOR_EXTENSIONS", None),
         sanitize=getattr(settings, "PROSE_EDITOR_SANITIZE", False),
     )
     plain_text_content = ProseEditorField(
         blank=True,
-        help_text="Text that will be inputted into Template plain text version",
+        help_text=_("Text that will be inputted into Template plain text version"),
         extensions=getattr(settings, "PROSE_EDITOR_EXTENSIONS", None),
         sanitize=getattr(settings, "PROSE_EDITOR_SANITIZE", False),
     )
@@ -115,9 +116,9 @@ class SmsTemplate(TimeStampedModel):
     name = CaseInsensitiveCharField(
         max_length=255,
         unique=True,
-        help_text="Unique name used to identify this message",
+        help_text=_("Unique name used to identify this message"),
     )
-    message = models.TextField(blank=True, null=True, help_text="Message to be sent")
+    message = models.TextField(blank=True, null=True, help_text=_("Message to be sent"))
 
     class Meta:
         ordering = ["-id"]

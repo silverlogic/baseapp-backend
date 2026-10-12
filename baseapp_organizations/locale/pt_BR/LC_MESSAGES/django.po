@@ -1,0 +1,46 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-12 15:28+0000\n"
+"PO-Revision-Date: 2026-10-12 15:10+0000\n"
+"Last-Translator: BaseApp i18n <dev@tsl.io>\n"
+"Language-Team: Portuguese (Brazil)\n"
+"Language: pt_BR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: apps.py
+msgid "BaseApp Organizations"
+msgstr "BaseApp Organizações"
+
+#: graphql/mutations.py
+msgid "You don't have permission to perform this action"
+msgstr "Você não tem permissão para realizar esta ação"
+
+#: models.py
+msgid "name"
+msgstr "nome"
+
+#: models.py
+msgid "organization"
+msgstr "organização"
+
+#: models.py
+msgid "organizations"
+msgstr "organizações"
+
+#: services.py
+msgid ""
+"Account cannot be deleted because you're the owner of an organization. "
+"Transfer ownership or delete the organization first."
+msgstr ""
+"A conta não pode ser excluída porque você é o proprietário de uma "
+"organização. Transfira a propriedade ou exclua a organização primeiro."

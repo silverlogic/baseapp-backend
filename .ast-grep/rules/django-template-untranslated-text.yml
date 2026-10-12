@@ -1,0 +1,26 @@
+id: django-template-untranslated-text
+language: Html
+severity: warning
+message: "Template copy must go through i18n: `{% trans \"Save\" %}` / `{% blocktrans %}` in Django templates, `{{ _(\"Save\") }}` in Jinja (.j2) templates, and `alt`/`title`/`placeholder` attributes likewise. See .claude/skills/backend-conventions/references/translations.md"
+# Warning-only: the HTML parser sees a whole run of text between tags as one node,
+# so prose that shares a node with a `{% ... %}` tag is skipped (false negatives),
+# and template-tag soup can occasionally confuse it (false positives).
+files:
+  - "**/templates/**"
+rule:
+  any:
+    - kind: text
+      regex: "[A-Za-z]{3,}"
+      not:
+        regex: "\\{[%{#]"
+    - kind: attribute_value
+      regex: "[A-Za-z]{3,}"
+      not:
+        regex: "\\{[%{#]"
+      inside:
+        kind: quoted_attribute_value
+        inside:
+          kind: attribute
+          has:
+            kind: attribute_name
+            regex: ^(alt|title|placeholder|aria-label)$

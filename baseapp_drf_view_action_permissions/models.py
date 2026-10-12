@@ -4,6 +4,7 @@ from django.contrib.auth.models import Group, Permission
 from django.db import models
 from django.db.models import Q
 from django.utils.functional import cached_property
+from django.utils.translation import gettext_lazy as _
 
 logger = logging.getLogger(__name__)
 
@@ -63,11 +64,11 @@ class IpRestriction(models.Model):
     modified_at = models.DateTimeField(auto_now=True)
     ip_address = models.GenericIPAddressField(unique=True)
     is_whitelisted = models.BooleanField(
-        default=False, help_text="If checked, this IP will be whitelisted"
+        default=False, help_text=_("If checked, this IP will be whitelisted")
     )
     unrestricted_roles = models.ManyToManyField(
         Role,
         related_name="ips",
         blank=True,
-        help_text="List of roles that will be unrestricted for this IP",
+        help_text=_("List of roles that will be unrestricted for this IP"),
     )
