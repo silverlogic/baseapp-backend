@@ -21,9 +21,12 @@ class InitiateUploadSerializer(serializers.Serializer):
     # Optional parent relationship via DocumentId public_id
     parent_id = serializers.UUIDField(required=False, allow_null=True)
 
-    def validate_file_size(self, value):
-        # Validated here, not only in UploadService, so the client gets the reason
-        # instead of the view's generic "Invalid upload parameters".
+    def validate_file_size(self, value: int) -> int:
+        """Reject a declared size above MAX_FILE_UPLOAD_SIZE, naming the limit.
+
+        Validated here, not only in UploadService, so the client gets the reason
+        instead of the view's generic "Invalid upload parameters".
+        """
         max_file_size = getattr(settings, "MAX_FILE_UPLOAD_SIZE", 5 * 1024 * 1024 * 1024)
         if value > max_file_size:
             raise serializers.ValidationError(

@@ -212,7 +212,9 @@ class TestFileUploadInitiation:
         assert "doesn't match" in error_message
 
     @override_settings(MAX_FILE_UPLOAD_SIZE=10 * 1024 * 1024)
-    def test_initiate_upload_too_large_explains_the_limit(self, user_client, mock_s3_handler):
+    def test_initiate_upload_too_large_explains_the_limit(
+        self, user_client: Client, mock_s3_handler: MagicMock
+    ) -> None:
         response = user_client.post(
             "/v1/files/uploads",
             {
@@ -284,6 +286,36 @@ class TestFileUploadCompletion:
             created_by=user_client.user,
             upload_expires_at=timezone.now() + timedelta(hours=24),
         )
+
+    @pytest.fixture(autouse=True)
+    def stored_storage(self):
+        """The handler is mocked, so nothing is stored; report the declared size by default."""
+        with patch("baseapp.files.services.upload_service.default_storage") as storage:
+            storage.size.return_value = 10485760
+            yield storage
+
+    def test_complete_upload_rejects_bytes_beyond_the_declared_size(
+        self,
+        user_client: Client,
+        pending_upload: "File",
+        mock_s3_handler: MagicMock,
+        stored_storage: MagicMock,
+    ) -> None:
+        """A client that declares a small size and sends more must not get a COMPLETED file."""
+        stored_storage.size.return_value = pending_upload.file_size + 1
+
+        response = user_client.post(
+            f"/v1/files/uploads/{pending_upload.public_id}/complete",
+            {"parts": [{"part_number": 1, "etag": "a"}, {"part_number": 2, "etag": "b"}]},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        stored_storage.delete.assert_called_once_with("files/test-file.mp4")
+        pending_upload.refresh_from_db()
+        # ATOMIC_REQUESTS rolls back the FAILED flag with the 400; what matters is no COMPLETED file.
+        assert pending_upload.upload_status != File.UploadStatus.COMPLETED
+        assert not pending_upload.file
 
     def test_complete_upload_success(self, user_client, pending_upload, mock_s3_handler):
         """Test successful upload completion."""
