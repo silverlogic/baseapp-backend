@@ -583,9 +583,9 @@ msgstr ""
 "Informamos que %(assignee)s foi removido como superusuário por %(assigner)s."
 
 #: templates/users/emails/remove-superuser-notification-email-subject.txt.j2
-#, python-brace-format
-msgid "{assigne.email} has been removed from superuser by {assigner.email}"
-msgstr "{assigne.email} foi removido como superusuário por {assigner.email}"
+#, python-format
+msgid "%(assignee)s has been removed as superuser by %(assigner)s"
+msgstr "%(assignee)s foi removido como superusuário por %(assigner)s"
 
 #: templates/users/emails/welcome-body.html.j2
 #: templates/users/emails/welcome-body.txt.j2

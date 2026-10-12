@@ -13,9 +13,11 @@ I18N_PACKAGES=(
   baseapp_auth
   baseapp_blocks
   baseapp_chats
+  baseapp_cloudflare_stream_field
   baseapp_comments
   baseapp_core
   baseapp_drf_view_action_permissions
+  baseapp_e2e
   baseapp_follows
   baseapp_mentions
   baseapp_message_templates
@@ -29,6 +31,7 @@ I18N_PACKAGES=(
   baseapp_reactions
   baseapp_referrals
   baseapp_reports
+  baseapp_social_auth
   baseapp_url_shortening
   baseapp_wagtail
 )

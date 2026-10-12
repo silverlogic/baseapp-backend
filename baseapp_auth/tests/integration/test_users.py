@@ -139,11 +139,11 @@ class TestUsersUpdate(ApiMixin):
         reason="User model does not expose public_id; skip until DocumentIdMixin is enabled",
     )
     def test_can_update_public_fields_using_public_id(self, user_client) -> None:
-        data = {"preferred_language": "pt"}
+        data = {"preferred_language": "pt-br"}
         r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.public_id}), data)
         h.responseOk(r)
         user_client.user.refresh_from_db()
-        assert user_client.user.preferred_language == "pt"
+        assert user_client.user.preferred_language == "pt-br"
 
     def test_can_update_timezone(self, user_client) -> None:
         data = {"timezone": "America/Sao_Paulo"}

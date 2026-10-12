@@ -110,12 +110,12 @@ class TestURLPathService:
         created = url_path_service.create_url_path(
             page,
             "/localized",
-            language="pt",
+            language="pt-br",
             is_active=False,
             generate_path_str=False,
         )
 
-        assert created.language == "pt"
+        assert created.language == "pt-br"
         assert created.is_active is False
 
     def test_create_url_path_raises_integrity_error_when_path_taken_and_not_generating(

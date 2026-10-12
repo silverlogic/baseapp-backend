@@ -29,6 +29,7 @@ import re
 from typing import Any
 
 from django.conf import settings
+from django.core.management.base import BaseCommand
 from django.core.management.commands import makemessages as django_makemessages
 
 try:
@@ -71,7 +72,8 @@ class JinjaAwareBuildFile(django_makemessages.BuildFile):
             fp.write(jinja_templatize(src_data))
 
 
-class Command(BaseMakeMessages):
+# BaseCommand is already an ancestor; naming it keeps static analysis able to see it.
+class Command(BaseMakeMessages, BaseCommand):
     build_file_class = JinjaAwareBuildFile
 
     def _get_default_jinja_template_engine(self) -> dict[str, Any]:

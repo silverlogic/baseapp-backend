@@ -55,7 +55,7 @@ msgid "language"
 msgstr "idioma"
 
 #: models.py
-msgid "languaged used in the comment"
+msgid "language used in the comment"
 msgstr "idioma usado no comentário"
 
 #: models.py

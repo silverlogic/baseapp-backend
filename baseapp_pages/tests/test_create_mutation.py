@@ -94,13 +94,13 @@ def test_superuser_can_create_page_localized(django_user_client, graphql_user_cl
                 "body": make_text_into_quill("Conteudo sobre"),
             }
         },
-        headers={"HTTP_ACCEPT_LANGUAGE": "pt"},
+        headers={"HTTP_ACCEPT_LANGUAGE": "pt-br"},
     )
 
     page = Page.objects.get()
-    assert page.title_pt == "Titulo sobre"
-    assert page.body_pt == make_text_into_quill("Conteudo sobre")
+    assert page.title_pt_br == "Titulo sobre"
+    assert page.body_pt_br == make_text_into_quill("Conteudo sobre")
 
     url_path = page.url_paths.first()
-    assert url_path.language == "pt"
+    assert url_path.language == "pt-br"
     assert url_path.path == "/sobre"

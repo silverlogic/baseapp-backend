@@ -23,11 +23,12 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.translation import to_locale
 
-STATS_RE = re.compile(
-    r"(?:(?P<translated>\d+) translated messages?)?"
-    r"(?:, (?P<fuzzy>\d+) fuzzy translations?)?"
-    r"(?:, (?P<untranslated>\d+) untranslated messages?)?"
-)
+# msgfmt omits zero-valued categories ("1 untranslated message."), so each one is matched on its own.
+STATS_PATTERNS = {
+    "translated": re.compile(r"(\d+) translated"),
+    "fuzzy": re.compile(r"(\d+) fuzzy"),
+    "untranslated": re.compile(r"(\d+) untranslated"),
+}
 POT_DATE_RE = re.compile(r'^"POT-Creation-Date: .*\\n"$', re.M)
 
 
@@ -50,9 +51,16 @@ def catalog_statistics(po_file: Path) -> dict[str, int]:
     )
     if result.returncode != 0:
         raise CommandError(f"msgfmt failed for {po_file}:\n{result.stderr}")
-    match = STATS_RE.search(result.stderr.strip())
-    groups = match.groupdict() if match else {}
-    return {key: int(groups.get(key) or 0) for key in ("translated", "fuzzy", "untranslated")}
+    return parse_statistics(result.stderr)
+
+
+def parse_statistics(text: str) -> dict[str, int]:
+    """Parse ``msgfmt --statistics`` output into translated / fuzzy / untranslated counts."""
+    stats = {}
+    for key, pattern in STATS_PATTERNS.items():
+        match = pattern.search(text)
+        stats[key] = int(match.group(1)) if match else 0
+    return stats
 
 
 def normalized_catalog(po_file: Path) -> str:

@@ -110,6 +110,11 @@ docker compose run --rm web bash scripts/i18n/compilemessages.sh           # bui
 reads defaults from `BA_MAKEMESSAGES_DEFAULTS` (`testproject/settings.py`). Add a new package to
 `scripts/i18n/packages.sh` and translate the generated entries before merging.
 
+The root `conftest.py` compiles every catalog before the tests run, so a clean checkout only needs
+`gettext` (already in the image). Brazilian Portuguese ships as `locale/pt_BR`: consuming projects
+must list `pt-br` in `LANGUAGES` (as `testproject` does) — a bare `pt` never resolves to it and
+falls back to English.
+
 ## Test Coverage Policy
 
 - Minimum coverage: **75%**

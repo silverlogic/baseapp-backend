@@ -7,6 +7,7 @@ from django.core.management.base import CommandError
 from baseapp_core.management.commands.check_translations import (
     catalog_statistics,
     default_locales,
+    parse_statistics,
 )
 
 HEADER = (
@@ -57,3 +58,29 @@ def test_command_fails_for_incomplete_catalogs(tmp_path) -> None:
 def test_command_fails_when_no_catalogs(tmp_path) -> None:
     with pytest.raises(CommandError, match="No catalogs found"):
         call_command("check_translations", "--no-makemessages", locale_dirs=[str(tmp_path)])
+
+
+@pytest.mark.parametrize(
+    "output, expected",
+    [
+        ("3 translated messages.", {"translated": 3, "fuzzy": 0, "untranslated": 0}),
+        ("1 untranslated message.", {"translated": 0, "fuzzy": 0, "untranslated": 1}),
+        ("2 fuzzy translations.", {"translated": 0, "fuzzy": 2, "untranslated": 0}),
+        (
+            "5 translated messages, 2 fuzzy translations, 1 untranslated message.",
+            {"translated": 5, "fuzzy": 2, "untranslated": 1},
+        ),
+        (
+            "4 translated messages, 1 untranslated message.",
+            {"translated": 4, "fuzzy": 0, "untranslated": 1},
+        ),
+        ("", {"translated": 0, "fuzzy": 0, "untranslated": 0}),
+    ],
+)
+def test_parse_statistics_handles_every_msgfmt_shape(output, expected) -> None:
+    assert parse_statistics(output) == expected
+
+
+def test_catalog_statistics_counts_an_untranslated_only_catalog(tmp_path) -> None:
+    po_file = write_catalog(tmp_path, "es", 'msgid "Missing"\nmsgstr ""\n')
+    assert catalog_statistics(po_file) == {"translated": 0, "fuzzy": 0, "untranslated": 1}
