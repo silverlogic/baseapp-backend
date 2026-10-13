@@ -300,7 +300,7 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
         verbose_name=_("file name"),
         help_text=_("Original name of the uploaded file"),
     )
-    file_size = models.PositiveIntegerField(
+    file_size = models.PositiveBigIntegerField(
         null=True,
         verbose_name=_("file size"),
         help_text=_("File size in bytes"),

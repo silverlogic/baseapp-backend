@@ -233,6 +233,26 @@ class TestFileUploadInitiation:
         }
         mock_s3_handler.initiate_upload.assert_not_called()
 
+    def test_initiate_upload_larger_than_32_bit_size(
+        self, user_client: Client, mock_s3_handler: MagicMock
+    ) -> None:
+        file_size = 3 * 1024 * 1024 * 1024
+        response = user_client.post(
+            "/v1/files/uploads",
+            {
+                "file_name": "long-video.mp4",
+                "file_size": file_size,
+                "file_content_type": "video/mp4",
+                "num_parts": 31,
+                "part_size": 100 * 1024 * 1024,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        file_obj = File.get_by_public_id(response.json()["id"])
+        assert file_obj.file_size == file_size
+
     def test_initiate_upload_too_many_parts(self, user_client, mock_s3_handler):
         """Test validation for maximum parts (10,000)."""
         response = user_client.post(
