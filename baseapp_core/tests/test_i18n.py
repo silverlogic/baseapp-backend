@@ -8,7 +8,7 @@ from baseapp_core.i18n import get_user_language, group_by_language, user_languag
 
 def test_get_user_language_prefers_user_setting(settings) -> None:
     settings.LANGUAGE_CODE = "en-us"
-    assert get_user_language(SimpleNamespace(preferred_language="pt-br")) == "pt-br"
+    assert get_user_language(SimpleNamespace(preferred_language="pt")) == "pt"
 
 
 def test_get_user_language_falls_back_to_language_code(settings) -> None:
@@ -24,7 +24,7 @@ def test_user_language_activates_and_restores() -> None:
     assert translation.get_language() == "en"
 
 
-@pytest.mark.parametrize("language", ["es", "pt-br"])
+@pytest.mark.parametrize("language", ["es", "pt"])
 def test_user_language_translates_package_strings(language) -> None:
     with user_language(SimpleNamespace(preferred_language=language)):
         translated = translation.gettext("Case insensitive character")

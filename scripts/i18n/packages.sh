@@ -36,7 +36,7 @@ I18N_PACKAGES=(
   baseapp_wagtail
 )
 
-I18N_LOCALES=(es pt_BR)
+I18N_LOCALES=(es pt)
 
 # `baseapp_core`'s makemessages override (Jinja extraction + BA_MAKEMESSAGES_DEFAULTS)
 # is only found when Django settings import, and testproject.settings reads these at

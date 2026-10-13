@@ -13,7 +13,7 @@ def resolve_secret(cls, root, info, **data) -> str:
     return "secret"
 
 
-@pytest.mark.parametrize("language", ["en", "es", "pt-br"])
+@pytest.mark.parametrize("language", ["en", "es", "pt"])
 def test_login_required_error_is_a_plain_translated_string(language) -> None:
     info = SimpleNamespace(context=SimpleNamespace(user=AnonymousUser()))
     with translation.override(language):

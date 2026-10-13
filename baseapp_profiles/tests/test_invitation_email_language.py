@@ -37,7 +37,7 @@ def invitation():
     return invitation
 
 
-@pytest.mark.parametrize("language", ["es", "pt-br"])
+@pytest.mark.parametrize("language", ["es", "pt"])
 def test_invitation_email_is_fully_localized(language, invitation, outbox) -> None:
     invited = UserFactory(email=invitation.invited_email, preferred_language=language)
     invitation.user = invited

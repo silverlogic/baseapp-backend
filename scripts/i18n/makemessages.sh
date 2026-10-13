@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regenerate every package's translation catalogs (es, pt_BR).
+# Regenerate every package's translation catalogs (es, pt).
 #
 #   docker compose run --rm web uv run bash scripts/i18n/makemessages.sh
 #

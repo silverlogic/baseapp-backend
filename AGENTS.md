@@ -23,7 +23,7 @@ BaseApp Backend is a monorepo of reusable Django packages (auth, profiles, comme
 - Prefer queryset annotations over `@property` — annotations are filterable and avoid extra DB hits.
 - If an annotation is reused, add it to a custom `QuerySet` method on a custom `Manager`.
 - `related_name` on `ForeignKey`/`ManyToManyField` → plural; on `OneToOneField` → singular.
-- Use `gettext_lazy as _` for all user-facing strings (`verbose_name`, `help_text`, `Meta.verbose_name`, `AppConfig.verbose_name`, choice labels, admin labels, `ValidationError` messages). Never use eager `gettext` at module level, never format inside `_()`. Jinja templates use `{{ _("...", name=value) }}`; out-of-request code (emails) activates the recipient's language with `baseapp_core.i18n.user_language`. Each package ships `locale/es` and `locale/pt_BR` catalogs — see Translations below.
+- Use `gettext_lazy as _` for all user-facing strings (`verbose_name`, `help_text`, `Meta.verbose_name`, `AppConfig.verbose_name`, choice labels, admin labels, `ValidationError` messages). Never use eager `gettext` at module level, never format inside `_()`. Jinja templates use `{{ _("...", name=value) }}`; out-of-request code (emails) activates the recipient's language with `baseapp_core.i18n.user_language`. Each package ships `locale/es` and `locale/pt` catalogs — see Translations below.
 
 ### DRF
 - Put permissions in `permissions.py`; compose with `|` and `&` rather than bundling logic into one class.
@@ -96,7 +96,7 @@ docker compose run --rm web pre-commit run --all-files
 
 ## Translations
 
-Every package keeps its own catalogs in `<package>/locale/{es,pt_BR}/LC_MESSAGES/django.po`
+Every package keeps its own catalogs in `<package>/locale/{es,pt}/LC_MESSAGES/django.po`
 (`.mo` files are gitignored and compiled in CI / Docker / the publish job). CI fails when a
 catalog is stale (`makemessages` would change it) or incomplete (untranslated / fuzzy):
 
@@ -111,9 +111,10 @@ reads defaults from `BA_MAKEMESSAGES_DEFAULTS` (`testproject/settings.py`). Add 
 `scripts/i18n/packages.sh` and translate the generated entries before merging.
 
 The root `conftest.py` compiles every catalog before the tests run, so a clean checkout only needs
-`gettext` (already in the image). Brazilian Portuguese ships as `locale/pt_BR`: consuming projects
-must list `pt-br` in `LANGUAGES` (as `testproject` does) — a bare `pt` never resolves to it and
-falls back to English.
+`gettext` (already in the image). Portuguese ships as `locale/pt` (Brazilian Portuguese copy) under
+the language code `pt`, the code `TranslatedField` columns, `URLPath.language` and
+`User.preferred_language` already store: keep `pt` (not `pt-br`) in `LANGUAGES`. A request for
+`pt-br` resolves to `pt` through Django's language fallback.
 
 ## Test Coverage Policy
 

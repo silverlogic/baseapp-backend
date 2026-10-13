@@ -93,7 +93,7 @@ ROOT_URLCONF = "testproject.urls"
 AUTH_USER_MODEL = "users.User"
 
 LANGUAGE_CODE = "en"
-LANGUAGES = [("en", _("English")), ("es", _("Spanish")), ("pt-br", _("Brazilian Portuguese"))]
+LANGUAGES = [("en", _("English")), ("es", _("Spanish")), ("pt", _("Portuguese"))]
 
 # Defaults for `makemessages` when run inside a package directory (scripts/i18n/makemessages.sh).
 BA_MAKEMESSAGES_DEFAULTS = {

@@ -102,15 +102,15 @@ def test_active_url_path_on_object_type(django_user_client, graphql_user_client)
 def test_deliver_localized_title_and_body(django_user_client, graphql_user_client) -> None:
     title_en = "About"
     body_en = "This is the about page"
-    title_pt_br = "Sobre"
-    body_pt_br = "Esta é a página sobre"
+    title_pt = "Sobre"
+    body_pt = "Esta é a página sobre"
 
     page = PageFactory(
         user=django_user_client.user,
         title_en=title_en,
         body_en=make_text_into_quill(body_en),
-        title_pt_br=title_pt_br,
-        body_pt_br=make_text_into_quill(body_pt_br),
+        title_pt=title_pt,
+        body_pt=make_text_into_quill(body_pt),
     )
 
     response = graphql_user_client(
@@ -123,41 +123,41 @@ def test_deliver_localized_title_and_body(django_user_client, graphql_user_clien
             }
         """,
         variables={"id": page.relay_id},
-        headers={"HTTP_ACCEPT_LANGUAGE": "pt-br"},
+        headers={"HTTP_ACCEPT_LANGUAGE": "pt"},
     )
 
     content = response.json()
 
-    assert content["data"]["page"]["title"] == title_pt_br
-    assert content["data"]["page"]["body"] == body_pt_br
+    assert content["data"]["page"]["title"] == title_pt
+    assert content["data"]["page"]["body"] == body_pt
 
 
 def test_deliver_localized_title_and_body_by_path(django_user_client, graphql_user_client) -> None:
     title_en = "About"
     body_en = "This is the about page"
-    title_pt_br = "Sobre"
-    body_pt_br = "Esta é a página sobre"
+    title_pt = "Sobre"
+    body_pt = "Esta é a página sobre"
 
     page = PageFactory(
         user=django_user_client.user,
         title_en=title_en,
         body_en=make_text_into_quill(body_en),
-        title_pt_br=title_pt_br,
-        body_pt_br=make_text_into_quill(body_pt_br),
+        title_pt=title_pt,
+        body_pt=make_text_into_quill(body_pt),
     )
-    url_path = URLPathFactory(target=page, language="pt-br", path="/sobre", is_active=True)
+    url_path = URLPathFactory(target=page, language="pt", path="/sobre", is_active=True)
 
     response = graphql_user_client(
         query=GET_PAGE_BY_PATH,
         variables={"path": url_path.path},
-        headers={"HTTP_ACCEPT_LANGUAGE": "pt-br"},
+        headers={"HTTP_ACCEPT_LANGUAGE": "pt"},
     )
 
     content = response.json()
 
-    assert content["data"]["urlPath"]["target"]["metadata"]["metaTitle"] == title_pt_br
-    assert content["data"]["urlPath"]["target"]["title"] == title_pt_br
-    assert content["data"]["urlPath"]["target"]["body"] == body_pt_br
+    assert content["data"]["urlPath"]["target"]["metadata"]["metaTitle"] == title_pt
+    assert content["data"]["urlPath"]["target"]["title"] == title_pt
+    assert content["data"]["urlPath"]["target"]["body"] == body_pt
 
 
 def test_anon_can_view_page(graphql_client) -> None:

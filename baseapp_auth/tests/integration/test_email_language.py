@@ -19,7 +19,7 @@ def translated(language: str, msgid: str) -> str:
     return text
 
 
-@pytest.mark.parametrize("language", ["es", "pt-br"])
+@pytest.mark.parametrize("language", ["es", "pt"])
 def test_password_expired_email_uses_recipient_language(language, outbox) -> None:
     user = UserFactory(preferred_language=language)
 
