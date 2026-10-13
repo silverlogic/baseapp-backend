@@ -1,8 +1,10 @@
 import pytest
 import swapper
 from django.contrib.contenttypes.models import ContentType
+from django.test import Client as DjangoClient
 
 from baseapp_comments.tests.factories import CommentFactory
+from baseapp_core.graphql.testing.fixtures import GraphQLClient
 from baseapp_core.models import DocumentId
 
 File = swapper.load_model("baseapp_files", "File")
@@ -808,7 +810,9 @@ FILE_SIZE_QUERY = """
 """
 
 
-def test_file_size_larger_than_32_bit_int(graphql_user_client, django_user_client):
+def test_file_size_larger_than_32_bit_int(
+    graphql_user_client: GraphQLClient, django_user_client: DjangoClient
+) -> None:
     file_size = 3 * 1024 * 1024 * 1024
     file = File.objects.create(
         file_name="long-video.mp4",
