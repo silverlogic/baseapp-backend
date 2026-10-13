@@ -1,8 +1,10 @@
 import pytest
 import swapper
 from django.contrib.contenttypes.models import ContentType
+from django.test import Client as DjangoClient
 
 from baseapp_comments.tests.factories import CommentFactory
+from baseapp_core.graphql.testing.fixtures import GraphQLClient
 from baseapp_core.models import DocumentId
 
 File = swapper.load_model("baseapp_files", "File")
@@ -795,3 +797,31 @@ def test_file_node_query_returns_file_for_owner(graphql_user_client, django_user
     assert "errors" not in content
     assert content["data"]["file"]["id"] == file.relay_id
     assert content["data"]["file"]["fileName"] == "mine.txt"
+
+
+FILE_SIZE_QUERY = """
+    query FileSize($id: ID!) {
+        node(id: $id) {
+            ... on File {
+                fileSize
+            }
+        }
+    }
+"""
+
+
+def test_file_size_larger_than_32_bit_int(
+    graphql_user_client: GraphQLClient, django_user_client: DjangoClient
+) -> None:
+    file_size = 3 * 1024 * 1024 * 1024
+    file = File.objects.create(
+        file_name="long-video.mp4",
+        file_size=file_size,
+        upload_status=File.UploadStatus.COMPLETED,
+        created_by=django_user_client.user,
+    )
+
+    content = graphql_user_client(FILE_SIZE_QUERY, variables={"id": file.relay_id}).json()
+
+    assert "errors" not in content
+    assert content["data"]["node"]["fileSize"] == file_size

@@ -189,9 +189,10 @@ Without it uploads fail in the browser with a CORS error and nothing reaches the
 
 ### Common Errors
 - **400 Bad Request**: Invalid parameters, part numbers, or file size
+- **400 Bad Request** on complete: the assembled file's size differs from the declared `file_size` (e.g. a part carried extra bytes). The stored object is deleted and the upload is not completed.
 - **403 Forbidden**: User doesn't own the file/upload
 - **404 Not Found**: File or upload not found
-- **413 Payload Too Large**: File exceeds `MAX_FILE_UPLOAD_SIZE`
+- **400 Bad Request** `{"file_size": ["File is too large. The maximum size is 5.0 GB."]}`: File exceeds `MAX_FILE_UPLOAD_SIZE`. Clients can show this message as is.
 
 ### Upload Status
 - `pending`: Upload initiated but not started

@@ -8,12 +8,11 @@ PUT endpoint stores the part data.
 
 from datetime import timedelta
 from typing import Any, Dict
-from unittest.mock import patch
 from urllib.parse import urlparse
 
 import pytest
 import swapper
-from django.conf import settings
+from django.test import override_settings
 from django.utils import timezone
 from freezegun import freeze_time
 from rest_framework import status
@@ -29,8 +28,11 @@ PART_DATA = b"hello world"
 
 @pytest.fixture
 def temp_media_root(tmp_path):
-    """Use a temporary directory for media root."""
-    with patch.object(settings, "MEDIA_ROOT", str(tmp_path)):
+    """Use a temporary directory for media root.
+
+    override_settings (not patch.object) so default_storage drops its cached location.
+    """
+    with override_settings(MEDIA_ROOT=str(tmp_path)):
         yield tmp_path
 
 
@@ -98,6 +100,26 @@ class TestPresignedUploadPart:
         file_obj = File.get_by_public_id(initiated_upload["id"])
         assert file_obj.upload_status == File.UploadStatus.COMPLETED
         assert (temp_media_root / file_obj.file.name).read_bytes() == PART_DATA
+
+    def test_complete_rejects_more_bytes_than_declared(
+        self, client, user_client, temp_media_root, initiated_upload
+    ) -> None:
+        """Declaring a small size and PUTting more must not yield a COMPLETED, oversized file."""
+        path = presigned_path(initiated_upload["presigned_urls"][0])
+        etag = put_part(client, path, data=PART_DATA * 4).json()["etag"]
+
+        response = user_client.post(
+            f"/v1/files/uploads/{initiated_upload['id']}/complete",
+            {"parts": [{"part_number": 1, "etag": etag}]},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        file_obj = File.get_by_public_id(initiated_upload["id"])
+        # ATOMIC_REQUESTS rolls back the FAILED flag with the 400; what matters is no COMPLETED file.
+        assert file_obj.upload_status != File.UploadStatus.COMPLETED
+        assert not file_obj.file
+        assert not list((temp_media_root / "files").rglob("*"))
 
     def test_missing_token(self, client, initiated_upload):
         """A request without a token is rejected."""

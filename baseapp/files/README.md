@@ -56,6 +56,9 @@ This adds the following fields to the File model:
 - `uploaded_parts` - JSON tracking ETags
 - `upload_expires_at` - Expiration timestamp
 
+`file_size` is a `PositiveBigIntegerField`, so files over 2 GB fit. A project with its own concrete
+`File` model needs `python manage.py makemigrations files` after upgrading to pick that up.
+
 ### 2. URLs Already Configured
 
 The URLs are automatically included in your project via `testproject/urls.py`.

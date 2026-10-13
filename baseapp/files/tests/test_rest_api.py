@@ -5,6 +5,7 @@ import pytest
 import swapper
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
 
@@ -210,6 +211,48 @@ class TestFileUploadInitiation:
         error_message = str(response_data)
         assert "doesn't match" in error_message
 
+    @override_settings(MAX_FILE_UPLOAD_SIZE=10 * 1024 * 1024)
+    def test_initiate_upload_too_large_explains_the_limit(
+        self, user_client: Client, mock_s3_handler: MagicMock
+    ) -> None:
+        response = user_client.post(
+            "/v1/files/uploads",
+            {
+                "file_name": "big.pdf",
+                "file_size": 15 * 1024 * 1024,
+                "file_content_type": "application/pdf",
+                "num_parts": 3,
+                "part_size": 5242880,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.json() == {
+            "file_size": ["File is too large. The maximum size is 10.0\xa0MB."]
+        }
+        mock_s3_handler.initiate_upload.assert_not_called()
+
+    def test_initiate_upload_larger_than_32_bit_size(
+        self, user_client: Client, mock_s3_handler: MagicMock
+    ) -> None:
+        file_size = 3 * 1024 * 1024 * 1024
+        response = user_client.post(
+            "/v1/files/uploads",
+            {
+                "file_name": "long-video.mp4",
+                "file_size": file_size,
+                "file_content_type": "video/mp4",
+                "num_parts": 31,
+                "part_size": 100 * 1024 * 1024,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        file_obj = File.get_by_public_id(response.json()["id"])
+        assert file_obj.file_size == file_size
+
     def test_initiate_upload_too_many_parts(self, user_client, mock_s3_handler):
         """Test validation for maximum parts (10,000)."""
         response = user_client.post(
@@ -263,6 +306,36 @@ class TestFileUploadCompletion:
             created_by=user_client.user,
             upload_expires_at=timezone.now() + timedelta(hours=24),
         )
+
+    @pytest.fixture(autouse=True)
+    def stored_storage(self):
+        """The handler is mocked, so nothing is stored; report the declared size by default."""
+        with patch("baseapp.files.services.upload_service.default_storage") as storage:
+            storage.size.return_value = 10485760
+            yield storage
+
+    def test_complete_upload_rejects_bytes_beyond_the_declared_size(
+        self,
+        user_client: Client,
+        pending_upload: "File",
+        mock_s3_handler: MagicMock,
+        stored_storage: MagicMock,
+    ) -> None:
+        """A client that declares a small size and sends more must not get a COMPLETED file."""
+        stored_storage.size.return_value = pending_upload.file_size + 1
+
+        response = user_client.post(
+            f"/v1/files/uploads/{pending_upload.public_id}/complete",
+            {"parts": [{"part_number": 1, "etag": "a"}, {"part_number": 2, "etag": "b"}]},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        stored_storage.delete.assert_called_once_with("files/test-file.mp4")
+        pending_upload.refresh_from_db()
+        # ATOMIC_REQUESTS rolls back the FAILED flag with the 400; what matters is no COMPLETED file.
+        assert pending_upload.upload_status != File.UploadStatus.COMPLETED
+        assert not pending_upload.file
 
     def test_complete_upload_success(self, user_client, pending_upload, mock_s3_handler):
         """Test successful upload completion."""

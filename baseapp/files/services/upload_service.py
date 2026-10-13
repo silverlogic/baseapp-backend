@@ -3,6 +3,7 @@ from datetime import timedelta
 
 import swapper
 from django.conf import settings
+from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
 
@@ -109,6 +110,7 @@ class UploadService:
         # Complete with storage handler (network I/O — outside the transaction)
         try:
             file_path = self.handler.complete_upload(file_obj, file_obj.upload_id, parts)
+            self._verify_stored_size(file_obj, file_path)
         except Exception:
             File.objects.filter(id=file_id).update(upload_status=File.UploadStatus.FAILED)
             raise
@@ -151,6 +153,26 @@ class UploadService:
             locked.upload_id = ""
             locked.save()
             return locked
+
+    def _verify_stored_size(self, file_obj, file_path: str) -> None:
+        """Reject an assembled file whose bytes differ from the declared size.
+
+        MAX_FILE_UPLOAD_SIZE is checked against the declared ``file_size`` at
+        initiation, but neither the local part endpoint nor a presigned S3 part URL
+        bounds how many bytes are actually sent. Both handlers store through
+        ``default_storage`` (it is what selects the handler), so it can measure
+        either. An oversized object is deleted rather than kept.
+        """
+        stored_size = default_storage.size(file_path)
+        if stored_size == file_obj.file_size:
+            return
+        try:
+            default_storage.delete(file_path)
+        except Exception:
+            logger.exception("Could not delete mismatched upload %s", file_path)
+        raise ValueError(
+            f"Stored size {stored_size} does not match declared size {file_obj.file_size}"
+        )
 
     def _validate_file_params(self, file_size, num_parts, part_size):
         """Validate file upload parameters."""
