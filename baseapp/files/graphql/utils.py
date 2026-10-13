@@ -33,11 +33,11 @@ def attach_files_from_relay_ids(parent, file_ids, user):
     files = [files_map[pk] for pk in pk_lookup]
 
     if user and not user.is_superuser:
-        # Only the file's own creator may attach it. A NULL creator is not an
-        # implicit grant — treating it as one would let any user re-parent
-        # (steal) system/orphan files, diverging from FileAttachToTarget which
-        # enforces owner-only via the attach permission.
-        unauthorized = [file_obj for file_obj in files if file_obj.created_by_id != user.id]
+        # Only the file's owner may attach it, through the same attach permission as
+        # FileAttachToTarget. A NULL creator is not an implicit grant: an anonymous
+        # upload is attachable only by whoever holds its upload token.
+        perm = f"{File._meta.app_label}.attach_{File._meta.model_name.lower()}"
+        unauthorized = [file_obj for file_obj in files if not user.has_perm(perm, file_obj)]
         if unauthorized:
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),

@@ -1,12 +1,13 @@
+import os
 import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
 import swapper
 from botocore.exceptions import ClientError
-from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.files.storage import FileSystemStorage
+from django.core.files.storage import FileSystemStorage, InMemoryStorage
+from django.test import override_settings
 from django.utils.functional import LazyObject
 
 from baseapp.files.storage import get_upload_handler
@@ -304,8 +305,9 @@ class TestLocalUploadHandler:
 
     @pytest.fixture
     def temp_media_root(self, tmp_path):
-        """Use temporary directory for media root."""
-        with patch.object(settings, "MEDIA_ROOT", str(tmp_path)):
+        """Use temporary directory for media root. override_settings (not patch.object)
+        so the files storage drops its cached location."""
+        with override_settings(MEDIA_ROOT=str(tmp_path)):
             yield tmp_path
 
     def test_local_handler_does_not_support_true_multipart(self, local_handler):
@@ -383,6 +385,21 @@ class TestLocalUploadHandler:
         # Check temp directory was cleaned up
         assert not temp_dir.exists()
 
+    def test_local_complete_upload_into_a_storage_without_paths(self, file_obj) -> None:
+        """A storage with no local path gets the assembled file through save()."""
+        storage = InMemoryStorage()
+        handler = LocalUploadHandler(storage=storage)
+        upload_id = handler.initiate_upload(file_obj, num_parts=2, part_size=5242880)["upload_id"]
+        handler.upload_part(upload_id, part_number=1, data=b"part 1 ")
+        handler.upload_part(upload_id, part_number=2, data=b"part 2")
+
+        name = handler.complete_upload(
+            file_obj, upload_id, [{"part_number": 1}, {"part_number": 2}]
+        )
+
+        assert storage.open(name).read() == b"part 1 part 2"
+        assert not os.path.exists(handler._temp_dir(upload_id))
+
 
 @pytest.mark.django_db
 class TestStorageFactory:
@@ -391,7 +408,7 @@ class TestStorageFactory:
     @requires_django_storages
     def test_factory_returns_s3_handler_for_s3_storage(self) -> None:
         """Test that factory returns S3 handler when using S3 storage."""
-        with patch("baseapp.files.storage.default_storage", S3Boto3Storage(bucket_name="b")):
+        with patch("baseapp.files.storage.files_storage", S3Boto3Storage(bucket_name="b")):
             with patch("baseapp.files.storage.s3.S3MultipartUploadHandler") as mock_s3:
                 get_upload_handler()
 
@@ -404,19 +421,19 @@ class TestStorageFactory:
         class DefaultStorage(S3Boto3Storage):
             pass
 
-        with patch("baseapp.files.storage.default_storage", DefaultStorage(bucket_name="b")):
+        with patch("baseapp.files.storage.files_storage", DefaultStorage(bucket_name="b")):
             with patch("baseapp.files.storage.s3.S3MultipartUploadHandler") as mock_s3:
                 get_upload_handler()
 
                 mock_s3.assert_called_once()
 
     @requires_django_storages
-    def test_factory_returns_s3_handler_through_lazy_default_storage(self) -> None:
-        """The real LazyObject `default_storage` proxies isinstance to the wrapped backend."""
+    def test_factory_returns_s3_handler_through_lazy_files_storage(self) -> None:
+        """The LazyObject `files_storage` proxies isinstance to the wrapped backend."""
         lazy = LazyObject()
         lazy._wrapped = S3Boto3Storage(bucket_name="b")
 
-        with patch("baseapp.files.storage.default_storage", lazy):
+        with patch("baseapp.files.storage.files_storage", lazy):
             with patch("baseapp.files.storage.s3.S3MultipartUploadHandler") as mock_s3:
                 get_upload_handler()
 
@@ -424,7 +441,7 @@ class TestStorageFactory:
 
     def test_factory_returns_local_handler_for_file_system_storage(self) -> None:
         """Test that factory returns local handler for non-S3 storage."""
-        with patch("baseapp.files.storage.default_storage", FileSystemStorage()):
+        with patch("baseapp.files.storage.files_storage", FileSystemStorage()):
             with patch("baseapp.files.storage.local.LocalUploadHandler") as mock_local:
                 get_upload_handler()
 

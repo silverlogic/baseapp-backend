@@ -1,5 +1,6 @@
 from baseapp_core.rest_framework.routers import DefaultRouter
 
+from .files.download_views import FileDownloadViewSet
 from .files.views import FilesViewSet
 from .uploads.presigned_views import PresignedUploadViewSet
 from .uploads.views import FileUploadViewSet
@@ -10,4 +11,5 @@ files_router.register(
     r"files/presigned-uploads", PresignedUploadViewSet, basename="presigned-uploads"
 )
 files_router.register(r"files/uploads", FileUploadViewSet, basename="file-uploads")
+files_router.register(r"files/download", FileDownloadViewSet, basename="file-download")
 files_router.register(r"files", FilesViewSet, basename="files")

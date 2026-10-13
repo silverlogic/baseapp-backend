@@ -308,11 +308,10 @@ class TestFileUploadCompletion:
         )
 
     @pytest.fixture(autouse=True)
-    def stored_storage(self):
+    def stored_storage(self, mock_s3_handler: MagicMock) -> MagicMock:
         """The handler is mocked, so nothing is stored; report the declared size by default."""
-        with patch("baseapp.files.services.upload_service.default_storage") as storage:
-            storage.size.return_value = 10485760
-            yield storage
+        mock_s3_handler.storage.size.return_value = 10485760
+        return mock_s3_handler.storage
 
     def test_complete_upload_rejects_bytes_beyond_the_declared_size(
         self,

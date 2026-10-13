@@ -8,7 +8,15 @@ from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import ThumbnailField
 from baseapp_core.plugins import graphql_shared_interfaces
 
+from ..storage import files_storage_is_private
+
 File = swapper.load_model("baseapp_files", "File")
+file_app_label = File._meta.app_label
+file_model_name = File._meta.model_name.lower()
+
+
+def can_view_file(info: graphene.ResolveInfo, file_obj) -> bool:
+    return info.context.user.has_perm(f"{file_app_label}.view_{file_model_name}", file_obj)
 
 
 class FileFilter(django_filters.FilterSet):
@@ -34,14 +42,29 @@ class AbstractFileObjectType:
         model = File
         filterset_class = FileFilter
 
+    @classmethod
+    def get_node(cls, info: graphene.ResolveInfo, node_id: str):
+        node = super().get_node(info, node_id)
+        if node is not None and not can_view_file(info, node):
+            return None
+        return node
+
     def resolve_url(self, info, **kwargs):
+        """On private storage the URL is signed and expires; None for viewers
+        without ``view_file``."""
+        if not can_view_file(info, self):
+            return None
         if not self.file:
             if hasattr(self, "url"):
                 return self.url
             return None
         return info.context.build_absolute_uri(self.file.url)
 
-    def resolve_thumbnail(self, *args, **kwargs):
+    def resolve_thumbnail(self, info, **kwargs):
+        # Thumbnails are cached by source URL and stored in the public thumbnail
+        # storage, so a private file gets none; clients fall back to `url`.
+        if files_storage_is_private():
+            return None
         return self.file
 
 

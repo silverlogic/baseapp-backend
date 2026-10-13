@@ -1,9 +1,14 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
+from django.core.files.storage import Storage
+
 
 class BaseUploadHandler(ABC):
     """Abstract interface for upload handlers (S3 vs Local)."""
+
+    # The storage the assembled file is written to (the files storage).
+    storage: Storage
 
     @abstractmethod
     def supports_multipart(self) -> bool:

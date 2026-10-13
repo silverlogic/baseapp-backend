@@ -3,7 +3,6 @@ from datetime import timedelta
 
 import swapper
 from django.conf import settings
-from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
 
@@ -40,7 +39,8 @@ class UploadService:
         and the row is then updated. On failure the orphan row is removed.
 
         Args:
-            user: The user initiating the upload
+            user: The user initiating the upload; an anonymous user leaves
+                ``created_by`` empty
             file_name: Original file name
             file_size: Size in bytes
             file_content_type: MIME type
@@ -63,7 +63,7 @@ class UploadService:
             file_content_type=file_content_type,
             upload_status=File.UploadStatus.PENDING,
             total_parts=num_parts,
-            created_by=user,
+            created_by=user if user and user.is_authenticated else None,
             profile=profile,
             parent_id=parent_id,
             uploaded_parts={},
@@ -159,15 +159,16 @@ class UploadService:
 
         MAX_FILE_UPLOAD_SIZE is checked against the declared ``file_size`` at
         initiation, but neither the local part endpoint nor a presigned S3 part URL
-        bounds how many bytes are actually sent. Both handlers store through
-        ``default_storage`` (it is what selects the handler), so it can measure
-        either. An oversized object is deleted rather than kept.
+        bounds how many bytes are actually sent. Both handlers store through the
+        files storage they were built with, so it can measure either. An oversized
+        object is deleted rather than kept.
         """
-        stored_size = default_storage.size(file_path)
+        storage = self.handler.storage
+        stored_size = storage.size(file_path)
         if stored_size == file_obj.file_size:
             return
         try:
-            default_storage.delete(file_path)
+            storage.delete(file_path)
         except Exception:
             logger.exception("Could not delete mismatched upload %s", file_path)
         raise ValueError(

@@ -1,9 +1,12 @@
 import os
 import shutil
+import tempfile
 import uuid
 from typing import Any, Dict, List, Optional
 
 from django.conf import settings
+from django.core.files import File as DjangoFile
+from django.core.files.storage import FileSystemStorage, Storage, default_storage
 
 from baseapp_core.models import random_name_in
 
@@ -18,7 +21,23 @@ class LocalUploadHandler(BaseUploadHandler):
     This doesn't implement true multipart upload - instead it provides
     "presigned URLs" that are actually backend endpoints with signed tokens
     that accept the file parts and store them locally.
+
+    Parts are kept under the storage's own directory (so a private storage keeps them
+    out of the public media root) and the assembled file is written into that storage.
     """
+
+    def __init__(self, storage: Optional[Storage] = None) -> None:
+        self.storage = storage or default_storage
+
+    def _local_path(self, name: str) -> Optional[str]:
+        """Where ``name`` lives on disk, for filesystem storages; None otherwise."""
+        if isinstance(self.storage, FileSystemStorage):
+            return self.storage.path(name)
+        return None
+
+    def _temp_dir(self, upload_id: str) -> str:
+        root = self._local_path("") or tempfile.gettempdir()
+        return os.path.join(root, "temp_uploads", upload_id)
 
     def supports_multipart(self) -> bool:
         return False  # Simplified multipart
@@ -32,7 +51,7 @@ class LocalUploadHandler(BaseUploadHandler):
         upload_id = str(uuid.uuid4())
 
         # Create temp directory for parts if needed
-        temp_dir = os.path.join(settings.MEDIA_ROOT, "temp_uploads", upload_id)
+        temp_dir = self._temp_dir(upload_id)
         os.makedirs(temp_dir, exist_ok=True)
 
         # Get the base URL from settings or use default
@@ -71,7 +90,7 @@ class LocalUploadHandler(BaseUploadHandler):
         """
         import hashlib
 
-        temp_dir = os.path.join(settings.MEDIA_ROOT, "temp_uploads", upload_id)
+        temp_dir = self._temp_dir(upload_id)
         os.makedirs(temp_dir, exist_ok=True)
 
         part_file = os.path.join(temp_dir, f"part_{part_number}")
@@ -89,24 +108,30 @@ class LocalUploadHandler(BaseUploadHandler):
         """
         Combine uploaded parts into final file.
         """
-        temp_dir = os.path.join(settings.MEDIA_ROOT, "temp_uploads", upload_id)
+        temp_dir = self._temp_dir(upload_id)
 
         # Generate final file path
         final_path = random_name_in("files")(file_obj, file_obj.file_name or "file")
-        full_path = os.path.join(settings.MEDIA_ROOT, final_path)
+        # Not a filesystem storage: assemble beside the parts, then save through it.
+        full_path = self._local_path(final_path)
+        assembled_path = full_path or os.path.join(temp_dir, "assembled")
 
         # Ensure directory exists
-        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        os.makedirs(os.path.dirname(assembled_path), exist_ok=True)
 
         # Combine parts in order. A missing part would silently truncate the
         # assembled file, so fail loudly instead.
-        with open(full_path, "wb") as outfile:
+        with open(assembled_path, "wb") as outfile:
             for part in sorted(parts, key=lambda x: x["part_number"]):
                 part_file = os.path.join(temp_dir, f"part_{part['part_number']}")
                 if not os.path.exists(part_file):
                     raise ValueError(f"Missing uploaded part {part['part_number']}")
                 with open(part_file, "rb") as infile:
                     outfile.write(infile.read())
+
+        if full_path is None:
+            with open(assembled_path, "rb") as assembled:
+                final_path = self.storage.save(final_path, DjangoFile(assembled))
 
         # Cleanup temp files
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -116,8 +141,7 @@ class LocalUploadHandler(BaseUploadHandler):
 
     def abort_upload(self, file_obj, upload_id: str):
         """Cleanup temp files."""
-        temp_dir = os.path.join(settings.MEDIA_ROOT, "temp_uploads", upload_id)
-        shutil.rmtree(temp_dir, ignore_errors=True)
+        shutil.rmtree(self._temp_dir(upload_id), ignore_errors=True)
 
     def get_file_url(self, file_obj) -> Optional[str]:
         """Get the local file URL, or None if the file isn't stored yet."""
