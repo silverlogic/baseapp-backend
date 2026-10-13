@@ -2,7 +2,7 @@ import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
-from constance.test import override_config
+from django.test import override_settings
 from graphql_relay import to_global_id
 
 from baseapp_core.graphql.relay import Node
@@ -35,13 +35,17 @@ from testproject.testapp.tests.factories import (
 
 @pytest.mark.django_db
 class TestPublicIdLogicEnabled:
-    def test_is_public_id_logic_enabled_returns_true_when_config_enabled(self) -> None:
-        with override_config(ENABLE_PUBLIC_ID_LOGIC=True):
-            assert _is_public_id_logic_enabled() is True
+    def test_enabled_by_the_setting(self, settings) -> None:
+        settings.ENABLE_PUBLIC_ID_LOGIC = True
+        assert _is_public_id_logic_enabled() is True
 
-    def test_is_public_id_logic_enabled_returns_false_when_config_disabled(self) -> None:
-        with override_config(ENABLE_PUBLIC_ID_LOGIC=False):
-            assert _is_public_id_logic_enabled() is False
+    def test_disabled_by_the_setting(self, settings) -> None:
+        settings.ENABLE_PUBLIC_ID_LOGIC = False
+        assert _is_public_id_logic_enabled() is False
+
+    def test_enabled_by_default(self, settings) -> None:
+        del settings.ENABLE_PUBLIC_ID_LOGIC
+        assert _is_public_id_logic_enabled() is True
 
 
 @pytest.mark.django_db
@@ -312,7 +316,7 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
 @pytest.mark.django_db
 class TestHashidsStrategyIntegrationScenarios:
     def test_public_id_model_with_public_id_logic_enabled_uses_public_id_strategy(self) -> None:
-        with override_config(ENABLE_PUBLIC_ID_LOGIC=True):
+        with override_settings(ENABLE_PUBLIC_ID_LOGIC=True):
             dummy_instance = DummyPublicIdModelFactory()
             strategy = get_hashids_strategy_from_instance_or_cls(dummy_instance)
 
@@ -326,7 +330,7 @@ class TestHashidsStrategyIntegrationScenarios:
             assert resolved_instance.pk == dummy_instance.pk
 
     def test_public_id_model_with_public_id_logic_disabled_uses_legacy_strategy(self) -> None:
-        with override_config(ENABLE_PUBLIC_ID_LOGIC=False):
+        with override_settings(ENABLE_PUBLIC_ID_LOGIC=False):
             dummy_instance = DummyPublicIdModelFactory()
             strategy = get_hashids_strategy_from_instance_or_cls(dummy_instance)
 
@@ -343,7 +347,7 @@ class TestHashidsStrategyIntegrationScenarios:
 
     def test_legacy_model_always_uses_legacy_strategy(self) -> None:
         for config_value in [True, False, None, ""]:
-            with override_config(ENABLE_PUBLIC_ID_LOGIC=config_value):
+            with override_settings(ENABLE_PUBLIC_ID_LOGIC=config_value):
                 dummy_instance = DummyLegacyModelFactory()
                 strategy = get_hashids_strategy_from_instance_or_cls(dummy_instance)
 
@@ -354,7 +358,7 @@ class TestHashidsStrategyIntegrationScenarios:
                 assert resolved_id == dummy_instance.pk
 
     def test_uuid4_global_id_flow_with_public_id_logic_enabled(self) -> None:
-        with override_config(ENABLE_PUBLIC_ID_LOGIC=True):
+        with override_settings(ENABLE_PUBLIC_ID_LOGIC=True):
             dummy_instance = DummyPublicIdModelFactory()
             test_uuid = str(dummy_instance.public_id)
             graphene_type_mock = MagicMock()
@@ -392,7 +396,7 @@ class TestHashidsStrategyIntegrationScenarios:
         public_id_instance = DummyPublicIdModelFactory()
         legacy_instance = DummyLegacyModelFactory()
 
-        with override_config(ENABLE_PUBLIC_ID_LOGIC=True):
+        with override_settings(ENABLE_PUBLIC_ID_LOGIC=True):
             # Test public ID strategy
             public_id_strategy = get_hashids_strategy_from_instance_or_cls(public_id_instance)
             assert isinstance(public_id_strategy.id_resolver, PublicIdResolverStrategy)
