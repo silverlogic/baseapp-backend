@@ -30,6 +30,13 @@ class FilesPermissionsBackend(BaseBackend):
         return None
 
     @staticmethod
+    def _can_upload(user_obj: UserType) -> bool:
+        """May this user upload a file not tied to a target yet (``add_<file>`` without an
+        object)? Default: authenticated users, and anyone while
+        ``BASEAPP_FILES_ALLOW_ANONYMOUS_UPLOADS`` is on. Checked before an upload starts."""
+        return user_obj.is_authenticated or anonymous_uploads_allowed()
+
+    @staticmethod
     def _can_add_to_target(user_obj: UserType, obj: Optional[Any]) -> bool:
         """Target-level: may this user attach files to `obj`? Default policy
         mirrors comments' add_comment — authenticated and files enabled; anonymous
@@ -91,11 +98,13 @@ class FilesPermissionsBackend(BaseBackend):
         )
 
     def has_perm(self, user_obj: UserType, perm: str, obj: Optional[Any] = None) -> bool:
-        """Resolve object-level file permissions: ``add_<file>`` (attach to a
-        target), ``attach_<file>`` (owner-only), ``view_<file>`` (see ``_can_view``),
+        """Resolve object-level file permissions: ``add_<file>`` (upload at all, or
+        attach to a target when one is given), ``attach_<file>`` (owner-only), ``view_<file>`` (see ``_can_view``),
         and change/delete (owner or global perm). Unknown perms return False so
         other backends can decide."""
         if perm == f"{file_app_label}.add_{file_model_name}":
+            if obj is None:
+                return self._can_upload(user_obj)
             return self._can_add_to_target(user_obj, obj)
 
         if perm == f"{file_app_label}.attach_{file_model_name}":

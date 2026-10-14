@@ -3,7 +3,7 @@ import logging
 import swapper
 from django.utils.translation import gettext_lazy as _
 from rest_framework import status, viewsets
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.throttling import BaseThrottle
 
@@ -99,11 +99,14 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # Authorize the target before creating anything, mirroring the
-        # fileAttachToTarget mutation so this endpoint can't bypass it.
+        # Authorize before creating anything: add_<file> on the target when one is given
+        # (mirroring fileAttachToTarget, so this endpoint can't bypass it), otherwise
+        # add_<file> without an object, so the permission backend decides who may upload.
         parent_pk = serializer.validated_data.get("parent_id")
         if parent_pk:
             enforce_can_attach_to_parent(request.user, parent_pk)
+        elif not request.user.has_perm(f"{file_app_label}.add_{file_model_name}"):
+            raise PermissionDenied(_("You don't have permission to upload files."))
 
         try:
             # Get user's profile if available

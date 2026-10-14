@@ -28,6 +28,7 @@ from rest_framework import status
 from storages.backends.s3boto3 import S3Boto3Storage
 
 from baseapp.files.checks import check_private_files_storage, private_storage_errors
+from baseapp.files.permissions import FilesPermissionsBackend
 from baseapp.files.services.cleanup import (
     cleanup_unclaimed_anonymous_files,
     delete_unclaimed_anonymous_file,
@@ -588,3 +589,44 @@ class TestPrivateStorageChecks:
         }
         with override_settings(STORAGES=storages, BASEAPP_FILES_STORAGE="files_s3"):
             assert [error.id for error in check_private_files_storage()] == ["baseapp_files.E002"]
+
+
+class TestUploadPermission:
+    """Initiation asks the permission backend for add_<file>, with the target when given."""
+
+    def test_a_project_rule_can_refuse_uploads(self, user_client: Client) -> None:
+        with patch.object(FilesPermissionsBackend, "_can_upload", staticmethod(lambda user: False)):
+            response = initiate(user_client)
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.json() == {"detail": "You don't have permission to upload files."}
+        assert not File.objects.exists()
+
+    def test_a_project_rule_can_refuse_a_target(self, user_client: Client) -> None:
+        parent = attached_to(CommentFactory())
+        refuse = staticmethod(lambda user, obj: False)
+
+        with patch.object(FilesPermissionsBackend, "_can_add_to_target", refuse):
+            response = user_client.post(
+                "/v1/files/uploads",
+                {
+                    "file_name": "doc.txt",
+                    "file_size": len(CONTENT),
+                    "file_content_type": "text/plain",
+                    "num_parts": 1,
+                    "part_size": len(CONTENT),
+                    "parent_id": str(parent.public_id),
+                },
+                format="json",
+            )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert not File.objects.exists()
+
+    def test_default_add_file_without_a_target(self) -> None:
+        perm = f"{File._meta.app_label}.add_{File._meta.model_name}"
+
+        assert UserFactory().has_perm(perm) is True
+        assert AnonymousUser().has_perm(perm) is False
+        with override_settings(BASEAPP_FILES_ALLOW_ANONYMOUS_UPLOADS=True):
+            assert AnonymousUser().has_perm(perm) is True

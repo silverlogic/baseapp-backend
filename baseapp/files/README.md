@@ -610,6 +610,12 @@ check refuses to start when a signing S3 storage would still hand out public URL
 returns unsigned URLs), and `baseapp_files.E002` for a public `default_acl` or
 `AWS_S3_OBJECT_PARAMETERS` ACL. Also block public access on the bucket itself.
 
+**Who may upload** is decided before an upload starts, by `add_<file>`: on the target when the
+upload names one (`parent_id`, `_can_add_to_target`), otherwise without an object
+(`_can_upload`: authenticated users, plus anonymous callers while anonymous uploads are on). A
+refusal is a `403 {"detail": "You don't have permission to upload files."}` and nothing is
+created. Clients can ask the same question up front with GraphQL `hasPerm(perm: "files.add_file")`.
+
 **Who may view** is decided by `FilesPermissionsBackend`'s `view_<file>` permission. Public
 storage: anyone (as before). Private storage: the owner, an anonymous uploader holding the
 file's upload token, whoever may view the object the file is attached to (`view_<model>` on
