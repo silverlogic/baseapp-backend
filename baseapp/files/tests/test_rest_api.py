@@ -253,6 +253,39 @@ class TestFileUploadInitiation:
         file_obj = File.get_by_public_id(response.json()["id"])
         assert file_obj.file_size == file_size
 
+    @pytest.mark.parametrize(
+        "file_name, content_type, field",
+        [
+            ("page.html", "text/plain", "file_name"),
+            ("drawing.SVG", "application/octet-stream", "file_name"),
+            ("photo.png", "image/svg+xml", "file_content_type"),
+            ("notes.txt", "text/html; charset=utf-8", "file_content_type"),
+        ],
+    )
+    def test_initiate_upload_rejects_types_that_run_script(
+        self,
+        user_client: Client,
+        mock_s3_handler: MagicMock,
+        file_name: str,
+        content_type: str,
+        field: str,
+    ) -> None:
+        response = user_client.post(
+            "/v1/files/uploads",
+            {
+                "file_name": file_name,
+                "file_size": 1024,
+                "file_content_type": content_type,
+                "num_parts": 1,
+                "part_size": 1024,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.json() == {field: ["This file type is not allowed."]}
+        mock_s3_handler.initiate_upload.assert_not_called()
+
     def test_initiate_upload_too_many_parts(self, user_client, mock_s3_handler):
         """Test validation for maximum parts (10,000)."""
         response = user_client.post(

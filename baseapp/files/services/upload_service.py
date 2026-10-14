@@ -7,6 +7,7 @@ from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
 
+from ..content_safety import is_blocked_content_type, is_blocked_extension
 from ..storage import get_upload_handler
 
 logger = logging.getLogger(__name__)
@@ -55,6 +56,8 @@ class UploadService:
 
         # Validate inputs
         self._validate_file_params(file_size, num_parts, part_size)
+        if is_blocked_extension(file_name) or is_blocked_content_type(file_content_type):
+            raise ValueError("File type is not allowed")
 
         # Create File record in pending state
         file_obj = File.objects.create(

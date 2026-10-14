@@ -6,7 +6,9 @@ from botocore.exceptions import ClientError
 from django.conf import settings
 from django.core.files.storage import Storage, default_storage
 from django.utils.crypto import salted_hmac
+from django.utils.http import content_disposition_header
 
+from ..content_safety import is_inline_safe
 from .base import BaseUploadHandler
 
 if TYPE_CHECKING:
@@ -136,10 +138,19 @@ class S3MultipartUploadHandler(BaseUploadHandler):
         the storage's ``get_object_parameters()`` (``AWS_S3_OBJECT_PARAMETERS``: ACL,
         CacheControl, server-side encryption, ...), and ``default_acl`` only when those set no
         ACL. Like ``_save``, ``get_object_parameters`` receives the full, location-prefixed key.
+
+        Types a browser would not display safely get ``ContentDisposition: attachment``
+        (``content_safety.is_inline_safe``); the storage's object parameters may override it.
         """
         params: Dict[str, Any] = {
             "ContentType": file_obj.file_content_type or "application/octet-stream"
         }
+        # Served from a custom domain, a type the browser would render could run script
+        # there; anything not known to display safely is a download instead.
+        if not is_inline_safe(params["ContentType"]):
+            params["ContentDisposition"] = content_disposition_header(
+                as_attachment=True, filename=file_obj.file_name or "file"
+            )
         get_object_parameters = getattr(self.storage, "get_object_parameters", None)
         if get_object_parameters:
             params.update(get_object_parameters(self._get_s3_key(file_obj)))

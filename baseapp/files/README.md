@@ -737,26 +737,30 @@ def _validate_file_params(self, file_size, num_parts, part_size, user):
 
 ### File Type Restrictions
 
-Restrict allowed file types:
+Any file type can be uploaded, except types a browser runs as a page: HTML, SVG, XML and
+JavaScript (`baseapp/files/content_safety.py`). Served from the app's domain, a media domain
+or an S3 bucket behind a subdomain, those would be stored XSS. Initiating such an upload is
+rejected by extension or by content type:
+
+```json
+400 {"file_name": ["This file type is not allowed."]}
+400 {"file_content_type": ["This file type is not allowed."]}
+```
+
+On S3, objects that a browser would not display safely (anything other than common images,
+video, audio and PDF) are stored with `Content-Disposition: attachment`, so opening them
+downloads rather than renders them. Images and video still display when embedded.
+
+Both lists are settings, which replace the defaults when set:
 
 ```python
-# In settings.py
-ALLOWED_FILE_TYPES = [
-    'image/jpeg',
-    'image/png',
-    'video/mp4',
-    'application/pdf',
-]
-
-# In InitiateUploadSerializer.validate_file_content_type
-def validate_file_content_type(self, value):
-    allowed = getattr(settings, 'ALLOWED_FILE_TYPES', None)
-    if allowed and value not in allowed:
-        raise serializers.ValidationError(
-            f"File type {value} not allowed. Allowed types: {', '.join(allowed)}"
-        )
-    return value
+BASEAPP_FILES_BLOCKED_EXTENSIONS = [".html", ".htm", ".svg", ".xml", ".js", ".exe"]
+# A leading "*" matches a suffix: "*+xml" covers every XML-based type.
+BASEAPP_FILES_BLOCKED_CONTENT_TYPES = ["text/html", "image/svg+xml", "*+xml"]
 ```
+
+To allow only some types instead, add your own check in a subclass of
+`InitiateUploadSerializer.validate_file_content_type`.
 
 ### Progress Notifications
 

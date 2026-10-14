@@ -6,6 +6,8 @@ from rest_framework import serializers
 
 from baseapp_core.models import DocumentId
 
+from ...content_safety import is_blocked_content_type, is_blocked_extension
+
 File = swapper.load_model("baseapp_files", "File")
 
 
@@ -20,6 +22,17 @@ class InitiateUploadSerializer(serializers.Serializer):
 
     # Optional parent relationship via DocumentId public_id
     parent_id = serializers.UUIDField(required=False, allow_null=True)
+
+    def validate_file_name(self, value: str) -> str:
+        """Reject types a browser would run as a page (HTML, SVG, XML, JavaScript)."""
+        if is_blocked_extension(value):
+            raise serializers.ValidationError(_("This file type is not allowed."))
+        return value
+
+    def validate_file_content_type(self, value: str) -> str:
+        if is_blocked_content_type(value):
+            raise serializers.ValidationError(_("This file type is not allowed."))
+        return value
 
     def validate_file_size(self, value: int) -> int:
         """Reject a declared size above MAX_FILE_UPLOAD_SIZE, naming the limit.
