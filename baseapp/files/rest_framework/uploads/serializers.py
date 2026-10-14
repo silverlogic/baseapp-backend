@@ -6,7 +6,7 @@ from rest_framework import serializers
 
 from baseapp_core.models import DocumentId
 
-from ...content_safety import is_blocked_content_type, is_blocked_extension
+from ...content_safety import allowed_content_type, file_extension
 
 File = swapper.load_model("baseapp_files", "File")
 
@@ -24,13 +24,13 @@ class InitiateUploadSerializer(serializers.Serializer):
     parent_id = serializers.UUIDField(required=False, allow_null=True)
 
     def validate_file_name(self, value: str) -> str:
-        """Reject types a browser would run as a page (HTML, SVG, XML, JavaScript)."""
-        if is_blocked_extension(value):
-            raise serializers.ValidationError(_("This file type is not allowed."))
-        return value
-
-    def validate_file_content_type(self, value: str) -> str:
-        if is_blocked_content_type(value):
+        """Only extensions on BASEAPP_FILES_ALLOWED_FILE_TYPES may be uploaded."""
+        if allowed_content_type(value) is None:
+            extension = file_extension(value)
+            if extension:
+                raise serializers.ValidationError(
+                    _("Files of type %(extension)s are not allowed.") % {"extension": extension}
+                )
             raise serializers.ValidationError(_("This file type is not allowed."))
         return value
 
@@ -62,7 +62,11 @@ class InitiateUploadSerializer(serializers.Serializer):
             ) from None
 
     def validate(self, data):
-        """Validate file size matches parts."""
+        """Validate file size matches parts, and store the type the extension allows."""
+        # The declared type is the client's word; a page type on an allowed extension would
+        # be served as a page. The allowlist decides how the file is stored and served.
+        data["file_content_type"] = allowed_content_type(data["file_name"])
+
         num_parts = data["num_parts"]
         part_size = data["part_size"]
         file_size = data["file_size"]

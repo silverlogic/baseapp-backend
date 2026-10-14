@@ -7,7 +7,7 @@ from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
 
-from ..content_safety import is_blocked_content_type, is_blocked_extension
+from ..content_safety import allowed_content_type
 from ..storage import get_upload_handler
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,8 @@ class UploadService:
             user: The user initiating the upload
             file_name: Original file name
             file_size: Size in bytes
-            file_content_type: MIME type
+            file_content_type: MIME type the client declared; replaced by the type
+                BASEAPP_FILES_ALLOWED_FILE_TYPES gives the extension
             num_parts: Number of parts for multipart upload
             part_size: Size of each part in bytes
             parent_id: DocumentId primary key (optional)
@@ -56,7 +57,8 @@ class UploadService:
 
         # Validate inputs
         self._validate_file_params(file_size, num_parts, part_size)
-        if is_blocked_extension(file_name) or is_blocked_content_type(file_content_type):
+        file_content_type = allowed_content_type(file_name)
+        if file_content_type is None:
             raise ValueError("File type is not allowed")
 
         # Create File record in pending state

@@ -737,30 +737,47 @@ def _validate_file_params(self, file_size, num_parts, part_size, user):
 
 ### File Type Restrictions
 
-Any file type can be uploaded, except types a browser runs as a page: HTML, SVG, XML and
-JavaScript (`baseapp/files/content_safety.py`). Served from the app's domain, a media domain
-or an S3 bucket behind a subdomain, those would be stored XSS. Initiating such an upload is
-rejected by extension or by content type:
+Only extensions on an allowlist can be uploaded (`baseapp/files/content_safety.py`). The
+default covers common media, documents and archives:
+
+- Images: `.jpg .jpeg .png .gif .webp .avif .heic .heif .bmp .tif .tiff`
+- Video: `.mp4 .m4v .mov .webm .mkv .avi .3gp`
+- Audio: `.mp3 .m4a .aac .wav .ogg .oga .opus .flac`
+- Documents: `.pdf .doc .docx .xls .xlsx .ppt .pptx .odt .ods .odp .rtf .txt .csv`
+- Archives: `.zip .7z .rar .tar .gz`
+
+Anything else is rejected when the upload starts:
 
 ```json
-400 {"file_name": ["This file type is not allowed."]}
-400 {"file_content_type": ["This file type is not allowed."]}
+400 {"file_name": ["Files of type .html are not allowed."]}
 ```
 
-On S3, objects that a browser would not display safely (anything other than common images,
-video, audio and PDF) are stored with `Content-Disposition: attachment`, so opening them
-downloads rather than renders them. Images and video still display when embedded.
+The list maps each extension to the content type the file is **stored and served with**; the
+type the client declares is ignored. Otherwise `photo.png` declared as `text/html` would be
+served as a page and run script on the site's domain (stored XSS), even from an S3 bucket
+behind a subdomain.
 
-Both lists are settings, which replace the defaults when set:
+On S3, files a browser would not display safely (everything but common images, video, audio
+and PDF) are stored with `Content-Disposition: attachment`, so opening them downloads rather
+than renders them. Embedded images and video still display.
+
+Replace or extend the list per project:
 
 ```python
-BASEAPP_FILES_BLOCKED_EXTENSIONS = [".html", ".htm", ".svg", ".xml", ".js", ".exe"]
-# A leading "*" matches a suffix: "*+xml" covers every XML-based type.
-BASEAPP_FILES_BLOCKED_CONTENT_TYPES = ["text/html", "image/svg+xml", "*+xml"]
+from baseapp.files.content_safety import DEFAULT_ALLOWED_FILE_TYPES
+
+# Extend: keep the defaults and add more types.
+BASEAPP_FILES_ALLOWED_FILE_TYPES = {
+    **DEFAULT_ALLOWED_FILE_TYPES,
+    ".dwg": "application/acad",
+}
+
+# Or replace: a list of extensions takes each type from `mimetypes`.
+BASEAPP_FILES_ALLOWED_FILE_TYPES = [".jpg", ".png", ".pdf"]
 ```
 
-To allow only some types instead, add your own check in a subclass of
-`InitiateUploadSerializer.validate_file_content_type`.
+Avoid allowing `.svg`, `.html`, `.xml` or `.js`: browsers run them as pages, and where media is
+served from the site's own domain (local storage, nginx `/media/`) that is stored XSS.
 
 ### Progress Notifications
 

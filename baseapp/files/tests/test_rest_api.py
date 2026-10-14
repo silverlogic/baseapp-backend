@@ -254,28 +254,23 @@ class TestFileUploadInitiation:
         assert file_obj.file_size == file_size
 
     @pytest.mark.parametrize(
-        "file_name, content_type, field",
+        "file_name, message",
         [
-            ("page.html", "text/plain", "file_name"),
-            ("drawing.SVG", "application/octet-stream", "file_name"),
-            ("photo.png", "image/svg+xml", "file_content_type"),
-            ("notes.txt", "text/html; charset=utf-8", "file_content_type"),
+            ("page.html", "Files of type .html are not allowed."),
+            ("drawing.SVG", "Files of type .svg are not allowed."),
+            ("tool.exe", "Files of type .exe are not allowed."),
+            ("README", "This file type is not allowed."),
         ],
     )
-    def test_initiate_upload_rejects_types_that_run_script(
-        self,
-        user_client: Client,
-        mock_s3_handler: MagicMock,
-        file_name: str,
-        content_type: str,
-        field: str,
+    def test_initiate_upload_rejects_types_not_on_the_allowlist(
+        self, user_client: Client, mock_s3_handler: MagicMock, file_name: str, message: str
     ) -> None:
         response = user_client.post(
             "/v1/files/uploads",
             {
                 "file_name": file_name,
                 "file_size": 1024,
-                "file_content_type": content_type,
+                "file_content_type": "application/octet-stream",
                 "num_parts": 1,
                 "part_size": 1024,
             },
@@ -283,8 +278,29 @@ class TestFileUploadInitiation:
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert response.json() == {field: ["This file type is not allowed."]}
+        assert response.json() == {"file_name": [message]}
         mock_s3_handler.initiate_upload.assert_not_called()
+
+    def test_initiate_upload_stores_the_allowlisted_type_not_the_declared_one(
+        self, user_client: Client, mock_s3_handler: MagicMock
+    ) -> None:
+        """A page type declared on an allowed extension must not be served as a page."""
+        response = user_client.post(
+            "/v1/files/uploads",
+            {
+                "file_name": "photo.png",
+                "file_size": 1024,
+                "file_content_type": "text/html",
+                "num_parts": 1,
+                "part_size": 1024,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        file_obj = File.get_by_public_id(response.json()["id"])
+        assert file_obj.file_content_type == "image/png"
+        assert mock_s3_handler.initiate_upload.call_args.args[0].file_content_type == "image/png"
 
     def test_initiate_upload_too_many_parts(self, user_client, mock_s3_handler):
         """Test validation for maximum parts (10,000)."""
