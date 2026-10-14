@@ -34,6 +34,13 @@ def get_files_storage() -> Storage:
     return files_storage
 
 
+def get_wrapped_files_storage() -> Storage:
+    """The storage behind ``files_storage``, loading it, for code that cannot take a LazyObject."""
+    if files_storage._wrapped is empty:
+        files_storage._setup()
+    return files_storage._wrapped
+
+
 @receiver(setting_changed)
 def _reset_files_storage(*, setting: str, **kwargs) -> None:
     # Django's own receiver rebuilds `storages` when STORAGES changes.

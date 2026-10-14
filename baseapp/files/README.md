@@ -600,7 +600,8 @@ BASEAPP_FILES_STORAGE = "files"
 With private files:
 - `url` (GraphQL and REST) is a fresh signed URL, or `null` for viewers without `view_<file>`.
 - `file(id:)` / `node(id:)` return `null` for viewers without `view_<file>`.
-- `thumbnail` is `null`: thumbnails are cached and stored publicly, so clients fall back to `url`.
+- `thumbnail` follows the same rules: it is generated into the files storage itself (not the public
+  thumbnail storage) and returned as a signed URL, `null` for viewers without `view_<file>`.
 
 **Who may view** is decided by `FilesPermissionsBackend`'s `view_<file>` permission. Public
 storage: anyone (as before). Private storage: the owner, an anonymous uploader holding the

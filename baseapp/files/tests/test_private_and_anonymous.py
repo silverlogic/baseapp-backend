@@ -4,20 +4,23 @@ Both are opt-in per project: the defaults (``BASEAPP_FILES_STORAGE="default"``, 
 uploads off) must behave exactly as before, which the first tests pin down.
 """
 
+import io
 from datetime import timedelta
 from typing import Any, Dict, Iterator
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from urllib.parse import urlparse
 
 import pytest
 import swapper
 from django.conf import settings
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import AnonymousUser, Permission
 from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.test import Client as DjangoClient
 from django.test import override_settings
 from django.utils import timezone
+from easy_thumbnails.files import get_thumbnailer
+from PIL import Image
 from rest_framework import status
 
 from baseapp.files.services.cleanup import cleanup_unclaimed_anonymous_files
@@ -30,6 +33,7 @@ from baseapp_core.tests.factories import UserFactory
 from baseapp_core.tests.fixtures import Client
 
 File = swapper.load_model("baseapp_files", "File")
+FileObjectType = File.get_graphql_object_type()
 
 pytestmark = pytest.mark.django_db
 
@@ -105,6 +109,21 @@ def stored_file(**kwargs: Any) -> "File":
         file_name="doc.txt",
         file_size=len(CONTENT),
         file_content_type="text/plain",
+        upload_status=File.UploadStatus.COMPLETED,
+        **kwargs,
+    )
+
+
+def stored_image(**kwargs: Any) -> "File":
+    """A completed 40x40 PNG in the files storage."""
+    buffer = io.BytesIO()
+    Image.new("RGB", (40, 40), "red").save(buffer, format="PNG")
+    name = files_storage.save("files/photo.png", ContentFile(buffer.getvalue()))
+    return File.objects.create(
+        file=name,
+        file_name="photo.png",
+        file_size=buffer.tell(),
+        file_content_type="image/png",
         upload_status=File.UploadStatus.COMPLETED,
         **kwargs,
     )
@@ -275,12 +294,55 @@ class TestPrivateStorage:
 
         assert "/v1/files/download/" in content["data"]["file"]["url"]
 
-    def test_no_thumbnail_for_private_files(
+    def test_thumbnail_is_private_and_signed_like_the_file(
+        self, private_storage, media_root, django_user_client: DjangoClient, graphql_user_client
+    ) -> None:
+        file_obj = stored_image(created_by=django_user_client.user)
+
+        url = query_file(graphql_user_client, file_obj)["thumbnail"]
+        assert "/v1/files/download/" in url
+
+        response = DjangoClient().get(path_of(url))
+        assert response.status_code == status.HTTP_200_OK
+        thumbnail = Image.open(io.BytesIO(b"".join(response.streaming_content)))
+        assert thumbnail.size == (10, 10)
+
+        token = path_of(url).rsplit("/", 1)[-1]
+        thumbnail_name = FileDownloadToken.verify(token)
+        assert (private_storage / thumbnail_name).exists()
+        assert not (media_root / thumbnail_name).exists()
+        with patch.object(FileDownloadToken, "max_age", return_value=-1):
+            assert DjangoClient().get(path_of(url)).status_code == status.HTTP_403_FORBIDDEN
+
+    def test_thumbnail_is_reused_and_signed_again(
+        self, private_storage, django_user_client: DjangoClient, graphql_user_client
+    ) -> None:
+        file_obj = stored_image(created_by=django_user_client.user)
+
+        with patch("baseapp.files.thumbnails.get_thumbnailer", wraps=get_thumbnailer) as spy:
+            first = query_file(graphql_user_client, file_obj)["thumbnail"]
+            second = query_file(graphql_user_client, file_obj)["thumbnail"]
+
+        assert spy.call_count == 1
+        name = FileDownloadToken.verify(path_of(first).rsplit("/", 1)[-1])
+        assert FileDownloadToken.verify(path_of(second).rsplit("/", 1)[-1]) == name
+
+    def test_no_thumbnail_for_a_file_that_is_not_an_image(
         self, private_storage, django_user_client: DjangoClient, graphql_user_client
     ) -> None:
         file_obj = stored_file(created_by=django_user_client.user)
 
         assert query_file(graphql_user_client, file_obj)["thumbnail"] is None
+
+    def test_stranger_gets_no_thumbnail_of_a_visible_file(
+        self, private_storage, graphql_client: GraphQLClient
+    ) -> None:
+        """thumbnail follows view_file even when the node itself is reached."""
+        file_obj = stored_image(created_by=UserFactory())
+        info = MagicMock()
+        info.context.user = AnonymousUser()
+
+        assert FileObjectType.resolve_thumbnail(file_obj, info) is None
 
 
 @pytest.mark.usefixtures("private_storage", "anonymous_uploads")

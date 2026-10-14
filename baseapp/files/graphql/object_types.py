@@ -5,10 +5,9 @@ import swapper
 from baseapp_auth.graphql.permissions import PermissionsInterface
 from baseapp_core.graphql import DjangoObjectType, FileInterface
 from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.graphql import ThumbnailField
 from baseapp_core.plugins import graphql_shared_interfaces
 
-from ..storage import files_storage_is_private
+from .fields import FileThumbnailField
 
 File = swapper.load_model("baseapp_files", "File")
 file_app_label = File._meta.app_label
@@ -29,7 +28,7 @@ class FileFilter(django_filters.FilterSet):
 
 class AbstractFileObjectType:
     parent = graphene.Field(RelayNode)
-    thumbnail = ThumbnailField()
+    thumbnail = FileThumbnailField()
 
     class Meta:
         interfaces = graphql_shared_interfaces.get(
@@ -61,9 +60,8 @@ class AbstractFileObjectType:
         return info.context.build_absolute_uri(self.file.url)
 
     def resolve_thumbnail(self, info, **kwargs):
-        # Thumbnails are cached by source URL and stored in the public thumbnail
-        # storage, so a private file gets none; clients fall back to `url`.
-        if files_storage_is_private():
+        """Same rule as ``url``: None for viewers without ``view_file``."""
+        if not can_view_file(info, self):
             return None
         return self.file
 
