@@ -613,3 +613,14 @@ class TestUploadPermission:
         assert AnonymousUser().has_perm(perm) is False
         with override_settings(BASEAPP_FILES_ALLOW_ANONYMOUS_UPLOADS=True):
             assert AnonymousUser().has_perm(perm) is True
+
+
+def test_plugin_beat_schedules_expire() -> None:
+    """Mirrors baseapp_core's beat health check, which only sees schedules a project merges."""
+    from baseapp.files.plugin import FilesPlugin
+
+    schedules = FilesPlugin().get_settings().celery_beat_schedules
+
+    assert schedules
+    for schedule in schedules.values():
+        assert schedule["options"]["expires"] < schedule["schedule"]

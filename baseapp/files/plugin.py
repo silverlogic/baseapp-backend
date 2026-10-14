@@ -50,10 +50,14 @@ class FilesPlugin(BaseAppPlugin):
                 "baseapp_files_cleanup_expired_uploads": {
                     "task": "baseapp.files.services.cleanup.cleanup_expired_uploads",
                     "schedule": 60 * 60,
+                    # 75% of the interval, so a backed-up beat never runs duplicates.
+                    "options": {"expires": 45 * 60},
                 },
                 "baseapp_files_cleanup_unclaimed_anonymous_files": {
                     "task": "baseapp.files.services.cleanup.cleanup_unclaimed_anonymous_files",
                     "schedule": 60 * 60,
+                    # 75% of the interval, so a backed-up beat never runs duplicates.
+                    "options": {"expires": 45 * 60},
                 },
             },
             required_packages=[
