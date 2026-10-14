@@ -7,7 +7,6 @@ from baseapp_core.graphql import DjangoObjectType, FileInterface
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.plugins import graphql_shared_interfaces
 
-from ..tokens import bind_request_upload_tokens
 from .fields import FileThumbnailField
 
 File = swapper.load_model("baseapp_files", "File")
@@ -16,8 +15,6 @@ file_model_name = File._meta.model_name.lower()
 
 
 def can_view_file(info: graphene.ResolveInfo, file_obj) -> bool:
-    # An anonymous uploader proves ownership with its upload token header.
-    bind_request_upload_tokens(info.context)
     return info.context.user.has_perm(f"{file_app_label}.view_{file_model_name}", file_obj)
 
 

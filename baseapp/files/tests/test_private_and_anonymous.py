@@ -355,6 +355,15 @@ class TestPrivateStorage:
 
 @pytest.mark.usefixtures("private_storage", "anonymous_uploads")
 class TestAnonymousUploads:
+    @pytest.fixture(autouse=True)
+    def targets_accept_anonymous_files(self) -> Iterator[None]:
+        """A project that takes anonymous attachments widens _can_add_to_target; by default
+        only users who may change the target (e.g. a comment's author) can add files to it."""
+        with patch.object(
+            FilesPermissionsBackend, "_can_add_to_target", staticmethod(lambda user, obj: True)
+        ):
+            yield
+
     def test_full_flow_with_the_upload_token(self, client: Client) -> None:
         initiated = initiate(client).json()
         token = initiated["upload_token"]
@@ -490,32 +499,6 @@ class TestUnclaimedAnonymousCleanup:
         assert delete_unclaimed_anonymous_file(file_obj.pk, cutoff) is False
         assert File.objects.filter(pk=file_obj.pk).exists()
         assert files_storage.exists(file_obj.file.name)
-
-
-@pytest.mark.usefixtures("private_storage", "anonymous_uploads")
-class TestUploadTokenOnReads:
-    """An anonymous uploader reads its file in a later request with the token header."""
-
-    @pytest.mark.parametrize(
-        "header, visible",
-        [("valid", True), (None, False), ("invalid", False)],
-    )
-    def test_file_query_with_the_upload_token_header(
-        self, django_client: DjangoClient, header: str | None, visible: bool
-    ) -> None:
-        file_obj = stored_file(total_parts=1)
-        tokens = {"valid": AnonymousUploadToken.mint(file_obj), "invalid": "not-a-token"}
-        headers = {"HTTP_X_FILE_UPLOAD_TOKEN": tokens[header]} if header else None
-
-        content = graphql_query(
-            FILE_QUERY, variables={"id": file_obj.relay_id}, client=django_client, headers=headers
-        ).json()
-
-        assert "errors" not in content, content
-        if visible:
-            assert "/v1/files/download/" in content["data"]["file"]["url"]
-        else:
-            assert content["data"]["file"] is None
 
 
 class TestGetNode:

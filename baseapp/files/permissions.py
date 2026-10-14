@@ -38,17 +38,22 @@ class FilesPermissionsBackend(BaseBackend):
 
     @staticmethod
     def _can_add_to_target(user_obj: UserType, obj: Optional[Any]) -> bool:
-        """Target-level: may this user attach files to `obj`? Default policy
-        mirrors comments' add_comment — authenticated and files enabled; anonymous
-        callers too when ``BASEAPP_FILES_ALLOW_ANONYMOUS_UPLOADS`` is on.
-        Projects can override this backend to enforce target ownership."""
+        """Target-level: may this user attach files to `obj`? Default: files are enabled on
+        it and the user may change it (``change_<model>`` on the target, e.g. a comment's
+        author or a ``change_comment`` holder), so files can't be added to someone else's
+        object. Anonymous callers also need ``BASEAPP_FILES_ALLOW_ANONYMOUS_UPLOADS``.
+        Projects can override this backend to use another rule."""
         if not obj:
             return False
         from baseapp_core.plugins import shared_services
 
         service = shared_services.get("files_metadata")
-        enabled = service.is_files_enabled(obj) if service else True
-        return enabled and (user_obj.is_authenticated or anonymous_uploads_allowed())
+        if service and not service.is_files_enabled(obj):
+            return False
+        if not (user_obj.is_authenticated or anonymous_uploads_allowed()):
+            return False
+        meta = obj._meta
+        return user_obj.has_perm(f"{meta.app_label}.change_{meta.model_name}", obj)
 
     @staticmethod
     def _holds_upload_token(user_obj: UserType, obj: Any) -> bool:

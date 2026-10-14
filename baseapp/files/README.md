@@ -616,6 +616,11 @@ upload names one (`parent_id`, `_can_add_to_target`), otherwise without an objec
 refusal is a `403 {"detail": "You don't have permission to upload files."}` and nothing is
 created. Clients can ask the same question up front with GraphQL `hasPerm(perm: "files.add_file")`.
 
+**Who may attach** files to an object (on upload with `parent_id`, or with `fileAttachToTarget`):
+whoever may change it, i.e. `change_<model>` on the target. For a comment that is its author or a
+`change_comment` holder, so nobody can add files to someone else's comment. Anonymous attachments
+need a target whose rules admit them: override `_can_add_to_target` for those targets.
+
 **Who may view** is decided by `FilesPermissionsBackend`'s `view_<file>` permission. Public
 storage: anyone (as before). Private storage: the owner, an anonymous uploader holding the
 file's upload token, whoever may view the object the file is attached to (`view_<model>` on
@@ -629,7 +634,6 @@ With `BASEAPP_FILES_ALLOW_ANONYMOUS_UPLOADS = True`, anonymous callers can initi
 ownership since no user owns the file:
 
 - complete / abort: send it as the `X-File-Upload-Token` header;
-- reading the file later (GraphQL `file`/`node`, `url`, `thumbnail`): send the same header;
 - `fileAttachToTarget`: pass it in `uploadTokens`. The target must allow files
   (`add_<file>`, which admits anonymous callers while the setting is on; override
   `_can_add_to_target` to restrict which targets accept them).

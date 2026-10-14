@@ -135,6 +135,30 @@ class TestFileUploadInitiation:
         assert file_obj.parent.content_type_id == comment_ct.id
         assert file_obj.parent.object_id == comment.id
 
+    def test_initiate_upload_refuses_another_users_comment(
+        self, user_client: Client, mock_s3_handler: MagicMock
+    ) -> None:
+        """Uploading into a target needs change_<model> on it, here change_comment."""
+        comment = CommentFactory()
+        document_id = DocumentId.get_or_create_for_object(comment)
+
+        response = user_client.post(
+            "/v1/files/uploads",
+            {
+                "file_name": "avatar.jpg",
+                "file_size": 1024,
+                "file_content_type": "image/jpeg",
+                "num_parts": 1,
+                "part_size": 1024,
+                "parent_id": str(document_id.public_id),
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert not File.objects.exists()
+        mock_s3_handler.initiate_upload.assert_not_called()
+
     def test_initiate_upload_rejects_non_fileable_parent(self, user_client, mock_s3_handler):
         """A parent that does not support files (not a FileableModel) is rejected,
         mirroring the fileAttachToTarget mutation."""
