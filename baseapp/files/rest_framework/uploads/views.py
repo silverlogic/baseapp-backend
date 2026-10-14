@@ -197,6 +197,11 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
             self.upload_service.abort_multipart_upload(file_obj.id)
             return Response(status=status.HTTP_204_NO_CONTENT)
 
+        except ValueError:
+            logger.warning("Upload abort rejected", exc_info=True)
+            raise ValidationError(
+                [_("Only an upload that hasn't completed can be aborted.")]
+            ) from None
         except Exception:
             logger.exception("Failed to abort upload")
             raise ValidationError([_("Failed to abort upload.")]) from None

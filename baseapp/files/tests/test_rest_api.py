@@ -384,6 +384,8 @@ class TestFileUploadCompletion:
         assert pending_upload.upload_status == File.UploadStatus.COMPLETED
         assert pending_upload.upload_id == ""
         assert pending_upload.uploaded_parts == {"1": "abc123", "2": "def456"}
+        # The handler's storage name is what the File points at.
+        assert pending_upload.file.name == mock_s3_handler.complete_upload.return_value
 
         # Verify S3 handler was called
         mock_s3_handler.complete_upload.assert_called_once()
@@ -523,6 +525,31 @@ class TestFileUploadAbort:
         response = client.delete(f"/v1/files/uploads/{uploading_file.public_id}")
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    @pytest.mark.parametrize(
+        "upload_status", [File.UploadStatus.COMPLETED, File.UploadStatus.ABORTED]
+    )
+    def test_abort_refuses_a_finished_upload(
+        self, user_client: Client, mock_s3_handler: MagicMock, upload_status: str
+    ) -> None:
+        """A completed file keeps its status and bytes; aborting it would orphan them."""
+        file_obj = File.objects.create(
+            file_name="test.mp4",
+            file_size=10485760,
+            file_content_type="video/mp4",
+            upload_status=upload_status,
+            upload_id="test-upload-id",
+            total_parts=2,
+            created_by=user_client.user,
+        )
+
+        response = user_client.delete(f"/v1/files/uploads/{file_obj.public_id}")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.json() == ["Only an upload that hasn't completed can be aborted."]
+        file_obj.refresh_from_db()
+        assert file_obj.upload_status == upload_status
+        mock_s3_handler.abort_upload.assert_not_called()
 
     def test_abort_upload_without_upload_id(self, user_client, mock_s3_handler):
         """Test aborting upload without upload_id still marks as aborted."""

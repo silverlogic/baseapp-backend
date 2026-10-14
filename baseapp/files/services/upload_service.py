@@ -128,31 +128,43 @@ class UploadService:
                 locked.save()
             return locked
 
+    ABORTABLE_STATUSES = (
+        File.UploadStatus.PENDING,
+        File.UploadStatus.UPLOADING,
+        File.UploadStatus.FAILED,
+    )
+
     def abort_multipart_upload(self, file_id: int):
         """
-        Abort a multipart upload and cleanup. The storage abort (network I/O)
-        runs outside the transaction; the row is then marked ABORTED.
+        Abort an upload that has not completed, and clean up its storage parts.
+
+        The status is checked and the row marked ABORTED under a row lock first, so a
+        completed file can't be aborted (its bytes would be orphaned and later cleanup
+        would drop the row) and a concurrent completion can't be overwritten. The
+        storage abort (network I/O) then runs outside the transaction.
+
+        Raises:
+            ValueError: the upload is completed or already aborted.
         """
-        file_obj = File.objects.get(id=file_id)
-
-        if file_obj.upload_id:
-            try:
-                self.handler.abort_upload(file_obj, file_obj.upload_id)
-            except Exception:
-                # Continue to mark as aborted, but record the storage-side
-                # failure so orphaned remote uploads are diagnosable.
-                logger.exception(
-                    "Storage abort failed for file %s (upload_id=%s)",
-                    file_obj.id,
-                    file_obj.upload_id,
-                )
-
         with transaction.atomic():
             locked = File.objects.select_for_update().get(id=file_id)
+            if locked.upload_status not in self.ABORTABLE_STATUSES:
+                raise ValueError(f"Cannot abort upload in status: {locked.upload_status}")
+            upload_id = locked.upload_id
             locked.upload_status = File.UploadStatus.ABORTED
             locked.upload_id = ""
-            locked.save()
-            return locked
+            locked.save(update_fields=["upload_status", "upload_id"])
+
+        if upload_id:
+            try:
+                self.handler.abort_upload(locked, upload_id)
+            except Exception:
+                # Already marked aborted; record the storage-side failure so orphaned
+                # remote uploads are diagnosable.
+                logger.exception(
+                    "Storage abort failed for file %s (upload_id=%s)", locked.id, upload_id
+                )
+        return locked
 
     def _verify_stored_size(self, file_obj, file_path: str) -> None:
         """Reject an assembled file whose bytes differ from the declared size.
