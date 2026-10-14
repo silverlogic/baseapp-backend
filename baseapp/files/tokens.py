@@ -143,6 +143,17 @@ def bind_upload_tokens(user: Any, tokens: Iterable[str] | str | None) -> None:
         user.file_upload_tokens = getattr(user, "file_upload_tokens", set()) | file_ids
 
 
+def bind_request_upload_tokens(request: Any) -> None:
+    """
+    Bind the ``X-File-Upload-Token`` header of ``request`` to its user, once per request,
+    so an anonymous uploader can read its file through any API, not only the upload ones.
+    """
+    if getattr(request, "_baseapp_files_upload_tokens_bound", False):
+        return
+    request._baseapp_files_upload_tokens_bound = True
+    bind_upload_tokens(request.user, getattr(request, "META", {}).get(AnonymousUploadToken.HEADER))
+
+
 class FileDownloadToken:
     """Signs the expiring download links that ``SignedFileSystemStorage.url`` hands out."""
 

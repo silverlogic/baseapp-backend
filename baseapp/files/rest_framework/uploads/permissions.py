@@ -1,5 +1,7 @@
 import swapper
 from rest_framework import permissions
+from rest_framework.request import Request
+from rest_framework.views import APIView
 
 File = swapper.load_model("baseapp_files", "File")
 file_app_label = File._meta.app_label
@@ -41,7 +43,7 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
 class IsAuthenticatedOrAnonymousUploads(permissions.BasePermission):
     """Signed-in users, or anyone when ``BASEAPP_FILES_ALLOW_ANONYMOUS_UPLOADS`` is on."""
 
-    def has_permission(self, request, view) -> bool:
+    def has_permission(self, request: Request, view: APIView) -> bool:
         from ...permissions import anonymous_uploads_allowed
 
         return bool(request.user and request.user.is_authenticated) or anonymous_uploads_allowed()

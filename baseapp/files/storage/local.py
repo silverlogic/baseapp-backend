@@ -36,8 +36,22 @@ class LocalUploadHandler(BaseUploadHandler):
         return None
 
     def _temp_dir(self, upload_id: str) -> str:
-        root = self._local_path("") or tempfile.gettempdir()
+        """
+        Where an upload's parts wait for completion: under the storage's own directory,
+        or, for a storage without one, ``BASEAPP_FILES_UPLOAD_TEMP_DIR`` (default: a
+        directory in the system temp dir). Point that setting at a shared volume when
+        workers run on several hosts, since parts and completion may land on different ones.
+        """
+        root = self._local_path("") or getattr(settings, "BASEAPP_FILES_UPLOAD_TEMP_DIR", None)
+        if not root:
+            root = os.path.join(tempfile.gettempdir(), "baseapp_files")
         return os.path.join(root, "temp_uploads", upload_id)
+
+    def _make_temp_dir(self, upload_id: str) -> str:
+        """Create the parts directory, readable only by this process's user."""
+        temp_dir = self._temp_dir(upload_id)
+        os.makedirs(temp_dir, mode=0o700, exist_ok=True)
+        return temp_dir
 
     def supports_multipart(self) -> bool:
         return False  # Simplified multipart
@@ -51,8 +65,7 @@ class LocalUploadHandler(BaseUploadHandler):
         upload_id = str(uuid.uuid4())
 
         # Create temp directory for parts if needed
-        temp_dir = self._temp_dir(upload_id)
-        os.makedirs(temp_dir, exist_ok=True)
+        self._make_temp_dir(upload_id)
 
         # Get the base URL from settings or use default
         base_url = settings.URL
@@ -90,8 +103,7 @@ class LocalUploadHandler(BaseUploadHandler):
         """
         import hashlib
 
-        temp_dir = self._temp_dir(upload_id)
-        os.makedirs(temp_dir, exist_ok=True)
+        temp_dir = self._make_temp_dir(upload_id)
 
         part_file = os.path.join(temp_dir, f"part_{part_number}")
 

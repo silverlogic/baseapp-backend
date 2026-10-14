@@ -571,6 +571,7 @@ Both are off by default; each project opts in through settings (defaults come fr
 | `BASEAPP_FILES_ANONYMOUS_UPLOAD_RATE` | `"20/hour"` | DRF throttle rate for anonymous initiations, per IP |
 | `BASEAPP_FILES_SIGNED_URL_MAX_AGE` | `3600` | Link lifetime for `SignedFileSystemStorage` |
 | `BASEAPP_FILES_UNCLAIMED_ANONYMOUS_MAX_AGE` | `86400` | Age after which unattached anonymous uploads are deleted |
+| `BASEAPP_FILES_UPLOAD_TEMP_DIR` | `None` | Parts directory for a storage with no local path (`None`: a private directory in the system temp dir). Use a shared volume when workers run on several hosts |
 
 **Upgrading:** `File.file` now uses the files storage, so a project with its own concrete
 `File` model needs `python manage.py makemigrations files` once (a state-only migration).
@@ -603,6 +604,12 @@ With private files:
 - `thumbnail` follows the same rules: it is generated into the files storage itself (not the public
   thumbnail storage) and returned as a signed URL, `null` for viewers without `view_<file>`.
 
+Signing alone does not make files private: the objects themselves must not be readable. A system
+check refuses to start when a signing S3 storage would still hand out public URLs:
+`baseapp_files.E001` for a `custom_domain` without a CloudFront signer (django-storages then
+returns unsigned URLs), and `baseapp_files.E002` for a public `default_acl` or
+`AWS_S3_OBJECT_PARAMETERS` ACL. Also block public access on the bucket itself.
+
 **Who may view** is decided by `FilesPermissionsBackend`'s `view_<file>` permission. Public
 storage: anyone (as before). Private storage: the owner, an anonymous uploader holding the
 file's upload token, whoever may view the object the file is attached to (`view_<model>` on
@@ -616,12 +623,14 @@ With `BASEAPP_FILES_ALLOW_ANONYMOUS_UPLOADS = True`, anonymous callers can initi
 ownership since no user owns the file:
 
 - complete / abort: send it as the `X-File-Upload-Token` header;
+- reading the file later (GraphQL `file`/`node`, `url`, `thumbnail`): send the same header;
 - `fileAttachToTarget`: pass it in `uploadTokens`. The target must allow files
   (`add_<file>`, which admits anonymous callers while the setting is on; override
   `_can_add_to_target` to restrict which targets accept them).
 
 Anonymous uploads never attached are deleted after `BASEAPP_FILES_UNCLAIMED_ANONYMOUS_MAX_AGE`
-by `cleanup_unclaimed_anonymous_files`.
+by `cleanup_unclaimed_anonymous_files`. It locks and re-checks each file before deleting it, and
+attaching locks the same rows, so a file attached meanwhile is kept.
 
 ## Background Tasks
 

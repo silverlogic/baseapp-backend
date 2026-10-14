@@ -4,6 +4,8 @@ from datetime import timedelta
 import swapper
 from celery import shared_task
 from django.conf import settings
+from django.db import transaction
+from django.db.models import QuerySet
 from django.utils import timezone
 
 from ..storage import get_files_storage, get_upload_handler
@@ -49,6 +51,37 @@ def cleanup_expired_uploads():
     return f"Cleaned up {cleaned_count} expired uploads"
 
 
+def _unclaimed_anonymous_files(cutoff) -> QuerySet:
+    File = swapper.load_model("baseapp_files", "File")
+    return File.objects.filter(
+        created_by__isnull=True,
+        parent__isnull=True,
+        total_parts__isnull=False,
+        created__lt=cutoff,
+    )
+
+
+def delete_unclaimed_anonymous_file(file_id: int, cutoff) -> bool:
+    """
+    Delete one anonymous upload, with its stored object, if it is still unclaimed.
+
+    The row is locked and re-checked first: it may have been attached since the scan.
+    Attaching locks the same rows (``FileAttachToTarget``), so an attach either commits
+    first and the file is kept, or waits and then finds the file gone. Returns whether
+    the file was deleted.
+    """
+    with transaction.atomic():
+        file_obj = _unclaimed_anonymous_files(cutoff).select_for_update().filter(pk=file_id).first()
+        if file_obj is None:
+            return False
+        if file_obj.upload_id:
+            get_upload_handler().abort_upload(file_obj, file_obj.upload_id)
+        if file_obj.file:
+            get_files_storage().delete(file_obj.file.name)
+        file_obj.delete()
+        return True
+
+
 @shared_task
 def cleanup_unclaimed_anonymous_files() -> str:
     """
@@ -64,30 +97,17 @@ def cleanup_unclaimed_anonymous_files() -> str:
     if not anonymous_uploads_allowed():
         return "Anonymous uploads are disabled"
 
-    File = swapper.load_model("baseapp_files", "File")
-    handler = get_upload_handler()
-    storage = get_files_storage()
     max_age = getattr(settings, "BASEAPP_FILES_UNCLAIMED_ANONYMOUS_MAX_AGE", 24 * 60 * 60)
     cutoff = timezone.now() - timedelta(seconds=max_age)
-
-    unclaimed = File.objects.filter(
-        created_by__isnull=True,
-        parent__isnull=True,
-        total_parts__isnull=False,
-        created__lt=cutoff,
-    )
+    candidate_ids = list(_unclaimed_anonymous_files(cutoff).values_list("pk", flat=True))
 
     deleted_count = 0
-    for file_obj in unclaimed:
+    for file_id in candidate_ids:
         try:
-            if file_obj.upload_id:
-                handler.abort_upload(file_obj, file_obj.upload_id)
-            if file_obj.file:
-                storage.delete(file_obj.file.name)
-            file_obj.delete()
-            deleted_count += 1
+            if delete_unclaimed_anonymous_file(file_id, cutoff):
+                deleted_count += 1
         except Exception:
-            logger.exception("Failed to delete unclaimed anonymous file %s", file_obj.id)
+            logger.exception("Failed to delete unclaimed anonymous file %s", file_id)
 
     logger.info("Deleted %s unclaimed anonymous files", deleted_count)
     return f"Deleted {deleted_count} unclaimed anonymous files"

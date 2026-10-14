@@ -138,6 +138,25 @@ class FileAttachToTarget(RelayMutation):
 
             files.append(file_obj)
 
+        # Lock the rows and re-check them: unclaimed-upload cleanup locks the same rows,
+        # so a file it deleted (or another request attached) since they were read is caught.
+        locked = File.objects.select_for_update().in_bulk([file_obj.pk for file_obj in files])
+        for index, file_obj in enumerate(files):
+            current = locked.get(file_obj.pk)
+            if current is None:
+                raise GraphQLError(
+                    str(_("File not found: {file_id}")).format(file_id=file_relay_ids[index]),
+                    extensions={"code": "not_found"},
+                )
+            if current.parent_id:
+                raise GraphQLError(
+                    str(_("File {file_name} is already attached to another object")).format(
+                        file_name=current.file_name
+                    ),
+                    extensions={"code": "already_attached"},
+                )
+            files[index] = current
+
         # All validation passed — now materialize the target DocumentId and attach.
         target_document_id = DocumentId.get_or_create_for_object(target)
         for file_obj in files:

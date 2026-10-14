@@ -1,4 +1,5 @@
 import swapper
+from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 
@@ -23,25 +24,29 @@ def attach_files_from_relay_ids(parent, file_ids, user):
         # surface as the same not_found error as a missing File row.
         raise not_found_error from None
     pk_lookup = [str(pk) for pk in file_pks]
-    files_qs = File.objects.filter(pk__in=file_pks)
-    files_map = {str(file.pk): file for file in files_qs}
 
-    missing = [pk for pk in pk_lookup if pk not in files_map]
-    if missing:
-        raise not_found_error
+    # Rows are locked like FileAttachToTarget, so unclaimed-upload cleanup can't delete
+    # them between this read and the attach.
+    with transaction.atomic():
+        files_qs = File.objects.select_for_update().filter(pk__in=file_pks)
+        files_map = {str(file.pk): file for file in files_qs}
 
-    files = [files_map[pk] for pk in pk_lookup]
+        missing = [pk for pk in pk_lookup if pk not in files_map]
+        if missing:
+            raise not_found_error
 
-    if user and not user.is_superuser:
-        # Only the file's owner may attach it, through the same attach permission as
-        # FileAttachToTarget. A NULL creator is not an implicit grant: an anonymous
-        # upload is attachable only by whoever holds its upload token.
-        perm = f"{File._meta.app_label}.attach_{File._meta.model_name.lower()}"
-        unauthorized = [file_obj for file_obj in files if not user.has_perm(perm, file_obj)]
-        if unauthorized:
-            raise GraphQLError(
-                str(_("You don't have permission to perform this action")),
-                extensions={"code": "permission_required"},
-            )
+        files = [files_map[pk] for pk in pk_lookup]
 
-    set_files_parent(parent, files)
+        if user and not user.is_superuser:
+            # Only the file's owner may attach it, through the same attach permission as
+            # FileAttachToTarget. A NULL creator is not an implicit grant: an anonymous
+            # upload is attachable only by whoever holds its upload token.
+            perm = f"{File._meta.app_label}.attach_{File._meta.model_name.lower()}"
+            unauthorized = [file_obj for file_obj in files if not user.has_perm(perm, file_obj)]
+            if unauthorized:
+                raise GraphQLError(
+                    str(_("You don't have permission to perform this action")),
+                    extensions={"code": "permission_required"},
+                )
+
+        set_files_parent(parent, files)

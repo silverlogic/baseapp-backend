@@ -8,6 +8,10 @@ class FilesConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
     verbose_name = "BaseApp Files"
     default_auto_field = "django.db.models.BigAutoField"
 
+    def ready(self) -> None:
+        super().ready()
+        from . import checks  # noqa: F401  (registers the private storage checks)
+
     def register_shared_services(self, registry):
         from .services.metadata import FilesMetadataService
 

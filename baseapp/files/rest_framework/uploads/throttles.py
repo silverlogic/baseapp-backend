@@ -1,5 +1,7 @@
 from django.conf import settings
+from rest_framework.request import Request
 from rest_framework.throttling import SimpleRateThrottle
+from rest_framework.views import APIView
 
 
 class AnonymousUploadThrottle(SimpleRateThrottle):
@@ -10,7 +12,7 @@ class AnonymousUploadThrottle(SimpleRateThrottle):
     def get_rate(self) -> str | None:
         return getattr(settings, "BASEAPP_FILES_ANONYMOUS_UPLOAD_RATE", "20/hour")
 
-    def get_cache_key(self, request, view) -> str | None:
+    def get_cache_key(self, request: Request, view: APIView) -> str | None:
         if request.user and request.user.is_authenticated:
             return None
         return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}

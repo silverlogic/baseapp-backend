@@ -43,6 +43,8 @@ class FilesPlugin(BaseAppPlugin):
                 # Link lifetime for SignedFileSystemStorage; S3 uses its querystring_expire.
                 "BASEAPP_FILES_SIGNED_URL_MAX_AGE": 60 * 60,
                 "BASEAPP_FILES_UNCLAIMED_ANONYMOUS_MAX_AGE": 24 * 60 * 60,
+                # Parts directory for storages without a local path (None: system temp).
+                "BASEAPP_FILES_UPLOAD_TEMP_DIR": None,
             },
             celery_beat_schedules={
                 "baseapp_files_cleanup_expired_uploads": {

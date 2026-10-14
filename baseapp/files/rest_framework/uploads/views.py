@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import status, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from rest_framework.throttling import BaseThrottle
 
 from baseapp_core.rest_framework.decorators import action
 from baseapp_profiles.rest_framework import CurrentProfileMixin
@@ -66,7 +67,7 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
         self.check_object_permissions(self.request, obj)
         return obj
 
-    def get_throttles(self):
+    def get_throttles(self) -> list[BaseThrottle]:
         throttles = super().get_throttles()
         if self.action == "create":
             throttles.append(AnonymousUploadThrottle())

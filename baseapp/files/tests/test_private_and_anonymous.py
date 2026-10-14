@@ -5,6 +5,8 @@ uploads off) must behave exactly as before, which the first tests pin down.
 """
 
 import io
+import os
+import stat
 from datetime import timedelta
 from typing import Any, Dict, Iterator
 from unittest.mock import MagicMock, patch
@@ -16,18 +18,25 @@ from django.conf import settings
 from django.contrib.auth.models import AnonymousUser, Permission
 from django.core.cache import cache
 from django.core.files.base import ContentFile
+from django.core.files.storage import InMemoryStorage
 from django.test import Client as DjangoClient
 from django.test import override_settings
 from django.utils import timezone
 from easy_thumbnails.files import get_thumbnailer
 from PIL import Image
 from rest_framework import status
+from storages.backends.s3boto3 import S3Boto3Storage
 
-from baseapp.files.services.cleanup import cleanup_unclaimed_anonymous_files
+from baseapp.files.checks import check_private_files_storage, private_storage_errors
+from baseapp.files.services.cleanup import (
+    cleanup_unclaimed_anonymous_files,
+    delete_unclaimed_anonymous_file,
+)
 from baseapp.files.storage import files_storage, files_storage_is_private
+from baseapp.files.storage.local import LocalUploadHandler
 from baseapp.files.tokens import AnonymousUploadToken, FileDownloadToken
 from baseapp_comments.tests.factories import CommentFactory
-from baseapp_core.graphql.testing.fixtures import GraphQLClient
+from baseapp_core.graphql.testing.fixtures import GraphQLClient, graphql_query
 from baseapp_core.models import DocumentId
 from baseapp_core.tests.factories import UserFactory
 from baseapp_core.tests.fixtures import Client
@@ -286,8 +295,6 @@ class TestPrivateStorage:
         django_client.force_login(staff)
         file_obj = stored_file(created_by=UserFactory())
 
-        from baseapp_core.graphql.testing.fixtures import graphql_query
-
         content = graphql_query(
             FILE_QUERY, variables={"id": file_obj.relay_id}, client=django_client
         ).json()
@@ -471,3 +478,113 @@ class TestUnclaimedAnonymousCleanup:
         assert not files_storage.exists(unclaimed.file.name)
         remaining = set(File.objects.values_list("pk", flat=True))
         assert remaining == {attached.pk, recent.pk, owned.pk, created_without_upload.pk}
+
+    def test_a_file_attached_after_the_scan_is_kept(self) -> None:
+        """Cleanup re-checks each candidate under a row lock before deleting it."""
+        cutoff = timezone.now() + timedelta(seconds=1)
+        file_obj = stored_file(total_parts=1)
+        # Attached between the scan and the deletion.
+        File.objects.filter(pk=file_obj.pk).update(parent=attached_to(CommentFactory()))
+
+        assert delete_unclaimed_anonymous_file(file_obj.pk, cutoff) is False
+        assert File.objects.filter(pk=file_obj.pk).exists()
+        assert files_storage.exists(file_obj.file.name)
+
+
+@pytest.mark.usefixtures("private_storage", "anonymous_uploads")
+class TestUploadTokenOnReads:
+    """An anonymous uploader reads its file in a later request with the token header."""
+
+    @pytest.mark.parametrize(
+        "header, visible",
+        [("valid", True), (None, False), ("invalid", False)],
+    )
+    def test_file_query_with_the_upload_token_header(
+        self, django_client: DjangoClient, header: str | None, visible: bool
+    ) -> None:
+        file_obj = stored_file(total_parts=1)
+        tokens = {"valid": AnonymousUploadToken.mint(file_obj), "invalid": "not-a-token"}
+        headers = {"HTTP_X_FILE_UPLOAD_TOKEN": tokens[header]} if header else None
+
+        content = graphql_query(
+            FILE_QUERY, variables={"id": file_obj.relay_id}, client=django_client, headers=headers
+        ).json()
+
+        assert "errors" not in content, content
+        if visible:
+            assert "/v1/files/download/" in content["data"]["file"]["url"]
+        else:
+            assert content["data"]["file"] is None
+
+
+class TestGetNode:
+    def test_get_node_takes_id_as_keyword(self, django_user_client: DjangoClient) -> None:
+        file_obj = stored_file(created_by=django_user_client.user)
+        info = MagicMock()
+        info.context.user = django_user_client.user
+
+        assert FileObjectType.get_node(info=info, id=file_obj.pk) == file_obj
+
+
+class TestUploadTempDir:
+    def test_parts_for_a_storage_without_paths_go_to_a_private_directory(self, tmp_path) -> None:
+        file_obj = File.objects.create(
+            file_name="clip.mp4", created_by=UserFactory(), total_parts=1
+        )
+        handler = LocalUploadHandler(storage=InMemoryStorage())
+
+        with override_settings(BASEAPP_FILES_UPLOAD_TEMP_DIR=str(tmp_path)):
+            upload_id = handler.initiate_upload(file_obj, num_parts=1, part_size=4)["upload_id"]
+            handler.upload_part(upload_id, part_number=1, data=b"data")
+            temp_dir = tmp_path / "temp_uploads" / upload_id
+
+            assert (temp_dir / "part_1").read_bytes() == b"data"
+            assert stat.S_IMODE(os.stat(temp_dir).st_mode) == 0o700
+
+
+class TestPrivateStorageChecks:
+    @pytest.mark.parametrize(
+        "options, error_ids",
+        [
+            ({"querystring_auth": True, "default_acl": "private"}, []),
+            (
+                {"querystring_auth": True, "default_acl": "private", "custom_domain": "cdn.x.io"},
+                ["baseapp_files.E001"],
+            ),
+            ({"querystring_auth": True, "default_acl": "public-read"}, ["baseapp_files.E002"]),
+            (
+                {
+                    "querystring_auth": True,
+                    "default_acl": "private",
+                    "object_parameters": {"ACL": "public-read"},
+                },
+                ["baseapp_files.E002"],
+            ),
+            # Public storage: nothing to check.
+            (
+                {"querystring_auth": False, "default_acl": "public-read", "custom_domain": "x.io"},
+                [],
+            ),
+        ],
+    )
+    def test_signed_storage_that_still_serves_public_urls_is_an_error(
+        self, options: Dict[str, Any], error_ids: list
+    ) -> None:
+        storage = S3Boto3Storage(bucket_name="b", **options)
+
+        assert [error.id for error in private_storage_errors(storage)] == error_ids
+
+    def test_the_check_inspects_the_files_storage(self) -> None:
+        storages = {
+            **settings.STORAGES,
+            "files_s3": {
+                "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+                "OPTIONS": {
+                    "bucket_name": "b",
+                    "querystring_auth": True,
+                    "default_acl": "public-read",
+                },
+            },
+        }
+        with override_settings(STORAGES=storages, BASEAPP_FILES_STORAGE="files_s3"):
+            assert [error.id for error in check_private_files_storage()] == ["baseapp_files.E002"]
