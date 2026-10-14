@@ -219,7 +219,8 @@ class TestPrivateStorage:
 
         assert response.status_code == status.HTTP_200_OK
         assert b"".join(response.streaming_content) == CONTENT
-        assert 'filename="doc.txt"' in response["Content-Disposition"]
+        assert response["Content-Disposition"] == 'attachment; filename="doc.txt"'
+        assert response["X-Content-Type-Options"] == "nosniff"
 
     def test_download_link_rejects_a_tampered_or_expired_token(self, private_storage) -> None:
         file_obj = stored_file()

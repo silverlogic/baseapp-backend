@@ -21,6 +21,9 @@ class FileDownloadViewSet(viewsets.GenericViewSet):
     The signed token in the URL is the only credential, like a presigned S3 URL: whoever
     holds the link may download the file until it expires.
 
+    Always served as an attachment with ``nosniff``: rendered inline on the app's own
+    domain, an uploaded HTML or SVG file would run script there.
+
     Endpoints:
         GET /v1/files/download/{token}
     """
@@ -46,8 +49,11 @@ class FileDownloadViewSet(viewsets.GenericViewSet):
             raise NotFound(_("File not found"))
 
         file_obj = File.objects.filter(file=name).only("file_name", "file_content_type").first()
-        return FileResponse(
+        response = FileResponse(
             storage.open(name, "rb"),
+            as_attachment=True,
             filename=(file_obj and file_obj.file_name) or posixpath.basename(name),
             content_type=(file_obj and file_obj.file_content_type) or None,
         )
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
