@@ -22,6 +22,7 @@ from baseapp_core.models import (
 from baseapp_core.pghelpers import pgtrigger_register_default_track
 from baseapp_core.swapper import init_swapped_models
 
+from .storage import get_files_storage
 from .utils import default_files_count
 
 if TYPE_CHECKING:
@@ -308,6 +309,8 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
     file = models.FileField(
         max_length=512,
         upload_to=random_name_in("files"),
+        # BASEAPP_FILES_STORAGE; a callable so a project can switch to private storage.
+        storage=get_files_storage,
         verbose_name=_("file"),
         help_text=_("The stored file"),
     )

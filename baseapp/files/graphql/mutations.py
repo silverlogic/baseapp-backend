@@ -6,10 +6,13 @@ from graphql.error import GraphQLError
 from graphql_relay.connection.arrayconnection import offset_to_cursor
 
 from baseapp_core.graphql import RelayMutation, get_obj_from_relay_id, login_required
+from baseapp_core.graphql.decorators import user_passes_test
 from baseapp_core.models import DocumentId
 from baseapp_core.plugins import shared_services
 
 from ..base import FileableModel
+from ..permissions import anonymous_uploads_allowed
+from ..tokens import bind_upload_tokens
 from .interfaces import FilesInterface
 
 File = swapper.load_model("baseapp_files", "File")
@@ -27,6 +30,8 @@ class FileAttachToTarget(RelayMutation):
             fileAttachToTarget(input: {
                 fileRelayIds: ["RmlsZU9iamVjdFR5cGU6MQ==", "RmlsZU9iamVjdFR5cGU6Mg=="]
                 targetObjectId: "Q29tbWVudE9iamVjdFR5cGU6MQ=="
+                # Only for anonymous uploads: the tokens returned when they started.
+                uploadTokens: ["..."]
             }) {
                 attachedFiles {
                     node {
@@ -53,13 +58,18 @@ class FileAttachToTarget(RelayMutation):
     class Input:
         file_relay_ids = graphene.List(graphene.ID, required=True)
         target_object_id = graphene.ID(required=True)
+        upload_tokens = graphene.List(
+            graphene.NonNull(graphene.String),
+            description="Upload tokens of anonymous uploads, proving the caller started them.",
+        )
 
     @classmethod
-    @login_required
+    @user_passes_test(lambda user: user.is_authenticated or anonymous_uploads_allowed())
     @transaction.atomic
     def mutate_and_get_payload(cls, root, info, **input):
         file_relay_ids = input.get("file_relay_ids", [])
         target_object_id = input.get("target_object_id")
+        bind_upload_tokens(info.context.user, input.get("upload_tokens"))
 
         if not file_relay_ids:
             raise GraphQLError(
@@ -109,7 +119,8 @@ class FileAttachToTarget(RelayMutation):
                     extensions={"code": "not_found"},
                 )
 
-            # Object-level permission (FilesPermissionsBackend grants the owner)
+            # Object-level permission (FilesPermissionsBackend grants the owner,
+            # including an anonymous uploader holding the file's upload token)
             if not info.context.user.has_perm(f"{app_label}.attach_{file_model_name}", file_obj):
                 raise GraphQLError(
                     str(_("You don't have permission to attach this file")),
@@ -126,6 +137,25 @@ class FileAttachToTarget(RelayMutation):
                 )
 
             files.append(file_obj)
+
+        # Lock the rows and re-check them: unclaimed-upload cleanup locks the same rows,
+        # so a file it deleted (or another request attached) since they were read is caught.
+        locked = File.objects.select_for_update().in_bulk([file_obj.pk for file_obj in files])
+        for index, file_obj in enumerate(files):
+            current = locked.get(file_obj.pk)
+            if current is None:
+                raise GraphQLError(
+                    str(_("File not found: {file_id}")).format(file_id=file_relay_ids[index]),
+                    extensions={"code": "not_found"},
+                )
+            if current.parent_id:
+                raise GraphQLError(
+                    str(_("File {file_name} is already attached to another object")).format(
+                        file_name=current.file_name
+                    ),
+                    extensions={"code": "already_attached"},
+                )
+            files[index] = current
 
         # All validation passed — now materialize the target DocumentId and attach.
         target_document_id = DocumentId.get_or_create_for_object(target)

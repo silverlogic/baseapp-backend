@@ -135,6 +135,30 @@ class TestFileUploadInitiation:
         assert file_obj.parent.content_type_id == comment_ct.id
         assert file_obj.parent.object_id == comment.id
 
+    def test_initiate_upload_refuses_another_users_comment(
+        self, user_client: Client, mock_s3_handler: MagicMock
+    ) -> None:
+        """Uploading into a target needs change_<model> on it, here change_comment."""
+        comment = CommentFactory()
+        document_id = DocumentId.get_or_create_for_object(comment)
+
+        response = user_client.post(
+            "/v1/files/uploads",
+            {
+                "file_name": "avatar.jpg",
+                "file_size": 1024,
+                "file_content_type": "image/jpeg",
+                "num_parts": 1,
+                "part_size": 1024,
+                "parent_id": str(document_id.public_id),
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert not File.objects.exists()
+        mock_s3_handler.initiate_upload.assert_not_called()
+
     def test_initiate_upload_rejects_non_fileable_parent(self, user_client, mock_s3_handler):
         """A parent that does not support files (not a FileableModel) is rejected,
         mirroring the fileAttachToTarget mutation."""
@@ -308,11 +332,10 @@ class TestFileUploadCompletion:
         )
 
     @pytest.fixture(autouse=True)
-    def stored_storage(self):
+    def stored_storage(self, mock_s3_handler: MagicMock) -> MagicMock:
         """The handler is mocked, so nothing is stored; report the declared size by default."""
-        with patch("baseapp.files.services.upload_service.default_storage") as storage:
-            storage.size.return_value = 10485760
-            yield storage
+        mock_s3_handler.storage.size.return_value = 10485760
+        return mock_s3_handler.storage
 
     def test_complete_upload_rejects_bytes_beyond_the_declared_size(
         self,
@@ -361,6 +384,8 @@ class TestFileUploadCompletion:
         assert pending_upload.upload_status == File.UploadStatus.COMPLETED
         assert pending_upload.upload_id == ""
         assert pending_upload.uploaded_parts == {"1": "abc123", "2": "def456"}
+        # The handler's storage name is what the File points at.
+        assert pending_upload.file.name == mock_s3_handler.complete_upload.return_value
 
         # Verify S3 handler was called
         mock_s3_handler.complete_upload.assert_called_once()
@@ -500,6 +525,31 @@ class TestFileUploadAbort:
         response = client.delete(f"/v1/files/uploads/{uploading_file.public_id}")
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    @pytest.mark.parametrize(
+        "upload_status", [File.UploadStatus.COMPLETED, File.UploadStatus.ABORTED]
+    )
+    def test_abort_refuses_a_finished_upload(
+        self, user_client: Client, mock_s3_handler: MagicMock, upload_status: str
+    ) -> None:
+        """A completed file keeps its status and bytes; aborting it would orphan them."""
+        file_obj = File.objects.create(
+            file_name="test.mp4",
+            file_size=10485760,
+            file_content_type="video/mp4",
+            upload_status=upload_status,
+            upload_id="test-upload-id",
+            total_parts=2,
+            created_by=user_client.user,
+        )
+
+        response = user_client.delete(f"/v1/files/uploads/{file_obj.public_id}")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.json() == ["Only an upload that hasn't completed can be aborted."]
+        file_obj.refresh_from_db()
+        assert file_obj.upload_status == upload_status
+        mock_s3_handler.abort_upload.assert_not_called()
 
     def test_abort_upload_without_upload_id(self, user_client, mock_s3_handler):
         """Test aborting upload without upload_id still marks as aborted."""

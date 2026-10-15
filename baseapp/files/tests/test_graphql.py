@@ -825,3 +825,54 @@ def test_file_size_larger_than_32_bit_int(
 
     assert "errors" not in content
     assert content["data"]["node"]["fileSize"] == file_size
+
+
+class TestAttachRequiresChangingTheTarget:
+    """Files can only be added to an object the user may change (change_comment here)."""
+
+    def _attach(self, graphql_client: GraphQLClient, file_obj, comment) -> dict:
+        return graphql_client(
+            FILE_ATTACH_TO_TARGET_MUTATION,
+            variables={"fileRelayIds": [file_obj.relay_id], "targetObjectId": comment.relay_id},
+        ).json()
+
+    def _own_file(self, user) -> "File":
+        return File.objects.create(
+            file_name="own.txt", upload_status=File.UploadStatus.COMPLETED, created_by=user
+        )
+
+    def test_the_comment_author_can_attach(
+        self, graphql_user_client: GraphQLClient, django_user_client: DjangoClient
+    ) -> None:
+        user = django_user_client.user
+        content = self._attach(graphql_user_client, self._own_file(user), CommentFactory(user=user))
+
+        assert "errors" not in content, content
+
+    def test_another_users_comment_is_refused(
+        self, graphql_user_client: GraphQLClient, django_user_client: DjangoClient
+    ) -> None:
+        file_obj = self._own_file(django_user_client.user)
+
+        content = self._attach(graphql_user_client, file_obj, CommentFactory())
+
+        assert content["errors"][0]["extensions"]["code"] == "permission_required"
+        file_obj.refresh_from_db()
+        assert file_obj.parent is None
+
+    def test_a_change_comment_holder_can_attach_to_any_comment(
+        self, graphql_user_client: GraphQLClient, django_user_client: DjangoClient
+    ) -> None:
+        from django.contrib.auth.models import Permission
+
+        user = django_user_client.user
+        user.user_permissions.add(
+            Permission.objects.get(
+                codename="change_comment",
+                content_type=ContentType.objects.get_for_model(CommentFactory._meta.model),
+            )
+        )
+
+        content = self._attach(graphql_user_client, self._own_file(user), CommentFactory())
+
+        assert "errors" not in content, content

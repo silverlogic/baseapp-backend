@@ -144,17 +144,18 @@ Cancels the upload and cleans up temporary files.
 MAX_FILE_UPLOAD_SIZE = 5 * 1024 * 1024 * 1024
 ```
 
-The storage handler is selected automatically from Django's `default_storage`
-(`baseapp/files/storage/__init__.py`): an `S3Boto3Storage` backend selects the
-S3 multipart handler, anything else falls back to the local handler. There is
-no dedicated setting.
+The storage handler is selected automatically from the files storage, the `STORAGES`
+alias named by `BASEAPP_FILES_STORAGE` (`"default"` unless set;
+`baseapp/files/storage/__init__.py`): an `S3Boto3Storage` backend selects the S3
+multipart handler, anything else falls back to the local handler. See the README's
+"Private Files and Anonymous Uploads" for private storage and anonymous uploads.
 
-### Local Storage (default_storage is not S3)
+### Local Storage (files storage is not S3)
 - Uses `LocalUploadHandler`
-- Stores files in `MEDIA_ROOT/files/`
-- Temp parts in `MEDIA_ROOT/temp_uploads/{upload_id}/`
+- Stores files in `files/` under the storage's location (`MEDIA_ROOT` by default)
+- Temp parts in `temp_uploads/{upload_id}/` under the same location
 
-### S3 Storage (default_storage is S3Boto3Storage)
+### S3 Storage (files storage is S3Boto3Storage)
 ```python
 AWS_ACCESS_KEY_ID = "..."
 AWS_SECRET_ACCESS_KEY = "..."
@@ -164,7 +165,7 @@ AWS_S3_REGION_NAME = "us-east-1"
 - Uses `S3MultipartUploadHandler`
 - Generates presigned URLs for direct S3 upload
 - No backend file handling
-- Reuses `default_storage`'s boto3 client, bucket, `location` and `default_acl`, so
+- Reuses the files storage's boto3 client, bucket, `location` and `default_acl`, so
   `AWS_S3_ENDPOINT_URL` (e.g. DigitalOcean Spaces), signature version and addressing
   style apply to uploads exactly as they do to `FileField` URLs
 

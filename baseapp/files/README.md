@@ -13,6 +13,7 @@ REST API endpoints for S3 direct multipart uploads, allowing clients to upload l
   - [Complete Upload Flow](#complete-upload-flow)
   - [API Endpoints](#api-endpoints)
 - [Client Implementation](#client-implementation)
+- [Private Files and Anonymous Uploads](#private-files-and-anonymous-uploads)
 - [Background Tasks](#background-tasks)
 - [Troubleshooting](#troubleshooting)
 - [Advanced Topics](#advanced-topics)
@@ -145,9 +146,9 @@ Ensure your S3 bucket has the correct CORS configuration:
 No additional configuration needed! The system automatically detects local storage and provides a fallback implementation.
 
 **How it works:**
-- Storage factory checks if `default_storage` is `S3Boto3Storage`
+- Storage factory checks if the files storage (`BASEAPP_FILES_STORAGE`, `default_storage` unless set) is `S3Boto3Storage`
 - If not S3, uses `LocalUploadHandler` automatically
-- Local handler stores parts in `MEDIA_ROOT/temp_uploads/`
+- Local handler stores parts in `temp_uploads/` under the storage's location (`MEDIA_ROOT` by default)
 - Parts are combined on completion
 
 **Note**: Local storage doesn't support true direct uploads - it's a simplified fallback for development/testing only.
@@ -557,6 +558,90 @@ result = upload_file_multipart(
 print(f"File uploaded: {result['url']}")
 ```
 
+## Private Files and Anonymous Uploads
+
+Both are off by default; each project opts in through settings (defaults come from the plugin).
+
+| Setting | Default | |
+|---|---|---|
+| `BASEAPP_FILES_STORAGE` | `"default"` | `STORAGES` alias that holds uploaded files |
+| `BASEAPP_FILES_ALLOW_ANONYMOUS_UPLOADS` | `False` | Let anonymous callers upload and attach files |
+| `BASEAPP_FILES_UPLOAD_TOKEN_MAX_AGE` | `86400` | Lifetime of an anonymous upload token (seconds) |
+| `BASEAPP_FILES_ANONYMOUS_MAX_FILE_SIZE` | `None` | Size cap for anonymous uploads (`None`: `MAX_FILE_UPLOAD_SIZE`) |
+| `BASEAPP_FILES_ANONYMOUS_UPLOAD_RATE` | `"20/hour"` | DRF throttle rate for anonymous initiations, per IP |
+| `BASEAPP_FILES_SIGNED_URL_MAX_AGE` | `3600` | Link lifetime for `SignedFileSystemStorage` |
+| `BASEAPP_FILES_UNCLAIMED_ANONYMOUS_MAX_AGE` | `86400` | Age after which unattached anonymous uploads are deleted |
+| `BASEAPP_FILES_UPLOAD_TEMP_DIR` | `None` | Parts directory for a storage with no local path (`None`: a private directory in the system temp dir). Use a shared volume when workers run on several hosts |
+
+**Upgrading:** `File.file` now uses the files storage, so a project with its own concrete
+`File` model needs `python manage.py makemigrations files` once (a state-only migration).
+
+### Private files
+
+Files are private when the files storage only hands out signed, expiring URLs: an S3 storage
+with `querystring_auth`, or `baseapp.files.storage.signed.SignedFileSystemStorage` for local
+and non-S3 deployments (its links go through `GET /v1/files/download/{token}`).
+
+```python
+STORAGES = {
+    **STORAGES,
+    "files": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "OPTIONS": {
+            "bucket_name": env("AWS_PRIVATE_STORAGE_BUCKET_NAME"),
+            "default_acl": "private",
+            "querystring_auth": True,
+            "querystring_expire": 3600,
+        },
+    },
+}
+BASEAPP_FILES_STORAGE = "files"
+```
+
+With private files:
+- `url` (GraphQL and REST) is a fresh signed URL, or `null` for viewers without `view_<file>`.
+- `file(id:)` / `node(id:)` return `null` for viewers without `view_<file>`.
+- `thumbnail` follows the same rules: it is generated into the files storage itself (not the public
+  thumbnail storage) and returned as a signed URL, `null` for viewers without `view_<file>`.
+
+Signing alone does not make files private: the objects themselves must not be readable. A system
+check refuses to start when a signing S3 storage would still hand out public URLs:
+`baseapp_files.E001` for a `custom_domain` without a CloudFront signer (django-storages then
+returns unsigned URLs), and `baseapp_files.E002` for a public `default_acl` or
+`AWS_S3_OBJECT_PARAMETERS` ACL. Also block public access on the bucket itself.
+
+**Who may upload** is decided before an upload starts, by `add_<file>`: on the target when the
+upload names one (`parent_id`, `_can_add_to_target`), otherwise without an object
+(`_can_upload`: authenticated users, plus anonymous callers while anonymous uploads are on). A
+refusal is a `403 {"detail": "You don't have permission to upload files."}` and nothing is
+created. Clients can ask the same question up front with GraphQL `hasPerm(perm: "files.add_file")`.
+
+**Who may attach** files to an object (on upload with `parent_id`, or with `fileAttachToTarget`):
+whoever may change it, i.e. `change_<model>` on the target. For a comment that is its author or a
+`change_comment` holder, so nobody can add files to someone else's comment. Anonymous attachments
+need a target whose rules admit them: override `_can_add_to_target` for those targets.
+
+**Who may view** is decided by `FilesPermissionsBackend`'s `view_<file>` permission. Public
+storage: anyone (as before). Private storage: the owner, an anonymous uploader holding the
+file's upload token, whoever may view the object the file is attached to (`view_<model>` on
+it), and holders of the global `view_<file>` permission. Override `_can_view` (or any other
+rule) in your project's backend subclass to change it.
+
+### Anonymous uploads
+
+With `BASEAPP_FILES_ALLOW_ANONYMOUS_UPLOADS = True`, anonymous callers can initiate uploads
+(throttled, optionally size-capped). The response includes an `upload_token`, which proves
+ownership since no user owns the file:
+
+- complete / abort: send it as the `X-File-Upload-Token` header;
+- `fileAttachToTarget`: pass it in `uploadTokens`. The target must allow files
+  (`add_<file>`, which admits anonymous callers while the setting is on; override
+  `_can_add_to_target` to restrict which targets accept them).
+
+Anonymous uploads never attached are deleted after `BASEAPP_FILES_UNCLAIMED_ANONYMOUS_MAX_AGE`
+by `cleanup_unclaimed_anonymous_files`. It locks and re-checks each file before deleting it, and
+attaching locks the same rows, so a file attached meanwhile is kept.
+
 ## Background Tasks
 
 ### Automatic Cleanup of Expired Uploads
@@ -565,16 +650,14 @@ Uploads that aren't completed within 24 hours are automatically cleaned up.
 
 #### Setup Celery Beat
 
-Add to your `settings.py`:
+The plugin contributes hourly schedules for `cleanup_expired_uploads` and
+`cleanup_unclaimed_anonymous_files` (`plugin_registry.get_all_celery_schedules()`). Merge them
+into your `settings.py`:
 
 ```python
-from celery.schedules import crontab
-
 CELERY_BEAT_SCHEDULE = {
-    'cleanup-expired-uploads': {
-        'task': 'baseapp.files.services.cleanup.cleanup_expired_uploads',
-        'schedule': crontab(minute=0),  # Run every hour
-    },
+    **plugin_registry.get_all_celery_schedules(),
+    # your own schedules
 }
 ```
 
@@ -663,10 +746,10 @@ const numParts = Math.floor(fileSize / partSize); // ❌ Wrong
 
 **Solution:**
 - Local fallback only works if NOT using S3Boto3Storage
-- Check `default_storage` in Django shell:
+- Check the files storage in Django shell:
   ```python
-  from django.core.files.storage import default_storage
-  print(type(default_storage))
+  from baseapp.files.storage import files_storage
+  print(files_storage.__class__)
   # Should NOT be S3Boto3Storage for local fallback
   ```
 

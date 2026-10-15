@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Iterable, Set
 
 from django.conf import settings
 from django.core import signing
@@ -91,3 +91,77 @@ class PresignedUploadToken:
         """
         if str(token_data.get("upload_id")) != str(upload_id):
             raise PresignedUploadTokenError(_("Token does not match the current upload session"))
+
+
+class AnonymousUploadToken:
+    """
+    Proves an anonymous caller started an upload, since no user owns the file.
+
+    Minted at initiation for anonymous callers and returned as ``upload_token``. The
+    client sends it back to complete or abort the upload (``X-File-Upload-Token``) and to
+    attach the file (``fileAttachToTarget``'s ``uploadTokens``); ``bind_upload_tokens``
+    then lets ``FilesPermissionsBackend`` treat the holder as the file's owner.
+    """
+
+    SALT = "baseapp_files.anonymous_upload"
+    HEADER = "HTTP_X_FILE_UPLOAD_TOKEN"
+
+    @classmethod
+    def max_age(cls) -> int:
+        return getattr(settings, "BASEAPP_FILES_UPLOAD_TOKEN_MAX_AGE", 24 * 60 * 60)
+
+    @classmethod
+    def mint(cls, file_obj: Any) -> str:
+        return signing.dumps({"file_id": file_obj.pk}, salt=cls.SALT)
+
+    @classmethod
+    def file_ids(cls, tokens: Iterable[str]) -> Set[Any]:
+        """Ids of the files the valid tokens grant; invalid or expired ones are ignored."""
+        file_ids = set()
+        for token in tokens:
+            try:
+                data = signing.loads(token, max_age=cls.max_age(), salt=cls.SALT)
+            except signing.BadSignature:
+                continue
+            file_ids.add(data.get("file_id"))
+        return file_ids
+
+
+def bind_upload_tokens(user: Any, tokens: Iterable[str] | str | None) -> None:
+    """
+    Record on ``user`` the files the given upload tokens grant, for the permission
+    backend to read (as ``CurrentProfileMixin`` does with ``current_profile``).
+
+    ``tokens`` may be a list or a comma-separated string, as sent in the header.
+    """
+    if not tokens:
+        return
+    if isinstance(tokens, str):
+        tokens = [token.strip() for token in tokens.split(",")]
+    file_ids = AnonymousUploadToken.file_ids(token for token in tokens if token)
+    if file_ids:
+        user.file_upload_tokens = getattr(user, "file_upload_tokens", set()) | file_ids
+
+
+class FileDownloadToken:
+    """Signs the expiring download links that ``SignedFileSystemStorage.url`` hands out."""
+
+    SALT = "baseapp_files.download"
+
+    @classmethod
+    def max_age(cls) -> int:
+        return getattr(settings, "BASEAPP_FILES_SIGNED_URL_MAX_AGE", 60 * 60)
+
+    @classmethod
+    def mint(cls, name: str) -> str:
+        return signing.dumps({"name": name}, salt=cls.SALT)
+
+    @classmethod
+    def verify(cls, token: str) -> str:
+        """
+        Return the storage name ``token`` grants.
+
+        Raises:
+            signing.BadSignature: tampered with or expired (``SignatureExpired``).
+        """
+        return signing.loads(token, max_age=cls.max_age(), salt=cls.SALT)["name"]
