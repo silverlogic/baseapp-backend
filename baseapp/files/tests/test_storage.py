@@ -195,6 +195,35 @@ class TestS3MultipartUploadHandler:
         )
 
     @pytest.mark.parametrize(
+        "content_type, disposition",
+        [
+            ("video/mp4", None),
+            ("image/png", None),
+            ("application/pdf", None),
+            ("text/plain", 'attachment; filename="report.txt"'),
+            ("application/octet-stream", 'attachment; filename="report.txt"'),
+            ("", 'attachment; filename="report.txt"'),
+        ],
+    )
+    def test_s3_objects_not_safe_inline_are_downloads(
+        self,
+        s3_handler: S3MultipartUploadHandler,
+        user: User,
+        mock_s3_client: MagicMock,
+        content_type: str,
+        disposition: str | None,
+    ) -> None:
+        """Served from a custom domain, only types a browser displays safely stay inline."""
+        file_obj = File.objects.create(
+            file_name="report.txt", file_content_type=content_type, created_by=user
+        )
+
+        s3_handler.initiate_upload(file_obj, num_parts=1, part_size=1024)
+
+        kwargs = mock_s3_client.create_multipart_upload.call_args.kwargs
+        assert kwargs.get("ContentDisposition") == disposition
+
+    @pytest.mark.parametrize(
         "file_name, expected_ext",
         [
             ("clip.mp4", "mp4"),

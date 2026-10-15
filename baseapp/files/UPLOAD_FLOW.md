@@ -190,6 +190,7 @@ Without it uploads fail in the browser with a CORS error and nothing reaches the
 
 ### Common Errors
 - **400 Bad Request**: Invalid parameters, part numbers, or file size
+- **400 Bad Request** `{"file_name": ["Files of type .html are not allowed."]}`: only extensions on `BASEAPP_FILES_ALLOWED_FILE_TYPES` (media, documents and archives by default) can be uploaded, and the file is stored with the type that list gives, never the declared one. See the README's "File Type Restrictions".
 - **400 Bad Request** on complete: the assembled file's size differs from the declared `file_size` (e.g. a part carried extra bytes). The stored object is deleted and the upload is not completed.
 - **403 Forbidden**: User doesn't own the file/upload
 - **404 Not Found**: File or upload not found

@@ -6,6 +6,8 @@ from rest_framework import serializers
 
 from baseapp_core.models import DocumentId
 
+from ...content_safety import allowed_content_type, file_extension
+
 File = swapper.load_model("baseapp_files", "File")
 
 
@@ -14,12 +16,25 @@ class InitiateUploadSerializer(serializers.Serializer):
 
     file_name = serializers.CharField(max_length=512)
     file_size = serializers.IntegerField(min_value=1)
-    file_content_type = serializers.CharField(max_length=150)
+    # Only informative: the allowlist decides the stored type, so blank (a browser that
+    # doesn't know the type) or missing is fine.
+    file_content_type = serializers.CharField(max_length=150, required=False, allow_blank=True)
     num_parts = serializers.IntegerField(min_value=1, max_value=10000)
     part_size = serializers.IntegerField(min_value=1)
 
     # Optional parent relationship via DocumentId public_id
     parent_id = serializers.UUIDField(required=False, allow_null=True)
+
+    def validate_file_name(self, value: str) -> str:
+        """Only extensions on BASEAPP_FILES_ALLOWED_FILE_TYPES may be uploaded."""
+        if allowed_content_type(value) is None:
+            extension = file_extension(value)
+            if extension:
+                raise serializers.ValidationError(
+                    _("Files of type %(extension)s are not allowed.") % {"extension": extension}
+                )
+            raise serializers.ValidationError(_("This file type is not allowed."))
+        return value
 
     def validate_file_size(self, value: int) -> int:
         """Reject a declared size above MAX_FILE_UPLOAD_SIZE, naming the limit.
@@ -54,7 +69,11 @@ class InitiateUploadSerializer(serializers.Serializer):
             ) from None
 
     def validate(self, data):
-        """Validate file size matches parts."""
+        """Validate file size matches parts, and store the type the extension allows."""
+        # The declared type is the client's word; a page type on an allowed extension would
+        # be served as a page. The allowlist decides how the file is stored and served.
+        data["file_content_type"] = allowed_content_type(data["file_name"])
+
         num_parts = data["num_parts"]
         part_size = data["part_size"]
         file_size = data["file_size"]

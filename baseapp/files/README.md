@@ -820,26 +820,47 @@ def _validate_file_params(self, file_size, num_parts, part_size, user):
 
 ### File Type Restrictions
 
-Restrict allowed file types:
+Only extensions on an allowlist can be uploaded (`baseapp/files/content_safety.py`). The
+default covers common media, documents and archives:
+
+- Images: `.jpg .jpeg .png .gif .webp .avif .heic .heif .bmp .tif .tiff`
+- Video: `.mp4 .m4v .mov .webm .mkv .avi .3gp`
+- Audio: `.mp3 .m4a .aac .wav .ogg .oga .opus .flac`
+- Documents: `.pdf .doc .docx .xls .xlsx .ppt .pptx .odt .ods .odp .rtf .txt .csv`
+- Archives: `.zip .7z .rar .tar .gz`
+
+Anything else is rejected when the upload starts:
+
+```json
+400 {"file_name": ["Files of type .html are not allowed."]}
+```
+
+The list maps each extension to the content type the file is **stored and served with**; the
+type the client declares is ignored. Otherwise `photo.png` declared as `text/html` would be
+served as a page and run script on the site's domain (stored XSS), even from an S3 bucket
+behind a subdomain.
+
+On S3, files a browser would not display safely (everything but common images, video, audio
+and PDF) are stored with `Content-Disposition: attachment`, so opening them downloads rather
+than renders them. Embedded images and video still display.
+
+Replace or extend the list per project:
 
 ```python
-# In settings.py
-ALLOWED_FILE_TYPES = [
-    'image/jpeg',
-    'image/png',
-    'video/mp4',
-    'application/pdf',
-]
+from baseapp.files.content_safety import DEFAULT_ALLOWED_FILE_TYPES
 
-# In InitiateUploadSerializer.validate_file_content_type
-def validate_file_content_type(self, value):
-    allowed = getattr(settings, 'ALLOWED_FILE_TYPES', None)
-    if allowed and value not in allowed:
-        raise serializers.ValidationError(
-            f"File type {value} not allowed. Allowed types: {', '.join(allowed)}"
-        )
-    return value
+# Extend: keep the defaults and add more types.
+BASEAPP_FILES_ALLOWED_FILE_TYPES = {
+    **DEFAULT_ALLOWED_FILE_TYPES,
+    ".dwg": "application/acad",
+}
+
+# Or replace: a list of extensions takes each type from `mimetypes`.
+BASEAPP_FILES_ALLOWED_FILE_TYPES = [".jpg", ".png", ".pdf"]
 ```
+
+Avoid allowing `.svg`, `.html`, `.xml` or `.js`: browsers run them as pages, and where media is
+served from the site's own domain (local storage, nginx `/media/`) that is stored XSS.
 
 ### Progress Notifications
 

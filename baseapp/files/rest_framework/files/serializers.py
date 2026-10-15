@@ -41,6 +41,9 @@ class FileSerializer(ModelSerializer):
         read_only_fields = [
             "id",
             "relay_id",
+            # Fixed at upload: the stored file is named and typed after them (allowlist).
+            "file_name",
+            "file_content_type",
             "upload_status",
             "created_by",
             "created",

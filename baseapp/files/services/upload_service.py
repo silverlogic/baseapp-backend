@@ -6,6 +6,11 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
+from ..content_safety import (
+    allowed_content_type,
+    file_extension,
+    normalize_content_type,
+)
 from ..storage import get_upload_handler
 
 logger = logging.getLogger(__name__)
@@ -43,7 +48,8 @@ class UploadService:
                 ``created_by`` empty
             file_name: Original file name
             file_size: Size in bytes
-            file_content_type: MIME type
+            file_content_type: MIME type the client declared; replaced by the type
+                BASEAPP_FILES_ALLOWED_FILE_TYPES gives the extension
             num_parts: Number of parts for multipart upload
             part_size: Size of each part in bytes
             parent_id: DocumentId primary key (optional)
@@ -55,12 +61,23 @@ class UploadService:
 
         # Validate inputs
         self._validate_file_params(file_size, num_parts, part_size)
+        stored_content_type = allowed_content_type(file_name)
+        if stored_content_type is None:
+            raise ValueError("File type is not allowed")
+        if file_content_type and normalize_content_type(file_content_type) != stored_content_type:
+            # The extension only: file names can carry personal information.
+            logger.info(
+                "Upload with extension %r declared %r; storing it as %r",
+                file_extension(file_name),
+                file_content_type,
+                stored_content_type,
+            )
 
         # Create File record in pending state
         file_obj = File.objects.create(
             file_name=file_name,
             file_size=file_size,
-            file_content_type=file_content_type,
+            file_content_type=stored_content_type,
             upload_status=File.UploadStatus.PENDING,
             total_parts=num_parts,
             created_by=user if user and user.is_authenticated else None,
@@ -106,6 +123,11 @@ class UploadService:
 
         # Validate parts
         self._validate_parts(file_obj, parts)
+
+        # The local handler names the stored file after file_name; re-check it here in
+        # case it changed since initiation, including to another allowed type.
+        if allowed_content_type(file_obj.file_name) != file_obj.file_content_type:
+            raise ValueError("File type is not allowed")
 
         # Complete with storage handler (network I/O — outside the transaction)
         try:
