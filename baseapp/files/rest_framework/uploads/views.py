@@ -2,20 +2,24 @@ import logging
 
 import swapper
 from django.utils.translation import gettext_lazy as _
-from rest_framework import permissions, status, viewsets
-from rest_framework.exceptions import ValidationError
+from rest_framework import status, viewsets
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
+from rest_framework.throttling import BaseThrottle
 
 from baseapp_core.rest_framework.decorators import action
 from baseapp_profiles.rest_framework import CurrentProfileMixin
 
 from ...services.upload_service import UploadService
+from ...tokens import AnonymousUploadToken, bind_upload_tokens
 from ..utils import enforce_can_attach_to_parent
+from .permissions import IsAuthenticatedOrAnonymousUploads
 from .serializers import (
     CompleteUploadSerializer,
     InitiateUploadSerializer,
     UploadResponseSerializer,
 )
+from .throttles import AnonymousUploadThrottle
 
 logger = logging.getLogger(__name__)
 
@@ -34,10 +38,14 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
         DELETE /v1/files/uploads/{public_id} - Abort upload
 
     Note: Part uploads for local storage use presigned URLs handled by PresignedUploadViewSet
+
+    With ``BASEAPP_FILES_ALLOW_ANONYMOUS_UPLOADS`` on, anonymous callers may upload too:
+    initiate returns an ``upload_token`` that they send back in ``X-File-Upload-Token``
+    to complete or abort.
     """
 
     queryset = File.objects.all()
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrAnonymousUploads]
     lookup_field = "pk"
     lookup_url_kwarg = "pk"
 
@@ -58,6 +66,12 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
 
         self.check_object_permissions(self.request, obj)
         return obj
+
+    def get_throttles(self) -> list[BaseThrottle]:
+        throttles = super().get_throttles()
+        if self.action == "create":
+            throttles.append(AnonymousUploadThrottle())
+        return throttles
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -85,11 +99,14 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # Authorize the target before creating anything, mirroring the
-        # fileAttachToTarget mutation so this endpoint can't bypass it.
+        # Authorize before creating anything: add_<file> on the target when one is given
+        # (mirroring fileAttachToTarget, so this endpoint can't bypass it), otherwise
+        # add_<file> without an object, so the permission backend decides who may upload.
         parent_pk = serializer.validated_data.get("parent_id")
         if parent_pk:
             enforce_can_attach_to_parent(request.user, parent_pk)
+        elif not request.user.has_perm(f"{file_app_label}.add_{file_model_name}"):
+            raise PermissionDenied(_("You don't have permission to upload files."))
 
         try:
             # Get user's profile if available
@@ -101,6 +118,8 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
 
             # Prepare response
             response_data = {"file_obj": file_obj, **upload_data}
+            if not request.user.is_authenticated:
+                response_data["upload_token"] = AnonymousUploadToken.mint(file_obj)
 
             response_serializer = UploadResponseSerializer(response_data)
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
@@ -127,6 +146,7 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
         }
         """
         file_obj = self.get_object()
+        bind_upload_tokens(request.user, request.META.get(AnonymousUploadToken.HEADER))
 
         # Check permission (owner or has change_file permission)
         if not request.user.has_perm(f"{file_app_label}.change_{file_model_name}", file_obj):
@@ -164,6 +184,7 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
         DELETE /v1/files/uploads/{id}
         """
         file_obj = self.get_object()
+        bind_upload_tokens(request.user, request.META.get(AnonymousUploadToken.HEADER))
 
         # Check permission (owner or has delete_file permission)
         if not request.user.has_perm(f"{file_app_label}.delete_{file_model_name}", file_obj):
@@ -176,6 +197,11 @@ class FileUploadViewSet(CurrentProfileMixin, viewsets.GenericViewSet):
             self.upload_service.abort_multipart_upload(file_obj.id)
             return Response(status=status.HTTP_204_NO_CONTENT)
 
+        except ValueError:
+            logger.warning("Upload abort rejected", exc_info=True)
+            raise ValidationError(
+                [_("Only an upload that hasn't completed can be aborted.")]
+            ) from None
         except Exception:
             logger.exception("Failed to abort upload")
             raise ValidationError([_("Failed to abort upload.")]) from None

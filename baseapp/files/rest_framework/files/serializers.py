@@ -4,6 +4,8 @@ from rest_framework import serializers
 from baseapp_core.rest_framework.serializers import ModelSerializer
 
 File = swapper.load_model("baseapp_files", "File")
+file_app_label = File._meta.app_label
+file_model_name = File._meta.model_name.lower()
 
 
 class FileSerializer(ModelSerializer):
@@ -55,9 +57,14 @@ class FileSerializer(ModelSerializer):
         return obj.public_id
 
     def get_url(self, obj):
-        """Get file URL if upload completed."""
+        """Get the file URL once the upload completed, for viewers allowed to see it
+        (``view_file``; on private storage the URL is signed and expires)."""
         if obj.upload_status == "completed" and obj.file:
             request = self.context.get("request")
+            if request and not request.user.has_perm(
+                f"{file_app_label}.view_{file_model_name}", obj
+            ):
+                return None
             url = obj.file.url
             if request:
                 return request.build_absolute_uri(url)

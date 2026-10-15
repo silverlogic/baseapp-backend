@@ -40,9 +40,14 @@ class InitiateUploadSerializer(serializers.Serializer):
         """Reject a declared size above MAX_FILE_UPLOAD_SIZE, naming the limit.
 
         Validated here, not only in UploadService, so the client gets the reason
-        instead of the view's generic "Invalid upload parameters".
+        instead of the view's generic "Invalid upload parameters". Anonymous callers
+        get BASEAPP_FILES_ANONYMOUS_MAX_FILE_SIZE when it is set.
         """
         max_file_size = getattr(settings, "MAX_FILE_UPLOAD_SIZE", 5 * 1024 * 1024 * 1024)
+        request = self.context.get("request")
+        anonymous_max = getattr(settings, "BASEAPP_FILES_ANONYMOUS_MAX_FILE_SIZE", None)
+        if request is not None and not request.user.is_authenticated and anonymous_max:
+            max_file_size = anonymous_max
         if value > max_file_size:
             raise serializers.ValidationError(
                 _("File is too large. The maximum size is %(max)s.")
@@ -98,6 +103,8 @@ class UploadResponseSerializer(serializers.Serializer):
     presigned_urls = serializers.ListField()
     expires_in = serializers.IntegerField()
     upload_status = serializers.CharField(source="file_obj.upload_status")
+    # Only for anonymous uploads: proves ownership on complete, abort and attach.
+    upload_token = serializers.CharField(required=False)
 
 
 class CompleteUploadSerializer(serializers.Serializer):
