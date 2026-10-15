@@ -804,7 +804,7 @@ class TestSetParent:
 class TestUploadServiceFileTypes:
     """The service enforces the allowlist itself, for callers that skip the serializer."""
 
-    def _initiate(self, user, file_name: str, declared_type: str):
+    def _initiate(self, user: "User", file_name: str, declared_type: str) -> tuple["File", dict]:
         from baseapp.files.services.upload_service import UploadService
 
         return UploadService().initiate_multipart_upload(
@@ -833,14 +833,16 @@ class TestUploadServiceFileTypes:
         assert file_obj.file_content_type == "image/png"
         assert mock_s3_handler.initiate_upload.call_args.args[0].file_content_type == "image/png"
 
+    @pytest.mark.parametrize("renamed_to", ["page.html", "report.pdf"])
     def test_completion_rechecks_the_file_name(
-        self, user_client: Client, mock_s3_handler: MagicMock
+        self, user_client: Client, mock_s3_handler: MagicMock, renamed_to: str
     ) -> None:
-        """A name changed after initiation must not be stored under a page extension."""
+        """A name changed after initiation must still give the stored type: not a page
+        extension, nor another allowed type (the file would be stored as image/png)."""
         from baseapp.files.services.upload_service import UploadService
 
         file_obj, _ = self._initiate(user_client.user, "photo.png", "image/png")
-        File.objects.filter(pk=file_obj.pk).update(file_name="page.html")
+        File.objects.filter(pk=file_obj.pk).update(file_name=renamed_to)
 
         with pytest.raises(ValueError, match="File type is not allowed"):
             UploadService().complete_multipart_upload(

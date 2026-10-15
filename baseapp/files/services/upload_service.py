@@ -7,7 +7,11 @@ from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
 
-from ..content_safety import allowed_content_type, normalize_content_type
+from ..content_safety import (
+    allowed_content_type,
+    file_extension,
+    normalize_content_type,
+)
 from ..storage import get_upload_handler
 
 logger = logging.getLogger(__name__)
@@ -61,9 +65,10 @@ class UploadService:
         if stored_content_type is None:
             raise ValueError("File type is not allowed")
         if file_content_type and normalize_content_type(file_content_type) != stored_content_type:
+            # The extension only: file names can carry personal information.
             logger.info(
-                "Upload %r declared %r; storing it as %r",
-                file_name,
+                "Upload with extension %r declared %r; storing it as %r",
+                file_extension(file_name),
                 file_content_type,
                 stored_content_type,
             )
@@ -120,8 +125,8 @@ class UploadService:
         self._validate_parts(file_obj, parts)
 
         # The local handler names the stored file after file_name; re-check it here in
-        # case it changed since initiation.
-        if allowed_content_type(file_obj.file_name) is None:
+        # case it changed since initiation, including to another allowed type.
+        if allowed_content_type(file_obj.file_name) != file_obj.file_content_type:
             raise ValueError("File type is not allowed")
 
         # Complete with storage handler (network I/O — outside the transaction)
