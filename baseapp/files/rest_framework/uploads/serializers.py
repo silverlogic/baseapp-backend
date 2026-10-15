@@ -16,7 +16,9 @@ class InitiateUploadSerializer(serializers.Serializer):
 
     file_name = serializers.CharField(max_length=512)
     file_size = serializers.IntegerField(min_value=1)
-    file_content_type = serializers.CharField(max_length=150)
+    # Only informative: the allowlist decides the stored type, so blank (a browser that
+    # doesn't know the type) or missing is fine.
+    file_content_type = serializers.CharField(max_length=150, required=False, allow_blank=True)
     num_parts = serializers.IntegerField(min_value=1, max_value=10000)
     part_size = serializers.IntegerField(min_value=1)
 

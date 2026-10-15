@@ -302,6 +302,22 @@ class TestFileUploadInitiation:
         assert file_obj.file_content_type == "image/png"
         assert mock_s3_handler.initiate_upload.call_args.args[0].file_content_type == "image/png"
 
+    @pytest.mark.parametrize("declared", [{"file_content_type": ""}, {}])
+    def test_initiate_upload_without_a_declared_type(
+        self, user_client: Client, mock_s3_handler: MagicMock, declared: dict
+    ) -> None:
+        """Browsers send no type for files they don't know; the allowlist supplies it."""
+        response = user_client.post(
+            "/v1/files/uploads",
+            {"file_name": "notes.csv", "file_size": 1024, "num_parts": 1, "part_size": 1024}
+            | declared,
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert File.get_by_public_id(response.json()["id"]).file_content_type == "text/csv"
+        assert mock_s3_handler.initiate_upload.call_args.args[0].file_content_type == "text/csv"
+
     def test_initiate_upload_too_many_parts(self, user_client, mock_s3_handler):
         """Test validation for maximum parts (10,000)."""
         response = user_client.post(
@@ -665,6 +681,22 @@ class TestFileCRUD:
         assert completed_file.name == "My Video"
         assert completed_file.description == "Test description"
 
+    def test_file_name_and_type_cannot_be_changed(
+        self, user_client: Client, completed_file: "File"
+    ) -> None:
+        """The stored file is named and typed after them, so they are fixed at upload."""
+        response = user_client.patch(
+            f"/v1/files/{completed_file.public_id}",
+            {"file_name": "page.html", "file_content_type": "text/html", "name": "Renamed"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        completed_file.refresh_from_db()
+        assert completed_file.file_name == "test.mp4"
+        assert completed_file.file_content_type == "video/mp4"
+        assert completed_file.name == "Renamed"
+
     def test_delete_file(self, user_client, completed_file):
         """Test deleting a file."""
         response = user_client.delete(f"/v1/files/{completed_file.public_id}")
@@ -766,3 +798,53 @@ class TestSetParent:
 
         # Returns 403 because permission check fails (user doesn't own the file)
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
+class TestUploadServiceFileTypes:
+    """The service enforces the allowlist itself, for callers that skip the serializer."""
+
+    def _initiate(self, user, file_name: str, declared_type: str):
+        from baseapp.files.services.upload_service import UploadService
+
+        return UploadService().initiate_multipart_upload(
+            user=user,
+            file_name=file_name,
+            file_size=1024,
+            file_content_type=declared_type,
+            num_parts=1,
+            part_size=1024,
+        )
+
+    def test_rejects_an_extension_not_on_the_allowlist(
+        self, user_client: Client, mock_s3_handler: MagicMock
+    ) -> None:
+        with pytest.raises(ValueError, match="File type is not allowed"):
+            self._initiate(user_client.user, "page.html", "text/html")
+
+        assert not File.objects.exists()
+        mock_s3_handler.initiate_upload.assert_not_called()
+
+    def test_stores_the_allowlisted_type_not_the_declared_one(
+        self, user_client: Client, mock_s3_handler: MagicMock
+    ) -> None:
+        file_obj, _ = self._initiate(user_client.user, "photo.png", "text/html")
+
+        assert file_obj.file_content_type == "image/png"
+        assert mock_s3_handler.initiate_upload.call_args.args[0].file_content_type == "image/png"
+
+    def test_completion_rechecks_the_file_name(
+        self, user_client: Client, mock_s3_handler: MagicMock
+    ) -> None:
+        """A name changed after initiation must not be stored under a page extension."""
+        from baseapp.files.services.upload_service import UploadService
+
+        file_obj, _ = self._initiate(user_client.user, "photo.png", "image/png")
+        File.objects.filter(pk=file_obj.pk).update(file_name="page.html")
+
+        with pytest.raises(ValueError, match="File type is not allowed"):
+            UploadService().complete_multipart_upload(
+                file_obj.pk, [{"part_number": 1, "etag": "abc"}]
+            )
+
+        mock_s3_handler.complete_upload.assert_not_called()

@@ -7,7 +7,7 @@ from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
 
-from ..content_safety import allowed_content_type
+from ..content_safety import allowed_content_type, normalize_content_type
 from ..storage import get_upload_handler
 
 logger = logging.getLogger(__name__)
@@ -57,15 +57,22 @@ class UploadService:
 
         # Validate inputs
         self._validate_file_params(file_size, num_parts, part_size)
-        file_content_type = allowed_content_type(file_name)
-        if file_content_type is None:
+        stored_content_type = allowed_content_type(file_name)
+        if stored_content_type is None:
             raise ValueError("File type is not allowed")
+        if file_content_type and normalize_content_type(file_content_type) != stored_content_type:
+            logger.info(
+                "Upload %r declared %r; storing it as %r",
+                file_name,
+                file_content_type,
+                stored_content_type,
+            )
 
         # Create File record in pending state
         file_obj = File.objects.create(
             file_name=file_name,
             file_size=file_size,
-            file_content_type=file_content_type,
+            file_content_type=stored_content_type,
             upload_status=File.UploadStatus.PENDING,
             total_parts=num_parts,
             created_by=user,
@@ -111,6 +118,11 @@ class UploadService:
 
         # Validate parts
         self._validate_parts(file_obj, parts)
+
+        # The local handler names the stored file after file_name; re-check it here in
+        # case it changed since initiation.
+        if allowed_content_type(file_obj.file_name) is None:
+            raise ValueError("File type is not allowed")
 
         # Complete with storage handler (network I/O — outside the transaction)
         try:

@@ -15,13 +15,16 @@ from typing import Mapping
 
 from django.conf import settings
 
+IMAGE_JPEG = "image/jpeg"
+IMAGE_PNG = "image/png"
+
 # Extension -> the content type the file is stored and served with. No SVG, HTML, XML or
 # JavaScript: browsers run those as pages.
 DEFAULT_ALLOWED_FILE_TYPES: Mapping[str, str] = {
     # Images
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".png": "image/png",
+    ".jpg": IMAGE_JPEG,
+    ".jpeg": IMAGE_JPEG,
+    ".png": IMAGE_PNG,
     ".gif": "image/gif",
     ".webp": "image/webp",
     ".avif": "image/avif",
@@ -71,8 +74,8 @@ DEFAULT_ALLOWED_FILE_TYPES: Mapping[str, str] = {
 
 # Types a browser displays without running page script; anything else is a download.
 INLINE_CONTENT_TYPES = (
-    "image/png",
-    "image/jpeg",
+    IMAGE_PNG,
+    IMAGE_JPEG,
     "image/gif",
     "image/webp",
     "image/avif",
