@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:29+0000\n"
+"POT-Creation-Date: 2026-10-15 20:34+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -21,3 +21,19 @@ msgstr ""
 #: apps.py
 msgid "BaseApp Referrals"
 msgstr "BaseApp Referidos"
+
+#: models.py
+msgid "referrer"
+msgstr "referente"
+
+#: models.py
+msgid "referee"
+msgstr "referido"
+
+#: models.py
+msgid "user referral"
+msgstr "referido de usuario"
+
+#: models.py
+msgid "user referrals"
+msgstr "referidos de usuarios"

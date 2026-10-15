@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:29+0000\n"
+"POT-Creation-Date: 2026-10-15 20:34+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -36,6 +36,30 @@ msgstr "curtir"
 #: models.py
 msgid "dislike"
 msgstr "não curtir"
+
+#: models.py
+msgid "user"
+msgstr "usuário"
+
+#: models.py
+msgid "reaction type"
+msgstr "tipo de reação"
+
+#: models.py
+msgid "reaction"
+msgstr "reação"
+
+#: models.py
+msgid "reactions"
+msgstr "reações"
+
+#: models.py
+msgid "reactions count"
+msgstr "quantidade de reações"
+
+#: models.py
+msgid "is reactions enabled"
+msgstr "reações habilitadas"
 
 #: models.py
 msgid "reactable metadata"

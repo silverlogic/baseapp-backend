@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:27+0000\n"
+"POT-Creation-Date: 2026-10-15 20:33+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -37,6 +37,26 @@ msgstr "bloqueando"
 #: models.py
 msgid "blockers"
 msgstr "bloqueadores"
+
+#: models.py
+msgid "user"
+msgstr "usuario"
+
+#: models.py
+msgid "block"
+msgstr "bloqueo"
+
+#: models.py
+msgid "blocks"
+msgstr "bloqueos"
+
+#: models.py
+msgid "blockers count"
+msgstr "cantidad de bloqueadores"
+
+#: models.py
+msgid "blocking count"
+msgstr "cantidad de bloqueados"
 
 #: models.py
 msgid "blockable metadata"

@@ -21,6 +21,7 @@ class CaseInsensitiveCharField(models.CharField):
 
 class EmailTemplate(TimeStampedModel):
     name = CaseInsensitiveCharField(
+        _("name"),
         max_length=255,
         unique=True,
         help_text=_("Unique name used to identify this message"),
@@ -28,6 +29,7 @@ class EmailTemplate(TimeStampedModel):
 
     # SendGrid
     sendgrid_template_id = models.CharField(
+        _("SendGrid template ID"),
         max_length=255,
         blank=True,
         null=True,
@@ -35,9 +37,10 @@ class EmailTemplate(TimeStampedModel):
 
     # Core
     subject = models.CharField(
-        max_length=255, blank=True, null=True, help_text=_("Email subject line")
+        _("subject"), max_length=255, blank=True, null=True, help_text=_("Email subject line")
     )
     html_content = ProseEditorField(
+        _("HTML content"),
         blank=True,
         help_text=_("Text that will be inputted into Template html version"),
         null=True,
@@ -45,6 +48,7 @@ class EmailTemplate(TimeStampedModel):
         sanitize=getattr(settings, "PROSE_EDITOR_SANITIZE", False),
     )
     plain_text_content = ProseEditorField(
+        _("plain text content"),
         blank=True,
         help_text=_("Text that will be inputted into Template plain text version"),
         extensions=getattr(settings, "PROSE_EDITOR_EXTENSIONS", None),
@@ -53,6 +57,8 @@ class EmailTemplate(TimeStampedModel):
 
     class Meta:
         ordering = ["-id"]
+        verbose_name = _("email template")
+        verbose_name_plural = _("email templates")
 
     def send_via_sendgrid(self, personalization, attachments=[]) -> None:
         if not self.sendgrid_template_id:
@@ -100,25 +106,36 @@ class EmailTemplate(TimeStampedModel):
 class Attachment(TimeStampedModel):
     template = models.ForeignKey(
         EmailTemplate,
+        verbose_name=_("template"),
         related_name="static_attachments",
         null=False,
         on_delete=models.CASCADE,
     )
-    file = models.FileField(upload_to=random_name_in("copy_template_file"))
+    file = models.FileField(_("file"), upload_to=random_name_in("copy_template_file"))
     filename = models.CharField(
+        _("filename"),
         max_length=255,
         blank=True,
         null=True,
     )
 
+    class Meta:
+        verbose_name = _("attachment")
+        verbose_name_plural = _("attachments")
+
 
 class SmsTemplate(TimeStampedModel):
     name = CaseInsensitiveCharField(
+        _("name"),
         max_length=255,
         unique=True,
         help_text=_("Unique name used to identify this message"),
     )
-    message = models.TextField(blank=True, null=True, help_text=_("Message to be sent"))
+    message = models.TextField(
+        _("message"), blank=True, null=True, help_text=_("Message to be sent")
+    )
 
     class Meta:
         ordering = ["-id"]
+        verbose_name = _("SMS template")
+        verbose_name_plural = _("SMS templates")

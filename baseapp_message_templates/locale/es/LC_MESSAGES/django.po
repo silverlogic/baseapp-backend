@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:28+0000\n"
+"POT-Creation-Date: 2026-10-15 20:34+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -35,21 +35,81 @@ msgid "Case insensitive character"
 msgstr "Carácter insensible a mayúsculas y minúsculas"
 
 #: models.py
+msgid "name"
+msgstr "nombre"
+
+#: models.py
 msgid "Unique name used to identify this message"
 msgstr "Nombre único usado para identificar este mensaje"
+
+#: models.py
+msgid "SendGrid template ID"
+msgstr "ID de plantilla de SendGrid"
+
+#: models.py
+msgid "subject"
+msgstr "asunto"
 
 #: models.py
 msgid "Email subject line"
 msgstr "Asunto del correo electrónico"
 
 #: models.py
+msgid "HTML content"
+msgstr "contenido HTML"
+
+#: models.py
 msgid "Text that will be inputted into Template html version"
 msgstr "Texto que se insertará en la versión HTML de la plantilla"
+
+#: models.py
+msgid "plain text content"
+msgstr "contenido en texto plano"
 
 #: models.py
 msgid "Text that will be inputted into Template plain text version"
 msgstr "Texto que se insertará en la versión de texto plano de la plantilla"
 
 #: models.py
+msgid "email template"
+msgstr "plantilla de correo electrónico"
+
+#: models.py
+msgid "email templates"
+msgstr "plantillas de correo electrónico"
+
+#: models.py
+msgid "template"
+msgstr "plantilla"
+
+#: models.py
+msgid "file"
+msgstr "archivo"
+
+#: models.py
+msgid "filename"
+msgstr "nombre del archivo"
+
+#: models.py
+msgid "attachment"
+msgstr "adjunto"
+
+#: models.py
+msgid "attachments"
+msgstr "adjuntos"
+
+#: models.py
+msgid "message"
+msgstr "mensaje"
+
+#: models.py
 msgid "Message to be sent"
 msgstr "Mensaje a enviar"
+
+#: models.py
+msgid "SMS template"
+msgstr "plantilla de SMS"
+
+#: models.py
+msgid "SMS templates"
+msgstr "plantillas de SMS"

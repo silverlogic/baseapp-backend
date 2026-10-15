@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:28+0000\n"
+"POT-Creation-Date: 2026-10-15 20:34+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -39,6 +39,26 @@ msgid "You don't have permission to edit this page"
 msgstr "No tienes permiso para editar esta página"
 
 #: models.py
+msgid "path"
+msgstr "ruta"
+
+#: models.py
+msgid "language"
+msgstr "idioma"
+
+#: models.py
+msgid "is active"
+msgstr "activo"
+
+#: models.py
+msgid "target content type"
+msgstr "tipo de contenido del objetivo"
+
+#: models.py
+msgid "target object id"
+msgstr "id del objeto objetivo"
+
+#: models.py
 msgid "URL path"
 msgstr "ruta URL"
 
@@ -53,6 +73,22 @@ msgstr "meta título"
 #: models.py
 msgid "meta description"
 msgstr "meta descripción"
+
+#: models.py
+msgid "meta robots"
+msgstr "meta robots"
+
+#: models.py
+msgid "meta OG type"
+msgstr "meta tipo OG"
+
+#: models.py
+msgid "meta OG image"
+msgstr "meta imagen OG"
+
+#: models.py
+msgid "metadata"
+msgstr "metadatos"
 
 #: models.py
 msgid "Draft"
@@ -73,3 +109,15 @@ msgstr "título"
 #: models.py
 msgid "body"
 msgstr "cuerpo"
+
+#: models.py
+msgid "status"
+msgstr "estado"
+
+#: models.py
+msgid "page"
+msgstr "página"
+
+#: models.py
+msgid "pages"
+msgstr "páginas"

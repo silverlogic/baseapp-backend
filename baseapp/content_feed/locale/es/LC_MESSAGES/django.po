@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:26+0000\n"
+"POT-Creation-Date: 2026-10-15 20:33+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -35,9 +35,29 @@ msgid "user"
 msgstr "usuario"
 
 #: models.py
+msgid "content"
+msgstr "contenido"
+
+#: models.py
+msgid "content post"
+msgstr "publicación"
+
+#: models.py
+msgid "content posts"
+msgstr "publicaciones"
+
+#: models.py
 msgid "image"
 msgstr "imagen"
 
 #: models.py
 msgid "post"
 msgstr "publicación"
+
+#: models.py
+msgid "content post image"
+msgstr "imagen de publicación"
+
+#: models.py
+msgid "content post images"
+msgstr "imágenes de publicación"

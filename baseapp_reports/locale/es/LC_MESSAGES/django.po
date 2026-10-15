@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:29+0000\n"
+"POT-Creation-Date: 2026-10-15 20:34+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -29,6 +29,46 @@ msgstr "No tienes permiso para realizar esta acción"
 #: graphql/mutations.py
 msgid "You cannot report yourself"
 msgstr "No puedes reportarte a ti mismo"
+
+#: models.py
+msgid "key"
+msgstr "clave"
+
+#: models.py
+msgid "label"
+msgstr "etiqueta"
+
+#: models.py
+msgid "content types"
+msgstr "tipos de contenido"
+
+#: models.py
+msgid "parent type"
+msgstr "tipo padre"
+
+#: models.py
+msgid "report type"
+msgstr "tipo de reporte"
+
+#: models.py
+msgid "report types"
+msgstr "tipos de reporte"
+
+#: models.py
+msgid "user"
+msgstr "usuario"
+
+#: models.py
+msgid "report subject"
+msgstr "asunto del reporte"
+
+#: models.py
+msgid "report"
+msgstr "reporte"
+
+#: models.py
+msgid "reports"
+msgstr "reportes"
 
 #: models.py
 msgid "reports count"

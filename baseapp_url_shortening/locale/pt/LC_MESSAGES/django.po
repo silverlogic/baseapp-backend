@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:29+0000\n"
+"POT-Creation-Date: 2026-10-15 20:34+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -20,3 +20,19 @@ msgstr ""
 #: apps.py
 msgid "BaseApp URL Shortening"
 msgstr "BaseApp Encurtamento de URL"
+
+#: models.py
+msgid "short code"
+msgstr "código curto"
+
+#: models.py
+msgid "full URL"
+msgstr "URL completa"
+
+#: models.py
+msgid "short URL"
+msgstr "URL curta"
+
+#: models.py
+msgid "short URLs"
+msgstr "URLs curtas"

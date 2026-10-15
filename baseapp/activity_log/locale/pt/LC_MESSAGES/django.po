@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:26+0000\n"
+"POT-Creation-Date: 2026-10-15 20:33+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -36,3 +36,51 @@ msgstr "privado"
 #: models.py
 msgid "internal"
 msgstr "interno"
+
+#: models.py
+msgid "profile"
+msgstr "perfil"
+
+#: models.py
+msgid "id"
+msgstr "id"
+
+#: models.py
+msgid "created at"
+msgstr "criado em"
+
+#: models.py
+msgid "updated at"
+msgstr "atualizado em"
+
+#: models.py
+msgid "user"
+msgstr "usuário"
+
+#: models.py
+msgid "IP address"
+msgstr "endereço IP"
+
+#: models.py
+msgid "verb"
+msgstr "verbo"
+
+#: models.py
+msgid "visibility"
+msgstr "visibilidade"
+
+#: models.py
+msgid "URL"
+msgstr "URL"
+
+#: models.py
+msgid "metadata"
+msgstr "metadados"
+
+#: models.py
+msgid "activity log"
+msgstr "registro de atividade"
+
+#: models.py
+msgid "activity logs"
+msgstr "registros de atividade"

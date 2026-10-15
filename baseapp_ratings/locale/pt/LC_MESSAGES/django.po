@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:28+0000\n"
+"POT-Creation-Date: 2026-10-15 20:34+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -33,6 +33,38 @@ msgstr "O valor máximo de avaliação é {0}"
 #: models.py
 msgid "profile"
 msgstr "perfil"
+
+#: models.py
+msgid "user"
+msgstr "usuário"
+
+#: models.py
+msgid "value"
+msgstr "valor"
+
+#: models.py
+msgid "rate"
+msgstr "avaliação"
+
+#: models.py
+msgid "rates"
+msgstr "avaliações"
+
+#: models.py
+msgid "ratings count"
+msgstr "quantidade de avaliações"
+
+#: models.py
+msgid "ratings sum"
+msgstr "soma das avaliações"
+
+#: models.py
+msgid "ratings average"
+msgstr "média das avaliações"
+
+#: models.py
+msgid "is ratings enabled"
+msgstr "avaliações habilitadas"
 
 #: models.py
 msgid "ratable metadata"

@@ -23,18 +23,23 @@ if TYPE_CHECKING:
 
 
 class URLPath(DocumentIdMixin, RelayModel, TimeStampedModel):
-    path = models.CharField(max_length=500, unique=True)
-    language = models.CharField(max_length=10, choices=settings.LANGUAGES, null=True, blank=True)
-    is_active = models.BooleanField(default=False)
+    path = models.CharField(_("path"), max_length=500, unique=True)
+    language = models.CharField(
+        _("language"), max_length=10, choices=settings.LANGUAGES, null=True, blank=True
+    )
+    is_active = models.BooleanField(_("is active"), default=False)
 
     target_content_type = models.ForeignKey(
         ContentType,
+        verbose_name=_("target content type"),
         blank=True,
         null=True,
         on_delete=models.CASCADE,
         db_index=True,
     )
-    target_object_id = models.PositiveIntegerField(blank=True, null=True, db_index=True)
+    target_object_id = models.PositiveIntegerField(
+        _("target object id"), blank=True, null=True, db_index=True
+    )
     target = GenericForeignKey("target_content_type", "target_object_id")
 
     class Meta:
@@ -63,28 +68,36 @@ class URLPath(DocumentIdMixin, RelayModel, TimeStampedModel):
 class Metadata(TimeStampedModel, DocumentIdMixin, RelayModel):
     target_content_type = models.ForeignKey(
         ContentType,
+        verbose_name=_("target content type"),
         blank=True,
         null=True,
         on_delete=models.CASCADE,
     )
-    target_object_id = models.PositiveIntegerField(blank=True, null=True)
+    target_object_id = models.PositiveIntegerField(_("target object id"), blank=True, null=True)
     target = GenericForeignKey("target_content_type", "target_object_id")
 
-    language = models.CharField(choices=settings.LANGUAGES, max_length=10, null=True, blank=True)
+    language = models.CharField(
+        _("language"), choices=settings.LANGUAGES, max_length=10, null=True, blank=True
+    )
 
     meta_title = models.CharField(_("meta title"), max_length=255, null=True, blank=True)
     meta_description = models.TextField(
         _("meta description"), max_length=500, null=True, blank=True
     )
-    meta_robots = models.CharField(max_length=100, null=True, blank=True)
+    meta_robots = models.CharField(_("meta robots"), max_length=100, null=True, blank=True)
 
-    meta_og_type = models.CharField(max_length=100, null=True, blank=True)
+    meta_og_type = models.CharField(_("meta OG type"), max_length=100, null=True, blank=True)
     meta_og_image = models.ImageField(
-        upload_to=random_name_in("pages/metadata/og_image"), blank=True, null=True
+        _("meta OG image"),
+        upload_to=random_name_in("pages/metadata/og_image"),
+        blank=True,
+        null=True,
     )
 
     class Meta:
         unique_together = ("target_content_type", "target_object_id", "language")
+        verbose_name = _("metadata")
+        verbose_name_plural = _("metadata")
 
 
 class PageMixin(models.Model):
@@ -137,12 +150,14 @@ class AbstractPage(PageMixin, DocumentIdMixin, RelayModel, TimeStampedModel):
     title = TranslatedField(models.CharField(_("title"), max_length=255, blank=True, null=True))
     body = TranslatedField(QuillField(_("body"), blank=True, null=True))
     status = models.IntegerField(
-        choices=PageStatus.choices, default=PageStatus.PUBLISHED, db_index=True
+        _("status"), choices=PageStatus.choices, default=PageStatus.PUBLISHED, db_index=True
     )
 
     class Meta:
         abstract = True
         swappable = swapper.swappable_setting("baseapp_pages", "Page")
+        verbose_name = _("page")
+        verbose_name_plural = _("pages")
 
     def __str__(self) -> str:
         return self.title or str(self.pk)

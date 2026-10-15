@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:27+0000\n"
+"POT-Creation-Date: 2026-10-15 20:33+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -22,12 +22,32 @@ msgid "BaseApp API Key"
 msgstr "BaseApp Chave de API"
 
 #: models.py
+msgid "user"
+msgstr "usuário"
+
+#: models.py
+msgid "name"
+msgstr "nome"
+
+#: models.py
+msgid "encrypted API key"
+msgstr "chave de API criptografada"
+
+#: models.py
 msgid "Expiry Date"
 msgstr "Data de expiração"
 
 #: models.py
 msgid "The datetime the API Key expires."
 msgstr "A data e hora em que a chave de API expira."
+
+#: models.py
+msgid "API key"
+msgstr "chave de API"
+
+#: models.py
+msgid "API keys"
+msgstr "chaves de API"
 
 #: rest_framework/authentication.py
 msgid "Invalid APIKey."

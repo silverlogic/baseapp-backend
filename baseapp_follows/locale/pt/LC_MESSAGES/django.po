@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:27+0000\n"
+"POT-Creation-Date: 2026-10-15 20:33+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -30,6 +30,14 @@ msgid "The owner cannot leave"
 msgstr "O proprietário não pode sair"
 
 #: models.py
+msgid "followers count"
+msgstr "quantidade de seguidores"
+
+#: models.py
+msgid "following count"
+msgstr "quantidade de seguidos"
+
+#: models.py
 msgid "followable metadata"
 msgstr "metadados de seguimento"
 
@@ -42,5 +50,17 @@ msgid "actor"
 msgstr "ator"
 
 #: models.py
+msgid "target is following back"
+msgstr "o alvo também o segue"
+
+#: models.py
 msgid "target"
 msgstr "alvo"
+
+#: models.py
+msgid "follow"
+msgstr "seguimento"
+
+#: models.py
+msgid "follows"
+msgstr "seguimentos"
