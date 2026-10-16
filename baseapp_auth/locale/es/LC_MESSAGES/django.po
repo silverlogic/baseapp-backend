@@ -3,45 +3,61 @@
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
-#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-24 18:21+0000\n"
+"POT-Creation-Date: 2026-10-12 15:27+0000\n"
 "PO-Revision-Date: 2024-06-24 21:24+0000\n"
-"Last-Translator:   <pr@tsl.io>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
+"Last-Translator: BaseApp i18n <dev@tsl.io>\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;\n"
+"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
+"1 : 2;\n"
 "X-Translated-Using: django-rosetta 0.10.0\n"
 
+#: admin.py
 msgid "Permissions"
 msgstr "Permisos"
 
-msgid "Profile"
-msgstr "Perfil"
+#: admin.py
+msgid "Details"
+msgstr "Detalles"
 
+#: admin.py
 msgid "You must be a superuser with MFA enabled to perform this action."
 msgstr ""
 "Debes ser un superusuario con Autentificación de dos factores habilitado "
 "para realizar esta acción."
 
+#: admin.py
+msgid "Expire password"
+msgstr "Expirar contraseña"
+
+#: apps.py
+msgid "BaseApp Auth"
+msgstr "BaseApp Autenticación"
+
+#: forms.py
 msgid "The two password fields didn't match."
 msgstr "Los dos campos de contraseña no coinciden."
 
+#: forms.py
 msgid "Password"
 msgstr "Contraseña"
 
+#: forms.py
 msgid "Password confirmation"
 msgstr "Confirmación de contraseña"
 
+#: forms.py
 msgid "Enter the same password as above, for verification."
 msgstr "Ingrese la misma contraseña que arriba, para verificación."
 
+#: forms.py
 msgid ""
 "Raw passwords are not stored, so there is no way to see this user's "
 "password, but you can <a href='../password/'>change the password.</a>"
@@ -50,115 +66,263 @@ msgstr ""
 "contraseña de este usuario, pero puede <a href='../password/'>cambiar la "
 "contraseña.</a>"
 
+#: graphql/permissions.py
 msgid ""
 "Determine if the logged in user has a specific permission for this object."
 msgstr ""
 "Determinar si el usuario conectado tiene un permiso específico para este "
 "objeto."
 
+#: models.py
+msgid "profile"
+msgstr "perfil"
+
+#: models.py
+#, python-format
+msgid "%(value)s is not a valid IANA timezone name."
+msgstr "%(value)s no es un nombre de zona horaria IANA válido."
+
+#: models.py
+msgid "email"
+msgstr "correo electrónico"
+
+#: models.py
+msgid "email verified"
+msgstr "correo electrónico verificado"
+
+#: models.py
 msgid "date joined"
 msgstr "fecha de registro"
 
+#: models.py
 msgid "last date password was changed"
-msgstr "ultima fecha en que se cambió la contraseña"
+msgstr "última fecha en que se cambió la contraseña"
 
+#: models.py
+msgid "new email"
+msgstr "nuevo correo electrónico"
+
+#: models.py
+msgid "new email confirmed"
+msgstr "nuevo correo electrónico confirmado"
+
+#: models.py
+msgid "Has the user confirmed they want an email change?"
+msgstr "¿El usuario ha confirmado que desea cambiar su correo electrónico?"
+
+#: models.py
+msgid "first name"
+msgstr "nombre"
+
+#: models.py
+msgid "last name"
+msgstr "apellido"
+
+#: models.py
+msgid "phone number"
+msgstr "número de teléfono"
+
+#: models.py
 msgid "active"
 msgstr "activo"
 
+#: models.py
 msgid ""
 "Designates whether this user should be treated as active. Unselect this "
 "instead of deleting accounts."
 msgstr ""
-"Indica si este usuario debe ser tratado como activo. Desmarque esto en lugar"
-" de eliminar cuentas."
+"Indica si este usuario debe ser tratado como activo. Desmarque esto en lugar "
+"de eliminar cuentas."
 
+#: models.py
 msgid "staff status"
 msgstr "estado del personal"
 
+#: models.py
 msgid "Designates whether the user can log into this admin site."
 msgstr ""
 "Indica si el usuario puede iniciar sesión en este sitio de administración."
 
+#: models.py
+msgid "preferred language"
+msgstr "idioma preferido"
+
+#: models.py
+msgid "timezone"
+msgstr "zona horaria"
+
+#: models.py
+msgid "IANA timezone name used to display dates and times for this user."
+msgstr ""
+"Nombre de zona horaria IANA usado para mostrar fechas y horas a este usuario."
+
+#: models.py
 msgid "user"
 msgstr "usuario"
 
+#: models.py
 msgid "users"
 msgstr "usuarios"
 
+#: models.py
 msgid "can view all users"
 msgstr "puede ver todos los usuarios"
 
+#: models.py
 msgid "can view user's email field"
 msgstr "puede ver el correo electrónico del usuario"
 
+#: models.py
 msgid "can view user's phone number field"
 msgstr "puede ver el número de teléfono del usuario"
 
+#: models.py
 msgid "can view user's is_superuser field"
 msgstr "puede ver el campo is_superuser del usuario"
 
+#: models.py
 msgid "can view user's is_staff field"
 msgstr "puede ver el campo is_staff del usuario"
 
+#: models.py
 msgid "can view user's is_email_verified field"
 msgstr "puede ver el campo is_email_verified del usuario"
 
+#: models.py
 msgid "can view user's password_changed_date field"
 msgstr "puede ver el campo password_changed_date del usuario"
 
+#: models.py
 msgid "can view user's new_email field"
 msgstr "puede ver el campo new_email del usuario"
 
+#: models.py
 msgid "can view user's is_new_email_confirmed field"
 msgstr "puede ver el campo is_new_email_confirmed del usuario"
 
+#: models.py
+msgid "User Attribute Similarity"
+msgstr "Similitud con atributos del usuario"
+
+#: models.py
+msgid "Minimum Length"
+msgstr "Longitud mínima"
+
+#: models.py
+msgid "Common Password"
+msgstr "Contraseña común"
+
+#: models.py
+msgid "Numeric Password"
+msgstr "Contraseña numérica"
+
+#: models.py
+msgid "Must Contain Capital Letter"
+msgstr "Debe contener letra mayúscula"
+
+#: models.py
+msgid "Must Contain Special Character"
+msgstr "Debe contener carácter especial"
+
+#: models.py
+msgid "name"
+msgstr "nombre"
+
+#: models.py
+msgid "options"
+msgstr "opciones"
+
+#: models.py
+msgid "password validation"
+msgstr "validación de contraseña"
+
+#: models.py
+msgid "password validations"
+msgstr "validaciones de contraseña"
+
+#: models.py
+msgid "assigner"
+msgstr "asignador"
+
+#: models.py
+msgid "assignee"
+msgstr "asignado"
+
+#: models.py
+msgid "made superuser"
+msgstr "convertido en superusuario"
+
+#: models.py
+msgid "superuser update log"
+msgstr "registro de actualización de superusuario"
+
+#: models.py
+msgid "superuser update logs"
+msgstr "registros de actualización de superusuario"
+
+#: password_validators.py
 #, python-format
 msgid ""
-"This password must contain at least %(min_length)d capital letter "
-"characters."
+"This password must contain at least %(min_length)d capital letter characters."
 msgstr ""
 "Esta contraseña debe contener al menos %(min_length)d caracteres de letra "
 "mayúscula."
 
+#: password_validators.py
 #, python-format
 msgid ""
-"Your password must contain at least %(min_length)d capital letter "
-"characters."
+"Your password must contain at least %(min_length)d capital letter characters."
 msgstr ""
 "Tu contraseña debe contener al menos %(min_length)d caracteres de letra "
 "mayúscula."
 
+#: password_validators.py
 #, python-format
 msgid "This password must contain at least %(min_length)d special characters."
 msgstr ""
 "Esta contraseña debe contener al menos %(min_length)d caracteres especiales."
 
+#: password_validators.py
 #, python-format
 msgid "Your password must contain at least %(min_length)d special characters."
 msgstr ""
 "Tu contraseña debe contener al menos %(min_length)d caracteres especiales."
 
+#: rest_framework/change_email/serializers.py
 msgid "That email is already in use."
 msgstr "Ese correo electrónico ya está en uso."
 
+#: rest_framework/change_email/serializers.py
+#: rest_framework/change_email/views.py
+#: rest_framework/change_expired_password/serializers.py
+#: rest_framework/confirm_email/serializers.py
+#: rest_framework/confirm_email/views.py
+#: rest_framework/forgot_password/serializers.py
+#: rest_framework/pre_auth/serializers.py
 msgid "Invalid token."
 msgstr "Token inválido."
 
+#: rest_framework/change_email/views.py
 msgid "You are not in the process of changing your email."
 msgstr "No estás en el proceso de cambiar tu correo electrónico."
 
+#: rest_framework/change_email/views.py rest_framework/confirm_email/views.py
 msgid "Your email change has already been confirmed."
 msgstr "Tu cambio de correo electrónico ya ha sido confirmado."
 
+#: rest_framework/change_email/views.py
 msgid "Your email change must be confirmed first."
 msgstr "Tu cambio de correo electrónico debe ser confirmado primero."
 
+#: rest_framework/change_expired_password/serializers.py
 msgid "New password cannot be the same as the current password."
 msgstr "La nueva contraseña no puede ser igual a la contraseña actual."
 
+#: rest_framework/change_expired_password/views.py
 msgid "success"
 msgstr "éxito"
 
+#: rest_framework/forgot_password/views.py
 msgid ""
 "A reset password link will be sent to you if an account is registered under "
 "that email."
@@ -166,219 +330,310 @@ msgstr ""
 "Un enlace para restablecer la contraseña se enviará a usted si hay una "
 "cuenta registrada bajo ese correo electrónico."
 
+#: rest_framework/jwt/views.py
 msgid "Unsupported action for JWTAuthViewSet"
 msgstr "Acción no soportada para JWTAuthViewSet"
 
+#: rest_framework/login/serializers.py
 msgid "Unable to login with provided credentials."
 msgstr "No se puede iniciar sesión con las credenciales proporcionadas."
 
+#: rest_framework/register/serializers.py
 msgid "That email is already in use.  Choose another."
 msgstr "Este correo electrónico ya está en uso. Elija otro."
 
+#: rest_framework/register/serializers.py rest_framework/users/serializers.py
 msgid "Invalid referral code."
 msgstr "Código de referencia inválido."
 
+#: rest_framework/users/mixins.py rest_framework/users/views.py
+msgid "Invalid permission format."
+msgstr "Formato de permiso inválido."
+
+#: rest_framework/users/mixins.py rest_framework/users/views.py
+msgid "Invalid permission format. Expected app_label.codename."
+msgstr "Formato de permiso inválido. Se esperaba app_label.codename."
+
+#: rest_framework/users/serializers.py
 msgid "You cannot refer yourself."
 msgstr "No puedes referirte a ti mismo."
 
+#: rest_framework/users/serializers.py
 msgid "You are no longer allowed to change who you were referred by."
 msgstr "Ya no se te permite cambiar por quién fuiste referido."
 
+#: rest_framework/users/serializers.py
 msgid "You have already been referred by somebody."
 msgstr "Ya has sido referido por alguien."
 
+#: rest_framework/users/serializers.py
 msgid "That is not your current password."
 msgstr "Esta no es tu contraseña actual."
 
+#: rest_framework/users/serializers.py
 msgid "User does not exist."
 msgstr "Usuario no existe."
 
+#: rest_framework/users/serializers.py rest_framework/users/views.py
 msgid "You do not have permission to perform this action."
 msgstr "No tienes permiso para realizar esta acción."
 
+#: rest_framework/users/serializers.py
 msgid "Permission with this codename does not exist."
 msgstr "Permiso con este código no existe."
 
-msgid "Somebody has requested a change of email on your account."
-msgstr "Alguien ha solicitado un cambio de correo electrónico en su cuenta."
-
-#, python-format
-msgid "The requested new email is: %(new_email)s"
-msgstr "El nuevo correo electrónico solicitado es: %(new_email)s"
-
-msgid "To confirm you would like to change your email, click button below:"
-msgstr ""
-"Para confirmar que desea cambiar su correo electrónico, vaya al siguiente "
-"enlace:"
-
-msgid "Confirm change email"
-msgstr "Confirmar correo electrónico"
-
-msgid ""
-"If you did not request this change it means your account has been "
-"compromised and you should change your password immediately."
-msgstr ""
-"Si no solicitó este cambio, significa que su cuenta ha sido comprometida y "
-"debe cambiar su contraseña de inmediato."
-
-msgid ""
-"To confirm you would like to change your email, please go to the following "
-"link:"
-msgstr ""
-"Para confirmar que desea cambiar su correo electrónico, vaya al siguiente "
-"enlace:"
-
-msgid "Change Email Request"
-msgstr "Cambiar solicitud de correo electrónico"
-
+#: templates/users/emails/anonymize-user-error-body.html.j2
+#: templates/users/emails/anonymize-user-error-body.txt.j2
+#: templates/users/emails/anonymize-user-error-superuser-body.txt.j2
+#: templates/users/emails/anonymize-user-success-body.html.j2
+#: templates/users/emails/anonymize-user-success-body.txt.j2
+#: templates/users/emails/change-email-confirm-body.html.j2
+#: templates/users/emails/change-email-confirm-body.txt.j2
+#: templates/users/emails/change-email-verify-body.html.j2
+#: templates/users/emails/change-email-verify-body.txt.j2
+#: templates/users/emails/password-expired-body.html.j2
+#: templates/users/emails/password-expired-body.txt.j2
+#: templates/users/emails/password-reset-body.html.j2
+#: templates/users/emails/password-reset-body.txt.j2
+#: templates/users/emails/welcome-body.html.j2
+#: templates/users/emails/welcome-body.txt.j2
 msgid "Hello,"
 msgstr "Hola,"
 
+#: templates/users/emails/anonymize-user-error-body.html.j2
+#: templates/users/emails/anonymize-user-error-body.txt.j2
+#: templates/users/emails/anonymize-user-error-superuser-body.txt.j2
 msgid ""
-"To confirm your new email address and change your email, click button below:"
+"We were unable to fully anonymize your account due to an unexpected error. "
+"Some personal information may remain in our system."
 msgstr ""
-"Para confirmar que desea cambiar su correo electrónico, vaya al siguiente "
-"enlace:"
+"No pudimos anonimizar completamente tu cuenta debido a un error inesperado. "
+"Es posible que parte de tu información personal permanezca en nuestro "
+"sistema."
 
-msgid "Confirm new email"
-msgstr "Confirmar correo electrónico"
-
-msgid ""
-"To confirm your new email address and change your email please go to the "
-"following link:"
+#: templates/users/emails/anonymize-user-error-body.html.j2
+#: templates/users/emails/anonymize-user-error-body.txt.j2
+#: templates/users/emails/anonymize-user-error-superuser-body.html.j2
+#: templates/users/emails/anonymize-user-error-superuser-body.txt.j2
+msgid "Please contact our support team for assistance or more information."
 msgstr ""
-"Para confirmar que desea cambiar su correo electrónico, vaya al siguiente "
-"enlace:"
+"Ponte en contacto con nuestro equipo de soporte para recibir ayuda o más "
+"información."
 
-msgid "Verify Your Email Change"
-msgstr "Verificar el cambio de tu correo electrónico"
+#: templates/users/emails/anonymize-user-error-subject.txt.j2
+msgid "There Was an Error Anonymizing Your Account"
+msgstr "Hubo un error al anonimizar tu cuenta"
 
+#: templates/users/emails/anonymize-user-error-superuser-body.html.j2
+#: templates/users/emails/anonymize-user-success-superuser-body.html.j2
+#: templates/users/emails/anonymize-user-success-superuser-body.txt.j2
+#: templates/users/emails/new-superuser-notification-email-body.html.j2
+#: templates/users/emails/new-superuser-notification-email-body.txt.j2
+#: templates/users/emails/remove-superuser-notification-email-body.html.j2
+#: templates/users/emails/remove-superuser-notification-email-body.txt.j2
 msgid "Hello Superusers,"
-msgstr "Hola Superusuarios,"
+msgstr "Hola, superusuarios:"
 
+#: templates/users/emails/anonymize-user-error-superuser-body.html.j2
 #, python-format
 msgid ""
-"Please be notified that, <b>%(assignee)s</b> is a superuser now. Made by "
-"<b>%(assigner)s</b>."
+"We were unable to fully anonymize the account for %(user_email)s due to an "
+"unexpected error. Some personal information may remain in our system."
 msgstr ""
-"Por favor, tenga en cuenta que, <b>%(assignee)s</b> es un superusuario "
-"ahora. Hecho por <b>%(assigner)s</b>."
+"No pudimos anonimizar completamente la cuenta de %(user_email)s debido a un "
+"error inesperado. Es posible que parte de la información personal permanezca "
+"en nuestro sistema."
 
+#: templates/users/emails/anonymize-user-error-superuser-subject.txt.j2
+msgid "There Was an Error Anonymizing a User Account"
+msgstr "Hubo un error al anonimizar una cuenta de usuario"
+
+#: templates/users/emails/anonymize-user-success-body.html.j2
+#: templates/users/emails/anonymize-user-success-body.txt.j2
+msgid "Your account has been successfully anonymized."
+msgstr "Tu cuenta ha sido anonimizada correctamente."
+
+#: templates/users/emails/anonymize-user-success-body.html.j2
+#: templates/users/emails/anonymize-user-success-body.txt.j2
+msgid "If you have any questions or concerns, please contact our support team."
+msgstr ""
+"Si tienes alguna pregunta o inquietud, ponte en contacto con nuestro equipo "
+"de soporte."
+
+#: templates/users/emails/anonymize-user-success-subject.txt.j2
+msgid "Your Account Has Been Successfully Deleted"
+msgstr "Tu cuenta ha sido eliminada correctamente"
+
+#: templates/users/emails/anonymize-user-success-superuser-body.html.j2
+#: templates/users/emails/anonymize-user-success-superuser-body.txt.j2
 #, python-format
 msgid ""
-"Please be notified that, %(assignee)s is a superuser now. Made by "
+"Please be notified that the account for %(user_email)s has been successfully "
+"anonymized."
+msgstr ""
+"Te informamos que la cuenta de %(user_email)s ha sido anonimizada "
+"correctamente."
+
+#: templates/users/emails/anonymize-user-success-superuser-body.html.j2
+#: templates/users/emails/anonymize-user-success-superuser-body.txt.j2
+#: templates/users/emails/new-superuser-notification-email-body.html.j2
+#: templates/users/emails/new-superuser-notification-email-body.txt.j2
+#: templates/users/emails/remove-superuser-notification-email-body.html.j2
+#: templates/users/emails/remove-superuser-notification-email-body.txt.j2
+msgid "If this was unexpected, please contact our support team."
+msgstr ""
+"Si esto fue inesperado, ponte en contacto con nuestro equipo de soporte."
+
+#: templates/users/emails/anonymize-user-success-superuser-subject.txt.j2
+msgid "A User Account Has Been Successfully Anonymized"
+msgstr "Una cuenta de usuario ha sido anonimizada correctamente"
+
+#: templates/users/emails/change-email-confirm-body.html.j2
+#: templates/users/emails/change-email-confirm-body.txt.j2
+#, python-format
+msgid ""
+"Your email address has been changed to %(new_email)s. Please click below to "
+"confirm your new email address:"
+msgstr ""
+"Tu dirección de correo electrónico ha sido cambiada a %(new_email)s. Haz "
+"clic abajo para confirmar tu nueva dirección de correo electrónico:"
+
+#: templates/users/emails/change-email-confirm-body.html.j2
+#: templates/users/emails/change-email-verify-body.html.j2
+msgid "Confirm Email Change"
+msgstr "Confirmar cambio de correo electrónico"
+
+#: templates/users/emails/change-email-confirm-body.html.j2
+#: templates/users/emails/change-email-confirm-body.txt.j2
+msgid ""
+"If you did not initiate this change, please contact our support team as soon "
+"as possible."
+msgstr ""
+"Si no iniciaste este cambio, ponte en contacto con nuestro equipo de soporte "
+"lo antes posible."
+
+#: templates/users/emails/change-email-confirm-subject.txt.j2
+msgid "Your Email Address Has Been Changed"
+msgstr "Tu dirección de correo electrónico ha sido cambiada"
+
+#: templates/users/emails/change-email-verify-body.html.j2
+#: templates/users/emails/change-email-verify-body.txt.j2
+msgid ""
+"We're just a step away from updating your email. Please confirm your new "
+"email address by clicking the button below:"
+msgstr ""
+"Estamos a un paso de actualizar tu correo electrónico. Confirma tu nueva "
+"dirección de correo electrónico haciendo clic en el botón de abajo:"
+
+#: templates/users/emails/change-email-verify-body.html.j2
+#: templates/users/emails/change-email-verify-body.txt.j2
+msgid "If you did not request this change you can safely ignore this email."
+msgstr ""
+"Si no solicitaste este cambio, puedes ignorar este correo electrónico de "
+"forma segura."
+
+#: templates/users/emails/change-email-verify-subject.txt.j2
+msgid "Confirm Your New Email Address"
+msgstr "Confirmar tu nueva dirección de correo electrónico"
+
+#: templates/users/emails/new-superuser-notification-email-body.html.j2
+#: templates/users/emails/new-superuser-notification-email-body.txt.j2
+#, python-format
+msgid ""
+"Please be notified that %(assignee)s is a superuser now assigned by "
 "%(assigner)s."
 msgstr ""
-"Por favor, tenga en cuenta que, %(assignee)s es un superusuario ahora. Hecho"
-" por %(assigner)s."
+"Te informamos que %(assignee)s ahora es superusuario, asignado por "
+"%(assigner)s."
 
-msgid "You're receiving this email because your password has expired."
+#: templates/users/emails/new-superuser-notification-email-subject.txt.j2
+msgid "A New Superuser Has Been Added"
+msgstr "Se ha agregado un nuevo superusuario"
+
+#: templates/users/emails/password-expired-body.html.j2
+#: templates/users/emails/password-expired-body.txt.j2
+msgid ""
+"Your password has expired. For security reasons, please create a new "
+"password clicking the following button:"
 msgstr ""
-"Estás recibiendo este correo electrónico porque tu contraseña ha expirado."
+"Tu contraseña ha expirado. Por razones de seguridad, crea una nueva "
+"contraseña haciendo clic en el siguiente botón:"
 
-msgid "To change your password, click button below:"
-msgstr ""
-"Para confirmar su dirección de correo electrónico, haga clic en el botón a "
-"continuación:"
+#: templates/users/emails/password-expired-body.html.j2
+msgid "Update Password"
+msgstr "Actualizar contraseña"
 
-msgid "Confirm password change"
-msgstr "Confirmar cambio de contraseña"
-
-msgid "If you did not request this email, you can safely ignore it."
-msgstr ""
-"Si no solicitó este correo electrónico, puede ignorarlo de forma segura."
-
-msgid "To change your password, please go to the following link:"
-msgstr ""
-"Para confirmar que desea cambiar su correo electrónico, vaya al siguiente "
-"enlace:"
-
-msgid "Thank you"
-msgstr "Gracias"
-
-msgid "Expired Password"
+#: templates/users/emails/password-expired-subject.txt.j2
+msgid "Password Expired"
 msgstr "Contraseña expirada"
 
-msgid "You're receiving this email because you requested a password reset."
+#: templates/users/emails/password-reset-body.html.j2
+#: templates/users/emails/password-reset-body.txt.j2
+msgid ""
+"We received a request to reset the password for your account. If you made "
+"this request, please reset your password clicking the button below:"
 msgstr ""
-"Estás recibiendo este correo electrónico porque solicitaste restablecer la "
-"contraseña."
+"Recibimos una solicitud para restablecer la contraseña de tu cuenta. Si "
+"hiciste esta solicitud, restablece tu contraseña haciendo clic en el botón "
+"de abajo:"
 
-msgid "To reset your password, click button below:"
+#: templates/users/emails/password-reset-body.html.j2
+msgid "Reset Password"
+msgstr "Restablecer contraseña"
+
+#: templates/users/emails/password-reset-body.html.j2
+#: templates/users/emails/password-reset-body.txt.j2
+msgid "If you did not request a password reset, please ignore this email."
 msgstr ""
-"Para confirmar su dirección de correo electrónico, haga clic en el botón a "
-"continuación:"
+"Si no solicitaste restablecer tu contraseña, ignora este correo electrónico."
 
-msgid "You're receiving this email because you requested a password reset"
-msgstr ""
-"Estás recibiendo este correo electrónico porque solicitaste restablecer la "
-"contraseña."
-
-msgid "To reset your password, please go to the following link:"
-msgstr ""
-"Para confirmar que desea cambiar su correo electrónico, vaya al siguiente "
-"enlace:"
-
+#: templates/users/emails/password-reset-subject.txt.j2
 msgid "Reset Your Password"
 msgstr "Restablecer tu contraseña"
 
+#: templates/users/emails/remove-superuser-notification-email-body.html.j2
+#: templates/users/emails/remove-superuser-notification-email-body.txt.j2
 #, python-format
 msgid ""
-"Please be notified that, <b>%(assignee)s</b> has been removed as superuser. "
-"Made by <b>%(assigner)s</b>."
+"Please be notified that %(assignee)s has been removed as superuser by "
+"%(assigner)s."
 msgstr ""
-"Por favor, tenga en cuenta que, <b>%(assignee)s </b> ha sido eliminado como "
-"superusuario. Hecho por <b>%(assigner)s</b>."
+"Te informamos que %(assignee)s ha sido eliminado como superusuario por "
+"%(assigner)s."
 
+#: templates/users/emails/remove-superuser-notification-email-subject.txt.j2
 #, python-format
-msgid ""
-"Please be notified that, %(assignee)s has been removed as superuser. Made by"
-" %(assigner)s."
-msgstr ""
-"Por favor, tenga en cuenta que, %(assignee)s ha sido eliminado como "
-"superusuario. Hecho por %(assigner)s."
+msgid "%(assignee)s has been removed as superuser by %(assigner)s"
+msgstr "%(assignee)s ha sido eliminado como superusuario por %(assigner)s"
 
+#: templates/users/emails/welcome-body.html.j2
+#: templates/users/emails/welcome-body.txt.j2
 msgid ""
 "Great to have you on board! Let's make sure your email is all set. Please "
 "confirm your email address by clicking the button below:"
 msgstr ""
 "¡Genial tenerte a bordo! Asegurémonos de que tu correo electrónico esté "
-"configurado. Confirma tu dirección de correo electrónico haciendo clic en el"
-" botón de abajo:"
+"configurado. Confirma tu dirección de correo electrónico haciendo clic en el "
+"botón de abajo:"
 
-#| msgid "Confirm email"
+#: templates/users/emails/welcome-body.html.j2
 msgid "Confirm Email Address"
 msgstr "Confirmar dirección de correo electrónico"
 
-msgid "Didn't sign up?"
-msgstr "¿No te has registrado?"
+#: templates/users/emails/welcome-body.html.j2
+msgid "Didn't sign up?<br />"
+msgstr "¿No te has registrado?<br />"
 
-#| msgid "If you did not request this email, you can safely ignore it."
+#: templates/users/emails/welcome-body.html.j2
+#: templates/users/emails/welcome-body.txt.j2
 msgid "No worries, you can safely ignore this email."
 msgstr ""
 "No te preocupes, puedes ignorar este correo electrónico de forma segura."
 
-msgid "Welcome,"
-msgstr "Ben venido"
+#: templates/users/emails/welcome-body.txt.j2
+msgid "Didn't sign up?"
+msgstr "¿No te has registrado?"
 
-#, python-format
-msgid "To confirm your email address go to %(confirm_url)s"
-msgstr ""
-"Para confirmar su dirección de correo electrónico, vaya a %(confirm_url)s"
-
-msgid "Welcome!"
-msgstr "Bienvenido"
-
-#~ msgid ""
-#~ "Your password has expired. Please reset it or contact the administrator."
-#~ msgstr ""
-#~ "Tu contraseña ha expirado. Por favor restablécela o contacta al "
-#~ "administrador."
-
-#~ msgid "Invalid token"
-#~ msgstr "Token inválido"
-
-#~ msgid "To confirm your email address, click the button below:"
-#~ msgstr ""
-#~ "Para confirmar su dirección de correo electrónico, haga clic en el botón a "
-#~ "continuación:"
+#: templates/users/emails/welcome-subject.txt.j2
+msgid "Confirm Your Email Address"
+msgstr "Confirmar tu dirección de correo electrónico"
