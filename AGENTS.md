@@ -97,7 +97,8 @@ docker compose run --rm web pre-commit run --all-files
 ## Translations
 
 Every package keeps its own catalogs in `<package>/locale/{es,pt}/LC_MESSAGES/django.po`
-(`.mo` files are gitignored and compiled in CI / Docker / the publish job). CI fails when a
+(new `.mo` files are gitignored and compiled in CI / Docker / the publish job; the `es` `.mo`
+files that already shipped stay tracked, recompile them when their `.po` changes). CI fails when a
 catalog is stale (`makemessages` would change it) or incomplete (untranslated / fuzzy):
 
 ```bash

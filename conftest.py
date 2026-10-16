@@ -7,7 +7,7 @@ SKIP_DIRS = {".venv", "node_modules", "site-packages"}
 
 
 def compile_catalogs(root: Path) -> None:
-    """Build the .mo files the translation tests need (.mo files are not tracked in git)."""
+    """Build the .mo files the translation tests need (most .mo files are not tracked in git)."""
     if shutil.which("msgfmt") is None:
         raise RuntimeError(
             "gettext (msgfmt) is required to run the tests: it compiles the catalogs"

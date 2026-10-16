@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Compile every .po catalog in the repo into its .mo (not tracked in git).
+# Compile every .po catalog in the repo into its .mo (gitignored, except the es .mo files already tracked).
 #
 #   docker compose run --rm web bash scripts/i18n/compilemessages.sh
 #
