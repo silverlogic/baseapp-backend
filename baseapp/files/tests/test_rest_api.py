@@ -5,6 +5,7 @@ import pytest
 import swapper
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
 
@@ -134,6 +135,30 @@ class TestFileUploadInitiation:
         assert file_obj.parent.content_type_id == comment_ct.id
         assert file_obj.parent.object_id == comment.id
 
+    def test_initiate_upload_refuses_another_users_comment(
+        self, user_client: Client, mock_s3_handler: MagicMock
+    ) -> None:
+        """Uploading into a target needs change_<model> on it, here change_comment."""
+        comment = CommentFactory()
+        document_id = DocumentId.get_or_create_for_object(comment)
+
+        response = user_client.post(
+            "/v1/files/uploads",
+            {
+                "file_name": "avatar.jpg",
+                "file_size": 1024,
+                "file_content_type": "image/jpeg",
+                "num_parts": 1,
+                "part_size": 1024,
+                "parent_id": str(document_id.public_id),
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert not File.objects.exists()
+        mock_s3_handler.initiate_upload.assert_not_called()
+
     def test_initiate_upload_rejects_non_fileable_parent(self, user_client, mock_s3_handler):
         """A parent that does not support files (not a FileableModel) is rejected,
         mirroring the fileAttachToTarget mutation."""
@@ -210,6 +235,113 @@ class TestFileUploadInitiation:
         error_message = str(response_data)
         assert "doesn't match" in error_message
 
+    @override_settings(MAX_FILE_UPLOAD_SIZE=10 * 1024 * 1024)
+    def test_initiate_upload_too_large_explains_the_limit(
+        self, user_client: Client, mock_s3_handler: MagicMock
+    ) -> None:
+        response = user_client.post(
+            "/v1/files/uploads",
+            {
+                "file_name": "big.pdf",
+                "file_size": 15 * 1024 * 1024,
+                "file_content_type": "application/pdf",
+                "num_parts": 3,
+                "part_size": 5242880,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.json() == {
+            "file_size": ["File is too large. The maximum size is 10.0\xa0MB."]
+        }
+        mock_s3_handler.initiate_upload.assert_not_called()
+
+    def test_initiate_upload_larger_than_32_bit_size(
+        self, user_client: Client, mock_s3_handler: MagicMock
+    ) -> None:
+        file_size = 3 * 1024 * 1024 * 1024
+        response = user_client.post(
+            "/v1/files/uploads",
+            {
+                "file_name": "long-video.mp4",
+                "file_size": file_size,
+                "file_content_type": "video/mp4",
+                "num_parts": 31,
+                "part_size": 100 * 1024 * 1024,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        file_obj = File.get_by_public_id(response.json()["id"])
+        assert file_obj.file_size == file_size
+
+    @pytest.mark.parametrize(
+        "file_name, message",
+        [
+            ("page.html", "Files of type .html are not allowed."),
+            ("drawing.SVG", "Files of type .svg are not allowed."),
+            ("tool.exe", "Files of type .exe are not allowed."),
+            ("README", "This file type is not allowed."),
+        ],
+    )
+    def test_initiate_upload_rejects_types_not_on_the_allowlist(
+        self, user_client: Client, mock_s3_handler: MagicMock, file_name: str, message: str
+    ) -> None:
+        response = user_client.post(
+            "/v1/files/uploads",
+            {
+                "file_name": file_name,
+                "file_size": 1024,
+                "file_content_type": "application/octet-stream",
+                "num_parts": 1,
+                "part_size": 1024,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.json() == {"file_name": [message]}
+        mock_s3_handler.initiate_upload.assert_not_called()
+
+    def test_initiate_upload_stores_the_allowlisted_type_not_the_declared_one(
+        self, user_client: Client, mock_s3_handler: MagicMock
+    ) -> None:
+        """A page type declared on an allowed extension must not be served as a page."""
+        response = user_client.post(
+            "/v1/files/uploads",
+            {
+                "file_name": "photo.png",
+                "file_size": 1024,
+                "file_content_type": "text/html",
+                "num_parts": 1,
+                "part_size": 1024,
+            },
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        file_obj = File.get_by_public_id(response.json()["id"])
+        assert file_obj.file_content_type == "image/png"
+        assert mock_s3_handler.initiate_upload.call_args.args[0].file_content_type == "image/png"
+
+    @pytest.mark.parametrize("declared", [{"file_content_type": ""}, {}])
+    def test_initiate_upload_without_a_declared_type(
+        self, user_client: Client, mock_s3_handler: MagicMock, declared: dict
+    ) -> None:
+        """Browsers send no type for files they don't know; the allowlist supplies it."""
+        response = user_client.post(
+            "/v1/files/uploads",
+            {"file_name": "notes.csv", "file_size": 1024, "num_parts": 1, "part_size": 1024}
+            | declared,
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert File.get_by_public_id(response.json()["id"]).file_content_type == "text/csv"
+        assert mock_s3_handler.initiate_upload.call_args.args[0].file_content_type == "text/csv"
+
     def test_initiate_upload_too_many_parts(self, user_client, mock_s3_handler):
         """Test validation for maximum parts (10,000)."""
         response = user_client.post(
@@ -264,6 +396,35 @@ class TestFileUploadCompletion:
             upload_expires_at=timezone.now() + timedelta(hours=24),
         )
 
+    @pytest.fixture(autouse=True)
+    def stored_storage(self, mock_s3_handler: MagicMock) -> MagicMock:
+        """The handler is mocked, so nothing is stored; report the declared size by default."""
+        mock_s3_handler.storage.size.return_value = 10485760
+        return mock_s3_handler.storage
+
+    def test_complete_upload_rejects_bytes_beyond_the_declared_size(
+        self,
+        user_client: Client,
+        pending_upload: "File",
+        mock_s3_handler: MagicMock,
+        stored_storage: MagicMock,
+    ) -> None:
+        """A client that declares a small size and sends more must not get a COMPLETED file."""
+        stored_storage.size.return_value = pending_upload.file_size + 1
+
+        response = user_client.post(
+            f"/v1/files/uploads/{pending_upload.public_id}/complete",
+            {"parts": [{"part_number": 1, "etag": "a"}, {"part_number": 2, "etag": "b"}]},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        stored_storage.delete.assert_called_once_with("files/test-file.mp4")
+        pending_upload.refresh_from_db()
+        # ATOMIC_REQUESTS rolls back the FAILED flag with the 400; what matters is no COMPLETED file.
+        assert pending_upload.upload_status != File.UploadStatus.COMPLETED
+        assert not pending_upload.file
+
     def test_complete_upload_success(self, user_client, pending_upload, mock_s3_handler):
         """Test successful upload completion."""
         response = user_client.post(
@@ -288,6 +449,8 @@ class TestFileUploadCompletion:
         assert pending_upload.upload_status == File.UploadStatus.COMPLETED
         assert pending_upload.upload_id == ""
         assert pending_upload.uploaded_parts == {"1": "abc123", "2": "def456"}
+        # The handler's storage name is what the File points at.
+        assert pending_upload.file.name == mock_s3_handler.complete_upload.return_value
 
         # Verify S3 handler was called
         mock_s3_handler.complete_upload.assert_called_once()
@@ -428,6 +591,31 @@ class TestFileUploadAbort:
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
+    @pytest.mark.parametrize(
+        "upload_status", [File.UploadStatus.COMPLETED, File.UploadStatus.ABORTED]
+    )
+    def test_abort_refuses_a_finished_upload(
+        self, user_client: Client, mock_s3_handler: MagicMock, upload_status: str
+    ) -> None:
+        """A completed file keeps its status and bytes; aborting it would orphan them."""
+        file_obj = File.objects.create(
+            file_name="test.mp4",
+            file_size=10485760,
+            file_content_type="video/mp4",
+            upload_status=upload_status,
+            upload_id="test-upload-id",
+            total_parts=2,
+            created_by=user_client.user,
+        )
+
+        response = user_client.delete(f"/v1/files/uploads/{file_obj.public_id}")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.json() == ["Only an upload that hasn't completed can be aborted."]
+        file_obj.refresh_from_db()
+        assert file_obj.upload_status == upload_status
+        mock_s3_handler.abort_upload.assert_not_called()
+
     def test_abort_upload_without_upload_id(self, user_client, mock_s3_handler):
         """Test aborting upload without upload_id still marks as aborted."""
         file_obj = File.objects.create(
@@ -543,6 +731,22 @@ class TestFileCRUD:
         assert completed_file.name == "My Video"
         assert completed_file.description == "Test description"
 
+    def test_file_name_and_type_cannot_be_changed(
+        self, user_client: Client, completed_file: "File"
+    ) -> None:
+        """The stored file is named and typed after them, so they are fixed at upload."""
+        response = user_client.patch(
+            f"/v1/files/{completed_file.public_id}",
+            {"file_name": "page.html", "file_content_type": "text/html", "name": "Renamed"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        completed_file.refresh_from_db()
+        assert completed_file.file_name == "test.mp4"
+        assert completed_file.file_content_type == "video/mp4"
+        assert completed_file.name == "Renamed"
+
     def test_delete_file(self, user_client, completed_file):
         """Test deleting a file."""
         response = user_client.delete(f"/v1/files/{completed_file.public_id}")
@@ -644,3 +848,55 @@ class TestSetParent:
 
         # Returns 403 because permission check fails (user doesn't own the file)
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
+class TestUploadServiceFileTypes:
+    """The service enforces the allowlist itself, for callers that skip the serializer."""
+
+    def _initiate(self, user: "User", file_name: str, declared_type: str) -> tuple["File", dict]:
+        from baseapp.files.services.upload_service import UploadService
+
+        return UploadService().initiate_multipart_upload(
+            user=user,
+            file_name=file_name,
+            file_size=1024,
+            file_content_type=declared_type,
+            num_parts=1,
+            part_size=1024,
+        )
+
+    def test_rejects_an_extension_not_on_the_allowlist(
+        self, user_client: Client, mock_s3_handler: MagicMock
+    ) -> None:
+        with pytest.raises(ValueError, match="File type is not allowed"):
+            self._initiate(user_client.user, "page.html", "text/html")
+
+        assert not File.objects.exists()
+        mock_s3_handler.initiate_upload.assert_not_called()
+
+    def test_stores_the_allowlisted_type_not_the_declared_one(
+        self, user_client: Client, mock_s3_handler: MagicMock
+    ) -> None:
+        file_obj, _ = self._initiate(user_client.user, "photo.png", "text/html")
+
+        assert file_obj.file_content_type == "image/png"
+        assert mock_s3_handler.initiate_upload.call_args.args[0].file_content_type == "image/png"
+
+    @pytest.mark.parametrize("renamed_to", ["page.html", "report.pdf"])
+    def test_completion_rechecks_the_file_name(
+        self, user_client: Client, mock_s3_handler: MagicMock, renamed_to: str
+    ) -> None:
+        """A name changed after initiation must still give the stored type: not a page
+        extension, nor another allowed type (the file would be stored as image/png)."""
+        from baseapp.files.services.upload_service import UploadService
+
+        file_obj, _ = self._initiate(user_client.user, "photo.png", "image/png")
+        File.objects.filter(pk=file_obj.pk).update(file_name=renamed_to)
+
+        with pytest.raises(ValueError, match="File type is not allowed"):
+            UploadService().complete_multipart_upload(
+                file_obj.pk, [{"part_number": 1, "etag": "abc"}]
+            )
+
+        mock_s3_handler.complete_upload.assert_not_called()

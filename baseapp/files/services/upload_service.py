@@ -6,6 +6,11 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
+from ..content_safety import (
+    allowed_content_type,
+    file_extension,
+    normalize_content_type,
+)
 from ..storage import get_upload_handler
 
 logger = logging.getLogger(__name__)
@@ -39,10 +44,12 @@ class UploadService:
         and the row is then updated. On failure the orphan row is removed.
 
         Args:
-            user: The user initiating the upload
+            user: The user initiating the upload; an anonymous user leaves
+                ``created_by`` empty
             file_name: Original file name
             file_size: Size in bytes
-            file_content_type: MIME type
+            file_content_type: MIME type the client declared; replaced by the type
+                BASEAPP_FILES_ALLOWED_FILE_TYPES gives the extension
             num_parts: Number of parts for multipart upload
             part_size: Size of each part in bytes
             parent_id: DocumentId primary key (optional)
@@ -54,15 +61,26 @@ class UploadService:
 
         # Validate inputs
         self._validate_file_params(file_size, num_parts, part_size)
+        stored_content_type = allowed_content_type(file_name)
+        if stored_content_type is None:
+            raise ValueError("File type is not allowed")
+        if file_content_type and normalize_content_type(file_content_type) != stored_content_type:
+            # The extension only: file names can carry personal information.
+            logger.info(
+                "Upload with extension %r declared %r; storing it as %r",
+                file_extension(file_name),
+                file_content_type,
+                stored_content_type,
+            )
 
         # Create File record in pending state
         file_obj = File.objects.create(
             file_name=file_name,
             file_size=file_size,
-            file_content_type=file_content_type,
+            file_content_type=stored_content_type,
             upload_status=File.UploadStatus.PENDING,
             total_parts=num_parts,
-            created_by=user,
+            created_by=user if user and user.is_authenticated else None,
             profile=profile,
             parent_id=parent_id,
             uploaded_parts={},
@@ -106,9 +124,15 @@ class UploadService:
         # Validate parts
         self._validate_parts(file_obj, parts)
 
+        # The local handler names the stored file after file_name; re-check it here in
+        # case it changed since initiation, including to another allowed type.
+        if allowed_content_type(file_obj.file_name) != file_obj.file_content_type:
+            raise ValueError("File type is not allowed")
+
         # Complete with storage handler (network I/O — outside the transaction)
         try:
             file_path = self.handler.complete_upload(file_obj, file_obj.upload_id, parts)
+            self._verify_stored_size(file_obj, file_path)
         except Exception:
             File.objects.filter(id=file_id).update(upload_status=File.UploadStatus.FAILED)
             raise
@@ -126,31 +150,64 @@ class UploadService:
                 locked.save()
             return locked
 
+    ABORTABLE_STATUSES = (
+        File.UploadStatus.PENDING,
+        File.UploadStatus.UPLOADING,
+        File.UploadStatus.FAILED,
+    )
+
     def abort_multipart_upload(self, file_id: int):
         """
-        Abort a multipart upload and cleanup. The storage abort (network I/O)
-        runs outside the transaction; the row is then marked ABORTED.
+        Abort an upload that has not completed, and clean up its storage parts.
+
+        The status is checked and the row marked ABORTED under a row lock first, so a
+        completed file can't be aborted (its bytes would be orphaned and later cleanup
+        would drop the row) and a concurrent completion can't be overwritten. The
+        storage abort (network I/O) then runs outside the transaction.
+
+        Raises:
+            ValueError: the upload is completed or already aborted.
         """
-        file_obj = File.objects.get(id=file_id)
-
-        if file_obj.upload_id:
-            try:
-                self.handler.abort_upload(file_obj, file_obj.upload_id)
-            except Exception:
-                # Continue to mark as aborted, but record the storage-side
-                # failure so orphaned remote uploads are diagnosable.
-                logger.exception(
-                    "Storage abort failed for file %s (upload_id=%s)",
-                    file_obj.id,
-                    file_obj.upload_id,
-                )
-
         with transaction.atomic():
             locked = File.objects.select_for_update().get(id=file_id)
+            if locked.upload_status not in self.ABORTABLE_STATUSES:
+                raise ValueError(f"Cannot abort upload in status: {locked.upload_status}")
+            upload_id = locked.upload_id
             locked.upload_status = File.UploadStatus.ABORTED
             locked.upload_id = ""
-            locked.save()
-            return locked
+            locked.save(update_fields=["upload_status", "upload_id"])
+
+        if upload_id:
+            try:
+                self.handler.abort_upload(locked, upload_id)
+            except Exception:
+                # Already marked aborted; record the storage-side failure so orphaned
+                # remote uploads are diagnosable.
+                logger.exception(
+                    "Storage abort failed for file %s (upload_id=%s)", locked.id, upload_id
+                )
+        return locked
+
+    def _verify_stored_size(self, file_obj, file_path: str) -> None:
+        """Reject an assembled file whose bytes differ from the declared size.
+
+        MAX_FILE_UPLOAD_SIZE is checked against the declared ``file_size`` at
+        initiation, but neither the local part endpoint nor a presigned S3 part URL
+        bounds how many bytes are actually sent. Both handlers store through the
+        files storage they were built with, so it can measure either. An oversized
+        object is deleted rather than kept.
+        """
+        storage = self.handler.storage
+        stored_size = storage.size(file_path)
+        if stored_size == file_obj.file_size:
+            return
+        try:
+            storage.delete(file_path)
+        except Exception:
+            logger.exception("Could not delete mismatched upload %s", file_path)
+        raise ValueError(
+            f"Stored size {stored_size} does not match declared size {file_obj.file_size}"
+        )
 
     def _validate_file_params(self, file_size, num_parts, part_size):
         """Validate file upload parameters."""

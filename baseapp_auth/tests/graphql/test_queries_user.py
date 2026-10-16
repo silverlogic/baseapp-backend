@@ -1,7 +1,7 @@
 import pytest
-from constance.test import override_config
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
+from django.test import override_settings
 
 from baseapp_core.tests.factories import UserFactory
 
@@ -157,7 +157,7 @@ def test_overcomplex_queries_are_not_executed(graphql_client_with_queries) -> No
     assert queries.count == 0
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=False)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=False)
 def test_anon_can_query_users_list_with_optimized_query(graphql_client_with_queries) -> None:
     UserFactory.create_batch(10)
     ContentType.objects.clear_cache()
@@ -182,7 +182,7 @@ def test_anon_can_query_users_list_with_optimized_query(graphql_client_with_quer
     # 5. Same as #3 with LIMIT 10 for the returned page slice.
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_can_query_users_list_with_optimized_query_with_public_id(
     graphql_client_with_queries,
 ) -> None:
