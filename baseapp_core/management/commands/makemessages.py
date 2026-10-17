@@ -49,16 +49,22 @@ JINJA_GETTEXT_RE = re.compile(
 )
 
 
+STRING_RE = re.compile(_STRING)
+
+
 def jinja_templatize(src: str) -> str:
-    """Return a Python stub with the gettext calls of a Jinja template, line numbers preserved."""
-    lines = []
-    for line in src.splitlines():
-        calls = [
-            f"{match.group('func')}({match.group('args')})"
-            for match in JINJA_GETTEXT_RE.finditer(line)
-        ]
-        lines.append("; ".join(calls))
-    return "\n".join(lines) + "\n"
+    """Return a Python stub with the gettext calls of a Jinja template, line numbers preserved.
+
+    A call spanning several lines is emitted on the line it starts on.
+    """
+    lines: list[list[str]] = [[] for _line in src.removesuffix("\n").split("\n")]
+    for match in JINJA_GETTEXT_RE.finditer(src):
+        lineno = src.count("\n", 0, match.start())
+        args = ", ".join(
+            literal.replace("\n", "\\n") for literal in STRING_RE.findall(match.group("args"))
+        )
+        lines[lineno].append(f"{match.group('func')}({args})")
+    return "\n".join("; ".join(calls) for calls in lines) + "\n"
 
 
 class JinjaAwareBuildFile(django_makemessages.BuildFile):

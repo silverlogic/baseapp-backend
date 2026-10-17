@@ -22,6 +22,16 @@ done
 
 bash scripts/i18n/makemessages.sh --verbosity 0
 
+# A package that had no catalogs before regeneration is compared against an empty
+# snapshot, so its newly generated (untranslated) catalogs count as stale.
+for package in "${I18N_PACKAGES[@]}"; do
+  dir="$package/locale"
+  if [ -d "$dir" ] && [ ! -d "$snapshot/$dir" ]; then
+    mkdir -p "$snapshot/$dir"
+    locale_dirs+=("$dir")
+  fi
+done
+
 # Compare wrap-normalized content (editors wrap differently from msgmerge) minus the date.
 normalized() {
   find "$1" -name '*.po' | sort | while IFS= read -r po; do
