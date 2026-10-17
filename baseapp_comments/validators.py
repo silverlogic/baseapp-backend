@@ -16,5 +16,6 @@ def blocked_words_validator(value) -> None:
     for word in blocked_words_set:
         if word in lower_value:
             raise ValidationError(
-                _("Please be advised that the use of inappropriate language is not permitted.")
+                _("Please be advised that the use of inappropriate language is not permitted."),
+                code="blocked_words",
             )
