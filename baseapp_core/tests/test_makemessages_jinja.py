@@ -29,3 +29,27 @@ def test_ignores_identifiers_that_merely_end_in_underscore() -> None:
 def test_keeps_escaped_quotes_inside_the_literal() -> None:
     src = '{{ _("Didn\'t sign up? Say \\"no\\".") }}'
     assert jinja_templatize(src) == '_("Didn\'t sign up? Say \\"no\\".")\n'
+
+
+def test_extracts_calls_spanning_several_lines() -> None:
+    src = (
+        "<p>{{ _(\n"
+        '    "Hello %(name)s,",\n'
+        "    name=name,\n"
+        ") }}</p>\n"
+        "{{ ngettext('%(n)d item',\n"
+        "            '%(n)d items', n) }}\n"
+    )
+    assert jinja_templatize(src).splitlines() == [
+        '_("Hello %(name)s,")',
+        "",
+        "",
+        "",
+        "ngettext('%(n)d item', '%(n)d items')",
+        "",
+    ]
+
+
+def test_escapes_newlines_inside_a_literal() -> None:
+    src = '{{ _("First line\nsecond line") }}\n'
+    assert jinja_templatize(src).splitlines()[0] == '_("First line\\nsecond line")'

@@ -43,11 +43,14 @@ def default_locales() -> list[str]:
 
 def catalog_statistics(po_file: Path) -> dict[str, int]:
     """Return translated / fuzzy / untranslated counts for ``po_file``."""
+    # parse_statistics only understands msgfmt's English wording.
+    env = {**os.environ, "LC_ALL": "C", "LANGUAGE": ""}
     result = subprocess.run(
         ["msgfmt", "--statistics", "-o", os.devnull, str(po_file)],
         capture_output=True,
         text=True,
         check=False,
+        env=env,
     )
     if result.returncode != 0:
         raise CommandError(f"msgfmt failed for {po_file}:\n{result.stderr}")

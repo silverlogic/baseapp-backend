@@ -84,3 +84,10 @@ def test_parse_statistics_handles_every_msgfmt_shape(output, expected) -> None:
 def test_catalog_statistics_counts_an_untranslated_only_catalog(tmp_path) -> None:
     po_file = write_catalog(tmp_path, "es", 'msgid "Missing"\nmsgstr ""\n')
     assert catalog_statistics(po_file) == {"translated": 0, "fuzzy": 0, "untranslated": 1}
+
+
+def test_catalog_statistics_ignores_the_caller_locale(tmp_path, monkeypatch) -> None:
+    po_file = write_catalog(tmp_path, "es", 'msgid "Hello"\nmsgstr ""\n')
+    monkeypatch.setenv("LC_ALL", "es_ES.UTF-8")
+    monkeypatch.setenv("LANGUAGE", "es")
+    assert catalog_statistics(po_file)["untranslated"] == 1

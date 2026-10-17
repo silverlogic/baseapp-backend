@@ -65,7 +65,7 @@ The `See ...` paths in rule messages point at the `backend-conventions` /
 |---|---|---|
 | `python-typing-required` | warning | Every function/method has a return type annotation (typing.md) |
 | `django-translation-no-module-level-eager-gettext` | error | Module-level strings must not be evaluated with eager `gettext` (translations.md) |
-| `django-translation-use-gettext-lazy` | hint | Prefer `gettext_lazy as _`; eager `gettext` only inside request-time bodies (translations.md) |
+| `django-translation-use-gettext-lazy` | error | `_` is always `gettext_lazy`; eager `gettext` only inside request-time bodies, imported by name (translations.md) |
 | `django-translation-model-fields-lazy` | error | `verbose_name` / `help_text` / `label` wrapped in `_()` (translations.md) |
 | `django-translation-meta-verbose-name-lazy` | error | `Meta.verbose_name` / `verbose_name_plural` and `AppConfig.verbose_name` wrapped in `_()` (translations.md) |
 | `django-translation-model-meta-verbose-name-required` | error | `apps/**/models.py` only — every concrete model declares `Meta.verbose_name = _(...)`, even when extending a package abstract's `Meta` (translations.md) |
@@ -73,7 +73,7 @@ The `See ...` paths in rule messages point at the `backend-conventions` /
 | `django-translation-validation-error-literal` | error | No bare string anywhere inside `ValidationError(...)` — positional, `detail=`, dict values, list items (translations.md, error-shape.md) |
 | `django-translation-admin-labels-lazy` | error | `short_description` and `@admin.display` / `@admin.action` `description=` wrapped in `_()` (translations.md) |
 | `django-translation-no-fstring-in-gettext` | error | No f-string / `%` / `.format()` / `+` inside `_()` and `gettext*()` — interpolate after translating (translations.md) |
-| `django-template-untranslated-text` | warning | Text and `alt` / `title` / `placeholder` attributes in `**/templates/**` go through `{% trans %}` / `{% blocktrans %}` / `{{ _() }}` (translations.md) |
+| `django-template-untranslated-text` | error | Text and `alt` / `title` / `placeholder` attributes in `**/templates/**` go through `{% trans %}` / `{% blocktrans %}` / `{{ _() }}` (translations.md) |
 | `django-related-name-required` | warning | Explicit `related_name` on FK / M2M / O2O (models.md) |
 | `django-use-timezone-now` | warning | `timezone.now()` instead of naive `datetime.now()` / `utcnow()` (datetime.md) |
 | `django-admin-use-unfold` | error | `apps/**` only — subclass `unfold.admin.ModelAdmin` / inlines, never stock `django.contrib.admin` (admin.md) |
@@ -126,8 +126,8 @@ Some guidelines can't be enforced with AST patterns and stay in code-review terr
 - **Templates.** The HTML parser sees a whole run of text between tags as one node, so
   prose that shares a node with a `{% ... %}` tag is skipped (false negative), and
   icon ligature names or `{% blocktrans %}` bodies split by inline tags can be reported
-  (false positive) — hence warning-only, with the `makemessages` freshness gate as the
-  enforcement for anything that does use the i18n tags.
+  (false positive). Suppress a false positive with an `ast-grep-ignore` comment; the
+  `makemessages` freshness gate covers anything that does use the i18n tags.
 - `related_name` **plurality** (plural FK/M2M vs singular O2O) — grammar, not syntax.
 - `get_node` permission checks on ObjectTypes — presence is checkable, correctness isn't.
 - ISO 8601 serialization, UTC storage at runtime, docstring quality, queryset
