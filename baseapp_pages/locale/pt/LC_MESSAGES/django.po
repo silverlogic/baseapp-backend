@@ -1,0 +1,122 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-15 20:34+0000\n"
+"PO-Revision-Date: 2026-10-12 15:10+0000\n"
+"Last-Translator: BaseApp i18n <dev@tsl.io>\n"
+"Language-Team: Portuguese (Brazil)\n"
+"Language: pt\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: admin.py
+msgid "target"
+msgstr "alvo"
+
+#: apps.py
+msgid "BaseApp Pages"
+msgstr "BaseApp Páginas"
+
+#: graphql/mutations.py
+msgid "URL Path already being used"
+msgstr "Caminho de URL já está em uso"
+
+#: graphql/mutations.py
+msgid "You don't have permission to create a page"
+msgstr "Você não tem permissão para criar uma página"
+
+#: graphql/mutations.py
+msgid "You don't have permission to edit this page"
+msgstr "Você não tem permissão para editar esta página"
+
+#: models.py
+msgid "path"
+msgstr "caminho"
+
+#: models.py
+msgid "language"
+msgstr "idioma"
+
+#: models.py
+msgid "is active"
+msgstr "ativo"
+
+#: models.py
+msgid "target content type"
+msgstr "tipo de conteúdo do alvo"
+
+#: models.py
+msgid "target object id"
+msgstr "id do objeto alvo"
+
+#: models.py
+msgid "URL path"
+msgstr "caminho de URL"
+
+#: models.py
+msgid "URL paths"
+msgstr "caminhos de URL"
+
+#: models.py
+msgid "meta title"
+msgstr "meta título"
+
+#: models.py
+msgid "meta description"
+msgstr "meta descrição"
+
+#: models.py
+msgid "meta robots"
+msgstr "meta robots"
+
+#: models.py
+msgid "meta OG type"
+msgstr "meta tipo OG"
+
+#: models.py
+msgid "meta OG image"
+msgstr "meta imagem OG"
+
+#: models.py
+msgid "metadata"
+msgstr "metadados"
+
+#: models.py
+msgid "Draft"
+msgstr "Rascunho"
+
+#: models.py
+msgid "Published"
+msgstr "Publicado"
+
+#: models.py
+msgid "user"
+msgstr "usuário"
+
+#: models.py
+msgid "title"
+msgstr "título"
+
+#: models.py
+msgid "body"
+msgstr "corpo"
+
+#: models.py
+msgid "status"
+msgstr "status"
+
+#: models.py
+msgid "page"
+msgstr "página"
+
+#: models.py
+msgid "pages"
+msgstr "páginas"
