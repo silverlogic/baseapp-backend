@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:28+0000\n"
+"POT-Creation-Date: 2026-10-17 01:13+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -20,3 +20,11 @@ msgstr ""
 #: apps.py
 msgid "BaseApp PDF"
 msgstr "BaseApp PDF"
+
+#: templates/pdfs/render-template-to-pdf-example.html
+msgid "Logo"
+msgstr "Logo"
+
+#: templates/pdfs/render-template-to-pdf-example.html
+msgid "No Data"
+msgstr "Sem dados"

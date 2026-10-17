@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:27+0000\n"
+"POT-Creation-Date: 2026-10-17 01:11+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -370,6 +370,24 @@ msgstr "Você não tem permissão para realizar esta ação."
 #: rest_framework/users/serializers.py
 msgid "Permission with this codename does not exist."
 msgstr "Não existe permissão com este codename."
+
+#: templates/admin/widgets/grouped_permission_widget.html
+msgid "Filter permissions…"
+msgstr "Filtrar permissões…"
+
+#: templates/admin/widgets/grouped_permission_widget.html
+msgid "Filter permissions"
+msgstr "Filtrar permissões"
+
+#: templates/admin/widgets/grouped_permission_widget.html
+#, python-format
+msgid "Select all %(app_label)s permissions"
+msgstr "Selecionar todas as permissões de %(app_label)s"
+
+#: templates/admin/widgets/grouped_permission_widget.html
+#, python-format
+msgid "Select all %(model_name)s permissions"
+msgstr "Selecionar todas as permissões de %(model_name)s"
 
 #: templates/users/emails/anonymize-user-error-body.html.j2
 #: templates/users/emails/anonymize-user-error-body.txt.j2

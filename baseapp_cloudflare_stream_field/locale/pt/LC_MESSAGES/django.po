@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 21:34+0000\n"
+"POT-Creation-Date: 2026-10-17 01:11+0000\n"
 "PO-Revision-Date: 2026-10-12 21:40+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -20,3 +20,15 @@ msgstr ""
 #: apps.py
 msgid "BaseApp Cloudflare Stream Field"
 msgstr "BaseApp Campo Cloudflare Stream"
+
+#: templates/baseapp_cloudflare_stream_field/admin_async_file_input.html
+msgid "Preview"
+msgstr "Pré-visualizar"
+
+#: templates/baseapp_cloudflare_stream_field/admin_async_file_input.html
+msgid "Details"
+msgstr "Detalhes"
+
+#: templates/baseapp_cloudflare_stream_field/admin_async_file_input.html
+msgid "Analytics"
+msgstr "Análises"
