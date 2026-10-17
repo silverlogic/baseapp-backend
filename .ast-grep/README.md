@@ -125,8 +125,9 @@ Some guidelines can't be enforced with AST patterns and stay in code-review terr
   literal labels.
 - **Templates.** The HTML parser sees a whole run of text between tags as one node, so
   prose that shares a node with a `{% ... %}` tag is skipped (false negative), and
-  icon ligature names or `{% blocktrans %}` bodies split by inline tags can be reported
-  (false positive). Suppress a false positive with an `ast-grep-ignore` comment; the
+  `{% blocktrans %}` bodies split by inline tags can be reported (false positive).
+  Material icon ligatures (text of a `material-symbols-*` / `material-icons` element)
+  are skipped. Suppress a false positive with an `ast-grep-ignore` comment; the
   `makemessages` freshness gate covers anything that does use the i18n tags.
 - `related_name` **plurality** (plural FK/M2M vs singular O2O) — grammar, not syntax.
 - `get_node` permission checks on ObjectTypes — presence is checkable, correctness isn't.
