@@ -1,0 +1,134 @@
+id: django-translation-model-meta-verbose-name-required
+snapshots:
+  ? |
+    class Customer(BaseCustomer):
+        class Meta(BaseCustomer.Meta):
+            pass
+  : labels:
+    - source: |-
+        class Customer(BaseCustomer):
+            class Meta(BaseCustomer.Meta):
+                pass
+      style: primary
+      start: 0
+      end: 77
+    - source: BaseCustomer
+      style: secondary
+      start: 15
+      end: 27
+    - source: (BaseCustomer)
+      style: secondary
+      start: 14
+      end: 28
+    - source: |
+        class Customer(BaseCustomer):
+            class Meta(BaseCustomer.Meta):
+                pass
+      style: secondary
+      start: 0
+      end: 78
+  ? |
+    class Order(AbstractOrder):
+        class Meta(AbstractOrder.Meta):
+            pass
+  : labels:
+    - source: |-
+        class Order(AbstractOrder):
+            class Meta(AbstractOrder.Meta):
+                pass
+      style: primary
+      start: 0
+      end: 76
+    - source: AbstractOrder
+      style: secondary
+      start: 12
+      end: 25
+    - source: (AbstractOrder)
+      style: secondary
+      start: 11
+      end: 26
+    - source: |
+        class Order(AbstractOrder):
+            class Meta(AbstractOrder.Meta):
+                pass
+      style: secondary
+      start: 0
+      end: 77
+  ? |
+    class Order(models.Model):
+        class Meta:
+            ordering = ["-id"]
+  : labels:
+    - source: |-
+        class Order(models.Model):
+            class Meta:
+                ordering = ["-id"]
+      style: primary
+      start: 0
+      end: 69
+    - source: models.Model
+      style: secondary
+      start: 12
+      end: 24
+    - source: (models.Model)
+      style: secondary
+      start: 11
+      end: 25
+    - source: |
+        class Order(models.Model):
+            class Meta:
+                ordering = ["-id"]
+      style: secondary
+      start: 0
+      end: 70
+  ? |
+    class Order(models.Model):
+        name = models.CharField(max_length=255)
+  : labels:
+    - source: |-
+        class Order(models.Model):
+            name = models.CharField(max_length=255)
+      style: primary
+      start: 0
+      end: 70
+    - source: models.Model
+      style: secondary
+      start: 12
+      end: 24
+    - source: (models.Model)
+      style: secondary
+      start: 11
+      end: 25
+    - source: |
+        class Order(models.Model):
+            name = models.CharField(max_length=255)
+      style: secondary
+      start: 0
+      end: 71
+  ? |
+    class User(AbstractUser, RelayModel):
+        class Meta(AbstractUser.Meta):
+            permissions = [*AbstractUser.Meta.permissions]
+  : labels:
+    - source: |-
+        class User(AbstractUser, RelayModel):
+            class Meta(AbstractUser.Meta):
+                permissions = [*AbstractUser.Meta.permissions]
+      style: primary
+      start: 0
+      end: 127
+    - source: AbstractUser
+      style: secondary
+      start: 11
+      end: 23
+    - source: (AbstractUser, RelayModel)
+      style: secondary
+      start: 10
+      end: 36
+    - source: |
+        class User(AbstractUser, RelayModel):
+            class Meta(AbstractUser.Meta):
+                permissions = [*AbstractUser.Meta.permissions]
+      style: secondary
+      start: 0
+      end: 128

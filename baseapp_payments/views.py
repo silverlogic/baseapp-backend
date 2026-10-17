@@ -96,10 +96,10 @@ class StripeSubscriptionViewset(
         if isinstance(entity_id, str):
             entity_id = get_pk_from_relay_id(entity_id) or None
         if not entity_id:
-            raise NotFound("Customer not found")
+            raise NotFound(_("Customer not found"))
         customer = Customer.objects.filter(entity_id=entity_id).first()
         if not customer:
-            raise NotFound("Customer not found")
+            raise NotFound(_("Customer not found"))
         return customer
 
     def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
@@ -213,7 +213,7 @@ class StripeCustomerViewset(
             else:
                 entity_id = getattr(self.request.user, "profile_id", None)
             if entity_id is None:
-                raise NotFound("Customer not found")
+                raise NotFound(_("Customer not found"))
         else:
             try:
                 entity_id = get_pk_from_relay_id(relay_id)
@@ -227,7 +227,7 @@ class StripeCustomerViewset(
         try:
             obj = self.queryset.get(entity_id=entity_id)
         except (Customer.DoesNotExist, ValueError, TypeError):
-            raise NotFound("Customer not found")
+            raise NotFound(_("Customer not found"))
         # Every path has to land here. Returning early from any branch above is what
         # let a relay id read another entity's cards - DRF only runs the object
         # permission check inside super().get_object().
@@ -256,11 +256,11 @@ class StripeCustomerViewset(
         if isinstance(entity_id, str):
             entity_id = get_pk_from_relay_id(entity_id) or None
         if not entity_id:
-            raise NotFound("Entity not found")
+            raise NotFound(_("Entity not found"))
         entity_model = apps.get_model(config.STRIPE_CUSTOMER_ENTITY_MODEL)
         entity = entity_model.objects.filter(pk=entity_id).first()
         if not entity:
-            raise NotFound("Entity not found")
+            raise NotFound(_("Entity not found"))
         return entity
 
     @action(

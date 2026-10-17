@@ -1,0 +1,62 @@
+id: django-translation-model-meta-verbose-name-required
+language: Python
+severity: error
+message: "Every concrete model in `apps/` must declare `class Meta` with an explicit `verbose_name = _(\"...\")` (and `verbose_name_plural`), even when it inherits a package abstract's `Meta` — the project catalog can only translate what the project declares. See .claude/skills/backend-conventions/references/translations.md"
+# Project code only: the baseapp_* packages ship abstract models whose Meta the
+# consuming project is expected to extend.
+files:
+  - "apps/**/models.py"
+ignores:
+  - "**/migrations/**"
+  - "**/tests/**"
+rule:
+  kind: class_definition
+  inside:
+    kind: module
+  all:
+    - has:
+        field: superclasses
+        all:
+          - has:
+              stopBy: end
+              regex: ^(models\.Model|\w*Model|Abstract\w+|Base\w+)$
+          - not:
+              has:
+                stopBy: end
+                regex: (QuerySet|Manager|Choices|Mixin|Exception|Error|Enum|Admin|Form|Serializer|ObjectType)$
+    - not:
+        has:
+          field: body
+          has:
+            kind: class_definition
+            all:
+              - has:
+                  field: name
+                  regex: ^Meta$
+              - has:
+                  field: body
+                  has:
+                    kind: expression_statement
+                    has:
+                      kind: assignment
+                      has:
+                        field: left
+                        regex: ^abstract$
+    - not:
+        has:
+          field: body
+          has:
+            kind: class_definition
+            all:
+              - has:
+                  field: name
+                  regex: ^Meta$
+              - has:
+                  field: body
+                  has:
+                    kind: expression_statement
+                    has:
+                      kind: assignment
+                      has:
+                        field: left
+                        regex: ^verbose_name$
