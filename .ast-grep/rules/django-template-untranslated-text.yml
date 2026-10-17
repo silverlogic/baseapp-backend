@@ -13,7 +13,24 @@ rule:
     - kind: text
       regex: "[A-Za-z]{3,}"
       not:
-        regex: "\\{[%{#]"
+        any:
+          - regex: "\\{[%{#]"
+          # Material icon ligatures (`expand_more`) are glyph names, not copy.
+          - inside:
+              kind: element
+              has:
+                kind: start_tag
+                has:
+                  kind: attribute
+                  all:
+                    - has:
+                        kind: attribute_name
+                        regex: ^class$
+                    - has:
+                        kind: quoted_attribute_value
+                        has:
+                          kind: attribute_value
+                          regex: "\\bmaterial-(symbols|icons)"
     - kind: attribute_value
       regex: "[A-Za-z]{3,}"
       not:

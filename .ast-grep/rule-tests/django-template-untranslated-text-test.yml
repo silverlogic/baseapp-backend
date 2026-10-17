@@ -21,6 +21,10 @@ valid:
     <style>.t-body2 { font-family: 'Public Sans'; }</style>
   - |
     <a href="https://www.x.com/" target="_blank" rel="noopener noreferrer"></a>
+  - |
+    <span class="material-symbols-outlined text-white">history_2</span>
+  - |
+    <span class="material-icons">expand_more</span>
 invalid:
   - |
     <p>Please login to see this page.</p>
