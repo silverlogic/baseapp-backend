@@ -3,6 +3,7 @@
 {% block content %}
 <p class="t-h5">{{ _("You've been invited!") }}</p>
 <p class="t-body2 gap-top-3">
+    <!-- ast-grep-ignore: django-template-untranslated-text -->
     {{ _("%(inviter)s has invited you to join <strong>%(profile)s</strong> as a <strong>%(role)s</strong>.", inviter=inviter_name, profile=profile_name, role=role) }}
 </p>
 <a href="{{ accept_url }}" class="button t-button gap-top-3 margin-center">{{ _("Accept Invitation") }}</a>
