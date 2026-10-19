@@ -33,6 +33,9 @@ class FileTargetCountFunc(pgtrigger.Func):
     """
     Reusable pgtrigger function for updating FileTarget counts.
     Dynamically resolves table names for swappable models.
+
+    Only completed uploads are counted: a file is attached when its upload starts, so a
+    pending, failed or aborted one must not count as one of the target's files.
     """
 
     def render(
@@ -46,6 +49,7 @@ class FileTargetCountFunc(pgtrigger.Func):
         return self.func.format(
             file_table=meta.db_table,
             file_target_table=FileTarget._meta.db_table,
+            completed=AbstractFile.UploadStatus.COMPLETED.value,
         )
 
 
@@ -74,7 +78,7 @@ def file_target_insert_trigger():
                             COALESCE(file_content_type, 'unknown') as file_content_type,
                             COUNT(*)::int as count
                         FROM {file_table}
-                        WHERE parent_id = NEW.parent_id
+                        WHERE parent_id = NEW.parent_id AND upload_status = '{completed}'
                         GROUP BY file_content_type
                     ) counts;
 
@@ -118,7 +122,7 @@ def file_target_update_trigger():
                             COALESCE(file_content_type, 'unknown') as file_content_type,
                             COUNT(*)::int as count
                         FROM {file_table}
-                        WHERE parent_id = OLD.parent_id
+                        WHERE parent_id = OLD.parent_id AND upload_status = '{completed}'
                         GROUP BY file_content_type
                     ) counts;
 
@@ -140,7 +144,7 @@ def file_target_update_trigger():
                             COALESCE(file_content_type, 'unknown') as file_content_type,
                             COUNT(*)::int as count
                         FROM {file_table}
-                        WHERE parent_id = NEW.parent_id
+                        WHERE parent_id = NEW.parent_id AND upload_status = '{completed}'
                         GROUP BY file_content_type
                     ) counts;
 
@@ -180,7 +184,7 @@ def file_target_delete_trigger():
                             COALESCE(file_content_type, 'unknown') as file_content_type,
                             COUNT(*)::int as count
                         FROM {file_table}
-                        WHERE parent_id = OLD.parent_id
+                        WHERE parent_id = OLD.parent_id AND upload_status = '{completed}'
                         GROUP BY file_content_type
                     ) counts;
 
