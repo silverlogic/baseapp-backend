@@ -764,6 +764,33 @@ const numParts = Math.floor(fileSize / partSize); // ❌ Wrong
 
 ## Advanced Topics
 
+### Storage Folder
+
+Files are stored under `files/` in the files storage. To partition them, e.g. per tenant or per
+parent object, override `get_upload_folder` on your concrete `File` model:
+
+```python
+class File(AbstractFile):
+    def get_upload_folder(self) -> str:
+        target = self.parent.content_object if self.parent_id else None
+        tenant = getattr(target, "tenant", None)
+        return f"tenants/{tenant.public_id}" if tenant else "files"
+```
+
+The folder is read when an upload starts, and the resulting name is kept in `upload_storage_name`,
+so an upload completes in the same place even if the folder would change meanwhile. A file saved
+directly (`File.objects.create(file=...)`) goes through `File.file`'s `upload_to`, which reads the
+same folder; its stored name is `file.name`, and `upload_storage_name` stays empty because there is
+no upload to complete. Use identifiers that are not personal data: the folder is part of the object
+key and of S3 URLs. The folder must be a plain relative path, and the whole storage name must fit
+the model's fields (512 characters); `.` and `..` segments, empty segments (`a//b`), backslashes
+and over-long names are rejected, and an upload whose name is rejected is refused with nothing
+recorded.
+
+**Upgrading:** this adds `upload_storage_name` and changes `File.file`'s `upload_to`, so a project
+with its own concrete `File` model needs `python manage.py makemigrations files` once. Uploads
+already in progress when you deploy have no stored name and complete where they always would.
+
 ### Custom Storage Backends
 
 You can add support for other storage backends (GCS, Azure, etc.) by:
