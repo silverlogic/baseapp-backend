@@ -104,6 +104,46 @@ class FileTargetTest(TestCase):
         self.assertEqual(file_target.files_count.get("image/png"), 2)
         self.assertEqual(file_target.files_count.get("image/jpeg"), 1)
 
+    def test_file_target_files_count_skips_uploads_that_are_not_completed(self) -> None:
+        comment = CommentFactory()
+        parent_doc_id = get_or_create_document_id(comment)
+
+        for upload_status in (
+            File.UploadStatus.PENDING,
+            File.UploadStatus.UPLOADING,
+            File.UploadStatus.FAILED,
+            File.UploadStatus.ABORTED,
+        ):
+            File.objects.create(
+                parent=parent_doc_id, file_content_type="video/mp4", upload_status=upload_status
+            )
+
+        self.assertEqual(comment.get_file_target().files_count, {"total": 0})
+
+    def test_file_target_files_count_includes_an_upload_once_it_completes(self) -> None:
+        comment = CommentFactory()
+        file_obj = File.objects.create(
+            parent=get_or_create_document_id(comment),
+            file_content_type="video/mp4",
+            upload_status=File.UploadStatus.UPLOADING,
+        )
+
+        file_obj.upload_status = File.UploadStatus.COMPLETED
+        file_obj.save(update_fields=["upload_status"])
+
+        self.assertEqual(comment.get_file_target().files_count, {"total": 1, "video/mp4": 1})
+
+    def test_file_target_files_count_drops_an_upload_that_fails(self) -> None:
+        comment = CommentFactory()
+        file_obj = File.objects.create(
+            parent=get_or_create_document_id(comment), file_content_type="video/mp4"
+        )
+
+        file_obj.upload_status = File.UploadStatus.FAILED
+        file_obj.save(update_fields=["upload_status"])
+
+        self.assertEqual(comment.get_file_target().files_count, {"total": 0})
+
     def test_file_target_is_files_enabled_can_be_disabled(self):
         comment = CommentFactory()
         file_target = comment.get_file_target()
@@ -206,6 +246,20 @@ class FileUtilsTest(TestCase):
 
         file_target = comment.get_file_target()
         self.assertEqual(file_target.files_count, {"total": 0})
+
+    def test_recalculate_files_count_skips_uploads_that_are_not_completed(self) -> None:
+        comment = CommentFactory()
+        parent_doc_id = get_or_create_document_id(comment)
+        File.objects.create(parent=parent_doc_id, file_content_type="image/png")
+        File.objects.create(
+            parent=parent_doc_id,
+            file_content_type="image/png",
+            upload_status=File.UploadStatus.UPLOADING,
+        )
+
+        recalculate_files_count(comment)
+
+        self.assertEqual(comment.get_file_target().files_count, {"total": 1, "image/png": 1})
 
     def test_recalculate_files_count_with_files(self):
         comment = CommentFactory()

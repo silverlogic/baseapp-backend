@@ -191,6 +191,30 @@ def test_comment_files_interface_multiple_files(graphql_client):
     assert len(edges) == 5
 
 
+def test_comment_files_interface_lists_completed_uploads_only(graphql_client) -> None:
+    comment = CommentFactory()
+    comment_document_id, _ = DocumentId.objects.get_or_create(
+        content_type=ContentType.objects.get_for_model(comment),
+        object_id=comment.pk,
+    )
+    completed = File.objects.create(parent=comment_document_id, file_name="done.mp4")
+    for upload_status in (
+        File.UploadStatus.PENDING,
+        File.UploadStatus.UPLOADING,
+        File.UploadStatus.FAILED,
+        File.UploadStatus.ABORTED,
+    ):
+        File.objects.create(
+            parent=comment_document_id, file_name="unfinished.mp4", upload_status=upload_status
+        )
+
+    content = graphql_client(COMMENT_FILES_FULL_QUERY, variables={"id": comment.relay_id}).json()
+
+    node = content["data"]["node"]
+    assert [edge["node"]["id"] for edge in node["files"]["edges"]] == [completed.relay_id]
+    assert node["filesCount"]["total"] == 1
+
+
 FILE_ATTACH_TO_TARGET_MUTATION = """
     mutation FileAttachToTarget($fileRelayIds: [ID]!, $targetObjectId: ID!) {
         fileAttachToTarget(input: {

@@ -284,6 +284,15 @@ Content-Type: application/json
 }
 ```
 
+A file is attached as soon as its upload starts when `parent_id` is given, but it only counts as
+one of the object's files once the upload completes: `files` and `filesCount` (GraphQL, the
+`FilesInterface`) leave out pending, uploading, failed and aborted uploads.
+
+**Upgrading:** the counts are kept by database triggers, so a project with its own concrete
+`File` model needs `python manage.py makemigrations files` once. Existing counts correct
+themselves the next time a file of that object changes; `recalculate_files_count(obj)` refreshes
+one right away.
+
 ### API Endpoints
 
 #### Initiate Upload
