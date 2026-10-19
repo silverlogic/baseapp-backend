@@ -117,6 +117,37 @@ class TestUploadFolder:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert not File.objects.exists()
 
+    def test_an_upload_whose_name_would_be_too_long_never_reaches_the_storage(
+        self, user_client, media_root
+    ):
+        with (
+            patch.object(File, "get_upload_folder", return_value="t/" + "x" * 480),
+            patch(
+                "baseapp.files.storage.local.LocalUploadHandler.initiate_upload"
+            ) as initiate_upload,
+        ):
+            response = user_client.post(
+                "/v1/files/uploads",
+                {
+                    "file_name": "clip.mp4",
+                    "file_size": len(PART_DATA),
+                    "file_content_type": "video/mp4",
+                    "num_parts": 1,
+                    "part_size": len(PART_DATA),
+                },
+                format="json",
+            )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        initiate_upload.assert_not_called()
+        assert not File.objects.exists()
+
+    def test_a_file_saved_directly_keeps_its_name_on_the_file(self, media_root):
+        file_obj = File.objects.create(file=ContentFile(PART_DATA, name="transcript.txt"))
+
+        assert file_obj.file.name.startswith("files/")
+        assert file_obj.upload_storage_name == ""
+
     def test_a_file_saved_directly_lands_in_the_upload_folder(self, media_root):
         with patch.object(File, "get_upload_folder", return_value="tenants/7"):
             file_obj = File.objects.create(file=ContentFile(PART_DATA, name="transcript.txt"))
@@ -204,3 +235,17 @@ def test_a_plain_relative_folder_is_accepted(folder: str, prefix: str) -> None:
     assert name.startswith(prefix)
     assert "/" not in name[len(prefix) :]
     assert name.endswith(".mp4")
+
+
+def test_a_storage_name_longer_than_the_model_fields_is_rejected() -> None:
+    with patch.object(File, "get_upload_folder", return_value="t/" + "x" * 480):
+        with pytest.raises(ValueError):
+            storage_name_in_folder(File(file_name="clip.mp4"), "clip.mp4")
+
+
+def test_a_storage_name_that_fits_the_model_fields_is_accepted() -> None:
+    # 32-character uuid + ".mp4" + "/" leaves 475 characters for the folder.
+    with patch.object(File, "get_upload_folder", return_value="t/" + "x" * 473):
+        name = storage_name_in_folder(File(file_name="clip.mp4"), "clip.mp4")
+
+    assert len(name) == 512

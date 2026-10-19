@@ -29,12 +29,21 @@ def storage_name_in_folder(file_obj: "AbstractFile", file_name: str) -> str:
 
     The folder must be a plain relative path: leading and trailing slashes are dropped, and
     a ``.`` or ``..`` segment, an empty segment (``a//b``) or a backslash raises
-    ``ValueError``, so an override can never address a file outside its own folder.
+    ``ValueError``, so an override can never address a file outside its own folder. A name
+    longer than the model can record (``file`` and ``upload_storage_name``) raises too, before
+    anything reaches the storage.
     """
     folder = file_obj.get_upload_folder().strip("/")
     if folder and ("\\" in folder or any(part in ("", ".", "..") for part in folder.split("/"))):
         raise ValueError(f"Invalid upload folder: {folder!r}")
-    return posixpath.join(folder, f"{uuid.uuid4().hex}.{safe_extension(file_name)}")
+    name = posixpath.join(folder, f"{uuid.uuid4().hex}.{safe_extension(file_name)}")
+    meta = type(file_obj)._meta
+    max_length = min(meta.get_field(field).max_length for field in ("file", "upload_storage_name"))
+    if len(name) > max_length:
+        raise ValueError(
+            f"Upload folder too long: the storage name exceeds {max_length} characters"
+        )
+    return name
 
 
 def file_upload_to(instance: "AbstractFile", filename: str) -> str:
