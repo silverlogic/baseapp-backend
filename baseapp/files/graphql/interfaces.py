@@ -39,9 +39,12 @@ class FilesInterface(Interface):
         # Total ordering (-created, -pk): AbstractFile has no Meta.ordering, and
         # cursor pagination over a non-total order can duplicate/drop rows when
         # timestamps collide. Matches FilesQueries.resolve_my_files.
+        # Completed uploads only: a file is attached when its upload starts, so one still
+        # in progress, failed or aborted is not one of the object's files.
         return File.objects.filter(
             parent__content_type=content_type,
             parent__object_id=self.pk,
+            upload_status=File.UploadStatus.COMPLETED,
         ).order_by("-created", "-pk")
 
 
