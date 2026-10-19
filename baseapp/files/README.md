@@ -771,7 +771,9 @@ class File(AbstractFile):
 The folder is read when an upload starts (or when a file is saved directly, through
 `File.file`'s `upload_to`), and the resulting name is kept in `upload_storage_name`, so an upload
 completes in the same place even if the folder would change meanwhile. Use identifiers that are
-not personal data: the folder is part of the object key and of S3 URLs.
+not personal data: the folder is part of the object key and of S3 URLs. The folder must be a plain
+relative path; `.` and `..` segments, empty segments (`a//b`) and backslashes are rejected, and
+an upload whose folder is rejected is refused with nothing recorded.
 
 **Upgrading:** this adds `upload_storage_name` and changes `File.file`'s `upload_to`, so a project
 with its own concrete `File` model needs `python manage.py makemigrations files` once. Uploads

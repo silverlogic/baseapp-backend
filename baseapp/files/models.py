@@ -406,6 +406,8 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
 
         Override it in a concrete model to partition files, e.g. per tenant or per parent
         object. Use identifiers that are not personal data, since they end up in the URL.
+        It must be a plain relative path (``a/b``): ``.`` and ``..`` segments, empty segments
+        and backslashes are rejected with ``ValueError``.
         """
         return "files"
 

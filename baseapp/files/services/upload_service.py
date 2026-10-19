@@ -88,12 +88,11 @@ class UploadService:
             upload_expires_at=timezone.now() + timedelta(hours=24),
         )
 
-        # Fix where the upload is written now, in the file's upload folder, so complete and
-        # abort reach the same object whatever happens to the file meanwhile.
-        file_obj.upload_storage_name = storage_name_in_folder(file_obj, file_name)
-
-        # Get presigned URLs from storage handler (network I/O — not in a transaction)
         try:
+            # Fix where the upload is written now, in the file's upload folder, so complete
+            # and abort reach the same object whatever happens to the file meanwhile.
+            file_obj.upload_storage_name = storage_name_in_folder(file_obj, file_name)
+            # Get presigned URLs from storage handler (network I/O — not in a transaction)
             upload_data = self.handler.initiate_upload(file_obj, num_parts, part_size)
         except Exception:
             # Cleanup file record if upload initiation fails

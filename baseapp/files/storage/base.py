@@ -24,8 +24,16 @@ def safe_extension(file_name: str) -> str:
 
 
 def storage_name_in_folder(file_obj: "AbstractFile", file_name: str) -> str:
-    """A random, unguessable storage name in ``file_obj``'s upload folder."""
+    """
+    A random, unguessable storage name in ``file_obj``'s upload folder.
+
+    The folder must be a plain relative path: leading and trailing slashes are dropped, and
+    a ``.`` or ``..`` segment, an empty segment (``a//b``) or a backslash raises
+    ``ValueError``, so an override can never address a file outside its own folder.
+    """
     folder = file_obj.get_upload_folder().strip("/")
+    if folder and ("\\" in folder or any(part in ("", ".", "..") for part in folder.split("/"))):
+        raise ValueError(f"Invalid upload folder: {folder!r}")
     return posixpath.join(folder, f"{uuid.uuid4().hex}.{safe_extension(file_name)}")
 
 

@@ -10,7 +10,7 @@ from django.core.files.base import ContentFile
 from django.test import override_settings
 from rest_framework import status
 
-from baseapp.files.storage.base import safe_extension
+from baseapp.files.storage.base import safe_extension, storage_name_in_folder
 from baseapp.files.storage.s3 import S3MultipartUploadHandler
 
 File = swapper.load_model("baseapp_files", "File")
@@ -100,6 +100,23 @@ class TestUploadFolder:
         assert "Maria" not in name
         assert name.endswith(".MP4")
 
+    def test_an_upload_whose_folder_is_rejected_records_nothing(self, user_client, media_root):
+        with patch.object(File, "get_upload_folder", return_value="../escape"):
+            response = user_client.post(
+                "/v1/files/uploads",
+                {
+                    "file_name": "clip.mp4",
+                    "file_size": len(PART_DATA),
+                    "file_content_type": "video/mp4",
+                    "num_parts": 1,
+                    "part_size": len(PART_DATA),
+                },
+                format="json",
+            )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not File.objects.exists()
+
     def test_a_file_saved_directly_lands_in_the_upload_folder(self, media_root):
         with patch.object(File, "get_upload_folder", return_value="tenants/7"):
             file_obj = File.objects.create(file=ContentFile(PART_DATA, name="transcript.txt"))
@@ -166,3 +183,24 @@ class TestS3UploadFolder:
 )
 def test_safe_extension(file_name: str, extension: str) -> None:
     assert safe_extension(file_name) == extension
+
+
+@pytest.mark.parametrize(
+    "folder", ["../escape", "tenants/../other", "tenants//7", "tenants\\7", "./tenants", "."]
+)
+def test_a_folder_that_is_not_a_plain_relative_path_is_rejected(folder: str) -> None:
+    with patch.object(File, "get_upload_folder", return_value=folder):
+        with pytest.raises(ValueError):
+            storage_name_in_folder(File(file_name="clip.mp4"), "clip.mp4")
+
+
+@pytest.mark.parametrize(
+    ("folder", "prefix"), [("tenants/7", "tenants/7/"), ("/tenants/7/", "tenants/7/"), ("", "")]
+)
+def test_a_plain_relative_folder_is_accepted(folder: str, prefix: str) -> None:
+    with patch.object(File, "get_upload_folder", return_value=folder):
+        name = storage_name_in_folder(File(file_name="clip.mp4"), "clip.mp4")
+
+    assert name.startswith(prefix)
+    assert "/" not in name[len(prefix) :]
+    assert name.endswith(".mp4")
