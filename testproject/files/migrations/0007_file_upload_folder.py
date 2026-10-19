@@ -9,7 +9,7 @@ import baseapp.files.storage.base
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("files", "0005_file_storage"),
+        ("files", "0006_file_count_completed_only"),
     ]
 
     operations = [
