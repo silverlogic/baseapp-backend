@@ -1,7 +1,37 @@
+import posixpath
+import re
+import uuid
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from django.core.files.storage import Storage
+
+if TYPE_CHECKING:
+    from ..models import AbstractFile
+
+SAFE_EXTENSION_RE = re.compile(r"^[A-Za-z0-9]{1,16}$")
+
+
+def safe_extension(file_name: str) -> str:
+    """
+    The extension of ``file_name``'s basename when it is a short alphanumeric suffix, else
+    ``bin``. Only the extension is kept: client-supplied file names can carry personal
+    information and path separators.
+    """
+    basename = posixpath.basename((file_name or "").replace("\\", "/"))
+    ext = basename.rsplit(".", 1)[-1] if "." in basename else ""
+    return ext if SAFE_EXTENSION_RE.match(ext) else "bin"
+
+
+def storage_name_in_folder(file_obj: "AbstractFile", file_name: str) -> str:
+    """A random, unguessable storage name in ``file_obj``'s upload folder."""
+    folder = file_obj.get_upload_folder().strip("/")
+    return posixpath.join(folder, f"{uuid.uuid4().hex}.{safe_extension(file_name)}")
+
+
+def file_upload_to(instance: "AbstractFile", filename: str) -> str:
+    """``File.file``'s ``upload_to``: files saved directly land in the same folder as uploads."""
+    return storage_name_in_folder(instance, filename)
 
 
 class BaseUploadHandler(ABC):

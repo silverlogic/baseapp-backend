@@ -122,8 +122,11 @@ class LocalUploadHandler(BaseUploadHandler):
         """
         temp_dir = self._temp_dir(upload_id)
 
-        # Generate final file path
-        final_path = random_name_in("files")(file_obj, file_obj.file_name or "file")
+        # The name fixed when the upload started; uploads started before it was kept get
+        # a fresh one in the default folder, as they always did.
+        final_path = file_obj.upload_storage_name or random_name_in("files")(
+            file_obj, file_obj.file_name or "file"
+        )
         # Not a filesystem storage: assemble beside the parts, then save through it.
         full_path = self._local_path(final_path)
         assembled_path = full_path or os.path.join(temp_dir, "assembled")

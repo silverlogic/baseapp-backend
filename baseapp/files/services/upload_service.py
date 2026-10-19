@@ -12,6 +12,7 @@ from ..content_safety import (
     normalize_content_type,
 )
 from ..storage import get_upload_handler
+from ..storage.base import storage_name_in_folder
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,10 @@ class UploadService:
             upload_expires_at=timezone.now() + timedelta(hours=24),
         )
 
+        # Fix where the upload is written now, in the file's upload folder, so complete and
+        # abort reach the same object whatever happens to the file meanwhile.
+        file_obj.upload_storage_name = storage_name_in_folder(file_obj, file_name)
+
         # Get presigned URLs from storage handler (network I/O — not in a transaction)
         try:
             upload_data = self.handler.initiate_upload(file_obj, num_parts, part_size)
@@ -98,7 +103,7 @@ class UploadService:
         # Store upload_id
         file_obj.upload_id = upload_data["upload_id"]
         file_obj.upload_status = File.UploadStatus.UPLOADING
-        file_obj.save(update_fields=["upload_id", "upload_status"])
+        file_obj.save(update_fields=["upload_id", "upload_status", "upload_storage_name"])
 
         return file_obj, upload_data
 
