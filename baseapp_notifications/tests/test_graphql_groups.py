@@ -207,3 +207,60 @@ def test_update_child_group_under_a_muted_parent_takes_effect(
     }
     assert states["chats"] == {"IN_APP": False, "EMAIL": False, "PUSH": False}
 
+
+def test_query_groups_survives_an_audience_that_raises(
+    notification_groups_registry, graphql_user_client
+) -> None:
+    def broken(user):
+        raise AttributeError("no profile")
+
+    register_notification_group("comments", label="Comments")
+    register_notification_group("broken", label="Broken", audience=broken)
+
+    content = graphql_user_client("query { me { id notificationSettingGroups { key } } }").json()
+
+    assert "errors" not in content, content
+    assert [g["key"] for g in content["data"]["me"]["notificationSettingGroups"]] == ["comments"]
+
+
+TOGGLE_MUTATION = """
+    mutation NotificationSettingToggle($input: NotificationSettingToggleInput!) {
+        notificationSettingToggle(input: $input) {
+            notificationSetting { verb channel isActive }
+            errors { field messages }
+        }
+    }
+"""
+
+
+@pytest.mark.parametrize(
+    "verb, message",
+    [
+        ("staff", "Unknown notification group: staff"),
+        ("security", "Notification group security cannot be changed"),
+    ],
+)
+def test_toggle_applies_group_audience_and_lock(
+    groups, django_user_client, graphql_user_client, verb, message
+) -> None:
+    content = graphql_user_client(
+        TOGGLE_MUTATION, variables={"input": {"verb": verb, "channel": "EMAIL"}}
+    ).json()
+
+    payload = content["data"]["notificationSettingToggle"]
+    assert payload["notificationSetting"] is None
+    assert payload["errors"] == [{"field": "verb", "messages": [message]}]
+    assert not NotificationSetting.objects.filter(user=django_user_client.user).exists()
+
+
+@pytest.mark.parametrize("verb", ["comments", "unregistered"])
+def test_toggle_still_works_for_visible_groups_and_plain_verbs(
+    groups, graphql_user_client, verb
+) -> None:
+    content = graphql_user_client(
+        TOGGLE_MUTATION, variables={"input": {"verb": verb, "channel": "EMAIL"}}
+    ).json()
+
+    payload = content["data"]["notificationSettingToggle"]
+    assert payload["errors"] is None
+    assert payload["notificationSetting"] == {"verb": verb, "channel": "EMAIL", "isActive": False}

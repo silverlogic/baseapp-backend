@@ -404,3 +404,13 @@ def test_set_locks_the_user_against_concurrent_duplicates(notification_groups_re
     write = next(i for i, sql in enumerate(statements) if sql.startswith(("UPDATE", "INSERT")))
     assert lock < write
 
+
+def test_audience_that_raises_hides_the_group(notification_groups_registry, caplog) -> None:
+    def broken(user):
+        raise AttributeError("no profile")
+
+    register_notification_group("everyone", label="Everyone")
+    register_notification_group("broken", label="Broken", audience=broken)
+
+    assert [g.key for g in list_notification_groups(UserFactory())] == ["everyone"]
+    assert "broken" in caplog.text

@@ -16,6 +16,7 @@ they are honoured by ``can_user_receive_notification`` for every verb of the gro
 not belong to any group keep working exactly as before.
 """
 
+import logging
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -25,6 +26,8 @@ from django.core.exceptions import ImproperlyConfigured
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser
+
+logger = logging.getLogger(__name__)
 
 ALL_VERBS_SETTING = "_ALL_"
 
@@ -83,10 +86,18 @@ class NotificationGroup:
         return verb in self.verbs
 
     def is_visible_to(self, user: "AbstractBaseUser") -> bool:
-        """Whether ``user`` may see and change this group's preferences."""
+        """Whether ``user`` may see and change this group's preferences.
+
+        An ``audience`` that raises is logged and treated as "not visible", so one faulty
+        callable cannot break every query listing groups.
+        """
         if self.audience is None:
             return True
-        return bool(self.audience(user))
+        try:
+            return bool(self.audience(user))
+        except Exception:
+            logger.exception("Audience of notification group %r raised; hiding it", self.key)
+            return False
 
 
 class NotificationGroupRegistry:

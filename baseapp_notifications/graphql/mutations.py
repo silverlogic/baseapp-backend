@@ -84,6 +84,19 @@ class NotificationSettingToggle(RelayMutation):
     def mutate_and_get_payload(
         cls, root, info, verb, channel, **input
     ) -> "NotificationSettingToggle":
+        # A registered group key gets the same audience and lock checks as
+        # notificationSettingsUpdate.
+        group = get_notification_group(verb)
+        message = None
+        if group is not None and not group.is_visible_to(info.context.user):
+            message = _("Unknown notification group: %(group)s") % {"group": verb}
+        elif group is not None and group.is_locked:
+            message = _("Notification group %(group)s cannot be changed") % {"group": verb}
+        if message is not None:
+            return NotificationSettingToggle(
+                errors=[ErrorType(field="verb", messages=[str(message)])]
+            )
+
         # Determine if a setting other than 'ALL' exists for the given verb
         is_channel_all = channel == NotificationSetting.NotificationChannelTypes.ALL
 
