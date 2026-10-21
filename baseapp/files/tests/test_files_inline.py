@@ -48,7 +48,7 @@ def admin_request(superuser: User) -> HttpRequest:
     return request
 
 
-def attach(obj: Model, name: str = "a.png", **fields) -> "File":
+def attach(obj: Model, name: str = "a.png", **fields: object) -> "File":
     """A file attached to `obj` the way the upload API attaches one, with its bytes stored."""
     file_obj = File.objects.create(
         **{
@@ -72,7 +72,9 @@ def listed(obj: Model | None, request: HttpRequest) -> list["File"]:
 
 
 class TestFilesInline:
-    def test_lists_only_the_objects_own_files_newest_first(self, admin_request) -> None:
+    def test_lists_only_the_objects_own_files_newest_first(
+        self, admin_request: HttpRequest
+    ) -> None:
         comment = CommentFactory()
         first = attach(comment, "first.png")
         second = attach(comment, "second.png")
@@ -80,18 +82,18 @@ class TestFilesInline:
 
         assert listed(comment, admin_request) == [second, first]
 
-    def test_an_upload_still_in_progress_is_listed_too(self, admin_request) -> None:
+    def test_an_upload_still_in_progress_is_listed_too(self, admin_request: HttpRequest) -> None:
         comment = CommentFactory()
         pending = attach(comment, upload_status=File.UploadStatus.UPLOADING)
 
         assert listed(comment, admin_request) == [pending]
 
-    def test_an_object_not_yet_saved_has_none(self, admin_request) -> None:
+    def test_an_object_not_yet_saved_has_none(self, admin_request: HttpRequest) -> None:
         attach(CommentFactory())
 
         assert listed(None, admin_request) == []
 
-    def test_it_lists_and_changes_nothing(self, admin_request) -> None:
+    def test_it_lists_and_changes_nothing(self, admin_request: HttpRequest) -> None:
         comment = CommentFactory()
         attach(comment)
         inline = FilesInline(Comment, admin.site)
@@ -104,6 +106,25 @@ class TestFilesInline:
         # Only the hidden id a model formset always carries to tell its rows apart.
         assert all(set(form.fields) == {"id"} for form in formset.forms)
 
+    def test_a_forged_post_saves_nothing(self, admin_request: HttpRequest) -> None:
+        comment = CommentFactory()
+        file_obj = attach(comment)
+        inline = FilesInline(Comment, admin.site)
+        prefix = "attached-files"
+        # The page shows no extra forms, but a POST can claim one, naming an existing file.
+        data = {
+            f"{prefix}-TOTAL_FORMS": "1",
+            f"{prefix}-INITIAL_FORMS": "0",
+            f"{prefix}-0-id": str(file_obj.pk),
+        }
+        formset = inline.get_formset(admin_request, comment)(data=data, instance=comment)
+        files_before = File.objects.count()
+
+        if formset.is_valid():
+            formset.save()
+
+        assert File.objects.count() == files_before
+
     def test_passes_the_admins_checks_without_a_foreign_key(self) -> None:
         class CommentAdmin(ModelAdmin):
             inlines = (FilesInline,)
@@ -113,7 +134,9 @@ class TestFilesInline:
 
 
 class TestOnTheChangePage:
-    def test_each_file_is_shown_with_a_link_to_it_and_to_its_admin(self, admin_request) -> None:
+    def test_each_file_is_shown_with_a_link_to_it_and_to_its_admin(
+        self, admin_request: HttpRequest
+    ) -> None:
         class CommentAdmin(ModelAdmin):
             inlines = (FilesInline,)
 

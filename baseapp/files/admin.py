@@ -82,6 +82,10 @@ class FilesInlineFormSet(BaseModelFormSet):
         queryset: QuerySet | None = None,
         **kwargs: Any,
     ) -> None:
+        """
+        Narrow `queryset` (the inline's, or every file) to the files whose parent is
+        `instance`; an object not yet saved has none.
+        """
         self.instance = instance
         self.save_as_new = save_as_new
         if queryset is None:
@@ -149,13 +153,28 @@ class FilesInline(TabularInline):
         return False
 
     def get_formset(self, request: HttpRequest, obj: Model | None = None, **kwargs: Any) -> type:
-        """`InlineModelAdmin.get_formset`, building a model formset instead of an inline one."""
+        """
+        `InlineModelAdmin.get_formset`, building a model formset instead of an inline one.
+
+        Keeps Django's guard against a POST changing what the user may not change, and builds
+        the formset edit-only, so no file can be created through the inline whatever is posted.
+        """
         fields = kwargs.pop("fields", None) or flatten_fieldsets(self.get_fieldsets(request, obj))
         readonly = self.get_readonly_fields(request, obj)
+        can_add = self.has_add_permission(request, obj)
+        can_change = self.has_change_permission(request, obj)
+
+        class PermissionProtectedModelForm(self.form):
+            def has_changed(self) -> bool:
+                if self.instance._state.adding:
+                    return can_add and super().has_changed()
+                return can_change and super().has_changed()
+
         return modelformset_factory(
             self.model,
             **{
-                "form": self.form,
+                "edit_only": True,
+                "form": PermissionProtectedModelForm,
                 "formfield_callback": partial(self.formfield_for_dbfield, request=request),
                 "formset": self.formset,
                 "extra": self.get_extra(request, obj),
