@@ -1,7 +1,10 @@
+from io import StringIO
+
 import pytest
 import swapper
 from django.contrib.admin.sites import AdminSite
 from django.contrib.contenttypes.models import ContentType
+from django.core.management import call_command
 from django.test import RequestFactory
 
 from baseapp_core.tests.factories import UserFactory
@@ -69,6 +72,16 @@ class TestOrganizationService:
             organization.refresh_from_db()
             assert organization.profile.name == organization.name
             assert organization.profile.owner_id is None
+
+    def test_the_command_backfills(self) -> None:
+        organization = OrganizationFactory(name="Bare")
+        out = StringIO()
+
+        call_command("ensure_organization_profiles", stdout=out)
+
+        organization.refresh_from_db()
+        assert organization.profile.owner_id is None
+        assert "Created 1" in out.getvalue()
 
 
 class TestAdmin:

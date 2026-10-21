@@ -75,24 +75,20 @@ OrganizationService.ensure_profile(organization)  # create the profile if it is 
 | `OrganizationService.ensure_profile(organization, *, owner=None, url_path=None)` | Return the organization's profile, creating and linking one when it has none. |
 | `ensure_profiles_for_organizations(queryset=None, *, owner=None)` | Give every organization without a profile one; returns how many were created. |
 
-`ensure_profiles_for_organizations` is meant for the data migration of a project that
-adopts organizations for existing rows:
+To give existing organizations a profile once you adopt them, run the command after
+`migrate` (it is idempotent):
 
-```python
-def backfill(apps, schema_editor):
-    from baseapp_organizations.services import ensure_profiles_for_organizations
-
-    ensure_profiles_for_organizations()
-
-
-class Migration(migrations.Migration):
-    dependencies = [("organizations", "0002_..."), ("profiles", "0007_...")]
-    operations = [migrations.RunPython(backfill, migrations.RunPython.noop)]
+```bash
+./manage.py ensure_organization_profiles
 ```
 
-It works on the current models rather than migration state (it needs `Profile.save()` to
-create URL paths), so place it after the migrations that bring the profile and
-organization tables to their current shape.
+or call `ensure_profiles_for_organizations()` from your own command or shell. Avoid calling
+it from a data migration: it uses the current models rather than migration state (it needs
+`Profile.save()` to create URL paths), so a later migration that adds a column to either
+model would break that data migration on a fresh database.
+
+`url_path` only takes effect when `baseapp_pages` is installed; without it, profiles have
+no handle and the argument is ignored.
 
 ### Ownerless organizations
 

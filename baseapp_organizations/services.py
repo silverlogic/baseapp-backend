@@ -82,9 +82,9 @@ def ensure_profiles_for_organizations(
     Give every organization without a profile one (owned by `owner`, ownerless by
     default); returns how many were created.
 
-    Meant for the data migration of a project adopting organizations, or a one-off
-    command. It uses the current models, not migration state, so run it from a migration
-    that comes after the profile and organization tables reach their current shape.
+    Meant for the `ensure_organization_profiles` command, run after `migrate` by a project
+    adopting organizations. It uses the current models, not migration state, so it does
+    not belong in a data migration.
     """
     if queryset is None:
         Organization = swapper.load_model("baseapp_organizations", "Organization")
