@@ -43,6 +43,7 @@ INSTALLED_APPS += [
     "baseapp_social_auth.cache",
     "baseapp.content_feed",
     "baseapp.files",
+    "baseapp.email_log",
     "baseapp_pdf",
     "baseapp_api_key",
     *WAGTAIL_INSTALLED_APPS,
