@@ -166,6 +166,17 @@ class TestMFASignals:
         assert calls[0]["method"] == "email"
         assert calls[0]["previous_method"] == "app"
 
+    def test_making_the_primary_method_primary_again_sends_nothing(self, user_client) -> None:
+        app = mfa_method_creator(user_client.user, "app")
+        mfa_method_creator(user_client.user, "email", is_primary=False)
+        with capture(mfa_primary_method_changed) as calls:
+            r = user_client.post(
+                f"{MFA_URL}change-primary-method/", {"method": "app", "code": code_for(app)}
+            )
+        assert r.status_code == status.HTTP_204_NO_CONTENT, r.data
+        assert user_client.user.mfa_methods.get(is_primary=True).name == "app"
+        assert calls == []
+
     def test_changing_primary_to_an_inactive_method_sends_nothing(self, user_client) -> None:
         mfa_method_creator(user_client.user, "app")
         email = mfa_method_creator(user_client.user, "email", is_primary=False, is_active=False)

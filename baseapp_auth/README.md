@@ -60,7 +60,7 @@ after the change succeeds, with `sender` set to the view class and the keyword a
 - `mfa_method_activated`: a method's activation was confirmed.
 - `mfa_method_deactivated`: a method was deactivated.
 - `mfa_primary_method_changed`: another method became primary; also sends `previous_method`
-  (`None` when there was none).
+  (`None` when there was none). Not sent when the request names the method that is already primary.
 - `mfa_backup_codes_regenerated`: a method's backup codes were regenerated.
 
 ```py

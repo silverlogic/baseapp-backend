@@ -128,7 +128,10 @@ class MFAMethodBackupCodesRegenerationView(trench_views.MFAMethodBackupCodesRege
 
 
 class MFAPrimaryMethodChangeView(trench_views.MFAPrimaryMethodChangeView):
-    """Asks the MFA policy before changing the primary method; sends `mfa_primary_method_changed`."""
+    """
+    Asks the MFA policy before changing the primary method. Sends `mfa_primary_method_changed`
+    when the primary method actually changed.
+    """
 
     def post(self, request: Request) -> Response:
         user = request.user
@@ -158,13 +161,15 @@ class MFAPrimaryMethodChangeView(trench_views.MFAPrimaryMethodChangeView):
                 transaction.set_rollback(True)
                 return ErrorResponse(error=cause)
 
-        mfa_primary_method_changed.send(
-            sender=self.__class__,
-            user=user,
-            method=method,
-            previous_method=previous_method,
-            request=request,
-        )
+        # Making the current primary method primary again changes nothing, so nothing is sent.
+        if method != previous_method:
+            mfa_primary_method_changed.send(
+                sender=self.__class__,
+                user=user,
+                method=method,
+                previous_method=previous_method,
+                request=request,
+            )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

@@ -26,7 +26,8 @@ mfa_method_activated = Signal()
 # Sent when a user deactivates a method (POST <method>/deactivate/).
 mfa_method_deactivated = Signal()
 
-# Sent when a user picks another primary method (POST change-primary-method/).
+# Sent when a user picks another primary method (POST change-primary-method/). Not sent when the
+# method was already the primary one.
 mfa_primary_method_changed = Signal()
 
 # Sent when a user regenerates the backup codes of a method (POST <method>/codes/regenerate/).
