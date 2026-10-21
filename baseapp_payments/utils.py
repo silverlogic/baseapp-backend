@@ -7,6 +7,13 @@ from constance import config
 from django.apps import apps
 from django.conf import settings
 from django.http import HttpRequest, JsonResponse
+from graphql_relay import from_global_id
+
+from baseapp_core.graphql import get_pk_from_relay_id
+from baseapp_core.hashids.strategies.interfaces.graphql_resolver import (
+    GraphQLResolverStrategy,
+)
+from baseapp_core.hashids.utils import is_uuid4
 
 if TYPE_CHECKING:
     from django.contrib.auth.base_user import AbstractBaseUser
@@ -41,6 +48,40 @@ STRIPE_SUBSCRIPTION_LIST_STATUSES = frozenset(
         "unpaid",
     }
 )
+
+
+def get_entity_pk_from_relay_id(value: str) -> int | None:
+    """The pk of the entity a relay id names, or None when ``value`` is not a relay id.
+
+    ``get_pk_from_relay_id`` base64-decodes whatever it is given and answers the part
+    after ``Type:`` - or the whole decoded text when there is no ``:``. A raw pk is not
+    meant to decode at all, and most do not, but every 4- and 8-digit number is valid
+    base64 and many of them (1400 to 1419, for a start) decode to valid UTF-8. For
+    those it answered a non-empty garbage string, so a raw pk was taken for a relay id
+    and the lookup missed the entity it named: whether a request found its customer
+    depended on where the entity table's sequence happened to be.
+
+    Only a decoded ``Type:pk`` counts here - or, under the public-id strategy, a UUID
+    the strategy resolves - and the pk has to be a positive integer, as the customer's
+    ``entity_id`` column is.
+    """
+    if not isinstance(value, str) or not value:
+        return None
+    if not is_uuid4(value):
+        type_name, _pk = from_global_id(value)
+        # A GraphQL type name is an ASCII identifier. Whatever a raw pk decodes to
+        # starts with a non-ASCII byte, so this also holds if it ever contains a ":".
+        if not (type_name.isascii() and type_name.isidentifier()):
+            return None
+    try:
+        pk = get_pk_from_relay_id(value)
+    except (GraphQLResolverStrategy.NoInstanceFound, ValueError, TypeError):
+        return None
+    try:
+        pk = int(pk)
+    except (TypeError, ValueError):
+        return None
+    return pk if pk > 0 else None
 
 
 def stripe_field(
