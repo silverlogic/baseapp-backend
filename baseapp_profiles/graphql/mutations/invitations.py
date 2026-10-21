@@ -1,10 +1,7 @@
 import logging
-from datetime import timedelta
 
 import graphene
 import swapper
-from django.db import IntegrityError, transaction
-from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
 
@@ -14,7 +11,8 @@ from baseapp_core.graphql import (
     get_pk_from_relay_id,
     login_required,
 )
-from baseapp_profiles.constants import INVITATION_EXPIRATION_DAYS
+from baseapp_profiles.exceptions import ProfileMembershipError
+from baseapp_profiles.services import invitations as invitation_service
 
 from ..object_types import ProfileRoleTypesEnum
 from .roles import validate_assignable_role
@@ -26,20 +24,22 @@ ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 profile_user_role_app_label = ProfileUserRole._meta.app_label
 
 
-def _get_invitation_by_token(token: str) -> "ProfileUserRole":
-    try:
-        return ProfileUserRole.objects.get(invitation_token=token)
-    except ProfileUserRole.DoesNotExist:
-        raise GraphQLError(
-            str(_("Invalid invitation token")),
-            extensions={"code": "invalid_token"},
-        )
+def as_graphql_error(error: ProfileMembershipError) -> GraphQLError:
+    """Report a refused membership operation with its stable code in `extensions.code`."""
+    return GraphQLError(error.message, extensions={"code": error.code})
+
+
+def _permission_error() -> GraphQLError:
+    return GraphQLError(
+        str(_("You don't have permission to perform this action")),
+        extensions={"code": "permission_required"},
+    )
 
 
 def _get_invitation_by_id(invitation_id: str) -> "ProfileUserRole":
     invitation_pk = get_pk_from_relay_id(invitation_id)
     try:
-        return ProfileUserRole.objects.get(pk=invitation_pk)
+        return ProfileUserRole.objects.select_related("profile").get(pk=invitation_pk)
     except ProfileUserRole.DoesNotExist:
         raise GraphQLError(
             str(_("Invitation not found")),
@@ -47,141 +47,35 @@ def _get_invitation_by_id(invitation_id: str) -> "ProfileUserRole":
         )
 
 
-def _validate_invitation_for_response(invitation, user) -> None:
-    if invitation.is_invitation_expired():
-        invitation.status = ProfileUserRole.ProfileRoleStatus.EXPIRED
-        invitation.save()
-        raise GraphQLError(
-            str(_("This invitation has expired")),
-            extensions={"code": "expired_invitation"},
-        )
-
-    if invitation.status != ProfileUserRole.ProfileRoleStatus.PENDING:
-        raise GraphQLError(
-            str(_("This invitation has already been responded to")),
-            extensions={"code": "already_responded"},
-        )
-
-    if not invitation.user:
-        user_email = (user.email or "").casefold()
-        invited_email = (invitation.invited_email or "").casefold()
-        if user_email != invited_email:
-            raise GraphQLError(
-                str(_("This invitation was sent to a different user")),
-                extensions={"code": "wrong_user"},
-            )
-        invitation.user = user
-    elif invitation.user.id != user.id:
-        raise GraphQLError(
-            str(_("This invitation was sent to a different user")),
-            extensions={"code": "wrong_user"},
-        )
-
-
-def _reset_invitation_for_send(invitation, role=None, user=None) -> None:
-    invitation.status = ProfileUserRole.ProfileRoleStatus.PENDING
-    invitation.invited_at = timezone.now()
-    invitation.invitation_expires_at = timezone.now() + timedelta(days=INVITATION_EXPIRATION_DAYS)
-    invitation.responded_at = None
-    invitation.generate_invitation_token()
-    if role is not None:
-        invitation.role = role
-    if user is not None:
-        invitation.user = user
-
-
-def _create_or_reset_invitation(
-    profile, normalized_email: str, role, invited_user
-) -> "ProfileUserRole":
-    """Create a fresh invitation for ``normalized_email`` on ``profile`` (or revive an
-    existing declined/inactive/expired one). Must run inside a transaction — it takes a
-    ``select_for_update`` lock. Raises ``GraphQLError`` on a hard conflict (the email is
-    already an active member, or has a still-valid pending invitation)."""
-    existing_role = (
-        ProfileUserRole.objects.select_for_update()
-        .filter(profile=profile, invited_email__iexact=normalized_email)
-        .first()
-    )
-
-    if existing_role:
-        if existing_role.status == ProfileUserRole.ProfileRoleStatus.ACTIVE:
-            raise GraphQLError(
-                str(
-                    _("%(email)s is already a member of this profile") % {"email": normalized_email}
-                ),
-                extensions={"code": "already_member"},
-            )
-
-        if existing_role.status == ProfileUserRole.ProfileRoleStatus.PENDING:
-            if not existing_role.is_invitation_expired():
-                raise GraphQLError(
-                    str(
-                        _("An invitation has already been sent to %(email)s")
-                        % {"email": normalized_email}
-                    ),
-                    extensions={"code": "duplicate_invitation"},
-                )
-            existing_role.status = ProfileUserRole.ProfileRoleStatus.EXPIRED
-
-        if existing_role.status in [
-            ProfileUserRole.ProfileRoleStatus.DECLINED,
-            ProfileUserRole.ProfileRoleStatus.INACTIVE,
-            ProfileUserRole.ProfileRoleStatus.EXPIRED,
-        ]:
-            _reset_invitation_for_send(existing_role, role=role, user=invited_user)
-            existing_role.save()
-            return existing_role
-
-        raise GraphQLError(
-            str(_("Cannot send invitation in current state")),
-            extensions={"code": "invalid_status"},
-        )
-
-    try:
-        invitation = ProfileUserRole.objects.create(
-            profile=profile,
-            user=invited_user,
-            invited_email=normalized_email,
-            role=role,
-            status=ProfileUserRole.ProfileRoleStatus.PENDING,
-            invited_at=timezone.now(),
-            invitation_expires_at=(timezone.now() + timedelta(days=INVITATION_EXPIRATION_DAYS)),
-        )
-        invitation.generate_invitation_token()
-        invitation.save()
-        return invitation
-    except IntegrityError:
-        raise GraphQLError(
-            str(
-                _("An invitation has already been sent to %(email)s") % {"email": normalized_email}
-            ),
-            extensions={"code": "duplicate_invitation"},
-        )
+class ProfileInviteeInput(graphene.InputObjectType):
+    email = graphene.String(required=True)
+    first_name = graphene.String()
+    last_name = graphene.String()
 
 
 class ProfileSendInvitation(RelayMutation):
     profile_user_roles = graphene.List(get_object_type_for_model(ProfileUserRole))
     emails_sent = graphene.Int()
+    emails_held = graphene.Int(
+        description="Invitations the project's pre-send hook held back for review."
+    )
 
     class Input:
         profile_id = graphene.ID(required=True)
-        emails = graphene.List(graphene.NonNull(graphene.String), required=True)
+        emails = graphene.List(graphene.NonNull(graphene.String))
+        invitees = graphene.List(
+            graphene.NonNull(ProfileInviteeInput),
+            description="Like `emails`, with the invitee's name to personalise the email.",
+        )
         role = graphene.Field(ProfileRoleTypesEnum, required=True)
+        message = graphene.String(description="A personal note included in the email.")
 
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input) -> "ProfileSendInvitation":
-        from django.contrib.auth import get_user_model
+        validate_assignable_role(input.get("role"))
 
-        from baseapp_profiles.emails import send_invitation_email
-
-        profile_id = input.get("profile_id")
-        emails = input.get("emails") or []
-        role = input.get("role")
-
-        validate_assignable_role(role)
-
-        profile_pk = get_pk_from_relay_id(profile_id)
+        profile_pk = get_pk_from_relay_id(input.get("profile_id"))
         try:
             profile = Profile.objects.get(pk=profile_pk)
         except Profile.DoesNotExist:
@@ -193,50 +87,25 @@ class ProfileSendInvitation(RelayMutation):
         if not info.context.user.has_perm(
             f"{profile_user_role_app_label}.add_profileuserrole", profile
         ):
-            raise GraphQLError(
-                str(_("You don't have permission to perform this action")),
-                extensions={"code": "permission_required"},
+            raise _permission_error()
+
+        invitees = [*(input.get("emails") or []), *(dict(i) for i in input.get("invitees") or [])]
+        try:
+            result = invitation_service.send_invitations(
+                profile,
+                invitees,
+                role=input.get("role"),
+                invited_by=info.context.user,
+                message=input.get("message") or "",
             )
+        except ProfileMembershipError as error:
+            raise as_graphql_error(error)
 
-        # Normalize + de-duplicate the emails, preserving order.
-        normalized_emails = []
-        seen = set()
-        for email in emails:
-            normalized = (email or "").strip().lower()
-            if normalized and normalized not in seen:
-                seen.add(normalized)
-                normalized_emails.append(normalized)
-
-        if not normalized_emails:
-            raise GraphQLError(
-                str(_("At least one email is required")),
-                extensions={"code": "invalid_input"},
-            )
-
-        User = get_user_model()
-
-        # Create/revive every invitation in one transaction — a hard conflict on any
-        # email rolls back the whole batch so the caller can fix it and retry.
-        invitations = []
-        with transaction.atomic():
-            for normalized_email in normalized_emails:
-                try:
-                    invited_user = User.objects.get(email__iexact=normalized_email)
-                except User.DoesNotExist:
-                    invited_user = None
-                invitations.append(
-                    _create_or_reset_invitation(profile, normalized_email, role, invited_user)
-                )
-
-        emails_sent = 0
-        for invitation in invitations:
-            try:
-                send_invitation_email(invitation, info.context.user)
-                emails_sent += 1
-            except Exception:
-                logger.exception("Failed to send invitation email to %s", invitation.invited_email)
-
-        return cls(profile_user_roles=invitations, emails_sent=emails_sent)
+        return cls(
+            profile_user_roles=result.invitations,
+            emails_sent=result.emails_sent,
+            emails_held=len(result.held),
+        )
 
 
 class ProfileAcceptInvitation(RelayMutation):
@@ -249,22 +118,43 @@ class ProfileAcceptInvitation(RelayMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input) -> "ProfileAcceptInvitation":
-        token = input.get("token")
-
-        invitation = _get_invitation_by_token(token)
-        _validate_invitation_for_response(invitation, info.context.user)
-
-        if invitation.profile.owner_id == info.context.user.id:
-            raise GraphQLError(
-                str(_("The profile owner cannot accept an invitation to their own profile")),
-                extensions={"code": "cannot_add_owner"},
-            )
-
-        invitation.status = ProfileUserRole.ProfileRoleStatus.ACTIVE
-        invitation.responded_at = timezone.now()
-        invitation.save()
+        try:
+            invitation = invitation_service.accept_invitation(input.get("token"), info.context.user)
+        except ProfileMembershipError as error:
+            raise as_graphql_error(error)
 
         return ProfileAcceptInvitation(profile_user_role=invitation, profile=invitation.profile)
+
+
+class ProfileAcceptInvitationWithSignup(RelayMutation):
+    """
+    Accept an invitation without an account: creates (or activates) the account for the
+    invited email with the given password. Sign in with `email` and that password next.
+    Only available when the project sets `BASEAPP_PROFILES_INVITATION_SIGNUP_ENABLED`.
+    """
+
+    success = graphene.Boolean()
+    email = graphene.String(description="The email of the account to sign in with.")
+
+    class Input:
+        token = graphene.String(required=True)
+        password = graphene.String(required=True)
+        first_name = graphene.String()
+        last_name = graphene.String()
+
+    @classmethod
+    def mutate_and_get_payload(cls, root, info, **input) -> "ProfileAcceptInvitationWithSignup":
+        try:
+            invitation = invitation_service.accept_invitation_with_signup(
+                input.get("token"),
+                password=input.get("password"),
+                first_name=input.get("first_name"),
+                last_name=input.get("last_name"),
+            )
+        except ProfileMembershipError as error:
+            raise as_graphql_error(error)
+
+        return cls(success=True, email=invitation.invited_email)
 
 
 class ProfileDeclineInvitation(RelayMutation):
@@ -276,20 +166,21 @@ class ProfileDeclineInvitation(RelayMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input) -> "ProfileDeclineInvitation":
-        token = input.get("token")
-
-        invitation = _get_invitation_by_token(token)
-        _validate_invitation_for_response(invitation, info.context.user)
-
-        invitation.status = ProfileUserRole.ProfileRoleStatus.DECLINED
-        invitation.responded_at = timezone.now()
-        invitation.save()
+        try:
+            invitation_service.decline_invitation(input.get("token"), info.context.user)
+        except ProfileMembershipError as error:
+            raise as_graphql_error(error)
 
         return ProfileDeclineInvitation(success=True)
 
 
 class ProfileCancelInvitation(RelayMutation):
     success = graphene.Boolean()
+    profile_user_role = graphene.Field(
+        get_object_type_for_model(ProfileUserRole),
+        description="The cancelled invitation, or null when invitation history is off "
+        "and the row was deleted.",
+    )
 
     class Input:
         invitation_id = graphene.ID(required=True)
@@ -297,27 +188,21 @@ class ProfileCancelInvitation(RelayMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input) -> "ProfileCancelInvitation":
-        invitation_id = input.get("invitation_id")
-
-        invitation = _get_invitation_by_id(invitation_id)
+        invitation = _get_invitation_by_id(input.get("invitation_id"))
 
         if not info.context.user.has_perm(
             f"{profile_user_role_app_label}.delete_profileuserrole", invitation.profile
         ):
-            raise GraphQLError(
-                str(_("You don't have permission to perform this action")),
-                extensions={"code": "permission_required"},
-            )
+            raise _permission_error()
 
-        if invitation.status != ProfileUserRole.ProfileRoleStatus.PENDING:
-            raise GraphQLError(
-                str(_("Can only cancel pending invitations")),
-                extensions={"code": "invalid_status"},
-            )
+        try:
+            invitation = invitation_service.cancel_invitation(invitation, by=info.context.user)
+        except ProfileMembershipError as error:
+            raise as_graphql_error(error)
 
-        invitation.delete()
-
-        return ProfileCancelInvitation(success=True)
+        return ProfileCancelInvitation(
+            success=True, profile_user_role=invitation if invitation.pk else None
+        )
 
 
 class ProfileResendInvitation(RelayMutation):
@@ -330,37 +215,18 @@ class ProfileResendInvitation(RelayMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input) -> "ProfileResendInvitation":
-        from baseapp_profiles.emails import send_invitation_email
-
-        invitation_id = input.get("invitation_id")
-
-        invitation = _get_invitation_by_id(invitation_id)
+        invitation = _get_invitation_by_id(input.get("invitation_id"))
 
         if not info.context.user.has_perm(
             f"{profile_user_role_app_label}.add_profileuserrole", invitation.profile
         ):
-            raise GraphQLError(
-                str(_("You don't have permission to perform this action")),
-                extensions={"code": "permission_required"},
-            )
+            raise _permission_error()
 
-        if invitation.status not in [
-            ProfileUserRole.ProfileRoleStatus.EXPIRED,
-            ProfileUserRole.ProfileRoleStatus.PENDING,
-        ]:
-            raise GraphQLError(
-                str(_("Can only resend expired or pending invitations")),
-                extensions={"code": "invalid_status"},
-            )
-
-        _reset_invitation_for_send(invitation)
-        invitation.save()
-
-        email_sent = True
         try:
-            send_invitation_email(invitation, info.context.user)
-        except Exception:
-            logger.exception("Failed to resend invitation email to %s", invitation.invited_email)
-            email_sent = False
+            result = invitation_service.resend_invitation(invitation, by=info.context.user)
+        except ProfileMembershipError as error:
+            raise as_graphql_error(error)
 
-        return ProfileResendInvitation(profile_user_role=invitation, email_sent=email_sent)
+        return ProfileResendInvitation(
+            profile_user_role=result.invitations[0], email_sent=result.emails_sent > 0
+        )

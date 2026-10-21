@@ -25,6 +25,8 @@ from baseapp_profiles.managers import ProfileManager
 from baseapp_profiles.utils import pad_handle, to_ascii_handle
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from baseapp_core.graphql import DjangoObjectType
 
 logger = logging.getLogger(__name__)
@@ -57,12 +59,17 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
     biography = models.TextField(_("biography"), blank=True, null=True)
     status = models.IntegerField(choices=ProfileStatus.choices, default=ProfileStatus.PUBLIC)
 
+    # Nullable so a profile can exist without an owner — e.g. an organization created by an
+    # importer or admin action and run entirely by its ADMIN members. Ownership checks go
+    # through `is_owned_by()` so an ownerless profile never matches an anonymous user.
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="profiles_owner",
         on_delete=models.CASCADE,
         verbose_name=_("owner"),
         db_constraint=False,
+        null=True,
+        blank=True,
     )
     target_content_type = models.ForeignKey(
         ContentType,
@@ -90,6 +97,15 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
 
     def __str__(self) -> str:
         return self.name or str(self.pk)
+
+    def is_owned_by(self, user) -> bool:
+        """
+        Whether `user` owns this profile.
+
+        Use this instead of comparing `owner_id` with `user.id`: an anonymous user's id is
+        `None`, and so is an ownerless profile's `owner_id`.
+        """
+        return self.owner_id is not None and self.owner_id == getattr(user, "id", None)
 
     def user_has_perm(self, user, perm=None) -> bool:
         if not perm:
@@ -151,6 +167,8 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
         return None
 
     def check_if_member(self, user) -> bool:
+        if not getattr(user, "is_authenticated", False):
+            return False
         return (
             self.__class__.objects.filter(pk=self.pk)
             .filter(models.Q(members__user=user) | models.Q(owner=user))
@@ -474,6 +492,41 @@ def add_profilable_triggers(sender, **kwargs) -> None:
             )
 
 
+class ProfileUserRoleQuerySet(models.QuerySet):
+    """Querysets over profile memberships and invitations."""
+
+    def open(self) -> "ProfileUserRoleQuerySet":
+        """Rows that still mean something today: active/inactive members and pending invites."""
+        return self.filter(status__in=self.model.open_statuses())
+
+    def closed(self) -> "ProfileUserRoleQuerySet":
+        """Invitation history: declined, expired and cancelled rows."""
+        return self.exclude(status__in=self.model.open_statuses())
+
+    def memberships(self) -> "ProfileUserRoleQuerySet":
+        """Members of a profile, active or deactivated (pending invitations excluded)."""
+        return self.filter(
+            user__isnull=False,
+            status__in=[
+                self.model.ProfileRoleStatus.ACTIVE,
+                self.model.ProfileRoleStatus.INACTIVE,
+            ],
+        )
+
+    def invitations(self) -> "ProfileUserRoleQuerySet":
+        """Rows that started as an email invitation, whatever happened to them since."""
+        return self.filter(invited_email__isnull=False).exclude(invited_email="")
+
+    def overdue(self, now: "datetime | None" = None) -> "ProfileUserRoleQuerySet":
+        """Pending invitations whose expiry date has passed."""
+        from django.utils import timezone
+
+        return self.filter(
+            status=self.model.ProfileRoleStatus.PENDING,
+            invitation_expires_at__lt=now or timezone.now(),
+        )
+
+
 class AbstractProfileUserRole(DocumentIdMixin, RelayModel, models.Model):
     class ProfileRoles(models.IntegerChoices):
         ADMIN = 1, _("admin")
@@ -489,6 +542,7 @@ class AbstractProfileUserRole(DocumentIdMixin, RelayModel, models.Model):
         INACTIVE = 3, _("inactive")
         DECLINED = 4, _("declined")
         EXPIRED = 5, _("expired")
+        CANCELLED = 6, _("cancelled")
 
         @property
         def description(self) -> str:
@@ -546,17 +600,88 @@ class AbstractProfileUserRole(DocumentIdMixin, RelayModel, models.Model):
         verbose_name=_("responded at"),
         help_text=_("When the user accepted or declined"),
     )
+    invited_first_name = models.CharField(
+        _("invited first name"), max_length=150, blank=True, default=""
+    )
+    invited_last_name = models.CharField(
+        _("invited last name"), max_length=150, blank=True, default=""
+    )
+    message = models.TextField(
+        _("message"),
+        blank=True,
+        default="",
+        help_text=_("Personal note from the inviter, included in the invitation email"),
+    )
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="profile_invitations_sent",
+        on_delete=models.SET_NULL,
+        verbose_name=_("invited by"),
+        null=True,
+        blank=True,
+    )
+    sent_count = models.PositiveIntegerField(
+        _("sent count"),
+        default=0,
+        help_text=_("How many times the invitation email has been sent"),
+    )
+    last_sent_at = models.DateTimeField(
+        _("last sent at"),
+        null=True,
+        blank=True,
+        help_text=_("When the invitation email was last sent"),
+    )
+    deactivated_at = models.DateTimeField(
+        _("deactivated at"),
+        null=True,
+        blank=True,
+        help_text=_("When the membership was deactivated or the invitation cancelled"),
+    )
+    deactivated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="profile_memberships_deactivated",
+        on_delete=models.SET_NULL,
+        verbose_name=_("deactivated by"),
+        null=True,
+        blank=True,
+    )
+
+    objects = ProfileUserRoleQuerySet.as_manager()
 
     class Meta:
         abstract = True
-        unique_together = [("user", "profile")]
         swappable = swapper.swappable_setting("baseapp_profiles", "ProfileUserRole")
+        # Uniqueness only holds among *open* rows (see `open_statuses()`), so a declined,
+        # expired or cancelled invitation can stay on record next to a newer one for the
+        # same person. Statuses are spelled out as numbers: the constraint must not change
+        # if a project overrides the status choices.
         constraints = [
+            models.UniqueConstraint(
+                fields=["user", "profile"],
+                name="unique_open_profile_user",
+                condition=models.Q(status__in=[1, 2, 3]),
+            ),
             models.UniqueConstraint(
                 fields=["profile", "invited_email"],
                 name="unique_profile_invited_email",
-                condition=models.Q(invited_email__isnull=False) & ~models.Q(invited_email=""),
+                condition=models.Q(invited_email__isnull=False)
+                & ~models.Q(invited_email="")
+                & models.Q(status__in=[1, 2, 3]),
             ),
+        ]
+
+    @classmethod
+    def open_statuses(cls) -> list[int]:
+        """
+        Statuses of rows that still stand: members (ACTIVE, INACTIVE) and PENDING invitations.
+
+        A person has at most one open row per profile. DECLINED, EXPIRED and CANCELLED rows
+        are history and may repeat.
+        """
+        return [
+            cls.ProfileRoleStatus.ACTIVE,
+            cls.ProfileRoleStatus.PENDING,
+            cls.ProfileRoleStatus.INACTIVE,
         ]
 
     @classmethod
@@ -593,6 +718,27 @@ class AbstractProfileUserRole(DocumentIdMixin, RelayModel, models.Model):
         from .graphql.object_types import ProfileUserRoleObjectType
 
         return ProfileUserRoleObjectType
+
+
+@receiver(class_prepared)
+def sync_profile_role_choices(sender, **kwargs) -> None:
+    """
+    Point the `role` field of a concrete ProfileUserRole at the model's own `ProfileRoles`.
+
+    A project extends the roles by redeclaring the nested `ProfileRoles` class on its
+    concrete model. The field itself is copied from the abstract base, where its choices
+    were fixed to the default ADMIN/MANAGER, so without this the new roles would be
+    refused by `full_clean()`, missing from the admin and shown as raw numbers.
+    """
+    if not issubclass(sender, AbstractProfileUserRole):
+        return
+    if sender._meta.abstract or sender._meta.proxy:
+        return
+
+    role_field = sender._meta.get_field("role")
+    choices = list(sender.ProfileRoles.choices)
+    if list(role_field.choices or []) != choices:
+        role_field.choices = choices
 
 
 def update_or_create_profile(instance, owner, profile_name) -> None:
