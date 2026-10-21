@@ -57,12 +57,17 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
     biography = models.TextField(_("biography"), blank=True, null=True)
     status = models.IntegerField(choices=ProfileStatus.choices, default=ProfileStatus.PUBLIC)
 
+    # Nullable so a profile can exist without an owner — e.g. an organization created by an
+    # importer or admin action and run entirely by its ADMIN members. Ownership checks go
+    # through `is_owned_by()` so an ownerless profile never matches an anonymous user.
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="profiles_owner",
         on_delete=models.CASCADE,
         verbose_name=_("owner"),
         db_constraint=False,
+        null=True,
+        blank=True,
     )
     target_content_type = models.ForeignKey(
         ContentType,
@@ -90,6 +95,15 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
 
     def __str__(self) -> str:
         return self.name or str(self.pk)
+
+    def is_owned_by(self, user) -> bool:
+        """
+        Whether `user` owns this profile.
+
+        Use this instead of comparing `owner_id` with `user.id`: an anonymous user's id is
+        `None`, and so is an ownerless profile's `owner_id`.
+        """
+        return self.owner_id is not None and self.owner_id == getattr(user, "id", None)
 
     def user_has_perm(self, user, perm=None) -> bool:
         if not perm:
@@ -151,6 +165,8 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
         return None
 
     def check_if_member(self, user) -> bool:
+        if not getattr(user, "is_authenticated", False):
+            return False
         return (
             self.__class__.objects.filter(pk=self.pk)
             .filter(models.Q(members__user=user) | models.Q(owner=user))

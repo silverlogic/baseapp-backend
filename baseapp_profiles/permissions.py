@@ -58,12 +58,12 @@ class ProfilesPermissionsBackend(BaseBackend):
                 if obj.status == Profile.ProfileStatus.PUBLIC:
                     return True
                 else:
-                    return obj.owner_id == user_obj.id or is_active_member(obj, user_obj)
+                    return obj.is_owned_by(user_obj) or is_active_member(obj, user_obj)
 
         if perm in [f"{profile_app_label}.change_profile", f"{profile_app_label}.delete_profile"]:
             if user_obj.is_authenticated and isinstance(obj, Profile):
                 # Owner can change and delete their own profiles
-                if obj.owner_id == user_obj.id:
+                if obj.is_owned_by(user_obj):
                     return True
 
                 # Anyone with permission can change and delete any profile
@@ -71,16 +71,16 @@ class ProfilesPermissionsBackend(BaseBackend):
 
         if perm == f"{profile_app_label}.use_profile" and obj:
             if isinstance(obj, Profile):
-                return obj.owner_id == user_obj.id or is_active_member(obj, user_obj)
+                return obj.is_owned_by(user_obj) or is_active_member(obj, user_obj)
 
         if perm == f"{profile_app_label}.delete_profile" and obj:
             if isinstance(obj, Profile):
-                return obj.owner_id == user_obj.id
+                return obj.is_owned_by(user_obj)
 
         if perm == f"{profile_app_label}.view_profile_members" and obj:
             if isinstance(obj, Profile):
                 return (
-                    obj.owner_id == user_obj.id
+                    obj.is_owned_by(user_obj)
                     or user_obj.is_superuser
                     or is_active_member(obj, user_obj)
                 )
@@ -95,6 +95,6 @@ class ProfilesPermissionsBackend(BaseBackend):
             and obj
         ):
             if isinstance(obj, Profile):
-                return obj.owner_id == user_obj.id or is_active_member(
+                return obj.is_owned_by(user_obj) or is_active_member(
                     obj, user_obj, role=ProfileUserRole.ProfileRoles.ADMIN
                 )
