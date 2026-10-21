@@ -11,6 +11,7 @@ Reusable Django app for PDF generation and rendering. It drives a headless **Goo
 - Render HTML strings to PDF bytes
 - Render Django or Jinja2 templates to PDF
 - Configurable Chrome binary, timeout and arguments
+- Restricted mode for HTML that is not fully trusted
 - Optional DRF renderer for `application/pdf` responses
 - Management commands for PDF generation
 - Example template with invoice-like formatting
@@ -55,6 +56,7 @@ All optional; they are read on every render, so `override_settings` works in tes
 | `BASEAPP_PDF_TIMEOUT` | `60` | Seconds a Chrome call may take before it is killed and `BaseAppBackendPDFRenderToPDFException` is raised. `None` waits forever. |
 | `BASEAPP_PDF_EXTRA_ARGS` | `()` | Chrome arguments added to every render, as a list, e.g. `["--font-render-hinting=none"]`. A string raises `ImproperlyConfigured`. |
 | `BASEAPP_PDF_NO_SANDBOX` | `True` | Pass `--no-sandbox`, which Chrome needs when it runs as root in a container. Set `False` where Chrome's sandbox can work. |
+| `BASEAPP_PDF_RESTRICTED` | `False` | Default for the `restricted` argument of the HTML and template helpers. See [Security](#security). |
 
 ## How to use
 
@@ -94,7 +96,7 @@ with render_template_to_pdf(source="pdfs/my-template.html", context=context) as 
     pdf_bytes = pdf_file.read_bytes()
 ```
 
-Every helper also takes `extra_args`, Chrome arguments for that one render (added after `BASEAPP_PDF_EXTRA_ARGS`), and `render_template_to_pdf` takes `base_url` like the bytes helpers. `render_template_to_html(source, context)` returns the rendered HTML without printing it, which is handy for previews and tests.
+Every helper also takes `extra_args`, Chrome arguments for that one render (added after `BASEAPP_PDF_EXTRA_ARGS`), and `render_template_to_pdf` takes `base_url` and `restricted` like the bytes helpers. `render_template_to_html(source, context)` returns the rendered HTML without printing it, which is handy for previews and tests.
 
 Each render runs in its own private temporary directory, which holds the HTML, the PDF, Chrome's profile (`--user-data-dir`) and Chrome's scratch files, and which is removed when the render ends, so concurrent renders (threads, Celery workers) never touch each other's files. Chrome runs in a process session of its own, and a render that times out kills the whole session, helper processes included, before the directory is removed. Removal is retried briefly; a directory that still can't be removed is logged as a warning (logger `baseapp_pdf.utils`) and left in the system temp folder rather than raised, so it never hides the render's own error.
 
@@ -108,6 +110,30 @@ if chrome_available():
 ```
 
 Output is validated before being yielded: an empty file, or one whose text contains Chrome render errors (`ERR_FILE_NOT_FOUND` for a missing local file, `DNS_PROBE_FINISHED_NXDOMAIN` for an unresolvable URL), raises `BaseAppBackendPDFRenderToPDFException`. A render that exceeds `BASEAPP_PDF_TIMEOUT`, or that Chrome exits non-zero on, raises the same exception. All exceptions derive from `BaseAppBackendPDFException` (`baseapp_pdf.exceptions`).
+
+### Security
+
+The HTML and template helpers write the HTML to a file and have Chrome print that `file://` page, with JavaScript enabled and the same file system and network access as the process that renders. Whatever the HTML references, Chrome loads, so the HTML can put into the PDF:
+
+- **any local file the process can read**, for example `<iframe src="file:///etc/passwd">`, or `file:///proc/self/environ`, which holds environment variables such as `SECRET_KEY` and database credentials;
+- **any URL the process can reach**, including internal services and cloud metadata endpoints (server-side request forgery).
+
+A PDF that is handed back to a user hands them that content. So:
+
+- **Only render HTML you trust.** Keep template autoescaping on, and never mark user input safe (`|safe`, `mark_safe`, `Markup`).
+- **Sanitise user rich text** before it goes into the HTML, with an allowlist sanitiser (for example [nh3](https://pypi.org/project/nh3/)) that keeps only formatting tags, drops `iframe`, `object`, `embed`, `script`, `meta`, `link` and `style`, and allows only `http(s)` and `data:` URLs.
+- **Pass `restricted=True`** (or set `BASEAPP_PDF_RESTRICTED = True` to make it the default) when the HTML includes content you don't fully control. The document then gets a Content-Security-Policy that lets it load only inline styles, `data:` URLs and the origin of `base_url`, and run no scripts; no frames, objects, local files or other hosts. Its own `http-equiv` attributes are renamed to `data-blocked-http-equiv` so that a `<meta http-equiv="refresh">` can't navigate away (the literal text `http-equiv` anywhere in the document is renamed too). A restricted render only accepts an `http(s)` `base_url`, because a policy can't limit a `file:` URL to one folder: serve local assets over http(s) or inline them as `data:` URLs.
+
+```python
+pdf_bytes = render_template_to_pdf_bytes(
+    "pdfs/certificate.html",
+    {"note": user_supplied_text},
+    base_url="https://cdn.example.com/static/",
+    restricted=True,
+)
+```
+
+Restricted mode is a second line of defence, not a replacement for sanitising: templates that rely on JavaScript (charts, for example) don't render in it, and resource hints such as `<link rel="preconnect">` can still make Chrome look up and connect to a host. `render_to_pdf(source=...)` prints whatever the source serves, so never pass it a URL or path that comes from a user. Where you can, render in a worker that has no secrets in its environment and limited network access.
 
 ### In a DRF view
 

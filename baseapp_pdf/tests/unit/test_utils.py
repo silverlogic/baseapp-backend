@@ -10,11 +10,11 @@ from django.core.exceptions import ImproperlyConfigured
 from django.template import Template, engines
 from django.test import override_settings
 
+from baseapp_pdf import utils
 from baseapp_pdf.exceptions import (
     BaseAppBackendPDFChromeNotInstalledException,
     BaseAppBackendPDFRenderToPDFException,
 )
-from baseapp_pdf import utils
 from baseapp_pdf.tests.helpers import FakeChrome, option
 from baseapp_pdf.utils import (
     chrome_available,
@@ -290,7 +290,7 @@ class TestRenderHtmlToPdf:
             ),
             (
                 '\ufeff\n<!-- generated -->\n<!doctype html>\n<html lang="fr"></html>',
-                '\ufeff\n<!-- generated -->\n<!doctype html>\n'
+                "\ufeff\n<!-- generated -->\n<!doctype html>\n"
                 '<base href="https://cdn.example.com/a/"><html lang="fr"></html>',
             ),
             (
@@ -326,6 +326,86 @@ class TestRenderHtmlToPdf:
 
         html = fake_chrome.renders[0]["html"].decode("utf-8-sig")
         assert html.startswith('<base href="https://example.com/&quot;&gt;&lt;script&gt;">')
+
+
+CSP_NONE = (
+    '<meta http-equiv="Content-Security-Policy" content="default-src &#x27;none&#x27;; '
+    "style-src &#x27;unsafe-inline&#x27; data:; img-src data:; font-src data:; "
+    'form-action &#x27;none&#x27;">'
+)
+
+
+class TestRestricted:
+    def test_not_restricted_by_default(self, fake_chrome) -> None:
+        render_html_to_pdf('<meta http-equiv="refresh" content="0;url=x"><p>hi</p>')
+
+        assert fake_chrome.renders[0]["html"].decode("utf-8-sig") == (
+            '<meta http-equiv="refresh" content="0;url=x"><p>hi</p>'
+        )
+
+    def test_policy_comes_first(self, fake_chrome) -> None:
+        render_html_to_pdf("<!DOCTYPE html><html><body><p>hi</p></body></html>", restricted=True)
+
+        assert fake_chrome.renders[0]["html"].decode("utf-8-sig") == (
+            f"<!DOCTYPE html>{CSP_NONE}<html><body><p>hi</p></body></html>"
+        )
+
+    def test_http_equiv_is_disabled(self, fake_chrome) -> None:
+        # The policy can't stop a refresh from navigating to a local file or another host.
+        render_html_to_pdf(
+            '<p>x</p><META HTTP-EQUIV="refresh" content="0;url=file:///etc/passwd">',
+            restricted=True,
+        )
+
+        assert fake_chrome.renders[0]["html"].decode("utf-8-sig") == (
+            f'{CSP_NONE}<p>x</p><META data-blocked-http-equiv="refresh" '
+            'content="0;url=file:///etc/passwd">'
+        )
+
+    @pytest.mark.parametrize(
+        "base_url, origin",
+        [
+            ("https://cdn.example.com/static/", "https://cdn.example.com"),
+            ("http://user:secret@Example.com:8080/a/", "http://example.com:8080"),
+            ("https://[::1]:8443/", "https://[::1]:8443"),
+        ],
+    )
+    def test_base_url_origin_is_allowed(self, fake_chrome, base_url: str, origin: str) -> None:
+        render_html_to_pdf("<p>x</p>", base_url=base_url, restricted=True)
+
+        html = fake_chrome.renders[0]["html"].decode("utf-8-sig")
+        assert f"img-src data: {origin}; font-src data: {origin};" in html
+        assert html.endswith(f'<base href="{base_url}"><p>x</p>')
+
+    @pytest.mark.parametrize(
+        "base_url", ["file:///app/static/", "/static/", "ftp://example.com/", "https://a;b/"]
+    )
+    def test_other_base_urls_are_refused(self, fake_chrome, base_url: str) -> None:
+        with pytest.raises(ValueError):
+            render_html_to_pdf("<p>x</p>", base_url=base_url, restricted=True)
+
+        assert fake_chrome.renders == []
+
+    @override_settings(BASEAPP_PDF_RESTRICTED=True)
+    def test_setting(self, fake_chrome) -> None:
+        render_html_to_pdf("<p>x</p>")
+        render_html_to_pdf("<p>x</p>", restricted=False)
+
+        first, second = (render["html"].decode("utf-8-sig") for render in fake_chrome.renders)
+        assert first == f"{CSP_NONE}<p>x</p>"
+        assert second == "<p>x</p>"
+
+    def test_templates(self, fake_chrome) -> None:
+        render_template_to_pdf_bytes(
+            Template("<p>{{ name }}</p>"), {"name": "Ada"}, restricted=True
+        )
+        with render_template_to_pdf(source=Template("<p>x</p>"), restricted=True):
+            pass
+
+        assert [render["html"].decode("utf-8-sig") for render in fake_chrome.renders] == [
+            f"{CSP_NONE}<p>Ada</p>",
+            f"{CSP_NONE}<p>x</p>",
+        ]
 
 
 class TestTemplates:

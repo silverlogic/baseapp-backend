@@ -88,6 +88,25 @@ class TestUtils:
 
         assert leftover_work_dirs() == before
 
+    def test_restricted_render_cant_show_local_files(self, tmp_path: Path) -> None:
+        secret = tmp_path / "secret.txt"
+        secret.write_text("TOP SECRET")
+        html = (
+            f'<iframe src="{secret.as_uri()}"></iframe>'
+            f'<object data="{secret.as_uri()}" type="text/plain"></object>'
+            "<script>document.write('SCRIPT RAN')</script>"
+            "<style>p::after { content: ' and styled'; }</style><p>Shown</p>"
+        )
+
+        # Unrestricted, the document can show the file (which is why `restricted` exists),
+        # so this render proves the restricted one below would see it too.
+        assert "TOP SECRET" in pdf_text(render_html_to_pdf(html))
+
+        text = pdf_text(render_html_to_pdf(html, restricted=True))
+        assert "TOP SECRET" not in text
+        assert "SCRIPT RAN" not in text
+        assert "Shown and styled" in text
+
     def test_concurrent_renders(self) -> None:
         documents = [f"Document number {i}" for i in range(4)]
 
