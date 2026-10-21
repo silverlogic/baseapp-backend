@@ -1,10 +1,14 @@
-Hi there,
+Hi {{ invitee_name or "there" }},
 
 {{ inviter_name }} has invited you to join {{ profile_name }} as a {{ role }}.
+{% if message %}
+
+{{ message }}
+{% endif %}
 
 Click the link below to accept:
 {{ accept_url }}
 
-This invitation will expire on {{ expiration_date }}.
+{% if expiration_date %}This invitation will expire on {{ expiration_date }}.{% endif %}
 
 If you didn't expect this invitation, you can safely ignore this email.
