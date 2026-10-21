@@ -9,3 +9,7 @@ class PackageConfig(BaseAppConfig):
     label = "baseapp_email_log"
     verbose_name = _("BaseApp Email Log")
     default_auto_field = "django.db.models.BigAutoField"
+
+    def ready(self) -> None:
+        super().ready()
+        from . import checks  # noqa: F401  (registers the attachment storage check)

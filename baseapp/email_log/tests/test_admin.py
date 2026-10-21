@@ -76,6 +76,7 @@ def test_change_view_shows_djmail_fields_read_only(superuser_client: Client) -> 
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in content
     assert "<script>alert(1)</script>" not in content
     assert log.message_id in content
+    assert "Failed attempts" in content
     # Nothing is editable.
     assert response.context["adminform"].form.fields == {}
 

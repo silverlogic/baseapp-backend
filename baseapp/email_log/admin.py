@@ -140,9 +140,9 @@ class EmailLogAdmin(ModelAdmin):
     def error_display(self, obj: EmailLog) -> str:
         return _pre(obj.error)
 
-    @admin.display(description=_("retries"))
+    @admin.display(description=_("failed attempts"))
     def retry_count(self, obj: EmailLog) -> str:
-        # djmail starts at -1: the first failure is attempt 0.
+        # djmail starts at -1 and counts the first failure as 0.
         return str(obj.message.retry_count + 1) if obj.message_id else "-"
 
     @admin.action(description=_("Resend the selected emails"), permissions=["change"])

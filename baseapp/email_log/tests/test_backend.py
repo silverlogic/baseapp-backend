@@ -214,3 +214,36 @@ def test_low_priority_messages_wait_for_the_periodic_task() -> None:
     log.refresh_from_db()
     assert log.message.status == Message.STATUS_PENDING
     assert log.status == "queued"
+
+
+def test_to_falls_back_to_the_rows_recipients() -> None:
+    email = make_email(to=("a@example.com", "b@example.com"))
+    email.send()
+    log = get_email_log(email)
+    assert log.to == "a@example.com,b@example.com"
+
+    log.message.delete()
+    log.refresh_from_db()
+    assert log.to == "a@example.com,b@example.com"
+    assert str(log) == "Email to a@example.com,b@example.com: -"
+
+
+def test_str_of_a_bcc_only_email_names_its_recipients() -> None:
+    email = make_email(to=(), bcc=["hidden@example.com"])
+    email.send()
+
+    assert get_email_log(email).to == ""
+    assert str(get_email_log(email)) == "Email to hidden@example.com: Your invoice"
+
+
+def test_context_values_json_cannot_hold_are_stored_as_strings_with_a_warning(caplog) -> None:
+    class Invoice:
+        def __str__(self) -> str:
+            return "Invoice 7"
+
+    email = attach_log_metadata(make_email(), context={"invoice": Invoice(), "number": 7})
+    with caplog.at_level("WARNING", logger="baseapp.email_log.services"):
+        email.send()
+
+    assert get_email_log(email).context == {"invoice": "Invoice 7", "number": 7}
+    assert "holds a Invoice" in caplog.text

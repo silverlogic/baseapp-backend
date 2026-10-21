@@ -75,12 +75,20 @@ def get_email_log(email: EmailMessage) -> Optional["AbstractEmailLog"]:
 
 
 class _LenientJSONEncoder(DjangoJSONEncoder):
-    """Stores anything JSON cannot represent (model instances, ...) as its ``str()``."""
+    """
+    Stores anything JSON cannot represent (model instances, ...) as its ``str()``, with a
+    warning: a resend renderer gets that string back, not the object.
+    """
 
     def default(self, o: Any) -> Any:
         try:
             return super().default(o)
         except TypeError:
+            logger.warning(
+                "Email log context holds a %s, which is stored as its str(); pass JSON "
+                "values (a pk, a dict) to re-render from it.",
+                type(o).__name__,
+            )
             return force_str(o)
 
 

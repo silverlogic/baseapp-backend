@@ -58,7 +58,7 @@ from their djmail message, other channels from their own `delivery_*` columns:
 |---|---|---|
 | `subject`, `body_html`, `from_email` | djmail message | empty |
 | `body_text` | djmail message | `delivery_body_text` |
-| `to` | djmail `to_email` (comma separated) | `delivery_to` |
+| `to` | djmail `to_email` (comma separated), or the row's To list once the message is gone | `delivery_to` |
 | `status` | djmail status, mapped (see below) | `delivery_status` |
 | `sent_at` | djmail `sent_at` | `delivered_at` |
 | `error` | djmail `exception` (the traceback) | `delivery_error` |
@@ -108,7 +108,8 @@ log = get_email_log(email)  # the row written for it
 ```
 
 `context` is stored as JSON; values JSON cannot hold (model instances, ...) are stored as
-their `str()`. Keep secrets such as one-time tokens out of it, or purge rows regularly (see
+their `str()`, with a warning logged, so a renderer re-rendering from it gets the string:
+pass primary keys or plain dicts instead. Keep secrets such as one-time tokens out of it, or purge rows regularly (see
 below): the context is kept so the message can be re-rendered.
 
 ## Sending once: idempotency keys
@@ -167,8 +168,10 @@ BASEAPP_EMAIL_LOG_ATTACHMENT_STORAGE = "private"
 
 Each entry then has a `"path"` in that storage; `attachments.read_stored_attachment(entry)`
 returns the content. Attachments are often invoices and other personal documents: use a
-private storage. A file that fails to save is logged and described without a path; it never
-stops the email.
+private storage (the `baseapp_email_log.W001` system check warns when storing is on and no
+storage is set). A file that fails to save is logged and described without a path; it never
+stops the email. Files are saved when the message is written, so they stay behind if the
+caller's transaction then rolls back.
 
 ## Resending
 
@@ -303,6 +306,6 @@ columns, set them on `get_email_log(email)` after sending, or subclass the backe
 ## Admin
 
 `EmailLog` is registered read-only: djmail's fields (subject, from, to, status, sent date,
-error, retries, bodies) are shown next to the log's own, HTML bodies as escaped source.
+error, failed attempts, bodies) are shown next to the log's own, HTML bodies as escaped source.
 Filter by status, channel, category and date; search by subject, any recipient (To, cc,
 bcc, channel address), related label or idempotency key.

@@ -155,7 +155,8 @@ class AbstractEmailLog(TimeStampedModel):
         ]
 
     def __str__(self) -> str:
-        return f"{self.get_channel_display()} to {self.to or '-'}: {self.subject or '-'}"
+        to = self.to or ",".join([*self.cc, *self.bcc]) or "-"
+        return f"{self.get_channel_display()} to {to}: {self.subject or '-'}"
 
     @property
     def subject(self) -> str:
@@ -175,8 +176,13 @@ class AbstractEmailLog(TimeStampedModel):
 
     @property
     def to(self) -> str:
-        """The To addresses as djmail stores them (comma separated), or the channel's address."""
-        return self.message.to_email if self.message_id else self.delivery_to
+        """
+        The To addresses comma separated, as djmail stores them (from the row's own list once
+        the djmail message is gone), or the channel's address for other channels.
+        """
+        if self.channel != self.Channel.EMAIL:
+            return self.delivery_to
+        return (self.message.to_email if self.message_id else "") or ",".join(self.recipients)
 
     @property
     def status(self) -> Optional[str]:
