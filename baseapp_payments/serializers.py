@@ -9,11 +9,10 @@ from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from baseapp_core.graphql import get_pk_from_relay_id
-
 from .utils import (
     STRIPE_LIVE_SUBSCRIPTION_STATUSES,
     StripeService,
+    get_entity_pk_from_relay_id,
     stripe_field,
     stripe_id,
 )
@@ -135,9 +134,7 @@ class StripeSubscriptionSerializer(serializers.Serializer):
         if not entity_id:
             raise serializers.ValidationError({"entity_id": [_("This field is required.")]})
         if isinstance(entity_id, str):
-            # "" is what get_pk_from_relay_id answers for a non-relay id; querying on
-            # it raises ValueError from the pk field rather than returning nothing.
-            entity_id = get_pk_from_relay_id(entity_id) or None
+            entity_id = get_entity_pk_from_relay_id(entity_id)
         customer = (
             Customer.objects.filter(entity_id=entity_id).first() if entity_id is not None else None
         )
@@ -443,10 +440,12 @@ class StripeCustomerSerializer(serializers.Serializer):
         entity_id = data.get("entity_id")
         if entity_id:
             if isinstance(entity_id, str):
-                entity_id = get_pk_from_relay_id(entity_id)
+                entity_id = get_entity_pk_from_relay_id(entity_id)
             entity_model_name = config.STRIPE_CUSTOMER_ENTITY_MODEL
             customer_model = apps.get_model(entity_model_name)
-            entity = customer_model.objects.get(id=entity_id)
+            entity = customer_model.objects.filter(pk=entity_id).first() if entity_id else None
+            if entity is None:
+                raise serializers.ValidationError({"entity_id": [_("Entity not found.")]})
             if entity_model_name == "profiles.Profile":
                 if not entity.target.email:
                     raise serializers.ValidationError(
