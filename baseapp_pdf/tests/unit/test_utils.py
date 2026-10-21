@@ -216,12 +216,12 @@ class TestRenderHtmlToPdf:
         [
             (
                 "<html><head><title>T</title></head><body></body></html>",
-                '<html><head><base href="https://cdn.example.com/a/"><title>T</title></head>'
+                '<base href="https://cdn.example.com/a/"><html><head><title>T</title></head>'
                 "<body></body></html>",
             ),
             (
                 '<HTML><HEAD lang="en"><base href="/old/"></HEAD></HTML>',
-                '<HTML><HEAD lang="en"><base href="https://cdn.example.com/a/">'
+                '<base href="https://cdn.example.com/a/"><HTML><HEAD lang="en">'
                 '<base href="/old/"></HEAD></HTML>',
             ),
             (
@@ -231,6 +231,38 @@ class TestRenderHtmlToPdf:
             (
                 "<header>not the head</header>",
                 '<base href="https://cdn.example.com/a/"><header>not the head</header>',
+            ),
+            # Anything before the doctype would put the page in quirks mode.
+            (
+                "<!DOCTYPE html><html><body><p>x</p></body></html>",
+                '<!DOCTYPE html><base href="https://cdn.example.com/a/"><html><body><p>x</p>'
+                "</body></html>",
+            ),
+            (
+                '\ufeff\n<!-- generated -->\n<!doctype html>\n<html lang="fr"></html>',
+                '\ufeff\n<!-- generated -->\n<!doctype html>\n'
+                '<base href="https://cdn.example.com/a/"><html lang="fr"></html>',
+            ),
+            (
+                '<?xml version="1.0"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN">'
+                "<p>x</p>",
+                '<?xml version="1.0"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN">'
+                '<base href="https://cdn.example.com/a/"><p>x</p>',
+            ),
+            # A `<head>` in a comment or a script is not the document's head.
+            (
+                "<!-- <head> --><p>x</p><script>'<head>'</script>",
+                '<!-- <head> --><base href="https://cdn.example.com/a/"><p>x</p>'
+                "<script>'<head>'</script>",
+            ),
+            # `<!-->` is a whole comment, so what follows it is already the document.
+            (
+                "<!--><p>x</p>-->",
+                '<!--><base href="https://cdn.example.com/a/"><p>x</p>-->',
+            ),
+            (
+                "<!---><p>x</p>-->",
+                '<!---><base href="https://cdn.example.com/a/"><p>x</p>-->',
             ),
         ],
     )
@@ -291,7 +323,7 @@ class TestTemplates:
             pass
 
         assert fake_chrome.renders[0]["html"].decode("utf-8-sig") == (
-            '<head><base href="file:///static/"></head><p>Ada</p>'
+            '<base href="file:///static/"><head></head><p>Ada</p>'
         )
 
     def test_render_template_to_pdf_bytes(self, fake_chrome) -> None:

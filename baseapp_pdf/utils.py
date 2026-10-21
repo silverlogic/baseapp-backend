@@ -218,18 +218,34 @@ def render_to_pdf(
         yield _print_to_pdf(source, work_dir, extra_args)
 
 
-_HEAD_OPEN_TAG = re.compile(r"<head(\s[^>]*)?>", re.IGNORECASE)
+# What may come before the first element of a document without changing how it is parsed:
+# a byte order mark, whitespace, comments (including the `<!-->` and `<!--->` forms, which
+# end at once), the doctype and other `<!...>` / `<?...>` bogus comments.
+_DOCUMENT_PROLOGUE = re.compile(
+    r"\ufeff?(?:[\t\n\f\r ]|<!--(?:-?>|.*?--!?>)|<!(?!--)[^>]*>|<\?[^>]*>)*", re.DOTALL
+)
+
+
+def _insert_in_head(html: str, markup: str) -> str:
+    """
+    Insert `markup` so that it is the first thing in the document's `<head>`.
+
+    It goes after the prologue and before everything else, `<html>` and `<head>` included:
+    anything before the doctype would put the page in quirks mode. The HTML parser opens
+    `<html>` and `<head>` itself for an element found there, merges the attributes of the
+    document's own `<html>` tag into it and ignores its `<head>` tag, so the result is the
+    same as inserting inside `<head>`, without having to find that tag in the text, where it
+    can also appear in a comment or a script.
+    """
+    end = _DOCUMENT_PROLOGUE.match(html).end()
+    return html[:end] + markup + html[end:]
 
 
 def _with_base_url(html: str, base_url: str | None) -> str:
     """Put `<base href>` first in `<head>`, so relative URLs resolve against `base_url`."""
     if not base_url:
         return html
-    base_tag = f'<base href="{escape(base_url, quote=True)}">'
-    match = _HEAD_OPEN_TAG.search(html)
-    if match is None:
-        return base_tag + html
-    return html[: match.end()] + base_tag + html[match.end() :]
+    return _insert_in_head(html, f'<base href="{escape(base_url, quote=True)}">')
 
 
 @contextmanager

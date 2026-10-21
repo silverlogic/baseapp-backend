@@ -57,6 +57,24 @@ class TestUtils:
 
         assert "Styled from the stylesheet" in pdf_text(pdf)
 
+    @pytest.mark.parametrize("base_url", [None, "https://example.com/"])
+    def test_base_url_keeps_standards_mode(self, base_url: str | None) -> None:
+        # A `<base>` before the doctype used to drop the page into quirks mode, which
+        # changes the box model and table layout.
+        pdf = render_html_to_pdf(
+            '<!DOCTYPE html><html lang="fr"><body><script>'
+            "document.write('MODE ' + document.compatMode + ' LANG '"
+            " + document.documentElement.lang + ' BASE ' + document.baseURI);"
+            "</script></body></html>",
+            base_url=base_url,
+        )
+
+        text = pdf_text(pdf)
+        assert "MODE CSS1Compat" in text
+        assert "LANG fr" in text
+        if base_url:
+            assert f"BASE {base_url}" in text
+
     def test_concurrent_renders(self) -> None:
         documents = [f"Document number {i}" for i in range(4)]
 
