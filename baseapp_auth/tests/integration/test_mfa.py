@@ -8,6 +8,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db import connection
 from django.dispatch import Signal
 from django.test import override_settings
+from freezegun import freeze_time
 from rest_framework import status
 from rest_framework.test import APIClient
 from trench import views as trench_views
@@ -64,6 +65,17 @@ class CustomDeactivationView(mfa_views.MFAMethodDeactivationView):
 
 
 BACKUP_CODE = "12345678"
+
+
+@pytest.fixture(autouse=True)
+def frozen_clock() -> Iterator[None]:
+    """
+    trench checks TOTP codes without a valid window, so a code made at the end of a 30 second
+    window fails in the next one. Freezing the clock mid-window keeps the codes from `code_for`
+    valid for the whole test.
+    """
+    with freeze_time("2026-01-01 12:00:10"):
+        yield
 
 
 @contextmanager
@@ -165,6 +177,17 @@ class TestMFASignals:
         assert calls[0]["user"] == user_client.user
         assert calls[0]["method"] == "email"
         assert calls[0]["previous_method"] == "app"
+
+    def test_changing_primary_method_without_a_previous_one(self, user_client) -> None:
+        email = mfa_method_creator(user_client.user, "email", is_primary=False)
+        with capture(mfa_primary_method_changed) as calls:
+            r = user_client.post(
+                f"{MFA_URL}change-primary-method/", {"method": "email", "code": code_for(email)}
+            )
+        assert r.status_code == status.HTTP_204_NO_CONTENT, r.data
+        assert len(calls) == 1
+        assert calls[0]["method"] == "email"
+        assert calls[0]["previous_method"] is None
 
     def test_making_the_primary_method_primary_again_sends_nothing(self, user_client) -> None:
         app = mfa_method_creator(user_client.user, "app")
@@ -387,10 +410,19 @@ class TestMFAViewsSetting:
 
 
 class TestMFARequestCode:
-    def test_post_sends_a_code_for_the_primary_method(self, user_client) -> None:
+    def test_post_sends_a_code_for_the_primary_method(self, user_client, mailoutbox) -> None:
+        mfa_method_creator(user_client.user, "email")
+        r = user_client.post(f"{MFA_URL}code/request/")
+        h.responseOk(r)
+        assert len(mailoutbox) == 1
+        assert mailoutbox[0].to == [user_client.user.email]
+
+    def test_post_answers_for_the_app_method(self, user_client, mailoutbox) -> None:
+        # The authenticator app makes its own codes, so nothing is sent.
         mfa_method_creator(user_client.user, "app")
         r = user_client.post(f"{MFA_URL}code/request/")
         h.responseOk(r)
+        assert mailoutbox == []
 
     def test_get_is_not_allowed(self, user_client) -> None:
         mfa_method_creator(user_client.user, "app")
