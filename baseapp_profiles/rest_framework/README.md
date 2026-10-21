@@ -67,6 +67,6 @@ class FilesViewSet(CurrentProfileMixin, mixins.RetrieveModelMixin, ...):
 
 ## Notes
 
-- The mixin executes in the `initial()` method, which runs before any view logic
+- The mixin sets the profile in `check_permissions()`: after authentication and before the permission classes run, so a permission class can rely on `request.user.current_profile`
 - Authentication must happen before this mixin runs (ensure authentication classes are properly configured)
 - The `Current-Profile` header must be whitelisted in CORS settings
