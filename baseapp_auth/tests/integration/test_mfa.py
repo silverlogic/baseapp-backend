@@ -2,9 +2,11 @@ from contextlib import contextmanager
 from typing import Any, Iterator
 
 import pytest
+from django.core.exceptions import ImproperlyConfigured
 from django.dispatch import Signal
 from django.test import override_settings
 from rest_framework import status
+from trench import views as trench_views
 from trench.backends.provider import get_mfa_handler
 
 import baseapp_auth.tests.helpers as h
@@ -16,6 +18,7 @@ from baseapp_auth.rest_framework.mfa.signals import (
     mfa_method_deactivated,
     mfa_primary_method_changed,
 )
+from baseapp_auth.rest_framework.urls.mfa import get_urlpatterns
 from baseapp_auth.tests.fixtures_mfa import mfa_method_creator
 
 pytestmark = pytest.mark.django_db
@@ -37,6 +40,10 @@ class NoPrimaryChangePolicy(MFAPolicy):
 class SilentRefusalPolicy(MFAPolicy):
     def can_deactivate(self, user, method: str) -> tuple[bool, str | None]:
         return False, None
+
+
+class CustomDeactivationView(mfa_views.MFAMethodDeactivationView):
+    pass
 
 
 @contextmanager
@@ -211,6 +218,39 @@ class TestMFAPolicy:
         user = h.get_user_factory()()
         mfa_method_creator(user, "app")
         assert RequiredMFAPolicy().can_deactivate(user, "email") == (True, None)
+
+
+class TestMFAViewsSetting:
+    def test_defaults(self) -> None:
+        assert mfa_views.get_mfa_view_class("activate") is trench_views.MFAMethodActivationView
+        assert mfa_views.get_mfa_view_class("deactivate") is mfa_views.MFAMethodDeactivationView
+
+    @override_settings(
+        BASEAPP_AUTH_MFA_VIEWS={"deactivate": POLICY_PATH + "CustomDeactivationView"}
+    )
+    def test_override_with_a_dotted_path(self) -> None:
+        assert mfa_views.get_mfa_view_class("deactivate") is CustomDeactivationView
+        assert mfa_views.get_mfa_view_class("activate") is trench_views.MFAMethodActivationView
+
+    @override_settings(BASEAPP_AUTH_MFA_VIEWS={"deactivate": CustomDeactivationView})
+    def test_override_with_a_class(self) -> None:
+        assert mfa_views.get_mfa_view_class("deactivate") is CustomDeactivationView
+
+    @override_settings(BASEAPP_AUTH_MFA_VIEWS={"deactivation": CustomDeactivationView})
+    def test_unknown_key_is_rejected(self) -> None:
+        with pytest.raises(ImproperlyConfigured):
+            mfa_views.get_mfa_view_class("deactivate")
+
+    def test_unknown_name_is_rejected(self) -> None:
+        with pytest.raises(KeyError):
+            mfa_views.get_mfa_view_class("deactivation")
+
+    @override_settings(BASEAPP_AUTH_MFA_VIEWS={"deactivate": CustomDeactivationView})
+    def test_urlpatterns_use_the_overrides(self) -> None:
+        views = {pattern.name: pattern.callback.view_class for pattern in get_urlpatterns()}
+        assert views["mfa-deactivate"] is CustomDeactivationView
+        assert views["mfa-activate-confirm"] is mfa_views.MFAMethodConfirmActivationView
+        assert len(views) == len(mfa_views.DEFAULT_MFA_VIEWS)
 
 
 class TestMFARequestCode:

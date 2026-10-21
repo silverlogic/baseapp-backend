@@ -1,8 +1,14 @@
 """
 django-trench's MFA views, extended to send the signals in `.signals` and to ask the policy in
 `.policy` before a method is deactivated or made primary.
+
+`baseapp_auth.rest_framework.urls.mfa` builds its URLs from `get_mfa_view_class`, so a project can
+replace any view through the `BASEAPP_AUTH_MFA_VIEWS` setting instead of copying the URL list.
 """
 
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
+from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
@@ -134,3 +140,36 @@ class MFAPrimaryMethodChangeView(trench_views.MFAPrimaryMethodChangeView):
             request=request,
         )
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# The views behind each MFA URL, keyed by the names `BASEAPP_AUTH_MFA_VIEWS` accepts.
+DEFAULT_MFA_VIEWS = {
+    "activate": trench_views.MFAMethodActivationView,
+    "activate_confirm": MFAMethodConfirmActivationView,
+    "deactivate": MFAMethodDeactivationView,
+    "regenerate_codes": MFAMethodBackupCodesRegenerationView,
+    "request_code": trench_views.MFAMethodRequestCodeView,
+    "config": trench_views.MFAConfigView,
+    "user_active_methods": trench_views.MFAListActiveUserMethodsView,
+    "change_primary_method": MFAPrimaryMethodChangeView,
+}
+
+
+def get_mfa_view_class(name: str) -> type:
+    """
+    Return the view class for one of the `DEFAULT_MFA_VIEWS` keys, honouring the project's
+    `BASEAPP_AUTH_MFA_VIEWS` setting (a dict of key -> view class or dotted path).
+    """
+    overrides = getattr(settings, "BASEAPP_AUTH_MFA_VIEWS", None) or {}
+    unknown = set(overrides) - set(DEFAULT_MFA_VIEWS)
+    if unknown:
+        raise ImproperlyConfigured(
+            "BASEAPP_AUTH_MFA_VIEWS has unknown keys %s; expected some of %s."
+            % (sorted(unknown), sorted(DEFAULT_MFA_VIEWS))
+        )
+    if name not in DEFAULT_MFA_VIEWS:
+        raise KeyError(name)
+    view_class = overrides.get(name, DEFAULT_MFA_VIEWS[name])
+    if isinstance(view_class, str):
+        view_class = import_string(view_class)
+    return view_class
