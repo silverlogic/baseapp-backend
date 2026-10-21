@@ -1,6 +1,5 @@
 import logging
 import os
-import shutil
 import subprocess
 import tempfile
 import typing
@@ -106,7 +105,7 @@ def ensure_valid_pdf(file_path: Path) -> None:
 
 
 def _build_command(
-    source: str, output_file_path: Path, extra_args: Sequence[str] = ()
+    source: str, output_file_path: Path, user_data_dir: Path, extra_args: Sequence[str] = ()
 ) -> list[str]:
     command = [get_chrome_binary(), "--headless"]
     if get_no_sandbox():
@@ -118,12 +117,71 @@ def _build_command(
         "--disable-dev-shm-usage",
         "--no-pdf-header-footer",
         "--print-to-pdf-no-header",
+        f"--user-data-dir={user_data_dir.as_posix()}",
         f"--print-to-pdf={output_file_path.as_posix()}",
         *get_extra_args(),
         *extra_args,
         source,
     ]
     return command
+
+
+@contextmanager
+def _work_dir() -> typing.Generator[Path, None, None]:
+    """
+    A private (0700) temporary directory for one render, removed with everything in it.
+
+    Cleanup errors are ignored so that a file Chrome still holds open can't replace the
+    exception that explains a failed render.
+    """
+    with tempfile.TemporaryDirectory(prefix="baseapp_pdf_", ignore_cleanup_errors=True) as path:
+        yield Path(path)
+
+
+def _print_to_pdf(source: str, work_dir: Path, extra_args: Sequence[str] = ()) -> Path:
+    """
+    Print `source` to a validated PDF inside `work_dir`, which the caller owns and removes.
+
+    Chrome's profile (`--user-data-dir`) and its own scratch files (`scoped_dir*`, created
+    under `TMPDIR`) go in `work_dir` too, so a render never touches what another render is
+    using, and cleaning up is removing that one directory.
+    """
+    output_file_path = work_dir / f"{uuid4()}.pdf"
+    scratch_dir = work_dir / "tmp"
+    scratch_dir.mkdir(exist_ok=True)
+    command = _build_command(source, output_file_path, work_dir / "profile", extra_args)
+    env = {**os.environ, "TMPDIR": scratch_dir.as_posix()}
+    timeout = get_timeout()
+
+    try:
+        subprocess.run(command, capture_output=True, check=True, timeout=timeout, env=env)
+    except subprocess.CalledProcessError as error:
+        # Chrome exits non-zero for anything it could not load — a host that does not
+        # resolve, a refused connection, a timeout. Letting CalledProcessError out breaks
+        # this function's contract: callers are told to expect the exception below, and
+        # whether a given URL makes Chrome exit non-zero or render an error page to a
+        # valid PDF depends on the network it runs on.
+        stderr = (error.stderr or b"").decode(errors="replace").strip()
+        raise BaseAppBackendPDFRenderToPDFException(
+            f"{command[0]} failed to render {source}: {stderr}"
+        ) from error
+    except subprocess.TimeoutExpired as error:
+        # `subprocess.run` has already killed Chrome by the time this is raised.
+        raise BaseAppBackendPDFRenderToPDFException(
+            f"{command[0]} did not render {source} within {timeout} seconds"
+        ) from error
+
+    try:
+        ensure_valid_pdf(file_path=output_file_path)
+    except FileNotFoundError as error:
+        # Chrome can also fail by exiting zero and writing nothing at all, which is
+        # what an unreachable host looks like on some networks. That is a render
+        # failure like any other, so it is reported as one rather than as a missing
+        # file the caller never asked about.
+        raise BaseAppBackendPDFRenderToPDFException(
+            f"{command[0]} produced no PDF for {source}"
+        ) from error
+    return output_file_path
 
 
 @contextmanager
@@ -146,52 +204,8 @@ def render_to_pdf(
     if isinstance(source, Path):
         source = source.as_posix()
 
-    output_file_path = Path(tempfile.gettempdir()).joinpath(f"{uuid4()}.pdf")
-    if output_file_path.exists():
-        output_file_path.unlink()
-
-    command = _build_command(source, output_file_path, extra_args)
-    timeout = get_timeout()
-
-    try:
-        subprocess.run(command, capture_output=True, check=True, timeout=timeout)
-    except subprocess.CalledProcessError as error:
-        # Chrome exits non-zero for anything it could not load — a host that does not
-        # resolve, a refused connection, a timeout. Letting CalledProcessError out breaks
-        # this function's contract: callers are told to expect the exception below, and
-        # whether a given URL makes Chrome exit non-zero or render an error page to a
-        # valid PDF depends on the network it runs on.
-        stderr = (error.stderr or b"").decode(errors="replace").strip()
-        raise BaseAppBackendPDFRenderToPDFException(
-            f"{command[0]} failed to render {source}: {stderr}"
-        ) from error
-    except subprocess.TimeoutExpired as error:
-        # `subprocess.run` has already killed Chrome by the time this is raised.
-        raise BaseAppBackendPDFRenderToPDFException(
-            f"{command[0]} did not render {source} within {timeout} seconds"
-        ) from error
-
-    try:
-        try:
-            ensure_valid_pdf(file_path=output_file_path)
-        except FileNotFoundError as error:
-            # Chrome can also fail by exiting zero and writing nothing at all, which is
-            # what an unreachable host looks like on some networks. That is a render
-            # failure like any other, so it is reported as one rather than as a missing
-            # file the caller never asked about.
-            raise BaseAppBackendPDFRenderToPDFException(
-                f"{command[0]} produced no PDF for {source}"
-            ) from error
-        yield output_file_path
-    finally:
-        # `missing_ok` because this runs on the failure paths too, where there may be no
-        # file to remove — and an error raised in here would replace the one that
-        # actually explains the failure.
-        output_file_path.unlink(missing_ok=True)
-        # Delete google-chrome generated tmp files
-        for file_path in Path(tempfile.gettempdir()).glob("scoped_dir*"):
-            if file_path.is_dir():
-                shutil.rmtree(file_path)
+    with _work_dir() as work_dir:
+        yield _print_to_pdf(source, work_dir, extra_args)
 
 
 @contextmanager
@@ -215,13 +229,8 @@ def render_template_to_pdf(
         raise TypeError(f"Expected source to be a string or DjangoTemplate. Got {type(source)}.")
 
     html = source.render(context).strip()
-    html_file_path = Path(tempfile.gettempdir()).joinpath(f"{uuid4()}.html")
-    html_file_path.write_text(html)
-
-    try:
-        with render_to_pdf(source=html_file_path.as_posix()) as pdf_file_path:
-            yield pdf_file_path
-    except BaseException as e:
-        raise e
-    finally:
-        html_file_path.unlink()
+    ensure_google_chrome_installed()
+    with _work_dir() as work_dir:
+        html_file_path = work_dir / "index.html"
+        html_file_path.write_text(html)
+        yield _print_to_pdf(html_file_path.as_posix(), work_dir)
