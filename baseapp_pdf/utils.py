@@ -4,10 +4,12 @@ import shutil
 import subprocess
 import tempfile
 import typing
+from collections.abc import Sequence
 from contextlib import contextmanager
 from pathlib import Path
 from uuid import uuid4
 
+from django.conf import settings
 from django.template.backends.django import Template as DjangoTemplate
 from django.template.loader import get_template
 from pypdf import PdfReader
@@ -19,19 +21,58 @@ from .exceptions import (
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_CHROME_BINARY = "google-chrome"
+DEFAULT_TIMEOUT = 60
+DEFAULT_EXTRA_ARGS: tuple[str, ...] = ()
+DEFAULT_NO_SANDBOX = True
+
+
+def get_chrome_binary() -> str:
+    """The Chrome executable to run (`BASEAPP_PDF_CHROME_BINARY`, default `google-chrome`)."""
+    return getattr(settings, "BASEAPP_PDF_CHROME_BINARY", DEFAULT_CHROME_BINARY)
+
+
+def get_timeout() -> float | None:
+    """Seconds a Chrome call may take (`BASEAPP_PDF_TIMEOUT`, default 60; `None` waits forever)."""
+    return getattr(settings, "BASEAPP_PDF_TIMEOUT", DEFAULT_TIMEOUT)
+
+
+def get_extra_args() -> tuple[str, ...]:
+    """Arguments appended to every render (`BASEAPP_PDF_EXTRA_ARGS`, default none)."""
+    return tuple(getattr(settings, "BASEAPP_PDF_EXTRA_ARGS", DEFAULT_EXTRA_ARGS))
+
+
+def get_no_sandbox() -> bool:
+    """Whether Chrome runs with `--no-sandbox` (`BASEAPP_PDF_NO_SANDBOX`, default True)."""
+    return bool(getattr(settings, "BASEAPP_PDF_NO_SANDBOX", DEFAULT_NO_SANDBOX))
+
 
 def ensure_google_chrome_installed() -> None:
     """
-    Ensure that google-chrome is installed.
+    Ensure that the configured Chrome binary (`BASEAPP_PDF_CHROME_BINARY`) is installed.
 
     Raises:
-        BaseAppBackendPDFChromeNotInstalledException: If google-chrome is not installed.
+        BaseAppBackendPDFChromeNotInstalledException: If the binary is not installed.
     """
+    binary = get_chrome_binary()
     try:
-        process = subprocess.run(["google-chrome", "--version"], check=True, capture_output=True)
-        logger.info(f"google-chrome is installed: {process.stdout.decode('utf-8')}")
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        raise BaseAppBackendPDFChromeNotInstalledException()
+        process = subprocess.run(
+            [binary, "--version"], check=True, capture_output=True, timeout=get_timeout()
+        )
+        logger.info(f"{binary} is installed: {process.stdout.decode('utf-8')}")
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+        # OSError covers a missing binary (FileNotFoundError) and one that is not
+        # executable (PermissionError) alike.
+        raise BaseAppBackendPDFChromeNotInstalledException(binary)
+
+
+def chrome_available() -> bool:
+    """Whether the configured Chrome binary can be run, for callers that degrade without it."""
+    try:
+        ensure_google_chrome_installed()
+    except BaseAppBackendPDFChromeNotInstalledException:
+        return False
+    return True
 
 
 def ensure_valid_pdf(file_path: Path) -> None:
@@ -64,13 +105,37 @@ def ensure_valid_pdf(file_path: Path) -> None:
             raise BaseAppBackendPDFRenderToPDFException(text)
 
 
+def _build_command(
+    source: str, output_file_path: Path, extra_args: Sequence[str] = ()
+) -> list[str]:
+    command = [get_chrome_binary(), "--headless"]
+    if get_no_sandbox():
+        command.append("--no-sandbox")
+    command += [
+        "--run-all-compositor-stages-before-draw",
+        "--disable-gpu",
+        "--disable-audio-output",
+        "--disable-dev-shm-usage",
+        "--no-pdf-header-footer",
+        "--print-to-pdf-no-header",
+        f"--print-to-pdf={output_file_path.as_posix()}",
+        *get_extra_args(),
+        *extra_args,
+        source,
+    ]
+    return command
+
+
 @contextmanager
-def render_to_pdf(*args, source: str | Path, **kwargs) -> typing.Generator[Path, None, None]:
+def render_to_pdf(
+    *args, source: str | Path, extra_args: Sequence[str] = (), **kwargs
+) -> typing.Generator[Path, None, None]:
     """
     Render a source to a pdf file.
 
     Args:
         source: Local html file path or a url string.
+        extra_args: Chrome arguments for this render, after `BASEAPP_PDF_EXTRA_ARGS`.
 
     Returns:
         A path to the rendered pdf temporary file.
@@ -85,22 +150,11 @@ def render_to_pdf(*args, source: str | Path, **kwargs) -> typing.Generator[Path,
     if output_file_path.exists():
         output_file_path.unlink()
 
-    command = [
-        "google-chrome",
-        "--headless",
-        "--no-sandbox",
-        "--run-all-compositor-stages-before-draw",
-        "--disable-gpu",
-        "--disable-audio-output",
-        "--disable-dev-shm-usage",
-        "--no-pdf-header-footer",
-        "--print-to-pdf-no-header",
-        f"--print-to-pdf={output_file_path.as_posix()}",
-        source,
-    ]
+    command = _build_command(source, output_file_path, extra_args)
+    timeout = get_timeout()
 
     try:
-        subprocess.run(command, capture_output=True, check=True)
+        subprocess.run(command, capture_output=True, check=True, timeout=timeout)
     except subprocess.CalledProcessError as error:
         # Chrome exits non-zero for anything it could not load — a host that does not
         # resolve, a refused connection, a timeout. Letting CalledProcessError out breaks
@@ -109,7 +163,12 @@ def render_to_pdf(*args, source: str | Path, **kwargs) -> typing.Generator[Path,
         # valid PDF depends on the network it runs on.
         stderr = (error.stderr or b"").decode(errors="replace").strip()
         raise BaseAppBackendPDFRenderToPDFException(
-            f"google-chrome failed to render {source}: {stderr}"
+            f"{command[0]} failed to render {source}: {stderr}"
+        ) from error
+    except subprocess.TimeoutExpired as error:
+        # `subprocess.run` has already killed Chrome by the time this is raised.
+        raise BaseAppBackendPDFRenderToPDFException(
+            f"{command[0]} did not render {source} within {timeout} seconds"
         ) from error
 
     try:
@@ -121,7 +180,7 @@ def render_to_pdf(*args, source: str | Path, **kwargs) -> typing.Generator[Path,
             # failure like any other, so it is reported as one rather than as a missing
             # file the caller never asked about.
             raise BaseAppBackendPDFRenderToPDFException(
-                f"google-chrome produced no PDF for {source}"
+                f"{command[0]} produced no PDF for {source}"
             ) from error
         yield output_file_path
     finally:
