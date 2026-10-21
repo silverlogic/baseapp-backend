@@ -1,11 +1,15 @@
+import threading
 from contextlib import contextmanager
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 
 import pytest
+from django.contrib.auth.hashers import make_password
 from django.core.exceptions import ImproperlyConfigured
+from django.db import connection
 from django.dispatch import Signal
 from django.test import override_settings
 from rest_framework import status
+from rest_framework.test import APIClient
 from trench import views as trench_views
 from trench.backends.provider import get_mfa_handler
 
@@ -42,8 +46,24 @@ class SilentRefusalPolicy(MFAPolicy):
         return False, None
 
 
+class GatedRequiredMFAPolicy(RequiredMFAPolicy):
+    """Calls `gates[method]` after deciding, so a test can line up two concurrent requests."""
+
+    gates: dict[str, Callable[[], None]] = {}
+
+    def can_deactivate(self, user, method: str) -> tuple[bool, str | None]:
+        result = super().can_deactivate(user, method)
+        gate = self.gates.get(method)
+        if gate:
+            gate()
+        return result
+
+
 class CustomDeactivationView(mfa_views.MFAMethodDeactivationView):
     pass
+
+
+BACKUP_CODE = "12345678"
 
 
 @contextmanager
@@ -62,6 +82,17 @@ def capture(signal: Signal) -> Iterator[list[dict[str, Any]]]:
 
 def code_for(mfa_method) -> str:
     return get_mfa_handler(mfa_method=mfa_method).create_code()
+
+
+def with_backup_code(mfa_method):
+    mfa_method.backup_codes = [make_password(BACKUP_CODE)]
+    mfa_method.save()
+    return mfa_method
+
+
+def has_backup_code(mfa_method) -> bool:
+    mfa_method.refresh_from_db()
+    return any(code for code in mfa_method.backup_codes)
 
 
 class TestMFASignals:
@@ -194,6 +225,38 @@ class TestMFAPolicy:
         h.responseBadRequest(r)
         assert r.data["non_field_errors"] == ["This change is not allowed."]
 
+    @override_settings(BASEAPP_AUTH_MFA_POLICY=POLICY_PATH + "RequiredMFAPolicy")
+    def test_refused_deactivation_keeps_the_backup_code(self, user_client) -> None:
+        app = with_backup_code(mfa_method_creator(user_client.user, "app"))
+        r = user_client.post(f"{MFA_URL}app/deactivate/", {"code": BACKUP_CODE})
+        h.responseBadRequest(r)
+        assert r.data["non_field_errors"] == [str(MFAPolicy.last_method_message)]
+        assert has_backup_code(app)
+
+    @override_settings(BASEAPP_AUTH_MFA_POLICY=POLICY_PATH + "NoPrimaryChangePolicy")
+    def test_refused_primary_change_keeps_the_backup_code(self, user_client) -> None:
+        mfa_method_creator(user_client.user, "app")
+        email = with_backup_code(mfa_method_creator(user_client.user, "email", is_primary=False))
+        r = user_client.post(
+            f"{MFA_URL}change-primary-method/", {"method": "email", "code": BACKUP_CODE}
+        )
+        h.responseBadRequest(r)
+        assert has_backup_code(email)
+
+    def test_deactivation_refused_by_trench_keeps_the_backup_code(self, user_client) -> None:
+        app = with_backup_code(mfa_method_creator(user_client.user, "app"))
+        mfa_method_creator(user_client.user, "email", is_primary=False)
+        # trench refuses to deactivate the primary method while another one is active
+        r = user_client.post(f"{MFA_URL}app/deactivate/", {"code": BACKUP_CODE})
+        h.responseBadRequest(r)
+        assert has_backup_code(app)
+
+    def test_accepted_deactivation_uses_up_the_backup_code(self, user_client) -> None:
+        app = with_backup_code(mfa_method_creator(user_client.user, "app"))
+        r = user_client.post(f"{MFA_URL}app/deactivate/", {"code": BACKUP_CODE})
+        assert r.status_code == status.HTTP_204_NO_CONTENT
+        assert not has_backup_code(app)
+
     def test_get_mfa_policy_defaults_to_mfa_policy(self) -> None:
         assert type(get_mfa_policy()) is MFAPolicy
 
@@ -218,6 +281,65 @@ class TestMFAPolicy:
         user = h.get_user_factory()()
         mfa_method_creator(user, "app")
         assert RequiredMFAPolicy().can_deactivate(user, "email") == (True, None)
+
+
+@pytest.mark.django_db(transaction=True)
+class TestMFAConcurrency:
+    @override_settings(BASEAPP_AUTH_MFA_POLICY=POLICY_PATH + "GatedRequiredMFAPolicy")
+    def test_concurrent_deactivations_keep_a_required_method(self) -> None:
+        """
+        Two requests remove one method each. The second one decides while the first is still
+        running and acts once the first has committed. Without the lock both pass the policy and
+        the user, who must keep MFA on, ends up with no method at all.
+        """
+        user = h.get_user_factory()()
+        app = mfa_method_creator(user, "app")
+        email = mfa_method_creator(user, "email", is_primary=False)
+        codes = {"app": code_for(app), "email": code_for(email)}
+        email_decided = threading.Event()
+        email_done = threading.Event()
+        app_decided = threading.Event()
+        responses = {}
+
+        def email_gate() -> None:
+            email_decided.set()
+            # Holds the lock while the app request tries to decide too; with the lock it can't.
+            app_decided.wait(timeout=1)
+
+        def app_gate() -> None:
+            app_decided.set()
+            email_done.wait(timeout=5)
+
+        def deactivate(method: str, done: threading.Event | None = None) -> None:
+            try:
+                client = APIClient()
+                client.force_authenticate(user)
+                responses[method] = client.post(
+                    f"{MFA_URL}{method}/deactivate/", {"code": codes[method]}
+                )
+            finally:
+                if done:
+                    done.set()
+                connection.close()
+
+        GatedRequiredMFAPolicy.gates = {"email": email_gate, "app": app_gate}
+        try:
+            email_thread = threading.Thread(target=deactivate, args=("email", email_done))
+            email_thread.start()
+            assert email_decided.wait(timeout=5)
+            app_thread = threading.Thread(target=deactivate, args=("app",))
+            app_thread.start()
+            email_thread.join(timeout=10)
+            app_thread.join(timeout=10)
+        finally:
+            GatedRequiredMFAPolicy.gates = {}
+
+        assert responses["email"].status_code == status.HTTP_204_NO_CONTENT
+        h.responseBadRequest(responses["app"])
+        assert responses["app"].data["non_field_errors"] == [str(MFAPolicy.last_method_message)]
+        assert list(user.mfa_methods.filter(is_active=True).values_list("name", flat=True)) == [
+            "app"
+        ]
 
 
 class TestMFAViewsSetting:

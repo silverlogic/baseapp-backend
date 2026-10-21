@@ -8,6 +8,7 @@ replace any view through the `BASEAPP_AUTH_MFA_VIEWS` setting instead of copying
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.db import transaction
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 from rest_framework import status
@@ -40,6 +41,20 @@ class RequiredCodeDeactivationValidator(MFAMethodDeactivationValidator):
     """trench's deactivation body with `code` always required."""
 
     code = CharField(required=True)
+
+
+def lock_mfa_methods(user_id: int) -> None:
+    """
+    Lock the user's MFA rows until the end of the current transaction, so that concurrent MFA
+    changes of one user run one after the other and each sees the result of the previous one.
+    """
+    list(
+        get_mfa_model()
+        .objects.select_for_update()
+        .filter(user_id=user_id)
+        .order_by("pk")
+        .values_list("pk", flat=True)
+    )
 
 
 def check_policy(result: tuple[bool, str | None]) -> None:
@@ -76,17 +91,23 @@ class MFAMethodDeactivationView(trench_views.MFAMethodDeactivationView):
     def post(self, request: Request, method: str) -> Response:
         user = request.user
         policy = get_mfa_policy()
-        # Checked before the code so a refused request doesn't use up a backup code.
-        check_policy(policy.can_deactivate(user, method))
+        with transaction.atomic():
+            # The policy and trench's command must see the same methods: without the lock, two
+            # requests could each remove a different method and leave a required user with none.
+            lock_mfa_methods(user.id)
+            # Checked before the code so a refused request doesn't use up a backup code.
+            check_policy(policy.can_deactivate(user, method))
 
-        validator_class = self.get_validator_class(code_required=policy.is_required(user))
-        serializer = validator_class(mfa_method_name=method, user=user, data=request.data)
-        if not serializer.is_valid():
-            return Response(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors)
-        try:
-            deactivate_mfa_method_command(mfa_method_name=method, user_id=user.id)
-        except MFAValidationError as cause:
-            return ErrorResponse(error=cause)
+            validator_class = self.get_validator_class(code_required=policy.is_required(user))
+            serializer = validator_class(mfa_method_name=method, user=user, data=request.data)
+            if not serializer.is_valid():
+                return Response(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors)
+            try:
+                deactivate_mfa_method_command(mfa_method_name=method, user_id=user.id)
+            except MFAValidationError as cause:
+                # Give back the backup code the validator may have used.
+                transaction.set_rollback(True)
+                return ErrorResponse(error=cause)
 
         mfa_method_deactivated.send(
             sender=self.__class__, user=user, method=method, request=request
@@ -114,23 +135,28 @@ class MFAPrimaryMethodChangeView(trench_views.MFAPrimaryMethodChangeView):
         method_serializer = ChangePrimaryMethodValidator(data=request.data)
         method_serializer.is_valid(raise_exception=True)
         method = method_serializer.validated_data["method"]
-        check_policy(get_mfa_policy().can_change_primary(user, method))
+        with transaction.atomic():
+            # Same lock as the deactivate view, so the policy decides on the methods the command
+            # changes.
+            lock_mfa_methods(user.id)
+            check_policy(get_mfa_policy().can_change_primary(user, method))
 
-        code_serializer = ChangePrimaryMethodCodeValidator(
-            user=user, mfa_method_name=method, data=request.data
-        )
-        code_serializer.is_valid(raise_exception=True)
+            code_serializer = ChangePrimaryMethodCodeValidator(
+                user=user, mfa_method_name=method, data=request.data
+            )
+            code_serializer.is_valid(raise_exception=True)
 
-        previous_method = (
-            get_mfa_model()
-            .objects.filter(user_id=user.id, is_primary=True)
-            .values_list("name", flat=True)
-            .first()
-        )
-        try:
-            set_primary_mfa_method_command(user_id=user.id, name=method)
-        except MFAValidationError as cause:
-            return ErrorResponse(error=cause)
+            previous_method = (
+                get_mfa_model()
+                .objects.filter(user_id=user.id, is_primary=True)
+                .values_list("name", flat=True)
+                .first()
+            )
+            try:
+                set_primary_mfa_method_command(user_id=user.id, name=method)
+            except MFAValidationError as cause:
+                transaction.set_rollback(True)
+                return ErrorResponse(error=cause)
 
         mfa_primary_method_changed.send(
             sender=self.__class__,
