@@ -5,10 +5,10 @@ from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 from trench.utils import get_mfa_model
 
+from baseapp_auth.settings import BASEAPP_AUTH_MFA_POLICY as DEFAULT_MFA_POLICY
+
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser
-
-DEFAULT_MFA_POLICY = "baseapp_auth.rest_framework.mfa.policy.MFAPolicy"
 
 
 class MFAPolicy:
@@ -20,6 +20,9 @@ class MFAPolicy:
     `is_required`: once MFA is required for a user, the default `can_deactivate` refuses to remove
     their last active method and the deactivate view asks for a code even when trench's
     `CONFIRM_DISABLE_WITH_CODE` is off.
+
+    The views ask the policy while they hold a lock on the user's MFA methods, so the methods can't
+    change between the decision and the change itself.
     """
 
     last_method_message = _(
@@ -28,7 +31,10 @@ class MFAPolicy:
     )
 
     def is_required(self, user: "AbstractBaseUser") -> bool:
-        """Whether the user must keep at least one active MFA method."""
+        """
+        Whether the user must keep at least one active MFA method. It can be called more than
+        once per request, so keep it cheap and give the same answer for the same user.
+        """
         return False
 
     def can_deactivate(self, user: "AbstractBaseUser", method: str) -> tuple[bool, str | None]:

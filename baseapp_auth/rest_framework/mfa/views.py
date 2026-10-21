@@ -28,6 +28,8 @@ from trench.serializers import (
 )
 from trench.utils import get_mfa_model
 
+from baseapp_auth.settings import BASEAPP_AUTH_MFA_VIEWS
+
 from .policy import get_mfa_policy
 from .signals import (
     mfa_backup_codes_regenerated,
@@ -191,7 +193,7 @@ def get_mfa_view_class(name: str) -> type:
     Return the view class for one of the `DEFAULT_MFA_VIEWS` keys, honouring the project's
     `BASEAPP_AUTH_MFA_VIEWS` setting (a dict of key -> view class or dotted path).
     """
-    overrides = getattr(settings, "BASEAPP_AUTH_MFA_VIEWS", None) or {}
+    overrides = getattr(settings, "BASEAPP_AUTH_MFA_VIEWS", None) or BASEAPP_AUTH_MFA_VIEWS
     unknown = set(overrides) - set(DEFAULT_MFA_VIEWS)
     if unknown:
         raise ImproperlyConfigured(

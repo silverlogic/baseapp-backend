@@ -92,6 +92,12 @@ A refusal is a `400` with `{"non_field_errors": [reason]}`. When `is_required(us
 deactivate view also requires a `code` of the method (or a backup code), even if trench's
 `CONFIRM_DISABLE_WITH_CODE` is off. The default policy allows everything, as before.
 
+The views lock the user's MFA methods (`SELECT ... FOR UPDATE`) before asking the policy and keep
+the lock until the change is saved, so two requests at once can't both remove a method and leave a
+user who must keep MFA with none. A refused change doesn't use up the backup code it was sent with.
+`is_required` can be called more than once per request: keep it cheap, and give the same answer
+for the same user.
+
 ```py
 # settings.py
 BASEAPP_AUTH_MFA_POLICY = "myproject.users.mfa.StaffMFAPolicy"
@@ -120,6 +126,10 @@ BASEAPP_AUTH_MFA_VIEWS = {
 
 Subclass the defaults in `baseapp_auth.rest_framework.mfa.views` (or trench's views for `activate`,
 `request_code`, `config` and `user_active_methods`) so the signals and the policy keep working.
+
+The setting is read once, when `baseapp_auth.rest_framework.urls.mfa` is imported. Changing it later,
+including with `override_settings` in tests, doesn't change the mounted views; call
+`baseapp_auth.rest_framework.urls.mfa.get_urlpatterns()` to build the URLs from the current value.
 
 
 ### GraphQL
@@ -240,6 +250,6 @@ BA_AUTH_CHANGE_EXPIRED_PASSWORD_TOKEN_EXPIRATION_TIME_DELTA: datetime.timedelta
 BA_AUTH_CONFIRM_EMAIL_TOKEN_EXPIRATION_TIME_DELTA: datetime.timedelta
 BA_AUTH_CHANGE_EMAIL_VERIFY_TOKEN_EXPIRATION_TIME_DELTA: datetime.timedelta
 BA_AUTH_CHANGE_EMAIL_CONFIRM_TOKEN_EXPIRATION_TIME_DELTA: datetime.timedelta
-BASEAPP_AUTH_MFA_POLICY: str  # dotted path to an MFAPolicy subclass, see "MFA policy"
-BASEAPP_AUTH_MFA_VIEWS: dict[str, str | type]  # see "Replacing an MFA view"
+BASEAPP_AUTH_MFA_POLICY: str  # dotted path to an MFAPolicy subclass, see "MFA policy"; default allows all
+BASEAPP_AUTH_MFA_VIEWS: dict[str, str | type]  # see "Replacing an MFA view"; default {}
 ```
