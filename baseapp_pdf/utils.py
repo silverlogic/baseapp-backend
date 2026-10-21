@@ -32,7 +32,8 @@ DEFAULT_NO_SANDBOX = True
 class SupportsRender(typing.Protocol):
     """A template from any engine: Django and Jinja2 templates both have `render(context)`."""
 
-    def render(self, context: typing.Any = ...) -> str: ...
+    def render(self, context: typing.Any = ...) -> str:
+        """Render the template with `context`."""
 
 
 def get_chrome_binary() -> str:
