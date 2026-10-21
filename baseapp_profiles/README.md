@@ -281,7 +281,7 @@ result.invitations, result.emails_sent, result.held
 Error codes: `invalid_input`, `invalid_token`, `invalid_status`, `already_member`,
 `duplicate_invitation`, `expired_invitation`, `cancelled_invitation`, `already_responded`,
 `wrong_user`, `cannot_add_owner`, `last_admin`, `signup_disabled`, `user_exists`,
-`invalid_password`, `invalid_invitation`.
+`account_inactive`, `invalid_password`, `invalid_invitation`.
 
 ### Settings
 
@@ -291,6 +291,7 @@ Every default keeps the behaviour projects had before these settings existed.
 |---|---|---|
 | `BASEAPP_PROFILES_INVITATION_KEEP_HISTORY` | `False` | Keep invitation history: cancel marks the row CANCELLED instead of deleting it, and inviting an email again opens a new row instead of reusing the declined/expired/cancelled one. |
 | `BASEAPP_PROFILES_INVITATION_SIGNUP_ENABLED` | `False` | Allow anonymous accept-with-signup. |
+| `BASEAPP_PROFILES_INVITATION_SIGNUP_CAN_REACTIVATE` | `None` | Dotted path to (or a) `callable(user, invitation) -> bool`: may accept-with-signup reactivate this inactive account? `None` allows only accounts that never signed in. Staff and superusers are always refused. |
 | `BASEAPP_PROFILES_INVITATION_ASYNC_SEND` | `False` | Send invitation emails from the `send_invitation_email_task` Celery task, queued on commit. While Celery runs eagerly they are sent inline. |
 | `BASEAPP_PROFILES_INVITATION_PRE_SEND_HOOK` | `None` | Dotted path to (or a) `callable(invitation) -> bool`; `True` holds the email. |
 | `BASEAPP_PROFILES_PROTECT_LAST_ADMIN` | `False` | Apply the last-admin guard to profiles that have an owner too. |
@@ -315,11 +316,28 @@ and a new invitation reopens it.
 With `BASEAPP_PROFILES_INVITATION_SIGNUP_ENABLED` on, an invitee without an account
 accepts by choosing a password (`profileAcceptInvitationWithSignup`, or
 `POST /profile-invitations/by-token/{token}/accept-with-signup`). The account is created
-for the invited email — or an existing *inactive* account is activated — the password is
-checked against `AUTH_PASSWORD_VALIDATORS`, `first_name`/`last_name` are set when given,
+for the invited email — or an existing *inactive* account is activated (see below) — the
+password is checked against `AUTH_PASSWORD_VALIDATORS`, `first_name`/`last_name` are set when given,
 and `is_email_verified` is set when the user model has it (the token reached that
 inbox). An email with an active account gets `user_exists` and must sign in and accept.
 The client signs in with the returned email and the chosen password.
+
+Reactivation is guarded. Holding the token only proves the invitee controls the inbox, and
+anyone signed in can invite any address to a profile they own, so a deactivated user could
+otherwise invite themselves and come back with a password of their choosing. By default
+only an inactive account that has **never signed in** (one created ahead of time, by an
+import for instance) is activated; any other gets `account_inactive`. Staff and superuser
+accounts are never reactivated. To allow more — say, accounts your project deactivates
+pending a first invitation — set `BASEAPP_PROFILES_INVITATION_SIGNUP_CAN_REACTIVATE`:
+
+```python
+# settings.py
+BASEAPP_PROFILES_INVITATION_SIGNUP_CAN_REACTIVATE = "apps.members.invitations.can_reactivate"
+
+# apps/members/invitations.py
+def can_reactivate(user, invitation) -> bool:
+    return not user.is_banned
+```
 
 ### Sending, holding and expiring
 
@@ -444,7 +462,8 @@ active admins by default).
 
 Choices are serialized as their keys (`role`, `status` are integers). A refused operation
 answers `{"non_field_errors": ["..."], "code": "<error code>"}` with 400 — or 404
-(`invalid_token`), 403 (`signup_disabled`, `wrong_user`) or 409 (`user_exists`).
+(`invalid_token`), 403 (`signup_disabled`, `wrong_user`, `account_inactive`) or 409
+(`user_exists`).
 
 ## Permissions
 

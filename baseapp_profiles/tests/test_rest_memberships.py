@@ -315,6 +315,18 @@ class TestTokenEndpoints:
         assert response.status_code == 409
         assert response.json()["code"] == "user_exists"
 
+    def test_signup_does_not_bring_back_a_deactivated_superuser(self, invitation, settings) -> None:
+        settings.BASEAPP_PROFILES_INVITATION_SIGNUP_ENABLED = True
+        UserFactory(email="ann@example.com", is_active=False, is_superuser=True)
+
+        response = client_for().post(
+            self._url(invitation, "/accept-with-signup"), {"password": PASSWORD}
+        )
+
+        assert response.status_code == 403
+        assert response.json()["code"] == "account_inactive"
+        assert not User.objects.get(email="ann@example.com").is_active
+
     def test_signup_needs_a_password(self, invitation, settings) -> None:
         settings.BASEAPP_PROFILES_INVITATION_SIGNUP_ENABLED = True
 

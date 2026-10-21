@@ -33,6 +33,7 @@ from baseapp_profiles.conf import (
     invitation_async_send,
     invitation_expiration_days,
     invitation_pre_send_hook,
+    invitation_signup_can_reactivate,
     invitation_signup_enabled,
     keep_invitation_history,
 )
@@ -406,6 +407,11 @@ def cancel_invitation(
         raise ProfileMembershipError(_("Can only cancel pending invitations"), "invalid_status")
 
     with transaction.atomic():
+        # Lock and re-check: the invitee may have accepted or declined since `invitation`
+        # was loaded, and that answer must not be overwritten or deleted.
+        current = ProfileUserRole.objects.select_for_update().filter(pk=invitation.pk).first()
+        if current is None or current.status != Status.PENDING:
+            raise ProfileMembershipError(_("Can only cancel pending invitations"), "invalid_status")
         if keep_invitation_history():
             invitation.status = Status.CANCELLED
             invitation.deactivated_at = timezone.now()
@@ -428,7 +434,8 @@ def expire_invitations(now: datetime | None = None) -> int:
     """
     Mark every PENDING invitation past its expiry date EXPIRED; returns how many.
 
-    Rows locked by a concurrent accept are skipped and picked up by the next sweep.
+    Rows locked by a concurrent response or cancel are skipped; if still PENDING once that
+    commits, the next sweep picks them up.
     """
     with transaction.atomic():
         overdue = list(ProfileUserRole.objects.overdue(now).select_for_update(skip_locked=True))
@@ -524,12 +531,34 @@ def _activate(invitation: "ProfileUserRole", user: AbstractBaseUser) -> None:
     invitation.save()
 
 
+def _lock_for_response(invitation: "ProfileUserRole") -> "ProfileUserRole":
+    """
+    Lock the invitation's row and check again that it can still be answered. Must run inside
+    a transaction: a cancel, an expiry sweep or a second submission that got there first
+    wins, instead of being overwritten by this response.
+    """
+    locked = (
+        ProfileUserRole.objects.select_for_update(of=("self",))
+        .select_related("profile")
+        .filter(pk=invitation.pk)
+        .first()
+    )
+    if locked is None:
+        # Cancelled (and deleted, with history off) in the meantime.
+        raise ProfileMembershipError(_("Invalid invitation token"), "invalid_token")
+    _ensure_respondable(locked)
+    return locked
+
+
 def accept_invitation(token: str, user: AbstractBaseUser) -> "ProfileUserRole":
     """Accept the invitation for a signed-in `user`, who must be the one it was sent to."""
     invitation = get_invitation_by_token(token)
+    # Checked before locking too, so an overdue invitation is recorded as EXPIRED.
     _ensure_respondable(invitation)
     _bind_user(invitation, user)
     with transaction.atomic():
+        invitation = _lock_for_response(invitation)
+        _bind_user(invitation, user)
         _activate(invitation, user)
         send_on_commit(signals.invitation_accepted, invitation, user=user, created_user=False)
     return invitation
@@ -541,11 +570,30 @@ def decline_invitation(token: str, user: AbstractBaseUser) -> "ProfileUserRole":
     _ensure_respondable(invitation)
     _bind_user(invitation, user)
     with transaction.atomic():
+        invitation = _lock_for_response(invitation)
+        _bind_user(invitation, user)
         invitation.status = Status.DECLINED
         invitation.responded_at = timezone.now()
         invitation.save()
         send_on_commit(signals.invitation_declined, invitation, user=user)
     return invitation
+
+
+def can_reactivate_on_signup(user: AbstractBaseUser, invitation: "ProfileUserRole") -> bool:
+    """
+    Whether accept-with-signup may reactivate the inactive account `user`.
+
+    Holding the token only proves control of the inbox, so it must not undo a ban: staff
+    and superusers are never reactivated, and by default neither is any account that has
+    ever signed in — only accounts created ahead of time (by an import, say) that were never
+    used. `BASEAPP_PROFILES_INVITATION_SIGNUP_CAN_REACTIVATE` replaces the second rule.
+    """
+    if getattr(user, "is_staff", False) or getattr(user, "is_superuser", False):
+        return False
+    hook = invitation_signup_can_reactivate()
+    if hook is not None:
+        return bool(hook(user, invitation))
+    return getattr(user, "last_login", None) is None
 
 
 def accept_invitation_with_signup(
@@ -558,10 +606,11 @@ def accept_invitation_with_signup(
     """
     Accept an invitation anonymously by choosing a password.
 
-    Creates the account for the invited email — or activates an existing inactive one —
-    sets the password (checked against `AUTH_PASSWORD_VALIDATORS`) and the given names, and
-    accepts. Receiving the token proves the invitee owns the address, so a user model with
-    an `is_email_verified` field gets it set. An email that already has an active account
+    Creates the account for the invited email — or activates an existing inactive one that
+    `can_reactivate_on_signup` allows — sets the password (checked against
+    `AUTH_PASSWORD_VALIDATORS`) and the given names, and accepts. Receiving the token proves
+    the invitee owns the address, so a user model with an `is_email_verified` field gets it
+    set. An email that already has an active account
     must sign in and use `accept_invitation` instead.
 
     Disabled unless `BASEAPP_PROFILES_INVITATION_SIGNUP_ENABLED` is on.
@@ -582,17 +631,18 @@ def accept_invitation_with_signup(
     User = get_user_model()
     with transaction.atomic():
         # Lock the row and re-check, so two submissions of the form cannot both sign up.
-        invitation = ProfileUserRole.objects.select_for_update().get(pk=invitation.pk)
-        if invitation.status != Status.PENDING:
-            raise ProfileMembershipError(
-                _("This invitation has already been responded to"), "already_responded"
-            )
+        invitation = _lock_for_response(invitation)
 
         user = invitation.user or find_user_by_email(email)
         if user is not None and user.is_active:
             raise ProfileMembershipError(
                 _("An account already exists for this email. Sign in to accept the invitation."),
                 "user_exists",
+            )
+        if user is not None and not can_reactivate_on_signup(user, invitation):
+            raise ProfileMembershipError(
+                _("This account has been deactivated. Contact an administrator."),
+                "account_inactive",
             )
 
         created_user = user is None

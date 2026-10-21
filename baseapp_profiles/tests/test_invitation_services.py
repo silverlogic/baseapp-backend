@@ -41,6 +41,10 @@ def broken_hook(invitation) -> bool:
     raise RuntimeError("review service down")
 
 
+def reactivate_anyone(user, invitation) -> bool:
+    return True
+
+
 @pytest.fixture
 def owner() -> "User":
     return UserFactory(first_name="Olive", last_name="Owner")
@@ -587,6 +591,112 @@ class TestAcceptWithSignup:
         with pytest.raises(ProfileMembershipError) as excinfo:
             service.accept_invitation_with_signup(invitation.invitation_token, password=PASSWORD)
         assert excinfo.value.code == "expired_invitation"
+
+
+class TestSignupReactivation:
+    """Holding the token proves control of the inbox, not the right to undo a ban."""
+
+    @pytest.mark.usefixtures("signup_enabled")
+    @pytest.mark.parametrize("flags", [{"is_superuser": True}, {"is_staff": True}])
+    def test_never_reactivates_staff_or_superusers(self, profile, settings, flags) -> None:
+        settings.BASEAPP_PROFILES_INVITATION_SIGNUP_CAN_REACTIVATE = reactivate_anyone
+        disabled = UserFactory(email="ann@example.com", is_active=False, **flags)
+        invitation = invite(profile)
+
+        with pytest.raises(ProfileMembershipError) as excinfo:
+            service.accept_invitation_with_signup(invitation.invitation_token, password=PASSWORD)
+
+        assert excinfo.value.code == "account_inactive"
+        disabled.refresh_from_db()
+        assert not disabled.is_active
+        assert not disabled.check_password(PASSWORD)
+        invitation.refresh_from_db()
+        assert invitation.status == Status.PENDING
+
+    @pytest.mark.usefixtures("signup_enabled")
+    def test_does_not_reactivate_an_account_that_has_been_used(self, profile) -> None:
+        deactivated = UserFactory(
+            email="ann@example.com", is_active=False, last_login=timezone.now()
+        )
+        invitation = invite(profile)
+
+        with pytest.raises(ProfileMembershipError) as excinfo:
+            service.accept_invitation_with_signup(invitation.invitation_token, password=PASSWORD)
+
+        assert excinfo.value.code == "account_inactive"
+        deactivated.refresh_from_db()
+        assert not deactivated.is_active
+
+    @pytest.mark.usefixtures("signup_enabled")
+    def test_a_project_can_decide_which_accounts_come_back(self, profile, settings) -> None:
+        settings.BASEAPP_PROFILES_INVITATION_SIGNUP_CAN_REACTIVATE = (
+            "baseapp_profiles.tests.test_invitation_services.reactivate_anyone"
+        )
+        used = UserFactory(email="ann@example.com", is_active=False, last_login=timezone.now())
+        invitation = invite(profile)
+
+        service.accept_invitation_with_signup(invitation.invitation_token, password=PASSWORD)
+
+        used.refresh_from_db()
+        assert used.is_active
+        invitation.refresh_from_db()
+        assert (invitation.status, invitation.user) == (Status.ACTIVE, used)
+
+
+class TestConcurrentResponses:
+    """A cancel that lands between loading an invitation and answering it must win."""
+
+    @pytest.fixture
+    def cancel_midway(self, monkeypatch):
+        """Cancel the invitation (through its own copy) right after the first identity check."""
+        bind_user = service._bind_user
+        state = {"done": False}
+
+        def bind_then_cancel(invitation, user) -> None:
+            bind_user(invitation, user)
+            if not state["done"]:
+                state["done"] = True
+                service.cancel_invitation(ProfileUserRole.objects.get(pk=invitation.pk))
+
+        monkeypatch.setattr(service, "_bind_user", bind_then_cancel)
+
+    @pytest.mark.usefixtures("cancel_midway")
+    @pytest.mark.parametrize("respond", [service.accept_invitation, service.decline_invitation])
+    def test_a_deleted_invitation_is_not_recreated(self, profile, respond) -> None:
+        invitee = UserFactory(email="ann@example.com")
+        invitation = invite(profile)
+
+        with pytest.raises(ProfileMembershipError) as excinfo:
+            respond(invitation.invitation_token, invitee)
+
+        assert excinfo.value.code == "invalid_token"
+        assert not ProfileUserRole.objects.filter(profile=profile).exists()
+
+    @pytest.mark.usefixtures("cancel_midway", "keep_history")
+    @pytest.mark.parametrize("respond", [service.accept_invitation, service.decline_invitation])
+    def test_a_cancelled_invitation_stays_cancelled(self, profile, respond) -> None:
+        invitee = UserFactory(email="ann@example.com")
+        invitation = invite(profile)
+
+        with pytest.raises(ProfileMembershipError) as excinfo:
+            respond(invitation.invitation_token, invitee)
+
+        assert excinfo.value.code == "cancelled_invitation"
+        invitation.refresh_from_db()
+        assert invitation.status == Status.CANCELLED
+
+    @pytest.mark.parametrize("history", [False, True])
+    def test_cancel_leaves_an_accepted_invitation_alone(self, profile, settings, history) -> None:
+        settings.BASEAPP_PROFILES_INVITATION_KEEP_HISTORY = history
+        invitee = UserFactory(email="ann@example.com")
+        stale = invite(profile)
+        service.accept_invitation(stale.invitation_token, invitee)
+
+        with pytest.raises(ProfileMembershipError) as excinfo:
+            service.cancel_invitation(stale)
+
+        assert excinfo.value.code == "invalid_status"
+        assert ProfileUserRole.objects.get(pk=stale.pk).status == Status.ACTIVE
 
 
 class TestLookup:

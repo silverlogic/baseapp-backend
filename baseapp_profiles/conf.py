@@ -14,6 +14,10 @@ from django.utils.module_loading import import_string
 DEFAULTS = {
     # Lets an invitee with no account accept anonymously by choosing a password.
     "BASEAPP_PROFILES_INVITATION_SIGNUP_ENABLED": False,
+    # Dotted path to `callable(user, invitation) -> bool` deciding whether accept-with-signup
+    # may reactivate an existing inactive account. None: only accounts that never signed in.
+    # Staff and superusers are never reactivated, whatever this returns.
+    "BASEAPP_PROFILES_INVITATION_SIGNUP_CAN_REACTIVATE": None,
     # Cancel marks the row CANCELLED and a re-invite adds a new row, so declined, expired and
     # cancelled invitations stay on record. Off: cancel deletes and a re-invite reuses the row.
     "BASEAPP_PROFILES_INVITATION_KEEP_HISTORY": False,
@@ -60,6 +64,13 @@ def invitation_expiration_days() -> int:
 
 def invitation_pre_send_hook() -> Callable | None:
     hook = _get("BASEAPP_PROFILES_INVITATION_PRE_SEND_HOOK")
+    if isinstance(hook, str):
+        return import_string(hook)
+    return hook
+
+
+def invitation_signup_can_reactivate() -> Callable | None:
+    hook = _get("BASEAPP_PROFILES_INVITATION_SIGNUP_CAN_REACTIVATE")
     if isinstance(hook, str):
         return import_string(hook)
     return hook

@@ -54,6 +54,7 @@ class ProfileMembershipAPIError(APIException):
         "signup_disabled": status.HTTP_403_FORBIDDEN,
         "wrong_user": status.HTTP_403_FORBIDDEN,
         "user_exists": status.HTTP_409_CONFLICT,
+        "account_inactive": status.HTTP_403_FORBIDDEN,
     }
 
     def __init__(self, error: ProfileMembershipError) -> None:
