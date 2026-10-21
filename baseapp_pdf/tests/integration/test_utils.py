@@ -1,81 +1,91 @@
-import subprocess
+import tempfile
+from concurrent.futures import ThreadPoolExecutor
+from io import BytesIO
+from pathlib import Path
 from random import randint
-from unittest import mock
 
 import pytest
+from django.template import engines
 from django.utils import timezone
+from pypdf import PdfReader
 
-from baseapp_core.tests.fixtures import *  # noqa
 from baseapp_pdf.exceptions import BaseAppBackendPDFRenderToPDFException
 from baseapp_pdf.utils import (
+    chrome_available,
     ensure_google_chrome_installed,
+    render_html_to_pdf,
     render_template_to_pdf,
+    render_template_to_pdf_bytes,
     render_to_pdf,
 )
 
-pytestmark = pytest.mark.django_db
+# These drive a real Chrome (`BASEAPP_PDF_CHROME_BINARY`, `google-chrome` by default). Where
+# none is installed they are skipped; the mocked tests in `tests/unit` cover the logic.
+pytestmark = pytest.mark.skipif(not chrome_available(), reason="Chrome is not installed")
 
 
-@pytest.mark.usefixtures("responses_mock")
+def pdf_text(pdf: bytes) -> str:
+    return "\n".join(page.extract_text() for page in PdfReader(BytesIO(pdf)).pages)
+
+
+def leftover_work_dirs() -> set[Path]:
+    return set(Path(tempfile.gettempdir()).glob("baseapp_pdf_*"))
+
+
 class TestUtils:
     def test_utils_ensure_google_chrome_installed(self) -> None:
         ensure_google_chrome_installed()
 
-    def test_utils_render_to_pdf_succeeds_with_valid_url(self) -> None:
-        with render_to_pdf(source="https://google.ca") as _:
-            pass
+    def test_render_html_to_pdf(self) -> None:
+        before = leftover_work_dirs()
 
-    def test_utils_render_to_pdf_fails_with_invalid_url(self) -> None:
-        try:
-            with render_to_pdf(source="https://not.a.url") as _:
-                pass
-        except BaseAppBackendPDFRenderToPDFException:
-            pass
+        pdf = render_html_to_pdf("<h1>Invoice 42</h1><p>Café, déjà vu — naïve</p>")
 
-    def test_utils_render_to_pdf_wraps_a_chrome_failure(self) -> None:
-        # Whether an unreachable URL makes Chrome exit non-zero or render an error page
-        # depends on the network the suite runs on, so the failing branch is driven
-        # directly rather than through DNS.
-        error = subprocess.CalledProcessError(
-            returncode=1, cmd=["google-chrome"], stderr=b"net::ERR_NAME_NOT_RESOLVED"
+        assert pdf.startswith(b"%PDF")
+        text = pdf_text(pdf)
+        assert "Invoice 42" in text
+        assert "Café, déjà vu — naïve" in text
+        assert leftover_work_dirs() == before
+
+    def test_render_html_to_pdf_base_url(self, tmp_path: Path) -> None:
+        (tmp_path / "style.css").write_text("p::after { content: ' from the stylesheet'; }")
+
+        pdf = render_html_to_pdf(
+            '<head><link rel="stylesheet" href="style.css"></head><p>Styled</p>',
+            base_url=tmp_path.as_uri() + "/",
         )
-        real_run = subprocess.run
 
-        def fail_only_the_render(command, *args, **kwargs) -> subprocess.CompletedProcess:
-            # `render_to_pdf` checks that Chrome is installed before rendering; that call
-            # has to go through for the test to reach the branch under test.
-            if "--version" in command:
-                return real_run(command, *args, **kwargs)
-            raise error
+        assert "Styled from the stylesheet" in pdf_text(pdf)
 
-        with mock.patch("baseapp_pdf.utils.subprocess.run", side_effect=fail_only_the_render):
-            with pytest.raises(BaseAppBackendPDFRenderToPDFException) as excinfo:
-                with render_to_pdf(source="https://not.a.url") as _:
-                    pass
+    def test_concurrent_renders(self) -> None:
+        documents = [f"Document number {i}" for i in range(4)]
 
-        assert "ERR_NAME_NOT_RESOLVED" in str(excinfo.value)
-        assert isinstance(excinfo.value.__cause__, subprocess.CalledProcessError)
+        with ThreadPoolExecutor(max_workers=len(documents)) as executor:
+            pdfs = list(executor.map(lambda text: render_html_to_pdf(f"<p>{text}</p>"), documents))
 
-    def test_utils_render_to_pdf_wraps_chrome_producing_no_file(self) -> None:
-        # The other way Chrome fails: it exits zero and writes nothing. The cleanup in
-        # `finally` must not turn that into a missing-file error of its own, which would
-        # replace the exception that explains what went wrong.
-        real_run = subprocess.run
+        for text, pdf in zip(documents, pdfs):
+            assert text in pdf_text(pdf)
 
-        def succeed_without_writing_a_pdf(command, *args, **kwargs) -> subprocess.CompletedProcess:
-            if "--version" in command:
-                return real_run(command, *args, **kwargs)
-            return subprocess.CompletedProcess(args=command, returncode=0, stdout=b"", stderr=b"")
+    def test_render_to_pdf_local_file(self, tmp_path: Path) -> None:
+        html_file = tmp_path / "page.html"
+        html_file.write_text("<p>From a file</p>")
 
-        with mock.patch(
-            "baseapp_pdf.utils.subprocess.run", side_effect=succeed_without_writing_a_pdf
-        ):
-            with pytest.raises(BaseAppBackendPDFRenderToPDFException) as excinfo:
-                with render_to_pdf(source="https://not.a.url") as _:
-                    pass
+        with render_to_pdf(source=html_file) as pdf_file_path:
+            assert "From a file" in pdf_text(pdf_file_path.read_bytes())
 
-        assert "produced no PDF" in str(excinfo.value)
-        assert isinstance(excinfo.value.__cause__, FileNotFoundError)
+        assert not pdf_file_path.exists()
+
+    def test_render_to_pdf_missing_local_file(self, tmp_path: Path) -> None:
+        with pytest.raises(BaseAppBackendPDFRenderToPDFException):
+            with render_to_pdf(source=tmp_path / "missing.html"):
+                pass
+
+    def test_render_jinja2_template(self) -> None:
+        template = engines["jinja2"].from_string("<p>{{ greeting }}, {{ name }}</p>")
+
+        pdf = render_template_to_pdf_bytes(template, {"greeting": "Hello", "name": "Ada"})
+
+        assert "Hello, Ada" in pdf_text(pdf)
 
     def test_utils_render_template_to_pdf(self) -> None:
         context = {
@@ -104,7 +114,7 @@ class TestUtils:
                 "title": "Summary",
                 "table_data": [
                     {
-                        "title": "Backend Charges",
+                        "title": title,
                         "items": [
                             (
                                 f"Story {i + 1}",
@@ -112,41 +122,17 @@ class TestUtils:
                             )
                             for i in range(0, 24)
                         ],
-                    },
-                    {
-                        "title": "Web App(React) Charges",
-                        "items": [
-                            (
-                                f"Story {i + 1}",
-                                float(randint(100, 1000)) + float(1 / randint(1, 10)),  # NOSONAR
-                            )
-                            for i in range(0, 24)
-                        ],
-                    },
-                    {
-                        "title": "Android App Charges",
-                        "items": [
-                            (
-                                f"Story {i + 1}",
-                                float(randint(100, 1000)) + float(1 / randint(1, 10)),  # NOSONAR
-                            )
-                            for i in range(0, 24)
-                        ],
-                    },
-                    {
-                        "title": "iOS App Charges",
-                        "items": [
-                            (
-                                f"Story {i + 1}",
-                                float(randint(100, 1000)) + float(1 / randint(1, 10)),  # NOSONAR
-                            )
-                            for i in range(0, 24)
-                        ],
-                    },
+                    }
+                    for title in (
+                        "Backend Charges",
+                        "Web App(React) Charges",
+                        "Android App Charges",
+                        "iOS App Charges",
+                    )
                 ],
             },
         }
         with render_template_to_pdf(
             source="pdfs/render-template-to-pdf-example.html", context=context
-        ) as _:
-            pass
+        ) as pdf_file_path:
+            assert "BA-0000000001" in pdf_text(pdf_file_path.read_bytes())
