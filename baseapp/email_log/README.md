@@ -48,6 +48,9 @@ log row with its recipients, cc, bcc, reply-to and attachments.
 in the calling process, so the row exists (status `queued`) as soon as `send()` returns, and
 the worker only delivers, after the surrounding transaction commits. `send()` returns the
 number of messages queued instead of an `AsyncResult`.
+Neither backend imports `djmail.backends.celery`: importing it creates djmail's own Celery
+app and makes it the current app, which would then receive any configuration the project
+applies to `celery.current_app`.
 
 ## Reading a row
 

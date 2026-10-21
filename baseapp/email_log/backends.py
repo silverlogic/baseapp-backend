@@ -12,7 +12,7 @@ from typing import Any, Sequence
 from django.core.mail import EmailMessage
 from django.db import transaction
 from djmail import core as djmail_core
-from djmail.backends import celery as djmail_celery
+from djmail.backends import base as djmail_base
 from djmail.backends import default as djmail_default
 
 from .services import (
@@ -72,7 +72,10 @@ class EmailBackend(EmailLogBackendMixin, djmail_default.EmailBackend):
         return sent
 
 
-class CeleryEmailBackend(EmailLogBackendMixin, djmail_celery.EmailBackend):
+# Built on djmail's base backend rather than djmail.backends.celery: importing that module
+# imports djmail.tasks, which creates a Celery app named "djmail" and makes it the current app
+# of the importing thread. send_messages is replaced entirely, so nothing of it is needed.
+class CeleryEmailBackend(EmailLogBackendMixin, djmail_base.BaseEmailBackend):
     """
     djmail's Celery backend, plus the log row.
 

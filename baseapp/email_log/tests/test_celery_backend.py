@@ -1,3 +1,7 @@
+import os
+import subprocess
+import sys
+
 import pytest
 from django.core import mail
 from djmail.models import Message
@@ -79,3 +83,27 @@ def test_worker_transport_error_is_visible(
     log.refresh_from_db()
     assert log.status == "failed"
     assert "SMTPException" in log.error
+
+
+def test_importing_the_package_leaves_the_current_celery_app_alone() -> None:
+    # djmail.backends.celery imports djmail.tasks, which creates a Celery app and makes it
+    # the current one; whatever configures current_app afterwards would then configure
+    # djmail's app instead. Checked in a fresh interpreter, where nothing imported it yet.
+    code = "\n".join(
+        [
+            "import sys, django",
+            "django.setup()",
+            "from celery import current_app",
+            "before = current_app._get_current_object()",
+            "import baseapp.email_log.backends, baseapp.email_log.services",
+            "import baseapp.email_log.tasks",
+            "assert 'djmail.backends.celery' not in sys.modules, 'djmail.backends.celery'",
+            "assert current_app._get_current_object() is before, current_app.main",
+        ]
+    )
+    # pytest-django exports DJANGO_SETTINGS_MODULE, so the child uses the same settings.
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, env=os.environ, timeout=120
+    )
+
+    assert result.returncode == 0, result.stderr

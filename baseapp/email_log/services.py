@@ -1,5 +1,6 @@
 import json
 import logging
+import sys
 import traceback
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional
@@ -283,14 +284,16 @@ def logging_connection(connection: Any = None) -> Any:
     logged whatever the project's (or the test runner's) ``EMAIL_BACKEND`` is.
     """
     from djmail.backends.base import BaseEmailBackend as DjmailBaseBackend
-    from djmail.backends.celery import EmailBackend as DjmailCeleryBackend
 
     from .backends import CeleryEmailBackend, EmailBackend, EmailLogBackendMixin
 
     connection = connection or get_connection()
     if isinstance(connection, EmailLogBackendMixin):
         return connection
-    if isinstance(connection, DjmailCeleryBackend):
+    # Looked up, not imported: importing djmail.backends.celery creates djmail's Celery app
+    # and makes it the current app. A connection of that class means it is already loaded.
+    djmail_celery = sys.modules.get("djmail.backends.celery")
+    if djmail_celery is not None and isinstance(connection, djmail_celery.EmailBackend):
         return CeleryEmailBackend()
     if isinstance(connection, DjmailBaseBackend):
         return EmailBackend()
