@@ -3,10 +3,13 @@ from trench.views import (
     MFAConfigView,
     MFAListActiveUserMethodsView,
     MFAMethodActivationView,
+    MFAMethodRequestCodeView,
+)
+
+from baseapp_auth.rest_framework.mfa.views import (
     MFAMethodBackupCodesRegenerationView,
     MFAMethodConfirmActivationView,
     MFAMethodDeactivationView,
-    MFAMethodRequestCodeView,
     MFAPrimaryMethodChangeView,
 )
 
