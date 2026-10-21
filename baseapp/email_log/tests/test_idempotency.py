@@ -1,11 +1,14 @@
+import threading
 from typing import Any, Callable, Optional
 
 import pytest
 from django.core import mail
 from django.core.mail import get_connection
+from django.db import connection as db_connection
 from djmail.models import Message
 
 import baseapp_core.tests.factories as f
+from baseapp.email_log import services
 from baseapp.email_log.backends import CeleryEmailBackend, EmailBackend
 from baseapp.email_log.models import get_email_log_model
 from baseapp.email_log.services import (
@@ -57,6 +60,50 @@ def test_lost_race_returns_the_winners_row(monkeypatch) -> None:
     loser = send_logged(make_email(subject="Loser"), idempotency_key="race")
 
     assert loser == winner
+    assert len(mail.outbox) == 1
+    assert Message.objects.count() == 1
+    assert EmailLog.objects.count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_sends_with_one_key_send_once(monkeypatch) -> None:
+    """
+    Two threads, each on its own database connection, send with the same key. Both pass
+    the look-up before either has written its row; the unique index then makes one wait
+    for or fail against the other's commit, and the loser re-reads the winner's row.
+    """
+    real_find = services._find_by_key
+    both_checked = threading.Barrier(2, timeout=10)
+    calls = threading.local()
+
+    def find(key: str) -> Optional["EmailLog"]:
+        found = real_find(key)
+        calls.count = getattr(calls, "count", 0) + 1
+        # The backend's check (the second look-up) is the last one before the insert.
+        if calls.count == 2:
+            both_checked.wait()
+        return found
+
+    monkeypatch.setattr(services, "_find_by_key", find)
+    results, errors = [], []
+
+    def sender(subject: str) -> None:
+        try:
+            results.append(send_logged(make_email(subject=subject), idempotency_key="race"))
+        except Exception as error:  # pragma: no cover - reported below
+            errors.append(error)
+        finally:
+            db_connection.close()
+
+    threads = [threading.Thread(target=sender, args=(subject,)) for subject in ("A", "B")]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(20)
+
+    assert errors == []
+    assert len(results) == 2
+    assert results[0].pk == results[1].pk
     assert len(mail.outbox) == 1
     assert Message.objects.count() == 1
     assert EmailLog.objects.count() == 1
