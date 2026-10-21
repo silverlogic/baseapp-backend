@@ -20,19 +20,22 @@ def send_push_notification(
     if not push_description:
         raise Exception("push_description is required")
 
+    # Plain-text body shared by every device type. Built up front so users who only have
+    # Windows or Web devices still get a message.
+    message = force_str(push_description)
+
     # send messages to all Apple devices
     apple_devices = APNSDevice.objects.filter(user__id=user_id)
     if apple_devices:
-        message = force_str(push_description)
-        if push_title and push_description:
-            message = {"title": force_str(push_title), "body": force_str(push_description)}
-        apple_devices.send_message(message=message, extra=extra)
+        apple_message = message
+        if push_title:
+            apple_message = {"title": force_str(push_title), "body": message}
+        apple_devices.send_message(message=apple_message, extra=extra)
 
     # send messages to all Android devices
     android_devices = GCMDevice.objects.filter(user__id=user_id)
     if android_devices:
-        message = force_str(push_description)
-        if push_title and push_description:
+        if push_title:
             android_devices.send_message(message, title=push_title, extra=extra)
         else:
             android_devices.send_message(message=message, extra=extra)
