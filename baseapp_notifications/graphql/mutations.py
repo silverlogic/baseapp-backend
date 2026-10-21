@@ -1,11 +1,18 @@
 import graphene
 import swapper
+from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 
-from baseapp_core.graphql import RelayMutation, login_required
+from baseapp_core.graphql import ErrorType, RelayMutation, login_required
 from baseapp_core.graphql.utils import get_pk_from_relay_id
 
-from .object_types import NotificationChannelTypesEnum, NotificationsInterface
+from ..groups import get_notification_group
+from ..utils import get_notification_group_states, set_notification_group_setting
+from .object_types import (
+    NotificationChannelTypesEnum,
+    NotificationSettingGroup,
+    NotificationsInterface,
+)
 
 Notification = swapper.load_model("notifications", "Notification")
 NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationSetting")
@@ -123,7 +130,81 @@ class NotificationSettingToggle(RelayMutation):
         return NotificationSettingToggle(notification_setting=notification_setting)
 
 
+class NotificationSettingGroupChannelInput(graphene.InputObjectType):
+    group = graphene.String(required=True, description=_("Key of a registered notification group."))
+    channel = NotificationChannelTypesEnum(
+        required=True, description=_("ALL sets every channel of the group at once.")
+    )
+    is_active = graphene.Boolean(required=True)
+
+
+class NotificationSettingsUpdate(RelayMutation):
+    """Set the viewer's notification-group preferences.
+
+    Idempotent: each entry sets a value, it never toggles. The whole input is rejected when an
+    entry names an unknown group (or one outside the viewer's audience), a locked group, or a
+    channel the group does not offer.
+    """
+
+    groups = graphene.List(
+        graphene.NonNull(NotificationSettingGroup),
+        description=_("The changed groups with their resulting state."),
+    )
+    recipient = graphene.Field(NotificationsInterface)
+
+    class Input:
+        settings = graphene.List(
+            graphene.NonNull(NotificationSettingGroupChannelInput), required=True
+        )
+
+    @classmethod
+    @login_required
+    def mutate_and_get_payload(cls, root, info, settings, **input) -> "NotificationSettingsUpdate":
+        user = info.context.user
+        channel_all = int(NotificationSetting.NotificationChannelTypes.ALL)
+
+        changes = []
+        messages = []
+        for setting in settings:
+            group = get_notification_group(setting.group)
+            channel = int(setting.channel)
+            if group is None or not group.is_visible_to(user):
+                messages.append(
+                    _("Unknown notification group: %(group)s") % {"group": setting.group}
+                )
+            elif group.is_locked:
+                messages.append(
+                    _("Notification group %(group)s cannot be changed") % {"group": group.key}
+                )
+            elif channel != channel_all and channel not in group.channels:
+                messages.append(
+                    _("Notification group %(group)s has no %(channel)s channel")
+                    % {
+                        "group": group.key,
+                        "channel": NotificationSetting.NotificationChannelTypes(channel).label,
+                    }
+                )
+            else:
+                changes.append((group, channel, setting.is_active))
+
+        if messages:
+            return NotificationSettingsUpdate(
+                errors=[ErrorType(field="settings", messages=[str(m) for m in messages])]
+            )
+
+        with transaction.atomic():
+            for group, channel, is_active in changes:
+                set_notification_group_setting(user, group, channel, is_active)
+
+        changed_groups = list({group.key: group for group, _channel, _active in changes}.values())
+        return NotificationSettingsUpdate(
+            groups=get_notification_group_states(user, changed_groups),
+            recipient=user,
+        )
+
+
 class NotificationsMutations(object):
     notifications_mark_as_read = NotificationsMarkAsRead.Field()
     notifications_mark_all_as_read = NotificationsMarkAllAsRead.Field()
     notification_setting_toggle = NotificationSettingToggle.Field()
+    notification_settings_update = NotificationSettingsUpdate.Field()

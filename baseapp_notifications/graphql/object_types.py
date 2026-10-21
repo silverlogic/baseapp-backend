@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
+from django.utils.translation import gettext_lazy as _
 from graphene.types.generic import GenericScalar
 from graphene_django import DjangoConnectionField
 from graphene_django.filter import DjangoFilterConnectionField
@@ -11,7 +12,8 @@ from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import get_object_type_for_model
 
-from ..utils import can_user_receive_notification
+from ..groups import list_notification_groups
+from ..utils import can_user_receive_notification, get_notification_group_states
 from .filters import NotificationFilter
 
 if TYPE_CHECKING:
@@ -22,9 +24,32 @@ if TYPE_CHECKING:
         AbstractNotificationSetting,
     )
 
+    from ..utils import NotificationGroupState
+
 Notification = swapper.load_model("notifications", "Notification")
 NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationSetting")
 NotificationChannelTypesEnum = graphene.Enum.from_enum(NotificationSetting.NotificationChannelTypes)
+
+
+class NotificationSettingGroupChannel(graphene.ObjectType):
+    channel = graphene.Field(NotificationChannelTypesEnum, required=True)
+    is_active = graphene.Boolean(
+        required=True, description=_("Whether the viewer receives this group on this channel.")
+    )
+
+
+class NotificationSettingGroup(graphene.ObjectType):
+    """A registered notification group with the viewer's preference per channel."""
+
+    key = graphene.String(
+        required=True, description=_("Group key; use it as `group` in mutations and filters.")
+    )
+    label = graphene.String(required=True)
+    description = graphene.String()
+    is_locked = graphene.Boolean(
+        required=True, description=_("Locked groups are always delivered and cannot be changed.")
+    )
+    channels = graphene.List(graphene.NonNull(NotificationSettingGroupChannel), required=True)
 
 
 class NotificationsInterface(RelayNode):
@@ -36,6 +61,11 @@ class NotificationsInterface(RelayNode):
     is_notification_setting_active = graphene.Boolean(
         verb=graphene.String(required=True),
         channel=NotificationChannelTypesEnum(required=True),
+    )
+    notification_setting_groups = graphene.List(
+        graphene.NonNull(NotificationSettingGroup),
+        required=True,
+        description=_("Registered notification groups the viewer can configure."),
     )
 
     def resolve_notifications_unread_count(self, info) -> int:
@@ -59,6 +89,11 @@ class NotificationsInterface(RelayNode):
         if info.context.user.is_authenticated and info.context.user == self:
             return can_user_receive_notification(info.context.user.id, verb, channel)
         return False
+
+    def resolve_notification_setting_groups(self, info, **kwargs) -> list["NotificationGroupState"]:
+        if info.context.user.is_authenticated and info.context.user == self:
+            return get_notification_group_states(self, list_notification_groups(self))
+        return []
 
 
 class BaseNotificationNode:
