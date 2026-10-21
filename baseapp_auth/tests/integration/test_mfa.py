@@ -13,6 +13,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from trench import views as trench_views
 from trench.backends.provider import get_mfa_handler
+from trench.models import MFAMethod as MFAMethodModel
 
 import baseapp_auth.tests.helpers as h
 from baseapp_auth.rest_framework.mfa import views as mfa_views
@@ -96,13 +97,13 @@ def code_for(mfa_method) -> str:
     return get_mfa_handler(mfa_method=mfa_method).create_code()
 
 
-def with_backup_code(mfa_method):
+def with_backup_code(mfa_method: MFAMethodModel) -> MFAMethodModel:
     mfa_method.backup_codes = [make_password(BACKUP_CODE)]
     mfa_method.save()
     return mfa_method
 
 
-def has_backup_code(mfa_method) -> bool:
+def has_backup_code(mfa_method: MFAMethodModel) -> bool:
     mfa_method.refresh_from_db()
     return any(code for code in mfa_method.backup_codes)
 
