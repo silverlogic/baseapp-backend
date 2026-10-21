@@ -96,7 +96,7 @@ with render_template_to_pdf(source="pdfs/my-template.html", context=context) as 
 
 Every helper also takes `extra_args`, Chrome arguments for that one render (added after `BASEAPP_PDF_EXTRA_ARGS`), and `render_template_to_pdf` takes `base_url` like the bytes helpers. `render_template_to_html(source, context)` returns the rendered HTML without printing it, which is handy for previews and tests.
 
-Each render runs in its own private temporary directory, which holds the HTML, the PDF, Chrome's profile (`--user-data-dir`) and Chrome's scratch files, and which is removed when the render ends, so concurrent renders (threads, Celery workers) never touch each other's files.
+Each render runs in its own private temporary directory, which holds the HTML, the PDF, Chrome's profile (`--user-data-dir`) and Chrome's scratch files, and which is removed when the render ends, so concurrent renders (threads, Celery workers) never touch each other's files. Chrome runs in a process session of its own, and a render that times out kills the whole session, helper processes included, before the directory is removed. Removal is retried briefly; a directory that still can't be removed is logged as a warning (logger `baseapp_pdf.utils`) and left in the system temp folder rather than raised, so it never hides the render's own error.
 
 To render only when Chrome is there, and skip or fall back otherwise:
 
@@ -157,7 +157,7 @@ The package bundles [`templates/pdfs/render-template-to-pdf-example.html`](templ
 
 ## Testing
 
-The package's own tests mock Chrome (`baseapp_pdf/tests/unit`), and the tests that print real PDFs (`baseapp_pdf/tests/integration`) are skipped where `chrome_available()` is `False`. In your project, do the same: patch `baseapp_pdf.utils.subprocess.run`, or mark real renders with `pytest.mark.skipif(not chrome_available(), ...)`.
+The package's own tests mock Chrome (`baseapp_pdf/tests/unit`), and the tests that print real PDFs (`baseapp_pdf/tests/integration`) are skipped where `chrome_available()` is `False`. In your project, do the same: patch `baseapp_pdf.utils.run_chrome`, the one function that starts Chrome (it takes the command plus `timeout` and `env` keywords and returns a `subprocess.CompletedProcess`), or mark real renders with `pytest.mark.skipif(not chrome_available(), ...)`. Don't patch `baseapp_pdf.utils.subprocess.run`: that replaces `subprocess.run` for the whole process, and the package no longer calls it.
 
 ## How to develop
 

@@ -24,7 +24,7 @@ def option(command: list[str], name: str) -> str | None:
 
 class FakeChrome:
     """
-    Stands in for `subprocess.run` so renders can be tested without Chrome.
+    Stands in for `baseapp_pdf.utils.run_chrome` so renders can be tested without Chrome.
 
     Like the real thing it answers `--version`, writes a PDF to `--print-to-pdf` and leaves a
     `scoped_dir*` folder under `TMPDIR`. Every call is recorded, with the HTML source it was

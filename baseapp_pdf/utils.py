@@ -1,8 +1,11 @@
 import logging
 import os
 import re
+import shutil
+import signal
 import subprocess
 import tempfile
+import time
 import typing
 from collections.abc import Sequence
 from contextlib import contextmanager
@@ -56,6 +59,54 @@ def get_no_sandbox() -> bool:
     return bool(getattr(settings, "BASEAPP_PDF_NO_SANDBOX", DEFAULT_NO_SANDBOX))
 
 
+def run_chrome(
+    command: Sequence[str], *, timeout: float | None, env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess:
+    """
+    Run a Chrome command, like `subprocess.run(command, capture_output=True, check=True)`.
+
+    Chrome runs in a session of its own, and if it is still running when `timeout` expires
+    (or the wait is interrupted) the whole session is killed. `subprocess.run` kills only
+    the main process, and Chrome's helper processes (renderer, network service) then go on
+    running, and writing to the profile while it is being removed.
+
+    Every Chrome call in this package goes through here, so tests patch
+    `baseapp_pdf.utils.run_chrome` rather than `subprocess.run` for the whole process.
+
+    Raises:
+        OSError: If the binary can't be run.
+        subprocess.CalledProcessError: If Chrome exits non-zero.
+        subprocess.TimeoutExpired: If Chrome takes longer than `timeout` seconds.
+    """
+    with subprocess.Popen(
+        list(command),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+        start_new_session=True,
+    ) as process:
+        try:
+            stdout, stderr = process.communicate(timeout=timeout)
+        except BaseException:
+            _kill_session(process)
+            raise
+    if process.returncode:
+        raise subprocess.CalledProcessError(process.returncode, process.args, stdout, stderr)
+    return subprocess.CompletedProcess(process.args, process.returncode, stdout, stderr)
+
+
+def _kill_session(process: subprocess.Popen) -> None:
+    """Kill `process` and every process it started; the caller then waits for it."""
+    if not hasattr(os, "killpg"):  # pragma: no cover - Windows has no process groups
+        process.kill()
+        return
+    try:
+        # The process has not been waited for yet, so its id still names its group.
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:  # pragma: no cover - the group has already exited
+        pass
+
+
 def ensure_google_chrome_installed() -> None:
     """
     Ensure that the configured Chrome binary (`BASEAPP_PDF_CHROME_BINARY`) is installed.
@@ -65,9 +116,7 @@ def ensure_google_chrome_installed() -> None:
     """
     binary = get_chrome_binary()
     try:
-        process = subprocess.run(
-            [binary, "--version"], check=True, capture_output=True, timeout=get_timeout()
-        )
+        process = run_chrome([binary, "--version"], timeout=get_timeout())
         logger.info(f"{binary} is installed: {process.stdout.decode('utf-8')}")
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
         # OSError covers a missing binary (FileNotFoundError) and one that is not
@@ -138,14 +187,32 @@ def _build_command(
 
 @contextmanager
 def _work_dir() -> typing.Generator[Path, None, None]:
-    """
-    A private (0700) temporary directory for one render, removed with everything in it.
+    """A private (0700) temporary directory for one render, removed with everything in it."""
+    path = Path(tempfile.mkdtemp(prefix="baseapp_pdf_"))
+    try:
+        yield path
+    finally:
+        _remove_work_dir(path)
 
-    Cleanup errors are ignored so that a file Chrome still holds open can't replace the
-    exception that explains a failed render.
+
+def _remove_work_dir(path: Path, attempts: int = 3, delay: float = 0.2) -> None:
     """
-    with tempfile.TemporaryDirectory(prefix="baseapp_pdf_", ignore_cleanup_errors=True) as path:
-        yield Path(path)
+    Remove `path`, retrying while a Chrome process that was just killed still writes to it.
+
+    It never raises, so that a cleanup failure can't replace the exception that explains a
+    failed render; a directory that can't be removed is logged instead.
+    """
+    for attempt in range(1, attempts + 1):
+        try:
+            shutil.rmtree(path)
+            return
+        except FileNotFoundError:
+            return
+        except OSError as error:
+            if attempt == attempts:
+                logger.warning("Could not remove the PDF render directory %s: %s", path, error)
+                return
+            time.sleep(delay)
 
 
 def _print_to_pdf(source: str, work_dir: Path, extra_args: Sequence[str] = ()) -> Path:
@@ -164,7 +231,7 @@ def _print_to_pdf(source: str, work_dir: Path, extra_args: Sequence[str] = ()) -
     timeout = get_timeout()
 
     try:
-        subprocess.run(command, capture_output=True, check=True, timeout=timeout, env=env)
+        run_chrome(command, timeout=timeout, env=env)
     except subprocess.CalledProcessError as error:
         # Chrome exits non-zero for anything it could not load — a host that does not
         # resolve, a refused connection, a timeout. Letting CalledProcessError out breaks
@@ -176,7 +243,7 @@ def _print_to_pdf(source: str, work_dir: Path, extra_args: Sequence[str] = ()) -
             f"{command[0]} failed to render {source}: {stderr}"
         ) from error
     except subprocess.TimeoutExpired as error:
-        # `subprocess.run` has already killed Chrome by the time this is raised.
+        # `run_chrome` has already killed Chrome and its helpers by the time this is raised.
         raise BaseAppBackendPDFRenderToPDFException(
             f"{command[0]} did not render {source} within {timeout} seconds"
         ) from error

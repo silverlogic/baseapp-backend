@@ -6,6 +6,7 @@ from random import randint
 
 import pytest
 from django.template import engines
+from django.test import override_settings
 from django.utils import timezone
 from pypdf import PdfReader
 
@@ -74,6 +75,18 @@ class TestUtils:
         assert "LANG fr" in text
         if base_url:
             assert f"BASE {base_url}" in text
+
+    @override_settings(BASEAPP_PDF_TIMEOUT=2)
+    def test_timed_out_renders_leave_nothing_behind(self) -> None:
+        # On a timeout only Chrome's main process used to be killed; its helpers kept
+        # writing to the profile while it was removed, and the directory stayed.
+        before = leftover_work_dirs()
+
+        for _ in range(4):
+            with pytest.raises(BaseAppBackendPDFRenderToPDFException, match="within 2 seconds"):
+                render_html_to_pdf("<script>while (true) {}</script>")
+
+        assert leftover_work_dirs() == before
 
     def test_concurrent_renders(self) -> None:
         documents = [f"Document number {i}" for i in range(4)]

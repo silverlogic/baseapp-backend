@@ -1,3 +1,4 @@
+import logging
 import stat
 import subprocess
 import typing
@@ -12,6 +13,7 @@ from baseapp_pdf.exceptions import (
     BaseAppBackendPDFChromeNotInstalledException,
     BaseAppBackendPDFRenderToPDFException,
 )
+from baseapp_pdf import utils
 from baseapp_pdf.tests.helpers import FakeChrome, option
 from baseapp_pdf.utils import (
     chrome_available,
@@ -27,7 +29,7 @@ from baseapp_pdf.utils import (
 @pytest.fixture
 def fake_chrome() -> typing.Generator[FakeChrome, None, None]:
     chrome = FakeChrome()
-    with mock.patch("baseapp_pdf.utils.subprocess.run", side_effect=chrome):
+    with mock.patch("baseapp_pdf.utils.run_chrome", side_effect=chrome):
         yield chrome
 
 
@@ -53,7 +55,6 @@ class TestSettings:
         assert command[:3] == ["google-chrome", "--headless", "--no-sandbox"]
         assert "--print-to-pdf-no-header" in command
         assert render["kwargs"]["timeout"] == 60
-        assert render["kwargs"]["check"] is True
 
     @override_settings(BASEAPP_PDF_CHROME_BINARY="chromium")
     def test_chrome_binary(self, fake_chrome) -> None:
@@ -70,7 +71,7 @@ class TestSettings:
     @override_settings(BASEAPP_PDF_TIMEOUT=5)
     def test_timeout_raises_a_render_error(self) -> None:
         error = subprocess.TimeoutExpired(cmd=["google-chrome"], timeout=5)
-        with mock.patch("baseapp_pdf.utils.subprocess.run", side_effect=fail_with(error)):
+        with mock.patch("baseapp_pdf.utils.run_chrome", side_effect=fail_with(error)):
             with pytest.raises(BaseAppBackendPDFRenderToPDFException) as excinfo:
                 render_html_to_pdf("<p>hi</p>")
 
@@ -110,7 +111,7 @@ class TestChromeInstalled:
     )
     @override_settings(BASEAPP_PDF_CHROME_BINARY="chromium")
     def test_not_installed(self, error: Exception) -> None:
-        with mock.patch("baseapp_pdf.utils.subprocess.run", side_effect=error):
+        with mock.patch("baseapp_pdf.utils.run_chrome", side_effect=error):
             with pytest.raises(BaseAppBackendPDFChromeNotInstalledException) as excinfo:
                 ensure_google_chrome_installed()
             assert chrome_available() is False
@@ -126,7 +127,7 @@ class TestChromeInstalled:
         )
 
     def test_nothing_is_rendered_without_chrome(self) -> None:
-        with mock.patch("baseapp_pdf.utils.subprocess.run", side_effect=FileNotFoundError()):
+        with mock.patch("baseapp_pdf.utils.run_chrome", side_effect=FileNotFoundError()):
             with pytest.raises(BaseAppBackendPDFChromeNotInstalledException):
                 render_html_to_pdf("<p>hi</p>")
 
@@ -139,7 +140,7 @@ class TestRenderFailures:
         error = subprocess.CalledProcessError(
             returncode=1, cmd=["google-chrome"], stderr=b"net::ERR_NAME_NOT_RESOLVED"
         )
-        with mock.patch("baseapp_pdf.utils.subprocess.run", side_effect=fail_with(error)):
+        with mock.patch("baseapp_pdf.utils.run_chrome", side_effect=fail_with(error)):
             with pytest.raises(BaseAppBackendPDFRenderToPDFException) as excinfo:
                 with render_to_pdf(source="https://not.a.url"):
                     pass
@@ -152,7 +153,7 @@ class TestRenderFailures:
         # turn that into a missing-file error of its own, which would replace the
         # exception that explains what went wrong.
         chrome = FakeChrome(write_pdf=False)
-        with mock.patch("baseapp_pdf.utils.subprocess.run", side_effect=chrome):
+        with mock.patch("baseapp_pdf.utils.run_chrome", side_effect=chrome):
             with pytest.raises(BaseAppBackendPDFRenderToPDFException) as excinfo:
                 with render_to_pdf(source="https://not.a.url"):
                     pass
@@ -161,7 +162,7 @@ class TestRenderFailures:
         assert isinstance(excinfo.value.__cause__, FileNotFoundError)
 
     def test_chrome_error_page_is_a_render_error(self) -> None:
-        with mock.patch("baseapp_pdf.utils.subprocess.run", side_effect=FakeChrome()):
+        with mock.patch("baseapp_pdf.utils.run_chrome", side_effect=FakeChrome()):
             with mock.patch("baseapp_pdf.utils.PdfReader") as reader:
                 page = reader.return_value.pages.__getitem__.return_value
                 page.extract_text.return_value = "DNS_PROBE_FINISHED_NXDOMAIN"
@@ -201,6 +202,40 @@ class TestIsolation:
         render = fake_chrome.renders[0]
         assert not Path(render["command"][-1]).exists()
         assert not render["scoped_dir"].exists()
+
+
+class TestCleanup:
+    def test_removal_is_retried_while_chrome_still_writes(self, tmp_path: Path) -> None:
+        # A Chrome helper that was just killed can still be writing to the profile, and
+        # make the first removal fail.
+        with mock.patch.object(utils.shutil, "rmtree", side_effect=[OSError("busy"), None]) as rm:
+            with mock.patch.object(utils.time, "sleep") as sleep:
+                utils._remove_work_dir(tmp_path)
+
+        assert rm.call_count == 2
+        sleep.assert_called_once()
+
+    def test_a_directory_that_cant_be_removed_is_logged(self, tmp_path: Path, caplog) -> None:
+        with mock.patch.object(utils.shutil, "rmtree", side_effect=OSError("busy")) as rm:
+            with mock.patch.object(utils.time, "sleep"):
+                with caplog.at_level(logging.WARNING, logger="baseapp_pdf.utils"):
+                    utils._remove_work_dir(tmp_path)
+
+        assert rm.call_count == 3
+        assert f"Could not remove the PDF render directory {tmp_path}: busy" in caplog.text
+
+    def test_a_directory_already_gone_is_fine(self, tmp_path: Path, caplog) -> None:
+        utils._remove_work_dir(tmp_path / "missing")
+
+        assert caplog.text == ""
+
+    def test_a_cleanup_failure_does_not_hide_the_render_error(self) -> None:
+        error = subprocess.TimeoutExpired(cmd=["google-chrome"], timeout=60)
+        with mock.patch("baseapp_pdf.utils.run_chrome", side_effect=fail_with(error)):
+            with mock.patch.object(utils.shutil, "rmtree", side_effect=OSError("busy")):
+                with mock.patch.object(utils.time, "sleep"):
+                    with pytest.raises(BaseAppBackendPDFRenderToPDFException):
+                        render_html_to_pdf("<p>hi</p>")
 
 
 class TestRenderHtmlToPdf:
