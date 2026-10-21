@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import swapper
 from django.core.mail import send_mail
@@ -48,6 +48,14 @@ def send_email_notification(to, context) -> None:
 
     send_mail(
         subject, text_message, html_message=html_message, from_email=None, recipient_list=[to]
+    )
+
+
+def send_notification_email(recipient: Any, notification: Any, **context: Any) -> None:
+    """Default ``BASEAPP_NOTIFICATIONS_EMAIL_SENDER``: render the ``.j2`` templates and send_mail."""
+    send_email_notification(
+        to=recipient.email,
+        context=dict(notification=notification, recipient=recipient, **context),
     )
 
 
