@@ -77,6 +77,12 @@ class BaseProfileUserRoleObjectType:
     responded_at = graphene.DateTime()
     is_expired = graphene.Boolean()
     profile = graphene.Field(get_object_type_for_model(Profile))
+    invited_first_name = graphene.String()
+    invited_last_name = graphene.String()
+    message = graphene.String()
+    sent_count = graphene.Int()
+    last_sent_at = graphene.DateTime()
+    deactivated_at = graphene.DateTime()
 
     class Meta:
         model = ProfileUserRole
@@ -93,6 +99,14 @@ class BaseProfileUserRoleObjectType:
             "invited_at",
             "invitation_expires_at",
             "responded_at",
+            "invited_first_name",
+            "invited_last_name",
+            "message",
+            "invited_by",
+            "sent_count",
+            "last_sent_at",
+            "deactivated_at",
+            "deactivated_by",
         ]
         filterset_class = MemberFilter
 
@@ -119,6 +133,48 @@ class BaseProfileUserRoleObjectType:
         if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
             return None
         return self.responded_at
+
+    # Invitation and audit details are for the profile's members only, like the email above.
+
+    def resolve_invited_first_name(self, info) -> str | None:
+        if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
+            return None
+        return self.invited_first_name
+
+    def resolve_invited_last_name(self, info) -> str | None:
+        if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
+            return None
+        return self.invited_last_name
+
+    def resolve_message(self, info) -> str | None:
+        if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
+            return None
+        return self.message
+
+    def resolve_invited_by(self, info) -> object | None:
+        if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
+            return None
+        return self.invited_by
+
+    def resolve_sent_count(self, info) -> int | None:
+        if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
+            return None
+        return self.sent_count
+
+    def resolve_last_sent_at(self, info) -> "datetime | None":
+        if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
+            return None
+        return self.last_sent_at
+
+    def resolve_deactivated_at(self, info) -> "datetime | None":
+        if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
+            return None
+        return self.deactivated_at
+
+    def resolve_deactivated_by(self, info) -> object | None:
+        if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
+            return None
+        return self.deactivated_by
 
     def resolve_is_expired(self, info) -> bool:
         return is_expired_invitation(self)
@@ -147,6 +203,16 @@ class ProfileUserRoleObjectType(DjangoObjectType, BaseProfileUserRoleObjectType)
         if not can_view_profile_members(info.context.user, node.profile):
             return None
         return node
+
+
+class ProfileInvitationPreview(graphene.ObjectType):
+    """What anyone holding an invitation token may see: enough to greet the invitee."""
+
+    profile_name = graphene.String(required=True)
+    invited_email = graphene.String(required=True)
+    role = graphene.Field(ProfileRoleTypesEnum, required=True)
+    status = graphene.Field(ProfileRoleStatusTypesEnum, required=True)
+    expires_at = graphene.DateTime()
 
 
 class ProfileInterface(RelayNode):

@@ -6,6 +6,8 @@ from graphene_django.filter import DjangoFilterConnectionField
 
 from baseapp_core.graphql import Node, get_object_type_for_model
 
+from .object_types import ProfileInvitationPreview
+
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
@@ -23,6 +25,32 @@ class ProfilesQueries:
             "hidden once the invitation has expired."
         ),
     )
+
+    profile_invitation_preview = graphene.Field(
+        ProfileInvitationPreview,
+        token=graphene.String(required=True),
+        description=(
+            "Public summary of an invitation for its acceptance page: profile name, invited "
+            "email, role, status (an overdue pending invitation reads EXPIRED) and expiry. "
+            "Needs no sign-in — the token is the authorization. Null for an unknown token."
+        ),
+    )
+
+    def resolve_profile_invitation_preview(
+        self, info: graphene.ResolveInfo, token: str
+    ) -> "Optional[ProfileInvitationPreview]":
+        from baseapp_profiles.services.invitations import lookup_invitation
+
+        invitation = lookup_invitation(token)
+        if invitation is None:
+            return None
+        return ProfileInvitationPreview(
+            profile_name=invitation.profile_name,
+            invited_email=invitation.invited_email,
+            role=invitation.role,
+            status=invitation.status,
+            expires_at=invitation.expires_at,
+        )
 
     def resolve_profile_invitation(
         self, info: graphene.ResolveInfo, token: str
