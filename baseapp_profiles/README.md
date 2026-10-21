@@ -400,8 +400,12 @@ every profile when `BASEAPP_PROFILES_PROTECT_LAST_ADMIN` is on.
 ### Ownerless profiles
 
 `Profile.owner` is nullable, so a profile — typically an organization's — can be run
-entirely by its ADMIN members. Compare owners with `profile.is_owned_by(user)`, never
-`profile.owner_id == user.id`: an anonymous user's id is `None` too.
+entirely by its ADMIN members. On an ownerless profile, active ADMINs stand in for the
+owner: they get `change_profile` and `delete_profile` as well as member management, and a
+private ownerless profile is listed (`allProfiles`) for its active members. Profiles with
+an owner keep owner-only `change_profile` / `delete_profile`. Compare owners with
+`profile.is_owned_by(user)`, never `profile.owner_id == user.id`: an anonymous user's id is
+`None` too.
 
 ### Project roles
 

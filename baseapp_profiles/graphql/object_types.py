@@ -12,6 +12,7 @@ from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import ThumbnailField, get_object_type_for_model
 from baseapp_core.plugins import graphql_shared_interfaces, shared_services
+from baseapp_profiles.permissions import active_membership_subquery
 
 from .filters import MemberFilter, ProfileFilter
 
@@ -286,8 +287,12 @@ class BaseProfileObjectType(object):
         if not info.context.user.is_authenticated:
             return queryset.filter(status=Profile.ProfileStatus.PUBLIC)
         else:
+            # An ownerless private profile is listed for its active members, as the
+            # owner's private profile is listed for the owner.
             return queryset.filter(
-                Q(status=Profile.ProfileStatus.PUBLIC) | Q(owner=info.context.user)
+                Q(status=Profile.ProfileStatus.PUBLIC)
+                | Q(owner=info.context.user)
+                | Q(active_membership_subquery(info.context.user), owner__isnull=True)
             )
 
     @classmethod
