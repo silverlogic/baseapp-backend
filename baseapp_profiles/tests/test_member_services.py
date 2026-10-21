@@ -1,17 +1,24 @@
 import pytest
 import swapper
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.test.utils import isolate_apps
 
 from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles import signals
 from baseapp_profiles.exceptions import ProfileMembershipError
+from baseapp_profiles.graphql.object_types import ProfileRoleTypesEnum
 from baseapp_profiles.models import AbstractProfileUserRole
+from baseapp_profiles.rest_framework.memberships.serializers import (
+    ProfileInvitationSendSerializer,
+    ProfileMemberRoleSerializer,
+)
 from baseapp_profiles.services.members import (
     change_member_role,
     deactivate_member,
     reactivate_member,
     remove_member,
+    validate_role,
 )
 
 from .factories import ProfileFactory, ProfileUserRoleFactory
@@ -218,3 +225,41 @@ class TestProjectRoles:
         assert 3 in ProjectProfileUserRole.assignable_roles()
         # What get_role_display() and the admin read.
         assert dict(field.flatchoices)[3] == "viewer"
+
+    @isolate_apps("baseapp_profiles")
+    def test_full_clean_accepts_a_redeclared_role(self) -> None:
+        class ProjectProfileUserRole(AbstractProfileUserRole):
+            class ProfileRoles(models.IntegerChoices):
+                ADMIN = 1, "admin"
+                MANAGER = 2, "manager"
+                VIEWER = 3, "viewer"
+
+            class Meta(AbstractProfileUserRole.Meta):
+                app_label = "baseapp_profiles"
+
+        # What `full_clean()` runs on the column (the model itself cannot be instantiated
+        # here: its relations point at models outside the isolated registry).
+        field = ProjectProfileUserRole._meta.get_field("role")
+        assert field.clean(3, None) == 3
+        with pytest.raises(ValidationError):
+            field.clean(4, None)
+
+    def test_the_apis_read_the_concrete_models_roles(self) -> None:
+        # A project's redeclared `ProfileRoles` lives on the concrete model, so this is what
+        # puts its roles into the GraphQL enum and the REST serializers.
+        assert ProfileRoleTypesEnum._meta.enum is ProfileUserRole.ProfileRoles
+        for serializer in (ProfileMemberRoleSerializer(), ProfileInvitationSendSerializer()):
+            assert list(serializer.fields["role"].choices) == list(
+                ProfileUserRole.ProfileRoles.values
+            )
+
+    def test_roles_held_back_by_assignable_roles_are_refused(self, monkeypatch) -> None:
+        member = ProfileUserRoleFactory(role=ADMIN)
+        monkeypatch.setattr(ProfileUserRole, "assignable_roles", classmethod(lambda cls: [ADMIN]))
+
+        validate_role(ADMIN)
+        with pytest.raises(ProfileMembershipError) as excinfo:
+            change_member_role(member, MANAGER)
+        assert excinfo.value.code == "invalid_input"
+        serializer = ProfileMemberRoleSerializer(data={"role": MANAGER})
+        assert not serializer.is_valid()
