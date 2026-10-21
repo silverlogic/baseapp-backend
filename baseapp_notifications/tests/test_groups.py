@@ -1,6 +1,8 @@
 import pytest
 import swapper
 from django.core.exceptions import ImproperlyConfigured
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 
 from baseapp_core.tests.factories import UserFactory
 from baseapp_notifications.groups import (
@@ -136,12 +138,114 @@ def test_group_key_setting_mutes_every_verb_of_the_group(notification_groups_reg
     assert can_user_receive_notification(user.id, "weekly_summary", Channels.IN_APP) is True
 
 
-def test_legacy_first_segment_setting_still_applies(notification_groups_registry) -> None:
+def test_first_segment_setting_only_governs_verbs_outside_groups(
+    notification_groups_registry,
+) -> None:
     register_notification_group("chats.mentions", label="Mentions")
     user = UserFactory()
     NotificationSettingFactory(user=user, verb="chats", channel=Channels.EMAIL, is_active=False)
 
-    assert can_user_receive_notification(user.id, "chats.mentions.reply", Channels.EMAIL) is False
+    assert can_user_receive_notification(user.id, "chats.new_message", Channels.EMAIL) is False
+    # the group's own preference governs its verbs, and it shows as on
+    assert can_user_receive_notification(user.id, "chats.mentions.reply", Channels.EMAIL) is True
+
+
+def test_muting_a_prefix_group_does_not_mute_an_explicit_verbs_group(
+    notification_groups_registry,
+) -> None:
+    comments = register_notification_group("comments", label="Comments")
+    moderation = register_notification_group(
+        "moderation", label="Moderation", verbs=["comments.reported"], channels=["EMAIL"]
+    )
+    user = UserFactory()
+
+    set_notification_group_setting(user, comments, Channels.ALL, False)
+
+    assert can_user_receive_notification(user.id, "comments.new", Channels.EMAIL) is False
+    assert can_user_receive_notification(user.id, "comments.reported", Channels.EMAIL) is True
+    assert states_by_channel(user, moderation) == {Channels.EMAIL: True}
+
+    set_notification_group_setting(user, moderation, Channels.EMAIL, False)
+
+    assert can_user_receive_notification(user.id, "comments.reported", Channels.EMAIL) is False
+    assert states_by_channel(user, moderation) == {Channels.EMAIL: False}
+
+
+def test_legacy_first_segment_row_does_not_mute_an_explicit_verbs_group(
+    notification_groups_registry,
+) -> None:
+    money = register_notification_group("money", label="Money", verbs=["billing.paid"])
+    user = UserFactory()
+    NotificationSettingFactory(user=user, verb="billing", channel=Channels.ALL, is_active=False)
+
+    assert can_user_receive_notification(user.id, "billing.paid", Channels.EMAIL) is True
+    assert all(states_by_channel(user, money).values())
+    # verbs outside the group still follow the legacy row
+    assert can_user_receive_notification(user.id, "billing.refunded", Channels.EMAIL) is False
+
+
+def test_nested_groups_are_independent(notification_groups_registry) -> None:
+    chats = register_notification_group("chats", label="Chats")
+    mentions = register_notification_group("chats.mentions", label="Mentions")
+    user = UserFactory()
+
+    set_notification_group_setting(user, chats, Channels.ALL, False)
+    set_notification_group_setting(user, mentions, Channels.EMAIL, True)
+
+    assert not any(states_by_channel(user, chats).values())
+    assert all(states_by_channel(user, mentions).values())
+    assert can_user_receive_notification(user.id, "chats.new_message", Channels.EMAIL) is False
+    assert can_user_receive_notification(user.id, "chats.mentions.reply", Channels.EMAIL) is True
+
+    set_notification_group_setting(user, mentions, Channels.PUSH, False)
+
+    assert states_by_channel(user, mentions) == {
+        Channels.IN_APP: True,
+        Channels.EMAIL: True,
+        Channels.PUSH: False,
+    }
+    assert can_user_receive_notification(user.id, "chats.mentions.reply", Channels.PUSH) is False
+
+
+def test_group_rows_do_not_mute_channels_the_group_does_not_offer(
+    notification_groups_registry,
+) -> None:
+    billing = register_notification_group("billing", label="Billing", channels=["EMAIL"])
+    user = UserFactory()
+
+    set_notification_group_setting(user, billing, Channels.ALL, False)
+
+    assert states_by_channel(user, billing) == {Channels.EMAIL: False}
+    assert can_user_receive_notification(user.id, "billing.paid", Channels.EMAIL) is False
+    assert can_user_receive_notification(user.id, "billing.paid", Channels.IN_APP) is True
+    assert can_user_receive_notification(user.id, "billing.paid", Channels.PUSH) is True
+    assert not NotificationSetting.objects.filter(
+        user=user, verb="billing", channel=Channels.ALL
+    ).exists()
+
+
+def test_legacy_all_row_only_mutes_the_channels_the_group_offers(
+    notification_groups_registry,
+) -> None:
+    register_notification_group("billing", label="Billing", channels=["EMAIL"])
+    user = UserFactory()
+    # e.g. left behind by notificationSettingToggle on ALL
+    NotificationSettingFactory(user=user, verb="billing", channel=Channels.ALL, is_active=False)
+    NotificationSettingFactory(user=user, verb="billing", channel=Channels.PUSH, is_active=False)
+
+    assert can_user_receive_notification(user.id, "billing.paid", Channels.EMAIL) is False
+    assert can_user_receive_notification(user.id, "billing.paid", Channels.IN_APP) is True
+    assert can_user_receive_notification(user.id, "billing.paid", Channels.PUSH) is True
+
+
+def test_global_setting_still_mutes_channels_a_group_does_not_offer(
+    notification_groups_registry,
+) -> None:
+    register_notification_group("billing", label="Billing", channels=["EMAIL"])
+    user = UserFactory()
+    NotificationSettingFactory(user=user, verb="_ALL_", channel=Channels.PUSH, is_active=False)
+
+    assert can_user_receive_notification(user.id, "billing.paid", Channels.PUSH) is False
 
 
 def test_locked_group_is_always_delivered(notification_groups_registry) -> None:
@@ -164,23 +268,48 @@ SCENARIOS = [
     [("_ALL_", Channels.PUSH, False)],
     [("_ALL_", Channels.ALL, False)],
     [("other", Channels.ALL, False)],
+    # rows of a parent group, a sibling prefix group, or a legacy first segment
+    [("parent", Channels.ALL, False), ("parent", Channels.EMAIL, False)],
+    [("sibling", Channels.ALL, False)],
+    [("legacy", Channels.EMAIL, False)],
 ]
 
+GROUP_SHAPES = {
+    "prefix": ({}, ["g", "g.event"]),
+    "nested": ({"key": "parent.g"}, ["parent.g", "parent.g.event"]),
+    "verbs": (
+        {"verbs": ["sibling.flagged", "legacy.done"]},
+        ["g", "sibling.flagged", "legacy.done"],
+    ),
+    "subset": ({"channels": ["EMAIL", "PUSH"]}, ["g", "g.event"]),
+}
 
+
+@pytest.mark.parametrize("shape", GROUP_SHAPES)
 @pytest.mark.parametrize("rows", SCENARIOS)
 def test_group_states_match_can_user_receive_notification(
-    notification_groups_registry, rows, django_assert_num_queries
+    notification_groups_registry, rows, shape, django_assert_num_queries
 ) -> None:
-    group = register_notification_group("g", label="G")
+    kwargs, verbs = GROUP_SHAPES[shape]
+    kwargs = {"key": "g", **kwargs}
+    register_notification_group("parent", label="Parent")
+    register_notification_group("sibling", label="Sibling")
+    group = register_notification_group(label="G", **kwargs)
     user = UserFactory()
     for verb, channel, is_active in rows:
+        verb = group.key if verb == "g" else verb
         NotificationSettingFactory(user=user, verb=verb, channel=channel, is_active=is_active)
 
     with django_assert_num_queries(1):
         states = states_by_channel(user, group)
 
-    for channel in group.channels:
-        assert states[channel] == can_user_receive_notification(user.id, "g.event", channel)
+    assert set(states) == set(group.channels)
+    for verb in verbs:
+        for channel in group.channels:
+            assert states[channel] == can_user_receive_notification(user.id, verb, channel), (
+                verb,
+                channel,
+            )
 
 
 def test_group_states_without_groups_runs_no_query(django_assert_num_queries) -> None:
@@ -250,3 +379,28 @@ def test_enabling_one_channel_under_a_muted_all_keeps_the_others_off(
         Channels.EMAIL: False,
         Channels.PUSH: True,
     }
+
+
+def test_set_all_lifts_a_legacy_all_row(notification_groups_registry) -> None:
+    group = register_notification_group("g", label="G")
+    user = UserFactory()
+    NotificationSettingFactory(user=user, verb="g", channel=Channels.ALL, is_active=False)
+
+    set_notification_group_setting(user, group, Channels.ALL, True)
+
+    assert all(states_by_channel(user, group).values())
+    assert NotificationSetting.objects.get(user=user, verb="g", channel=Channels.ALL).is_active
+
+
+def test_set_locks_the_user_against_concurrent_duplicates(notification_groups_registry) -> None:
+    group = register_notification_group("g", label="G")
+    user = UserFactory()
+
+    with CaptureQueriesContext(connection) as queries:
+        set_notification_group_setting(user, group, Channels.EMAIL, False)
+
+    statements = [query["sql"] for query in queries.captured_queries]
+    lock = next(i for i, sql in enumerate(statements) if "FOR UPDATE" in sql)
+    write = next(i for i, sql in enumerate(statements) if sql.startswith(("UPDATE", "INSERT")))
+    assert lock < write
+

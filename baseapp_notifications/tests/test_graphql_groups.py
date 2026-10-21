@@ -186,3 +186,24 @@ def test_update_requires_login(groups, graphql_client) -> None:
     content = response.json()
     assert content["errors"][0]["extensions"]["code"] == "authentication_required"
     assert not NotificationSetting.objects.exists()
+
+
+def test_update_child_group_under_a_muted_parent_takes_effect(
+    notification_groups_registry, graphql_user_client
+) -> None:
+    register_notification_group("chats", label="Chats")
+    register_notification_group("chats.mentions", label="Mentions")
+
+    update(graphql_user_client, ("chats", "ALL", False))
+    payload = update(graphql_user_client, ("chats.mentions", "EMAIL", False))
+    payload = update(graphql_user_client, ("chats.mentions", "EMAIL", True))
+
+    assert payload["errors"] is None
+    assert channels(payload["groups"][0]) == {"IN_APP": True, "EMAIL": True, "PUSH": True}
+    response = graphql_user_client(GROUPS_QUERY)
+    states = {
+        group["key"]: channels(group)
+        for group in response.json()["data"]["me"]["notificationSettingGroups"]
+    }
+    assert states["chats"] == {"IN_APP": False, "EMAIL": False, "PUSH": False}
+
