@@ -16,6 +16,9 @@ class Migration(migrations.Migration):
         ("contenttypes", "0002_remove_content_type_name"),
         ("djmail", "0002_auto_20161118_1347"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        # resend_of points at the active model: a swapped one must exist first. Unswapped,
+        # this is the app's own first migration, which Django ignores.
+        migrations.swappable_dependency(settings.BASEAPP_EMAIL_LOG_EMAILLOG_MODEL),
     ]
 
     operations = [

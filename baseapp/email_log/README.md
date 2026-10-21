@@ -276,7 +276,7 @@ project scheduled it, since it would leave transport errors uncounted.
 ## Customizing the model
 
 The package ships a concrete `EmailLog` with its migration, so it works out of the box.
-To add columns (an owner, a tenant, ...), subclass the abstract model and swap it in before
+To add columns (an owner, an account, ...), subclass the abstract model and swap it in before
 the first `migrate`:
 
 ```python

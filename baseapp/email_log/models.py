@@ -117,8 +117,11 @@ class AbstractEmailLog(TimeStampedModel):
         on_delete=models.SET_NULL,
         related_name="sent_email_logs",
     )
+    # The swappable name rather than "self": a swapped-out default would otherwise point at
+    # itself while its migration points at the setting, and every project that swaps the
+    # model would get a phantom migration for this package.
     resend_of = models.ForeignKey(
-        "self",
+        swapper.get_model_name("baseapp_email_log", "EmailLog"),
         verbose_name=_("resend of"),
         null=True,
         blank=True,
