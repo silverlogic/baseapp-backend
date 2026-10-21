@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+from django.core.exceptions import ImproperlyConfigured
 from django.template import Template, engines
 from django.test import override_settings
 
@@ -91,6 +92,20 @@ class TestSettings:
         command = fake_chrome.renders[0]["command"]
         assert command[-3:-1] == ["--font-render-hinting=none", "--lang=fr"]
         assert command[-1].endswith("index.html")
+
+    @override_settings(BASEAPP_PDF_EXTRA_ARGS="--lang=fr")
+    def test_extra_args_setting_must_not_be_a_string(self, fake_chrome) -> None:
+        # A string would be split into one Chrome argument per character.
+        with pytest.raises(ImproperlyConfigured, match=r"Use \['--lang=fr'\]"):
+            render_html_to_pdf("<p>hi</p>")
+
+        assert fake_chrome.renders == []
+
+    def test_extra_args_must_not_be_a_string(self, fake_chrome) -> None:
+        with pytest.raises(TypeError, match=r"Use \['--lang=fr'\]"):
+            render_html_to_pdf("<p>hi</p>", extra_args="--lang=fr")
+
+        assert fake_chrome.renders == []
 
     def test_render_to_pdf_extra_args(self, fake_chrome) -> None:
         with render_to_pdf(source="https://example.com", extra_args=["--lang=fr"]):

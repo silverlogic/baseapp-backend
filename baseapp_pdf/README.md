@@ -53,7 +53,7 @@ All optional; they are read on every render, so `override_settings` works in tes
 | --- | --- | --- |
 | `BASEAPP_PDF_CHROME_BINARY` | `"google-chrome"` | Executable to run, e.g. `"chromium"` or an absolute path. |
 | `BASEAPP_PDF_TIMEOUT` | `60` | Seconds a Chrome call may take before it is killed and `BaseAppBackendPDFRenderToPDFException` is raised. `None` waits forever. |
-| `BASEAPP_PDF_EXTRA_ARGS` | `()` | Chrome arguments added to every render, e.g. `["--font-render-hinting=none"]`. |
+| `BASEAPP_PDF_EXTRA_ARGS` | `()` | Chrome arguments added to every render, as a list, e.g. `["--font-render-hinting=none"]`. A string raises `ImproperlyConfigured`. |
 | `BASEAPP_PDF_NO_SANDBOX` | `True` | Pass `--no-sandbox`, which Chrome needs when it runs as root in a container. Set `False` where Chrome's sandbox can work. |
 
 ## How to use

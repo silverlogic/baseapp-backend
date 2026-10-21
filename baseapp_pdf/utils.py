@@ -14,6 +14,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.template import Context
 from django.template import Template as DjangoBaseTemplate
 from django.template.loader import get_template
@@ -51,7 +52,15 @@ def get_timeout() -> float | None:
 
 def get_extra_args() -> tuple[str, ...]:
     """Arguments appended to every render (`BASEAPP_PDF_EXTRA_ARGS`, default none)."""
-    return tuple(getattr(settings, "BASEAPP_PDF_EXTRA_ARGS", DEFAULT_EXTRA_ARGS))
+    extra_args = getattr(settings, "BASEAPP_PDF_EXTRA_ARGS", DEFAULT_EXTRA_ARGS)
+    if isinstance(extra_args, str):
+        raise ImproperlyConfigured(_extra_args_error("BASEAPP_PDF_EXTRA_ARGS", extra_args))
+    return tuple(extra_args)
+
+
+def _extra_args_error(name: str, value: str) -> str:
+    # A string would otherwise be split into one Chrome argument per character.
+    return f"{name} must be a list of arguments, not a string. Use [{value!r}]."
 
 
 def get_no_sandbox() -> bool:
@@ -166,6 +175,8 @@ def ensure_valid_pdf(file_path: Path) -> None:
 def _build_command(
     source: str, output_file_path: Path, user_data_dir: Path, extra_args: Sequence[str] = ()
 ) -> list[str]:
+    if isinstance(extra_args, str):
+        raise TypeError(_extra_args_error("extra_args", extra_args))
     command = [get_chrome_binary(), "--headless"]
     if get_no_sandbox():
         command.append("--no-sandbox")
