@@ -1,15 +1,18 @@
 import logging
 import os
+import re
 import subprocess
 import tempfile
 import typing
 from collections.abc import Sequence
 from contextlib import contextmanager
+from html import escape
 from pathlib import Path
 from uuid import uuid4
 
 from django.conf import settings
-from django.template.backends.django import Template as DjangoTemplate
+from django.template import Context
+from django.template import Template as DjangoBaseTemplate
 from django.template.loader import get_template
 from pypdf import PdfReader
 
@@ -24,6 +27,12 @@ DEFAULT_CHROME_BINARY = "google-chrome"
 DEFAULT_TIMEOUT = 60
 DEFAULT_EXTRA_ARGS: tuple[str, ...] = ()
 DEFAULT_NO_SANDBOX = True
+
+
+class SupportsRender(typing.Protocol):
+    """A template from any engine: Django and Jinja2 templates both have `render(context)`."""
+
+    def render(self, context: typing.Any = ...) -> str: ...
 
 
 def get_chrome_binary() -> str:
@@ -208,29 +217,119 @@ def render_to_pdf(
         yield _print_to_pdf(source, work_dir, extra_args)
 
 
+_HEAD_OPEN_TAG = re.compile(r"<head(\s[^>]*)?>", re.IGNORECASE)
+
+
+def _with_base_url(html: str, base_url: str | None) -> str:
+    """Put `<base href>` first in `<head>`, so relative URLs resolve against `base_url`."""
+    if not base_url:
+        return html
+    base_tag = f'<base href="{escape(base_url, quote=True)}">'
+    match = _HEAD_OPEN_TAG.search(html)
+    if match is None:
+        return base_tag + html
+    return html[: match.end()] + base_tag + html[match.end() :]
+
+
+@contextmanager
+def _render_html(
+    html: str, base_url: str | None = None, extra_args: Sequence[str] = ()
+) -> typing.Generator[Path, None, None]:
+    with _work_dir() as work_dir:
+        html_file_path = work_dir / "index.html"
+        # The byte order mark makes Chrome read the file as UTF-8 whatever the HTML
+        # declares (or fails to), so non-ASCII text survives a document without
+        # `<meta charset>`.
+        html_file_path.write_text(_with_base_url(html, base_url), encoding="utf-8-sig")
+        yield _print_to_pdf(html_file_path.as_posix(), work_dir, extra_args)
+
+
+def render_html_to_pdf(
+    html: str, *, base_url: str | None = None, extra_args: Sequence[str] = ()
+) -> bytes:
+    """
+    Render an HTML string to PDF bytes.
+
+    Args:
+        html: The document to print.
+        base_url: What relative URLs in `html` (images, stylesheets, fonts) resolve against,
+            e.g. `"https://example.com/static/"` or `"file:///app/static/"`. It is inserted
+            as the first `<base>` element, so it wins over one already in `html`. Without it
+            relative URLs resolve against the private temporary folder the HTML is written
+            to, where nothing else exists.
+        extra_args: Chrome arguments for this render, after `BASEAPP_PDF_EXTRA_ARGS`.
+
+    Returns:
+        The PDF document. Nothing is left on disk.
+
+    Raises:
+        BaseAppBackendPDFChromeNotInstalledException: If Chrome is not installed.
+        BaseAppBackendPDFRenderToPDFException: If Chrome fails, times out or produces no PDF.
+    """
+    ensure_google_chrome_installed()
+    with _render_html(html, base_url=base_url, extra_args=extra_args) as pdf_file_path:
+        return pdf_file_path.read_bytes()
+
+
+def render_template_to_html(source: str | SupportsRender, context: dict | None = None) -> str:
+    """
+    Render a template to an HTML string.
+
+    Args:
+        source: A template name, looked up in every configured template engine, or a
+            template object with `render(context)` from any backend (Django, Jinja2).
+        context: The template context.
+    """
+    if isinstance(source, str):
+        source = get_template(source)
+    if callable(getattr(source, "render", None)) is False:
+        raise TypeError(f"Expected source to be a string or a template. Got {type(source)}.")
+
+    context = context or {}
+    # A template built with `django.template.Template` directly, rather than through an
+    # engine, takes a `Context` instead of a dict.
+    if isinstance(source, DjangoBaseTemplate):
+        return source.render(Context(context)).strip()
+    return source.render(context).strip()
+
+
 @contextmanager
 def render_template_to_pdf(
-    *args, source: str | DjangoTemplate, context: dict = {}, **kwargs
+    *args,
+    source: str | SupportsRender,
+    context: dict | None = None,
+    base_url: str | None = None,
+    extra_args: Sequence[str] = (),
+    **kwargs,
 ) -> typing.Generator[Path, None, None]:
     """
     Render a template to a pdf file.
 
     Args:
-        source: Name of the template or a DjangoTemplate object.
+        source: Name of the template, or a template object with `render(context)` from any
+            backend (Django, Jinja2).
+        context: The template context.
+        base_url: See `render_html_to_pdf`.
+        extra_args: Chrome arguments for this render, after `BASEAPP_PDF_EXTRA_ARGS`.
 
     Returns:
         A path to the rendered pdf temporary file.
         This file will be deleted after the exiting the context.
     """
-
-    if isinstance(source, str):
-        source = get_template(source)
-    if isinstance(source, DjangoTemplate) is False:
-        raise TypeError(f"Expected source to be a string or DjangoTemplate. Got {type(source)}.")
-
-    html = source.render(context).strip()
+    html = render_template_to_html(source, context)
     ensure_google_chrome_installed()
-    with _work_dir() as work_dir:
-        html_file_path = work_dir / "index.html"
-        html_file_path.write_text(html)
-        yield _print_to_pdf(html_file_path.as_posix(), work_dir)
+    with _render_html(html, base_url=base_url, extra_args=extra_args) as pdf_file_path:
+        yield pdf_file_path
+
+
+def render_template_to_pdf_bytes(
+    source: str | SupportsRender,
+    context: dict | None = None,
+    *,
+    base_url: str | None = None,
+    extra_args: Sequence[str] = (),
+) -> bytes:
+    """Render a template to PDF bytes. Arguments are as for `render_template_to_pdf`."""
+    return render_html_to_pdf(
+        render_template_to_html(source, context), base_url=base_url, extra_args=extra_args
+    )
