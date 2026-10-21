@@ -32,6 +32,7 @@ from baseapp_profiles import signals
 from baseapp_profiles.conf import (
     invitation_async_send,
     invitation_expiration_days,
+    invitation_max_per_send,
     invitation_pre_send_hook,
     invitation_signup_can_reactivate,
     invitation_signup_enabled,
@@ -238,6 +239,12 @@ def send_invitations(
     items = _normalize_invitees(invitees)
     if not items:
         raise ProfileMembershipError(_("At least one email is required"), "invalid_input")
+    limit = invitation_max_per_send()
+    if limit is not None and len(items) > limit:
+        raise ProfileMembershipError(
+            _("At most %(limit)d invitations can be sent at once") % {"limit": limit},
+            "invalid_input",
+        )
 
     with transaction.atomic():
         invitations = [
@@ -380,7 +387,7 @@ def send_invitation_email_now(
     try:
         emails.send_invitation_email(invitation, inviter)
     except Exception:
-        logger.exception("Failed to send invitation email to %s", invitation.invited_email)
+        logger.exception("Failed to send invitation email for invitation %s", invitation.pk)
         return False
 
     now = timezone.now()

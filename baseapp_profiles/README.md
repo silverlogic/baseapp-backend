@@ -292,6 +292,7 @@ Every default keeps the behaviour projects had before these settings existed.
 | `BASEAPP_PROFILES_INVITATION_KEEP_HISTORY` | `False` | Keep invitation history: cancel marks the row CANCELLED instead of deleting it, and inviting an email again opens a new row instead of reusing the declined/expired/cancelled one. |
 | `BASEAPP_PROFILES_INVITATION_SIGNUP_ENABLED` | `False` | Allow anonymous accept-with-signup. |
 | `BASEAPP_PROFILES_INVITATION_SIGNUP_CAN_REACTIVATE` | `None` | Dotted path to (or a) `callable(user, invitation) -> bool`: may accept-with-signup reactivate this inactive account? `None` allows only accounts that never signed in. Staff and superusers are always refused. |
+| `BASEAPP_PROFILES_INVITATION_MAX_PER_SEND` | `None` | Most invitations one send (GraphQL, REST or `send_invitations`) may contain; `None` means no limit. |
 | `BASEAPP_PROFILES_INVITATION_ASYNC_SEND` | `False` | Send invitation emails from the `send_invitation_email_task` Celery task, queued on commit. While Celery runs eagerly they are sent inline. |
 | `BASEAPP_PROFILES_INVITATION_PRE_SEND_HOOK` | `None` | Dotted path to (or a) `callable(invitation) -> bool`; `True` holds the email. |
 | `BASEAPP_PROFILES_PROTECT_LAST_ADMIN` | `False` | Apply the last-admin guard to profiles that have an owner too. |

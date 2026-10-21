@@ -165,6 +165,32 @@ class TestSendInvitations:
         assert calls[0]["inviter"] == owner
 
 
+class TestSendLimits:
+    def test_a_send_larger_than_the_limit_is_refused(self, profile, settings, mailoutbox) -> None:
+        settings.BASEAPP_PROFILES_INVITATION_MAX_PER_SEND = 2
+
+        with pytest.raises(ProfileMembershipError) as excinfo:
+            service.send_invitations(profile, ["a@example.com", "b@example.com", "c@example.com"])
+
+        assert excinfo.value.code == "invalid_input"
+        assert not ProfileUserRole.objects.filter(profile=profile).exists()
+        assert mailoutbox == []
+
+    def test_there_is_no_limit_by_default(self, profile) -> None:
+        emails = [f"person{i}@example.com" for i in range(30)]
+        assert len(service.send_invitations(profile, emails).invitations) == 30
+
+    def test_a_failed_email_does_not_log_the_address(self, profile, caplog) -> None:
+        with patch(
+            "baseapp_profiles.emails.send_invitation_email", side_effect=RuntimeError("smtp")
+        ):
+            result = service.send_invitations(profile, ["ann@example.com"])
+
+        assert result.emails_sent == 0
+        assert str(result.invitations[0].pk) in caplog.text
+        assert "ann@example.com" not in caplog.text
+
+
 class TestInvitationHistory:
     def test_without_history_a_reinvite_reuses_the_declined_row(self, profile) -> None:
         invitation = invite(profile)

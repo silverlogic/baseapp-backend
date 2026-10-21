@@ -30,6 +30,8 @@ DEFAULTS = {
     "BASEAPP_PROFILES_PROTECT_LAST_ADMIN": False,
     # Per-IP rate of the public invitation lookup and accept-with-signup REST endpoints.
     "BASEAPP_PROFILES_INVITATION_PUBLIC_RATE": "30/hour",
+    # Most invitations a single send may contain. None: no limit.
+    "BASEAPP_PROFILES_INVITATION_MAX_PER_SEND": None,
 }
 
 
@@ -55,6 +57,11 @@ def protect_last_admin() -> bool:
 
 def invitation_public_rate() -> str | None:
     return _get("BASEAPP_PROFILES_INVITATION_PUBLIC_RATE")
+
+
+def invitation_max_per_send() -> int | None:
+    value = _get("BASEAPP_PROFILES_INVITATION_MAX_PER_SEND")
+    return None if value is None else int(value)
 
 
 def invitation_expiration_days() -> int:
