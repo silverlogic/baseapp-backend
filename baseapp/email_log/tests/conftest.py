@@ -21,6 +21,11 @@ def failing_transport(settings) -> None:
 
 
 @pytest.fixture
+def unreachable_transport(settings) -> None:
+    settings.DJMAIL_REAL_BACKEND = "baseapp.email_log.tests.helpers.UnreachableBackend"
+
+
+@pytest.fixture
 def attachment_storage(settings, tmp_path: Path) -> Path:
     settings.STORAGES = {
         **settings.STORAGES,

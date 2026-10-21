@@ -16,10 +16,13 @@ from djmail.backends import celery as djmail_celery
 from djmail.backends import default as djmail_default
 
 from .services import (
+    close_connection,
     create_message_log,
     deliver_message,
     hold_low_priority,
     is_low_priority,
+    open_connection,
+    record_failure,
 )
 
 
@@ -43,18 +46,29 @@ class EmailBackend(EmailLogBackendMixin, djmail_default.EmailBackend):
         if not stored:
             return 0
 
+        sent = 0
+        to_deliver = []
+        for email, message in stored:
+            if is_low_priority(email):
+                hold_low_priority(message, email.priority)
+                sent += 1
+            else:
+                to_deliver.append(message)
+        if not to_deliver:
+            return sent
+
         connection = self.transport or djmail_core._get_real_backend()
-        connection.open()
+        # An unreachable transport fails every message, readably, rather than raising.
+        error = open_connection(connection)
+        if error:
+            for message in to_deliver:
+                record_failure(message, error)
+            return sent
         try:
-            sent = 0
-            for email, message in stored:
-                if is_low_priority(email):
-                    hold_low_priority(message, email.priority)
-                    sent += 1
-                    continue
+            for message in to_deliver:
                 sent += deliver_message(message, connection)
         finally:
-            connection.close()
+            close_connection(connection)
         return sent
 
 
@@ -64,14 +78,16 @@ class CeleryEmailBackend(EmailLogBackendMixin, djmail_celery.EmailBackend):
 
     Unlike djmail's, the message and its row are written in the calling process, so the row
     is there (status ``queued``) as soon as ``send()`` returns; the worker only delivers,
-    once the surrounding transaction commits. Returns the number of messages queued.
+    once the surrounding transaction commits. Returns the number of messages queued. When
+    the task cannot be queued (the broker is down), the messages are marked failed for the
+    retry task instead of raising after the caller's commit.
     """
 
     def send_messages(self, email_messages: Sequence[EmailMessage]) -> int:
         if not email_messages:
             return 0
 
-        from .tasks import send_queued_messages
+        from .tasks import enqueue_messages
 
         queued = 0
         uuids = []
@@ -86,5 +102,5 @@ class CeleryEmailBackend(EmailLogBackendMixin, djmail_celery.EmailBackend):
                 uuids.append(message.uuid)
 
         if uuids:
-            transaction.on_commit(lambda: send_queued_messages.delay(uuids))
+            transaction.on_commit(lambda: enqueue_messages(uuids))
         return queued

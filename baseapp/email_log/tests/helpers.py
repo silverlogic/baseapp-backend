@@ -7,11 +7,37 @@ from django.core.mail.backends.base import BaseEmailBackend
 TRANSPORT_ERROR = "Connection refused by the test transport"
 
 
+UNREACHABLE_ERROR = "Connection refused by the unreachable test transport"
+
+
 class FailingBackend(BaseEmailBackend):
-    """A transport whose every send raises, like an unreachable SMTP server."""
+    """A transport whose every send raises, like a server rejecting the message."""
 
     def send_messages(self, email_messages) -> int:
         raise SMTPException(TRANSPORT_ERROR)
+
+
+class UnreachableBackend(BaseEmailBackend):
+    """A transport that cannot connect: ``open()`` raises, as SMTP's does for a down server."""
+
+    def open(self) -> bool:
+        raise ConnectionRefusedError(111, UNREACHABLE_ERROR)
+
+    def send_messages(self, email_messages) -> int:
+        raise AssertionError("send_messages must not be reached when open() failed")
+
+
+class ClosingFailsBackend(BaseEmailBackend):
+    """Delivers into ``mail.outbox`` but raises when closed, as SMTP's ``quit`` can."""
+
+    def send_messages(self, email_messages) -> int:
+        from django.core import mail
+
+        mail.outbox.extend(email_messages)
+        return len(email_messages)
+
+    def close(self) -> None:
+        raise SMTPException("QUIT failed")
 
 
 class NothingSentBackend(BaseEmailBackend):

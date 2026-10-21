@@ -31,6 +31,10 @@ class EmailLogPlugin(BaseAppPlugin):
                 "BASEAPP_EMAIL_LOG_RETENTION_DAYS": None,
                 # Whether purge_email_logs also deletes rows holding an idempotency key.
                 "BASEAPP_EMAIL_LOG_PURGE_IDEMPOTENT": False,
+                # Minutes after which retry_failed_emails sends a logged message still a
+                # draft (its delivery was never attempted, e.g. a lost Celery task); None
+                # leaves drafts alone.
+                "BASEAPP_EMAIL_LOG_STALE_DRAFT_MINUTES": 30,
                 # Callable (or dotted path) re-rendering a template on resend:
                 # (template, context) -> {"subject", "body_text", "body_html"}.
                 "BASEAPP_EMAIL_LOG_RENDERER": None,

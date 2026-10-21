@@ -1,5 +1,6 @@
 import json
 import logging
+import traceback
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional
 
@@ -214,22 +215,54 @@ def hold_low_priority(message: Message, priority: int) -> None:
     message.save(update_fields=["priority", "status"])
 
 
+def record_failure(message: Message, error: str) -> None:
+    """
+    Mark ``message`` failed with ``error`` (a traceback) and count the attempt, so
+    ``status`` and ``error`` tell the truth and the retry task picks it up.
+    """
+    message.exception = error
+    message.status = Message.STATUS_FAILED
+    message.retry_count += 1
+    message.save(update_fields=["exception", "status", "retry_count"])
+
+
+def open_connection(connection: Any) -> str:
+    """
+    Open ``connection``, returning ``""``, or the traceback when it cannot be opened.
+
+    djmail's real backend never fails silently, so an unreachable SMTP server raises here,
+    before any message reaches ``_safe_send_message``. The caller records the traceback on
+    each message instead of letting it escape and leave them queued.
+    """
+    try:
+        connection.open()
+    except Exception:
+        logger.exception("Could not open the email connection")
+        return traceback.format_exc()
+    return ""
+
+
+def close_connection(connection: Any) -> None:
+    """Close ``connection``. The messages are already sent or failed, so errors are only logged."""
+    try:
+        connection.close()
+    except Exception:
+        logger.exception("Could not close the email connection")
+
+
 def deliver_message(message: Message, connection: Any) -> int:
     """
-    Send a stored djmail message through ``connection`` with djmail's own machinery, and
-    make a transport error count as a failure.
+    Send a stored djmail message through the open ``connection`` with djmail's own
+    machinery, and make a transport error count as a failure.
 
     djmail records the traceback of an exception in ``Message.exception`` but leaves the
     status untouched (a draft stays a draft, so it is never retried) and does not count
-    the attempt. Here it becomes ``failed`` with one more retry counted, so ``status`` and
-    ``error`` tell the truth and the retry task picks it up.
+    the attempt. Here it goes through ``record_failure``.
     """
     message.exception = ""
     sent = djmail_core._safe_send_message(message, connection)
     if not sent and message.exception:
-        message.status = Message.STATUS_FAILED
-        message.retry_count += 1
-        message.save(update_fields=["status", "retry_count"])
+        record_failure(message, message.exception)
     return sent
 
 

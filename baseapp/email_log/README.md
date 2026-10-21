@@ -141,6 +141,19 @@ logging backends mark it `failed` and count the attempt instead: `log.status == 
 and `log.error` holds the traceback. `send()` still returns `0` rather than raising, as
 with djmail.
 
+The same goes for a transport that cannot be reached at all (an SMTP server that is down
+fails when the connection opens, before any message is handed to it, and djmail lets that
+exception reach the caller): every message of the call is marked `failed` with the
+connection error, and `send()` returns. With `CeleryEmailBackend`, the worker does the same,
+and a broker that cannot take the task marks the queued messages `failed` instead of
+raising after the caller's transaction committed. The retry task sends them all once the
+transport is back.
+
+`EmailBackend` sends inside the caller's transaction, as djmail's does: if the caller then
+rolls back, the email is already out but its message, row and idempotency key are gone.
+Send after the commit (`transaction.on_commit`) or use `CeleryEmailBackend`, which queues
+delivery on commit, when that matters.
+
 ## Attachments
 
 Every row lists its attachments as `{"name", "content_type", "size"}`. To also keep the
@@ -205,8 +218,15 @@ Two Celery tasks, contributed to the plugin registry's beat schedules:
 
 | Task | Default schedule | What it does |
 |---|---|---|
-| `baseapp.email_log.tasks.retry_failed_emails` | every 15 minutes | djmail's periodic pass: send pending low-priority messages, discard messages that failed more than `DJMAIL_MAX_RETRY_NUMBER` (default 3) times, retry the other failed ones. Covers every djmail message, logged or not. |
+| `baseapp.email_log.tasks.retry_failed_emails` | every 15 minutes | djmail's periodic pass: discard messages that failed more than `DJMAIL_MAX_RETRY_NUMBER` (default 3) times, then send pending low-priority messages and retry the other failed ones. Covers every djmail message, logged or not. It also sends logged messages still drafts `BASEAPP_EMAIL_LOG_STALE_DRAFT_MINUTES` after they were written (a Celery task that was lost, a process that died before queueing it). |
 | `baseapp.email_log.tasks.purge_email_logs` | daily | Delete rows older than `BASEAPP_EMAIL_LOG_RETENTION_DAYS` with their djmail messages and stored attachments, plus djmail messages that old with no row. No-op while the setting is `None` (the default). |
+
+Each message is locked while it is delivered and skipped if it is no longer eligible, so a
+retry run overlapping another run, or the Celery worker, never sends a message twice. A
+message is attempted at most once per run: one that fails is retried by the next run.
+
+The purge deletes every djmail message older than the retention, including messages sent
+before the log was installed or through plain djmail, which have no row.
 
 Rows with an idempotency key are kept by the purge, so their keys keep blocking duplicate
 sends, unless `BASEAPP_EMAIL_LOG_PURGE_IDEMPOTENT = True`. `purge_email_logs(older_than_days=N)`
@@ -249,6 +269,7 @@ project scheduled it, since it would leave transport errors uncounted.
 | `BASEAPP_EMAIL_LOG_ATTACHMENT_STORAGE` | `None` (`default_storage`) | `STORAGES` alias, or dotted path of a storage class or factory |
 | `BASEAPP_EMAIL_LOG_RETENTION_DAYS` | `None` (keep) | Age in days after which `purge_email_logs` deletes rows |
 | `BASEAPP_EMAIL_LOG_PURGE_IDEMPOTENT` | `False` | Let the purge delete rows holding an idempotency key |
+| `BASEAPP_EMAIL_LOG_STALE_DRAFT_MINUTES` | `30` | Age after which `retry_failed_emails` sends a logged message still a draft; `None` leaves drafts alone |
 | `BASEAPP_EMAIL_LOG_RENDERER` | `None` | Callable or dotted path re-rendering a template on resend |
 | `DJMAIL_REAL_BACKEND`, `DJMAIL_MAX_RETRY_NUMBER` | djmail's | Unchanged meaning |
 
