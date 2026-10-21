@@ -14,6 +14,7 @@ from baseapp_core.graphql import (
 )
 from baseapp_profiles.conf import keep_invitation_history
 from baseapp_profiles.exceptions import ProfileMembershipError
+from baseapp_profiles.services import invitations as invitation_service
 from baseapp_profiles.services import members as member_service
 
 from ..object_types import ProfileRoleTypesEnum
@@ -42,12 +43,17 @@ def validate_assignable_role(role: int) -> None:
 
 def get_membership(profile_pk: int | str, user_pk: int | str) -> "ProfileUserRole | None":
     """
-    The user's row on the profile: the open one (member or pending invite) when there is
-    one, otherwise their latest closed invitation.
+    The user's row on the profile: the open one (member or pending invite).
+
+    Without invitation history a person has a single row, so their declined or expired
+    invitation is returned when there is no open one, as before. With history on, closed
+    rows are a record and never the target of these mutations.
     """
     rows = ProfileUserRole.objects.select_related("profile").filter(
         profile_id=profile_pk, user_id=user_pk
     )
+    if keep_invitation_history():
+        return rows.open().first()
     return rows.open().first() or rows.order_by("-pk").first()
 
 
@@ -233,7 +239,12 @@ class ProfileUserRoleDelete(RelayMutation):
 
         id_to_return = obj.relay_id
         try:
-            member_service.remove_member(obj, by=info.context.user)
+            if obj.status == ProfileUserRole.ProfileRoleStatus.PENDING:
+                # Removing someone who has not accepted yet withdraws their invitation, so
+                # it is kept as CANCELLED when history is on.
+                invitation_service.cancel_invitation(obj, by=info.context.user)
+            else:
+                member_service.remove_member(obj, by=info.context.user)
         except ProfileMembershipError as error:
             raise GraphQLError(error.message, extensions={"code": error.code})
 

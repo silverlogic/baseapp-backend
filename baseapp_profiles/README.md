@@ -152,7 +152,7 @@ When `baseapp_pages` is installed, each profile owns a URL handle (e.g. `/jonath
 | `profileDelete` | Delete a profile. |
 | `profileUserRoleCreate` | Add existing users as ACTIVE members. |
 | `profileUserRoleUpdate` | Change a member's role (refuses to demote the last admin where [guarded](#last-admin-guard)). |
-| `profileUserRoleDelete` | Remove a member (same guard). |
+| `profileUserRoleDelete` | Remove a member (same guard). For someone who has not accepted yet, it cancels their invitation (`invitation_cancelled`, kept as CANCELLED with history on). |
 | `profileMemberDeactivate` / `profileMemberReactivate` | Deactivate a member (keeps the row, records `deactivatedAt`/`deactivatedBy`, revokes access) or restore them. |
 | `profileSendInvitation` | Invite by email in bulk: `emails` and/or `invitees` (`{email, firstName, lastName}`), `role`, optional `message`. Returns the rows, `emailsSent` and `emailsHeld`. |
 | `profileResendInvitation` | Send a pending or expired invitation again with a fresh token. |
@@ -307,6 +307,11 @@ event table, so it needs no extra model to swap, the members connection and the 
 invitations list can show it with a status filter, and each historical row still has its
 role, message, sender and send count. The uniqueness that used to cover every row now
 covers open rows only.
+
+With history on, the profile's `members` connection lists open rows (members and pending
+invitations) unless the client passes `status` (for example `members(status: DECLINED)`),
+and `profileUserRoleUpdate` / `profileUserRoleDelete` only act on a person's open row, so
+past invitations cannot be edited or deleted through them.
 
 Off (the default), a person keeps a single row per profile, as before: cancel deletes it
 and a new invitation reopens it.

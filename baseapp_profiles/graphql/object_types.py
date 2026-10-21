@@ -12,6 +12,7 @@ from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql import ThumbnailField, get_object_type_for_model
 from baseapp_core.plugins import graphql_shared_interfaces, shared_services
+from baseapp_profiles.conf import keep_invitation_history
 from baseapp_profiles.permissions import active_membership_subquery
 
 from .filters import MemberFilter, ProfileFilter
@@ -308,6 +309,10 @@ class BaseProfileObjectType(object):
         if not can_view_profile_members(info.context.user, instance):
             return instance.members.none()
 
+        if keep_invitation_history() and kwargs.get("status") is None:
+            # With history on a person can have many closed rows; list the people who are
+            # members or invited unless the client asks for a status.
+            return instance.members.open()
         return instance.members.all()
 
 

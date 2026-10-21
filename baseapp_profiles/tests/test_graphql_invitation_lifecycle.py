@@ -10,6 +10,7 @@ from .factories import ProfileFactory, ProfileUserRoleFactory
 pytestmark = pytest.mark.django_db
 
 User = get_user_model()
+Profile = swapper.load_model("baseapp_profiles", "Profile")
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 ADMIN = ProfileUserRole.ProfileRoles.ADMIN
 MANAGER = ProfileUserRole.ProfileRoles.MANAGER
@@ -351,3 +352,100 @@ def test_with_history_a_declined_user_can_be_added_directly(
 
     assert content["data"]["profileUserRoleCreate"]["profileUserRoles"] == [{"status": "ACTIVE"}]
     assert ProfileUserRole.objects.filter(profile=profile, user=user).count() == 2
+
+
+class TestRoleMutationsWithHistory:
+    @pytest.fixture
+    def declined(self, django_user_client, settings) -> "ProfileUserRole":
+        settings.BASEAPP_PROFILES_INVITATION_KEEP_HISTORY = True
+        profile = ProfileFactory(owner=django_user_client.user)
+        user = UserFactory(email="ann@example.com")
+        invitation = service.send_invitations(profile, ["ann@example.com"]).invitations[0]
+        return service.decline_invitation(invitation.invitation_token, user)
+
+    def _variables(self, row) -> dict:
+        return {"profileId": row.profile.relay_id, "userId": row.user.relay_id}
+
+    def test_a_closed_invitation_is_not_deleted(self, declined, graphql_user_client) -> None:
+        content = graphql_user_client(
+            DELETE_ROLE, variables={"input": self._variables(declined)}
+        ).json()
+
+        assert error_code(content) == "not_found"
+        assert ProfileUserRole.objects.get(pk=declined.pk).status == Status.DECLINED
+
+    def test_a_closed_invitation_keeps_its_role(self, declined, graphql_user_client) -> None:
+        content = graphql_user_client(
+            UPDATE_ROLE, variables={"input": {**self._variables(declined), "roleType": "ADMIN"}}
+        ).json()
+
+        assert error_code(content) == "not_found"
+        assert ProfileUserRole.objects.get(pk=declined.pk).role == MANAGER
+
+
+@pytest.mark.parametrize("history", [False, True])
+def test_removing_an_invitee_cancels_their_invitation(
+    django_user_client,
+    graphql_user_client,
+    settings,
+    signal_recorder,
+    django_capture_on_commit_callbacks,
+    history,
+) -> None:
+    from baseapp_profiles import signals
+
+    settings.BASEAPP_PROFILES_INVITATION_KEEP_HISTORY = history
+    cancelled = signal_recorder(signals.invitation_cancelled)
+    removed = signal_recorder(signals.member_removed)
+    profile = ProfileFactory(owner=django_user_client.user)
+    user = UserFactory(email="ann@example.com")
+    invitation = service.send_invitations(profile, ["ann@example.com"]).invitations[0]
+    relay_id = invitation.relay_id
+
+    with django_capture_on_commit_callbacks(execute=True):
+        content = graphql_user_client(
+            DELETE_ROLE,
+            variables={"input": {"profileId": profile.relay_id, "userId": user.relay_id}},
+        ).json()
+
+    assert content["data"]["profileUserRoleDelete"]["deletedId"] == relay_id
+    assert (len(cancelled), len(removed)) == (1, 0)
+    row = ProfileUserRole.objects.filter(pk=invitation.pk).first()
+    assert (row.status if row else None) == (Status.CANCELLED if history else None)
+
+
+MEMBERS = """
+    query Members($id: ID!, $status: ProfileRoleStatus) {
+        profile(id: $id) {
+            members(status: $status) { edges { node { status } } }
+        }
+    }
+"""
+
+
+class TestMembersConnectionWithHistory:
+    @pytest.fixture
+    def profile(self, django_user_client) -> "Profile":
+        profile = ProfileFactory(owner=django_user_client.user)
+        ProfileUserRoleFactory(profile=profile, role=MANAGER)
+        invitation = service.send_invitations(profile, ["ann@example.com"]).invitations[0]
+        service.decline_invitation(
+            invitation.invitation_token, UserFactory(email="ann@example.com")
+        )
+        return profile
+
+    def _statuses(self, client, profile, status=None) -> list[str]:
+        content = client(MEMBERS, variables={"id": profile.relay_id, "status": status}).json()
+        assert "errors" not in content, content
+        return sorted(e["node"]["status"] for e in content["data"]["profile"]["members"]["edges"])
+
+    def test_without_history_every_row_is_listed(self, profile, graphql_user_client) -> None:
+        assert self._statuses(graphql_user_client, profile) == ["ACTIVE", "DECLINED"]
+
+    def test_with_history_closed_rows_are_listed_on_request(
+        self, profile, graphql_user_client, settings
+    ) -> None:
+        settings.BASEAPP_PROFILES_INVITATION_KEEP_HISTORY = True
+
+        assert self._statuses(graphql_user_client, profile) == ["ACTIVE"]
+        assert self._statuses(graphql_user_client, profile, "DECLINED") == ["DECLINED"]
