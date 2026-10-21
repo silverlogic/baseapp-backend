@@ -53,7 +53,57 @@ Run `./manage.py makemigrations` / `./manage.py migrate` after defining it.
 |---|---|---|
 | `AbstractOrganization` | `Organization` | An organization entity. Fields: `name`. Inherits `ProfilableModel` (when `baseapp_profiles` is installed) + `DocumentIdMixin`. |
 
-Because it's a `ProfilableModel`, `Organization` sets `profile_name_sql = "NEW.name"`, so the linked `Profile.name` is kept in sync by a DB trigger. It deliberately does **not** set `profile_owner_sql` — an organization's profile owner is determined by application logic, so the `Profile` is created and linked by the `organizationCreate` mutation (via the `profiles.graphql` shared service) rather than by an INSERT trigger. See [`ProfilableModel`](../baseapp_profiles/README.md#profilablemodel) for the trigger contract.
+Because it's a `ProfilableModel`, `Organization` sets `profile_name_sql = "NEW.name"`, so the linked `Profile.name` is kept in sync by a DB trigger. It deliberately does **not** set `profile_owner_sql` — an organization's profile owner is determined by application logic, so the `Profile` is created and linked by the `organizationCreate` mutation (via the `profiles.graphql` shared service) or by [`OrganizationService`](#creating-organizations-outside-graphql) rather than by an INSERT trigger. See [`ProfilableModel`](../baseapp_profiles/README.md#profilablemodel) for the trigger contract.
+
+## Creating organizations outside GraphQL
+
+`organizationCreate` makes the signed-in user the owner of the new profile. Admin actions,
+importers, data migrations and management commands use `OrganizationService` instead,
+which always creates and links the profile and makes the owner optional:
+
+```python
+from baseapp_organizations.services import OrganizationService
+
+organization = OrganizationService.create("Acme", url_path="acme-holdings")  # ownerless
+organization = OrganizationService.create("Acme", owner=user)
+OrganizationService.ensure_profile(organization)  # create the profile if it is missing
+```
+
+| | |
+|---|---|
+| `OrganizationService.create(name, *, owner=None, url_path=None, **fields)` | Create the organization (extra `fields` go to your concrete model) and its profile in one transaction. `url_path` sets the handle (a taken one gets a numeric suffix); otherwise it is derived from the name. |
+| `OrganizationService.ensure_profile(organization, *, owner=None, url_path=None)` | Return the organization's profile, creating and linking one when it has none. |
+| `ensure_profiles_for_organizations(queryset=None, *, owner=None)` | Give every organization without a profile one; returns how many were created. |
+
+`ensure_profiles_for_organizations` is meant for the data migration of a project that
+adopts organizations for existing rows:
+
+```python
+def backfill(apps, schema_editor):
+    from baseapp_organizations.services import ensure_profiles_for_organizations
+
+    ensure_profiles_for_organizations()
+
+
+class Migration(migrations.Migration):
+    dependencies = [("organizations", "0002_..."), ("profiles", "0007_...")]
+    operations = [migrations.RunPython(backfill, migrations.RunPython.noop)]
+```
+
+It works on the current models rather than migration state (it needs `Profile.save()` to
+create URL paths), so place it after the migrations that bring the profile and
+organization tables to their current shape.
+
+### Ownerless organizations
+
+An organization created without an owner is run by its ADMIN members (see
+[Members and invitations](../baseapp_profiles/README.md#members-and-invitations)). Its last
+active admin cannot be demoted, deactivated or removed, and the `organizations.account`
+service blocks that admin's account deletion until another member is made an admin.
+Permission checks never treat an ownerless profile as owned by anyone.
+
+The Django admin creates a missing profile with the saving staff user as owner, and leaves
+an existing one (ownerless or not) alone; the DB trigger keeps its name in sync.
 
 ## GraphQL
 
@@ -104,6 +154,10 @@ mutation OrganizationCreateMutation($input: OrganizationCreateInput!) {
 ### Consumed
 
 - **`profiles.graphql`** (from `baseapp_profiles`) — `organizationCreate` calls `create_profile_from_mutation(...)` to create and link the organization's `Profile` (with `name` / `url_path`). When the service is unavailable the organization is still created, just without a profile.
+
+### Provided
+
+- **`organizations.account`** (`OrganizationAccountService`) — `get_account_deletion_block_reason(user)`, consumed by `baseapp_auth`'s delete-account endpoint: the owner of an organization, or the only active admin of an ownerless one, cannot delete their account.
 
 ### Required packages
 
