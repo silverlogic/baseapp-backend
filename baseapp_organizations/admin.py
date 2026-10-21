@@ -1,7 +1,7 @@
 import swapper
 from django.contrib import admin
 
-from baseapp_profiles.models import update_or_create_profile
+from .services import OrganizationService
 
 Organization = swapper.load_model("baseapp_organizations", "Organization")
 
@@ -21,4 +21,6 @@ class OrganizationAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change) -> None:
         super().save_model(request, obj, form, change)
-        update_or_create_profile(obj, request.user, obj.name)
+        # The profile's name follows the organization's through a DB trigger, so only a
+        # missing profile needs creating. The admin who creates it becomes its owner.
+        OrganizationService.ensure_profile(obj, owner=request.user)
