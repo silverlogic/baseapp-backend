@@ -91,18 +91,19 @@ def test_send_email_and_add_to_history_mark_notification_as_emailed(
     assert len(outbox) == 1
 
 
-def test_send_push_notification(send_notification) -> None:
+def test_send_push_notification(send_notification, django_capture_on_commit_callbacks) -> None:
     user = UserFactory()
 
     with patch("baseapp_notifications.tasks.send_push_notification.delay") as mock:
-        send_notification(
-            sender=user,
-            recipient=user,
-            verb="sent as push",
-            add_to_history=False,
-            send_email=False,
-            send_push=True,
-        )
+        with django_capture_on_commit_callbacks(execute=True):
+            send_notification(
+                sender=user,
+                recipient=user,
+                verb="sent as push",
+                add_to_history=False,
+                send_email=False,
+                send_push=True,
+            )
         assert mock.called
 
 
