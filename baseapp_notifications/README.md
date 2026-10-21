@@ -143,7 +143,7 @@ Arguments:
 - **send_push**: A boolean (default=True). True to send push notification to user's devices.
 - **send_email**: A boolean (default=True). True to send notification via email.
 - **sender**: An object of any type. (Required)
-- **recipient**: A **Group** or a **User QuerySet** or a list of **User**. (Required)
+- **recipient**: A **User**, a list/tuple/set or **QuerySet** of users, or an auth **Group**. Each recipient's notification settings are checked separately. (Required)
 - **verb**: An string. (Required)
 - **action\_object**: An object of any type. (Optional)
 - **target**: An object of any type. (Optional)
@@ -159,6 +159,10 @@ Arguments:
 - **extra**: A dict with data of any type. (Optional)
 
 **Extra data**: ou can also send any arbitrary kwargs and they will be added to `Notification.data` JSONField.
+
+**Where a notification links to**: pass `url="/path/to/item"`; it is stored in `Notification.data["url"]`. This is the convention clients use for "where clicking the notification goes", so prefer it over custom keys.
+
+Push notifications are queued with `transaction.on_commit`: inside a transaction they are sent after it commits, and not at all if it rolls back. In tests, wrap the call in `django_capture_on_commit_callbacks(execute=True)` (pytest-django) or `TestCase.captureOnCommitCallbacks(execute=True)` to assert on the push task.
 
 ## Email notifications
 
@@ -216,6 +220,81 @@ Also check [their source code in this repository](baseapp_notifications/template
 {% endblock %}
 ```
 
+### How to replace the email sender
+
+By default emails are rendered from the `.j2` templates above and sent with `send_mail`. To send them another way (a templated-email service, an outbox model, ...), point `BASEAPP_NOTIFICATIONS_EMAIL_SENDER` at a callable:
+
+```python
+# settings.py
+BASEAPP_NOTIFICATIONS_EMAIL_SENDER = "apps.notifications.emails.send_notification_email"
+```
+
+```python
+# apps/notifications/emails.py
+def send_notification_email(recipient, notification, **context):
+    # notification is the in-app Notification, or None when add_to_history=False or in-app is muted.
+    # context holds sender, verb, description, action_object, target, email_subject,
+    # email_message, add_to_history, send_push and every extra kwarg passed to send_notification.
+    ...
+    return True  # return False when nothing was sent, so the notification is not marked emailed
+```
+
+The default is `baseapp_notifications.utils.send_notification_email`.
+
+## Notification groups
+
+Groups turn raw verbs into user-facing preferences ("Comments", "Billing", "Security alerts"). Register them from your `AppConfig.ready()`:
+
+```python
+from django.apps import AppConfig
+from django.utils.translation import gettext_lazy as _
+
+
+class CommentsConfig(AppConfig):
+    name = "apps.comments"
+
+    def ready(self):
+        from baseapp_notifications.groups import register_notification_group
+
+        # owns "comments" and every "comments.*" verb
+        register_notification_group(
+            "comments",
+            label=_("Comments"),
+            description=_("Replies and mentions on your posts"),
+        )
+        # owns exactly these verbs, only shown to staff, email only
+        register_notification_group(
+            "moderation",
+            label=_("Moderation"),
+            verbs=["comments.reported", "profiles.reported"],
+            audience=lambda user: user.is_staff,
+            channels=["EMAIL"],
+        )
+        # always delivered, users cannot turn it off
+        register_notification_group("security", label=_("Security"), is_locked=True)
+```
+
+`register_notification_group(key, *, label, description="", verbs=None, audience=None, is_locked=False, channels=None)`:
+
+- **key**: stable identifier, stored as `NotificationSetting.verb` for the group's preferences.
+- **verbs**: the verbs the group owns. `None` owns `key` and every `key.*` verb (the longest matching key wins, so `chats.mentions` beats `chats`); a list owns exactly those verbs.
+- **audience**: `callable(user) -> bool` deciding who sees and may change the group. `None` means everyone. It does not restrict sending.
+- **is_locked**: locked groups ignore every setting (including `_ALL_`) and cannot be changed through the API.
+- **channels**: the channels users can configure, as `NotificationChannelTypes` members, values or names. Defaults to in-app, email and push.
+
+Registering a key again replaces the group. Read the registry with `get_notification_group(key)`, `list_notification_groups(user=None)`, `get_notification_group_for_verb(verb)` and `is_registered_verb(verb)`, all in `baseapp_notifications.groups`.
+
+How settings resolve: `can_user_receive_notification(user_id, verb, channel)` looks at the rows for the verb's first segment (as before), for `_ALL_` and, when the verb belongs to a group, for the group key. A missing row means allowed; any inactive row for the channel or for `ALL` mutes it. Verbs outside every group behave exactly as before.
+
+To catch typos, set `BASEAPP_NOTIFICATIONS_REQUIRE_REGISTERED_VERBS = True`: `send_notification` then raises `ImproperlyConfigured` for a verb no group owns. It defaults to `False`.
+
+## Settings
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `BASEAPP_NOTIFICATIONS_EMAIL_SENDER` | `"baseapp_notifications.utils.send_notification_email"` | Dotted path to `callable(recipient, notification, **context)` that sends notification emails. |
+| `BASEAPP_NOTIFICATIONS_REQUIRE_REGISTERED_VERBS` | `False` | Reject verbs that no registered notification group owns. |
+
 ## Public API documentation
 
 In you GraphQL schema it will expose the following queries, mutations and subscriptions. Please check your GraphiQL playground for better understanding
@@ -227,6 +306,32 @@ query {
   me {
     notificationsUnreadCount
     notifications
+  }
+}
+```
+
+Filter notifications by group (verb equal to the key or starting with `<key>.`, plus the explicit verbs of a registered group):
+
+```graphql
+query {
+  me {
+    notifications(group: "comments", unread: true) { edges { node { id verb data } } }
+  }
+}
+```
+
+List the groups the viewer can configure, with their state per channel:
+
+```graphql
+query {
+  me {
+    notificationSettingGroups {
+      key
+      label
+      description
+      isLocked
+      channels { channel isActive }
+    }
   }
 }
 ```
@@ -244,6 +349,24 @@ mutation {
   }
 }
 ```
+
+Set group preferences with `notificationSettingsUpdate`. It sets values (never toggles), so repeating it is safe. `channel: ALL` sets every channel of the group. The whole input is rejected with `errors` when an entry names an unknown group (or one outside the viewer's audience), a locked group, or a channel the group does not offer. `groups` returns each changed group's resulting state.
+
+```graphql
+mutation {
+  notificationSettingsUpdate(input: {
+    settings: [
+      { group: "comments", channel: EMAIL, isActive: false }
+      { group: "billing", channel: ALL, isActive: true }
+    ]
+  }) {
+    groups { key channels { channel isActive } }
+    errors { field messages }
+  }
+}
+```
+
+`notificationSettingToggle(input: { verb, channel })` is unchanged.
 
 ### Subscriptions
 
