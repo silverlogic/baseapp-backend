@@ -68,8 +68,9 @@ there. Paths below are relative to the submodule root.
 Tests must go through **`uv run`**. The image is built with `uv sync --no-install-project`, so the
 `baseapp_backend` distribution is not installed and the `baseapp.plugins` entry points are not
 registered — bare `pytest` sees 1 plugin instead of ~25 and fails in confusing ways. `uv run`
-installs the project first (CI does the same). The explicit `--python 3.12` is needed because
-`.python-version` still pins `3.11` while `pyproject.toml` requires `>=3.12`.
+installs the project first (CI does the same). The explicit `--python 3.12` below is now
+redundant — `.python-version` matches `requires-python` — but is kept so the commands stay
+valid on checkouts that predate that fix.
 
 ```bash
 # All tests

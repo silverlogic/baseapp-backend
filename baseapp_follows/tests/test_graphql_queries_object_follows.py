@@ -1,3 +1,5 @@
+from django.test import override_settings
+
 """
 Query-count tests for the FollowsInterface.
 
@@ -14,7 +16,6 @@ is intentionally not done yet.
 """
 
 import pytest
-from constance.test import override_config
 from django.contrib.contenttypes.models import ContentType
 
 from baseapp_core.tests.factories import UserFactory
@@ -143,7 +144,7 @@ NESTED_FOLLOWERS_QUERY = """
 """
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_followers_and_following_counts_query_count(
     django_user_client, graphql_client_with_queries
 ) -> None:
@@ -172,7 +173,7 @@ def test_anon_followers_and_following_counts_query_count(
     assert queries.count == 2
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_followers_list_query_count_does_not_grow_with_followers(
     django_user_client, graphql_client_with_queries
 ) -> None:
@@ -212,7 +213,7 @@ def test_anon_followers_list_query_count_does_not_grow_with_followers(
     assert queries_big.count == small_count
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_following_list_query_count_is_flat(
     django_user_client, graphql_client_with_queries
 ) -> None:
@@ -244,7 +245,7 @@ def test_anon_following_list_query_count_is_flat(
     assert queries.count == 10
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_followers_pagination_query_count_independent_of_page_size(
     django_user_client, graphql_client_with_queries
 ) -> None:
@@ -282,7 +283,7 @@ def test_anon_followers_pagination_query_count_independent_of_page_size(
     assert abs(q_big.count - q_small.count) <= 1
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_nested_followers_count_does_not_explode(
     django_user_client, graphql_client_with_queries
 ) -> None:

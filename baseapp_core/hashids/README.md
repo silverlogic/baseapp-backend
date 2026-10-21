@@ -55,7 +55,7 @@ The key idea behind this structure is that each folder represents a different st
 
 #### Legacy vs Public Id
 
-The Legacy strategy follows the default behavior of Django, DRF, and Graphene. It relies on model primary keys to handle queries and updates coming from external services. If you decide to keep using primary keys in the frontend, which is not recommended, you can disable the Public Id strategy through the constance configuration `ENABLE_PUBLIC_ID_LOGIC`. When disabled, the system will rely exclusively on the Legacy strategy.
+The Legacy strategy follows the default behavior of Django, DRF, and Graphene. It relies on model primary keys to handle queries and updates coming from external services. If you decide to keep using primary keys in the frontend, which is not recommended, you can disable the Public Id strategy with the Django setting `ENABLE_PUBLIC_ID_LOGIC = False`. When disabled, the system will rely exclusively on the Legacy strategy.
 
 The Public Id strategy uses the `public_id` field from the `DocumentId` model. This strategy is responsible for resolving and exposing public IDs and is the recommended approach.
 
@@ -73,7 +73,7 @@ Public facing functions here are functions that other parts of the system are ex
 
 Currently, the heuristics for selecting the Public Id strategy over the Legacy one are:
 
-1. The Public Id strategy must be enabled through the constance configuration `ENABLE_PUBLIC_ID_LOGIC`.
+1. The Public Id strategy must be enabled with the Django setting `ENABLE_PUBLIC_ID_LOGIC` (`True` by default).
 2. The model being filtered must extend `DocumentIdMixin`.
 3. The model being filtered must use an auto incrementing primary key.
 

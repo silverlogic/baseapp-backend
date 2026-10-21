@@ -82,6 +82,12 @@ if apps.is_installed("baseapp_profiles"):
     comment_inheritances.append(ProfileMixin)
 
 
+if apps.is_installed("baseapp.files"):
+    from baseapp.files.base import FileableModel
+
+    comment_inheritances.append(FileableModel)
+
+
 class AbstractComment(
     *comment_inheritances,
     DocumentIdTargetMixin,

@@ -28,9 +28,7 @@ CONTENT_POST_CREATE_GRAPHQL = """
                             node {
                                 id
                                 pk
-                                image(width:600, height:0){
-                                    url
-                                }
+                                image(width:600, height:0)
                             }
                         }
                     }

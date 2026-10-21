@@ -192,9 +192,10 @@ gitignored `baseapp_backend.egg-info/` in the bind-mounted source tree which `im
 picks up from the working directory. Delete it, or start from a fresh checkout, and bare `pytest`
 breaks again. Don't rely on it.
 
-The explicit `--python 3.12` is also required: `.python-version` in the repo root still pins
-`3.11` while `pyproject.toml` sets `requires-python = ">=3.12"`, so plain `uv run` aborts with
-`No interpreter found for Python 3.11`. CI passes `--python` explicitly for the same reason.
+The explicit `--python 3.12` is no longer required — `.python-version` now matches
+`requires-python = ">=3.12"` — but it is harmless and kept here so the command still works on
+checkouts made before that alignment, where plain `uv run` aborts with
+`No interpreter found for Python 3.11`.
 
 ### Diagnosing a suspicious run
 

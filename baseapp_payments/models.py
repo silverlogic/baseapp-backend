@@ -1,4 +1,8 @@
+from typing import Any
+
 import swapper
+from constance import config
+from django.apps import apps
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -6,7 +10,13 @@ from model_utils.models import TimeStampedModel
 
 
 class BaseCustomer(TimeStampedModel):
-    entity_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    entity_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        # Abstract and swappable, so a literal name would clash between the
+        # concrete Customer of any two apps that both subclass this.
+        related_name="%(app_label)s_%(class)ss",
+    )
     entity_id = models.PositiveIntegerField()
     entity = GenericForeignKey("entity_type", "entity_id")
     remote_customer_id = models.CharField(max_length=255)
@@ -14,29 +24,61 @@ class BaseCustomer(TimeStampedModel):
     class Meta:
         abstract = True
         swappable = swapper.swappable_setting("baseapp_payments", "Customer")
+        # One Customer per billed entity. Dropped incidentally by the invoice-endpoint
+        # commit (#305); without it two concurrent requests for the same profile each
+        # create a row, and each row gets its own Stripe customer.
         unique_together = ("entity_type", "entity_id")
 
     def __str__(self) -> str:
         return f"{self.entity} - {self.remote_customer_id}"
 
-    def save(self, *args, **kwargs) -> None:
+    def save(self, *args: Any, **kwargs: Any) -> None:
         if not hasattr(self, "tracker"):
             raise RuntimeError(
                 'BaseCustomer requires `tracker = FieldTracker(["entity"])`.'
                 " Please ensure your concrete Customer model includes this tracker."
             )
 
-        if self.tracker.has_changed("entity") and self.entity:
-            self.entity_type = ContentType.objects.get_for_model(self.entity)
-            self.entity_id = self.entity.id
+        if not self.entity_type_id:
+            try:
+                # A dotted label, not a class. get_for_model reads model._meta, so
+                # handing it the string raised AttributeError and this except turned
+                # that into a config error - the fallback could never succeed.
+                entity_model = apps.get_model(config.STRIPE_CUSTOMER_ENTITY_MODEL)
+                self.entity_type = ContentType.objects.get_for_model(entity_model)
+            except (LookupError, ValueError) as e:
+                raise ValueError(f"Invalid STRIPE_CUSTOMER_ENTITY_MODEL configuration: {e}") from e
+
+        if self.tracker.has_changed("entity") or not self.entity_id:
+            if self.entity is not None:
+                new_entity_type = ContentType.objects.get_for_model(self.entity)
+                if new_entity_type != self.entity_type:
+                    raise ValueError(
+                        "Entity type is not the one configured in STRIPE_CUSTOMER_ENTITY_MODEL"
+                    )
+                self.entity_id = self.entity.id
+            elif not self.entity_type:
+                raise ValueError("Entity type must be set when entity is None")
+
         super().save(*args, **kwargs)
 
 
 class BaseSubscription(TimeStampedModel):
-    remote_customer_id = models.CharField(max_length=255)
-    remote_subscription_id = models.CharField(max_length=255)
+    # A FK rather than master's remote_customer_id string: the subscription webhook
+    # has to resolve the local Customer row, and matching on the Stripe id meant a
+    # lookup that silently created orphans when it missed.
+    customer = models.ForeignKey(
+        swapper.get_model_name("baseapp_payments", "Customer"),
+        on_delete=models.CASCADE,
+        related_name="subscriptions",
+    )
+    # Unique on its own rather than paired with the customer: the viewset resolves a
+    # subscription with lookup_field="remote_subscription_id" and the webhook handler
+    # filters on it alone, so a second row with the same id is MultipleObjectsReturned
+    # on read and a multi-row delete on cancellation. A Stripe subscription id belongs
+    # to exactly one customer anyway, which the old (customer, id) pair did not say.
+    remote_subscription_id = models.CharField(max_length=255, unique=True)
 
     class Meta:
         abstract = True
         swappable = swapper.swappable_setting("baseapp_payments", "Subscription")
-        unique_together = ("remote_customer_id", "remote_subscription_id")

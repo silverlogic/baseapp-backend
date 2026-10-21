@@ -559,6 +559,18 @@ class AbstractProfileUserRole(DocumentIdMixin, RelayModel, models.Model):
             ),
         ]
 
+    @classmethod
+    def assignable_roles(cls) -> list[int]:
+        """
+        The roles this model will actually accept.
+
+        Defaults to every declared choice. A project that reserves values for later
+        phases — declaring them so the numbers are taken, without letting anyone hold one
+        yet — overrides this, and the mutations refuse the rest with a clear error rather
+        than letting the write reach a database constraint.
+        """
+        return list(cls.ProfileRoles.values)
+
     def is_invitation_expired(self) -> bool:
         from django.utils import timezone
 

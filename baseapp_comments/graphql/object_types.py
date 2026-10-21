@@ -121,6 +121,7 @@ class BaseCommentObjectType:
             "ReactionsInterface",
             "MentionsInterface",
             "NodeActivityLogInterface",
+            "FilesInterface",
         )
         model = Comment
         fields = (
@@ -178,6 +179,10 @@ class BaseCommentObjectType:
 
         # Annotate reactable metadata (includes reactions_count_total for CommentFilter).
         if service := shared_services.get("reactable_metadata"):
+            queryset = service.annotate_queryset(queryset)
+
+        # Annotate files metadata so FilesInterface resolvers don't N+1.
+        if service := shared_services.get("files_metadata"):
             queryset = service.annotate_queryset(queryset)
 
         return queryset

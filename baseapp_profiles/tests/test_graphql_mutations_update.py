@@ -20,12 +20,8 @@ PROFILE_UPDATE_GRAPHQL = """
                 id
                 name
                 biography
-                image(width: 100, height: 100) {
-                    url
-                }
-                bannerImage(width: 100, height: 100) {
-                    url
-                }
+                image(width: 100, height: 100)
+                bannerImage(width: 100, height: 100)
             }
             errors {
                 field
@@ -133,7 +129,7 @@ def test_owner_can_update_profile_image(
     )
 
     content = response.json()
-    assert content["data"]["profileUpdate"]["profile"]["image"]["url"].startswith("http")
+    assert content["data"]["profileUpdate"]["profile"]["image"].startswith("http")
 
 
 def test_owner_can_update_profile_banner_image(
@@ -148,7 +144,7 @@ def test_owner_can_update_profile_banner_image(
     )
 
     content = response.json()
-    assert content["data"]["profileUpdate"]["profile"]["bannerImage"]["url"].startswith(
+    assert content["data"]["profileUpdate"]["profile"]["bannerImage"].startswith(
         "http://"  # NOSONAR
     )
 
@@ -187,7 +183,7 @@ def test_owner_can_update_profile_banner_image_camel_case(
     )
 
     content = response.json()
-    assert content["data"]["profileUpdate"]["profile"]["bannerImage"]["url"].startswith(
+    assert content["data"]["profileUpdate"]["profile"]["bannerImage"].startswith(
         "http://"  # NOSONAR
     )
 

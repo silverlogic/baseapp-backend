@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any, Optional, Type
 
-from constance import config
+from django.conf import settings
 
 from baseapp_core.hashids.models import LegacyWithPkMixin
 from baseapp_core.hashids.strategies.bundle import HashidsStrategyBundle
@@ -13,7 +13,12 @@ if TYPE_CHECKING:
 
 
 def _is_public_id_logic_enabled() -> bool:
-    return bool(config.ENABLE_PUBLIC_ID_LOGIC)
+    """`settings.ENABLE_PUBLIC_ID_LOGIC` (default True).
+
+    A deployment-level choice that never changes while the app runs, so it is a Django setting:
+    it is read for every ID resolved or rendered, and a setting costs no cache or database trip.
+    """
+    return bool(getattr(settings, "ENABLE_PUBLIC_ID_LOGIC", True))
 
 
 def _is_model_public_id_compatible(model_cls: type) -> bool:

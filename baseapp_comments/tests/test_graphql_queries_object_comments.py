@@ -1,5 +1,4 @@
 import pytest
-from constance.test import override_config
 from django.contrib.contenttypes.models import ContentType
 from django.test import override_settings
 
@@ -141,7 +140,7 @@ SIMPLIFIED_QUERY_FOR_TESTING_OPTIMIZATION = """
 """
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_see_comments_and_replies(django_user_client, graphql_client_with_queries) -> None:
     target = CommentFactory()
     user = django_user_client.user
@@ -186,7 +185,7 @@ def test_anon_see_comments_and_replies(django_user_client, graphql_client_with_q
     # 13) 'SELECT "users_user"."id", "users_user"."first_name", (SELECT U0."public_id" AS "public_id" FROM "baseapp_core_documentid" U0 WHERE (U0."content_type_id" = 3272 AND U0."object_id" = ("users_user"."id"))) AS "mapped_public_id" FROM "users_user" WHERE ("users_user"."id") IN ((1129))'
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_see_comments_and_replies_with_pagination(
     django_user_client, graphql_client_with_queries
 ) -> None:
@@ -214,7 +213,7 @@ def test_anon_see_comments_and_replies_with_pagination(
     assert queries.count == 13
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_top_level_comments_pagination_on_page_target(django_user_client, graphql_client) -> None:
     """Reproduces the FE bug: when using first=5 on the top-level comments
     of a Page (matching the FE CommentsList query), hasNextPage must be True
@@ -235,7 +234,7 @@ def test_top_level_comments_pagination_on_page_target(django_user_client, graphq
     assert comments_connection["pageInfo"]["hasNextPage"] is True
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_top_level_comments_pagination_on_comment_target(
     django_user_client, graphql_client
 ) -> None:
@@ -256,7 +255,7 @@ def test_top_level_comments_pagination_on_comment_target(
     assert comments_connection["pageInfo"]["hasNextPage"] is True
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_logged_user_replies_to_a_page_comment_has_next_page_true_when_more_than_5_replies(
     django_user_client, graphql_user_client
 ) -> None:
@@ -287,7 +286,7 @@ def test_logged_user_replies_to_a_page_comment_has_next_page_true_when_more_than
     assert comment_replies["pageInfo"]["hasNextPage"] is True
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_get_queryset_skips_filtering_only_when_hint_set(
     django_user_client, graphql_user_client
 ) -> None:
@@ -348,7 +347,7 @@ def test_get_queryset_skips_filtering_only_when_hint_set(
     assert result.count() == 3  # blocked user's comments excluded despite cache
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_blocked_profiles_excluded_with_pagination(django_user_client, graphql_user_client) -> None:
     """Blocked/blocking profiles are excluded and pagination still works correctly."""
     page = PageFactory(user=django_user_client.user)
@@ -382,7 +381,7 @@ def test_blocked_profiles_excluded_with_pagination(django_user_client, graphql_u
     assert comments_connection["pageInfo"]["endCursor"] is not None
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_top_level_comments_second_page_with_cursor(django_user_client, graphql_client) -> None:
     """Fetching the second page with an `after` cursor returns the remaining comments."""
     page = PageFactory(user=django_user_client.user)
@@ -533,7 +532,7 @@ def test_anon_cant_see_comments(graphql_client) -> None:
     assert len(content["data"]["node"]["comments"]["edges"]) == 0
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=False)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=False)
 def test_comments_query_is_partially_optimized(
     django_user_client, graphql_client_with_queries
 ) -> None:
@@ -572,7 +571,7 @@ def test_comments_query_is_partially_optimized(
     #    filters replies by status; this is the "partially optimized" part the test name refers to
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_comments_query_is_optimized_with_nested_replies(
     django_user_client, graphql_client_with_queries
 ) -> None:
@@ -616,7 +615,7 @@ def test_comments_query_is_optimized_with_nested_replies(
     assert queries.count == 12
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_comments_query_is_partially_optimized_with_public_id(
     django_user_client, graphql_client_with_queries
 ) -> None:
@@ -656,7 +655,7 @@ def test_comments_query_is_partially_optimized_with_public_id(
     # 11) 'SELECT "profiles_profile"."id", "profiles_profile"."name", (SELECT U0."public_id" FROM "baseapp_core_documentid" U0 WHERE (U0."content_type_id" = 28 AND U0."object_id" = ("profiles_profile"."id"))) AS "mapped_public_id" FROM "profiles_profile" WHERE "profiles_profile"."id" IN (736)'
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_comments_query_is_partially_optimized_with_public_id_and_pagination(
     django_user_client, graphql_client_with_queries
 ) -> None:
@@ -686,7 +685,7 @@ def test_comments_query_is_partially_optimized_with_public_id_and_pagination(
     assert queries.count == 12
 
 
-@override_config(ENABLE_PUBLIC_ID_LOGIC=True)
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_comments_query_from_foreigh_target_is_partially_optimized_with_public_id(
     django_user_client,
     graphql_client_with_queries,
