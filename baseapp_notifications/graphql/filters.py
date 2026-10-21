@@ -28,7 +28,7 @@ class NotificationFilter(django_filters.FilterSet):
         verbs = value.split(",")
         return queryset.filter(verb__in=verbs)
 
-    def filter_by_group(self, queryset, name, value) -> "QuerySet":
+    def filter_by_group(self, queryset: "QuerySet", name: str, value: str) -> "QuerySet":
         condition = Q(verb=value) | Q(verb__startswith=f"{value}.")
         # A registered group with an explicit verb list also owns verbs outside its prefix.
         group = get_notification_group(value)

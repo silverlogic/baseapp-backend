@@ -239,7 +239,7 @@ def send_notification_email(recipient, notification, **context):
     return True  # return False when nothing was sent, so the notification is not marked emailed
 ```
 
-The default is `baseapp_notifications.utils.send_notification_email`.
+The default is `baseapp_notifications.utils.send_notification_email`, which renders the templates through `baseapp_notifications.utils.send_email_notification`; patch that one in tests (`send_notification` no longer imports it into `baseapp_notifications.services`).
 
 ## Notification groups
 
@@ -278,13 +278,19 @@ class CommentsConfig(AppConfig):
 
 - **key**: stable identifier, stored as `NotificationSetting.verb` for the group's preferences.
 - **verbs**: the verbs the group owns. `None` owns `key` and every `key.*` verb (the longest matching key wins, so `chats.mentions` beats `chats`); a list owns exactly those verbs.
-- **audience**: `callable(user) -> bool` deciding who sees and may change the group. `None` means everyone. It does not restrict sending.
+- **audience**: `callable(user) -> bool` deciding who sees and may change the group. `None` means everyone. It does not restrict sending. If it raises, the error is logged and the group is hidden from that user.
 - **is_locked**: locked groups ignore every setting (including `_ALL_`) and cannot be changed through the API.
 - **channels**: the channels users can configure, as `NotificationChannelTypes` members, values or names. Defaults to in-app, email and push.
 
 Registering a key again replaces the group. Read the registry with `get_notification_group(key)`, `list_notification_groups(user=None)`, `get_notification_group_for_verb(verb)` and `is_registered_verb(verb)`, all in `baseapp_notifications.groups`.
 
-How settings resolve: `can_user_receive_notification(user_id, verb, channel)` looks at the rows for the verb's first segment (as before), for `_ALL_` and, when the verb belongs to a group, for the group key. A missing row means allowed; any inactive row for the channel or for `ALL` mutes it. Verbs outside every group behave exactly as before.
+How settings resolve: `can_user_receive_notification(user_id, verb, channel)` reads `NotificationSetting` rows whose `verb` is one of:
+
+- for a verb outside every group: the verb's first segment (`chats.new` -> `chats`) and `_ALL_`, exactly as before groups existed;
+- for a verb owned by a group: the group key and `_ALL_` only. Each group is controlled on its own: muting `chats` does not mute `chats.mentions`, and muting `comments` does not mute a `moderation` group that lists `comments.reported`. A row keyed by the verb's first segment no longer applies once the verb belongs to a group whose key is different;
+- on a channel the group does not offer (see `channels`): `_ALL_` only, so a group's rows never mute channels its users cannot see.
+
+A missing row means allowed; any inactive row for the channel or for `ALL` mutes it. `_ALL_` is the global switch and overrides every group that is not locked. `notificationSettingGroups` reports exactly this state for every verb of a group.
 
 To catch typos, set `BASEAPP_NOTIFICATIONS_REQUIRE_REGISTERED_VERBS = True`: `send_notification` then raises `ImproperlyConfigured` for a verb no group owns. It defaults to `False`.
 
@@ -292,7 +298,7 @@ To catch typos, set `BASEAPP_NOTIFICATIONS_REQUIRE_REGISTERED_VERBS = True`: `se
 
 | Setting | Default | Description |
 | --- | --- | --- |
-| `BASEAPP_NOTIFICATIONS_EMAIL_SENDER` | `"baseapp_notifications.utils.send_notification_email"` | Dotted path to `callable(recipient, notification, **context)` that sends notification emails. |
+| `BASEAPP_NOTIFICATIONS_EMAIL_SENDER` | `"baseapp_notifications.utils.send_notification_email"` | Dotted path to `callable(recipient, notification, **context)` that sends notification emails. A path that cannot be imported fails `manage.py check` (`baseapp_notifications.E001`/`E002`). |
 | `BASEAPP_NOTIFICATIONS_REQUIRE_REGISTERED_VERBS` | `False` | Reject verbs that no registered notification group owns. |
 
 ## Public API documentation
@@ -350,7 +356,7 @@ mutation {
 }
 ```
 
-Set group preferences with `notificationSettingsUpdate`. It sets values (never toggles), so repeating it is safe. `channel: ALL` sets every channel of the group. The whole input is rejected with `errors` when an entry names an unknown group (or one outside the viewer's audience), a locked group, or a channel the group does not offer. `groups` returns each changed group's resulting state.
+Set group preferences with `notificationSettingsUpdate`. It sets values (never toggles), so repeating it is safe. `channel: ALL` sets every channel the group offers (and no others). The whole input is rejected with `errors` when an entry names an unknown group (or one outside the viewer's audience), a locked group, or a channel the group does not offer. `groups` returns each changed group's resulting state.
 
 ```graphql
 mutation {
@@ -366,7 +372,7 @@ mutation {
 }
 ```
 
-`notificationSettingToggle(input: { verb, channel })` is unchanged.
+`notificationSettingToggle(input: { verb, channel })` is unchanged, except that a `verb` equal to a registered group key gets the same checks: a group outside the viewer's audience or a locked group returns `errors` (field `verb`) and nothing is stored.
 
 ### Subscriptions
 
