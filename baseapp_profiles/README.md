@@ -323,9 +323,9 @@ With `BASEAPP_PROFILES_INVITATION_SIGNUP_ENABLED` on, an invitee without an acco
 accepts by choosing a password (`profileAcceptInvitationWithSignup`, or
 `POST /profile-invitations/by-token/{token}/accept-with-signup`). The account is created
 for the invited email — or an existing *inactive* account is activated (see below) — the
-password is checked against `AUTH_PASSWORD_VALIDATORS`, `first_name`/`last_name` are set when given,
-and `is_email_verified` is set when the user model has it (the token reached that
-inbox). An email with an active account gets `user_exists` and must sign in and accept.
+password is checked against `AUTH_PASSWORD_VALIDATORS`, `first_name`/`last_name` are set
+when given, and `is_email_verified` is set when the user model has it (the token reached
+that inbox). An email with an active account gets `user_exists` and must sign in and accept.
 The client signs in with the returned email and the chosen password.
 
 Reactivation is guarded. Holding the token only proves the invitee controls the inbox, and
@@ -534,6 +534,12 @@ Run `./manage.py makemigrations` for your profiles app: `Profile.owner` becomes 
 rows. Behaviour stays as it was until you turn on the settings above. Code that compares
 `profile.owner_id` with a user id should switch to `profile.is_owned_by(user)` before you
 create ownerless profiles.
+
+`ProfileUserRole.objects` is now a manager built from `ProfileUserRoleQuerySet`, and the
+services rely on its methods (`.open()`, `.overdue()`, `.memberships()`, ...). If your
+concrete model declares its own `objects`, derive it from that queryset
+(`ProfileUserRoleQuerySet.as_manager()`, or a manager whose `get_queryset()` returns a
+`ProfileUserRoleQuerySet` subclass).
 
 ### Migrating an existing project
 
