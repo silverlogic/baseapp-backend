@@ -1,8 +1,14 @@
 from pathlib import Path
 
 import pytest
+from celery import current_app
 
 from baseapp_core.tests.fixtures import *  # noqa: F401,F403
+
+# Apply Django's CELERY_* settings (CELERY_TASK_ALWAYS_EAGER=True) to the current Celery app,
+# as baseapp_comments does, so CeleryEmailBackend's tasks run in-process. Module level, so
+# threads (the idempotency race test) see it too.
+current_app.config_from_object("django.conf:settings", namespace="CELERY")
 
 LOCMEM_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
