@@ -56,6 +56,7 @@ INSTALLED_APPS += [
     "testproject.reactions",
     "testproject.content_feed",
     "testproject.files",
+    "testproject.email_log",
     "testproject.follows",
     "testproject.blocks",
     "testproject.base",
@@ -245,6 +246,9 @@ BASEAPP_CHATS_MESSAGESTATUS_MODEL = "social_chats.MessageStatus"
 # Files
 BASEAPP_FILES_FILE_MODEL = "files.File"
 BASEAPP_FILES_FILETARGET_MODEL = "files.FileTarget"
+
+# Email log
+BASEAPP_EMAIL_LOG_EMAILLOG_MODEL = "email_log.EmailLog"
 
 # Notifications
 NOTIFICATIONS_NOTIFICATION_MODEL = "notifications.Notification"
