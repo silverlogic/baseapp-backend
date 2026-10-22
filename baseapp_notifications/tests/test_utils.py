@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 import swapper
+from django.utils import translation
 
 from baseapp_core.tests.factories import UserFactory
 
@@ -136,3 +137,31 @@ def test_can_override_email_message(outbox, send_notification) -> None:
     )
 
     assert "custom message" in outbox[0].body
+
+
+@pytest.mark.parametrize("language", ["es"])
+def test_send_email_notification_uses_recipient_language(
+    language, outbox, send_notification
+) -> None:
+    recipient = UserFactory(preferred_language=language)
+    with translation.override(language):
+        see_on_app = translation.gettext("See on App")
+    assert see_on_app != "See on App"
+
+    translation.activate("en")
+    send_notification(
+        sender=recipient,
+        recipient=recipient,
+        verb="sent to email",
+        description="this is my description",
+        notification_url="https://example.com",
+        add_to_history=False,
+        send_email=True,
+        send_push=False,
+    )
+
+    assert len(outbox) == 1
+    html = outbox[0].alternatives[0][0]
+    assert see_on_app in html
+    assert "See on App" not in html
+    assert translation.get_language() == "en"

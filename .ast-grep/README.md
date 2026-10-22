@@ -44,10 +44,15 @@ running, use `docker compose exec web ...` instead of `run` (see the
 `ast-grep scan` exits non-zero only when a **severity: error** rule matches —
 warnings and hints are informational.
 
-All rules ignore `**/migrations/**` (auto-generated). `django-admin-use-unfold` is
-additionally scoped to `apps/**` (project code): the `baseapp_*` packages here
-intentionally register stock admins that consuming projects unregister and
-re-register with Unfold.
+All rules ignore `**/migrations/**` (auto-generated); the translation rules also
+ignore `**/tests/**` (test fixtures are not user-facing). `django-admin-use-unfold`
+and `django-translation-model-meta-verbose-name-required` are additionally scoped to
+`apps/**` (project code): the `baseapp_*` packages here intentionally register stock
+admins that consuming projects unregister and re-register with Unfold, and ship
+abstract models whose `Meta` the project is expected to extend.
+
+Both `sgconfig.yml` files map `*.j2` to the HTML language so the template rule also
+covers Jinja email templates.
 
 ## Rules
 
@@ -60,8 +65,15 @@ The `See ...` paths in rule messages point at the `backend-conventions` /
 |---|---|---|
 | `python-typing-required` | warning | Every function/method has a return type annotation (typing.md) |
 | `django-translation-no-module-level-eager-gettext` | error | Module-level strings must not be evaluated with eager `gettext` (translations.md) |
-| `django-translation-use-gettext-lazy` | hint | Prefer `gettext_lazy as _`; eager `gettext` only inside request-time bodies (translations.md) |
-| `django-translation-model-fields-lazy` | warning | `verbose_name` / `help_text` / `label` wrapped in `_()` (translations.md) |
+| `django-translation-use-gettext-lazy` | error | `_` is always `gettext_lazy`; eager `gettext` only inside request-time bodies, imported by name (translations.md) |
+| `django-translation-model-fields-lazy` | error | `verbose_name` / `help_text` / `label` wrapped in `_()` (translations.md) |
+| `django-translation-meta-verbose-name-lazy` | error | `Meta.verbose_name` / `verbose_name_plural` and `AppConfig.verbose_name` wrapped in `_()` (translations.md) |
+| `django-translation-model-meta-verbose-name-required` | error | `apps/**/models.py` only — every concrete model declares `Meta.verbose_name = _(...)`, even when extending a package abstract's `Meta` (translations.md) |
+| `django-translation-choices-label-lazy` | error | `TextChoices` / `IntegerChoices` labels and inline `choices=[...]` labels wrapped in `_()` (translations.md) |
+| `django-translation-validation-error-literal` | error | No bare string anywhere inside `ValidationError(...)` — positional, `detail=`, dict values, list items (translations.md, error-shape.md) |
+| `django-translation-admin-labels-lazy` | error | `short_description` and `@admin.display` / `@admin.action` `description=` wrapped in `_()` (translations.md) |
+| `django-translation-no-fstring-in-gettext` | error | No f-string / `%` / `.format()` / `+` inside `_()` and `gettext*()` — interpolate after translating (translations.md) |
+| `django-template-untranslated-text` | error | Text and `alt` / `title` / `placeholder` attributes in `**/templates/**` go through `{% trans %}` / `{% blocktrans %}` / `{{ _() }}` (translations.md) |
 | `django-related-name-required` | warning | Explicit `related_name` on FK / M2M / O2O (models.md) |
 | `django-use-timezone-now` | warning | `timezone.now()` instead of naive `datetime.now()` / `utcnow()` (datetime.md) |
 | `django-admin-use-unfold` | error | `apps/**` only — subclass `unfold.admin.ModelAdmin` / inlines, never stock `django.contrib.admin` (admin.md) |
@@ -73,6 +85,20 @@ The `See ...` paths in rule messages point at the `backend-conventions` /
 | `graphql-use-django-object-type` | error | Import `DjangoObjectType` from `baseapp_core.graphql`, not `graphene_django` (graphql-file-layout.md) |
 | `graphql-use-relay-mutation` | warning | Mutations inherit `RelayMutation`, not `graphene.Mutation` (graphql-file-layout.md) |
 | `graphql-use-relay-model` | hint | Models exposed via GraphQL inherit `RelayModel` (only `models.py` files; ast-grep can't tell which models are exposed, hence hint) (graphql-file-layout.md) |
+
+### Suppressing a finding
+
+A deliberate exception (a machine-readable error code in a `ValidationError`, a blank
+Wagtail block label) is silenced with a comment on the **previous line** that names
+the rule, plus a comment saying why:
+
+```python
+# Machine-readable error code consumed by clients, not user-facing copy.
+# ast-grep-ignore: django-translation-validation-error-literal
+raise serializers.ValidationError({"email": ["no_email_provided"]})
+```
+
+In templates use `<!-- ast-grep-ignore: django-template-untranslated-text -->`.
 
 ## Testing rules
 
@@ -88,6 +114,21 @@ docker compose run --rm --no-deps web uv run ast-grep test -U    # accept new/ch
 
 Some guidelines can't be enforced with AST patterns and stay in code-review territory:
 
+- **Runtime strings.** Messages assembled from constants, dict lookups or variables
+  (`ValidationError(MESSAGES[code])`, `raise ValidationError(message)`), strings in
+  `fieldsets` titles, `list_display` tuples, `CONSTANCE_CONFIG` help texts, GraphQL
+  `description=` and anything built outside a literal are invisible to ast-grep. The
+  catalog freshness check only sees what `makemessages` extracts, so these need a
+  reviewer.
+- **`TextChoices` members without an explicit label** (`DRAFT = "draft"`) get an
+  auto-generated English label Django never translates; the rule can only flag
+  literal labels.
+- **Templates.** The HTML parser sees a whole run of text between tags as one node, so
+  prose that shares a node with a `{% ... %}` tag is skipped (false negative), and
+  `{% blocktrans %}` bodies split by inline tags can be reported (false positive).
+  Material icon ligatures (text of a `material-symbols-*` / `material-icons` element)
+  are skipped. Suppress a false positive with an `ast-grep-ignore` comment; the
+  `makemessages` freshness gate covers anything that does use the i18n tags.
 - `related_name` **plurality** (plural FK/M2M vs singular O2O) — grammar, not syntax.
 - `get_node` permission checks on ObjectTypes — presence is checkable, correctness isn't.
 - ISO 8601 serialization, UTC storage at runtime, docstring quality, queryset

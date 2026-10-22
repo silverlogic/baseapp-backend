@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 import swapper
 from django.contrib import admin
 from django.template.defaultfilters import truncatewords
+from django.utils.translation import gettext_lazy as _
 
 from baseapp_core.admin_helpers import ModelAdmin
 from baseapp_core.plugins import apply_if_installed
@@ -51,7 +52,7 @@ class CommentAdmin(ModelAdmin):
     def truncated_body(self, obj) -> str:
         return truncatewords(obj.body, 10)
 
-    truncated_body.short_description = "body"
+    truncated_body.short_description = _("body")
 
 
 @admin.register(CommentableMetadata)

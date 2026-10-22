@@ -23,7 +23,7 @@ BaseApp Backend is a monorepo of reusable Django packages (auth, profiles, comme
 - Prefer queryset annotations over `@property` — annotations are filterable and avoid extra DB hits.
 - If an annotation is reused, add it to a custom `QuerySet` method on a custom `Manager`.
 - `related_name` on `ForeignKey`/`ManyToManyField` → plural; on `OneToOneField` → singular.
-- Use `gettext_lazy as _` for all user-facing strings (`verbose_name`, `help_text`, form labels, error messages). Never use eager `gettext` at module level.
+- Use `gettext_lazy as _` for all user-facing strings (`verbose_name`, `help_text`, `Meta.verbose_name`, `AppConfig.verbose_name`, choice labels, admin labels, `ValidationError` messages). Never use eager `gettext` at module level, never format inside `_()`. Jinja templates use `{{ _("...", name=value) }}`; out-of-request code (emails) activates the recipient's language with `baseapp_core.i18n.user_language`. Each package ships `locale/es` and `locale/pt` catalogs — see Translations below.
 
 ### DRF
 - Put permissions in `permissions.py`; compose with `|` and `&` rather than bundling logic into one class.
@@ -93,6 +93,29 @@ docker compose run --rm web uv run ast-grep scan    # code-guideline rules (.ast
 docker compose run --rm web uv run ast-grep test    # test the ast-grep rules themselves (CI runs both)
 docker compose run --rm web pre-commit run --all-files
 ```
+
+## Translations
+
+Every package keeps its own catalogs in `<package>/locale/{es,pt}/LC_MESSAGES/django.po`
+(new `.mo` files are gitignored and compiled in CI / Docker / the publish job; the `es` `.mo`
+files that already shipped stay tracked, recompile them when their `.po` changes). CI fails when a
+catalog is stale (`makemessages` would change it) or incomplete (untranslated / fuzzy):
+
+```bash
+docker compose run --rm web uv run bash scripts/i18n/makemessages.sh       # regenerate every package catalog
+docker compose run --rm web uv run bash scripts/i18n/check_translations.sh # the CI gate (fresh + complete)
+docker compose run --rm web bash scripts/i18n/compilemessages.sh           # build the .mo files
+```
+
+`makemessages` is `baseapp_core`'s override: it extracts `_()` from Jinja `.j2` templates and
+reads defaults from `BA_MAKEMESSAGES_DEFAULTS` (`testproject/settings.py`). Add a new package to
+`scripts/i18n/packages.sh` and translate the generated entries before merging.
+
+The root `conftest.py` compiles every catalog before the tests run, so a clean checkout only needs
+`gettext` (already in the image). Portuguese ships as `locale/pt` (Brazilian Portuguese copy) under
+the language code `pt`, the code `TranslatedField` columns, `URLPath.language` and
+`User.preferred_language` already store: keep `pt` (not `pt-br`) in `LANGUAGES`. A request for
+`pt-br` resolves to `pt` through Django's language fallback.
 
 ## Test Coverage Policy
 
