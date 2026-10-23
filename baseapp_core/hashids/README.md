@@ -26,7 +26,85 @@ class ProfileObjectType(DjangoObjectType):
 
 ### Making DRF endpoints compatible with HashIds
 
-Simply ensure that your ViewSets extend `baseapp_core.rest_framework.mixins.PublicIdLookupMixin`. This mixin overrides the `get_object` method so that lookups are resolved using the public_id instead of the internal primary key.
+Every piece below falls back to plain primary keys for a model without `DocumentIdMixin`, or when `ENABLE_PUBLIC_ID_LOGIC = False`, so it is safe to use on any model.
+
+#### Lookups: `PublicIdLookupMixin`
+
+Make your ViewSets extend `baseapp_core.rest_framework.mixins.PublicIdLookupMixin`. It overrides `get_object` so that the URL id is resolved as a public id instead of the internal primary key, with the view's queryset filters and object permissions still applied.
+
+```python
+from baseapp_core.rest_framework.mixins import PublicIdLookupMixin
+
+class PostViewSet(PublicIdLookupMixin, viewsets.ModelViewSet):
+    ...
+```
+
+- A public id of another model, or one that maps to nothing, answers 404.
+- The integer pk is still accepted while `allow_pk_lookup` is true. Set it on the ViewSet, or project-wide with `BASEAPP_PUBLIC_ID_ALLOW_PK_LOOKUP` (default `True`). When it is false, `/posts/12/` answers 404 for a model that uses public ids.
+- `lookup_value_regex` defaults to `PUBLIC_ID_LOOKUP_REGEX` (an integer or a UUID4), so the router emits one detail pattern for both. A ViewSet that looks up by something else (a slug, a non-UUID4 key) sets its own `lookup_value_regex`.
+- `filter_queryset` annotates `mapped_public_id`, so rendering `public_id` in a list costs no query per row, even when the ViewSet overrides `get_queryset`. Set `annotate_mapped_public_id = False` to skip it.
+
+#### Serializers: `PublicIdField` and `PublicIdRelatedField`
+
+`baseapp_core.rest_framework.fields` has two fields:
+
+- `PublicIdField()`: read-only, renders the object's public id (`source="*"` by default). Use it for `id` in plain `Serializer`s, or with `source="<relation>"` for a related object.
+- `PublicIdRelatedField(queryset=...)`: a `PrimaryKeyRelatedField` that renders and accepts public ids. A public id of another model is a validation error. An integer pk is accepted while `allow_pk_lookup` is true (field argument, default `BASEAPP_PUBLIC_ID_ALLOW_PK_LOOKUP`). It supports `many=True`.
+
+```python
+from baseapp_core.rest_framework.fields import PublicIdField, PublicIdRelatedField
+
+class PostSerializer(serializers.Serializer):
+    id = PublicIdField()
+    author = PublicIdRelatedField(queryset=User.objects.all())
+    tags = PublicIdRelatedField(queryset=Tag.objects.all(), many=True)
+```
+
+`baseapp_core.rest_framework.serializers.ModelSerializer` already renders the model's own `id` as its public id. With `BASEAPP_REST_PUBLIC_ID_RELATED_FIELDS = True` (default `False`, because it changes the output of existing endpoints) it also maps foreign keys and many-to-many fields to models that use public ids onto `PublicIdRelatedField`.
+
+#### Filters: `PublicIdFilter` and `PublicIdMultipleFilter`
+
+`baseapp_core.rest_framework.filters` has two django-filter filters that take public ids and filter on the matching pk:
+
+```python
+from baseapp_core.rest_framework.filters import PublicIdFilter, PublicIdMultipleFilter
+
+class PostFilterSet(django_filters.FilterSet):
+    author = PublicIdFilter()                                  # ?author=<id>
+    authors = PublicIdMultipleFilter(field_name="author")      # ?authors=<id>&authors=<id> or ?authors=<id>,<id>
+    tag = PublicIdFilter(field_name="tags", model=Tag, distinct=True)
+```
+
+The model is inferred from `field_name` on the FilterSet's model, or given with `model=`. An id of another model, or an integer pk while pk lookups are disallowed, is a 400. Both take `allow_pk_lookup=`.
+
+#### Avoiding a query per row: `annotate_public_ids`
+
+Reading `public_id` without help costs one DocumentId query per object, and per related object. Load the ids with the queryset instead:
+
+```python
+from baseapp_core.hashids.strategies import annotate_public_ids
+
+def get_queryset(self):
+    queryset = Post.objects.select_related("author")
+    return annotate_public_ids(queryset, "author", "thread__owner")
+```
+
+- The queryset's own rows get `mapped_public_id` (pass `include_self=False` to skip), which `public_id` reads.
+- Each path gets `<path>_public_id` (`author_public_id`, `thread__owner_public_id`), which `PublicIdRelatedField` reads for the matching `source`. Paths must follow foreign keys or one-to-one fields.
+- For many-to-many and reverse relations, prefetch the documents instead: `prefetch_related("tags__document")`. `public_id` reads a prefetched `document` relation without a query.
+
+Lower level, `PublicIdQuerysetAnnotatorStrategy.get_annotations(model_cls, field="pk", alias="mapped_public_id")` returns the annotation for any pk path and alias.
+
+#### Resolving ids by hand
+
+`drf_get_pk_from_public_id_or_pk(value, model_cls, allow_pk_lookup=None)` in `baseapp_core.hashids.strategies` returns the pk to look a `model_cls` row up by, or `None` when the value cannot be one of its ids (unknown, another model's public id, or a pk while pk lookups are disallowed). `drf_get_pk_from_public_id_using_strategy(value, expected_model=...)` is the lower-level call: it returns `None` for an unknown public id and raises `DRFResolverStrategy.NoInstanceFound` for another model's. `Model.get_by_public_id(public_id)` returns `None` for another model's public id.
+
+#### Settings
+
+| Setting | Default | Effect |
+|---|---|---|
+| `BASEAPP_PUBLIC_ID_ALLOW_PK_LOOKUP` | `True` | REST lookups, `PublicIdRelatedField` and the filters accept integer pks of models that use public ids. Turn it off once clients only send public ids. |
+| `BASEAPP_REST_PUBLIC_ID_RELATED_FIELDS` | `False` | `ModelSerializer` renders and accepts foreign keys and many-to-many fields as public ids. |
 
 
 ## Maintaining the HashIds Feature
@@ -85,6 +163,6 @@ This issue becomes more evident in GraphQL edge and node queries that involve la
 
 While the Public Id strategy still results in more queries than the Legacy mode, the overhead is now acceptable.
 
-We do not currently cover DRF-specific optimizations, since Baseapp does not heavily rely on these types of endpoints. This is something that can be considered in the future.
+DRF has no query optimizer, so DRF endpoints load public ids explicitly with `annotate_public_ids` and `prefetch_related("<relation>__document")` (see [Avoiding a query per row](#avoiding-a-query-per-row-annotate_public_ids)). `PublicIdLookupMixin` annotates the ViewSet's own rows.
 
 Whenever making structural changes to Baseapp HashIds or GraphQL-related code, make sure to validate the impact on query performance.
