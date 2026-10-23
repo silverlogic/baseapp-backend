@@ -144,6 +144,7 @@ AUTHENTICATION_BACKENDS = [
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_organizations"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_files"),
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_payments"),
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_message_templates"),
 ]
 
 ADMIN_TIME_ZONE = "UTC"
