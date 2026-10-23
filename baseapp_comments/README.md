@@ -202,15 +202,27 @@ By default anyone who can see a target can read its comments.
 `BASEAPP_COMMENTS_CAN_ANONYMOUS_VIEW_COMMENTS = False` hides the comments list and the subscription
 from anonymous users, as before. To keep the comments of some targets private, for example
 internal notes on a record, deny `baseapp_comments.view_target_comments` for that target (`obj` is
-the target). The app label follows your swapped `Comment` model. The check is applied to every read
-path:
+the target). The app label follows your swapped `Comment` model. The check applies to:
 
-- `CommentsInterface.comments` returns no comments and `commentsCount` returns zeros.
-- `node(id)` / `comment(id)` of a comment returns `null`, because `view_comment` also requires
+- `CommentsInterface.comments`, which returns no comments, and `commentsCount`, which returns zeros.
+- `node(id)` / `comment(id)` of a comment, which returns `null`, because `view_comment` also requires
   `view_target_comments` on the comment's target.
-- `onCommentChange(targetObjectId: ...)` joins no group, and every notification is checked again
-  with `view_comment` for each subscriber, so a permission revoked after subscribing, or a
+- Every field that returns a comment without going through `node(id)`: `Comment.inReplyTo`,
+  `Comment.target` (when the target is a comment) and the `commentDelete` payload return `null`
+  for a comment the user may not `view_comment`.
+- `commentCreate`: `add_comment` on a comment and `reply_comment` also require `view_comment` on
+  it, so a hidden comment can't be replied to or commented on.
+- `reactionToggle` and `reportCreate`, which resolve their target with `node(id)` and refuse a
+  target that returns `null`.
+- `onCommentChange(targetObjectId: ...)`, which joins no group, and every notification is checked
+  again with `view_comment` for each subscriber, so a permission revoked after subscribing, or a
   subscriber of every comment (`view_all_comments`), does not receive it.
+- The "new comment" and "reply" notifications, which are not sent to a recipient without
+  `view_target_comments` on the comment's target.
+
+It does not apply to `allComments`, which lists every comment to users with
+`<app_label>.view_all_comments` (a moderation permission), nor to `NodeLogEvent.obj` in
+`baseapp.activity_log` (see "Keeping comment activity private").
 
 ```python
 import swapper
@@ -237,13 +249,20 @@ When a comment is itself the target of comments (its replies), `obj` is that com
 restricted targets allow replies, deny those too, for example by walking up with
 `while isinstance(obj, Comment): obj = obj.target`, or refuse `reply_comment` on them.
 
+`view_comment` loads the comment's target to check `view_target_comments`, which costs up to two
+queries per comment looked up by id (`node(id)`, `inReplyTo`, each subscription notification). The
+comments lists check the permission once per target instead.
+
 ### Keeping comment activity private
 
 With `baseapp.activity_log` installed, `commentCreate`, `commentUpdate` and `commentPin` log their
 activity as public, so anyone can list it in `activityLogs`, including the change diff of the
 comment. Deny `baseapp_comments.publish_comment_activity` for a target (`obj` is the target) to keep
 that activity private. It is checked only after the mutation's own permission checks pass, and is
-granted by default. Restricted targets usually deny both permissions:
+granted by default. A request that changes a private comment keeps its whole activity entry private
+(see `set_private_activity` in `baseapp.activity_log`), even if it also runs public mutations.
+A public activity also exposes the changed comment through `NodeLogEvent.obj`, which
+`view_target_comments` does not check, so restricted targets usually deny both permissions:
 
 ```python
 class MyCommentsPermissionsBackend(CommentsPermissionsBackend):

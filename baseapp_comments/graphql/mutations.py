@@ -17,7 +17,7 @@ from baseapp_core.graphql import (
 )
 from baseapp_core.plugins import shared_services
 
-from .object_types import CommentsInterface
+from .object_types import CommentsInterface, viewable_comment
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
 app_label = Comment._meta.app_label
@@ -271,7 +271,11 @@ class CommentDelete(RelayMutation):
 
         obj.delete()
 
-        return CommentDelete(deleted_id=relay_id, target=target, in_reply_to=in_reply_to)
+        return CommentDelete(
+            deleted_id=relay_id,
+            target=viewable_comment(target, info),
+            in_reply_to=viewable_comment(in_reply_to, info),
+        )
 
 
 class CommentsMutations(object):

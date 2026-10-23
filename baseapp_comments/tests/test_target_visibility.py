@@ -12,13 +12,18 @@ from graphene_django.settings import graphene_settings
 from baseapp.content_feed.tests.factories import ContentPostFactory
 from baseapp_comments.graphql.subscriptions import OnCommentChange
 from baseapp_comments.permissions import CommentsPermissionsBackend
+from baseapp_core.tests.factories import UserFactory
 from baseapp_pages.tests.factories import PageFactory
+from baseapp_reports.tests.factories import ReportTypeFactory
 
 from .factories import CommentFactory
 from .test_graphql_subscriptions import SUBSCRIPTION_QUERY
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
 Page = swapper.load_model("baseapp_pages", "Page")
+Reaction = swapper.load_model("baseapp_reactions", "Reaction")
+Report = swapper.load_model("baseapp_reports", "Report")
+Notification = swapper.load_model("notifications", "Notification")
 app_label = Comment._meta.app_label
 
 pytestmark = pytest.mark.django_db
@@ -282,3 +287,241 @@ async def test_publish_skips_comments_the_subscriber_cant_view(
     assert updated["data"]["onCommentChange"]["updatedComment"]["id"] == visible_relay_id
     await client.assert_no_messages()
     await client.finalize()
+
+
+REACTION_TOGGLE_GRAPHQL = """
+    mutation ReactionToggle($input: ReactionToggleInput!) {
+        reactionToggle(input: $input) {
+            target { ... on Comment { id body } }
+            reaction { node { target { ... on Comment { id body } } } }
+        }
+    }
+"""
+
+REPORT_CREATE_GRAPHQL = """
+    mutation ReportCreate($input: ReportCreateInput!) {
+        reportCreate(input: $input) {
+            report { node { target { ... on Comment { id body } } } }
+        }
+    }
+"""
+
+COMMENT_CREATE_GRAPHQL = """
+    mutation CommentCreate($input: CommentCreateInput!) {
+        commentCreate(input: $input) {
+            comment { node { id body target { ... on Comment { body } } inReplyTo { body } } }
+        }
+    }
+"""
+
+COMMENT_RELATIONS_QUERY = """
+    query CommentRelations($id: ID!) {
+        comment(id: $id) {
+            id
+            inReplyTo { id body }
+            target { ... on Comment { id body } }
+        }
+    }
+"""
+
+COMMENT_DELETE_GRAPHQL = """
+    mutation CommentDelete($input: CommentDeleteInput!) {
+        commentDelete(input: $input) {
+            deletedId
+            inReplyTo { id body }
+            target { ... on Comment { id body } }
+        }
+    }
+"""
+
+
+def _permission_error(content: dict) -> bool:
+    return content["errors"][0]["extensions"]["code"] == "permission_required"
+
+
+@staff_only_page_comments
+def test_cant_react_to_a_restricted_comment(graphql_user_client) -> None:
+    secret = CommentFactory(target=PageFactory(), body="secret")
+
+    content = graphql_user_client(
+        REACTION_TOGGLE_GRAPHQL,
+        variables={"input": {"targetObjectId": secret.relay_id, "reactionType": "LIKE"}},
+    ).json()
+
+    assert _permission_error(content)
+    assert content["data"]["reactionToggle"] is None
+    assert not Reaction.objects.exists()
+
+
+@staff_only_page_comments
+def test_staff_can_react_to_a_restricted_comment(django_user_client, graphql_user_client) -> None:
+    django_user_client.user.is_staff = True
+    django_user_client.user.save()
+    comment = CommentFactory(target=PageFactory(), body="internal")
+
+    content = graphql_user_client(
+        REACTION_TOGGLE_GRAPHQL,
+        variables={"input": {"targetObjectId": comment.relay_id, "reactionType": "LIKE"}},
+    ).json()
+
+    assert "errors" not in content, content
+    assert content["data"]["reactionToggle"]["target"]["body"] == "internal"
+
+
+@staff_only_page_comments
+def test_cant_report_a_restricted_comment(graphql_user_client) -> None:
+    secret = CommentFactory(target=PageFactory(), body="secret")
+
+    content = graphql_user_client(
+        REPORT_CREATE_GRAPHQL,
+        variables={
+            "input": {
+                "targetObjectId": secret.relay_id,
+                "reportTypeId": ReportTypeFactory().relay_id,
+            }
+        },
+    ).json()
+
+    assert _permission_error(content)
+    assert content["data"]["reportCreate"] is None
+    assert not Report.objects.exists()
+
+
+@staff_only_page_comments
+def test_cant_reply_to_a_restricted_comment_from_another_target(graphql_user_client) -> None:
+    secret = CommentFactory(target=PageFactory(), body="secret")
+
+    content = graphql_user_client(
+        COMMENT_CREATE_GRAPHQL,
+        variables={
+            "input": {
+                "targetObjectId": ContentPostFactory().relay_id,
+                "inReplyToId": secret.relay_id,
+                "body": "reply",
+            }
+        },
+    ).json()
+
+    assert _permission_error(content)
+    assert not Comment.objects.filter(body="reply").exists()
+
+
+@staff_only_page_comments
+def test_cant_comment_on_a_restricted_comment(graphql_user_client) -> None:
+    secret = CommentFactory(target=PageFactory(), body="secret")
+
+    content = graphql_user_client(
+        COMMENT_CREATE_GRAPHQL,
+        variables={"input": {"targetObjectId": secret.relay_id, "body": "comment"}},
+    ).json()
+
+    assert _permission_error(content)
+    assert not Comment.objects.filter(body="comment").exists()
+
+
+def test_can_reply_to_and_comment_on_a_visible_comment(graphql_user_client) -> None:
+    target = ContentPostFactory()
+    parent = CommentFactory(target=target, body="parent")
+
+    reply = graphql_user_client(
+        COMMENT_CREATE_GRAPHQL,
+        variables={
+            "input": {
+                "targetObjectId": target.relay_id,
+                "inReplyToId": parent.relay_id,
+                "body": "r",
+            }
+        },
+    ).json()
+    nested = graphql_user_client(
+        COMMENT_CREATE_GRAPHQL,
+        variables={"input": {"targetObjectId": parent.relay_id, "body": "n"}},
+    ).json()
+
+    assert reply["data"]["commentCreate"]["comment"]["node"]["inReplyTo"]["body"] == "parent"
+    assert nested["data"]["commentCreate"]["comment"]["node"]["target"]["body"] == "parent"
+
+
+@staff_only_page_comments
+def test_in_reply_to_and_target_hide_a_restricted_comment(graphql_user_client) -> None:
+    """Rows written before the gate, or by staff, can link a visible comment to a hidden one."""
+    secret = CommentFactory(target=PageFactory(), body="secret")
+    reply = CommentFactory(target=ContentPostFactory(), in_reply_to=secret)
+    nested = CommentFactory(target=secret)
+
+    reply_content = graphql_user_client(
+        COMMENT_RELATIONS_QUERY, variables={"id": reply.relay_id}
+    ).json()
+    nested_content = graphql_user_client(
+        COMMENT_RELATIONS_QUERY, variables={"id": nested.relay_id}
+    ).json()
+
+    assert reply_content["data"]["comment"]["id"] == reply.relay_id
+    assert reply_content["data"]["comment"]["inReplyTo"] is None
+    assert nested_content["data"]["comment"]["id"] == nested.relay_id
+    assert nested_content["data"]["comment"]["target"] is None
+
+
+@staff_only_page_comments
+def test_in_reply_to_and_target_are_visible_when_permitted(
+    django_user_client, graphql_user_client
+) -> None:
+    django_user_client.user.is_staff = True
+    django_user_client.user.save()
+    parent = CommentFactory(target=PageFactory(), body="internal")
+    reply = CommentFactory(target=ContentPostFactory(), in_reply_to=parent)
+    nested = CommentFactory(target=parent)
+
+    reply_content = graphql_user_client(
+        COMMENT_RELATIONS_QUERY, variables={"id": reply.relay_id}
+    ).json()
+    nested_content = graphql_user_client(
+        COMMENT_RELATIONS_QUERY, variables={"id": nested.relay_id}
+    ).json()
+
+    assert reply_content["data"]["comment"]["inReplyTo"]["body"] == "internal"
+    assert nested_content["data"]["comment"]["target"]["body"] == "internal"
+
+
+@staff_only_page_comments
+def test_comment_delete_payload_hides_a_restricted_parent(
+    django_user_client, graphql_user_client
+) -> None:
+    secret = CommentFactory(target=PageFactory(), body="secret")
+    reply = CommentFactory(
+        target=ContentPostFactory(), in_reply_to=secret, user=django_user_client.user
+    )
+
+    content = graphql_user_client(
+        COMMENT_DELETE_GRAPHQL, variables={"input": {"id": reply.relay_id}}
+    ).json()
+
+    assert content["data"]["commentDelete"]["deletedId"] == reply.relay_id
+    assert content["data"]["commentDelete"]["inReplyTo"] is None
+
+
+@override_settings(BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS=True)
+@staff_only_page_comments
+def test_no_comment_notifications_to_users_who_cant_view_them() -> None:
+    owner = UserFactory()
+    page = PageFactory(user=owner)
+    parent = CommentFactory(target=page, user=owner)
+
+    CommentFactory(target=page)
+    CommentFactory(target=page, in_reply_to=parent)
+
+    assert not Notification.objects.filter(recipient=owner).exists()
+
+
+@override_settings(BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS=True)
+@staff_only_page_comments
+def test_comment_notifications_reach_users_who_can_view_them() -> None:
+    owner = UserFactory(is_staff=True)
+    page = PageFactory(user=owner)
+    parent = CommentFactory(target=page, user=owner)
+
+    CommentFactory(target=page)
+    CommentFactory(target=page, in_reply_to=parent)
+
+    verbs = set(Notification.objects.filter(recipient=owner).values_list("verb", flat=True))
+    assert verbs == {"COMMENTS.COMMENT_CREATED", "COMMENTS.COMMENT_REPLY_CREATED"}
