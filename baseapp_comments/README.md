@@ -92,6 +92,60 @@ class MyModelObjectType(DjangoObjectType):
 
 ```
 
+### Adding writable fields to a swapped Comment
+
+`commentCreate` and `commentUpdate` save the input through a form, `CommentForm` (`body` only) by
+default. When your swapped `Comment` model has more columns, subclass the mutations, extend their
+`Input`, return your form from `get_form_class()`, and keep the GraphQL names with `Meta.name`, so
+the BaseApp frontend's `CommentCreateInput` / `CommentUpdateInput` keep working:
+
+```python
+import graphene
+
+from baseapp_comments.graphql.mutations import CommentCreate, CommentForm, CommentUpdate
+
+
+class MyCommentForm(CommentForm):
+    class Meta(CommentForm.Meta):
+        fields = ("body", "kind")
+
+
+class MyCommentCreate(CommentCreate):
+    class Input(CommentCreate.Input):
+        kind = graphene.String(required=False)
+
+    class Meta:
+        name = "CommentCreatePayload"  # also names the input CommentCreateInput
+
+    @classmethod
+    def get_form_class(cls):
+        return MyCommentForm
+
+
+class MyCommentUpdate(CommentUpdate):
+    class Input(CommentUpdate.Input):
+        kind = graphene.String(required=True)
+
+    class Meta:
+        name = "CommentUpdatePayload"
+
+    @classmethod
+    def get_form_class(cls):
+        return MyCommentForm
+```
+
+Then declare them on your root `Mutation`, after the plugin mutations, so they replace the default
+fields:
+
+```python
+class Mutation(graphene.ObjectType, *mutations):
+    comment_create = MyCommentCreate.Field()
+    comment_update = MyCommentUpdate.Field()
+```
+
+The form is a `ModelForm` bound to the input, so on update a field left out of the input is
+cleared. Make update-only fields required, or keep the instance's value in the form's `clean()`.
+
 ### Signals
 
 There are some signals that handles stuff like updating comments count, notify users when a comment is created and send a GraphQL subscription when a comment is created, updated or deleted. You can find all signals in `baseapp_comments.signals`.

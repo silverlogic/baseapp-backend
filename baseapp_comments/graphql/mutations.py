@@ -42,6 +42,13 @@ class CommentForm(forms.ModelForm):
 
 
 class CommentCreate(RelayMutation):
+    """Create a comment.
+
+    To add writable fields of a swapped Comment model, subclass it with an Input that extends
+    `CommentCreate.Input`, `Meta.name = "CommentCreatePayload"` (keeps the GraphQL type names) and a
+    `get_form_class()` that returns a form with the extra fields (see the README).
+    """
+
     comment = graphene.Field(CommentObjectType._meta.connection.Edge)
 
     class Input:
@@ -52,6 +59,11 @@ class CommentCreate(RelayMutation):
 
         if apps.is_installed("baseapp_profiles"):
             profile_id = graphene.ID(required=False)
+
+    @classmethod
+    def get_form_class(cls) -> type[forms.ModelForm]:
+        """The form that validates and saves the comment's writable fields."""
+        return CommentForm
 
     @classmethod
     @login_required
@@ -96,7 +108,7 @@ class CommentCreate(RelayMutation):
         _set_public_activity(info, activity_name, target)
 
         mentioned_profile_ids = input.pop("mentioned_profile_ids", None) or []
-        form = CommentForm(instance=comment, data=input)
+        form = cls.get_form_class()(instance=comment, data=input)
         if form.is_valid():
             form.save()
 
@@ -124,12 +136,19 @@ class CommentCreate(RelayMutation):
 
 
 class CommentUpdate(RelayMutation):
+    """Edit a comment. Extend it like `CommentCreate`, with `Meta.name = "CommentUpdatePayload"`."""
+
     comment = graphene.Field(CommentObjectType)
 
     class Input:
         id = graphene.ID(required=True)
         body = graphene.String(required=True)
         mentioned_profile_ids = graphene.List(graphene.ID, required=False)
+
+    @classmethod
+    def get_form_class(cls) -> type[forms.ModelForm]:
+        """The form that validates and saves the comment's writable fields."""
+        return CommentForm
 
     @classmethod
     @login_required
@@ -149,7 +168,7 @@ class CommentUpdate(RelayMutation):
 
         comment.is_edited = True
 
-        form = CommentForm(instance=comment, data=input)
+        form = cls.get_form_class()(instance=comment, data=input)
         if form.is_valid():
             comment = form.save()
 
