@@ -16,6 +16,18 @@ ChatRoomObjectType = ChatRoom.get_graphql_object_type()
 ChatRoomParticipantObjectType = ChatRoomParticipant.get_graphql_object_type()
 
 
+async def can_list_chat_rooms(user, profile) -> bool:
+    """
+    Whether `user` may follow `profile`'s rooms: act as the profile, and hold
+    `baseapp_chats.list_chatrooms` on it, as `Profile.chatRooms` and
+    `Profile.unreadMessagesCount` require.
+    """
+    for perm in (f"{profile_app_label}.use_profile", "baseapp_chats.list_chatrooms"):
+        if not await database_sync_to_async(user.has_perm)(perm, profile):
+            return False
+    return True
+
+
 class ChatRoomOnRoomUpdate(channels_graphql_ws.Subscription):
     room = graphene.Field(ChatRoomObjectType._meta.connection.Edge)
     removed_participants = graphene.List(ChatRoomParticipantObjectType)
@@ -30,10 +42,7 @@ class ChatRoomOnRoomUpdate(channels_graphql_ws.Subscription):
         profile = await database_sync_to_async(get_obj_from_relay_id)(info, profile_id)
         if not user.is_authenticated or not profile:
             return []
-        has_permission = await database_sync_to_async(user.has_perm)(
-            f"{profile_app_label}.use_profile", profile
-        )
-        if not has_permission:
+        if not await can_list_chat_rooms(user, profile):
             return []
         return [str(profile.pk)]
 
@@ -75,13 +84,9 @@ class ChatRoomOnMessagesCountUpdate(channels_graphql_ws.Subscription):
         user = info.context.channels_scope["user"]
         profile = await database_sync_to_async(get_obj_from_relay_id)(info, profile_id)
 
-        # TO DO: change to a better permission check, maybe baseapp_chats.view_chatroom
         if not user.is_authenticated or not profile:
             return []
-        has_permission = await database_sync_to_async(user.has_perm)(
-            f"{profile_app_label}.use_profile", profile
-        )
-        if not has_permission:
+        if not await can_list_chat_rooms(user, profile):
             return []
         return [profile_id]
 

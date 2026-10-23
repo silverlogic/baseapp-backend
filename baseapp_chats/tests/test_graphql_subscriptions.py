@@ -1,4 +1,5 @@
 import textwrap
+from unittest.mock import patch
 
 import pytest
 import swapper
@@ -6,6 +7,7 @@ from channels.db import database_sync_to_async
 
 from baseapp_core.tests.factories import UserFactory
 
+from ..permissions import ChatsPermissionsBackend
 from ..utils import send_message
 from .factories import ChatRoomFactory, ChatRoomParticipantFactory
 
@@ -336,3 +338,67 @@ async def test_current_profile_ws_context(django_user_client, graphql_ws_user_cl
         ]["count"]
         == 1
     )
+
+
+ROOM_UPDATE_SUBSCRIPTION = textwrap.dedent("""
+    subscription op_name($profileId: ID!) {
+      chatRoomOnRoomUpdate(profileId: $profileId) {
+        room { node { id } }
+      }
+    }
+    """)
+
+MESSAGES_COUNT_SUBSCRIPTION = textwrap.dedent("""
+    subscription op_name($profileId: ID!) {
+      chatRoomOnMessagesCountUpdate(profileId: $profileId) {
+        profile { id }
+      }
+    }
+    """)
+
+
+def _deny_list_chatrooms():
+    has_perm = ChatsPermissionsBackend.has_perm
+
+    def deny(self, user_obj, perm, obj=None):
+        if perm == "baseapp_chats.list_chatrooms":
+            return False
+        return has_perm(self, user_obj, perm, obj)
+
+    return patch.object(ChatsPermissionsBackend, "has_perm", deny)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("query", [ROOM_UPDATE_SUBSCRIPTION, MESSAGES_COUNT_SUBSCRIPTION])
+async def test_profile_room_subscriptions_require_list_chatrooms(
+    django_user_client, graphql_ws_user_client, query
+) -> None:
+    """The profile-wide subscriptions are gated like `Profile.chatRooms`."""
+    room = await database_sync_to_async(ChatRoomFactory)(created_by=django_user_client.user)
+    await database_sync_to_async(ChatRoomParticipantFactory)(
+        profile=django_user_client.user.profile, room=room
+    )
+    user = await database_sync_to_async(UserFactory)()
+    await database_sync_to_async(ChatRoomParticipantFactory)(room=room, profile=user.profile)
+    client_profile_id = await database_sync_to_async(
+        lambda: django_user_client.user.profile.relay_id
+    )()
+
+    with _deny_list_chatrooms():
+        client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
+        await client.send(
+            msg_type="subscribe",
+            payload={
+                "query": query,
+                "variables": {"profileId": client_profile_id},
+                "operationName": "op_name",
+            },
+        )
+        await client.assert_no_messages()
+
+        await database_sync_to_async(send_message)(
+            user=user, profile=user.profile, content="Hi!", room=room, verb=Verbs.SENT_MESSAGE
+        )
+
+        await client.assert_no_messages()
+        await client.finalize()

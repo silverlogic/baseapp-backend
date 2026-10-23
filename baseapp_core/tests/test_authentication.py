@@ -9,6 +9,7 @@ from baseapp_core.authentication import (
     get_user_from_access_token,
     refresh_access_token,
 )
+from baseapp_core.plugins import shared_services
 from baseapp_core.tests.factories import UserFactory
 
 JWT_AUTH = "rest_framework_simplejwt.authentication.JWTAuthentication"
@@ -115,3 +116,40 @@ class TestAuthenticateJwtIntegration:
 
         assert authed_user == user
         assert new_token  # a fresh access token was issued for the same user
+
+
+@pytest.mark.django_db
+class TestJwtTokenCheckService:
+    """A registered `auth.jwt_token_check` provider may refuse otherwise valid tokens."""
+
+    @staticmethod
+    def _provider(accept: bool) -> MagicMock:
+        provider = MagicMock()
+        provider.check_token.return_value = accept
+        return provider
+
+    def test_refused_access_token_resolves_no_user(self) -> None:
+        user = UserFactory()
+        provider = self._provider(False)
+        with patch.object(shared_services, "get", return_value=provider):
+            assert get_user_from_access_token(str(RefreshToken.for_user(user).access_token)) is None
+        token, checked_user = provider.check_token.call_args.args
+        assert checked_user == user
+
+    def test_refused_refresh_token_mints_nothing(self) -> None:
+        refresh = RefreshToken.for_user(UserFactory())
+        provider = self._provider(False)
+        with patch.object(shared_services, "get", return_value=provider):
+            assert refresh_access_token(str(refresh)) is None
+        assert provider.check_token.call_args.args[1] is None
+
+    def test_accepted_tokens_work(self) -> None:
+        user = UserFactory()
+        refresh = RefreshToken.for_user(user)
+        with patch.object(shared_services, "get", return_value=self._provider(True)):
+            assert authenticate_jwt("not-a-valid-token", str(refresh))[0] == user
+
+    def test_no_provider_accepts_every_valid_token(self) -> None:
+        user = UserFactory()
+        with patch.object(shared_services, "get", return_value=None):
+            assert get_user_from_access_token(str(RefreshToken.for_user(user).access_token)) == user

@@ -27,6 +27,7 @@ INSTALLED_APPS += [
     "baseapp_comments",
     "baseapp_mentions",
     "baseapp_auth",
+    "baseapp_auth.impersonation",
     "baseapp_referrals",
     "baseapp_follows",
     "baseapp_blocks",
@@ -81,13 +82,20 @@ MIDDLEWARE += [
     # Slotted: use get("MIDDLEWARE", "slot_name") for explicit order; if plugin disabled, [].
     *plugin_registry.get("MIDDLEWARE", "baseapp_profiles"),
     "baseapp_core.middleware.HistoryMiddleware",
+    *plugin_registry.get("MIDDLEWARE", "baseapp_impersonation"),
     *WAGTAIL_MIDDLEWARE,
 ]
 
 GRAPHENE["MIDDLEWARE"] = (
-    # Slotted: use get("GRAPHENE__MIDDLEWARE", "slot_name") for explicit order; if plugin disabled, [].
-    *plugin_registry.get("GRAPHENE__MIDDLEWARE", "baseapp_profiles"),
-) + GRAPHENE["MIDDLEWARE"]
+    (
+        # Slotted: use get("GRAPHENE__MIDDLEWARE", "slot_name") for explicit order; if plugin disabled, [].
+        # Graphene runs the last-listed middleware first, so these run after authentication.
+        *plugin_registry.get("GRAPHENE__MIDDLEWARE", "baseapp_profiles"),
+        *plugin_registry.get("GRAPHENE__MIDDLEWARE", "baseapp_impersonation"),
+    )
+    + GRAPHENE["MIDDLEWARE"]
+    + ("baseapp_core.graphql.JWTAuthentication",)
+)
 
 ROOT_URLCONF = "testproject.urls"
 
@@ -129,6 +137,8 @@ CLOUDFLARE_VIDEO_TRIM_DURATION_SECONDS = 10
 
 AUTHENTICATION_BACKENDS = [
     # Slotted: use get("AUTHENTICATION_BACKENDS", "slot_name") for explicit order; if plugin disabled, [].
+    # The impersonation backend refuses permissions, so it must come before any that grant.
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_impersonation"),
     "django.contrib.auth.backends.ModelBackend",
     "baseapp_auth.permissions.UsersPermissionsBackend",
     *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_pages"),
@@ -319,6 +329,7 @@ if SOCIAL_AUTH_GOOGLE_OAUTH2_KEY and SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET:
 SIMPLE_JWT = {
     # It will work instead of the default serializer(TokenObtainPairSerializer).
     "TOKEN_OBTAIN_SERIALIZER": "testproject.users.rest_framework.jwt.serializers.MyTokenObtainPairSerializer",
+    "TOKEN_REFRESH_SERIALIZER": "baseapp_auth.impersonation.serializers.ImpersonationJwtRefreshSerializer",
     # ...
 }
 JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
