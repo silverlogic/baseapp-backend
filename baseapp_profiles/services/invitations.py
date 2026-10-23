@@ -35,8 +35,10 @@ from baseapp_profiles.conf import (
     invitation_expiration_days,
     invitation_max_per_send,
     invitation_pre_send_hook,
+    invitation_resend_min_interval,
     invitation_signup_can_reactivate,
     invitation_signup_enabled,
+    invitation_validator,
     keep_invitation_history,
 )
 from baseapp_profiles.exceptions import ProfileMembershipError
@@ -129,6 +131,15 @@ def _reset_for_send(invitation: "ProfileUserRole") -> None:
     invitation.generate_invitation_token()
 
 
+def _validate_invitee(
+    profile: "Profile", invitee: Invitee, invited_by: AbstractBaseUser | None
+) -> None:
+    """Let `BASEAPP_PROFILES_INVITATION_VALIDATOR` refuse the invitee."""
+    validator = invitation_validator()
+    if validator is not None:
+        validator(profile, invitee, invited_by)
+
+
 def _open_invitation(
     profile: "Profile",
     invitee: Invitee,
@@ -143,8 +154,10 @@ def _open_invitation(
     in its way. Must run inside a transaction: it locks the person's existing rows.
 
     Raises on a hard conflict: the person is already an active member, or holds a pending
-    invitation that has not expired.
+    invitation that has not expired. The project's validator may refuse the invitee first.
     """
+    _validate_invitee(profile, invitee, invited_by)
+
     match = Q(invited_email__iexact=invitee.email)
     if invited_user is not None:
         match |= Q(user=invited_user)
@@ -229,9 +242,9 @@ def send_invitations(
     Invite each of `invitees` (emails, `Invitee`s or dicts with `email`, `first_name`,
     `last_name`) to `profile` with `role` (MANAGER by default).
 
-    All-or-nothing: a conflict on any email rolls back the whole batch. Once the rows are
-    saved, each email goes out unless the pre-send hook holds it; a failed email does not
-    undo its invitation.
+    All-or-nothing: a conflict on any email, or an invitee the project's validator refuses,
+    rolls back the whole batch. Once the rows are saved, each email goes out unless the
+    pre-send hook holds it; a failed email does not undo its invitation.
     """
     if role is None:
         role = ProfileUserRole.ProfileRoles.MANAGER
@@ -266,6 +279,16 @@ def send_invitations(
     return result
 
 
+def _ensure_resend_allowed(invitation: "ProfileUserRole") -> None:
+    """Refuse a resend sooner than `BASEAPP_PROFILES_INVITATION_RESEND_MIN_INTERVAL`."""
+    interval = invitation_resend_min_interval()
+    last_sent = invitation.last_sent_at or invitation.invited_at
+    if interval and last_sent and timezone.now() - last_sent < timedelta(seconds=interval):
+        raise ProfileMembershipError(
+            _("This invitation was sent moments ago. Try again later."), "resend_too_soon"
+        )
+
+
 def resend_invitation(
     invitation: "ProfileUserRole", *, by: AbstractBaseUser | None = None
 ) -> SentInvitations:
@@ -279,6 +302,7 @@ def resend_invitation(
         raise ProfileMembershipError(
             _("Can only resend expired or pending invitations"), "invalid_status"
         )
+    _ensure_resend_allowed(invitation)
 
     with transaction.atomic():
         is_expired = invitation.status == Status.EXPIRED or invitation.is_invitation_expired()
