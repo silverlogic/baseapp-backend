@@ -227,3 +227,118 @@ def test_require_verb_template_sends_nothing_without_a_template(
         "unknown.verb": False,
         "unknown.other": True,
     }
+
+
+# Validation and failures
+
+
+def test_single_address_email_options_are_listed(
+    outbox, send_notification, django_capture_on_commit_callbacks
+) -> None:
+    user = UserFactory()
+
+    with django_capture_on_commit_callbacks(execute=True):
+        send_notification(
+            sender=user,
+            recipient=user,
+            email_options={"reply_to": "support@example.com", "cc": "cc@example.com"},
+            **email_only(),
+        )
+
+    [message] = outbox
+    assert message.reply_to == ["support@example.com"]
+    assert message.cc == ["cc@example.com"]
+
+
+@pytest.mark.parametrize(
+    "kwargs, error",
+    [
+        ({"email_options": {"bcc": {"bcc@example.com"}}}, TypeError),
+        ({"email_options": ["reply_to"]}, TypeError),
+        ({"email_context": ["value"]}, TypeError),
+        ({"email_context": {"recipient": "someone else"}}, ValueError),
+        ({"email_context": {"verb": "other"}}, ValueError),
+    ],
+)
+def test_invalid_email_arguments_raise_when_sending(
+    send_notification, django_capture_on_commit_callbacks, kwargs, error
+) -> None:
+    user = UserFactory()
+
+    with django_capture_on_commit_callbacks() as callbacks:
+        with pytest.raises(error):
+            send_notification(sender=user, recipient=user, **kwargs, **email_only())
+
+    assert callbacks == []
+    assert not Notification.objects.exists()
+
+
+def test_email_context_overrides_other_render_keys(
+    outbox, send_notification, django_capture_on_commit_callbacks
+) -> None:
+    user = UserFactory()
+
+    with django_capture_on_commit_callbacks(execute=True):
+        send_notification(
+            sender=user,
+            recipient=user,
+            email_context={"email_message": "Overridden"},
+            **email_only(),
+        )
+
+    [message] = outbox
+    assert "Overridden" in message.body
+
+
+FAILED_RECIPIENTS = []
+
+
+def fail_for_first_recipient(recipient, notification, **context) -> None:
+    if not FAILED_RECIPIENTS:
+        FAILED_RECIPIENTS.append(recipient)
+        raise RuntimeError("SMTP down")
+    SENT_EMAILS.append((recipient, notification, context))
+
+
+@override_settings(
+    BASEAPP_NOTIFICATIONS_EMAIL_SENDER=(
+        "baseapp_notifications.tests.test_emails.fail_for_first_recipient"
+    )
+)
+def test_failing_sender_after_commit_does_not_drop_other_callbacks(
+    send_notification, django_capture_on_commit_callbacks, caplog
+) -> None:
+    FAILED_RECIPIENTS.clear()
+    users = UserFactory.create_batch(3)
+    other_app_calls = []
+
+    with patch("baseapp_notifications.tasks.send_push_notification.delay") as delay:
+        with django_capture_on_commit_callbacks(execute=True):
+            with transaction.atomic():
+                send_notification(sender=users[0], recipient=users, verb="event", description="Hi")
+                transaction.on_commit(lambda: other_app_calls.append(True))
+
+    assert FAILED_RECIPIENTS == [users[0]]
+    assert [recipient for recipient, _notification, _context in SENT_EMAILS] == users[1:]
+    assert sorted(call.args[0] for call in delay.call_args_list) == sorted(u.id for u in users)
+    assert other_app_calls == [True]
+    assert dict(Notification.objects.values_list("recipient_id", "emailed")) == {
+        users[0].id: False,
+        users[1].id: True,
+        users[2].id: True,
+    }
+    assert "Sending the 'event' notification email to user" in caplog.text
+
+
+@override_settings(
+    BASEAPP_NOTIFICATIONS_EMAIL_SENDER=(
+        "baseapp_notifications.tests.test_emails.fail_for_first_recipient"
+    )
+)
+@pytest.mark.django_db(transaction=True)
+def test_failing_sender_outside_a_transaction_raises(send_notification) -> None:
+    FAILED_RECIPIENTS.clear()
+    user = UserFactory()
+
+    with pytest.raises(RuntimeError, match="SMTP down"):
+        send_notification(sender=user, recipient=user, **email_only())

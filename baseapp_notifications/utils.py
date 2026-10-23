@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -30,6 +30,42 @@ NOTIFICATION_EMAIL_TEMPLATE_DIR = "emails/notifications"
 DEFAULT_NOTIFICATION_EMAIL_TEMPLATE = "emails/notification"
 NOTIFICATION_EMAIL_TEMPLATE_PARTS = (("subject", "txt"), ("body", "txt"), ("body", "html"))
 EMAIL_OPTION_KEYS = ("from_email", "reply_to", "cc", "bcc", "attachments")
+EMAIL_ADDRESS_LIST_OPTION_KEYS = ("reply_to", "cc", "bcc")
+# Render-context keys the default sender always sets itself; ``email_context`` cannot replace them.
+RESERVED_EMAIL_CONTEXT_KEYS = ("notification", "recipient", "verb")
+
+
+def validate_email_context(email_context: Mapping | None) -> None:
+    """Raise when ``email_context`` is not a mapping or sets a reserved render key."""
+    if email_context is None:
+        return
+    if not isinstance(email_context, Mapping):
+        raise TypeError("email_context must be a dict.")
+    if reserved := sorted(set(email_context) & set(RESERVED_EMAIL_CONTEXT_KEYS)):
+        raise ValueError(f"email_context cannot set the reserved keys {', '.join(reserved)}.")
+
+
+def validate_email_options(email_options: Mapping | None) -> None:
+    """Raise when ``email_options`` is not a mapping or ``reply_to``, ``cc`` or ``bcc`` is not a
+    string, list or tuple. Other keys are left to the sender."""
+    if email_options is None:
+        return
+    if not isinstance(email_options, Mapping):
+        raise TypeError("email_options must be a dict.")
+    for key in EMAIL_ADDRESS_LIST_OPTION_KEYS:
+        value = email_options.get(key)
+        if value is not None and not isinstance(value, (str, list, tuple)):
+            raise TypeError(f"email_options[{key!r}] must be a string or a list/tuple of strings.")
+
+
+def get_email_message_options(options: Mapping | None) -> dict:
+    """The ``EmailMultiAlternatives`` keyword arguments in ``options``; a single address is listed."""
+    validate_email_options(options)
+    options = {key: value for key, value in (options or {}).items() if key in EMAIL_OPTION_KEYS}
+    for key in EMAIL_ADDRESS_LIST_OPTION_KEYS:
+        if isinstance(options.get(key), str):
+            options[key] = [options[key]]
+    return options
 
 
 def _template_exists(name: str) -> bool:
@@ -97,9 +133,9 @@ def send_email_notification(
     """Render the notification email for ``context["verb"]`` and send it to ``to``.
 
     ``template`` is an explicit template base (see :func:`resolve_notification_email_template`).
-    ``options`` may hold ``from_email``, ``reply_to``, ``cc``, ``bcc`` and ``attachments``
-    (``(filename, content, mimetype)`` tuples or MIME objects); other keys are ignored. Returns
-    ``False`` when no template applies and nothing was sent.
+    ``options`` may hold ``from_email``, ``reply_to``, ``cc``, ``bcc`` (a string or a list) and
+    ``attachments`` (``(filename, content, mimetype)`` tuples or MIME objects); other keys are
+    ignored. Returns ``False`` when no template applies and nothing was sent.
     """
     base = resolve_notification_email_template(context["verb"], template)
     if base is None:
@@ -110,8 +146,9 @@ def send_email_notification(
     text_message = render_notification_email_part(base, context, "body", "txt")
     html_message = render_notification_email_part(base, context, "body", "html")
 
-    options = {key: value for key, value in (options or {}).items() if key in EMAIL_OPTION_KEYS}
-    message = EmailMultiAlternatives(subject, text_message, to=[to], **options)
+    message = EmailMultiAlternatives(
+        subject, text_message, to=[to], **get_email_message_options(options)
+    )
     message.attach_alternative(html_message, "text/html")
     message.send()
     return True
@@ -128,14 +165,18 @@ def send_notification_email(
 ) -> bool:
     """Default ``BASEAPP_NOTIFICATIONS_EMAIL_SENDER``: render the ``.j2`` templates and send.
 
-    ``email_template`` replaces the verb's templates, ``email_context`` is merged into the render
-    context and ``email_options`` is passed on as ``options`` to :func:`send_email_notification`.
+    ``email_template`` replaces the verb's templates, ``email_context`` is added to the render
+    context (overriding any key but ``notification``, ``recipient`` and ``verb``) and
+    ``email_options`` is passed on as ``options`` to :func:`send_email_notification`.
     """
+    validate_email_context(email_context)
     return send_email_notification(
         to=recipient.email,
         context={
-            **dict(notification=notification, recipient=recipient, **context),
+            **context,
             **(email_context or {}),
+            "notification": notification,
+            "recipient": recipient,
         },
         template=email_template,
         options=email_options,

@@ -158,16 +158,16 @@ Arguments:
 - **push_title**: A string. (Optional). This will override the Title of your notification (apple and google uses the name defined on your build files)
 - **extra**: A dict with data of any type. (Optional)
 - **email_template**: Base name of the email templates to use instead of the verb's (see [How to customize email notification templates](#how-to-customize-email-notification-templates)). (Optional)
-- **email_context**: A dict merged into the email's render context. Model instances are fine: it is never stored. (Optional)
-- **email_options**: A dict of delivery options for the email sender. The default sender reads `from_email`, `reply_to`, `cc`, `bcc` and `attachments` (`(filename, content, mimetype)` tuples or MIME objects) and ignores other keys, so a custom sender can accept its own. (Optional)
+- **email_context**: A dict added to the email's render context. Its keys override the other context values (`description`, `email_message`, extra kwargs, ...), except `notification`, `recipient` and `verb`, which it may not set. Model instances are fine: it is never stored. (Optional)
+- **email_options**: A dict of delivery options for the email sender. The default sender reads `from_email`, `reply_to`, `cc`, `bcc` (a string or a list of addresses) and `attachments` (`(filename, content, mimetype)` tuples or MIME objects) and ignores other keys, so a custom sender can accept its own. (Optional)
 
-`email_template`, `email_context` and `email_options` only reach the email sender. They are not stored in `Notification.data` and not sent to the push task.
+`email_template`, `email_context` and `email_options` only reach the email sender. They are not stored in `Notification.data` and not sent to the push task. `send_notification` checks them before creating anything: an `email_context` that is not a dict or sets a reserved key, or `email_options` that are not a dict or whose `reply_to`, `cc` or `bcc` is not a string, list or tuple, raise `TypeError` or `ValueError` right away.
 
 **Extra data**: ou can also send any arbitrary kwargs and they will be added to `Notification.data` JSONField.
 
 **Where a notification links to**: pass `url="/path/to/item"`; it is stored in `Notification.data["url"]`. This is the convention clients use for "where clicking the notification goes", so prefer it over custom keys.
 
-Push and email notifications are sent with `transaction.on_commit`: inside a transaction they go out after it commits, and not at all if it rolls back. Outside a transaction they are sent right away, as before. `Notification.emailed` is set once the email has been sent. In tests, wrap the call in `django_capture_on_commit_callbacks(execute=True)` (pytest-django) or `TestCase.captureOnCommitCallbacks(execute=True)` to assert on the push task, `mail.outbox` or `emailed`.
+Push and email notifications are sent with `transaction.on_commit`: inside a transaction they go out after it commits, and not at all if it rolls back. Outside a transaction they are sent right away, as before, and an error from the email sender or the push queue reaches the caller. Inside a transaction an error is logged (logger `baseapp_notifications.services`) and not raised: the notifications are already committed, and raising would skip every later `on_commit` callback, such as the other recipients' email and push. `Notification.emailed` is set once the email has been sent, so it stays `False` when the sender failed. In tests, wrap the call in `django_capture_on_commit_callbacks(execute=True)` (pytest-django) or `TestCase.captureOnCommitCallbacks(execute=True)` to assert on the push task, `mail.outbox` or `emailed`.
 
 ## Email notifications
 
@@ -238,7 +238,7 @@ Also check [their source code in this repository](baseapp_notifications/template
 
 ### How to replace the email sender
 
-By default emails are rendered from the `.j2` templates above and sent with `send_mail`. To send them another way (a templated-email service, an outbox model, ...), point `BASEAPP_NOTIFICATIONS_EMAIL_SENDER` at a callable:
+By default emails are rendered from the `.j2` templates above and sent with `EmailMultiAlternatives` (the default connection and `DEFAULT_FROM_EMAIL`, as `send_mail` did). To send them another way (a templated-email service, an outbox model, ...), point `BASEAPP_NOTIFICATIONS_EMAIL_SENDER` at a callable:
 
 ```python
 # settings.py
