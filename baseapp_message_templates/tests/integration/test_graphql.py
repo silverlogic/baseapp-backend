@@ -228,6 +228,19 @@ class TestUpdate:
         welcome.refresh_from_db()
         assert welcome.subject == ""
 
+    def test_rejects_undeclared_fields_of_a_placeholder(self, welcome, staff_client) -> None:
+        content = run(
+            staff_client,
+            UPDATE_MUTATION,
+            input={"id": welcome.relay_id, "plainTextContent": "{{ user.password }}"},
+        )
+        payload = content["data"]["emailTemplateUpdate"]
+        assert payload["errors"] == [
+            {"field": "plainTextContent", "messages": ["Unknown placeholder “user.password”."]}
+        ]
+        welcome.refresh_from_db()
+        assert welcome.plain_text_content == ""
+
     def test_rejects_non_editable_and_invalid_text(self, welcome, staff_client) -> None:
         content = run(
             staff_client,

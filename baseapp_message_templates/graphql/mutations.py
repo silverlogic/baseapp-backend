@@ -11,7 +11,7 @@ from baseapp_core.graphql import RelayMutation, get_obj_from_relay_id, login_req
 from ..models import EmailTemplate
 from ..registry import get_registered_template, validate_override
 from ..services import PreviewError, RateLimitExceeded, send_test_email
-from .object_types import GRAPHQL_PART_NAMES, overrides_from_arguments
+from .object_types import GRAPHQL_PART_NAMES, editor_email, overrides_from_arguments
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,9 @@ def _get_template(info: graphene.ResolveInfo, relay_id: str, perm: str) -> Email
     return template
 
 
-def _override_errors(template: EmailTemplate, overrides: dict[str, str]) -> list[ErrorType]:
+def _override_errors(
+    template: EmailTemplate, overrides: dict[str, str], recipient: str | None
+) -> list[ErrorType]:
     """Field errors for text that cannot be saved on ``template``."""
     registered = get_registered_template(template.name)
     errors = []
@@ -41,7 +43,7 @@ def _override_errors(template: EmailTemplate, overrides: dict[str, str]) -> list
         if registered is None or not registered.is_editable(part):
             messages = [str(_("This part of the email cannot be edited."))]
         else:
-            messages = validate_override(template.name, part, text)
+            messages = validate_override(template.name, part, text, recipient=recipient)
             if part == "subject" and len(text) > SUBJECT_MAX_LENGTH:
                 messages.append(
                     str(_("Use at most %(max)d characters.") % {"max": SUBJECT_MAX_LENGTH})
@@ -72,7 +74,7 @@ class EmailTemplateUpdate(RelayMutation):
             info, input["id"], "baseapp_message_templates.change_emailtemplate"
         )
         overrides = overrides_from_arguments(input)
-        errors = _override_errors(template, overrides)
+        errors = _override_errors(template, overrides, editor_email(info))
         if errors:
             return EmailTemplateUpdate(errors=errors)
 
@@ -110,7 +112,7 @@ class EmailTemplateSendTest(RelayMutation):
                 extensions={"code": "no_email"},
             )
         overrides = overrides_from_arguments(input)
-        errors = _override_errors(template, overrides)
+        errors = _override_errors(template, overrides, user.email)
         if errors:
             return EmailTemplateSendTest(errors=errors)
 

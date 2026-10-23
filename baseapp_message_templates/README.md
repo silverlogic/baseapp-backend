@@ -6,7 +6,9 @@ Reusable app for email and SMS templates: edit content in the Django admin (Pros
 
 ## How to install
 
-Install the package with `pip install baseapp-backend[messagetemplates]`.
+Install the package with `pip install baseapp-backend[messagetemplates,graphql]`. The models
+use `baseapp_core.graphql.RelayModel`, so the `graphql` extra is required even if the project
+does not mount the GraphQL API.
 
 If you want to develop, [install using this other guide](#how-to-develop).
 
@@ -266,13 +268,30 @@ rendered.subject, rendered.body_text, rendered.body_html, rendered.customized
 How each part is resolved:
 
 - For an **editable** part, the first non-blank of `overrides[part]` and the field of the
-  `EmailTemplate` row with the same name wins. It is rendered with the **Django** template engine
-  against a context limited to the declared placeholder roots (`order`, `user` above) plus
-  `BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT`, so staff text cannot reach other context values.
+  `EmailTemplate` row with the same name wins (names match case-insensitively, like the
+  `EmailTemplate.name` column). It is rendered with the **Django** template engine.
   Autoescaping is off for the subject and the plain text and on for the html.
+- The override context holds **only the declared placeholder paths**, resolved into plain dicts
+  and lists: with `order.number` and `user.first_name` declared, an override sees
+  `{"order": {"number": ...}, "user": {"first_name": ...}}` and nothing else, so
+  `{{ user.password }}` or `{{ user.get_session_auth_hash }}` render empty. A list on the way is
+  resolved item by item (declare `order.items.name` to loop over `order.items` and print
+  `item.name`). A declared value that is not a string, number, date or list (a model instance,
+  a dict) is passed as its text. Methods marked `alters_data` are never called. This applies to
+  every row, however it was saved (GraphQL, the admin, a data migration), and to per-send
+  `overrides`.
+- `BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT` values are added as plain data too: dicts and lists
+  keep their structure, any other object becomes its text.
+- An override that does not compile, or that uses a tag outside `ALLOWED_OVERRIDE_TAGS`
+  (`include`, `load`, `url`…), is logged with its traceback and ignored: that part falls back to
+  its file, so a broken row never stops an email. The Django admin form and the GraphQL
+  mutation reject such text before it is saved.
 - Otherwise the part's **file** is rendered with the full context through `render_to_string`.
 - The html part also receives `body_text`, the rendered plain text, so a plain-text override
-  flows into a branded html layout (`{{ body_text|e|linebreaks }}` or similar).
+  flows into a branded html layout (`{{ body_text|e|linebreaks }}` or similar). `body_text` is
+  a plain string holding unescaped user data from the placeholders. Django templates and Jinja
+  environments that autoescape `.html.j2` files escape it for you; if your Jinja environment
+  does not autoescape html files, the html file **must** escape it (`{{ body_text|e }}`).
 - The subject's whitespace is collapsed to single spaces. A missing html file renders as `""`.
 - Names that are **not registered** render their files by pattern and ignore overrides, so
   `render_email_template` can replace a project's own `render_to_string` calls gradually.
@@ -285,8 +304,8 @@ Other helpers in `baseapp_message_templates.registry`:
 
 | Function | Purpose |
 |---|---|
-| `preview_email_template(name, overrides=None, *, recipient=None)` | Renders with sample values: placeholder `sample`s expanded into nested dicts, merged with `sample_context()`. Values without a sample print as `{{ name }}`. The result is a `RenderedEmail` with a `preview_subject` alias. |
-| `validate_override(name, field, text) -> list[str]` | Error messages for staff text: Django template syntax, tags outside `ALLOWED_OVERRIDE_TAGS` (`include`, `load`, `debug`… are rejected) and placeholder roots that were not declared. Blank text is valid (it resets the part). |
+| `preview_email_template(name, overrides=None, *, recipient=None, row=None)` | Renders with sample values: placeholder `sample`s expanded into nested dicts, merged with `sample_context()`. Values without a sample print as `{{ name }}`. `row` is the template's `EmailTemplate` when the caller already holds it (an unsaved copy previews unsaved text). The result is a `RenderedEmail` with a `preview_subject` alias. |
+| `validate_override(name, field, text, *, recipient=None) -> list[str]` | Error messages for staff text: Django template syntax, tags outside `ALLOWED_OVERRIDE_TAGS` (`include`, `load`, `debug`… are rejected) and placeholder paths that were not declared. Full dotted paths are checked: with `user.first_name` declared, `{{ user }}` and `{{ user.first_name }}` pass and `{{ user.password }}` does not. Names bound by `for`, `with` and `as` stand for the path they were bound to (`{% for item in order.items %}{{ item.name }}` needs `order.items.name`). `recipient` is passed to the base context callable to learn its keys. Blank text is valid (it resets the part). |
 | `sync_email_templates()` | Creates a blank `EmailTemplate` row per registered name. Runs after every `migrate` and as `./manage.py sync_email_templates`. Existing rows are never changed. |
 | `get_default_source(name, part)` | Raw source of a part's default file, for showing the default next to an override. |
 | `is_customized(row)` | Whether a row overrides an editable part. |
@@ -297,9 +316,9 @@ Other helpers in `baseapp_message_templates.registry`:
 | Setting | Default | Purpose |
 |---|---|---|
 | `BASEAPP_MESSAGE_TEMPLATES_FILE_PATTERNS` | `{"subject": "emails/{name}.subject.txt.j2", "text": "emails/{name}.body.txt.j2", "html": "emails/{name}.body.html.j2"}` | Where the default copy of a name lives. Partial dicts are merged over the default. |
-| `BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT` | `None` | Dotted path to `callable(recipient) -> dict` with values every email receives (site name, support address…). Its keys may be used in overrides without being declared. |
+| `BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT` | `None` | Dotted path to `callable(recipient) -> dict` with values every email receives (site name, support address…). Its keys may be used in overrides without being declared; overrides get its values as plain data. The callable **must accept `recipient=None`**: validation and previews call it that way when no address is known (the GraphQL API passes the editor's own address). If it raises, validation treats its keys as unknown and `previewSubject` is `null`. |
 | `BASEAPP_MESSAGE_TEMPLATES_TEST_SENDER` | `None` | Dotted path to `callable(email_message, *, template, user) -> None` that delivers test emails (`template` is the name), e.g. through the project's logged email backend. `None` calls `email_message.send()`. |
-| `BASEAPP_MESSAGE_TEMPLATES_TEST_SEND_LIMIT` | `"10/h"` | Test emails per user per period (`s`, `m`, `h`, `d`), counted in the default cache. `None` disables the limit. |
+| `BASEAPP_MESSAGE_TEMPLATES_TEST_SEND_LIMIT` | `"10/h"` | Test emails per user per period (`s`, `m`, `h`, `d`, or `second`, `minute`, `hour`, `day`, singular or plural), counted in the default cache. `None` disables the limit. Any other value fails the system check `baseapp_message_templates.E001` at startup. |
 
 ## GraphQL API
 
@@ -340,7 +359,12 @@ mutation {
 - `emailTemplates` lists rows ordered by name, and is empty without `view_emailtemplate`.
   `node(id:)` returns `null` without it. `q` matches the name, label or group. Rows of
   unregistered names are listed with `isRegistered: false` and no editable fields (edit them in
-  the Django admin as before).
+  the Django admin as before). It is a regular Relay connection, so `first` is capped by
+  graphene-django's `RELAY_CONNECTION_MAX_LIMIT` (100 unless the project's `GRAPHENE` settings
+  raise it); page with `after` to list more.
+- `editableFields` uses the GraphQL names of the parts, `subject`, `plainTextContent` and
+  `htmlContent`, the same names as the mutation inputs and `preview` arguments (not the model
+  field names passed to `register_email_template(editable=...)`).
 - `emailTemplateUpdate` needs `change_emailtemplate`. Parts that are not editable and text
   rejected by `validate_override` come back as field errors, and nothing is saved. A blank value
   resets that part to its default.

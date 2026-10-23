@@ -2,6 +2,7 @@ import pytest
 from django.core.exceptions import ImproperlyConfigured
 from django.template import TemplateDoesNotExist
 
+import baseapp_core.tests.factories as core_factories
 import baseapp_message_templates.tests.factories as f
 from baseapp_message_templates.registry import (
     Placeholder,
@@ -20,6 +21,32 @@ pytestmark = pytest.mark.django_db
 
 def base_context(recipient: str | None) -> dict:
     return {"site_name": "Example", "recipient": recipient}
+
+
+def base_context_needing_recipient(recipient: str) -> dict:
+    return {"site_name": "Example", "greeting": recipient.split("@")[0]}
+
+
+def base_context_with_objects(recipient: str | None) -> dict:
+    return {"site": Site("Example", "s3cret"), "links": {"help": "https://example.com/help"}}
+
+
+class Site:
+    def __init__(self, name: str, secret: str) -> None:
+        self.name, self.secret = name, secret
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Item:
+    def __init__(self, name: str) -> None:
+        self.name, self.secret = name, "hidden"
+
+    def delete(self) -> str:
+        return "deleted"
+
+    delete.alters_data = True
 
 
 def register_welcome(**kwargs) -> None:
@@ -189,6 +216,92 @@ class TestRenderOverrides:
             rendered = render_email_template("tests/welcome", CONTEXT, row=row)
         assert rendered.subject == "Built A & B"
 
+    def test_override_reaches_only_declared_paths(self, email_template_files) -> None:
+        """A saved row cannot read fields or call methods next to a declared placeholder."""
+        register_welcome(
+            placeholders=[Placeholder("user.first_name"), "company"],
+            editable=("subject", "plain_text_content"),
+        )
+        user = core_factories.UserFactory(first_name="Grace")
+        f.EmailTemplateFactory(
+            name="tests/welcome",
+            plain_text_content=(
+                "pw={{ user.password }} hash={{ user.get_session_auth_hash }} "
+                "email={{ user.email }} pk={{ user.pk }} name={{ user.first_name }}"
+                "{% with u=user %} alias={{ u.password }}{% endwith %}"
+                "{% for key, value in user.items %} {{ key }}{% endfor %}"
+            ),
+        )
+        rendered = render_email_template("tests/welcome", {"user": user, "company": "C"})
+        assert rendered.body_text == "pw= hash= email= pk= name=Grace alias= first_name"
+
+    def test_declared_lists_are_projected_item_by_item(self, email_template_files) -> None:
+        register_welcome(placeholders=["order.number", "order.items.name"], editable=("subject",))
+        order = {"number": "A-1", "items": [Item("Mug"), Item("Cup")], "secret": "x"}
+        rendered = render_email_template(
+            "tests/welcome",
+            {**CONTEXT, "order": order},
+            overrides={
+                "subject": "{{ order.number }}:{% for item in order.items %} {{ item.name }}"
+                "{{ item.secret }}{{ item.delete }}{% endfor %}{{ order.secret }}"
+            },
+        )
+        assert rendered.subject == "A-1: Mug Cup"
+
+    def test_object_placeholder_prints_its_text_only(self, email_template_files) -> None:
+        register_welcome(placeholders=["site", "item"], editable=("subject",))
+        rendered = render_email_template(
+            "tests/welcome",
+            {**CONTEXT, "site": Site("Example", "s3cret"), "item": Item("Mug")},
+            overrides={"subject": "{{ site }} {{ site.secret }}{{ item.name }}{{ item.delete }}"},
+        )
+        assert rendered.subject == "Example"
+
+    def test_methods_marked_alters_data_are_not_called(self, email_template_files) -> None:
+        register_welcome(placeholders=["item.name", "item.delete"], editable=("subject",))
+        rendered = render_email_template(
+            "tests/welcome",
+            {**CONTEXT, "item": Item("Mug")},
+            overrides={"subject": "{{ item.name }}{{ item.delete }}"},
+        )
+        assert rendered.subject == "Mug"
+
+    def test_base_context_is_plain_data(self, email_template_files, settings) -> None:
+        settings.BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT = (
+            "baseapp_message_templates.tests.unit.test_registry.base_context_with_objects"
+        )
+        register_welcome()
+        rendered = render_email_template(
+            "tests/welcome",
+            CONTEXT,
+            overrides={"subject": "{{ site }}{{ site.secret }} {{ links.help }}"},
+        )
+        assert rendered.subject == "Example https://example.com/help"
+
+    def test_invalid_saved_text_falls_back_to_the_file(self, email_template_files, caplog) -> None:
+        register_welcome()
+        f.EmailTemplateFactory(
+            name="tests/welcome",
+            subject="{% if %}",
+            plain_text_content="{% load static %}{% static 'x.png' %}{% include 'y' %}",
+        )
+        rendered = render_email_template("tests/welcome", CONTEXT)
+        assert rendered.subject == "Welcome, Grace to Site"
+        assert rendered.body_text == "Hi Grace, A & B"
+        assert rendered.customized == frozenset()
+        assert "Ignoring the invalid subject override" in caplog.text
+        assert "Ignoring the invalid plain_text_content override" in caplog.text
+
+    def test_row_name_differing_in_case_is_the_registered_template(
+        self, email_template_files
+    ) -> None:
+        register_welcome()
+        row = f.EmailTemplateFactory(name="Tests/Welcome", subject="Override")
+        assert row.is_registered
+        assert is_customized(row)
+        assert email_templates.get("TESTS/WELCOME").name == "tests/welcome"
+        assert render_email_template("tests/welcome", CONTEXT).subject == "Override"
+
     def test_base_context(self, email_template_files, settings) -> None:
         settings.BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT = (
             "baseapp_message_templates.tests.unit.test_registry.base_context"
@@ -265,6 +378,47 @@ class TestValidateOverride:
             "tests/welcome", "subject", "{{ user.first_name }} {{ secret.key|upper }}"
         )
         assert errors == ["Unknown placeholder “secret”."]
+
+    def test_full_dotted_paths(self) -> None:
+        register_welcome()
+        text = (
+            "{{ user.first_name }} {{ user }} {{ user.password }} "
+            "{{ user.get_session_auth_hash }} {{ user.first_name.upper }}"
+        )
+        assert validate_override("tests/welcome", "plain_text_content", text) == [
+            "Unknown placeholder “user.first_name.upper”.",
+            "Unknown placeholder “user.get_session_auth_hash”.",
+            "Unknown placeholder “user.password”.",
+        ]
+
+    def test_paths_through_tag_bindings(self) -> None:
+        register_welcome(placeholders=["user.first_name", "order.items.name"])
+        valid = (
+            "{% for item in order.items %}{{ item.name }}{{ order.items.0.name }}{% endfor %}"
+            "{% with first=user.first_name %}{{ first }}{% endwith %}"
+            "{% with order.items as lines %}{% for line in lines %}{{ line.name }}{% endfor %}"
+            "{% endwith %}{% now 'Y' as year %}{{ year }}"
+        )
+        assert validate_override("tests/welcome", "plain_text_content", valid) == []
+        invalid = (
+            "{% for item in order.items %}{{ item.price }}{% endfor %}"
+            "{% with u=user %}{{ u.password }}{% endwith %}"
+        )
+        assert validate_override("tests/welcome", "plain_text_content", invalid) == [
+            "Unknown placeholder “item.price”.",
+            "Unknown placeholder “u.password”.",
+        ]
+
+    def test_base_context_gets_the_recipient(self, settings) -> None:
+        settings.BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT = (
+            "baseapp_message_templates.tests.unit.test_registry.base_context_needing_recipient"
+        )
+        register_welcome()
+        text = "{{ greeting }}"
+        assert validate_override("tests/welcome", "subject", text, recipient="ada@x.com") == []
+        assert validate_override("tests/welcome", "subject", text) == [
+            "Unknown placeholder “greeting”."
+        ]
 
     def test_names_bound_by_tags_and_builtins(self) -> None:
         register_welcome()

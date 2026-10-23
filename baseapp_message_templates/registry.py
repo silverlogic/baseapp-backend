@@ -18,9 +18,10 @@ A project declares each email it sends once, usually from ``AppConfig.ready()``:
 The default copy lives in template files (``emails/orders/shipped.subject.txt.j2``,
 ``.body.txt.j2`` and an optional ``.body.html.j2``). Staff may override the ``editable`` parts
 by filling the matching fields of the ``EmailTemplate`` row with that name; a blank field falls
-back to the file. Overrides are rendered with the Django template engine against a context
-limited to the declared placeholders, so an override cannot reach objects the code did not
-offer to it.
+back to the file. Overrides are rendered with the Django template engine against plain data
+built from the declared placeholder paths only (``user.first_name`` becomes ``{"user":
+{"first_name": ...}}``), so an override cannot reach fields, methods or objects the code did
+not offer to it, whoever saved the text.
 
 Names that are not registered keep rendering their files by pattern, so
 :func:`render_email_template` can replace a project's own ``render_to_string`` calls one template
@@ -28,14 +29,18 @@ at a time.
 """
 
 import copy
+import datetime
 import logging
 import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from decimal import Decimal
+from types import GeneratorType
 from typing import TYPE_CHECKING, Any, Literal
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.db.models import QuerySet
 from django.template import (
     Context,
     Engine,
@@ -46,6 +51,7 @@ from django.template import (
 )
 from django.template.base import Lexer, TokenType
 from django.template.loader import render_to_string
+from django.utils.functional import Promise
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 from jinja2 import ChainableUndefined
@@ -123,7 +129,9 @@ class Placeholder:
     """A value an email template receives, as offered to staff editing an override.
 
     ``name`` is a dotted path (``"order.number"``); its first segment is the context key the
-    sending code passes. ``sample`` is used by previews and test sends.
+    sending code passes. An override can use exactly this path (and its prefixes, e.g. to loop
+    over ``order.items`` when ``order.items.name`` is declared), nothing else under the same
+    root. ``sample`` is used by previews and test sends.
     """
 
     name: str
@@ -191,27 +199,35 @@ class RegisteredTemplate:
 
 
 class EmailTemplateRegistry:
-    """Ordered, in-memory registry of :class:`RegisteredTemplate` keyed by name."""
+    """Ordered, in-memory registry of :class:`RegisteredTemplate` keyed by name.
+
+    Names are matched case-insensitively, like ``EmailTemplate.name``, so a row named
+    ``"Orders/Shipped"`` belongs to the registered ``"orders/shipped"``.
+    """
 
     def __init__(self) -> None:
         self._templates: dict[str, RegisteredTemplate] = {}
 
+    @staticmethod
+    def _key(name: str) -> str:
+        return name.lower()
+
     def register(self, template: RegisteredTemplate) -> RegisteredTemplate:
         """Add ``template``; registering the same name again replaces it in place."""
-        self._templates[template.name] = template
+        self._templates[self._key(template.name)] = template
         return template
 
     def unregister(self, name: str) -> None:
-        self._templates.pop(name, None)
+        self._templates.pop(self._key(name), None)
 
     def clear(self) -> None:
         self._templates.clear()
 
     def get(self, name: str) -> RegisteredTemplate | None:
-        return self._templates.get(name)
+        return self._templates.get(self._key(name))
 
     def is_registered(self, name: str) -> bool:
-        return name in self._templates
+        return self._key(name) in self._templates
 
     def list(self, group: str | None = None) -> list[RegisteredTemplate]:
         """All templates in registration order, limited to ``group`` when given."""
@@ -248,7 +264,8 @@ def register_email_template(
             Each defaults to ``BASEAPP_MESSAGE_TEMPLATES_FILE_PATTERNS`` formatted with ``name``.
             The html file is optional.
         placeholders: Values the template receives, as :class:`Placeholder` or dotted names.
-            Overrides may only use these (plus ``BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT``).
+            Overrides may only use these exact paths (plus
+            ``BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT``).
         editable: Parts staff may override: ``"subject"``, ``"plain_text_content"`` and/or
             ``"html_content"``. Pass ``()`` for a template that is listed but not editable.
         sample_context: ``callable() -> dict`` with sample values for previews, merged over the
@@ -295,7 +312,9 @@ def file_path_for(name: str, part: str) -> str:
 def get_base_context(recipient: str | None = None) -> dict[str, Any]:
     """Values every email receives, from ``BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT``.
 
-    The setting is a dotted path to ``callable(recipient) -> dict``; unset means ``{}``.
+    The setting is a dotted path to ``callable(recipient) -> dict``; unset means ``{}``. The
+    callable must accept ``recipient=None``: :func:`validate_override` calls it that way when
+    no editor address is known, and so does a preview without a recipient.
     """
     path = getattr(settings, "BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT", None)
     if not path:
@@ -341,6 +360,15 @@ def _preview_engine() -> Engine:
 def _render_override(
     source: str, context: Mapping[str, Any], *, autoescape: bool, engine: Engine | None = None
 ) -> str:
+    """Render staff text.
+
+    Raises ``TemplateSyntaxError`` when the text does not compile or uses a tag outside
+    ``ALLOWED_OVERRIDE_TAGS``, whether or not it went through :func:`validate_override` (rows
+    saved in the admin or by a data migration, per-send overrides).
+    """
+    disallowed = _scan(source).tags - ALLOWED_OVERRIDE_TAGS
+    if disallowed:
+        raise TemplateSyntaxError(f"Tags not allowed in overrides: {', '.join(sorted(disallowed))}")
     template = Template(source, engine=engine or _django_engine())
     return _plain(template.render(Context(dict(context), autoescape=autoescape)))
 
@@ -391,6 +419,138 @@ def _load_row(name: str) -> "EmailTemplate | None":
     return EmailTemplate.objects.filter(name=name).first()
 
 
+# Override context -----------------------------------------------------------------------------
+
+_LIST_TYPES = (list, tuple, set, frozenset, GeneratorType, QuerySet)
+_PLAIN_TYPES = (
+    str,
+    int,
+    float,
+    Decimal,
+    datetime.date,
+    datetime.time,
+    datetime.timedelta,
+    Promise,
+)
+
+
+class _Missing(Exception):
+    """A segment of a placeholder path that does not resolve."""
+
+
+class _Projection(dict):
+    """The declared fields of one object, as a dict.
+
+    Printed, it gives the object's text when its own path is declared too (``user`` next to
+    ``user.first_name``), and ``""`` otherwise.
+    """
+
+    text = ""
+
+    def __str__(self) -> str:
+        return self.text
+
+
+def _plain_value(value: Any) -> Any:
+    """``value`` as data an override can print but not traverse.
+
+    Strings, numbers, dates and ``None`` are kept and lists keep their items as plain values.
+    Any other object (a model instance, a dict) becomes its text.
+    """
+    if value is None or isinstance(value, _PLAIN_TYPES):
+        return value
+    if isinstance(value, _LIST_TYPES):
+        return [_plain_value(item) for item in value]
+    return str(value)
+
+
+def _plain_data(value: Any) -> Any:
+    """Like :func:`_plain_value`, but dicts keep their keys. Used for the base context."""
+    if isinstance(value, Mapping):
+        return {str(key): _plain_data(item) for key, item in value.items()}
+    if isinstance(value, _LIST_TYPES):
+        return [_plain_data(item) for item in value]
+    return _plain_value(value)
+
+
+def _lookup(value: Any, key: str) -> Any:
+    """Resolve one segment of a dotted path the way Django templates do."""
+    try:
+        result = value[key]
+    except (TypeError, AttributeError, KeyError, ValueError, IndexError):
+        try:
+            result = getattr(value, key)
+        except AttributeError:
+            try:
+                result = value[int(key)]
+            except (TypeError, KeyError, ValueError, IndexError):
+                raise _Missing(key) from None
+    if callable(result) and not getattr(result, "do_not_call_in_templates", False):
+        if getattr(result, "alters_data", False):
+            raise _Missing(key)
+        try:
+            result = result()
+        except TypeError:  # needs arguments
+            raise _Missing(key) from None
+    return result
+
+
+def _placeholder_tree(placeholders: Iterable[Placeholder]) -> dict:
+    """The declared dotted paths as a tree; the key ``None`` marks a path declared itself."""
+    tree: dict = {}
+    for placeholder in placeholders:
+        node = tree
+        for segment in placeholder.name.split("."):
+            node = node.setdefault(segment, {})
+        node[None] = True
+    return tree
+
+
+def _project(value: Any, node: dict) -> Any:
+    """The parts of ``value`` that the placeholder tree ``node`` declares, as plain data.
+
+    A list on the way is projected item by item, so ``order.items.name`` gives a list of
+    ``{"name": ...}``. Paths that do not resolve are left out.
+    """
+    children = {key: child for key, child in node.items() if key is not None}
+    if not children:
+        return _plain_value(value)
+    if value is None:
+        return None
+    if isinstance(value, _LIST_TYPES) and not any(key.isdigit() for key in children):
+        return [_project(item, node) for item in value]
+    projection = _Projection()
+    if None in node:
+        projection.text = str(_plain_value(value))
+    for key, child in children.items():
+        try:
+            projection[key] = _project(_lookup(value, key), child)
+        except _Missing:
+            continue
+        except Exception as exc:
+            if not getattr(exc, "silent_variable_failure", False):
+                raise
+    return projection
+
+
+def _override_context(
+    registered: RegisteredTemplate, context: Mapping[str, Any], base_context: Mapping[str, Any]
+) -> dict[str, Any]:
+    """The context overrides of ``registered`` render with.
+
+    Each declared placeholder path is resolved from the context (base context included) into
+    nested plain dicts and lists; nothing else under a declared root is there, so
+    ``{{ user.password }}`` renders empty when only ``user.first_name`` is declared. Base-context
+    keys that are not placeholders are passed as plain data.
+    """
+    full_context = {**base_context, **context}
+    restricted = {key: _plain_data(value) for key, value in base_context.items()}
+    for root, node in _placeholder_tree(registered.placeholders).items():
+        if root in full_context:
+            restricted[root] = _project(full_context[root], node)
+    return restricted
+
+
 def _render(
     name: str,
     context: Mapping[str, Any],
@@ -418,12 +578,8 @@ def _render(
         return None
 
     restricted: dict[str, Any] = {}
-    if registered is not None:
-        roots = registered.placeholder_roots
-        restricted = {
-            **base_context,
-            **{key: value for key, value in context.items() if key in roots},
-        }
+    if registered is not None and registered.editable:
+        restricted = _override_context(registered, context, base_context)
     engine = _preview_engine() if preview else None
 
     customized: set[str] = set()
@@ -432,14 +588,19 @@ def _render(
         extra = {"body_text": parts["plain_text_content"]} if part == "html_content" else {}
         override = override_for(part)
         if override is not None:
-            parts[part] = _render_override(
-                override,
-                {**restricted, **extra},
-                autoescape=part == "html_content",
-                engine=engine,
-            )
-            customized.add(part)
-            continue
+            try:
+                parts[part] = _render_override(
+                    override,
+                    {**restricted, **extra},
+                    autoescape=part == "html_content",
+                    engine=engine,
+                )
+            except TemplateSyntaxError:
+                # Broken text never blocks the email: log it and send the default copy.
+                logger.exception("Ignoring the invalid %s override of email %r", part, name)
+            else:
+                customized.add(part)
+                continue
 
         path = registered.template_path(part) if registered else file_path_for(name, part)
         try:
@@ -470,9 +631,11 @@ def render_email_template(
 
     For each part, the first non-blank of ``overrides[part]`` and the ``EmailTemplate`` row's
     field is used, but only for parts the registration marks ``editable``. An override is
-    rendered with the Django template engine against the declared placeholder roots plus
-    ``BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT``; autoescaping is off for the subject and the plain
-    text. Every other part renders its template file with the full context through
+    rendered with the Django template engine against plain data holding only the declared
+    placeholder paths plus ``BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT``; autoescaping is off for
+    the subject and the plain text. An override that does not compile or uses a tag outside
+    ``ALLOWED_OVERRIDE_TAGS`` is logged and ignored, so that part falls back to its file. Every
+    other part renders its template file with the full context through
     ``render_to_string`` (any engine). The html part also receives ``body_text``, the rendered
     plain text, so a text override flows into a branded html layout. A missing html file
     renders as ``""``. The subject's whitespace is collapsed to single spaces.
@@ -550,8 +713,9 @@ def preview_email_template(
 
     Values without a sample print as ``{{ name }}`` instead of disappearing, in overrides and in
     template files alike. ``overrides`` work as in :func:`render_email_template`, so an editor
-    can preview text before saving it. Rendering errors (a filter given a placeholder string
-    instead of a date, say) propagate to the caller.
+    can preview text before saving it; run :func:`validate_override` on it first, since invalid
+    text is ignored here as it is when sending. Other rendering errors (a filter given a
+    placeholder string instead of a date, say) propagate to the caller.
     """
     rendered = _render(
         name,
@@ -573,23 +737,48 @@ def preview_email_template(
 # Validation -----------------------------------------------------------------------------------
 
 
-def _bound_names(tag: str, args: str) -> set[str]:
-    """Names a tag defines for its body: ``for x, y in``, ``with a=b``, ``... as name``."""
-    bound: set[str] = set()
-    if tag == "for" and " in " in f" {args} ":
-        loop_vars = f" {args} ".split(" in ", 1)[0]
-        bound.update(part.strip() for part in loop_vars.split(",") if part.strip())
+@dataclass
+class _Scan:
+    """What a template source uses."""
+
+    # Dotted variable names, e.g. "user.first_name".
+    paths: set[str] = field(default_factory=set)
+    # Names bound by tags -> the paths they stand for (None: not a path, e.g. "... as name").
+    bindings: dict[str, set[str | None]] = field(default_factory=dict)
+    tags: set[str] = field(default_factory=set)
+
+
+def _leading_path(expression: str) -> str | None:
+    """The variable an expression starts with (``user.name`` of ``user.name|upper``), if any."""
+    match = re.match(r"\s*([A-Za-z_][\w.]*)", expression)
+    if match is None or match.group(1) in _TAG_KEYWORDS:
+        return None
+    return match.group(1).rstrip(".")
+
+
+def _bindings(tag: str, args: str) -> list[tuple[str, str | None]]:
+    """Names a tag defines for its body, each with the path it stands for.
+
+    ``for x in order.items`` binds ``x`` to ``order.items``, ``with a=b.c`` (or ``with b.c as
+    a``) binds ``a`` to ``b.c``. Other ``... as name`` tags bind a value, not a path.
+    """
+    if tag == "for":
+        loop_vars, sep, source = f" {args} ".partition(" in ")
+        if not sep:
+            return []
+        path = _leading_path(source)
+        return [(var.strip(), path) for var in loop_vars.split(",") if var.strip()]
     if tag == "with":
-        bound.update(re.findall(r"(\w+)=", args))
-    bound.update(re.findall(r"\bas\s+(\w+)", args))
-    return bound
+        legacy = re.fullmatch(r"\s*(\S+)\s+as\s+(\w+)\s*", args)
+        if legacy:
+            return [(legacy.group(2), _leading_path(legacy.group(1)))]
+        return [(var, _leading_path(expr)) for var, expr in re.findall(r"(\w+)=(\S+)", args)]
+    return [(var, None) for var in re.findall(r"\bas\s+(\w+)", args)]
 
 
-def _scan(source: str) -> tuple[set[str], set[str], set[str]]:
-    """Return (roots of the variables used, names bound by tags, tag names) of ``source``."""
-    roots: set[str] = set()
-    bound: set[str] = set()
-    tags: set[str] = set()
+def _scan(source: str) -> _Scan:
+    """The variables, tag bindings and tags ``source`` uses."""
+    scan = _Scan()
     skip_until: str | None = None
     for token in Lexer(source).tokenize():
         if token.token_type == TokenType.BLOCK:
@@ -597,17 +786,21 @@ def _scan(source: str) -> tuple[set[str], set[str], set[str]]:
             if skip_until is not None:
                 if tag == skip_until:
                     skip_until = None
-                    tags.add(tag)
+                    scan.tags.add(tag)
                 continue
-            tags.add(tag)
+            scan.tags.add(tag)
             if tag in {"comment", "verbatim"}:
                 skip_until = f"end{tag}"
-            if tag in _TAGS_WITHOUT_VARIABLES:
                 continue
             args = _STRING_RE.sub('""', args)
-            bound.update(_bound_names(tag, args))
-            args = re.sub(r"\bby\s+[\w.]+", "", args)
-            args = re.sub(r"\b\w+=", "", args)
+            for var, path in _bindings(tag, args):
+                scan.bindings.setdefault(var, set()).add(path)
+            if tag in _TAGS_WITHOUT_VARIABLES:
+                continue
+            if tag == "regroup":  # "by <attribute>" names an item attribute, not a variable
+                args = re.sub(r"\bby\s+[\w.]+", "", args)
+            if tag == "with":
+                args = re.sub(r"\b\w+=", "", args)
         elif token.token_type == TokenType.VAR and skip_until is None:
             args = _STRING_RE.sub('""', token.contents)
         else:
@@ -615,17 +808,55 @@ def _scan(source: str) -> tuple[set[str], set[str], set[str]]:
         args = _FILTER_NAME_RE.sub("", args)
         for match in _NAME_RE.finditer(args):
             if match.group(1) not in _TAG_KEYWORDS:
-                roots.add(match.group(1))
-    return roots, bound, tags
+                scan.paths.add(match.group(0))
+    return scan
 
 
-def validate_override(name: str, field: str, text: str | None) -> list[str]:
+def _declared_paths(registered: RegisteredTemplate) -> frozenset[tuple[str, ...]]:
+    """Every declared placeholder path and its prefixes, without list indexes."""
+    paths: set[tuple[str, ...]] = set()
+    for placeholder in registered.placeholders:
+        segments = tuple(s for s in placeholder.name.split(".") if not s.isdigit())
+        paths.update(segments[:end] for end in range(1, len(segments) + 1))
+    return frozenset(paths)
+
+
+def _is_allowed(
+    path: str,
+    scan: _Scan,
+    declared: frozenset[tuple[str, ...]],
+    free_roots: set[str],
+    substituted: frozenset[str] = frozenset(),
+) -> bool:
+    """Whether an override may use the dotted ``path``.
+
+    A name bound by a tag is replaced by the path it stands for (``item.name`` inside ``for
+    item in order.items`` is ``order.items.name``); names in ``free_roots`` allow any path.
+    """
+    root, _sep, rest = path.partition(".")
+    if root in scan.bindings and root not in substituted:
+        for source in scan.bindings[root]:
+            if source is None:
+                return True
+            resolved = f"{source}.{rest}" if rest else source
+            if _is_allowed(resolved, scan, declared, free_roots, substituted | {root}):
+                return True
+    if root in free_roots:
+        return True
+    return tuple(s for s in path.split(".") if not s.isdigit()) in declared
+
+
+def validate_override(
+    name: str, field: str, text: str | None, *, recipient: str | None = None
+) -> list[str]:
     """Check override ``text`` for ``field`` of the email ``name``; return error messages.
 
     The text must compile with the Django template engine, use only the tags in
-    ``ALLOWED_OVERRIDE_TAGS`` and, for registered names, only the declared placeholder roots
-    (plus the base context keys and, in ``html_content``, ``body_text``). Blank text is valid:
-    it resets the part to its default.
+    ``ALLOWED_OVERRIDE_TAGS`` and, for registered names, only the declared placeholder paths
+    and their prefixes (``user.first_name`` and ``user``, not ``user.password``), the base
+    context keys and, in ``html_content``, ``body_text``. Blank text is valid: it resets the
+    part to its default. ``recipient`` is passed to ``BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT``
+    to learn its keys.
     """
     if field not in EDITABLE_PARTS:
         raise ValueError(f"{field!r} is not an editable part; use one of {EDITABLE_PARTS!r}.")
@@ -638,23 +869,32 @@ def validate_override(name: str, field: str, text: str | None) -> list[str]:
         return [_("Template syntax error: %(error)s") % {"error": exc}]
 
     errors: list[str] = []
-    roots, bound, tags = _scan(text)
-    for tag in sorted(tags - ALLOWED_OVERRIDE_TAGS):
+    scan = _scan(text)
+    for tag in sorted(scan.tags - ALLOWED_OVERRIDE_TAGS):
         errors.append(_("The “%(tag)s” tag is not allowed here.") % {"tag": tag})
 
     registered = email_templates.get(name)
     if registered is None:
         return errors
 
-    allowed = set(registered.placeholder_roots) | bound | _BUILTIN_NAMES
     try:
-        allowed |= set(get_base_context(None))
+        base_keys = set(get_base_context(recipient))
     except Exception:  # a base context that cannot be built without a recipient
-        logger.exception("BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT failed without a recipient")
+        logger.exception("BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT failed for %r", recipient)
+        base_keys = set()
+    declared = _declared_paths(registered)
+    free_roots = set(_BUILTIN_NAMES) | (base_keys - registered.placeholder_roots)
     if field == "html_content":
-        allowed.add("body_text")
-    for root in sorted(roots - allowed):
-        errors.append(_("Unknown placeholder “%(name)s”.") % {"name": root})
+        free_roots.add("body_text")
+    unknown: set[str] = set()
+    for path in scan.paths:
+        if _is_allowed(path, scan, declared, free_roots):
+            continue
+        root = path.split(".", 1)[0]
+        known_root = (root,) in declared or root in scan.bindings
+        unknown.add(path if known_root else root)
+    for path in sorted(unknown):
+        errors.append(_("Unknown placeholder “%(name)s”.") % {"name": path})
     return errors
 
 

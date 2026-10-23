@@ -62,6 +62,11 @@ def overrides_from_arguments(arguments: dict) -> dict[str, str]:
     }
 
 
+def editor_email(info: graphene.ResolveInfo) -> str | None:
+    """The requesting user's address, passed as the recipient of previews and validation."""
+    return getattr(info.context.user, "email", None) or None
+
+
 class BaseEmailTemplateObjectType:
     label = graphene.String(required=True, description=_("Registered label, or the name."))
     group = graphene.String(required=True)
@@ -152,7 +157,7 @@ class BaseEmailTemplateObjectType:
 
     def resolve_preview_subject(self, info) -> str | None:
         try:
-            return preview_email_template(self.name, row=self).subject
+            return preview_email_template(self.name, recipient=editor_email(info), row=self).subject
         except Exception:
             logger.exception("Could not preview the subject of %r", self.name)
             return None
@@ -160,7 +165,7 @@ class BaseEmailTemplateObjectType:
     def resolve_preview(self, info, **arguments) -> EmailTemplatePreviewObjectType:
         overrides = overrides_from_arguments(arguments)
         for part, text in overrides.items():
-            errors = validate_override(self.name, part, text)
+            errors = validate_override(self.name, part, text, recipient=editor_email(info))
             if errors:
                 raise GraphQLError(
                     errors[0],
@@ -169,10 +174,7 @@ class BaseEmailTemplateObjectType:
         row, overrides = with_unsaved_text(self, overrides)
         try:
             preview = preview_email_template(
-                self.name,
-                overrides,
-                recipient=getattr(info.context.user, "email", None),
-                row=row,
+                self.name, overrides, recipient=editor_email(info), row=row
             )
         except Exception:
             logger.exception("Could not preview %r", self.name)
