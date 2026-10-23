@@ -1,12 +1,15 @@
+import weakref
 from typing import TYPE_CHECKING
 
 import graphene
 import graphene_django_optimizer as gql_optimizer
 import swapper
+from django.db.models import Model
 from django.utils.translation import gettext_lazy as _
 from graphene.types.generic import GenericScalar
 from graphene_django import DjangoConnectionField
 from graphene_django.filter import DjangoFilterConnectionField
+from graphql import get_nullable_type, is_abstract_type
 
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
@@ -18,6 +21,7 @@ from .filters import NotificationFilter
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
+    from graphql import GraphQLInterfaceType, GraphQLSchema
 
     from baseapp_notifications.models import (
         AbstractNotification,
@@ -96,11 +100,74 @@ class NotificationsInterface(RelayNode):
         return []
 
 
+def _accepts(
+    schema: "GraphQLSchema", interface: "GraphQLInterfaceType", obj, info: graphene.ResolveInfo
+) -> bool:
+    """Whether a type of ``schema`` implementing ``interface`` accepts ``obj``.
+
+    This is the ``is_type_of`` check graphql-core makes to resolve an abstract type at runtime.
+    """
+    for object_type in schema.get_possible_types(interface):
+        if object_type.is_type_of is None:
+            continue
+        try:
+            if object_type.is_type_of(obj, info) is True:
+                return True
+        except Exception:
+            continue
+    return False
+
+
+# schema -> {(interface name, model): bool}. Django types only compare the model, so the answer
+# is cached per model; a type whose own is_type_of accepts only some instances of a model would
+# need its own resolver. Weak keys let rebuilt schemas (tests, autoreload) be collected.
+_model_has_node_type: "weakref.WeakKeyDictionary[GraphQLSchema, dict[tuple, bool]]" = (
+    weakref.WeakKeyDictionary()
+)
+
+
+def resolve_node_or_none(obj, info: graphene.ResolveInfo):
+    """Return ``obj`` for a ``Node`` field, or ``None`` when no type in the schema represents it.
+
+    Notifications point at arbitrary objects (generic foreign keys). Without this, an actor,
+    target or action object whose model has no ``Node`` type fails the whole query with
+    "Abstract type 'Node' must resolve to an Object type at runtime".
+    """
+    if obj is None or isinstance(obj, graphene.ObjectType):
+        return obj
+    interface = get_nullable_type(info.return_type)
+    if not is_abstract_type(interface):
+        return obj
+    if not isinstance(obj, Model):
+        return obj if _accepts(info.schema, interface, obj, info) else None
+
+    cache = _model_has_node_type.setdefault(info.schema, {})
+    key = (interface.name, type(obj))
+    if key not in cache:
+        cache[key] = _accepts(info.schema, interface, obj, info)
+    return obj if cache[key] else None
+
+
 class BaseNotificationNode:
     actor = graphene.Field(RelayNode)
     target = graphene.Field(RelayNode)
     action_object = graphene.Field(RelayNode)
     data = GenericScalar(required=False)
+
+    @staticmethod
+    @gql_optimizer.resolver_hints(model_field="actor")
+    def resolve_actor(root, info: graphene.ResolveInfo):
+        return resolve_node_or_none(root.actor, info)
+
+    @staticmethod
+    @gql_optimizer.resolver_hints(model_field="target")
+    def resolve_target(root, info: graphene.ResolveInfo):
+        return resolve_node_or_none(root.target, info)
+
+    @staticmethod
+    @gql_optimizer.resolver_hints(model_field="action_object")
+    def resolve_action_object(root, info: graphene.ResolveInfo):
+        return resolve_node_or_none(root.action_object, info)
 
     class Meta:
         interfaces = (RelayNode,)

@@ -18,7 +18,7 @@ not belong to any group keep working exactly as before.
 
 import logging
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any
 
 import swapper
@@ -159,6 +159,7 @@ def register_notification_group(
     audience: Callable[["AbstractBaseUser"], bool] | None = None,
     is_locked: bool = False,
     channels: Iterable[Any] | None = None,
+    keep_verbs: bool = False,
 ) -> NotificationGroup:
     """Register (or replace) a notification group.
 
@@ -171,6 +172,9 @@ def register_notification_group(
         is_locked: Locked groups are always delivered and cannot be changed by users.
         channels: Channels users can configure (``NotificationChannelTypes`` members, values or
             names). Defaults to in-app, email and push.
+        keep_verbs: When replacing a group registered with explicit ``verbs``, keep the verbs it
+            had (for example ones added by :func:`extend_notification_group`) after ``verbs``.
+            Needs an explicit ``verbs`` list.
     """
     if not key or not isinstance(key, str):
         raise ImproperlyConfigured("A notification group needs a non-empty string key.")
@@ -187,16 +191,48 @@ def register_notification_group(
     if not resolved_channels:
         raise ImproperlyConfigured(f"Notification group {key!r} needs at least one channel.")
 
+    if verbs is not None:
+        verbs = tuple(verbs)
+    if keep_verbs:
+        if verbs is None:
+            raise ImproperlyConfigured(
+                f"Notification group {key!r}: keep_verbs needs an explicit verbs list."
+            )
+        previous = notification_groups.get(key)
+        if previous is not None and previous.verbs is not None:
+            verbs = tuple(dict.fromkeys(verbs + previous.verbs))
+
     return notification_groups.register(
         NotificationGroup(
             key=key,
             label=label,
             description=description,
-            verbs=None if verbs is None else tuple(verbs),
+            verbs=verbs,
             audience=audience,
             is_locked=is_locked,
             channels=resolved_channels,
         )
+    )
+
+
+def extend_notification_group(key: str, verbs: Iterable[str]) -> NotificationGroup:
+    """Add ``verbs`` to the registered group ``key``, which must own an explicit verbs list.
+
+    The group keeps its place in the registration order. Verbs it already owns are skipped, so
+    calling this again with the same verbs changes nothing.
+    """
+    group = notification_groups.get(key)
+    if group is None:
+        raise ImproperlyConfigured(f"Notification group {key!r} is not registered.")
+    if group.verbs is None:
+        raise ImproperlyConfigured(
+            f"Notification group {key!r} owns every {key!r}.* verb; only groups registered with "
+            "explicit verbs can be extended."
+        )
+    if isinstance(verbs, str):
+        raise ImproperlyConfigured("extend_notification_group expects a list of verbs.")
+    return notification_groups.register(
+        replace(group, verbs=tuple(dict.fromkeys(group.verbs + tuple(verbs))))
     )
 
 

@@ -77,13 +77,16 @@ def test_queryset_and_group_recipients(send_notification) -> None:
     assert Notification.objects.filter(recipient=users[1]).count() == 1
 
 
-def test_each_recipient_gets_its_own_email(outbox, send_notification) -> None:
+def test_each_recipient_gets_its_own_email(
+    outbox, send_notification, django_capture_on_commit_callbacks
+) -> None:
     sender = UserFactory()
     users = UserFactory.create_batch(2)
 
-    send_notification(
-        sender=sender, recipient=users, verb="event", description="Hello", send_push=False
-    )
+    with django_capture_on_commit_callbacks(execute=True):
+        send_notification(
+            sender=sender, recipient=users, verb="event", description="Hello", send_push=False
+        )
 
     assert sorted(message.to[0] for message in outbox) == sorted(user.email for user in users)
     assert Notification.objects.filter(emailed=True).count() == 2
@@ -139,18 +142,19 @@ def test_push_is_dropped_on_rollback(send_notification, django_capture_on_commit
     BASEAPP_NOTIFICATIONS_EMAIL_SENDER="baseapp_notifications.tests.test_services.record_email"
 )
 def test_custom_email_sender_receives_recipient_notification_and_context(
-    outbox, send_notification
+    outbox, send_notification, django_capture_on_commit_callbacks
 ) -> None:
     sender, recipient = UserFactory.create_batch(2)
 
-    send_notification(
-        sender=sender,
-        recipient=recipient,
-        verb="event",
-        description="Hello",
-        send_push=False,
-        url="/somewhere",
-    )
+    with django_capture_on_commit_callbacks(execute=True):
+        send_notification(
+            sender=sender,
+            recipient=recipient,
+            verb="event",
+            description="Hello",
+            send_push=False,
+            url="/somewhere",
+        )
 
     assert outbox == []
     [(user, notification, context)] = SENT_EMAILS
@@ -161,15 +165,21 @@ def test_custom_email_sender_receives_recipient_notification_and_context(
     assert context["verb"] == "event"
     assert context["email_subject"] == "Hello"
     assert context["url"] == "/somewhere"
+    assert context["email_template"] is None
+    assert context["email_context"] is None
+    assert context["email_options"] is None
 
 
 @override_settings(
     BASEAPP_NOTIFICATIONS_EMAIL_SENDER="baseapp_notifications.tests.test_services.skip_email"
 )
-def test_email_sender_returning_false_leaves_notification_not_emailed(send_notification) -> None:
+def test_email_sender_returning_false_leaves_notification_not_emailed(
+    send_notification, django_capture_on_commit_callbacks
+) -> None:
     user = UserFactory()
 
-    send_notification(sender=user, recipient=user, verb="event", send_push=False)
+    with django_capture_on_commit_callbacks(execute=True):
+        send_notification(sender=user, recipient=user, verb="event", send_push=False)
 
     assert Notification.objects.get().emailed is False
 

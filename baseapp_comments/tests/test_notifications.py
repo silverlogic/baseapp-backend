@@ -43,7 +43,9 @@ def test_user_receieve_notification_when_reply_is_created() -> None:
             assert mock.call_args.args == (comment.pk,)
 
 
-def test_comment_created_notification_sends_email_by_default(outbox) -> None:
+def test_comment_created_notification_sends_email_by_default(
+    outbox, django_capture_on_commit_callbacks
+) -> None:
     user = UserFactory()
     friend = UserFactory()
     target = CommentFactory(user=user)
@@ -52,14 +54,17 @@ def test_comment_created_notification_sends_email_by_default(outbox) -> None:
         BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS=True,
         BASEAPP_COMMENTS_NOTIFICATION_CREATED_EMAIL=True,
     ):
-        CommentFactory(target=target, user=friend)
+        with django_capture_on_commit_callbacks(execute=True):
+            CommentFactory(target=target, user=friend)
 
     assert len(outbox) == 1
     assert outbox[0].to == [user.email]
     assert Notification.objects.filter(recipient=user, verb="COMMENTS.COMMENT_CREATED").exists()
 
 
-def test_comment_created_notification_skips_email_when_disabled(outbox) -> None:
+def test_comment_created_notification_skips_email_when_disabled(
+    outbox, django_capture_on_commit_callbacks
+) -> None:
     user = UserFactory()
     friend = UserFactory()
     target = CommentFactory(user=user)
@@ -68,14 +73,17 @@ def test_comment_created_notification_skips_email_when_disabled(outbox) -> None:
         BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS=True,
         BASEAPP_COMMENTS_NOTIFICATION_CREATED_EMAIL=False,
     ):
-        CommentFactory(target=target, user=friend)
+        with django_capture_on_commit_callbacks(execute=True):
+            CommentFactory(target=target, user=friend)
 
     assert len(outbox) == 0
     # The in-app notification is unaffected — only the email is suppressed.
     assert Notification.objects.filter(recipient=user, verb="COMMENTS.COMMENT_CREATED").exists()
 
 
-def test_reply_created_notification_sends_email_by_default(outbox) -> None:
+def test_reply_created_notification_sends_email_by_default(
+    outbox, django_capture_on_commit_callbacks
+) -> None:
     user = UserFactory()
     friend = UserFactory()
     # Suppress notifications while building the parent, which would otherwise email its target's owner.
@@ -87,7 +95,8 @@ def test_reply_created_notification_sends_email_by_default(outbox) -> None:
         BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS=True,
         BASEAPP_COMMENTS_NOTIFICATION_REPLY_EMAIL=True,
     ):
-        CommentFactory(target=target, user=friend, in_reply_to=parent)
+        with django_capture_on_commit_callbacks(execute=True):
+            CommentFactory(target=target, user=friend, in_reply_to=parent)
 
     assert len(outbox) == 1
     assert outbox[0].to == [user.email]
@@ -96,7 +105,9 @@ def test_reply_created_notification_sends_email_by_default(outbox) -> None:
     ).exists()
 
 
-def test_reply_created_notification_skips_email_when_disabled(outbox) -> None:
+def test_reply_created_notification_skips_email_when_disabled(
+    outbox, django_capture_on_commit_callbacks
+) -> None:
     user = UserFactory()
     friend = UserFactory()
     # Suppress notifications while building the parent, which would otherwise email its target's owner.
@@ -108,7 +119,8 @@ def test_reply_created_notification_skips_email_when_disabled(outbox) -> None:
         BASEAPP_COMMENTS_ENABLE_NOTIFICATIONS=True,
         BASEAPP_COMMENTS_NOTIFICATION_REPLY_EMAIL=False,
     ):
-        CommentFactory(target=target, user=friend, in_reply_to=parent)
+        with django_capture_on_commit_callbacks(execute=True):
+            CommentFactory(target=target, user=friend, in_reply_to=parent)
 
     assert len(outbox) == 0
     # The in-app notification is unaffected — only the email is suppressed.
