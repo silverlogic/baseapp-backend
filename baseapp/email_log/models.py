@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Optional
 
@@ -5,6 +6,7 @@ import swapper
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.core.mail import EmailMessage
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.db.models import Q
@@ -12,14 +14,18 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
+from baseapp_core.models import DocumentIdMixin
+
 from .status import EmailLogStatus, djmail_statuses_for, status_from_djmail
+
+logger = logging.getLogger(__name__)
 
 
 class EmailLogQuerySet(models.QuerySet):
     def with_status(self, status: str) -> "EmailLogQuerySet":
         """
         Rows whose unified ``status`` is ``status``: email rows by their djmail message,
-        other channels by their own ``delivery_status``.
+        rows without one (other channels, scrubbed email rows) by their ``delivery_status``.
         """
         return self.filter(
             Q(message__status__in=djmail_statuses_for(status))
@@ -34,7 +40,7 @@ class EmailLogQuerySet(models.QuerySet):
         )
 
 
-class AbstractEmailLog(TimeStampedModel):
+class AbstractEmailLog(DocumentIdMixin, TimeStampedModel):
     """
     What djmail does not store about a message.
 
@@ -51,6 +57,9 @@ class AbstractEmailLog(TimeStampedModel):
     Read a row through the properties (``subject``, ``body_text``, ``to``, ``status``,
     ``sent_at``, ``error``, ...), which resolve from djmail for email rows and from the
     row's own columns otherwise.
+
+    Rows are documents (``DocumentIdMixin``): each has a ``public_id``, so an API can
+    address it without exposing its integer key.
     """
 
     class Channel(models.TextChoices):
@@ -132,14 +141,27 @@ class AbstractEmailLog(TimeStampedModel):
         _("idempotency key"), max_length=255, null=True, blank=True, unique=True
     )
 
-    # Other channels only: an email row reads these from its djmail message.
+    # Rows without a djmail message read these instead: other channels, and email rows whose
+    # content the purge scrubbed (it copies their subject, from, status and sent date here).
     delivery_to = models.CharField(_("delivery to"), max_length=255, blank=True)
+    delivery_subject = models.CharField(_("delivery subject"), max_length=1024, blank=True)
+    delivery_from_email = models.CharField(_("delivery from"), max_length=1024, blank=True)
     delivery_body_text = models.TextField(_("delivery body text"), blank=True)
     delivery_status = models.CharField(
         _("delivery status"), max_length=20, choices=EmailLogStatus.choices, blank=True
     )
     delivered_at = models.DateTimeField(_("delivered at"), null=True, blank=True)
     delivery_error = models.TextField(_("delivery error"), blank=True)
+
+    scrubbed_at = models.DateTimeField(
+        _("scrubbed at"),
+        null=True,
+        blank=True,
+        help_text=_(
+            "When the purge removed the content and kept the row for its idempotency key. "
+            "A scrubbed row cannot be resent."
+        ),
+    )
 
     objects = EmailLogQuerySet.as_manager()
 
@@ -160,7 +182,7 @@ class AbstractEmailLog(TimeStampedModel):
 
     @property
     def subject(self) -> str:
-        return self.message.subject if self.message_id else ""
+        return self.message.subject if self.message_id else self.delivery_subject
 
     @property
     def body_text(self) -> str:
@@ -172,7 +194,7 @@ class AbstractEmailLog(TimeStampedModel):
 
     @property
     def from_email(self) -> str:
-        return self.message.from_email if self.message_id else ""
+        return self.message.from_email if self.message_id else self.delivery_from_email
 
     @property
     def to(self) -> str:
@@ -188,7 +210,8 @@ class AbstractEmailLog(TimeStampedModel):
     def status(self) -> Optional[str]:
         """
         ``queued``, ``sending``, ``sent``, ``failed`` or ``discarded``. ``None`` for an email
-        row whose djmail message has been deleted.
+        row whose djmail message was deleted outside the purge (a scrubbed row keeps the
+        status it had).
         """
         if self.message_id:
             return status_from_djmail(self.message.status)
@@ -202,6 +225,20 @@ class AbstractEmailLog(TimeStampedModel):
     def error(self) -> str:
         """The transport error djmail recorded (its traceback), or the channel's error."""
         return self.message.exception if self.message_id else self.delivery_error
+
+    def get_email_message(self) -> Optional[EmailMessage]:
+        """
+        The ``EmailMessage`` djmail pickled when the email was written, attachments and
+        headers included. ``None`` when the djmail message is gone, holds no pickle (rows
+        imported from elsewhere) or cannot be unpickled.
+        """
+        if self.message_id is None or not self.message.data:
+            return None
+        try:
+            return self.message.get_email_message()
+        except Exception:
+            logger.exception("Could not unpickle the djmail message of email log %s", self.pk)
+            return None
 
     def mark_delivery(self, status: str, *, error: str = "") -> None:
         """Record the delivery state of a row of another channel (it has no djmail message)."""

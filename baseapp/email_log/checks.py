@@ -19,3 +19,28 @@ def check_attachment_storage(app_configs: Any = None, **kwargs: Any) -> list[War
             )
         ]
     return []
+
+
+@register()
+def check_retention_by_category(app_configs: Any = None, **kwargs: Any) -> list[Warning]:
+    """A category with an unusable retention is skipped by the purge; say so at startup."""
+    from .tasks import valid_retention_days
+
+    by_category = getattr(settings, "BASEAPP_EMAIL_LOG_RETENTION_DAYS_BY_CATEGORY", None) or {}
+    if not isinstance(by_category, dict):
+        invalid = {"BASEAPP_EMAIL_LOG_RETENTION_DAYS_BY_CATEGORY": by_category}
+    else:
+        invalid = {
+            category: days
+            for category, days in by_category.items()
+            if days is not None and not valid_retention_days(days)
+        }
+    if not invalid:
+        return []
+    return [
+        Warning(
+            "BASEAPP_EMAIL_LOG_RETENTION_DAYS_BY_CATEGORY must map categories to a number of "
+            f"days (or None for no retention of their own); the purge skips {invalid!r}.",
+            id="baseapp_email_log.W002",
+        )
+    ]
