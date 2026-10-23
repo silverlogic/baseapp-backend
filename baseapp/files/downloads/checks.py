@@ -1,10 +1,18 @@
 from typing import Any
 
-from django.core.checks import Error, register
+from django.core.checks import CheckMessage, Error, Tags, Warning, register
 from django.core.exceptions import FieldDoesNotExist
+from django.core.files.storage import InvalidStorageError, Storage
 from django.db import models
 
+from ..storage import files_storage_is_private
+from ..storage.alias import AliasStorage
 from .registry import protected_files
+
+
+def storage_name(storage: Storage) -> str:
+    # `__class__` sees through LazyObject storages such as `files_storage`.
+    return repr(storage) if isinstance(storage, AliasStorage) else storage.__class__.__name__
 
 
 @register()
@@ -42,3 +50,38 @@ def check_protected_files(app_configs: Any = None, **kwargs: Any) -> list[Error]
                     )
                 )
     return errors
+
+
+@register(Tags.security)
+def check_protected_file_storage(app_configs: Any = None, **kwargs: Any) -> list[CheckMessage]:
+    """
+    Registering a field does not move its file: a field on public storage stays readable at
+    its storage URL. Only storages that sign their URLs can be told apart, so this is a
+    warning that projects whose web server denies the storage's URLs can silence.
+    """
+    warnings = []
+    for spec in protected_files:
+        try:
+            field = spec.model._meta.get_field(spec.field)
+        except FieldDoesNotExist:
+            continue  # E010
+        if not isinstance(field, models.FileField):
+            continue  # E011
+        try:
+            private = files_storage_is_private(field.storage)
+        except InvalidStorageError:
+            private = False
+        if not private:
+            warnings.append(
+                Warning(
+                    f"Protected file {spec.key!r}: {spec.model._meta.label}.{spec.field} is on "
+                    f"{storage_name(field.storage)}, which does not keep files private, so "
+                    "anyone with its storage URL can still read them.",
+                    hint="Put the field on private storage (S3 with querystring_auth, "
+                    "SignedFileSystemStorage, or an AliasStorage naming one). If the web server "
+                    "denies the storage's URLs, silence baseapp_files.W010.",
+                    obj=spec.model,
+                    id="baseapp_files.W010",
+                )
+            )
+    return warnings

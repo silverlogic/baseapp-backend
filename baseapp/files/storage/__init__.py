@@ -70,11 +70,14 @@ def files_storage_is_private(storage: Optional[Storage] = None) -> bool:
 
     That is an S3 storage with ``querystring_auth`` on (django-storages presigns
     ``url()``), or ``SignedFileSystemStorage``. Derived from the storage instead of a
-    separate flag, so a "private" setting can never be paired with a public bucket.
+    separate flag, so a "private" setting can never be paired with a public bucket. An
+    ``AliasStorage`` is judged by the backend its alias names now.
     """
     from .signed import SignedFileSystemStorage
 
     storage = files_storage if storage is None else storage
+    if isinstance(storage, AliasStorage):
+        storage = storage.backend
     if isinstance(storage, SignedFileSystemStorage):
         return True
     return _is_s3_storage(storage) and bool(getattr(storage, "querystring_auth", False))

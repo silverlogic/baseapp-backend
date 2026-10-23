@@ -32,10 +32,8 @@ class ProtectedFileAdminMixin:
     private_storage_aliases: tuple[str, ...] = ()
 
     def is_private_storage(self, storage: Storage) -> bool:
-        if isinstance(storage, AliasStorage):
-            if storage.alias in self.private_storage_aliases:
-                return True
-            storage = storage.backend
+        if isinstance(storage, AliasStorage) and storage.alias in self.private_storage_aliases:
+            return True
         return files_storage_is_private(storage)
 
     def get_protected_file_fields(self) -> list[str]:
