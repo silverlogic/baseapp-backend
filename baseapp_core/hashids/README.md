@@ -75,7 +75,7 @@ class PostFilterSet(django_filters.FilterSet):
     tag = PublicIdFilter(field_name="tags", model=Tag, distinct=True)
 ```
 
-The model is inferred from `field_name` on the FilterSet's model, or given with `model=`. An id of another model, or an integer pk while pk lookups are disallowed, is a 400. Both take `allow_pk_lookup=`.
+The model is inferred from `field_name` on the FilterSet's model, or given with `model=`. An id of another model, a malformed value, or an integer pk while pk lookups are disallowed, is a 400. A public id that maps to no row matches nothing (an empty list), the same answer as an existing id outside the queryset, so the filter does not tell whether an id exists. Both take `allow_pk_lookup=`.
 
 #### Avoiding a query per row: `annotate_public_ids`
 

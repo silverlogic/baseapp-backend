@@ -22,6 +22,7 @@ class ChildFilterSet(django_filters.FilterSet):
     previous_parent = PublicIdFilter(field_name="previous__parent")
     tag = PublicIdFilter(field_name="tags", model=DummyPublicIdModel, distinct=True)
     legacy = PublicIdFilter()
+    not_parent = PublicIdFilter(field_name="parent", exclude=True)
 
     class Meta:
         model = DummyPublicIdChildModel
@@ -82,10 +83,22 @@ class TestPublicIdFilters:
             assert rows is None, params
             assert set(filterset.errors) == set(params)
 
-    @pytest.mark.parametrize("value", ["abc", str(uuid.uuid4())])
+    @pytest.mark.parametrize("value", ["abc", str(uuid.uuid1()), "12abc"])
     def test_rejects_invalid_values(self, value: str) -> None:
         filterset, rows = filter_children({"parent": value})
         assert rows is None
+
+    def test_unknown_public_id_matches_nothing(self) -> None:
+        # The same answer as for an existing id outside the queryset, so the filter does not
+        # tell whether an id exists.
+        child = DummyPublicIdChildModelFactory()
+        unknown = str(uuid.uuid4())
+
+        assert filter_children({"parent": unknown})[1] == []
+        assert filter_children({"parents": unknown})[1] == []
+        assert filter_children({"parents": f"{unknown},{child.parent.public_id}"})[1] == [child]
+        assert filter_children({"not_parent": unknown})[1] == [child]
+        assert filter_children({"not_parent": str(child.parent.public_id)})[1] == []
 
     def test_empty_value_does_not_filter(self) -> None:
         DummyPublicIdChildModelFactory.create_batch(2)
