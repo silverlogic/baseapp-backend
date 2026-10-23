@@ -56,7 +56,36 @@ def active_membership_subquery(user_obj: AbstractBaseUser | AnonymousUser) -> Ex
     )
 
 
+def can_override_last_admin(user_obj: AbstractBaseUser | AnonymousUser, profile: Profile) -> bool:
+    """
+    Whether `user_obj` may leave `profile` without an active admin
+    (`<profile app>.override_last_admin`; nobody but superusers by default).
+    """
+    return user_obj.is_authenticated and user_obj.has_perm(
+        f"{profile_app_label}.override_last_admin", profile
+    )
+
+
 class ProfilesPermissionsBackend(BaseBackend):
+    INVITATION_PERMS = (
+        f"{profile_app_label}.view_profile_invitations",
+        f"{profile_app_label}.override_last_admin",
+    )
+
+    def has_invitation_perm(
+        self, user_obj: AbstractBaseUser | AnonymousUser, perm: str, obj: Profile
+    ) -> bool:
+        """`view_profile_invitations` and `override_last_admin` on a profile."""
+        if perm == f"{profile_app_label}.view_profile_invitations":
+            # Pending and past invitations are shown to whoever sees the members (or holds
+            # the permission globally); a project narrows this to the people who manage them.
+            return user_obj.has_perm(
+                f"{profile_app_label}.view_profile_members", obj
+            ) or user_obj.has_perm(perm)
+        # override_last_admin: granted globally (a group or user permission), never by
+        # membership.
+        return user_obj.has_perm(perm)
+
     def has_perm(
         self, user_obj: AbstractBaseUser | AnonymousUser, perm: str, obj: Profile | None = None
     ) -> bool | None:
@@ -98,6 +127,9 @@ class ProfilesPermissionsBackend(BaseBackend):
                     or user_obj.is_superuser
                     or is_active_member(obj, user_obj)
                 )
+
+        if perm in self.INVITATION_PERMS and isinstance(obj, Profile):
+            return self.has_invitation_perm(user_obj, perm, obj)
 
         if (
             perm

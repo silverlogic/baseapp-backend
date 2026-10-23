@@ -14,6 +14,7 @@ from baseapp_core.graphql import (
 )
 from baseapp_profiles.conf import keep_invitation_history
 from baseapp_profiles.exceptions import ProfileMembershipError
+from baseapp_profiles.permissions import can_override_last_admin
 from baseapp_profiles.services import invitations as invitation_service
 from baseapp_profiles.services import members as member_service
 
@@ -163,6 +164,7 @@ class ProfileUserRoleUpdate(ExtensibleMutation):
                 role=role_type,
                 by=info.context.user,
                 extra_fields=cls.extra_fields_from_input(info, input),
+                allow_last_admin=can_override_last_admin(info.context.user, obj.profile),
             )
         except ProfileMembershipError as error:
             raise GraphQLError(error.message, extensions={"code": error.code})
@@ -203,7 +205,11 @@ class ProfileUserRoleDelete(RelayMutation):
                 # it is kept as CANCELLED when history is on.
                 invitation_service.cancel_invitation(obj, by=info.context.user)
             else:
-                member_service.remove_member(obj, by=info.context.user)
+                member_service.remove_member(
+                    obj,
+                    by=info.context.user,
+                    allow_last_admin=can_override_last_admin(info.context.user, obj.profile),
+                )
         except ProfileMembershipError as error:
             raise GraphQLError(error.message, extensions={"code": error.code})
 
@@ -255,6 +261,7 @@ class ProfileMemberDeactivate(ExtensibleMutation):
                 by=by,
                 reason=input.get("reason") or "",
                 extra_fields=cls.extra_fields_from_input(info, input),
+                allow_last_admin=can_override_last_admin(by, membership.profile),
             )
 
         obj = _change_member_status(info, input, deactivate)
