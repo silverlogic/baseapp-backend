@@ -22,6 +22,16 @@ def _is_public_id_logic_enabled() -> bool:
     return bool(getattr(settings, "ENABLE_PUBLIC_ID_LOGIC", True))
 
 
+def is_public_id_pk_lookup_allowed() -> bool:
+    """`settings.BASEAPP_PUBLIC_ID_ALLOW_PK_LOOKUP` (default True).
+
+    Whether REST lookups, fields and filters still accept the integer pk of a model that uses
+    the public id strategy. Turn it off once clients only send public ids, so pks can no longer
+    be enumerated. Models without public ids always accept their pk.
+    """
+    return bool(getattr(settings, "BASEAPP_PUBLIC_ID_ALLOW_PK_LOOKUP", True))
+
+
 def _is_model_public_id_compatible(model_cls: type) -> bool:
     """
     These are the constraints for a model to be compatible with the public ID feature.
@@ -168,6 +178,35 @@ def drf_get_pk_from_public_id_using_strategy(
 
 def should_use_public_id(model_cls: type) -> bool:
     return _is_model_public_id_compatible(model_cls) and _is_public_id_logic_enabled()
+
+
+def drf_get_pk_from_public_id_or_pk(
+    value: Any, model_cls: type, *, allow_pk_lookup: bool | None = None
+) -> Any | None:
+    """Return the pk to look a `model_cls` row up by, or None when `value` cannot be one of its ids.
+
+    For a model that uses the public id strategy, `value` must be the public id of a `model_cls`
+    row (another model's public id gives None), or its integer pk while pk lookups are allowed
+    (`allow_pk_lookup`, which defaults to `BASEAPP_PUBLIC_ID_ALLOW_PK_LOOKUP`). For any other
+    model, `value` is returned as-is: it is the raw pk, and the caller's pk lookup validates it.
+    It does not check that the row exists.
+    """
+    from baseapp_core.hashids.strategies.interfaces import DRFResolverStrategy
+
+    if value is None or isinstance(value, bool):
+        return None
+    if not should_use_public_id(model_cls):
+        return value
+    if is_uuid4(value):
+        try:
+            return drf_get_pk_from_public_id_using_strategy(str(value), expected_model=model_cls)
+        except DRFResolverStrategy.NoInstanceFound:
+            return None
+    if allow_pk_lookup is None:
+        allow_pk_lookup = is_public_id_pk_lookup_allowed()
+    if allow_pk_lookup and str(value).isascii() and str(value).isdigit():
+        return int(value)
+    return None
 
 
 def _get_related_model_for_path(model_cls: type, path: str) -> type:
