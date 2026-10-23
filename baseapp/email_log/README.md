@@ -56,11 +56,16 @@ applies to `celery.current_app`.
 ## Reading a row
 
 Read every row through the same properties, whatever its channel. Email rows resolve them
-from their djmail message, other channels from their own `delivery_*` columns:
+from their djmail message, other channels from their own `delivery_*` columns. An email row
+whose djmail message is gone reads the `delivery_*` columns too: the purge copies the
+subject, sender, status and sent date there when it scrubs a row (see
+[Retry and retention](#retry-and-retention)).
 
 | Property | Email row | Other channels |
 |---|---|---|
-| `subject`, `body_html`, `from_email` | djmail message | empty |
+| `subject` | djmail message | `delivery_subject` (empty unless set) |
+| `from_email` | djmail message | `delivery_from_email` (empty unless set) |
+| `body_html` | djmail message | empty |
 | `body_text` | djmail message | `delivery_body_text` |
 | `to` | djmail `to_email` (comma separated), or the row's To list once the message is gone | `delivery_to` |
 | `status` | djmail status, mapped (see below) | `delivery_status` |
@@ -248,9 +253,10 @@ from baseapp.email_log.services import email_message_for
 email = email_message_for(log)  # a django.core.mail.EmailMessage
 ```
 
-`ResendError` is raised for rows of other channels, for an empty `to`, when the djmail
-message is gone and there is no renderer, and when the email is rebuilt and an attachment
-the row lists cannot be read.
+`ResendError` is raised for rows of other channels, for an empty `to`, for rows the purge
+scrubbed (their `scrubbed_at` is set; with a renderer too, since their context is gone),
+when the djmail message is gone and there is no renderer, and when the email is rebuilt
+and an attachment the row lists cannot be read.
 
 The admin offers the same as a "Resend the selected emails" action.
 
@@ -291,8 +297,13 @@ before the log was installed or through plain djmail, which have no row.
 Rows with an idempotency key are not deleted, so their keys keep blocking duplicate sends.
 They are scrubbed instead: their djmail message and stored attachments are deleted (the
 row's `message` becomes empty), and their context and channel text are cleared. Who, what
-and when remain: recipients, template, category, related object, sender, dates, the
-attachment names and sizes, and the key. `BASEAPP_EMAIL_LOG_PURGE_IDEMPOTENT = True` deletes
+and when remain: recipients, template, category, related object, sender, the attachment
+names and sizes, the key, `created` and `modified`, and, copied from the djmail message
+before it is deleted, the subject, from address, status and sent date (in
+`delivery_subject`, `delivery_from_email`, `delivery_status` and `delivered_at`, which the
+`subject`, `from_email`, `status` and `sent_at` properties read). Bodies, attachments' content
+and the transport error are gone. `scrubbed_at` records when, and such a row can no longer
+be resent. `BASEAPP_EMAIL_LOG_PURGE_IDEMPOTENT = True` deletes
 them like any other row.
 
 Some emails deserve a shorter life than the rest (password-reset links, one-time codes).
@@ -306,7 +317,9 @@ BASEAPP_EMAIL_LOG_RETENTION_DAYS_BY_CATEGORY = {"password_reset": 14, "mfa": 14}
 A row is purged once it is past either period, so a category can shorten the retention but
 not lengthen it. The categories apply on their own when `BASEAPP_EMAIL_LOG_RETENTION_DAYS`
 is `None`; djmail messages without a row have no category and are purged by the general
-retention only.
+retention only. A category mapped to `None` has no retention of its own. A value that is
+not a non-negative integer is skipped by the purge, which logs an error and still purges
+the other categories, and the `baseapp_email_log.W002` system check reports it.
 
 `purge_email_logs` returns the counts `{"deleted": ..., "scrubbed": ..., "unlogged_messages":
 ...}`. `purge_email_logs(older_than_days=N)` overrides `BASEAPP_EMAIL_LOG_RETENTION_DAYS` for
@@ -349,7 +362,7 @@ project scheduled it, since it would leave transport errors uncounted.
 | `BASEAPP_EMAIL_LOG_STORE_ATTACHMENTS` | `False` | Save attachments to the storage below |
 | `BASEAPP_EMAIL_LOG_ATTACHMENT_STORAGE` | `None` (`default_storage`) | `STORAGES` alias, or dotted path of a storage class or factory |
 | `BASEAPP_EMAIL_LOG_RETENTION_DAYS` | `None` (keep) | Age in days after which `purge_email_logs` deletes rows |
-| `BASEAPP_EMAIL_LOG_RETENTION_DAYS_BY_CATEGORY` | `{}` | `{category: days}`, a shorter retention for some categories; applies also while `BASEAPP_EMAIL_LOG_RETENTION_DAYS` is `None` |
+| `BASEAPP_EMAIL_LOG_RETENTION_DAYS_BY_CATEGORY` | `{}` | `{category: days}`, a shorter retention for some categories; applies also while `BASEAPP_EMAIL_LOG_RETENTION_DAYS` is `None`; `None` days means no retention of its own |
 | `BASEAPP_EMAIL_LOG_PURGE_IDEMPOTENT` | `False` (scrub them) | Let the purge delete rows holding an idempotency key instead of scrubbing them |
 | `BASEAPP_EMAIL_LOG_STALE_DRAFT_MINUTES` | `30` | Age after which `retry_failed_emails` sends a logged message still a draft; `None` leaves drafts alone |
 | `BASEAPP_EMAIL_LOG_RENDERER` | `None` | Callable or dotted path re-rendering a template on resend |
@@ -380,7 +393,9 @@ BASEAPP_EMAIL_LOG_EMAILLOG_MODEL = "myapp.EmailLog"
 
 The abstract model extends `DocumentIdMixin`, so `makemigrations` adds the DocumentId
 triggers to your model. Rows that exist before that migration need their public ids
-backfilled: add a `RunPython` to it, as the package's own `0002_emaillog_document_id` does:
+backfilled: add a `RunPython` to it, as the package's own `0002_emaillog_document_id` does.
+Pass the historical models from `apps`; `backfill_model_document_ids` takes the content type
+from the historical `DocumentId`:
 
 ```python
 def backfill_document_ids(apps, schema_editor):
