@@ -256,12 +256,19 @@ Then point swapper at the subclass via `BASEAPP_FOLLOWS_FOLLOW_MODEL` (or overri
 
 Because `add_follow` is checked only when creating, a user can always remove an existing
 follow, even after the target stops being followable (for example a profile that was
-deactivated, or one a project-level rule no longer allows following).
+deactivated, or one a project-level rule no longer allows following). `followToggle` also
+loads the target without a `view_profile` check, so a user can unfollow a profile they can
+no longer see, such as one switched to private. Keep it that way if you override the
+mutation: resolving the target through `get_node` would leave such follows stuck.
 
 ### Private followers / following
 
 Follows are public by default. To make them private, override `view_followers` and/or
-`view_following`. When a check fails:
+`view_following` in a subclass of `FollowsPermissionsBackend`, and **replace** the plugin's
+entry in `AUTHENTICATION_BACKENDS` with the subclass (see [Customizing](#customizing)).
+Django grants a permission as soon as any backend returns `True`, and the stock backend
+returns `True` for both, so a separate backend added next to it cannot make follows
+private: they stay public and nothing reports an error. When a check fails:
 
 - `followers` / `following` resolve to an empty connection;
 - `followersCount` / `followingCount` resolve to `null` (not `0`), so clients can tell
@@ -269,7 +276,11 @@ Follows are public by default. To make them private, override `view_followers` a
 - `node(id:)` on a `Follow` resolves to `null` unless the viewer may see the actor's
   `following` **or** the target's `followers`.
 
-Rows inside a visible connection are not re-checked one by one.
+Rows inside a visible connection are not re-checked one by one, so each `Follow` there
+still exposes its `user` and `targetIsFollowingBack`. Ordering is not gated either:
+`allProfiles(orderBy: "followers_count_total")` (or `following_count_total`) still ranks
+profiles by the hidden counts. If the ranking must stay private too, remove those choices
+from your `ProfileFilter`.
 
 ```python
 import swapper
@@ -278,6 +289,7 @@ from baseapp_follows.permissions import FollowsPermissionsBackend
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 
+# Replaces "baseapp_follows.permissions.FollowsPermissionsBackend" in AUTHENTICATION_BACKENDS.
 class PrivateFollowsPermissionsBackend(FollowsPermissionsBackend):
     def has_perm(self, user_obj, perm, obj=None):
         if perm in ("baseapp_follows.view_followers", "baseapp_follows.view_following"):
