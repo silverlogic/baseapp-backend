@@ -14,6 +14,8 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
+from baseapp_core.models import DocumentIdMixin
+
 from .status import EmailLogStatus, djmail_statuses_for, status_from_djmail
 
 logger = logging.getLogger(__name__)
@@ -38,7 +40,7 @@ class EmailLogQuerySet(models.QuerySet):
         )
 
 
-class AbstractEmailLog(TimeStampedModel):
+class AbstractEmailLog(DocumentIdMixin, TimeStampedModel):
     """
     What djmail does not store about a message.
 
@@ -55,6 +57,9 @@ class AbstractEmailLog(TimeStampedModel):
     Read a row through the properties (``subject``, ``body_text``, ``to``, ``status``,
     ``sent_at``, ``error``, ...), which resolve from djmail for email rows and from the
     row's own columns otherwise.
+
+    Rows are documents (``DocumentIdMixin``): each has a ``public_id``, so an API can
+    address it without exposing its integer key.
     """
 
     class Channel(models.TextChoices):

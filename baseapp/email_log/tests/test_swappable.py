@@ -48,6 +48,15 @@ def test_package_migration_creates_the_default_only_when_not_swapped() -> None:
     assert create.options["swappable"] == SETTING
 
 
+def test_package_document_id_migration_is_empty_when_swapped() -> None:
+    # The swapped-out default has no DocumentId triggers; the swapped-in model's migration
+    # adds them (testproject.email_log 0002).
+    loader = MigrationLoader(None, ignore_no_migrations=True)
+
+    assert loader.get_migration("baseapp_email_log", "0002_emaillog_document_id").operations == []
+    assert loader.get_migration("email_log", "0002_emaillog_document_id").operations
+
+
 @pytest.mark.django_db
 def test_swapping_needs_no_migration_in_the_package() -> None:
     # resend_of points at the swappable name, not "self", which the swapped-out default
