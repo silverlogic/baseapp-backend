@@ -267,7 +267,7 @@ result.invitations, result.emails_sent, result.held
 | `baseapp_profiles.services.invitations` | |
 |---|---|
 | `send_invitations(profile, invitees, *, role=None, invited_by=None, message="", extra_fields=None)` | Bulk invite (emails, `Invitee`s or dicts); all-or-nothing on conflicts and on invitees the [validator](#validating-invitees) refuses. Returns `SentInvitations`. |
-| `resend_invitation(invitation, *, by=None, extra_fields=None)` | New token and expiry. With history on, an expired invitation stays EXPIRED and a new row is opened. |
+| `resend_invitation(invitation, *, by=None, extra_fields=None)` | New token and expiry. With history on, an expired invitation stays EXPIRED and a new row is opened. Locks and re-reads the row first, so an invitation answered in the meantime is refused (`invalid_status`) rather than reopened. |
 | `release_invitation(invitation, *, by=None)` | Send an invitation the pre-send hook held. |
 | `cancel_invitation(invitation, *, by=None)` | Withdraw a PENDING invitation. |
 | `accept_invitation(token, user)` / `decline_invitation(token, user)` | Respond as a signed-in user, who must be the invitee. |
@@ -484,7 +484,18 @@ reads `PENDING` (or `EXPIRED`) in the preview, and is accepted through
 `profileAcceptInvitationWithSignup`, which activates the account under the
 [reactivation rules](#accepting-by-signing-up) and sends `invitation_accepted` with the
 membership row. A signed-in invitee may accept or decline it too; declining leaves the
-membership as it was. Claims are never marked EXPIRED by the sweep: the row stays a member.
+membership as it was (its `respondedAt` is set, so the link is spent). Claims are never
+marked EXPIRED by the sweep: the row stays a member. The invitation's role does not apply to
+a claim; change it with `update_member` if needed.
+
+Only a row with no user, or whose user still has the invited email, can be claimed: a row
+found through a stale `invited_email` (its member has changed address since) is refused with
+`already_member`. Accept-with-signup likewise refuses (`wrong_user`) a claim or invitation
+whose account has changed its email since it was sent.
+
+The hook is called whenever a row is checked for an open claim, including once or more per
+unanswered claim row in a members list, so keep it cheap: read fields already on the row
+(`membership.user` costs a query unless the queryset selects it).
 
 ### Project fields and extending the mutations
 
