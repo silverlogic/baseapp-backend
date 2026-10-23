@@ -1,9 +1,11 @@
 """
 The registry of protected model file fields.
 
-A registered field is served only through the protected download endpoints, which check
-the viewer's access on every request; its storage URL is never handed out. Register fields
-from ``AppConfig.ready()``:
+A registered field is served through the protected download endpoints, which check the
+viewer's access on every request, and the clients get no storage URL from them. Registering
+does not change the field's storage: keep it on private storage (system check
+``baseapp_files.W010``) and do not expose the raw field elsewhere (object types,
+serializers, the admin). Register fields from ``AppConfig.ready()``:
 
     from baseapp.files.downloads import protected_files
 
@@ -16,14 +18,13 @@ from typing import Any, Callable, Iterator, Literal, Optional, Union
 
 from django.apps import apps
 from django.contrib.auth.models import AnonymousUser
-from django.core.exceptions import (
-    ImproperlyConfigured,
-    ObjectDoesNotExist,
-    ValidationError,
-)
+from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
+from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
+from django.core.exceptions import ValidationError
 from django.core.files import File as DjangoFile
 from django.db import models
 from django.db.models.fields.files import FieldFile
+from django.http import Http404
 from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import APIException, NotAuthenticated, PermissionDenied
 
@@ -134,7 +135,7 @@ class ProtectedFileSpec:
         """``check_access`` as a boolean, for fields that render null instead of failing."""
         try:
             self.check_access(user, obj)
-        except APIException:
+        except (APIException, DjangoPermissionDenied, Http404):
             return False
         return True
 
@@ -170,7 +171,8 @@ class ProtectedFilesRegistry:
             field: name of a ``FileField``/``ImageField`` on it.
             key: identifies the field in URLs and GraphQL (default ``"<app>.<model>.<field>"``).
             permission: checked as ``user.has_perm(permission, obj)`` (default
-                ``"<app>.view_<model>"``); ``False`` skips it, leaving ``check``/``queryset``.
+                ``"<app>.view_<model>"``, i.e. "may view the object", which backends may grant
+                broadly); ``False`` skips it, leaving ``check``/``queryset``.
             check: ``callable(user, obj)`` run after the permission; it may raise DRF
                 ``PermissionDenied``/``NotAuthenticated``/``NotFound`` (codes included) or ``Gone``.
             queryset: ``callable(user)`` scoping which objects exist for ``user`` (404 outside it).

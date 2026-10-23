@@ -6,14 +6,16 @@ from django.db import models
 from django.utils.crypto import constant_time_compare, salted_hmac
 
 from .registry import ProtectedFileSpec, UserType
+from .services import is_stored
 
 
 class ProtectedDownloadTicket:
     """
     A short-lived download link bound to the user who minted it.
 
-    The payload names the file (``k`` key, ``o`` object id, ``n`` stored name, so replacing
-    the file kills the link), the user (``u``, plus ``h``, a fragment derived from the
+    The payload names the file (``k`` key, ``o`` object id, ``n`` the stored name, so
+    replacing the file kills the link; empty when nothing was stored, so a file ``ensure``
+    saves on first use does not), the user (``u``, plus ``h``, a fragment derived from the
     user's session auth hash, so a password change kills it) and the profile the user was
     acting as (``p``). The ticket view re-runs the access check as that user on every use.
     """
@@ -45,11 +47,17 @@ class ProtectedDownloadTicket:
                 "u": user.pk if authenticated else None,
                 "h": cls.auth_fragment(user),
                 "p": getattr(profile, "pk", None),
-                "n": spec.get_field_file(obj).name or "",
+                "n": cls.stored_name(spec, obj),
             },
             salt=cls.SALT,
             compress=True,
         )
+
+    @classmethod
+    def stored_name(cls, spec: ProtectedFileSpec, obj: models.Model) -> str:
+        """The name of the file stored for ``obj``; empty when none is (yet)."""
+        field_file = spec.get_field_file(obj)
+        return field_file.name if is_stored(field_file) else ""
 
     @classmethod
     def load(cls, ticket: str) -> dict[str, Any]:

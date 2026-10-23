@@ -21,6 +21,18 @@ from .signals import protected_file_downloaded
 DEFAULT_DOWNLOADS_URL = "/v1/files/protected/"
 
 
+def _size_errors() -> tuple[type[Exception], ...]:
+    """What reading a missing file's size raises: OSError locally, ClientError on S3."""
+    try:
+        from botocore.exceptions import ClientError
+    except ImportError:
+        return (OSError, ValueError)
+    return (OSError, ValueError, ClientError)
+
+
+SIZE_ERRORS = _size_errors()
+
+
 def protected_downloads_url() -> str:
     """Where ``baseapp.files.downloads.urls`` is mounted (``BASEAPP_FILES_PROTECTED_DOWNLOADS_URL``)."""
     url = getattr(settings, "BASEAPP_FILES_PROTECTED_DOWNLOADS_URL", DEFAULT_DOWNLOADS_URL)
@@ -53,7 +65,8 @@ def get_protected_object(spec: ProtectedFileSpec, user: UserType, object_id: Any
     return obj
 
 
-def _is_stored(field_file: FieldFile) -> bool:
+def is_stored(field_file: FieldFile) -> bool:
+    """Whether the field holds a name and its storage has that file."""
     return bool(field_file) and field_file.storage.exists(field_file.name)
 
 
@@ -65,14 +78,14 @@ def get_protected_content(spec: ProtectedFileSpec, obj: models.Model) -> Content
         NotFound: nothing stored and nothing derived.
     """
     field_file = spec.get_field_file(obj)
-    if _is_stored(field_file):
+    if is_stored(field_file):
         return field_file
     if spec.ensure is not None:
         content = spec.ensure(obj)
         if isinstance(content, (bytes, bytearray)):
             return bytes(content)
         if isinstance(content, FieldFile):
-            if _is_stored(content):
+            if is_stored(content):
                 return content
         elif isinstance(content, DjangoFile):
             return content
@@ -132,7 +145,7 @@ class ProtectedFileInfo:
             return None
         try:
             return field_file.size
-        except (OSError, ValueError):
+        except SIZE_ERRORS:
             return None
 
     def as_dict(self) -> dict[str, Any]:

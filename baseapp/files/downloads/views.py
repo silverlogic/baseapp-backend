@@ -52,6 +52,8 @@ class ProtectedFileDownloadView(CurrentProfileMixin, APIView):
     """
 
     permission_classes = [AllowAny]  # access is decided by the registered spec
+    # No HEAD: it would run `ensure` and send `protected_file_downloaded` for nothing served.
+    http_method_names = ["get", "options"]
 
     def get_authenticators(self) -> list[BaseAuthentication]:
         authenticators = super().get_authenticators()
@@ -85,6 +87,7 @@ class ProtectedFileTicketView(APIView):
     authentication_classes: list[type[BaseAuthentication]] = []
     permission_classes = [AllowAny]
     throttle_classes = [ProtectedDownloadThrottle]
+    http_method_names = ["get", "options"]  # see ProtectedFileDownloadView
 
     def get(self, request: Request, ticket: str) -> HttpResponse:
         try:
@@ -105,8 +108,10 @@ class ProtectedFileTicketView(APIView):
             raise PermissionDenied(STALE_LINK)
 
         obj = get_protected_object(spec, user, payload.get("o"))
-        # A file replaced since the link was minted is not the one it was minted for.
-        if (spec.get_field_file(obj).name or "") != payload.get("n", ""):
+        # A file replaced since the link was minted is not the one it was minted for. A link
+        # minted while nothing was stored names no file, so what `ensure` saves keeps it valid.
+        minted_name = payload.get("n", "")
+        if minted_name and (spec.get_field_file(obj).name or "") != minted_name:
             raise PermissionDenied(STALE_LINK)
         return serve_protected_file(spec, obj, request, user, via="ticket")
 
