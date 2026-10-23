@@ -141,6 +141,19 @@ class TestManage:
 
         assert excinfo.value.code == "invalid_status"
 
+    def test_a_stale_resend_does_not_reopen_an_accepted_claim(self, claims, placeholder) -> None:
+        invitation = claim(placeholder)
+        stale = ProfileUserRole.objects.get(pk=invitation.pk)
+        service.accept_invitation_with_signup(invitation.invitation_token, password=PASSWORD)
+
+        with pytest.raises(ProfileMembershipError) as excinfo:
+            service.resend_invitation(stale)
+
+        assert excinfo.value.code == "invalid_status"
+        invitation.refresh_from_db()
+        assert invitation.responded_at is not None
+        assert not service.is_member_claim(invitation)
+
     def test_cancel_clears_the_token_and_keeps_the_member(
         self, claims, placeholder, signal_recorder, django_capture_on_commit_callbacks
     ) -> None:

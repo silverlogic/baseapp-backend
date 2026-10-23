@@ -399,14 +399,21 @@ def resend_invitation(
     With history on, an invitation that has expired stays on record as EXPIRED and the
     resend opens a new row for the same person (returned in `invitations`).
     """
-    claim = is_member_claim(invitation)
-    if not claim and invitation.status not in [Status.EXPIRED, Status.PENDING]:
-        raise ProfileMembershipError(
-            _("Can only resend expired or pending invitations"), "invalid_status"
-        )
-    _ensure_resend_allowed(invitation)
-
     with transaction.atomic():
+        # Lock and re-read: the invitee may have answered since `invitation` was loaded, and
+        # saving the stale copy would reopen their answer with a fresh token.
+        if ProfileUserRole.objects.select_for_update().filter(pk=invitation.pk).first() is None:
+            raise ProfileMembershipError(
+                _("Can only resend expired or pending invitations"), "invalid_status"
+            )
+        invitation.refresh_from_db()
+        claim = is_member_claim(invitation)
+        if not claim and invitation.status not in [Status.EXPIRED, Status.PENDING]:
+            raise ProfileMembershipError(
+                _("Can only resend expired or pending invitations"), "invalid_status"
+            )
+        _ensure_resend_allowed(invitation)
+
         is_expired = invitation.status == Status.EXPIRED or invitation.is_invitation_expired()
         if claim:
             set_extra_fields(invitation, extra_fields)
