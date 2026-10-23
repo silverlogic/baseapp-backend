@@ -49,6 +49,10 @@ Nothing to do. The plugin entry-point in `pyproject.toml` registers
 and `*plugin_registry.get_all_graphql_mutations()`. `reportCreate` and
 `allReportTypes` show up automatically.
 
+`reportCreate` loads its target through the target type's `get_node`, the same check as
+`node(id)`, and refuses a target that returns `null` for the user (a private profile, a comment
+the user may not view), so a hidden object can't be reported or read back from the payload.
+
 ### Reporting counts on a model
 
 Reports counts are stored in `ReportableMetadata` (one row per `DocumentId`),
