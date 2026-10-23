@@ -1,11 +1,13 @@
 import channels_graphql_ws
 import graphene
 import swapper
+from channels.db import database_sync_to_async
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ObjectDoesNotExist
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
+app_label = Comment._meta.app_label
 CommentObjectType = Comment.get_graphql_object_type()
 
 
@@ -21,12 +23,13 @@ class OnCommentChange(channels_graphql_ws.Subscription):
         target_object_id = graphene.ID()
 
     @staticmethod
-    def subscribe(root, info, target_object_id=None) -> list[str]:
+    async def subscribe(root, info, target_object_id=None) -> list[str]:
         user = info.context.channels_scope.get("user", AnonymousUser())
         groups = []
 
         if not target_object_id:
-            if user.has_perm("baseapp_comments.view_all_comment"):
+            # Permission checks may hit the database, which is not allowed in the event loop.
+            if await database_sync_to_async(user.has_perm)(f"{app_label}.view_all_comments"):
                 return ["all"]
 
         CAN_ANONYMOUS_VIEW_COMMENTS = getattr(
