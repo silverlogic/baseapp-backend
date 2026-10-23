@@ -43,11 +43,10 @@ class EmailTemplate(TimeStampedModel):
         extensions=getattr(settings, "PROSE_EDITOR_EXTENSIONS", None),
         sanitize=getattr(settings, "PROSE_EDITOR_SANITIZE", False),
     )
-    plain_text_content = ProseEditorField(
+    # Plain text, never HTML: the prose sanitizer would escape "&" and "<".
+    plain_text_content = models.TextField(
         blank=True,
         help_text="Text that will be inputted into Template plain text version",
-        extensions=getattr(settings, "PROSE_EDITOR_EXTENSIONS", None),
-        sanitize=getattr(settings, "PROSE_EDITOR_SANITIZE", False),
     )
 
     class Meta:

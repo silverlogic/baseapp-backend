@@ -39,7 +39,6 @@ class EmailTemplateAdminForm(forms.ModelForm):
                     )
                 )
             self.fields["html_content"].widget = CKEditorWidget()
-            self.fields["plain_text_content"].widget = CKEditorWidget()
 
 
 class EmailTemplateAdmin(admin.ModelAdmin):
