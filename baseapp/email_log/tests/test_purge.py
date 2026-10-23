@@ -174,6 +174,30 @@ def test_retention_by_category_without_a_general_retention(settings) -> None:
     assert Message.objects.filter(email_log__isnull=True).count() == 1
 
 
+def test_retention_by_category_skips_categories_without_valid_days(settings) -> None:
+    # None is "no retention of its own"; an invalid value must not stop the other categories.
+    settings.BASEAPP_EMAIL_LOG_RETENTION_DAYS_BY_CATEGORY = {
+        "auth": 14,
+        "billing": None,
+        "reports": "30",
+    }
+    _send_days_ago(15, idempotency_key=None, category="auth")
+    kept = {
+        _send_days_ago(1000, idempotency_key=None, category="billing").pk,
+        _send_days_ago(1000, idempotency_key=None, category="reports").pk,
+    }
+
+    assert purge_email_logs() == _counts(deleted=1)
+    assert set(EmailLog.objects.values_list("pk", flat=True)) == kept
+
+
+def test_retention_by_category_that_is_not_a_dict_is_ignored(settings) -> None:
+    settings.BASEAPP_EMAIL_LOG_RETENTION_DAYS_BY_CATEGORY = [("auth", 14)]
+    _send_days_ago(15, idempotency_key=None, category="auth")
+
+    assert purge_email_logs() == NOTHING
+
+
 def test_dry_run_counts_and_changes_nothing(settings, attachment_storage: Path) -> None:
     from djmail.backends.default import EmailBackend as DjmailBackend
 

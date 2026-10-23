@@ -153,13 +153,30 @@ def retry_failed_emails() -> int:
     return sent
 
 
+def valid_retention_days(days: object) -> bool:
+    """A number of days a retention setting accepts: a non-negative integer."""
+    return isinstance(days, int) and not isinstance(days, bool) and days >= 0
+
+
 def _expired(older_than_days: Optional[int], by_category: dict[str, int]) -> Optional[Q]:
-    """Rows past the general retention or their category's, or ``None`` when neither is set."""
+    """
+    Rows past the general retention or their category's, or ``None`` when neither is set.
+    A category whose days are ``None`` has no retention of its own; one with an invalid
+    value is skipped (the ``baseapp_email_log.W002`` check reports it), so it cannot stop
+    the purge of the others.
+    """
     now = timezone.now()
     conditions = []
     if older_than_days is not None:
         conditions.append(Q(created__lt=now - timedelta(days=older_than_days)))
     for category, days in by_category.items():
+        if days is None:
+            continue
+        if not valid_retention_days(days):
+            logger.error(
+                "Skipping the email log retention of %r: %r is not a number of days", category, days
+            )
+            continue
         conditions.append(Q(category=category, created__lt=now - timedelta(days=days)))
     return reduce(operator.or_, conditions) if conditions else None
 
@@ -267,6 +284,9 @@ def purge_email_logs(
     if older_than_days is None:
         older_than_days = getattr(settings, "BASEAPP_EMAIL_LOG_RETENTION_DAYS", None)
     by_category = getattr(settings, "BASEAPP_EMAIL_LOG_RETENTION_DAYS_BY_CATEGORY", None) or {}
+    if not isinstance(by_category, dict):
+        logger.error("BASEAPP_EMAIL_LOG_RETENTION_DAYS_BY_CATEGORY is not a dict; ignoring it")
+        by_category = {}
     counts = {"deleted": 0, "scrubbed": 0, "unlogged_messages": 0}
     expired = _expired(older_than_days, by_category)
     if expired is None:
