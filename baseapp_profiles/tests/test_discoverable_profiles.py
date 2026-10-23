@@ -1,6 +1,7 @@
 import pytest
 import swapper
 
+from baseapp_profiles.checks import discoverable_profiles_filter_errors
 from baseapp_profiles.discoverability import (
     filter_discoverable_profiles,
     get_discoverable_profiles_filter,
@@ -177,3 +178,30 @@ def test_filter_discoverable_profiles_helper(settings) -> None:
     assert list(filter_discoverable_profiles(queryset, user)) == [shown]
     assert seen_users == [user]
 
+
+def test_system_check_accepts_no_filter_and_valid_filters(settings) -> None:
+    assert discoverable_profiles_filter_errors() == []
+
+    settings.BASEAPP_PROFILES_DISCOVERABLE_PROFILES_FILTER = HOOK_PATH
+    assert discoverable_profiles_filter_errors() == []
+
+    settings.BASEAPP_PROFILES_DISCOVERABLE_PROFILES_FILTER = hide_hidden_profiles
+    assert discoverable_profiles_filter_errors() == []
+
+
+def test_system_check_reports_a_wrong_dotted_path(settings) -> None:
+    settings.BASEAPP_PROFILES_DISCOVERABLE_PROFILES_FILTER = (
+        "baseapp_profiles.tests.test_discoverable_profiles.no_such_filter"
+    )
+
+    errors = discoverable_profiles_filter_errors()
+
+    assert [error.id for error in errors] == ["baseapp_profiles.E001"]
+
+
+def test_system_check_reports_a_value_that_is_not_callable(settings) -> None:
+    settings.BASEAPP_PROFILES_DISCOVERABLE_PROFILES_FILTER = 42
+
+    errors = discoverable_profiles_filter_errors()
+
+    assert [error.id for error in errors] == ["baseapp_profiles.E002"]

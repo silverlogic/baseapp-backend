@@ -162,7 +162,8 @@ def discoverable_profiles(queryset, user):
 
 The setting takes a dotted path (or the callable itself) to `callable(queryset, user) -> queryset`.
 `user` is the requesting user and may be anonymous. The default, `None`, leaves `allProfiles`
-as it is.
+as it is. A dotted path that cannot be imported, or a value that is not callable, fails the
+Django system checks at startup (`baseapp_profiles.E001` / `E002`).
 
 - It only narrows. The filter runs first on all profiles; `ProfileObjectType.get_queryset`
   (the `PUBLIC`-or-own rule), `q` and `orderBy` still apply on top, so returning everything
@@ -170,7 +171,7 @@ as it is.
 - It applies to `allProfiles` only. `profile(id)`, `node(id)` and nested profile fields
   (chat participants, notification actors, comment authors) do not pass through it, so
   existing conversations and activity keep rendering a profile the user can no longer find.
-  Use the `view_profile` permission to hide a profile everywhere.
+  Use the `view_profile` permission to block fetching a profile by id.
 - Your own code can apply the same rule, for example in a permission backend that decides
   who may start a chat:
 
