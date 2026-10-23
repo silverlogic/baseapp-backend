@@ -1,8 +1,7 @@
-import importlib
-
 import pytest
-from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
 
 from baseapp.email_log.models import get_email_log_model
 from baseapp.email_log.services import log_channel_message, send_logged
@@ -36,13 +35,29 @@ def test_deleting_a_row_drops_its_public_id() -> None:
     assert not _document_ids().exists()
 
 
+@pytest.mark.django_db(transaction=True)
 def test_migration_backfills_rows_written_before_it() -> None:
-    log = send_logged(make_email(), idempotency_key=None)
-    _document_ids().delete()
+    """
+    Migrate the active model's app back to before its DocumentId migration, write a row
+    there (no trigger registers it), and migrate forward: the backfill, which runs on
+    historical models, gives the row its public id.
+    """
+    app_label = EmailLog._meta.app_label
+    before = [(app_label, "0001_initial")]
+    executor = MigrationExecutor(connection)
+    latest = [node for node in executor.loader.graph.leaf_nodes() if node[0] == app_label]
+    executor.migrate(before)
+    try:
+        OldEmailLog = executor.loader.project_state(before).apps.get_model(app_label, "EmailLog")
+        row = OldEmailLog.objects.create(channel="sms", delivery_to="+1")
+        assert not _document_ids().filter(object_id=row.pk).exists()
 
-    migration = importlib.import_module(
-        f"{EmailLog.__module__.rsplit('.', 1)[0]}.migrations.0002_emaillog_document_id"
-    )
-    migration.backfill_document_ids(apps, None)
+        executor = MigrationExecutor(connection)
+        executor.migrate(latest)
+    finally:
+        executor = MigrationExecutor(connection)
+        executor.migrate(latest)
 
-    assert EmailLog.get_by_public_id(_document_ids().get().public_id) == log
+    ContentType.objects.clear_cache()
+    log = EmailLog.objects.get(pk=row.pk)
+    assert EmailLog.get_by_public_id(_document_ids().get(object_id=row.pk).public_id) == log
