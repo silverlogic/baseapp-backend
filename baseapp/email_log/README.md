@@ -13,6 +13,7 @@ holding what djmail does not keep:
 - an idempotency key, so an email is sent once per key
 - the channel: rows for SMS and other channels, which never go through djmail, carry their own
   text and delivery state
+- a public id (`DocumentIdMixin`), so an API can address a row without its integer key
 
 It also makes transport errors visible (djmail records them but leaves the message a draft
 that is never retried), schedules djmail's retry, purges old rows, and adds an admin with a
@@ -112,8 +113,9 @@ log = get_email_log(email)  # the row written for it
 
 `context` is stored as JSON; values JSON cannot hold (model instances, ...) are stored as
 their `str()`, with a warning logged, so a renderer re-rendering from it gets the string:
-pass primary keys or plain dicts instead. Keep secrets such as one-time tokens out of it, or purge rows regularly (see
-below): the context is kept so the message can be re-rendered.
+pass primary keys or plain dicts instead. Keep secrets such as one-time tokens out of it, or
+set a retention (see below), which clears it with the rest of the row's content: the context
+is kept only so the message can be re-rendered.
 
 ## Sending once: idempotency keys
 
@@ -176,6 +178,36 @@ storage is set). A file that fails to save is logged and described without a pat
 stops the email. Files are saved when the message is written, so they stay behind if the
 caller's transaction then rolls back.
 
+To read an attachment wherever it still is, use `read_attachment`:
+
+```python
+from baseapp.email_log.attachments import read_attachment
+
+attachment = read_attachment(log, 0)  # index in log.attachments
+if attachment is not None:
+    filename, content, content_type = attachment
+```
+
+It reads djmail's pickled message first (`log.get_email_message()`), then the attachment
+storage, and returns `None` when neither holds the file: the index is out of range, or the
+djmail message is gone and the file was not stored (or was deleted).
+
+### One copy of each attachment
+
+djmail's pickled message already holds every attachment, so storing them as well keeps two
+copies. Leave `BASEAPP_EMAIL_LOG_STORE_ATTACHMENTS` off and set a retention, and djmail's
+pickle is the single copy, removed with the message by the purge:
+
+```python
+BASEAPP_EMAIL_LOG_STORE_ATTACHMENTS = False  # the default
+BASEAPP_EMAIL_LOG_RETENTION_DAYS = 90
+```
+
+`read_attachment` and `resend` read from the pickle, so downloads and resends keep working
+until the purge. Turn storing on only when files must outlive djmail's message (djmail's
+own `djmail_delete_old_messages` runs with a shorter period, say) or must be served without
+unpickling. Rows written while storing was on keep their stored copy until they are purged.
+
 ## Resending
 
 ```python
@@ -185,7 +217,14 @@ copy = resend(log, sent_by=request.user)  # copy.resend_of == log
 ```
 
 `resend` sends a new djmail message with a new row, copying the template, context,
-category and related object. By default it sends djmail's stored message again as it was.
+category and related object. By default it sends the original again as it was (see
+`email_message_for` below). Pass `to` to send it to other addresses; it replaces the To
+recipients and keeps cc and bcc:
+
+```python
+copy = resend(log, to=["new-address@example.com"], sent_by=request.user)
+```
+
 To re-render from the template and stored context instead, configure a renderer:
 
 ```python
@@ -195,8 +234,23 @@ BASEAPP_EMAIL_LOG_RENDERER = "myproject.emails.render_logged_email"
 
 Keys the renderer leaves out fall back to the original message. Recipients, cc, bcc and
 reply-to come from the row; attachments from djmail's stored message, or, once that is gone,
-from the attachment storage. `ResendError` is raised for rows of other channels and when
-the djmail message is gone and there is no renderer.
+from the attachment storage.
+
+Without a renderer, the email comes from `email_message_for(log)`, which returns djmail's
+pickled message while it is there. Otherwise (a row whose djmail message has no pickle, such
+as one imported from an older outbox) it rebuilds the email from djmail's columns (subject,
+bodies, from), the row's To, cc, bcc and reply-to, and the stored attachments; custom headers
+are then lost. Use it to hand a logged email to other code, such as a delivery tool:
+
+```python
+from baseapp.email_log.services import email_message_for
+
+email = email_message_for(log)  # a django.core.mail.EmailMessage
+```
+
+`ResendError` is raised for rows of other channels, for an empty `to`, when the djmail
+message is gone and there is no renderer, and when the email is rebuilt and an attachment
+the row lists cannot be read.
 
 The admin offers the same as a "Resend the selected emails" action.
 
@@ -225,7 +279,7 @@ Two Celery tasks, contributed to the plugin registry's beat schedules:
 | Task | Default schedule | What it does |
 |---|---|---|
 | `baseapp.email_log.tasks.retry_failed_emails` | every 15 minutes | djmail's periodic pass: discard messages that failed more than `DJMAIL_MAX_RETRY_NUMBER` (default 3) times, then send pending low-priority messages and retry the other failed ones. Covers every djmail message, logged or not. It also sends logged messages still drafts `BASEAPP_EMAIL_LOG_STALE_DRAFT_MINUTES` after they were written (a Celery task that was lost, a process that died before queueing it). |
-| `baseapp.email_log.tasks.purge_email_logs` | daily | Delete rows older than `BASEAPP_EMAIL_LOG_RETENTION_DAYS` with their djmail messages and stored attachments, plus djmail messages that old with no row. No-op while the setting is `None` (the default). |
+| `baseapp.email_log.tasks.purge_email_logs` | daily | Delete rows older than the retention with their djmail messages and stored attachments, plus djmail messages that old with no row, and scrub old rows that hold an idempotency key. No-op while no retention is set (the default). |
 
 Each message is locked while it is delivered and skipped if it is no longer eligible, so a
 retry run overlapping another run, or the Celery worker, never sends a message twice. A
@@ -234,9 +288,30 @@ message is attempted at most once per run: one that fails is retried by the next
 The purge deletes every djmail message older than the retention, including messages sent
 before the log was installed or through plain djmail, which have no row.
 
-Rows with an idempotency key are kept by the purge, so their keys keep blocking duplicate
-sends, unless `BASEAPP_EMAIL_LOG_PURGE_IDEMPOTENT = True`. `purge_email_logs(older_than_days=N)`
-overrides the setting for one run.
+Rows with an idempotency key are not deleted, so their keys keep blocking duplicate sends.
+They are scrubbed instead: their djmail message and stored attachments are deleted (the
+row's `message` becomes empty), and their context and channel text are cleared. Who, what
+and when remain: recipients, template, category, related object, sender, dates, the
+attachment names and sizes, and the key. `BASEAPP_EMAIL_LOG_PURGE_IDEMPOTENT = True` deletes
+them like any other row.
+
+Some emails deserve a shorter life than the rest (password-reset links, one-time codes).
+Give their categories their own retention:
+
+```python
+BASEAPP_EMAIL_LOG_RETENTION_DAYS = 90
+BASEAPP_EMAIL_LOG_RETENTION_DAYS_BY_CATEGORY = {"password_reset": 14, "mfa": 14}
+```
+
+A row is purged once it is past either period, so a category can shorten the retention but
+not lengthen it. The categories apply on their own when `BASEAPP_EMAIL_LOG_RETENTION_DAYS`
+is `None`; djmail messages without a row have no category and are purged by the general
+retention only.
+
+`purge_email_logs` returns the counts `{"deleted": ..., "scrubbed": ..., "unlogged_messages":
+...}`. `purge_email_logs(older_than_days=N)` overrides `BASEAPP_EMAIL_LOG_RETENTION_DAYS` for
+one run, and `purge_email_logs(dry_run=True)` returns what it would purge without changing
+anything; run it before enabling the schedule on a database with history.
 
 Projects that build `CELERY_BEAT_SCHEDULE` from the registry get both:
 
@@ -274,7 +349,8 @@ project scheduled it, since it would leave transport errors uncounted.
 | `BASEAPP_EMAIL_LOG_STORE_ATTACHMENTS` | `False` | Save attachments to the storage below |
 | `BASEAPP_EMAIL_LOG_ATTACHMENT_STORAGE` | `None` (`default_storage`) | `STORAGES` alias, or dotted path of a storage class or factory |
 | `BASEAPP_EMAIL_LOG_RETENTION_DAYS` | `None` (keep) | Age in days after which `purge_email_logs` deletes rows |
-| `BASEAPP_EMAIL_LOG_PURGE_IDEMPOTENT` | `False` | Let the purge delete rows holding an idempotency key |
+| `BASEAPP_EMAIL_LOG_RETENTION_DAYS_BY_CATEGORY` | `{}` | `{category: days}`, a shorter retention for some categories; applies also while `BASEAPP_EMAIL_LOG_RETENTION_DAYS` is `None` |
+| `BASEAPP_EMAIL_LOG_PURGE_IDEMPOTENT` | `False` (scrub them) | Let the purge delete rows holding an idempotency key instead of scrubbing them |
 | `BASEAPP_EMAIL_LOG_STALE_DRAFT_MINUTES` | `30` | Age after which `retry_failed_emails` sends a logged message still a draft; `None` leaves drafts alone |
 | `BASEAPP_EMAIL_LOG_RENDERER` | `None` | Callable or dotted path re-rendering a template on resend |
 | `DJMAIL_REAL_BACKEND`, `DJMAIL_MAX_RETRY_NUMBER` | djmail's | Unchanged meaning |
@@ -302,9 +378,32 @@ class EmailLog(AbstractEmailLog):
 BASEAPP_EMAIL_LOG_EMAILLOG_MODEL = "myapp.EmailLog"
 ```
 
+The abstract model extends `DocumentIdMixin`, so `makemigrations` adds the DocumentId
+triggers to your model. Rows that exist before that migration need their public ids
+backfilled: add a `RunPython` to it, as the package's own `0002_emaillog_document_id` does:
+
+```python
+def backfill_document_ids(apps, schema_editor):
+    from baseapp_core.backfill import backfill_model_document_ids
+
+    backfill_model_document_ids(
+        model=apps.get_model("myapp", "EmailLog"),
+        DocumentId=apps.get_model("baseapp_core", "DocumentId"),
+    )
+```
+
 Package code always loads the active model with `get_email_log_model()`
 (`swapper.load_model("baseapp_email_log", "EmailLog")`); do the same. To fill custom
 columns, set them on `get_email_log(email)` after sending, or subclass the backend.
+
+## Public ids
+
+Rows are documents of `baseapp_core`'s `DocumentId` registry: `log.public_id` is a UUID, and
+`get_email_log_model().get_by_public_id(public_id)` finds the row, so a REST or GraphQL
+surface can expose rows without their integer keys. The triggers that keep the registry in
+step are added by migration `0002_emaillog_document_id`, which also backfills rows written
+before it. With `ENABLE_PUBLIC_ID_LOGIC = False`, `public_id` is the integer key, as for
+every other documentable model.
 
 ## Admin
 
