@@ -206,6 +206,23 @@ def test_resend_reattaches_stored_files_when_the_message_is_gone(
     assert mail.outbox[-1].attachments == [("invoice.pdf", b"%PDF", "application/pdf")]
 
 
+def test_re_rendering_skips_stored_files_that_are_missing(
+    settings, attachment_storage: Path
+) -> None:
+    settings.BASEAPP_EMAIL_LOG_RENDERER = "baseapp.email_log.tests.helpers.render_template"
+    email = make_email()
+    email.attach("invoice.pdf", b"%PDF", "application/pdf")
+    log = send_logged(email, idempotency_key=None, template="invoices/paid", context={})
+    Message.objects.filter(pk=log.message_id).delete()
+    log.refresh_from_db()
+    (attachment_storage / log.attachments[0]["path"]).unlink()
+
+    copy = resend(log)
+
+    assert copy.subject.startswith("[invoices/paid]")
+    assert mail.outbox[-1].attachments == []
+
+
 def test_other_channels_cannot_be_resent() -> None:
     log = log_channel_message(channel="sms", to="+1", body_text="x")
     with pytest.raises(ResendError):

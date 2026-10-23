@@ -15,7 +15,7 @@ from django.utils.module_loading import import_string
 from djmail import core as djmail_core
 from djmail.models import Message
 
-from .attachments import describe_attachments, read_attachment, read_stored_attachment
+from .attachments import describe_attachments, read_attachment
 from .models import get_email_log_model
 from .status import EmailLogStatus
 
@@ -392,10 +392,11 @@ def _attach_from(
     if original is not None:
         email.attachments = list(original.attachments)
         return
-    for entry in log.attachments or []:
-        content = read_stored_attachment(entry)
-        if content is not None:
-            email.attach(entry.get("name") or None, content, entry.get("content_type"))
+    # A re-rendered email goes out without the files that are no longer stored.
+    for index in range(len(log.attachments or [])):
+        attachment = read_attachment(log, index)
+        if attachment is not None:
+            email.attach(*attachment)
 
 
 def email_message_for(log: "AbstractEmailLog") -> EmailMessage:
