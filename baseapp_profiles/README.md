@@ -141,7 +141,44 @@ When `baseapp_pages` is installed, each profile owns a URL handle (e.g. `/jonath
 | Field | Description |
 |---|---|
 | `profile(id)` | RelayNode fetch of a single `Profile`. `get_node` enforces `view_profile`. |
-| `allProfiles` | Filterable connection of profiles (`ProfileFilter`). Non-superusers only see `PUBLIC` profiles plus their own. |
+| `allProfiles` | Filterable connection of profiles (`ProfileFilter`). Non-superusers only see `PUBLIC` profiles plus their own. A project can narrow it further with [`BASEAPP_PROFILES_DISCOVERABLE_PROFILES_FILTER`](#limiting-which-profiles-can-be-found). |
+
+### Limiting which profiles can be found
+
+`allProfiles` is the list and search surface the frontend uses to find people: the chat
+"new message" and group pickers, member invite search and mentions all query it. A project
+whose rules for who can find whom go beyond `PUBLIC`/`PRIVATE` sets a filter:
+
+```python
+# settings.py
+BASEAPP_PROFILES_DISCOVERABLE_PROFILES_FILTER = "apps.directory.discoverability.discoverable_profiles"
+
+# apps/directory/discoverability.py
+def discoverable_profiles(queryset, user):
+    if user.is_authenticated and user.is_staff:
+        return queryset
+    return queryset.filter(is_listed=True)
+```
+
+The setting takes a dotted path (or the callable itself) to `callable(queryset, user) -> queryset`.
+`user` is the requesting user and may be anonymous. The default, `None`, leaves `allProfiles`
+as it is.
+
+- It only narrows. The filter runs first on all profiles; `ProfileObjectType.get_queryset`
+  (the `PUBLIC`-or-own rule), `q` and `orderBy` still apply on top, so returning everything
+  never exposes a private profile.
+- It applies to `allProfiles` only. `profile(id)`, `node(id)` and nested profile fields
+  (chat participants, notification actors, comment authors) do not pass through it, so
+  existing conversations and activity keep rendering a profile the user can no longer find.
+  Use the `view_profile` permission to hide a profile everywhere.
+- Your own code can apply the same rule, for example in a permission backend that decides
+  who may start a chat:
+
+  ```python
+  from baseapp_profiles.discoverability import filter_discoverable_profiles
+
+  filter_discoverable_profiles(Profile.objects.filter(pk=target.pk), user).exists()
+  ```
 
 ### Mutations (`ProfilesMutations`)
 
