@@ -493,9 +493,9 @@ and set them through `extra_fields` on `send_invitations`, `resend_invitation`,
 `add_members`, `update_member` and `deactivate_member`.
 
 To take them from the API, subclass the mutation, extend its `BaseInput`, return the values
-from `extra_fields_from_input`, and register it under the same field. The GraphQL type
-names (`ProfileSendInvitationInput`, `ProfileSendInvitationPayload`) stay the same, so
-clients only see the new input fields:
+from `extra_fields_from_input`, set `Meta.keep_type_names`, and register it under the same
+field. The GraphQL type names (`ProfileSendInvitationInput`,
+`ProfileSendInvitationPayload`) stay the same, so clients only see the new input fields:
 
 ```python
 # apps/members/graphql/mutations.py
@@ -506,6 +506,9 @@ from baseapp_profiles.graphql.mutations import ProfileSendInvitation
 class SendInvitation(ProfileSendInvitation):
     class Input(ProfileSendInvitation.BaseInput):
         title = graphene.String()
+
+    class Meta:
+        keep_type_names = True  # ProfileSendInvitationInput / ProfileSendInvitationPayload
 
     @classmethod
     def extra_fields_from_input(cls, info, input) -> dict:
@@ -520,7 +523,11 @@ class Mutation(graphene.ObjectType, *mutations):
 `ProfileSendInvitation`, `ProfileUserRoleCreate`, `ProfileUserRoleUpdate` and
 `ProfileMemberDeactivate` support this (they derive from
 `baseapp_profiles.graphql.mutations.ExtensibleMutation`). A subclass that declares no
-`Input` keeps the base one; set `Meta.name` to give it different type names.
+`Input` keeps the base one. Without `keep_type_names` a subclass is named after its own
+class, as graphene does (`SendInvitationInput`, `SendInvitationPayload`), so subclasses that
+predate `ExtensibleMutation` keep their names. Register a subclass that keeps the type names
+*instead of* its parent, never next to it: graphene keeps the first type of a name and would
+drop the extended input.
 
 ### Signals
 

@@ -1,6 +1,7 @@
 """
 Project columns on `ProfileUserRole`: `extra_fields` on the services, and mutations a project
-subclasses (`ExtensibleMutation`) to accept more input under the same schema names.
+subclasses (`ExtensibleMutation`) to accept more input, under the same schema names when
+they opt in.
 
 The testproject's concrete model has no project columns, so these tests use the spare
 `email` column the abstract model declares.
@@ -145,6 +146,9 @@ class ProjectSendInvitation(ProfileSendInvitation):
     class Input(ProfileSendInvitation.BaseInput):
         contact_email = graphene.String()
 
+    class Meta:
+        keep_type_names = True
+
     @classmethod
     def extra_fields_from_input(cls, info, input) -> dict:
         return {"email": input.get("contact_email")}
@@ -154,6 +158,9 @@ class ProjectUserRoleCreate(ProfileUserRoleCreate):
     class Input(ProfileUserRoleCreate.BaseInput):
         contact_email = graphene.String()
 
+    class Meta:
+        keep_type_names = True
+
     @classmethod
     def extra_fields_from_input(cls, info, input) -> dict:
         return {"email": input.get("contact_email")}
@@ -161,6 +168,9 @@ class ProjectUserRoleCreate(ProfileUserRoleCreate):
 
 class ProjectUserRoleUpdate(ProfileUserRoleUpdate):
     """Declares no Input: inherits the base one as is."""
+
+    class Meta:
+        keep_type_names = True
 
     @classmethod
     def extra_fields_from_input(cls, info, input) -> dict:
@@ -170,6 +180,9 @@ class ProjectUserRoleUpdate(ProfileUserRoleUpdate):
 class ProjectMemberDeactivate(ProfileMemberDeactivate):
     class Input(ProfileMemberDeactivate.BaseInput):
         contact_email = graphene.String()
+
+    class Meta:
+        keep_type_names = True
 
     @classmethod
     def extra_fields_from_input(cls, info, input) -> dict:
@@ -219,6 +232,45 @@ class TestProjectMutations:
             "contact_email",
         }
         assert "role_type" in ProjectUserRoleUpdate.Input._meta.fields
+
+    def test_a_subclass_keeps_its_own_type_names_by_default(self) -> None:
+        """A subclass written before `ExtensibleMutation` existed keeps graphene's naming."""
+
+        class OrgMemberCreate(ProfileUserRoleCreate):
+            class Input(ProfileUserRoleCreate.BaseInput):
+                title = graphene.String()
+
+        class SideBySide(graphene.ObjectType):
+            profile_user_role_create = ProfileUserRoleCreate.Field()
+            org_member_create = OrgMemberCreate.Field()
+
+        sdl = str(graphene.Schema(query=Query, mutation=SideBySide))
+
+        assert "orgMemberCreate(input: OrgMemberCreateInput!): OrgMemberCreatePayload" in sdl
+        assert (
+            "profileUserRoleCreate(input: ProfileUserRoleCreateInput!): "
+            "ProfileUserRoleCreatePayload"
+        ) in sdl
+        org_input = sdl[sdl.index("input OrgMemberCreateInput {") :]
+        assert "title: String" in org_input[: org_input.index("}")]
+        base_input = sdl[sdl.index("input ProfileUserRoleCreateInput {") :]
+        assert "title" not in base_input[: base_input.index("}")]
+
+    def test_a_subclass_without_input_keeps_its_own_type_names_by_default(self) -> None:
+        class OrgMemberUpdate(ProfileUserRoleUpdate):
+            pass
+
+        assert OrgMemberUpdate._meta.name == "OrgMemberUpdatePayload"
+        assert OrgMemberUpdate.Input._meta.name == "OrgMemberUpdateInput"
+
+    def test_kept_type_names_carry_down_a_chain_of_subclasses(self) -> None:
+        class Further(ProjectSendInvitation):
+            class Meta:
+                keep_type_names = True
+
+        assert Further._meta.name == "ProfileSendInvitationPayload"
+        assert Further.Input._meta.name == "ProfileSendInvitationInput"
+        assert "contact_email" in Further.Input._meta.fields
 
     def test_the_base_mutations_add_no_extra_fields(self) -> None:
         assert ProfileSendInvitation.extra_fields_from_input(None, {"contact_email": "x"}) == {}
