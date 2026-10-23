@@ -256,16 +256,12 @@ class ProfilesInterface(RelayNode):
 
     def resolve_profiles(self, info, **kwargs) -> "QuerySet[Profile]":
         if info.context.user.is_authenticated and info.context.user == self:
-            # distinct() is required: the OR spans the to-many `members` relation, so the
-            # JOIN returns one row per member and would otherwise duplicate an owned profile
-            # once per member (e.g. every time someone is invited).
-            return (
-                Profile.objects.filter(
-                    Q(owner_id=info.context.user.id) | Q(members__user_id=info.context.user.id)
-                )
-                .distinct()
-                .order_by("name")
-            )
+            # The profiles the user can switch to: their own and those they are an ACTIVE
+            # member of. A pending, declined or deactivated membership grants no
+            # `use_profile`, so it is not offered.
+            return Profile.objects.filter(
+                Q(owner_id=info.context.user.id) | active_membership_subquery(info.context.user)
+            ).order_by("name")
         return Profile.objects.none()
 
 
