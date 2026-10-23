@@ -6,6 +6,7 @@ from django.core.signals import setting_changed
 from django.dispatch import receiver
 from django.utils.functional import LazyObject, empty
 
+from .alias import AliasStorage  # noqa: F401  (public API)
 from .base import BaseUploadHandler
 
 DEFAULT_FILES_STORAGE_ALIAS = "default"
