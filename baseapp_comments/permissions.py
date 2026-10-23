@@ -29,6 +29,11 @@ class CommentsPermissionsBackend(BaseBackend):
             # backend to restrict a target. When a comment is the target, obj is that comment.
             return True
 
+        if perm == f"{app_label}.publish_comment_activity":
+            # Whether creating, editing or pinning a comment on the target (obj) is logged as a
+            # public activity in baseapp.activity_log. Deny it where comments are private.
+            return True
+
         if perm == f"{app_label}.view_comment":
             if not obj:
                 # Anyone can view a comment

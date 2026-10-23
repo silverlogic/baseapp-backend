@@ -183,6 +183,22 @@ When a comment is itself the target of comments (its replies), `obj` is that com
 restricted targets allow replies, deny those too, for example by walking up with
 `while isinstance(obj, Comment): obj = obj.target`, or refuse `reply_comment` on them.
 
+### Keeping comment activity private
+
+With `baseapp.activity_log` installed, `commentCreate`, `commentUpdate` and `commentPin` log their
+activity as public, so anyone can list it in `activityLogs`, including the change diff of the
+comment. Deny `baseapp_comments.publish_comment_activity` for a target (`obj` is the target) to keep
+that activity private. It is checked only after the mutation's own permission checks pass, and is
+granted by default. Restricted targets usually deny both permissions:
+
+```python
+class MyCommentsPermissionsBackend(CommentsPermissionsBackend):
+    def has_perm(self, user_obj, perm, obj=None):
+        if perm == "baseapp_comments.publish_comment_activity" and isinstance(obj, Account):
+            return False
+        return super().has_perm(user_obj, perm, obj)
+```
+
 ## How to Develop
 
 General development instructions can be found in the [main README](../README.md#how-to-develop).

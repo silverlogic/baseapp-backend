@@ -3,6 +3,7 @@ import swapper
 from django import forms
 from django.apps import apps
 from django.conf import settings
+from django.db.models import Model
 from django.utils.translation import gettext_lazy as _
 from graphene_django.forms.mutation import _set_errors_flag_to_context
 from graphene_django.types import ErrorType
@@ -21,6 +22,17 @@ from .object_types import CommentsInterface
 Comment = swapper.load_model("baseapp_comments", "Comment")
 app_label = Comment._meta.app_label
 CommentObjectType = Comment.get_graphql_object_type()
+
+
+def _set_public_activity(info: graphene.ResolveInfo, verb: str, target: Model | None) -> None:
+    """Log the mutation as a public activity, unless the target's comment activity is private.
+
+    Call it only after the permission checks, so a refused mutation is never made public.
+    """
+    if not info.context.user.has_perm(f"{app_label}.publish_comment_activity", target):
+        return
+    if service := shared_services.get("activity_log"):
+        service.set_public_activity(verb=verb)
 
 
 class CommentForm(forms.ModelForm):
@@ -45,9 +57,6 @@ class CommentCreate(RelayMutation):
     @login_required
     def mutate_and_get_payload(cls, root, info, **input) -> "CommentCreate":
         activity_name = f"{app_label}.add_comment"
-
-        if service := shared_services.get("activity_log"):
-            service.set_public_activity(verb=activity_name)
 
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
 
@@ -83,6 +92,8 @@ class CommentCreate(RelayMutation):
                     str(_("You don't have permission to perform this action")),
                     extensions={"code": "permission_required"},
                 )
+
+        _set_public_activity(info, activity_name, target)
 
         mentioned_profile_ids = input.pop("mentioned_profile_ids", None) or []
         form = CommentForm(instance=comment, data=input)
@@ -134,8 +145,7 @@ class CommentUpdate(RelayMutation):
                 extensions={"code": "permission_required"},
             )
 
-        if service := shared_services.get("activity_log"):
-            service.set_public_activity(verb=activity_name)
+        _set_public_activity(info, activity_name, comment.target)
 
         comment.is_edited = True
 
@@ -180,8 +190,7 @@ class CommentPin(RelayMutation):
                 extensions={"code": "permission_required"},
             )
 
-        if service := shared_services.get("activity_log"):
-            service.set_public_activity(verb=activity_name)
+        _set_public_activity(info, activity_name, comment.target)
 
         MAX_PINS_PER_THREAD = getattr(settings, "BASEAPP_COMMENTS_MAX_PINS_PER_THREAD", None)
         if MAX_PINS_PER_THREAD is not None:
