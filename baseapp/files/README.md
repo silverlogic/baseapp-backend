@@ -14,6 +14,7 @@ REST API endpoints for S3 direct multipart uploads, allowing clients to upload l
   - [API Endpoints](#api-endpoints)
 - [Client Implementation](#client-implementation)
 - [Private Files and Anonymous Uploads](#private-files-and-anonymous-uploads)
+- [Protected Downloads](#protected-downloads)
 - [Background Tasks](#background-tasks)
 - [Troubleshooting](#troubleshooting)
 - [Advanced Topics](#advanced-topics)
@@ -650,6 +651,177 @@ ownership since no user owns the file:
 Anonymous uploads never attached are deleted after `BASEAPP_FILES_UNCLAIMED_ANONYMOUS_MAX_AGE`
 by `cleanup_unclaimed_anonymous_files`. It locks and re-checks each file before deleting it, and
 attaching locks the same rows, so a file attached meanwhile is kept.
+
+## Protected Downloads
+
+`baseapp.files.downloads` serves **model file fields** (an invoice PDF, a certificate, an
+import sheet: any `FileField`/`ImageField`, not only `File`) through the app instead of their
+storage URL, and checks the viewer's access **on every request**. Signed storage URLs (above)
+let anyone holding the link open the file; a protected download does not.
+
+Nothing changes until a project registers a field: the endpoints are mounted by the files
+plugin (or by hand, below) but serve only registered fields.
+
+### Registering a field
+
+From `AppConfig.ready()`:
+
+```python
+from baseapp.files.downloads import Gone, protected_files
+
+
+def check_not_revoked(user, certificate):
+    if certificate.revoked_at:
+        raise Gone()
+
+
+class BillingConfig(AppConfig):
+    def ready(self):
+        protected_files.register(
+            "billing.Invoice",
+            "pdf",
+            filename=lambda invoice: f"{invoice.number}.pdf",
+            ensure=lambda invoice: render_invoice_pdf(invoice),  # missing file: rebuild it
+        )
+        protected_files.register(
+            "events.Certificate",
+            "html",
+            disposition="inline",
+            csp="sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:",
+            check=check_not_revoked,
+        )
+```
+
+| Argument | Default | |
+|---|---|---|
+| `key` | `"<app>.<model>.<field>"` | Identifies the field in URLs and GraphQL |
+| `permission` | `"<app>.view_<model>"` | Checked as `user.has_perm(permission, obj)`; `False` skips it |
+| `check` | `None` | `callable(user, obj)` run after the permission. Raise DRF `PermissionDenied` / `NotAuthenticated` / `NotFound` (with your own `code`) or `Gone` (410); they reach the client as they are |
+| `queryset` | all objects | `callable(user)`: objects outside it answer 404 instead of 403 |
+| `lookup_field` | `"pk"` | What `objectId` matches; `"public_id"` works on `DocumentIdMixin` models |
+| `filename` | stored base name | Download name: a `callable(obj)` or a literal |
+| `content_type` | allowlisted type of the name | A `callable(obj)` or a literal; unknown types are `application/octet-stream` |
+| `disposition` | `"attachment"` | `"inline"` is honoured for types browsers display without running script (images, PDF, audio, video), or when `csp` is given |
+| `csp` | `"sandbox; default-src 'none'"` on inline responses | Content-Security-Policy of inline responses |
+| `ensure` | `None` | `callable(obj)` returning a `FieldFile`, a file or bytes when nothing is stored, to regenerate or derive the content |
+| `cache_control` | `"private, no-store"` | |
+
+A system check reports a registration whose field does not exist (`baseapp_files.E010`), is
+not a file field (`E011`), or whose `lookup_field` does not exist (`E012`).
+
+Every response carries `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, the
+`Cache-Control` above and a `Content-Disposition` whose name is stripped of path components and
+control characters. Note that browsers may refuse to display a PDF under a `sandbox` CSP; give
+inline PDFs their own `csp` (or serve them as attachments).
+
+### Endpoints
+
+Both live in `baseapp.files.downloads.urls`, a separate include so a project that leaves the
+upload API unmounted can mount only these. The files plugin's `v1_urlpatterns` mount them at
+`/v1/files/protected/`; elsewhere:
+
+```python
+v1_urlpatterns += [re_path(r"^files/protected/", include("baseapp.files.downloads.urls"))]
+BASEAPP_FILES_PROTECTED_DOWNLOADS_URL = "/v1/files/protected/"  # where it is mounted
+```
+
+- `GET /v1/files/protected/{key}/{objectId}`: for a caller authenticated by the project's
+  `DEFAULT_AUTHENTICATION_CLASSES` (JWT, token...) or the session, so admin links work. It
+  honours the `Current-Profile` header like `CurrentProfileMixin`. 401 anonymous, 404 unknown
+  or outside `queryset`, 403 without access, then whatever `check` raises.
+- `GET /v1/files/protected/t/{ticket}`: a **download link**, minted with the GraphQL mutation
+  below. The ticket is the only credential, so the link opens natively (a new tab, a download)
+  without an `Authorization` header.
+
+### Download links
+
+```graphql
+mutation {
+  protectedFileLink(input: { key: "billing.invoice.pdf", objectId: "42" }) {
+    url        # absolute link to /v1/files/protected/t/{ticket}
+    expiresAt
+    file { key objectId fileName contentType size }
+  }
+}
+```
+
+`objectId` may also be the object's Relay global id. Access is checked before minting; errors
+carry the failure's code (`not_authenticated`, `permission_denied`, `not_found`, `gone`, or
+your `check`'s own code).
+
+A ticket is bound to the user who minted it and the profile they were acting as. On every use
+the link view reloads the user (who must still be active and have the same password), acts as
+that profile while the user may still use it, runs `BASEAPP_FILES_DOWNLOAD_TICKET_USER_CHECK`
+and then **re-runs the same access check**, so revoking access takes effect immediately. A
+link stops working when it expires, when the file is replaced, and when the field is
+unregistered. Anyone holding a fresh link can open that one file as the user who minted it,
+so keep the lifetime short.
+
+| Setting | Default | |
+|---|---|---|
+| `BASEAPP_FILES_DOWNLOAD_TICKET_MAX_AGE` | `300` | Link lifetime in seconds |
+| `BASEAPP_FILES_DOWNLOAD_TICKET_USER_CHECK` | `None` | `callable(user, request) -> bool` (or its dotted path) that can refuse a link's use, e.g. while a required second factor is missing |
+| `BASEAPP_FILES_PROTECTED_DOWNLOADS_URL` | `"/v1/files/protected/"` | Where `baseapp.files.downloads.urls` is mounted |
+| `REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["protected_download"]` | unset (no limit) | Per-IP rate of the link endpoint, e.g. `"120/hour"` |
+
+### Exposing protected files
+
+Clients never get a URL in a payload; they get a description and mint a link when the user
+clicks. The description is null when the field is empty or the viewer may not download it.
+
+```python
+from baseapp.files.downloads.graphql import ProtectedFileField
+from baseapp.files.downloads.rest_framework import ProtectedFileSerializerField
+
+
+class InvoiceObjectType(DjangoObjectType):
+    pdf = ProtectedFileField("pdf")  # ProtectedFile {key objectId fileName contentType size}
+
+
+class InvoiceSerializer(serializers.ModelSerializer):
+    pdf = ProtectedFileSerializerField()  # {key, object_id, file_name, content_type, size}
+```
+
+`size` reads the storage (an S3 `HEAD` per object), so it is only computed when requested in
+GraphQL. The mutation is part of `FilesMutations`; projects composing their schema by hand can
+add `baseapp.files.downloads.graphql.ProtectedFileMutations`.
+
+### Admin
+
+`ProtectedFileAdminMixin` replaces the upload widget of private file fields with a read-only
+`<field>_link`: registered fields link to the authenticated download (the admin session
+authenticates it), other private fields show their name only, public fields are unchanged. A
+field is private when its storage only signs URLs, or is an `AliasStorage` named in
+`private_storage_aliases`.
+
+```python
+from baseapp.files.downloads.admin import ProtectedFileAdminMixin
+
+
+@admin.register(Invoice)
+class InvoiceAdmin(ProtectedFileAdminMixin, admin.ModelAdmin):
+    private_storage_aliases = ("private",)
+```
+
+### Signal and custom views
+
+`baseapp.files.downloads.protected_file_downloaded(sender, instance, field, key, user, request,
+via)` is sent after each served download (`via` is `"session"` or `"ticket"`), e.g. to record
+access. For content that is not a registered field (say, an email attachment), build the same
+hardened response with `protected_content_response(content, filename=..., content_type=...,
+disposition=..., csp=...)`, or `protected_file_response(spec, obj, content)` for a spec, after
+checking access yourself.
+
+### AliasStorage
+
+`baseapp.files.storage.AliasStorage("private")` is a storage that resolves a `STORAGES` alias on
+every operation. Use it on fields whose storage differs per environment (a private bucket in
+production, a local directory in development): migrations record the alias rather than a
+backend, and `override_settings(STORAGES=...)` takes effect in tests.
+
+```python
+pdf = models.FileField(storage=AliasStorage("private"), upload_to="invoices/")
+```
 
 ## Background Tasks
 
