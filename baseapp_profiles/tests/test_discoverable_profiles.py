@@ -34,6 +34,19 @@ PROFILE = """
     }
 """
 
+NODE = """
+    query Node($id: ID!) {
+        node(id: $id) {
+            id
+        }
+    }
+"""
+
+# Every user (each factory owner and the requesting user) also gets an automatic profile
+# with a Faker name, and `q` matches names and URL handles. Search for a token Faker cannot
+# produce, so no automatic profile ever matches by chance.
+SEARCH_TOKEN = "zqxdana"
+
 seen_users = []
 
 
@@ -93,11 +106,11 @@ def test_callable_filter_narrows_the_list(settings, graphql_user_client) -> None
 
 def test_search_applies_on_top_of_the_filter(settings, graphql_user_client) -> None:
     settings.BASEAPP_PROFILES_DISCOVERABLE_PROFILES_FILTER = HOOK_PATH
-    match = ProfileFactory(name="Shown Dana")
+    match = ProfileFactory(name=f"Shown {SEARCH_TOKEN}")
     other = ProfileFactory(name="Shown Mark")
-    hidden_match = ProfileFactory(name="Hidden Dana")
+    hidden_match = ProfileFactory(name=f"Hidden {SEARCH_TOKEN}")
 
-    ids = listed_ids(graphql_user_client(ALL_PROFILES, variables={"q": "dana"}))
+    ids = listed_ids(graphql_user_client(ALL_PROFILES, variables={"q": SEARCH_TOKEN}))
 
     assert ids == [match.relay_id]
     assert other.relay_id not in ids
@@ -110,10 +123,12 @@ def test_filter_cannot_widen_past_profile_visibility(settings, graphql_user_clie
     settings.BASEAPP_PROFILES_DISCOVERABLE_PROFILES_FILTER = (
         lambda queryset, user: Profile.objects.all()
     )
+    public = ProfileFactory(name="Public", status=Profile.ProfileStatus.PUBLIC)
     private = ProfileFactory(name="Private", status=Profile.ProfileStatus.PRIVATE)
 
     ids = listed_ids(graphql_user_client(ALL_PROFILES, variables={"q": ""}))
 
+    assert public.relay_id in ids
     assert private.relay_id not in ids
 
 
@@ -140,6 +155,16 @@ def test_filter_does_not_apply_to_node_lookup(settings, graphql_user_client) -> 
     assert seen_users == []
 
 
+def test_filter_does_not_apply_to_generic_node_lookup(settings, graphql_user_client) -> None:
+    settings.BASEAPP_PROFILES_DISCOVERABLE_PROFILES_FILTER = HOOK_PATH
+    hidden = ProfileFactory(name="Hidden")
+
+    response = graphql_user_client(NODE, variables={"id": hidden.relay_id})
+
+    assert response.json()["data"]["node"]["id"] == hidden.relay_id
+    assert seen_users == []
+
+
 def test_filter_discoverable_profiles_helper(settings) -> None:
     shown = ProfileFactory(name="Shown")
     hidden = ProfileFactory(name="Hidden")
@@ -151,3 +176,4 @@ def test_filter_discoverable_profiles_helper(settings) -> None:
     settings.BASEAPP_PROFILES_DISCOVERABLE_PROFILES_FILTER = HOOK_PATH
     assert list(filter_discoverable_profiles(queryset, user)) == [shown]
     assert seen_users == [user]
+
