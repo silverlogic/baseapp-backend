@@ -6,6 +6,7 @@ import pytest
 import swapper
 
 from baseapp_core.tests.factories import UserFactory
+from baseapp_profiles.exceptions import ProfileMembershipError
 from baseapp_profiles.services import invitations as service
 
 from .factories import ProfileFactory
@@ -64,7 +65,8 @@ def test_no_inviter(graphql_client) -> None:
     [
         ({}, True),
         ({"is_active": False}, False),
-        ({"unusable_password": True}, False),
+        # A social-login or pre-created active account: signing up would be refused.
+        ({"unusable_password": True}, True),
     ],
 )
 def test_requires_sign_in(graphql_client, account, requires_sign_in) -> None:
@@ -89,3 +91,34 @@ def test_the_profile_image_thumbnail(graphql_client) -> None:
         image = preview(graphql_client, invitation)["profileImage"]
 
     assert image.endswith("/media/t.jpg")
+
+
+@pytest.mark.parametrize(
+    "account",
+    [
+        {},
+        {"is_active": False, "last_login": None},
+        {"is_active": False, "last_login": None, "unusable_password": True},
+        {"unusable_password": True},
+    ],
+)
+def test_requires_sign_in_matches_accept_with_signup(settings, account) -> None:
+    """The preview offers sign-up exactly when accept-with-signup would take it."""
+    settings.BASEAPP_PROFILES_INVITATION_SIGNUP_ENABLED = True
+    unusable = account.pop("unusable_password", False)
+    user = UserFactory(email="ann@example.com", **account)
+    if unusable:
+        user.set_unusable_password()
+        user.save()
+    invitation = service.send_invitations(ProfileFactory(), ["ann@example.com"]).invitations[0]
+    token = invitation.invitation_token
+
+    requires_sign_in = service.lookup_invitation(token).requires_sign_in
+
+    try:
+        service.accept_invitation_with_signup(token, password="c0rrect-Horse-battery")
+        signed_up = True
+    except ProfileMembershipError as error:
+        assert error.code == "user_exists"
+        signed_up = False
+    assert requires_sign_in is not signed_up

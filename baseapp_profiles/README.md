@@ -163,7 +163,7 @@ When `baseapp_pages` is installed, each profile owns a URL handle (e.g. `/jonath
 | Query | Description |
 |---|---|
 | `profileInvitation(token)` | The invitation row for its token (members-only fields stay hidden). |
-| `profileInvitationPreview(token)` | Public summary for an acceptance page: `profileName`, `profileImage(width, height)`, `invitedEmail`, `invitedFirstName`, `invitedLastName`, `inviterName`, `message`, `role`, `status`, `expiresAt` and `requiresSignIn` (an active account with a password exists for the email, so the invitee signs in rather than signs up). |
+| `profileInvitationPreview(token)` | Public summary for an acceptance page: `profileName`, `profileImage(width, height)`, `invitedEmail`, `invitedFirstName`, `invitedLastName`, `inviterName`, `message`, `role`, `status`, `expiresAt` and `requiresSignIn` (an active account exists for the email, with or without a password, so the invitee signs in rather than signs up; it is true exactly when accept-with-signup would answer `user_exists`). |
 
 `profileSendInvitation`, `profileUserRoleCreate`, `profileUserRoleUpdate` and
 `profileMemberDeactivate` can be [extended by a project](#project-fields-and-extending-the-mutations)

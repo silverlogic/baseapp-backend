@@ -93,8 +93,9 @@ class PublicInvitation:
     message: str = ""
     # The profile's image field file (falsy when it has none).
     profile_image: object = None
-    # An active account with a usable password exists for the invited email, so the
-    # invitee signs in to accept rather than signing up.
+    # An active account exists for the invited email, so the invitee signs in to accept
+    # (accept-with-signup refuses it with `user_exists`). It may have no usable password,
+    # say a social login: the acceptance page offers the project's sign-in either way.
     requires_sign_in: bool = False
 
 
@@ -632,9 +633,9 @@ def lookup_invitation(token: str) -> PublicInvitation | None:
         inviter_name=_display_name(invitation.invited_by),
         message=invitation.message,
         profile_image=invitation.profile.image or None,
-        requires_sign_in=bool(
-            account is not None and account.is_active and account.has_usable_password()
-        ),
+        # The inverse of accept_invitation_with_signup's rule, so the page never offers a
+        # sign-up that would be refused.
+        requires_sign_in=bool(account is not None and account.is_active),
     )
 
 

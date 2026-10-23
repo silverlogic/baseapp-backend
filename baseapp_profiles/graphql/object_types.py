@@ -255,8 +255,8 @@ class ProfileInvitationPreview(graphene.ObjectType):
     profile_image = ThumbnailField(required=False, description="The profile's image.")
     requires_sign_in = graphene.Boolean(
         required=True,
-        description="An active account with a password exists for the invited email: the "
-        "invitee signs in to accept instead of signing up.",
+        description="An active account exists for the invited email: the invitee signs in "
+        "to accept instead of signing up.",
     )
 
 
