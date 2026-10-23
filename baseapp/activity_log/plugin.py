@@ -21,7 +21,9 @@ class ActivityLogPlugin(BaseAppPlugin):
                     "baseapp.activity_log.permissions.ActivityLogPermissionsBackend",
                 ],
             },
-            django_extra_settings={},
+            django_extra_settings={
+                "BASEAPP_ACTIVITY_LOG_PUBLIC_NODE_DIFF": True,
+            },
             # GraphQL
             graphql_queries=[
                 "baseapp.activity_log.graphql.queries.ActivityLogQueries",
