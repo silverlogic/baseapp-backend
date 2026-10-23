@@ -37,6 +37,10 @@ class CanViewProfileMembers(_CurrentProfilePermission):
     perm = f"{profile_app_label}.view_profile_members"
 
 
+class CanViewProfileInvitations(_CurrentProfilePermission):
+    perm = f"{profile_app_label}.view_profile_invitations"
+
+
 class CanAddProfileMembers(_CurrentProfilePermission):
     perm = f"{profile_user_role_app_label}.add_profileuserrole"
 

@@ -3,8 +3,10 @@
 import pytest
 import swapper
 from django.core.exceptions import PermissionDenied
+from rest_framework.test import APIClient
 
 from baseapp_core.tests.factories import UserFactory
+from baseapp_profiles.permissions import ProfilesPermissionsBackend, is_active_member
 from baseapp_profiles.services import invitations as invitation_service
 
 from .factories import ProfileFactory, ProfileUserRoleFactory
@@ -30,6 +32,19 @@ class AdminsSeeInvitationsBackend:
             ).exists():
                 raise PermissionDenied
         return False
+
+
+class NarrowedProfilesPermissionsBackend(ProfilesPermissionsBackend):
+    """The README's way to narrow the permission: override `has_invitation_perm`."""
+
+    def has_invitation_perm(self, user_obj, perm, obj) -> bool:
+        if perm.endswith(".view_profile_invitations"):
+            return (
+                obj.is_owned_by(user_obj)
+                or is_active_member(obj, user_obj, role=ADMIN)
+                or user_obj.has_perm(perm)
+            )
+        return super().has_invitation_perm(user_obj, perm, obj)
 
 
 MEMBERS = """
@@ -113,3 +128,51 @@ def test_a_pending_row_is_hidden_from_node_without_the_permission(
 
     content = graphql_client(NODE, variables={"id": manager.relay_id}).json()
     assert content["data"]["node"] == {"id": manager.relay_id}
+
+
+# --- REST ----------------------------------------------------------------------------------
+
+INVITATIONS = "/v1/profile-invitations"
+
+
+def rest_client(user, profile) -> APIClient:
+    client = APIClient()
+    client.force_authenticate(user)
+    client.credentials(HTTP_CURRENT_PROFILE=profile.relay_id)
+    return client
+
+
+def test_rest_invitations_are_listed_for_members_by_default(profile, manager) -> None:
+    pending = profile.members.get(status=Status.PENDING)
+    client = rest_client(manager.user, profile)
+
+    assert client.get(INVITATIONS).status_code == 200
+    assert client.get(f"{INVITATIONS}/{pending.pk}").status_code == 200
+
+
+def test_rest_invitations_need_the_permission(profile, manager, admins_only) -> None:
+    pending = profile.members.get(status=Status.PENDING)
+    client = rest_client(manager.user, profile)
+
+    listed = client.get(INVITATIONS)
+    retrieved = client.get(f"{INVITATIONS}/{pending.pk}")
+
+    assert (listed.status_code, retrieved.status_code) == (403, 403)
+    assert "ann@example.com" not in listed.content.decode()
+    admin = profile.members.get(role=ADMIN)
+    assert rest_client(admin.user, profile).get(INVITATIONS).status_code == 200
+
+
+def test_a_backend_subclass_narrows_the_permission(profile, manager, settings) -> None:
+    settings.AUTHENTICATION_BACKENDS = [
+        "baseapp_profiles.tests.test_invitation_visibility.NarrowedProfilesPermissionsBackend"
+        if backend == "baseapp_profiles.permissions.ProfilesPermissionsBackend"
+        else backend
+        for backend in settings.AUTHENTICATION_BACKENDS
+    ]
+    admin = profile.members.get(role=ADMIN)
+    perm = f"{Profile._meta.app_label}.view_profile_invitations"
+
+    assert not manager.user.has_perm(perm, profile)
+    assert admin.user.has_perm(perm, profile)
+    assert rest_client(manager.user, profile).get(INVITATIONS).status_code == 403

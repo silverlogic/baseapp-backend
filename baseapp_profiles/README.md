@@ -609,9 +609,11 @@ v1_urlpatterns = [
 
 The members and invitations endpoints act on the **current profile**: send its relay id in
 the `Current-Profile` header (see `CurrentProfileMixin`). Permissions come from the
-permission backend: members may read (`view_profile_members`), managing takes
+permission backend: members may read (`view_profile_members`; listing or retrieving
+invitations also takes `view_profile_invitations`), managing takes
 `add_profileuserrole` / `change_profileuserrole` / `delete_profileuserrole` (the owner and
-active admins by default).
+active admins by default). The public token endpoints check no permission: the token is the
+credential.
 
 | Endpoint | |
 |---|---|
@@ -640,7 +642,7 @@ answers `{"non_field_errors": ["..."], "code": "<error code>"}` with 400 — or 
 | `<profile app>.use_profile` | The owner and active members (act as the profile) |
 | `<profile app>.change_profile` / `delete_profile` | The owner (active admins of an ownerless profile), or a global grant |
 | `<profile app>.view_profile_members` | The owner, active members, superusers |
-| `<profile app>.view_profile_invitations` | Whoever holds `view_profile_members`, or a global grant. Without it, the `members` connection and `node(id)` show only ACTIVE and INACTIVE rows, and invitation fields (`invitedEmail`, `message`, `invitedBy`, ...) read null. |
+| `<profile app>.view_profile_invitations` | Whoever holds `view_profile_members`, or a global grant. Without it, the `members` connection and `node(id)` show only ACTIVE and INACTIVE rows, invitation fields (`invitedEmail`, `message`, `invitedBy`, ...) read null, and `GET /profile-invitations` (list and retrieve) answers 403. See [narrowing it](#narrowing-who-sees-invitations). |
 | `<profile app>.override_last_admin` | A global grant only (superusers): may leave a profile without an active admin |
 | `<user role app>.add_profileuserrole` / `change_` / `delete_` | The owner and active ADMINs |
 
@@ -656,6 +658,29 @@ from baseapp_profiles.permissions import ProfilesPermissionsBackend
 class MyProfilesPermissionsBackend(ProfilesPermissionsBackend):
     def has_perm(self, user_obj, perm, obj=None):
         return super().has_perm(user_obj, perm, obj)
+```
+
+### Narrowing who sees invitations
+
+Django grants a permission when *any* backend does, so another backend returning `False`
+cannot take `view_profile_invitations` away from the members `ProfilesPermissionsBackend`
+gives it to. Override `has_invitation_perm` in your subclass instead (or raise
+`PermissionDenied` from a backend listed before it, which stops the check):
+
+```python
+from baseapp_profiles.permissions import ProfilesPermissionsBackend, is_active_member
+
+
+class MyProfilesPermissionsBackend(ProfilesPermissionsBackend):
+    def has_invitation_perm(self, user_obj, perm, obj):
+        if perm.endswith(".view_profile_invitations"):
+            # Only the owner and active admins, or a global grant.
+            return (
+                obj.is_owned_by(user_obj)
+                or is_active_member(obj, user_obj, role=ProfileUserRole.ProfileRoles.ADMIN)
+                or user_obj.has_perm(perm)
+            )
+        return super().has_invitation_perm(user_obj, perm, obj)
 ```
 
 ```python

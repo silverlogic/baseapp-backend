@@ -21,6 +21,7 @@ from .permissions import (
     CanAddProfileMembers,
     CanChangeProfileMembers,
     CanDeleteProfileMembers,
+    CanViewProfileInvitations,
     CanViewProfileMembers,
     HasCurrentProfile,
     get_current_profile,
@@ -215,7 +216,7 @@ class ProfileInvitationsViewSet(
 
         permissions = [IsAuthenticated(), HasCurrentProfile()]
         if self.action in ("list", "retrieve"):
-            permissions.append(CanViewProfileMembers())
+            permissions += [CanViewProfileMembers(), CanViewProfileInvitations()]
         elif self.action == "cancel":
             permissions.append(CanDeleteProfileMembers())
         else:
