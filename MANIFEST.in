@@ -102,6 +102,7 @@ recursive-include baseapp_profiles/static *
 recursive-include baseapp_profiles/locale *
 
 include baseapp_auth/README.md
+include baseapp_auth/impersonation/README.md
 recursive-include baseapp_auth/templates *
 recursive-include baseapp_auth/static *
 recursive-include baseapp_auth/locale *

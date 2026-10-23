@@ -36,6 +36,12 @@ query {
 }
 ```
 
+### Impersonation
+
+`baseapp_auth.impersonation` is an opt-in app that lets an authorized user act as another user
+for a limited time, read-only by default, with every session (and, in act-as mode, every write)
+recorded. See [impersonation/README.md](impersonation/README.md).
+
 ### Utilities
 
 ## Demo
