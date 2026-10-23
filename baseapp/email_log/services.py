@@ -15,7 +15,7 @@ from django.utils.module_loading import import_string
 from djmail import core as djmail_core
 from djmail.models import Message
 
-from .attachments import describe_attachments, read_stored_attachment
+from .attachments import describe_attachments, read_attachment, read_stored_attachment
 from .models import get_email_log_model
 from .status import EmailLogStatus
 
@@ -386,12 +386,6 @@ def get_renderer() -> Optional[Callable[[str, dict], dict]]:
     return renderer
 
 
-def _original_email(log: "AbstractEmailLog") -> Optional[EmailMessage]:
-    if log.message_id is None or not log.message.data:
-        return None
-    return log.message.get_email_message()
-
-
 def _attach_from(
     email: EmailMessage, log: "AbstractEmailLog", original: Optional[EmailMessage]
 ) -> None:
@@ -402,6 +396,44 @@ def _attach_from(
         content = read_stored_attachment(entry)
         if content is not None:
             email.attach(entry.get("name") or None, content, entry.get("content_type"))
+
+
+def email_message_for(log: "AbstractEmailLog") -> EmailMessage:
+    """
+    The email of ``log``, ready to send again: djmail's pickled message when it is there.
+    Otherwise it is rebuilt from djmail's columns (subject, bodies, from), the row's To,
+    cc, bcc and reply-to, and the attachments in the attachment storage; custom headers are
+    then lost.
+
+    Raises ``ResendError`` for rows of other channels, when the djmail message is gone,
+    and when an attachment the row lists cannot be read.
+    """
+    if log.channel != log.Channel.EMAIL:
+        raise ResendError("Only email rows have an email message.")
+    original = log.get_email_message()
+    if original is not None:
+        return original
+    if log.message_id is None:
+        raise ResendError("The original message is no longer stored.")
+
+    message = log.message
+    email = EmailMultiAlternatives(
+        subject=message.subject,
+        body=message.body_text,
+        from_email=message.from_email or None,
+        to=log.recipients or [a for a in message.to_email.split(",") if a],
+        cc=log.cc,
+        bcc=log.bcc,
+        reply_to=log.reply_to,
+    )
+    if message.body_html:
+        email.attach_alternative(message.body_html, "text/html")
+    for index, entry in enumerate(log.attachments or []):
+        attachment = read_attachment(log, index)
+        if attachment is None:
+            raise ResendError(f"The attachment {entry.get('name') or index!r} is no longer stored.")
+        email.attach(*attachment)
+    return email
 
 
 def _render(
@@ -426,28 +458,36 @@ def _render(
 
 
 def resend(
-    log: "AbstractEmailLog", *, sent_by: Optional[models.Model] = None, connection: Any = None
+    log: "AbstractEmailLog",
+    *,
+    to: Optional[list[str]] = None,
+    sent_by: Optional[models.Model] = None,
+    connection: Any = None,
 ) -> "AbstractEmailLog":
     """
     Send the email of ``log`` again as a new djmail message, and return the new row (its
     ``resend_of`` is ``log``).
 
     With ``BASEAPP_EMAIL_LOG_RENDERER`` configured and a template on the row, the message
-    is re-rendered from the template and the stored context; otherwise djmail's stored
-    message is sent again as it was. Raises ``ResendError`` for other channels and when
+    is re-rendered from the template and the stored context. Otherwise the original is sent
+    again as it was (see ``email_message_for``). ``to`` replaces the To recipients; cc and
+    bcc are kept. Raises ``ResendError`` for other channels, for an empty ``to``, and when
     there is nothing left to send.
     """
     if log.channel != log.Channel.EMAIL:
         raise ResendError("Only email rows can be resent.")
+    if isinstance(to, str):
+        to = [to]
+    if to is not None and not to:
+        raise ResendError("Give at least one address to resend to.")
 
-    original = _original_email(log)
     renderer = get_renderer()
     if renderer is not None and log.template:
-        email = _render(log, original, renderer)
-    elif original is not None:
-        email = original
+        email = _render(log, log.get_email_message(), renderer)
     else:
-        raise ResendError("The original message is no longer stored and cannot be re-rendered.")
+        email = email_message_for(log)
+    if to is not None:
+        email.to = list(to)
 
     setattr(
         email,

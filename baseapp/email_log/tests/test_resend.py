@@ -8,6 +8,7 @@ import baseapp_core.tests.factories as f
 from baseapp.email_log.models import get_email_log_model
 from baseapp.email_log.services import (
     ResendError,
+    email_message_for,
     log_channel_message,
     resend,
     send_logged,
@@ -91,6 +92,87 @@ def test_rows_without_template_resend_the_stored_message(settings) -> None:
     log = send_logged(make_email(subject="Plain"), idempotency_key=None)
 
     assert resend(log).subject == "Plain"
+
+
+def test_resend_to_other_recipients_keeps_cc_and_bcc(original) -> None:
+    copy = resend(original, to=["new@example.com", "other@example.com"])
+
+    assert copy.recipients == ["new@example.com", "other@example.com"]
+    assert copy.cc == ["cc@example.com"]
+    assert copy.to == "new@example.com,other@example.com"
+    resent = mail.outbox[-1]
+    assert resent.to == ["new@example.com", "other@example.com"]
+    assert resent.cc == ["cc@example.com"]
+    assert resent.attachments[0][0] == "invoice.pdf"
+    # The original row is unchanged.
+    original.refresh_from_db()
+    assert original.recipients == ["to@example.com"]
+
+
+def test_resend_to_a_single_address_string(original) -> None:
+    assert resend(original, to="new@example.com").recipients == ["new@example.com"]
+
+
+def test_resend_to_nobody_is_refused(original) -> None:
+    with pytest.raises(ResendError):
+        resend(original, to=[])
+
+
+def test_resend_to_other_recipients_with_a_renderer(original, settings) -> None:
+    settings.BASEAPP_EMAIL_LOG_RENDERER = "baseapp.email_log.tests.helpers.render_template"
+    copy = resend(original, to=["new@example.com"])
+
+    assert copy.subject == "[invoices/paid] Hello Ada"
+    assert copy.recipients == ["new@example.com"]
+    assert copy.cc == ["cc@example.com"]
+
+
+def test_resend_without_djmails_pickle_rebuilds_the_message(attachment_storage: Path) -> None:
+    email = make_email(cc=["cc@example.com"], bcc=["bcc@example.com"], reply_to=["r@example.com"])
+    email.attach("invoice.pdf", b"%PDF", "application/pdf")
+    log = send_logged(email, idempotency_key=None)
+    Message.objects.filter(pk=log.message_id).update(data="")
+    log.refresh_from_db()
+
+    copy = resend(log)
+
+    assert copy.subject == "Your invoice"
+    assert copy.body_text == "Plain body"
+    assert copy.body_html == "<p>HTML body</p>"
+    assert copy.from_email == "from@example.com"
+    assert copy.recipients == ["to@example.com"]
+    assert copy.cc == ["cc@example.com"]
+    assert copy.bcc == ["bcc@example.com"]
+    assert copy.reply_to == ["r@example.com"]
+    resent = mail.outbox[-1]
+    assert resent.attachments == [("invoice.pdf", b"%PDF", "application/pdf")]
+    assert resent.alternatives[0][0] == "<p>HTML body</p>"
+
+
+def test_rebuild_refuses_an_attachment_that_is_gone() -> None:
+    email = make_email()
+    email.attach("invoice.pdf", b"%PDF", "application/pdf")
+    log = send_logged(email, idempotency_key=None)
+    Message.objects.filter(pk=log.message_id).update(data="")
+    log.refresh_from_db()
+
+    with pytest.raises(ResendError, match="invoice.pdf"):
+        email_message_for(log)
+    with pytest.raises(ResendError):
+        resend(log)
+
+
+def test_email_message_for_returns_djmails_pickle(original) -> None:
+    email = email_message_for(original)
+
+    assert email.extra_headers["X-Tag"] == "invoice"
+    assert email.attachments[0][0] == "invoice.pdf"
+
+
+def test_email_message_for_other_channels_is_refused() -> None:
+    log = log_channel_message(channel="sms", to="+1", body_text="x")
+    with pytest.raises(ResendError):
+        email_message_for(log)
 
 
 def test_resend_after_the_message_is_gone_needs_a_renderer(original, settings) -> None:
