@@ -14,7 +14,13 @@ class ImpersonationSessionQuerySet(models.QuerySet):
 
 
 class ImpersonationSession(RelayModel):
-    """One period in which `impersonator` acts as `target`, with the reason they gave."""
+    """
+    One period in which `impersonator` acts as `target`, with the reason they gave.
+
+    It is an audit record, so deleting the impersonator's account keeps it (with no
+    impersonator) and its actions. Deleting the target's account deletes it, with the rest of
+    their data.
+    """
 
     class EndReason(models.TextChoices):
         ENDED = "ended", _("Ended by the impersonator")
@@ -24,8 +30,10 @@ class ImpersonationSession(RelayModel):
     impersonator = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="started_impersonation_sessions",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
         verbose_name=_("impersonator"),
+        help_text=_("Empty once the impersonator's account is deleted."),
     )
     target = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -93,6 +101,15 @@ class ImpersonationAction(models.Model):
         null=True,
         blank=True,
         help_text=_("The HTTP status of a REST write. Empty for GraphQL mutations."),
+    )
+    succeeded = models.BooleanField(
+        _("succeeded"),
+        null=True,
+        blank=True,
+        help_text=_(
+            "Whether the write succeeded: a REST status below 400, or a GraphQL mutation that "
+            "raised no error and returned no errors. Empty when unknown."
+        ),
     )
 
     class Meta:

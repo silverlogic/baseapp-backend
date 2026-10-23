@@ -11,7 +11,7 @@ class ImpersonationActionInline(admin.TabularInline):
     model = ImpersonationAction
     extra = 0
     can_delete = False
-    fields = ("created", "method", "path", "operation_name", "status_code")
+    fields = ("created", "method", "path", "operation_name", "status_code", "succeeded")
     readonly_fields = fields
 
     def has_add_permission(self, request: HttpRequest, obj=None) -> bool:
@@ -56,7 +56,7 @@ class ImpersonationSessionAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request: HttpRequest, obj=None) -> bool:
         return False
 
-    @admin.action(description=_("Revoke selected sessions"))
+    @admin.action(description=_("Revoke selected sessions"), permissions=["change"])
     def revoke_sessions(self, request: HttpRequest, queryset: QuerySet) -> None:
         for session in queryset.filter(ended_at__isnull=True):
             end_impersonation(session, ImpersonationSession.EndReason.REVOKED, request=request)

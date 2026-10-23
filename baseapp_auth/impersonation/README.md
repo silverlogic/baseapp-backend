@@ -11,7 +11,8 @@ target sees.
   `ImpersonationAction`.
 - Who may impersonate whom is decided by a project hook. By default superusers may impersonate
   anyone who is not a superuser.
-- Ending a session revokes its tokens at once.
+- Ending a session revokes its tokens at once, over HTTP and WebSockets. Across processes this
+  needs a shared default cache (see [Caching](#caching)).
 - Signals let the project keep its own audit trail or notify the target.
 
 The app is off unless it is in `INSTALLED_APPS`, so projects that don't install it see no
@@ -60,7 +61,11 @@ SIMPLE_JWT = {
 }
 ```
 
-`python manage.py check` warns (`baseapp_impersonation.W001`–`W004`) when a piece is missing.
+`python manage.py check` warns (`baseapp_impersonation.W001`–`W004`) when a piece is missing,
+and `check --deploy` warns (`W005`) when sessions are cached per process.
+
+Nothing needs wiring for WebSockets: BaseApp's GraphQL consumers pick the app up on their own
+(see [WebSockets](#websockets)).
 
 Without the plugin registry, the paths are:
 
@@ -101,8 +106,12 @@ Every request that carries such a token is checked against its session (cached f
   as the user, with code `impersonation_forbidden` (403 over REST). By default it holds
   BaseApp's account-security endpoints — change password, delete account, change email, MFA —
   which an impersonator must never use.
+- SimpleJWT's refresh, verify and blacklist (logout) views are always allowed and never
+  recorded, also when the client sends its Bearer header with them. The login action is not.
 - The refresh serializer refuses to refresh a token of an ended session.
-- A session whose impersonator is deactivated is revoked on its next request.
+- A session whose impersonator is deactivated or deleted is revoked on its next request.
+- WebSocket connections are checked too, on connect and on every operation (see
+  [WebSockets](#websockets)).
 
 The client keeps its own tokens aside while the session runs and puts them back after
 `impersonationEnd` (the BaseApp frontend's `useStartImpersonation` / `useEndImpersonation`
@@ -111,19 +120,24 @@ do this).
 ### Act-as mode and the audit trail
 
 Every write that runs during a session — an unsafe REST request or a GraphQL root mutation,
-in either mode — is stored as an `ImpersonationAction`:
+over HTTP or a WebSocket, in either mode — is stored as an `ImpersonationAction`:
 
 | Field | Value |
 |---|---|
 | `session` | the session |
 | `created` | when |
-| `method`, `path` | the HTTP request |
+| `method`, `path` | the HTTP request; `WS` and the connection's path for a WebSocket |
 | `operation_name` | the GraphQL mutation (e.g. `commentCreate`); empty for REST |
 | `status_code` | the HTTP status of a REST write; empty for GraphQL |
+| `succeeded` | a REST status below 400, or a mutation that raised no error and returned no `errors` |
 
-They are written after the response, outside the request's transaction, so a write that failed
-or rolled back is recorded too. The Django admin lists sessions with their actions, and can
-revoke running sessions.
+HTTP writes are recorded after the response, outside the request's transaction, so a write that
+failed or rolled back is recorded too. The Django admin lists sessions with their actions, and
+staff with the change permission can revoke running sessions there.
+
+Sessions and their actions are an audit trail: deleting the impersonator's account keeps them,
+with an empty `impersonator`. Deleting the target's account deletes them with the rest of the
+target's data.
 
 ## GraphQL
 
@@ -157,7 +171,8 @@ query {
 
 Error codes: `permission_required` (the rules refuse the pair), `invalid_input` (no reason),
 `not_found`, `impersonation_active` (starting a session from inside one),
-`impersonation_read_only`, `impersonation_forbidden`.
+`impersonation_read_only`, `impersonation_forbidden`, and `impersonation_ended` (an operation on
+a WebSocket whose session has ended).
 
 `ImpersonationSession` is a Relay node. A user sees the sessions they started and the one
 their request belongs to; holders of `baseapp_impersonation.view_impersonationsession` see all.
@@ -175,7 +190,7 @@ recorded as revoked).
 | `BASEAPP_AUTH_IMPERSONATION_READ_ONLY_ALLOWLIST` | `()` | Writes a read-only session may still make: GraphQL mutation names (`"protectedFileLink"`), or regexes matched against the request path (entries starting with `/` or `^`). |
 | `BASEAPP_AUTH_IMPERSONATION_DENYLIST` | BaseApp's change-password, delete-account, change-email and MFA routes under `/v1/` | Writes refused in every session, in the allowlist's format. It wins over the allowlist. Extend it with your own account-security routes and mutations; mount BaseApp's routes elsewhere and you must list their real paths. |
 | `BASEAPP_AUTH_IMPERSONATION_DENIED_PERMISSIONS` | `()` | Permissions refused to the target while impersonated. |
-| `BASEAPP_AUTH_IMPERSONATION_CACHE_TIMEOUT` | `30` | Seconds a session lookup is cached. |
+| `BASEAPP_AUTH_IMPERSONATION_CACHE_TIMEOUT` | `30` | Seconds a session lookup is cached; `0` reads it from the database on every request. |
 
 Whatever the hook says, both users must be active, they must be different people, and a session
 can't be started from inside another one.
@@ -188,9 +203,10 @@ BASEAPP_AUTH_IMPERSONATION_CAN_IMPERSONATE = "apps.support.impersonation.can_imp
 BASEAPP_AUTH_IMPERSONATION_TOKEN_HOOK = "apps.support.impersonation.add_claims"
 BASEAPP_AUTH_IMPERSONATION_READ_ONLY = False
 BASEAPP_AUTH_IMPERSONATION_DENIED_PERMISSIONS = [
-    # Keep the target's private conversations out of the session.
+    # Keep the target's private conversations out of the session (see below).
     "baseapp_chats.list_chatrooms",
     "baseapp_chats.view_chatroom",
+    "baseapp_chats.view_message",
 ]
 
 # apps/support/impersonation.py
@@ -206,14 +222,33 @@ def add_claims(refresh, target, impersonator) -> None:
     refresh["support_session"] = True
 ```
 
+### Example: hiding the target's chats
+
+`baseapp_chats` gates its queries and subscriptions on three permissions, so denying them hides
+the target's chats over HTTP and WebSockets alike:
+
+| Permission | Hides |
+|---|---|
+| `baseapp_chats.list_chatrooms` | `Profile.chatRooms` and `unreadMessagesCount`, and the `chatRoomOnRoomUpdate` and `chatRoomOnMessagesCountUpdate` subscriptions (which carry each room's messages) |
+| `baseapp_chats.view_chatroom` | `node(id:)` for a room, and the `chatRoomOnMessage` subscription |
+| `baseapp_chats.view_message` | `node(id:)` for a message |
+
+Notifications of new messages come from `baseapp_notifications` and are not covered by these
+permissions.
+
+This hides reading only. To stop an act-as session from writing in the target's chats too, add
+the chat mutations (e.g. `chatRoomSendMessage`, `chatRoomCreate`) to
+`BASEAPP_AUTH_IMPERSONATION_DENYLIST`.
+
 ## Hooks for project code
 
 - `get_impersonation(obj=None)` returns the active `ImpersonationSession` for a request, a
   GraphQL `info.context`, an ASGI scope or a user — or, with no argument, for the request being
   served. `is_impersonated(obj=None)` is its boolean. Use them to hide or change anything else
   during a session, e.g. in a permissions backend, a queryset or a resolver.
-- `ImpersonationPermissionsBackend` refuses `BASEAPP_AUTH_IMPERSONATION_DENIED_PERMISSIONS`.
-  Django grants every permission to an active superuser before asking any backend.
+- `ImpersonationPermissionsBackend` refuses `BASEAPP_AUTH_IMPERSONATION_DENIED_PERMISSIONS`,
+  over HTTP and WebSockets. Django grants every permission to an active superuser before asking
+  any backend.
 - Signals, all from `baseapp_auth.impersonation.signals`:
 
   | Signal | Arguments |
@@ -247,12 +282,43 @@ serializer mixes in `ImpersonationRefreshSerializerMixin`.
 
 ### WebSockets
 
-Wrap `ImpersonationWebsocketMiddleware` inside `baseapp_core.channels.JWTAuthMiddleware`:
+BaseApp's WebSocket authentication (`baseapp_core.authentication`, used by
+`GraphqlWsJWTAuthenticatedConsumer` from the `connection_init` payload and by
+`baseapp_core.channels.JWTAuthMiddleware` from the subprotocols) asks the app about every
+token through the `auth.jwt_token_check` shared service. So, with no wiring:
+
+- a token, or a refresh token, of an ended session authenticates nobody: the connection stays
+  anonymous and no new access token is minted;
+- the connection's user carries `user.impersonation`, so `get_impersonation(scope)`,
+  `is_impersonated(user)` and `DENIED_PERMISSIONS` work in subscriptions and resolvers.
+
+WebSocket operations never run `GRAPHENE["MIDDLEWARE"]`. BaseApp's GraphQL consumers add
+`ImpersonationWebsocketGraphqlMiddleware` through the `graphql_ws.middleware` shared service. On
+every operation it re-checks the session, so one ended after the connection opened gets
+`impersonation_ended` errors, and it refuses and records mutations exactly as over HTTP. A
+consumer of your own that does not extend BaseApp's adds it last in its `middleware`:
+
+```python
+from baseapp_auth.impersonation.graphql.middleware import ImpersonationWebsocketGraphqlMiddleware
+
+
+class MyConsumer(channels_graphql_ws.GraphqlWsConsumer):
+    middleware = [threadpool_for_sync_resolvers, ImpersonationWebsocketGraphqlMiddleware()]
+```
+
+To close a connection opened with an ended session instead of leaving it anonymous, wrap
+`ImpersonationWebsocketMiddleware` inside `JWTAuthMiddleware`:
 
 ```python
 JWTAuthMiddleware(ImpersonationWebsocketMiddleware(URLRouter(...)))
 ```
 
-It refuses connections whose session has ended and sets `scope["impersonation"]`. It does not
-make WebSocket messages read-only: a consumer that writes should check
-`get_impersonation(scope)`.
+A consumer that writes outside GraphQL should check `get_impersonation(scope)` itself.
+
+### Caching
+
+Session lookups are cached for `BASEAPP_AUTH_IMPERSONATION_CACHE_TIMEOUT` seconds in the
+default cache, and ending a session clears the entry. With Django's default `LocMemCache`
+each process has its own copy, so other processes keep accepting an ended session's tokens
+for up to that long. Use a shared cache (e.g. Redis) in production, or set the timeout to `0`.
+`manage.py check --deploy` warns about this (`baseapp_impersonation.W005`).

@@ -4,9 +4,11 @@ recording the writes made during them.
 
 Tokens of a session carry two extra claims, `imp` (the impersonator's pk) and `imp_sid`
 (the session's pk). Every request authenticated with such a token is checked against the
-session, so ending a session revokes its tokens at once, whatever their `exp`.
+session, so ending a session revokes its tokens at once, whatever their `exp`: in every process
+when the session cache is shared (see `BASEAPP_AUTH_IMPERSONATION_CACHE_TIMEOUT`).
 """
 
+import inspect
 import logging
 import re
 from contextvars import ContextVar
@@ -19,6 +21,7 @@ from django.utils import timezone
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 from rest_framework_simplejwt.settings import api_settings
+from rest_framework_simplejwt.tokens import Token
 from rest_framework_simplejwt.utils import datetime_to_epoch
 
 from . import conf
@@ -69,9 +72,13 @@ def _cache_key(session_id: Any) -> str:
 
 
 def get_session(session_id: Any) -> "ImpersonationSession | None":
-    """The session with this pk, cached for `BASEAPP_AUTH_IMPERSONATION_CACHE_TIMEOUT`."""
+    """
+    The session with this pk, cached for `BASEAPP_AUTH_IMPERSONATION_CACHE_TIMEOUT` seconds
+    (0 reads it from the database every time).
+    """
+    timeout = conf.get_cache_timeout()
     key = _cache_key(session_id)
-    session = cache.get(key)
+    session = cache.get(key) if timeout > 0 else None
     if session is None:
         session = (
             ImpersonationSession.objects.select_related("impersonator", "target")
@@ -80,7 +87,8 @@ def get_session(session_id: Any) -> "ImpersonationSession | None":
         )
         if session is None:
             return None
-        cache.set(key, session, conf.get_cache_timeout())
+        if timeout > 0:
+            cache.set(key, session, timeout)
     return session
 
 
@@ -237,16 +245,28 @@ def validate_session_token(token: Any) -> "ImpersonationSession | None":
         token.get(api_settings.USER_ID_CLAIM)
     ) != str(target_id):
         raise ImpersonationSessionInvalid()
+    return ensure_session_active(session)
 
-    if session.ended_at is not None:
+
+def ensure_session_active(session: ImpersonationSession) -> ImpersonationSession:
+    """
+    The current state of `session`, re-read through the session cache. Raises
+    `ImpersonationSessionInvalid` when it has ended or expired, or its impersonator was
+    deactivated or deleted; a session found expired or orphaned is closed on the way.
+
+    Long-lived connections (WebSockets) call it on every operation, so a session ended after
+    the connection opened stops working too.
+    """
+    current = get_session(session.pk)
+    if current is None or current.ended_at is not None:
         raise ImpersonationSessionInvalid()
-    if session.expires_at <= timezone.now():
-        _close(session, session.expires_at, ImpersonationSession.EndReason.EXPIRED, None)
+    if current.expires_at <= timezone.now():
+        _close(current, current.expires_at, ImpersonationSession.EndReason.EXPIRED, None)
         raise ImpersonationSessionInvalid()
-    if not session.impersonator.is_active:
-        _close(session, timezone.now(), ImpersonationSession.EndReason.REVOKED, None)
+    if current.impersonator is None or not current.impersonator.is_active:
+        _close(current, timezone.now(), ImpersonationSession.EndReason.REVOKED, None)
         raise ImpersonationSessionInvalid()
-    return session
+    return current
 
 
 def check_impersonation(
@@ -307,6 +327,9 @@ def get_impersonation(obj: Any = None) -> "ImpersonationSession | None":
         return _current_session.get()
     if isinstance(obj, dict):
         session = obj.get("impersonation")
+        if not isinstance(session, ImpersonationSession):
+            # BaseApp's WebSocket authentication only sets the user.
+            session = getattr(obj.get("user"), "impersonation", None)
         return session if isinstance(session, ImpersonationSession) else None
 
     session = getattr(obj, "impersonation", None)
@@ -374,12 +397,48 @@ def enforce_read_only_request(request: Any, session: ImpersonationSession) -> No
     Refuse an unsafe HTTP method on a denylisted path (`ImpersonationForbidden`), or in a
     read-only session on any path not allowlisted (`ImpersonationReadOnly`).
     """
-    if request.method in SAFE_METHODS:
+    if request.method in SAFE_METHODS or is_token_request(request):
         return
     if is_path_denylisted(request.path):
         raise ImpersonationForbidden()
     if session.read_only and not is_path_allowlisted(request.path):
         raise ImpersonationReadOnly()
+
+
+# SimpleJWT views a session needs to keep its tokens working (refresh) or to log out
+# (blacklist); always allowed and never recorded, like `impersonationEnd`. Viewsets (e.g.
+# BaseApp's `JWTAuthViewSet`) qualify only for these actions, not for their login action.
+TOKEN_VIEW_ACTIONS = frozenset({"refresh", "verify", "blacklist"})
+
+
+def is_token_view(view_func: Any, method: str) -> bool:
+    """Whether a view refreshes, verifies or blacklists (logs out) a SimpleJWT token."""
+    from rest_framework_simplejwt import views as jwt_views
+
+    token_views = tuple(
+        view
+        for name in ("TokenRefreshView", "TokenVerifyView", "TokenBlacklistView")
+        if (view := getattr(jwt_views, name, None)) is not None
+    )
+    view_class = getattr(view_func, "cls", None) or getattr(view_func, "view_class", None)
+    if not isinstance(view_class, type):
+        return False
+    actions = getattr(view_func, "actions", None)
+    if actions is not None:
+        return (
+            issubclass(view_class, jwt_views.TokenViewBase)
+            and actions.get(method.lower()) in TOKEN_VIEW_ACTIONS
+        )
+    return issubclass(view_class, token_views)
+
+
+def is_token_request(request: Any) -> bool:
+    inner = getattr(request, "_request", request)
+    flagged = getattr(inner, "_impersonation_token_request", None)
+    if flagged is not None:
+        return flagged
+    match = getattr(inner, "resolver_match", None)
+    return bool(match) and is_token_view(match.func, inner.method)
 
 
 def is_graphql_view(view_func: Any) -> bool:
@@ -410,6 +469,7 @@ def record_action(
     path: str,
     operation_name: str = "",
     status_code: int | None = None,
+    succeeded: bool | None = None,
     request: Any = None,
 ) -> ImpersonationAction:
     """Record a write made during a session and send `impersonation_action`."""
@@ -419,6 +479,7 @@ def record_action(
         path=path,
         operation_name=operation_name,
         status_code=status_code,
+        succeeded=succeeded,
     )
     impersonation_action.send(
         sender=ImpersonationAction, action=action, session=session, request=request
@@ -438,7 +499,60 @@ def defer_or_record_action(request: Any, session: ImpersonationSession, **fields
         pending.append(fields)
 
 
+def mutation_succeeded(result: Any) -> bool | None:
+    """
+    Whether a resolved GraphQL mutation succeeded: it returned a payload without `errors`.
+    None when that is not known yet (an awaitable result). A mutation that raised failed.
+    """
+    if inspect.isawaitable(result):
+        return None
+    return not getattr(result, "errors", None)
+
+
 def _get_client_ip(request: "HttpRequest | None") -> str | None:
     if request is None:
         return None
     return request.META.get("REMOTE_ADDR") or None
+
+
+# Shared services
+
+
+class ImpersonationTokenCheck:
+    """
+    `auth.jwt_token_check` provider: makes `baseapp_core.authentication` (BaseApp's WebSocket
+    authentication) refuse tokens of ended sessions, and sets `user.impersonation`.
+    """
+
+    service_name = "auth.jwt_token_check"
+
+    def is_available(self) -> bool:
+        return True
+
+    def check_token(self, token: Any, user: Any = None) -> bool:
+        if not isinstance(token, Token):
+            return True
+        try:
+            session = validate_session_token(token)
+        except ImpersonationSessionInvalid:
+            return False
+        if session is not None and user is not None:
+            user.impersonation = session
+        return True
+
+
+class ImpersonationGraphqlWsMiddleware:
+    """
+    `graphql_ws.middleware` provider: adds `ImpersonationWebsocketGraphqlMiddleware` to
+    BaseApp's GraphQL WebSocket consumers, which never run `GRAPHENE["MIDDLEWARE"]`.
+    """
+
+    service_name = "graphql_ws.middleware"
+
+    def is_available(self) -> bool:
+        return True
+
+    def get_middleware(self) -> list:
+        from .graphql.middleware import ImpersonationWebsocketGraphqlMiddleware
+
+        return [ImpersonationWebsocketGraphqlMiddleware()]

@@ -17,6 +17,7 @@ from .services import (
     check_impersonation,
     enforce_read_only_request,
     is_graphql_view,
+    is_token_view,
     record_action,
 )
 
@@ -35,6 +36,8 @@ class ImpersonationMiddleware:
       a read-only session the others get a 403 with code `impersonation_read_only`, unless
       allowlisted. GraphQL is left to
       `ImpersonationReadOnlyMiddleware`, which can tell queries from mutations.
+    - SimpleJWT's refresh, verify and blacklist (logout) views are always allowed and never
+      recorded, so a client that sends its Bearer header with them keeps working.
     - Every unsafe REST request that runs is recorded as an `ImpersonationAction`, with its
       response status, and so are the mutations `ImpersonationReadOnlyMiddleware` collects.
     """
@@ -72,7 +75,8 @@ class ImpersonationMiddleware:
         if session is None:
             return None
         request._impersonation_graphql = is_graphql_view(view_func)
-        if request._impersonation_graphql:
+        request._impersonation_token_request = is_token_view(view_func, request.method)
+        if request._impersonation_graphql or request._impersonation_token_request:
             return None
         try:
             enforce_read_only_request(request, session)
@@ -107,10 +111,13 @@ class ImpersonationMiddleware:
             return
         if getattr(request, "_impersonation_refused", False):
             return
+        if getattr(request, "_impersonation_token_request", False):
+            return
         record_action(
             session,
             method=request.method,
             path=request.path,
             status_code=response.status_code,
+            succeeded=response.status_code < 400,
             request=request,
         )

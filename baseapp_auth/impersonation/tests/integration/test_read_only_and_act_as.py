@@ -10,7 +10,7 @@ from ..fixtures import bearer
 pytestmark = pytest.mark.django_db
 
 # Any mutation will do: in a read-only session it is refused before it resolves, and in an
-# act-as session it is recorded before it resolves.
+# act-as session it runs and is recorded (as failed: there is no such node).
 DELETE_NODE = """
     mutation DeleteSomething($input: DeleteNodeInput!) {
         deleteNode(input: $input) { deletedID }
@@ -19,6 +19,7 @@ DELETE_NODE = """
 
 
 PHONE = "+14155552671"
+REFRESH_URL = "/v1/auth/jwt/refresh"
 
 
 def users_url(user) -> str:
@@ -92,6 +93,24 @@ class TestReadOnly:
         assert action.method == "POST"
         assert action.path == "/graphql"
         assert action.status_code is None
+        assert action.succeeded is False
+
+    def test_token_refresh_with_a_bearer_header_is_allowed(self, client, start_session) -> None:
+        # Clients that attach the Authorization header to every request must keep refreshing.
+        session, tokens = start_session()
+        response = client.post(
+            REFRESH_URL, {"refresh": tokens["refresh"]}, **bearer(tokens["access"])
+        )
+        assert response.status_code == 200
+        assert not session.actions.exists()
+
+    def test_login_with_a_bearer_header_is_still_refused(self, client, start_session) -> None:
+        session, tokens = start_session()
+        response = client.post(
+            "/v1/auth/jwt/login", {"email": "a@b.c", "password": "x"}, **bearer(tokens["access"])
+        )
+        assert response.status_code == 403
+        assert response.json()["code"] == "impersonation_read_only"
 
 
 class TestActAs:
@@ -118,6 +137,7 @@ class TestActAs:
         action = session.actions.get()
         assert action.method == "PATCH"
         assert action.status_code == 200
+        assert action.succeeded is True
         assert received[0]["action"] == action
         assert received[0]["session"] == session
 
@@ -125,7 +145,16 @@ class TestActAs:
         session, tokens = start_session()
         response = client.patch("/v1/users/0", {"phone_number": PHONE}, **bearer(tokens["access"]))
         assert response.status_code == 404
-        assert session.actions.get().status_code == 404
+        action = session.actions.get()
+        assert (action.status_code, action.succeeded) == (404, False)
+
+    def test_token_refresh_is_not_recorded(self, client, start_session) -> None:
+        session, tokens = start_session()
+        response = client.post(
+            REFRESH_URL, {"refresh": tokens["refresh"]}, **bearer(tokens["access"])
+        )
+        assert response.status_code == 200
+        assert not session.actions.exists()
 
     def test_reads_are_not_recorded(self, client, start_session) -> None:
         session, tokens = start_session()
@@ -144,6 +173,7 @@ class TestActAs:
         assert content["errors"][0].get("extensions", {}).get("code") != "impersonation_read_only"
         action = session.actions.get()
         assert action.operation_name == "deleteNode"
+        assert action.succeeded is False
 
     def test_account_security_writes_are_never_allowed(self, client, start_session) -> None:
         session, tokens = start_session()

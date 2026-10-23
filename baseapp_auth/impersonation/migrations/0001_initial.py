@@ -62,7 +62,9 @@ class Migration(migrations.Migration):
                 (
                     "impersonator",
                     models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
+                        help_text="Empty once the impersonator's account is deleted.",
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
                         related_name="started_impersonation_sessions",
                         to=settings.AUTH_USER_MODEL,
                         verbose_name="impersonator",
@@ -115,6 +117,19 @@ class Migration(migrations.Migration):
                         help_text="The HTTP status of a REST write. Empty for GraphQL mutations.",
                         null=True,
                         verbose_name="status code",
+                    ),
+                ),
+                (
+                    "succeeded",
+                    models.BooleanField(
+                        blank=True,
+                        help_text=(
+                            "Whether the write succeeded: a REST status below 400, or a GraphQL "
+                            "mutation that raised no error and returned no errors. Empty when "
+                            "unknown."
+                        ),
+                        null=True,
+                        verbose_name="succeeded",
                     ),
                 ),
                 (

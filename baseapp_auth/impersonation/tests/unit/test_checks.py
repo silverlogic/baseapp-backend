@@ -5,6 +5,7 @@ from ...checks import (
     GRAPHENE_MIDDLEWARE,
     MIDDLEWARE,
     PERMISSIONS_BACKEND,
+    check_impersonation_cache,
     check_impersonation_wiring,
 )
 
@@ -57,3 +58,20 @@ def test_denied_permissions_need_the_backend_first(backends, warned) -> None:
         BASEAPP_AUTH_IMPERSONATION_DENIED_PERMISSIONS=["app.perm"],
     )
     assert ("baseapp_impersonation.W004" in result) is warned
+
+
+@pytest.mark.parametrize(
+    "backend, timeout, warned",
+    [
+        ("django.core.cache.backends.locmem.LocMemCache", 30, True),
+        ("django.core.cache.backends.locmem.LocMemCache", 0, False),
+        ("django.core.cache.backends.redis.RedisCache", 30, False),
+    ],
+)
+def test_process_local_cache_is_a_deploy_warning(backend, timeout, warned) -> None:
+    with override_settings(
+        CACHES={"default": {"BACKEND": backend}},
+        BASEAPP_AUTH_IMPERSONATION_CACHE_TIMEOUT=timeout,
+    ):
+        result = {warning.id for warning in check_impersonation_cache()}
+    assert ("baseapp_impersonation.W005" in result) is warned

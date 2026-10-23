@@ -22,12 +22,14 @@ def _check_scope_token(scope: dict, raw_token: str) -> None:
 
 class ImpersonationWebsocketMiddleware(BaseMiddleware):
     """
-    Validates the impersonation session of a WebSocket connection authenticated with a JWT
-    `Authorization` subprotocol, and sets `scope["impersonation"]`.
+    Refuses a WebSocket connection whose JWT `Authorization` subprotocol belongs to an ended
+    session, and sets `scope["impersonation"]`.
 
-    Wrap it inside `baseapp_core.channels.JWTAuthMiddleware`, so it sees the access token
-    after any refresh: `JWTAuthMiddleware(ImpersonationWebsocketMiddleware(app))`. A
-    connection whose session has ended is refused like an inactive user.
+    Optional: BaseApp's WebSocket authentication (`baseapp_core.authentication`, used by
+    `JWTAuthMiddleware` and `GraphqlWsJWTAuthenticatedConsumer`) already refuses such tokens,
+    leaving the connection anonymous. Use this to close it instead. Wrap it inside
+    `JWTAuthMiddleware`, so it sees the access token after any refresh:
+    `JWTAuthMiddleware(ImpersonationWebsocketMiddleware(app))`.
     """
 
     async def __call__(self, scope, receive, send) -> Any:

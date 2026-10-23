@@ -36,7 +36,8 @@ DEFAULTS: dict[str, Any] = {
     ),
     # Permissions refused to the impersonated user while a session is active.
     "BASEAPP_AUTH_IMPERSONATION_DENIED_PERMISSIONS": (),
-    # How long a session lookup is cached, in seconds. Ending a session clears it at once.
+    # How long a session lookup is cached, in seconds; 0 turns the cache off. Ending a session
+    # clears it at once, in every process only when the default cache is shared (W005).
     "BASEAPP_AUTH_IMPERSONATION_CACHE_TIMEOUT": 30,
 }
 

@@ -77,3 +77,28 @@ def check_impersonation_wiring(app_configs: Any = None, **kwargs: Any) -> list[W
         )
 
     return warnings
+
+
+PROCESS_LOCAL_CACHES = ("django.core.cache.backends.locmem.LocMemCache",)
+
+
+@register(Tags.caches, deploy=True)
+def check_impersonation_cache(app_configs: Any = None, **kwargs: Any) -> list[Warning]:
+    """
+    Warn when sessions are cached per process: ending a session then reaches only the
+    process that ended it, and the others accept its tokens until their copy times out.
+    """
+    backend = settings.CACHES.get("default", {}).get("BACKEND", "")
+    if backend not in PROCESS_LOCAL_CACHES or conf.get_cache_timeout() <= 0:
+        return []
+    return [
+        Warning(
+            f"Impersonation sessions are cached in {backend.rsplit('.', 1)[-1]}, which is not "
+            "shared between processes, so other processes accept an ended session's tokens "
+            "for up to BASEAPP_AUTH_IMPERSONATION_CACHE_TIMEOUT seconds.",
+            hint="Use a shared cache (e.g. Redis) as the default cache, or set "
+            "BASEAPP_AUTH_IMPERSONATION_CACHE_TIMEOUT = 0 to read sessions from the database "
+            "on every request.",
+            id="baseapp_impersonation.W005",
+        )
+    ]
