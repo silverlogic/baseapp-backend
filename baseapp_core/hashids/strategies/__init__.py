@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Any, Optional, Type
 
 from django.conf import settings
+from django.db.models import QuerySet
 
 from baseapp_core.hashids.models import LegacyWithPkMixin
 from baseapp_core.hashids.strategies.bundle import HashidsStrategyBundle
@@ -167,3 +168,54 @@ def drf_get_pk_from_public_id_using_strategy(
 
 def should_use_public_id(model_cls: type) -> bool:
     return _is_model_public_id_compatible(model_cls) and _is_public_id_logic_enabled()
+
+
+def _get_related_model_for_path(model_cls: type, path: str) -> type:
+    """Follow a `__`-separated path of to-one relations and return the model it ends on."""
+    current = model_cls
+    for name in path.split("__"):
+        field = current._meta.get_field(name)
+        is_to_one = field.is_relation and (field.many_to_one or field.one_to_one)
+        if not is_to_one or field.related_model is None:
+            raise ValueError(
+                f"annotate_public_ids: '{path}' must be a path of foreign keys or one-to-one "
+                f"fields, but '{name}' on {current.__name__} is not one."
+            )
+        current = field.related_model
+    return current
+
+
+def annotate_public_ids(queryset: QuerySet, *fk_paths: str, include_self: bool = True) -> QuerySet:
+    """Load public ids in the queryset itself, so serializing a list costs no query per row.
+
+    - The queryset's own rows get `mapped_public_id` (unless `include_self=False`, or it is
+      already annotated). `DocumentIdMixin.public_id` reads it.
+    - Each foreign key path gets `<path>_public_id`, for example `annotate_public_ids(qs, "author",
+      "post__author")` adds `author_public_id` and `post__author_public_id`.
+      `PublicIdRelatedField` reads it.
+
+    Only models that use the public id strategy are annotated, so with `ENABLE_PUBLIC_ID_LOGIC =
+    False`, or for a model without `DocumentIdMixin`, this adds nothing. Paths must follow
+    foreign keys or one-to-one fields; for many-to-many or reverse relations, prefetch
+    `"<relation>__document"` instead.
+    """
+    model_cls = queryset.model
+    strategy = get_public_id_strategy()
+    annotations: dict[str, Any] = {}
+
+    if (
+        include_self
+        and should_use_public_id(model_cls)
+        and "mapped_public_id" not in queryset.query.annotations
+    ):
+        annotations.update(strategy.queryset_annotator.get_annotations(model_cls))
+
+    for path in fk_paths:
+        related_model = _get_related_model_for_path(model_cls, path)
+        alias = f"{path}_public_id"
+        if should_use_public_id(related_model) and alias not in queryset.query.annotations:
+            annotations.update(
+                strategy.queryset_annotator.get_annotations(related_model, field=path, alias=alias)
+            )
+
+    return queryset.annotate(**annotations) if annotations else queryset

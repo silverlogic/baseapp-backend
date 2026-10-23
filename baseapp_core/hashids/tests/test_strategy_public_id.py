@@ -65,6 +65,33 @@ class TestPublicIdResolverStrategy:
         )
         assert resolver.resolve_id(public_id, model_cls=DummyPublicIdModel) is None
 
+    def test_get_id_from_instance_reads_prefetched_document(
+        self, resolver, django_assert_num_queries
+    ) -> None:
+        dummy = DummyPublicIdModelFactory()
+        expected = dummy.public_id
+        instance = DummyPublicIdModel.objects.prefetch_related("document").get(pk=dummy.pk)
+        with django_assert_num_queries(0):
+            assert resolver.get_id_from_instance(instance) == expected
+
+    def test_get_id_from_instance_reads_empty_prefetched_document(
+        self, resolver, django_assert_num_queries
+    ) -> None:
+        dummy = DummyPublicIdModelFactory()
+        DocumentId.objects.filter(object_id=dummy.pk).delete()
+        instance = DummyPublicIdModel.objects.prefetch_related("document").get(pk=dummy.pk)
+        with django_assert_num_queries(0):
+            assert resolver.get_id_from_instance(instance) is None
+
+    def test_get_id_from_instance_reads_prefetched_related_document(
+        self, resolver, django_assert_num_queries
+    ) -> None:
+        DummyPublicIdChildModelFactory.create_batch(3)
+        children = list(DummyPublicIdChildModel.objects.prefetch_related("parent__document"))
+        with django_assert_num_queries(0):
+            for child in children:
+                assert resolver.get_id_from_instance(child.parent) is not None
+
     def test_resolve_id_returns_none_for_invalid_uuid(self, resolver) -> None:
         invalid_id = "not-a-uuid"
         with pytest.raises(ValidationError):
@@ -150,6 +177,15 @@ class TestPublicIdGraphQLResolverStrategy:
 
 @pytest.mark.django_db
 class TestPublicIdQuerysetAnnotatorStrategy:
+    def test_get_annotations_for_a_foreign_key(self) -> None:
+        child = DummyPublicIdChildModelFactory()
+        strategy = PublicIdQuerysetAnnotatorStrategy()
+        annotations = strategy.get_annotations(
+            DummyPublicIdModel, field="parent", alias="parent_public_id"
+        )
+        row = DummyPublicIdChildModel.objects.annotate(**annotations).get(pk=child.pk)
+        assert row.parent_public_id == child.parent.public_id
+
     def test_annotate_adds_mapped_public_id(self) -> None:
         DummyPublicIdModelFactory()
         strategy = PublicIdQuerysetAnnotatorStrategy()

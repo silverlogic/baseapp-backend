@@ -14,8 +14,18 @@ if TYPE_CHECKING:
 
 class PublicIdResolverStrategy(IdResolverStrategy):
     def get_id_from_instance(self, instance: DocumentIdMixin) -> uuid.UUID | None:
+        """Return the instance's public id, without a query when it is already loaded.
+
+        Reads, in order: the `mapped_public_id` annotation, a prefetched `document` relation
+        (`prefetch_related("document")`, or `"<fk>__document"` for related rows), then the
+        DocumentId table.
+        """
         if hasattr(instance, "mapped_public_id"):
             return instance.mapped_public_id
+        prefetched = getattr(instance, "_prefetched_objects_cache", {}).get("document")
+        if prefetched is not None:
+            documents = list(prefetched)
+            return documents[0].public_id if documents else None
         return DocumentId.get_public_id_from_object(instance)
 
     def resolve_id(
