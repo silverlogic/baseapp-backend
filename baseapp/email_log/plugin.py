@@ -29,7 +29,12 @@ class EmailLogPlugin(BaseAppPlugin):
                 "BASEAPP_EMAIL_LOG_ATTACHMENT_STORAGE": None,
                 # Days purge_email_logs keeps rows (and their djmail messages); None keeps all.
                 "BASEAPP_EMAIL_LOG_RETENTION_DAYS": None,
-                # Whether purge_email_logs also deletes rows holding an idempotency key.
+                # {category: days}: a shorter retention for some categories (password resets,
+                # one-time codes, ...). Applies also while BASEAPP_EMAIL_LOG_RETENTION_DAYS is
+                # None; a category cannot keep rows longer than that setting.
+                "BASEAPP_EMAIL_LOG_RETENTION_DAYS_BY_CATEGORY": {},
+                # Whether purge_email_logs deletes rows holding an idempotency key. By default
+                # it scrubs them: their content goes, the row and its key stay.
                 "BASEAPP_EMAIL_LOG_PURGE_IDEMPOTENT": False,
                 # Minutes after which retry_failed_emails sends a logged message still a
                 # draft (its delivery was never attempted, e.g. a lost Celery task); None

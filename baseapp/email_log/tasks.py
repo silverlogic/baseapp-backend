@@ -1,12 +1,15 @@
 import logging
+import operator
 import traceback
 from datetime import timedelta
+from functools import reduce
 from typing import Callable, Iterable, Optional
 
 from celery import shared_task
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, QuerySet, TextField
+from django.db.models.functions import Cast
 from django.utils import timezone
 from djmail import core as djmail_core
 from djmail.models import Message
@@ -149,30 +152,32 @@ def retry_failed_emails() -> int:
     return sent
 
 
-@shared_task
-def purge_email_logs(older_than_days: Optional[int] = None) -> int:
+def _expired(older_than_days: Optional[int], by_category: dict[str, int]) -> Optional[Q]:
+    """Rows past the general retention or their category's, or ``None`` when neither is set."""
+    now = timezone.now()
+    conditions = []
+    if older_than_days is not None:
+        conditions.append(Q(created__lt=now - timedelta(days=older_than_days)))
+    for category, days in by_category.items():
+        conditions.append(Q(category=category, created__lt=now - timedelta(days=days)))
+    return reduce(operator.or_, conditions) if conditions else None
+
+
+def _holding_content(queryset: QuerySet) -> QuerySet:
     """
-    Delete log rows created more than ``older_than_days`` days ago (default:
-    ``BASEAPP_EMAIL_LOG_RETENTION_DAYS``; ``None`` keeps everything), with their djmail
-    messages and stored attachments, plus djmail messages that old with no row.
-
-    Rows with an idempotency key are kept, so their keys keep blocking duplicate sends,
-    unless ``BASEAPP_EMAIL_LOG_PURGE_IDEMPOTENT`` is on. Returns the number of rows deleted.
+    Rows still holding content a scrub removes: a djmail message, a render context, a
+    channel's text or a stored attachment (an entry with a ``path``).
     """
-    if older_than_days is None:
-        older_than_days = getattr(settings, "BASEAPP_EMAIL_LOG_RETENTION_DAYS", None)
-    if older_than_days is None:
-        return 0
+    return queryset.annotate(_attachments_text=Cast("attachments", TextField())).filter(
+        Q(message__isnull=False)
+        | ~Q(context={})
+        | ~Q(delivery_body_text="")
+        | Q(_attachments_text__contains='"path"')
+    )
 
-    EmailLog = get_email_log_model()
-    cutoff = timezone.now() - timedelta(days=older_than_days)
 
-    logs = EmailLog.objects.filter(created__lt=cutoff)
-    if not getattr(settings, "BASEAPP_EMAIL_LOG_PURGE_IDEMPOTENT", False):
-        logs = logs.filter(idempotency_key__isnull=True)
-
+def _delete_rows(EmailLog: type, ids: list) -> int:
     deleted = 0
-    ids = list(logs.values_list("pk", flat=True))
     for chunk in _chunks(ids):
         rows = list(EmailLog.objects.filter(pk__in=chunk).values("message_id", "attachments"))
         with transaction.atomic():
@@ -182,12 +187,88 @@ def purge_email_logs(older_than_days: Optional[int] = None) -> int:
             Message.objects.filter(uuid__in=message_ids).delete()
         for row in rows:
             delete_stored_attachments(row["attachments"])
-
-    orphans, _ = Message.objects.filter(created_at__lt=cutoff, email_log__isnull=True).delete()
-    logger.info(
-        "Purged %s email log rows and %s unlogged djmail messages older than %s days",
-        deleted,
-        orphans,
-        older_than_days,
-    )
     return deleted
+
+
+def _scrub_rows(EmailLog: type, ids: list) -> int:
+    """
+    Remove the content of rows kept for their idempotency key: their djmail message (the
+    row's ``message`` becomes empty), stored attachments, render context and channel text.
+    Who, what and when stay, and so does the key.
+    """
+    scrubbed = 0
+    for chunk in _chunks(ids):
+        rows = list(EmailLog.objects.filter(pk__in=chunk).values("pk", "message_id", "attachments"))
+        with transaction.atomic():
+            message_ids = [row["message_id"] for row in rows if row["message_id"]]
+            Message.objects.filter(uuid__in=message_ids).delete()
+            for row in rows:
+                EmailLog.objects.filter(pk=row["pk"]).update(
+                    context={},
+                    delivery_body_text="",
+                    attachments=[
+                        {key: value for key, value in entry.items() if key != "path"}
+                        for entry in row["attachments"] or []
+                    ],
+                    modified=timezone.now(),
+                )
+            scrubbed += len(rows)
+        for row in rows:
+            delete_stored_attachments(row["attachments"])
+    return scrubbed
+
+
+@shared_task
+def purge_email_logs(
+    older_than_days: Optional[int] = None, dry_run: bool = False
+) -> dict[str, int]:
+    """
+    Delete log rows older than the retention, with their djmail messages and stored
+    attachments, plus djmail messages that old with no row.
+
+    The retention is ``older_than_days`` (default: ``BASEAPP_EMAIL_LOG_RETENTION_DAYS``),
+    and, for the categories listed in ``BASEAPP_EMAIL_LOG_RETENTION_DAYS_BY_CATEGORY``,
+    their own number of days, which applies whether or not the general retention is set.
+    With neither set, nothing is purged.
+
+    Rows with an idempotency key are scrubbed rather than deleted, so their keys keep
+    blocking duplicate sends: their djmail message, stored attachments, context and channel
+    text are removed. ``BASEAPP_EMAIL_LOG_PURGE_IDEMPOTENT`` deletes them instead.
+
+    Returns the counts ``{"deleted", "scrubbed", "unlogged_messages"}``. With ``dry_run``
+    nothing is changed and the counts are what would be purged.
+    """
+    if older_than_days is None:
+        older_than_days = getattr(settings, "BASEAPP_EMAIL_LOG_RETENTION_DAYS", None)
+    by_category = getattr(settings, "BASEAPP_EMAIL_LOG_RETENTION_DAYS_BY_CATEGORY", None) or {}
+    counts = {"deleted": 0, "scrubbed": 0, "unlogged_messages": 0}
+    expired = _expired(older_than_days, by_category)
+    if expired is None:
+        return counts
+
+    EmailLog = get_email_log_model()
+    logs = EmailLog.objects.filter(expired)
+    to_scrub = EmailLog.objects.none()
+    if not getattr(settings, "BASEAPP_EMAIL_LOG_PURGE_IDEMPOTENT", False):
+        to_scrub = _holding_content(logs.filter(idempotency_key__isnull=False))
+        logs = logs.filter(idempotency_key__isnull=True)
+    unlogged = Message.objects.none()
+    if older_than_days is not None:
+        cutoff = timezone.now() - timedelta(days=older_than_days)
+        unlogged = Message.objects.filter(created_at__lt=cutoff, email_log__isnull=True)
+
+    if dry_run:
+        counts.update(
+            deleted=logs.count(), scrubbed=to_scrub.count(), unlogged_messages=unlogged.count()
+        )
+        return counts
+
+    counts["deleted"] = _delete_rows(EmailLog, list(logs.values_list("pk", flat=True)))
+    counts["scrubbed"] = _scrub_rows(EmailLog, list(to_scrub.values_list("pk", flat=True)))
+    counts["unlogged_messages"], _ = unlogged.delete()
+    logger.info(
+        "Purged %(deleted)s email log rows, scrubbed %(scrubbed)s kept for their idempotency "
+        "key, and purged %(unlogged_messages)s unlogged djmail messages",
+        counts,
+    )
+    return counts

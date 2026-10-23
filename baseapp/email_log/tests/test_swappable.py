@@ -79,7 +79,12 @@ def test_backends_and_services_write_the_swapped_model(django_capture_on_commit_
     assert len(mail.outbox) == 3
 
     assert retry_failed_emails() == 0
-    assert purge_email_logs(older_than_days=0) == 3  # the keyed row is kept
+    # The keyed row is kept, scrubbed of its content.
+    assert purge_email_logs(older_than_days=0) == {
+        "deleted": 3,
+        "scrubbed": 1,
+        "unlogged_messages": 0,
+    }
     assert list(Model.objects.all()) == [keyed]
 
 
