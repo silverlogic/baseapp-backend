@@ -150,12 +150,12 @@ When `baseapp_pages` is installed, each profile owns a URL handle (e.g. `/jonath
 | `profileCreate` | Create a profile (optionally targeting another object via `target`). |
 | `profileUpdate` | Edit name, images, biography, phone, and URL handle (`url_path`). |
 | `profileDelete` | Delete a profile. |
-| `profileUserRoleCreate` | Add existing users as ACTIVE members. |
+| `profileUserRoleCreate` | Add existing users as ACTIVE members (`member_added` for each). |
 | `profileUserRoleUpdate` | Change a member's role (refuses to demote the last admin where [guarded](#last-admin-guard)). |
 | `profileUserRoleDelete` | Remove a member (same guard). For someone who has not accepted yet, it cancels their invitation (`invitation_cancelled`, kept as CANCELLED with history on). |
-| `profileMemberDeactivate` / `profileMemberReactivate` | Deactivate a member (keeps the row, records `deactivatedAt`/`deactivatedBy`, revokes access) or restore them. |
+| `profileMemberDeactivate` / `profileMemberReactivate` | Deactivate a member (keeps the row, records `deactivatedAt`/`deactivatedBy`, revokes access; optional `reason`, passed to `member_deactivated`) or restore them. |
 | `profileSendInvitation` | Invite by email in bulk: `emails` and/or `invitees` (`{email, firstName, lastName}`), `role`, optional `message`. Returns the rows, `emailsSent` and `emailsHeld`. |
-| `profileResendInvitation` | Send a pending or expired invitation again with a fresh token. |
+| `profileResendInvitation` | Send a pending or expired invitation again with a fresh token (`resend_too_soon` within the [resend interval](#settings)). |
 | `profileCancelInvitation` | Withdraw a pending invitation (marked CANCELLED with history on, deleted otherwise). |
 | `profileAcceptInvitation` / `profileDeclineInvitation` | Respond as the signed-in invitee. |
 | `profileAcceptInvitationWithSignup` | Accept without an account by choosing a password (opt-in, see below). |
@@ -163,7 +163,11 @@ When `baseapp_pages` is installed, each profile owns a URL handle (e.g. `/jonath
 | Query | Description |
 |---|---|
 | `profileInvitation(token)` | The invitation row for its token (members-only fields stay hidden). |
-| `profileInvitationPreview(token)` | Public summary for an acceptance page: `profileName`, `invitedEmail`, `role`, `status`, `expiresAt`. |
+| `profileInvitationPreview(token)` | Public summary for an acceptance page: `profileName`, `profileImage(width, height)`, `invitedEmail`, `invitedFirstName`, `invitedLastName`, `inviterName`, `message`, `role`, `status`, `expiresAt` and `requiresSignIn` (an active account with a password exists for the email, so the invitee signs in rather than signs up). |
+
+`profileSendInvitation`, `profileUserRoleCreate`, `profileUserRoleUpdate` and
+`profileMemberDeactivate` can be [extended by a project](#project-fields-and-extending-the-mutations)
+under the same names.
 
 ### Shared GraphQL interfaces
 
@@ -262,26 +266,34 @@ result.invitations, result.emails_sent, result.held
 
 | `baseapp_profiles.services.invitations` | |
 |---|---|
-| `send_invitations(profile, invitees, *, role=None, invited_by=None, message="")` | Bulk invite (emails, `Invitee`s or dicts); all-or-nothing on conflicts. Returns `SentInvitations`. |
-| `resend_invitation(invitation, *, by=None)` | New token and expiry. With history on, an expired invitation stays EXPIRED and a new row is opened. |
+| `send_invitations(profile, invitees, *, role=None, invited_by=None, message="", extra_fields=None)` | Bulk invite (emails, `Invitee`s or dicts); all-or-nothing on conflicts and on invitees the [validator](#validating-invitees) refuses. Returns `SentInvitations`. |
+| `resend_invitation(invitation, *, by=None, extra_fields=None)` | New token and expiry. With history on, an expired invitation stays EXPIRED and a new row is opened. |
 | `release_invitation(invitation, *, by=None)` | Send an invitation the pre-send hook held. |
 | `cancel_invitation(invitation, *, by=None)` | Withdraw a PENDING invitation. |
 | `accept_invitation(token, user)` / `decline_invitation(token, user)` | Respond as a signed-in user, who must be the invitee. |
 | `accept_invitation_with_signup(token, *, password, first_name=None, last_name=None)` | Anonymous accept, see below. |
-| `lookup_invitation(token)` | `PublicInvitation(profile_name, invited_email, role, status, expires_at)` or `None`. |
+| `lookup_invitation(token)` | `PublicInvitation(profile_name, invited_email, role, status, expires_at, invited_first_name, invited_last_name, inviter_name, message, profile_image, requires_sign_in)` or `None`. |
 | `expire_invitations(now=None)` | Mark overdue PENDING rows EXPIRED; returns the count. |
+| `is_member_claim(row)` / `awaits_answer(row)` | Whether the row is an open [member claim](#claiming-a-placeholder-members-row) / can still be answered (PENDING or an open claim). |
 
 | `baseapp_profiles.services.members` | |
 |---|---|
-| `change_member_role(membership, role, *, by=None)` | Change the role (last-admin guard on demotion). |
-| `deactivate_member(membership, *, by=None)` / `reactivate_member(...)` | ACTIVE ⇄ INACTIVE with the audit fields. |
-| `remove_member(membership, *, by=None)` | Delete the row (last-admin guard). |
+| `add_members(profile, users, *, role=None, by=None, extra_fields=None)` | Add users as ACTIVE members without an invitation (`member_added` for each); all-or-nothing on `cannot_add_owner` / `already_member`. |
+| `update_member(membership, *, role=None, by=None, extra_fields=None, allow_last_admin=False)` | Change the role and/or project fields (last-admin guard on demotion). |
+| `change_member_role(membership, role, *, by=None, allow_last_admin=False)` | `update_member` for the role only. |
+| `deactivate_member(membership, *, by=None, reason="", extra_fields=None, allow_last_admin=False)` / `reactivate_member(...)` | ACTIVE ⇄ INACTIVE with the audit fields. |
+| `remove_member(membership, *, by=None, allow_last_admin=False)` | Delete the row (last-admin guard). |
 | `validate_role(role)` | Refuse a role outside `assignable_roles()`. |
+
+`allow_last_admin=True` skips the [last-admin guard](#last-admin-guard); the API layers pass
+it for holders of `override_last_admin`. `extra_fields` maps field names of your concrete
+`ProfileUserRole` to values (see [below](#project-fields-and-extending-the-mutations)).
 
 Error codes: `invalid_input`, `invalid_token`, `invalid_status`, `already_member`,
 `duplicate_invitation`, `expired_invitation`, `cancelled_invitation`, `already_responded`,
-`wrong_user`, `cannot_add_owner`, `last_admin`, `signup_disabled`, `user_exists`,
-`account_inactive`, `invalid_password`, `invalid_invitation`.
+`wrong_user`, `cannot_add_owner`, `add_member_failed`, `last_admin`, `resend_too_soon`,
+`signup_disabled`, `user_exists`, `account_inactive`, `invalid_password`,
+`invalid_invitation`, plus any code your [validator](#validating-invitees) raises.
 
 ### Settings
 
@@ -297,7 +309,12 @@ Every default keeps the behaviour projects had before these settings existed.
 | `BASEAPP_PROFILES_INVITATION_PRE_SEND_HOOK` | `None` | Dotted path to (or a) `callable(invitation) -> bool`; `True` holds the email. |
 | `BASEAPP_PROFILES_PROTECT_LAST_ADMIN` | `False` | Apply the last-admin guard to profiles that have an owner too. |
 | `BASEAPP_PROFILES_INVITATION_PUBLIC_RATE` | `"30/hour"` | Per-IP rate of the public REST token endpoints (`None` disables). |
-| `INVITATION_EXPIRATION_DAYS` | `7` | Lifetime of an invitation. |
+| `BASEAPP_PROFILES_INVITATION_EXPIRATION_DAYS` | `None` | Lifetime of an invitation in days: an int, a callable returning one, or a dotted path to such a callable, read on every send. `None` falls back to `INVITATION_EXPIRATION_DAYS`, then `7`. See [Expiry](#expiry). |
+| `INVITATION_EXPIRATION_DAYS` | `7` | The older setting, still read when the one above is `None`. |
+| `BASEAPP_PROFILES_INVITATION_EMAIL_SENDER` | `"baseapp_profiles.emails.send_invitation_email"` | Dotted path to (or a) `callable(invitation, inviter) -> None` that emails an invitation. See [Custom invitation email](#custom-invitation-email). |
+| `BASEAPP_PROFILES_INVITATION_VALIDATOR` | `None` | Dotted path to (or a) `callable(profile, invitee, invited_by) -> None` raising `ProfileMembershipError` to refuse an invitee. See [Validating invitees](#validating-invitees). |
+| `BASEAPP_PROFILES_INVITATION_CAN_INVITE_MEMBER` | `None` | Dotted path to (or a) `callable(membership) -> bool`: may an invitation claim this ACTIVE row? `None` refuses (`already_member`). See [Claiming a placeholder member's row](#claiming-a-placeholder-members-row). |
+| `BASEAPP_PROFILES_INVITATION_RESEND_MIN_INTERVAL` | `None` | Seconds that must pass after an invitation email before it can be resent (`resend_too_soon`). `None`: no limit. |
 
 ### Invitation history
 
@@ -381,6 +398,130 @@ Overdue invitations are marked EXPIRED lazily when someone responds, and by the
 entry; merge `plugin_registry.get_all_celery_schedules()` into `CELERY_BEAT_SCHEDULE` to
 run it.
 
+### Expiry
+
+`BASEAPP_PROFILES_INVITATION_EXPIRATION_DAYS` is read whenever an invitation is sent,
+resent or released (and by the legacy `emails.create_invitation`), so one rule covers every
+path. Point it at a callable to read the value from somewhere staff can edit:
+
+```python
+# settings.py
+BASEAPP_PROFILES_INVITATION_EXPIRATION_DAYS = "apps.members.invitations.expiry_days"
+
+# apps/members/invitations.py
+def expiry_days() -> int:
+    return config.MEMBERS_INVITATION_EXPIRY_DAYS
+```
+
+Invitations already sent keep the expiry date they were given; a new value applies to the
+next send or resend. `baseapp_profiles.conf.invitation_expiration_days()` returns the
+current value. `baseapp_profiles.constants.INVITATION_EXPIRATION_DAYS` is deprecated: it is
+now computed on access (with a `DeprecationWarning`) instead of once at import.
+
+### Custom invitation email
+
+To send your own email (your templates, an email log, another channel), point
+`BASEAPP_PROFILES_INVITATION_EMAIL_SENDER` at a function with the default sender's
+signature. Both the inline send and `send_invitation_email_task` use it; an exception is
+logged and the email is not counted. Link to the acceptance page with
+`emails.get_accept_url(invitation)` (a deep link when one can be made, otherwise
+`FRONT_ACCEPT_INVITATION_URL`):
+
+```python
+# settings.py
+BASEAPP_PROFILES_INVITATION_EMAIL_SENDER = "apps.members.invitations.send_invitation_email"
+
+# apps/members/invitations.py
+from baseapp_profiles.emails import get_accept_url
+
+
+def send_invitation_email(invitation, inviter) -> None:
+    send_templated_email(
+        "members/invitation",
+        to=[invitation.invited_email],
+        context={"accept_url": get_accept_url(invitation), "inviter": inviter},
+    )
+```
+
+### Validating invitees
+
+`BASEAPP_PROFILES_INVITATION_VALIDATOR` is called for every invitee before their row is
+opened (sends, and resends that open a new row). Raise `ProfileMembershipError` with your
+own code to refuse; the whole batch fails and the API layers return that code:
+
+```python
+from baseapp_profiles.exceptions import ProfileMembershipError
+
+
+def validate_invitee(profile, invitee, invited_by) -> None:
+    # invitee is a services.invitations.Invitee(email, first_name, last_name)
+    if not invited_by.is_staff and not invitee.email.endswith("@" + profile.target.domain):
+        raise ProfileMembershipError("Invite people from your company only", "outside_domain")
+```
+
+### Claiming a placeholder member's row
+
+Some projects keep ACTIVE members whose accounts were created ahead of time (by an import,
+say) and never used. Inviting such a person is normally refused with `already_member`.
+With `BASEAPP_PROFILES_INVITATION_CAN_INVITE_MEMBER` the invitation is instead carried on
+their existing row, a *member claim*: the token, dates, message, sender and send count are
+written, and the row keeps its pk, ACTIVE status, role and user.
+
+```python
+# settings.py
+BASEAPP_PROFILES_INVITATION_CAN_INVITE_MEMBER = "apps.members.invitations.is_placeholder"
+BASEAPP_PROFILES_INVITATION_SIGNUP_ENABLED = True
+
+# apps/members/invitations.py
+def is_placeholder(membership) -> bool:
+    user = membership.user
+    return user is not None and not user.is_active and not user.has_usable_password()
+```
+
+An open claim (`services.invitations.is_member_claim(row)`) is resent, released and
+cancelled like a pending invitation (cancel clears the token and leaves the member alone),
+reads `PENDING` (or `EXPIRED`) in the preview, and is accepted through
+`profileAcceptInvitationWithSignup`, which activates the account under the
+[reactivation rules](#accepting-by-signing-up) and sends `invitation_accepted` with the
+membership row. A signed-in invitee may accept or decline it too; declining leaves the
+membership as it was. Claims are never marked EXPIRED by the sweep: the row stays a member.
+
+### Project fields and extending the mutations
+
+Add your own columns to the concrete `ProfileUserRole` (a title, a list of functions, ...)
+and set them through `extra_fields` on `send_invitations`, `resend_invitation`,
+`add_members`, `update_member` and `deactivate_member`.
+
+To take them from the API, subclass the mutation, extend its `BaseInput`, return the values
+from `extra_fields_from_input`, and register it under the same field. The GraphQL type
+names (`ProfileSendInvitationInput`, `ProfileSendInvitationPayload`) stay the same, so
+clients only see the new input fields:
+
+```python
+# apps/members/graphql/mutations.py
+import graphene
+from baseapp_profiles.graphql.mutations import ProfileSendInvitation
+
+
+class SendInvitation(ProfileSendInvitation):
+    class Input(ProfileSendInvitation.BaseInput):
+        title = graphene.String()
+
+    @classmethod
+    def extra_fields_from_input(cls, info, input) -> dict:
+        return {"title": input.get("title") or ""}
+
+
+# graphql.py: a field declared on the Mutation class itself wins over the plugin mixins
+class Mutation(graphene.ObjectType, *mutations):
+    profile_send_invitation = SendInvitation.Field()
+```
+
+`ProfileSendInvitation`, `ProfileUserRoleCreate`, `ProfileUserRoleUpdate` and
+`ProfileMemberDeactivate` support this (they derive from
+`baseapp_profiles.graphql.mutations.ExtensibleMutation`). A subclass that declares no
+`Input` keeps the base one; set `Meta.name` to give it different type names.
+
 ### Signals
 
 `baseapp_profiles.signals` sends these once the transaction commits, with `sender` the
@@ -393,8 +534,10 @@ concrete `ProfileUserRole` model and `instance` the row:
 | `invitation_declined` | `user` |
 | `invitation_cancelled` | `by` (with history off the row is already deleted) |
 | `invitation_expired` | — |
+| `member_added` | `by` (added directly, without an invitation) |
 | `member_role_changed` | `old_role`, `new_role`, `by` |
-| `member_deactivated` / `member_reactivated` | `by` |
+| `member_deactivated` | `by`, `reason` (may be empty) |
+| `member_reactivated` | `by` |
 | `member_removed` | `pk` (the deleted row's), `by` |
 
 ### Last-admin guard
@@ -402,6 +545,11 @@ concrete `ProfileUserRole` model and `instance` the row:
 Demoting, deactivating or removing the last active ADMIN of a profile is refused with
 `last_admin` when the profile has no owner (otherwise nobody could manage it), and for
 every profile when `BASEAPP_PROFILES_PROTECT_LAST_ADMIN` is on.
+
+Holders of `<profile app>.override_last_admin` may do it anyway, through GraphQL and REST
+(the services take `allow_last_admin=True`). The default backend grants it only as a
+global permission (to a user or a group, and to superusers), never through membership, so
+grant it to the support staff who tidy up abandoned profiles.
 
 ### Ownerless profiles
 
@@ -477,6 +625,21 @@ answers `{"non_field_errors": ["..."], "code": "<error code>"}` with 400 — or 
 
 ## Permissions
 
+`ProfilesPermissionsBackend` answers these object permissions (`obj` is a `Profile`):
+
+| Permission | Default |
+|---|---|
+| `<profile app>.view_profile` | Public profiles, or the owner and active members |
+| `<profile app>.use_profile` | The owner and active members (act as the profile) |
+| `<profile app>.change_profile` / `delete_profile` | The owner (active admins of an ownerless profile), or a global grant |
+| `<profile app>.view_profile_members` | The owner, active members, superusers |
+| `<profile app>.view_profile_invitations` | Whoever holds `view_profile_members`, or a global grant. Without it, the `members` connection and `node(id)` show only ACTIVE and INACTIVE rows, and invitation fields (`invitedEmail`, `message`, `invitedBy`, ...) read null. |
+| `<profile app>.override_last_admin` | A global grant only (superusers): may leave a profile without an active admin |
+| `<user role app>.add_profileuserrole` / `change_` / `delete_` | The owner and active ADMINs |
+
+`view_profile_invitations` and `override_last_admin` are declared on `AbstractProfile`, so
+they can be granted to users and groups.
+
 Subclass `ProfilesPermissionsBackend` to customize permissions, then replace the plugin entry in `AUTHENTICATION_BACKENDS` with your subclass:
 
 ```python
@@ -534,6 +697,13 @@ Run `./manage.py makemigrations` for your profiles app: `Profile.owner` becomes 
 rows. Behaviour stays as it was until you turn on the settings above. Code that compares
 `profile.owner_id` with a user id should switch to `profile.is_owned_by(user)` before you
 create ownerless profiles.
+
+The `view_profile_invitations` and `override_last_admin` permissions add an
+`AlterModelOptions` to the same migration (or a later one).
+
+`me.profiles` (the profile switcher) now lists the user's own profiles and those they are
+an ACTIVE member of; profiles behind a pending, declined, expired or deactivated
+membership are no longer offered.
 
 `ProfileUserRole.objects` is now a manager built from `ProfileUserRoleQuerySet`, and the
 services rely on its methods (`.open()`, `.overdue()`, `.memberships()`, ...). If your
