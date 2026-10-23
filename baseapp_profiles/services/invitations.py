@@ -31,6 +31,7 @@ from django.utils.translation import gettext_lazy as _
 from baseapp_profiles import signals
 from baseapp_profiles.conf import (
     invitation_async_send,
+    invitation_email_sender,
     invitation_expiration_days,
     invitation_max_per_send,
     invitation_pre_send_hook,
@@ -381,11 +382,12 @@ def deliver_invitation(
 def send_invitation_email_now(
     invitation: "ProfileUserRole", *, inviter: AbstractBaseUser | None = None
 ) -> bool:
-    """Render and send the invitation email, then count it and send `invitation_sent`."""
-    from baseapp_profiles import emails
-
+    """
+    Email the invitation through `BASEAPP_PROFILES_INVITATION_EMAIL_SENDER`, then count it
+    and send `invitation_sent`.
+    """
     try:
-        emails.send_invitation_email(invitation, inviter)
+        invitation_email_sender()(invitation, inviter)
     except Exception:
         logger.exception("Failed to send invitation email for invitation %s", invitation.pk)
         return False

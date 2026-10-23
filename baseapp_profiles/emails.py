@@ -9,7 +9,7 @@ from django.utils import timezone
 from baseapp_core.deep_links import get_deep_link
 from baseapp_core.exceptions import DeepLinkFetchError
 
-from .constants import INVITATION_EXPIRATION_DAYS
+from .conf import invitation_expiration_days
 
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
@@ -34,7 +34,7 @@ def create_invitation(
         status=ProfileUserRole.ProfileRoleStatus.PENDING,
         invited_by=inviter,
         invited_at=timezone.now(),
-        invitation_expires_at=timezone.now() + timedelta(days=INVITATION_EXPIRATION_DAYS),
+        invitation_expires_at=timezone.now() + timedelta(days=invitation_expiration_days()),
     )
 
     invitation.generate_invitation_token()
@@ -50,10 +50,11 @@ def _display_name(user) -> str:
     return full_name or getattr(user, "email", "") or ""
 
 
-def send_invitation_email(invitation, inviter=None) -> None:
+def get_accept_url(invitation) -> str:
     """
-    Email `invitation` to its invited address. `inviter` is named in the email; without one
-    (an invitation sent by an importer or released after review) the profile is named.
+    The link that opens `invitation` for its invitee: a deep link when one can be made,
+    otherwise `FRONT_ACCEPT_INVITATION_URL` with the token. Custom email senders
+    (`BASEAPP_PROFILES_INVITATION_EMAIL_SENDER`) use it to link to the same page.
     """
     token = invitation.invitation_token
     fallback_url = settings.FRONT_ACCEPT_INVITATION_URL.format(token=token)
@@ -73,10 +74,18 @@ def send_invitation_email(invitation, inviter=None) -> None:
             },
         )
     except DeepLinkFetchError:
-        accept_url = fallback_url
-    else:
-        accept_url = deep_link["url"]
+        return fallback_url
+    return deep_link["url"]
 
+
+def send_invitation_email(invitation, inviter=None) -> None:
+    """
+    Email `invitation` to its invited address. `inviter` is named in the email; without one
+    (an invitation sent by an importer or released after review) the profile is named.
+
+    The default `BASEAPP_PROFILES_INVITATION_EMAIL_SENDER`.
+    """
+    accept_url = get_accept_url(invitation)
     expires_at = invitation.invitation_expires_at
     invitee_name = " ".join(
         name for name in (invitation.invited_first_name, invitation.invited_last_name) if name

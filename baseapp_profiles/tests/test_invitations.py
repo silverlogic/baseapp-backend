@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from baseapp_core.graphql.testing.fixtures import graphql_query
 from baseapp_core.tests.factories import UserFactory
-from baseapp_profiles.constants import INVITATION_EXPIRATION_DAYS
+from baseapp_profiles.conf import invitation_expiration_days
 from baseapp_profiles.emails import create_invitation
 from baseapp_profiles.tests.factories import ProfileFactory
 
@@ -37,7 +37,7 @@ class TestInvitations:
         assert invitation.invitation_expires_at is not None
 
         days_diff = (invitation.invitation_expires_at - invitation.invited_at).days
-        assert days_diff == INVITATION_EXPIRATION_DAYS
+        assert days_diff == invitation_expiration_days()
 
     def test_invitation_expiration_check(self) -> None:
         owner = UserFactory()
@@ -631,7 +631,7 @@ class TestInvitationMutations:
             role=ProfileUserRole.ProfileRoles.MANAGER,
             status=ProfileUserRole.ProfileRoleStatus.PENDING,
             invited_at=timezone.now(),
-            invitation_expires_at=timezone.now() + timedelta(days=INVITATION_EXPIRATION_DAYS),
+            invitation_expires_at=timezone.now() + timedelta(days=invitation_expiration_days()),
         )
         invitation.generate_invitation_token()
         invitation.save()
@@ -672,7 +672,7 @@ class TestInvitationMutations:
             role=ProfileUserRole.ProfileRoles.MANAGER,
             status=ProfileUserRole.ProfileRoleStatus.PENDING,
             invited_at=timezone.now(),
-            invitation_expires_at=timezone.now() + timedelta(days=INVITATION_EXPIRATION_DAYS),
+            invitation_expires_at=timezone.now() + timedelta(days=invitation_expiration_days()),
         )
         invitation.generate_invitation_token()
         invitation.save()
@@ -924,7 +924,7 @@ class TestInvitationStateMachine:
             profile=profile, inviter=owner, invited_email="test@test.com"
         )
 
-        expected_expiration = invitation.invited_at + timedelta(days=INVITATION_EXPIRATION_DAYS)
+        expected_expiration = invitation.invited_at + timedelta(days=invitation_expiration_days())
         diff = abs((invitation.invitation_expires_at - expected_expiration).total_seconds())
         assert diff < 1
 
