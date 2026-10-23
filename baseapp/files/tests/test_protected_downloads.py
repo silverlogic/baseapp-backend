@@ -3,18 +3,23 @@
 import uuid
 from types import SimpleNamespace
 from typing import Any, Callable, Iterator
+from unittest import mock
 from urllib.parse import urlparse
 
+import graphene
 import pytest
 import swapper
 from django.contrib import admin
 from django.contrib.auth.models import AnonymousUser
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
 from django.core.files.base import ContentFile
 from django.core.files.storage import FileSystemStorage, InMemoryStorage
 from django.db import models
+from django.http import Http404
 from django.test import RequestFactory, override_settings
+from graphene_django import DjangoObjectType
 from graphql_relay import to_global_id
 from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied
@@ -26,13 +31,21 @@ from baseapp.files.downloads import (
     protected_files,
 )
 from baseapp.files.downloads.admin import ProtectedFileAdminMixin
-from baseapp.files.downloads.checks import check_protected_files
+from baseapp.files.downloads.checks import (
+    check_protected_file_storage,
+    check_protected_files,
+)
 from baseapp.files.downloads.graphql import ProtectedFileField
 from baseapp.files.downloads.responses import safe_filename
 from baseapp.files.downloads.rest_framework import ProtectedFileSerializerField
 from baseapp.files.downloads.services import describe_protected_file
 from baseapp.files.downloads.tickets import ProtectedDownloadTicket
-from baseapp.files.storage import AliasStorage, files_storage
+from baseapp.files.storage import (
+    AliasStorage,
+    files_storage,
+    files_storage_is_private,
+    get_wrapped_files_storage,
+)
 from baseapp_core.graphql.testing.fixtures import graphql_query
 from baseapp_core.tests.factories import UserFactory
 from baseapp_core.tests.fixtures import Client, DjangoClient
@@ -187,6 +200,37 @@ class TestRegistry:
             "baseapp_files.E011",
             "baseapp_files.E012",
         ]
+
+    def test_storage_warning(self, register, settings, tmp_path) -> None:
+        settings.STORAGES = {
+            **settings.STORAGES,
+            "signed": {
+                "BACKEND": "baseapp.files.storage.signed.SignedFileSystemStorage",
+                "OPTIONS": {"location": str(tmp_path / "signed")},
+            },
+        }
+        assert check_protected_file_storage() == []
+        register(File, "missing", key="missing")  # E010 only
+        assert check_protected_file_storage() == []
+
+        register()  # File.file on the public default storage of the tests
+        warnings = check_protected_file_storage()
+        assert [warning.id for warning in warnings] == ["baseapp_files.W010"]
+        assert f"{KEY!r}" in warnings[0].msg
+        assert get_wrapped_files_storage().__class__.__name__ in warnings[0].msg
+
+        field = File._meta.get_field("file")
+        original = field.storage
+        try:
+            field.storage = AliasStorage("signed")
+            assert files_storage_is_private(field.storage) is True
+            assert check_protected_file_storage() == []
+            field.storage = AliasStorage("unknown")
+            warnings = check_protected_file_storage()
+            assert [warning.id for warning in warnings] == ["baseapp_files.W010"]
+            assert "AliasStorage('unknown')" in warnings[0].msg
+        finally:
+            field.storage = original
 
 
 class TestAuthenticatedDownload:
@@ -624,6 +668,56 @@ class TestLinks:
         ):
             assert Client().get(path).status_code == status.HTTP_200_OK
 
+    @pytest.mark.parametrize("stored", [False, True])
+    def test_link_to_a_regenerated_file_survives_its_first_use(self, register, stored) -> None:
+        def ensure(obj: Any) -> Any:
+            obj.file.save("regenerated.pdf", ContentFile(b"fresh"), save=True)
+            return obj.file
+
+        spec = register(ensure=ensure)
+        owner = UserFactory()
+        if stored:  # a name is stored but the file is gone
+            file_obj = stored_file(owner)
+            files_storage.delete(file_obj.file.name)
+        else:
+            file_obj = File.objects.create(file_name="draft.pdf", created_by=owner)
+        path = self.ticket_for(spec, file_obj, owner)
+
+        first = Client().get(path)
+        assert first.status_code == status.HTTP_200_OK
+        assert body(first) == b"fresh"
+        second = Client().get(path)  # a retried or double-clicked link
+        assert second.status_code == status.HTTP_200_OK
+        assert body(second) == b"fresh"
+
+    def test_head_is_not_served(self, register) -> None:
+        spec = register(ensure=lambda obj: pytest.fail("HEAD ran ensure"))
+        owner = UserFactory()
+        file_obj = stored_file(owner)
+        received = []
+
+        def receiver(**kwargs: Any) -> None:
+            received.append(kwargs)
+
+        protected_file_downloaded.connect(receiver)
+        try:
+            response = Client().head(self.ticket_for(spec, file_obj, owner))
+            assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+            response = jwt_client(owner).head(f"/v1/files/protected/{KEY}/{file_obj.pk}")
+            assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+        finally:
+            protected_file_downloaded.disconnect(receiver)
+        assert received == []
+
+    def test_logout_does_not_revoke_a_link(self, register) -> None:
+        register()
+        owner = UserFactory()
+        file_obj = stored_file(owner)
+        client = session_client(owner)
+        path = ticket_url_path(mint(owner, {"key": KEY, "objectId": str(file_obj.pk)}, client))
+        client.logout()
+        assert Client().get(path).status_code == status.HTTP_200_OK  # documented
+
     def test_throttle(self, register, settings) -> None:
         spec = register()
         owner = UserFactory()
@@ -662,6 +756,77 @@ class TestFields:
         assert resolve(owner, File.objects.create(created_by=owner)) is None  # empty
         assert ProtectedFileField("file", key=KEY).get_spec(file_obj) is protected_files.get(KEY)
 
+    def test_graphql_field_in_a_schema(self, register) -> None:
+        def check(user: Any, obj: Any) -> None:
+            if obj.file_name == "blocked.pdf":
+                raise DjangoPermissionDenied()
+
+        register(check=check)
+        owner = UserFactory()
+        own = stored_file(owner)
+        foreign = stored_file(UserFactory(), name="foreign.pdf")
+        blocked = stored_file(owner, name="blocked.pdf")
+        empty = File.objects.create(file_name="empty.pdf", created_by=owner)
+
+        class ProtectedFileHolder(DjangoObjectType):
+            file = ProtectedFileField("file")
+
+            class Meta:
+                model = File
+                fields = ("id", "file")
+                skip_registry = True
+
+        class Query(graphene.ObjectType):
+            files = graphene.List(ProtectedFileHolder)
+
+            def resolve_files(root: Any, info: Any) -> Any:
+                return File.objects.filter(pk__in=[own.pk, foreign.pk, blocked.pk, empty.pk])
+
+        request = RequestFactory().get("/")
+        request.user = owner
+        result = graphene.Schema(query=Query).execute(
+            "{ files { id file { key objectId fileName contentType size } } }",
+            context_value=request,
+        )
+
+        assert result.errors is None
+        files = {int(item["id"]): item["file"] for item in result.data["files"]}
+        assert files == {
+            own.pk: {
+                "key": KEY,
+                "objectId": str(own.pk),
+                "fileName": "report.pdf",
+                "contentType": "application/pdf",
+                "size": len(CONTENT),
+            },
+            foreign.pk: None,  # no permission
+            blocked.pk: None,  # check raised Django's PermissionDenied
+            empty.pk: None,
+        }
+
+    @pytest.mark.parametrize("error", [DjangoPermissionDenied, Http404])
+    def test_django_errors_from_check_render_null(self, register, error) -> None:
+        def check(user: Any, obj: Any) -> None:
+            raise error()
+
+        spec = register(check=check)
+        owner = UserFactory()
+        file_obj = stored_file(owner)
+
+        class FileSerializer(serializers.ModelSerializer):
+            file = ProtectedFileSerializerField()
+
+            class Meta:
+                model = File
+                fields = ["id", "file"]
+
+        context = {"request": SimpleNamespace(user=owner)}
+        assert FileSerializer([file_obj], many=True, context=context).data[0]["file"] is None
+        assert describe_protected_file(spec, file_obj, owner) is None
+        expected = 403 if error is DjangoPermissionDenied else 404
+        response = jwt_client(owner).get(f"/v1/files/protected/{KEY}/{file_obj.pk}")
+        assert response.status_code == expected
+
     def test_unregistered_field_is_null(self) -> None:
         assert describe_protected_file(protected_files.get_for(File, "file"), None, None) is None
 
@@ -671,6 +836,15 @@ class TestFields:
         file_obj = stored_file(owner)
         files_storage.delete(file_obj.file.name)
         assert describe_protected_file(spec, file_obj, owner).size is None
+
+    def test_size_is_null_when_the_s3_object_is_missing(self, register) -> None:
+        exceptions = pytest.importorskip("botocore.exceptions")
+        spec = register()
+        owner = UserFactory()
+        file_obj = stored_file(owner)
+        missing = exceptions.ClientError({"Error": {"Code": "404"}}, "HeadObject")
+        with mock.patch.object(type(get_wrapped_files_storage()), "size", side_effect=missing):
+            assert describe_protected_file(spec, file_obj, owner).size is None
 
     def test_drf_field(self, register) -> None:
         register()
@@ -729,6 +903,22 @@ class TestAdminMixin:
         assert model_admin.file_link.short_description == "file"
         with pytest.raises(AttributeError):
             model_admin.something_else  # noqa: B018
+
+    def test_change_and_add_views_render(self, register) -> None:
+        register()
+        model_admin = self.model_admin()
+        file_obj = stored_file(UserFactory())
+
+        response = model_admin.change_view(self.request(), str(file_obj.pk))
+        response.render()
+        assert response.status_code == status.HTTP_200_OK
+        html = response.content.decode()
+        assert f'href="/v1/files/protected/{KEY}/{file_obj.pk}"' in html
+        assert 'type="file"' not in html
+
+        response = model_admin.add_view(self.request())
+        response.render()
+        assert response.status_code == status.HTTP_200_OK
 
     def test_public_unregistered_field_keeps_its_widget(self) -> None:
         model_admin = self.model_admin()
