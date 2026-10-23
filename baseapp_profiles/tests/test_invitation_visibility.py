@@ -165,9 +165,11 @@ def test_rest_invitations_need_the_permission(profile, manager, admins_only) -> 
 
 def test_a_backend_subclass_narrows_the_permission(profile, manager, settings) -> None:
     settings.AUTHENTICATION_BACKENDS = [
-        "baseapp_profiles.tests.test_invitation_visibility.NarrowedProfilesPermissionsBackend"
-        if backend == "baseapp_profiles.permissions.ProfilesPermissionsBackend"
-        else backend
+        (
+            "baseapp_profiles.tests.test_invitation_visibility.NarrowedProfilesPermissionsBackend"
+            if backend == "baseapp_profiles.permissions.ProfilesPermissionsBackend"
+            else backend
+        )
         for backend in settings.AUTHENTICATION_BACKENDS
     ]
     admin = profile.members.get(role=ADMIN)
