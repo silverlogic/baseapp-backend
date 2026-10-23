@@ -662,6 +662,21 @@ let anyone holding the link open the file; a protected download does not.
 Nothing changes until a project registers a field: the endpoints are mounted by the files
 plugin (or by hand, below) but serve only registered fields.
 
+### Requirements
+
+Registering a field adds a protected way to serve it; it does not close the other ways.
+
+- **Keep the field on private storage**: an S3 bucket with `querystring_auth` and no public
+  access, `SignedFileSystemStorage`, an `AliasStorage` naming one of them, or a directory the
+  web server does not serve. A field on the default `FileSystemStorage` or a public bucket
+  stays readable by anyone at its `MEDIA_URL`/bucket URL. The system check
+  `baseapp_files.W010` warns about registered fields whose storage does not sign its URLs;
+  silence it (`SILENCED_SYSTEM_CHECKS`) only when the web server denies those URLs.
+- **Do not expose the raw field**: leave it out of `DjangoObjectType`s (`fields`/`exclude`)
+  and serializers, or replace it there with `ProtectedFileField` /
+  `ProtectedFileSerializerField` (below); a plain `FileField` in a payload hands out its
+  storage URL. In the admin, use `ProtectedFileAdminMixin`.
+
 ### Registering a field
 
 From `AppConfig.ready()`:
@@ -706,8 +721,18 @@ class BillingConfig(AppConfig):
 | `ensure` | `None` | `callable(obj)` returning a `FieldFile`, a file or bytes when nothing is stored, to regenerate or derive the content |
 | `cache_control` | `"private, no-store"` | |
 
+**The default permission means "may view the object"**, checked per object with
+`user.has_perm("<app>.view_<model>", obj)`. What that grants depends on the authentication
+backends: under Django's `ModelBackend` alone, object-level `has_perm` is always `False`, so
+only superusers pass; under a BaseApp permission backend it may be broad (`view_profile` is
+true for any public profile, for anyone). Being allowed to see an object is often not the same
+as being allowed to download its private file, so give each registration its own `permission`
+(for example a dedicated `"billing.download_invoice_pdf"` your backend grants) or a `check`,
+unless viewing the object is genuinely enough.
+
 A system check reports a registration whose field does not exist (`baseapp_files.E010`), is
-not a file field (`E011`), or whose `lookup_field` does not exist (`E012`).
+not a file field (`E011`), or whose `lookup_field` does not exist (`E012`), and warns when its
+storage does not keep files private (`W010`, see Requirements).
 
 Every response carries `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, the
 `Cache-Control` above and a `Content-Disposition` whose name is stripped of path components and
@@ -733,6 +758,9 @@ BASEAPP_FILES_PROTECTED_DOWNLOADS_URL = "/v1/files/protected/"  # where it is mo
   below. The ticket is the only credential, so the link opens natively (a new tab, a download)
   without an `Authorization` header.
 
+Both answer `GET` only: `HEAD` is 405, so link previews and prefetchers that probe with it
+neither run `ensure` nor send `protected_file_downloaded`.
+
 ### Download links
 
 ```graphql
@@ -753,9 +781,12 @@ A ticket is bound to the user who minted it and the profile they were acting as.
 the link view reloads the user (who must still be active and have the same password), acts as
 that profile while the user may still use it, runs `BASEAPP_FILES_DOWNLOAD_TICKET_USER_CHECK`
 and then **re-runs the same access check**, so revoking access takes effect immediately. A
-link stops working when it expires, when the file is replaced, and when the field is
-unregistered. Anyone holding a fresh link can open that one file as the user who minted it,
-so keep the lifetime short.
+link stops working when it expires, when the file stored at minting is replaced, when the user
+is deactivated or changes their password, and when the field is unregistered. A link minted
+while nothing was stored (content from `ensure`) keeps working after `ensure` saves a file.
+**Logging out does not revoke links**: tickets are stateless, so a link minted before logout
+works until it expires. Anyone holding a fresh link can open that one file as the user who
+minted it, so keep the lifetime short.
 
 | Setting | Default | |
 |---|---|---|
@@ -806,7 +837,7 @@ class InvoiceAdmin(ProtectedFileAdminMixin, admin.ModelAdmin):
 ### Signal and custom views
 
 `baseapp.files.downloads.protected_file_downloaded(sender, instance, field, key, user, request,
-via)` is sent after each served download (`via` is `"session"` or `"ticket"`), e.g. to record
+via)` is sent after each served `GET` (`via` is `"session"` or `"ticket"`), e.g. to record
 access. For content that is not a registered field (say, an email attachment), build the same
 hardened response with `protected_content_response(content, filename=..., content_type=...,
 disposition=..., csp=...)`, or `protected_file_response(spec, obj, content)` for a spec, after
