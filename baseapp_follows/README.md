@@ -42,10 +42,10 @@ You need to add `FollowsInterface` to any GraphQL `ObjectType` you want to be fo
 
 `FollowsInterface` is a GraphQL interface that exposes follow data for the implementing object. Fields:
 
-- `followersCount` — `Int`, served from `FollowableMetadata` (kept up to date by `Follow.save()` / `Follow.delete()`).
-- `followingCount` — `Int`, same source.
-- `followers` — `Connection<Follow>` over rows whose `target` is this object.
-- `following` — `Connection<Follow>` over rows whose `actor` is this object.
+- `followersCount` — `Int`, served from `FollowableMetadata` (kept up to date by `Follow.save()` / `Follow.delete()`). `null` when the viewer lacks `view_followers` (see [Private followers / following](#private-followers--following)).
+- `followingCount` — `Int`, same source. `null` when the viewer lacks `view_following`.
+- `followers` — `Connection<Follow>` over rows whose `target` is this object. Empty when the viewer lacks `view_followers`.
+- `following` — `Connection<Follow>` over rows whose `actor` is this object. Empty when the viewer lacks `view_following`.
 - `isFollowedByMe(profileId: ID)` — `Boolean`, true when the current user (or the explicitly passed profile) follows this object.
 
 Each `Follow` node exposes:
@@ -242,6 +242,54 @@ Then point swapper at the subclass via `BASEAPP_FOLLOWS_FOLLOW_MODEL` (or overri
 `Follow.save()` and `Follow.delete()` recompute `followers_count` / `following_count` on the affected `FollowableMetadata` rows under a row lock so concurrent follows / unfollows don't race. There are no extra signals for projects to override.
 
 ## Permissions
+
+`FollowsPermissionsBackend` answers these permissions:
+
+| Permission | `obj` | Default | Used by |
+|---|---|---|---|
+| `baseapp_follows.add_follow` | the target | any authenticated user | `followToggle`, only when it **creates** a follow |
+| `baseapp_follows.add_follow_with_profile` | the actor | `use_profile` on the actor | `followToggle` |
+| `baseapp_follows.delete_follow` | the `Follow` | `use_profile` on the actor | `followToggle`, when it removes a follow |
+| `baseapp_follows.is_following` | the target | the current profile follows it | — |
+| `baseapp_follows.view_followers` | the followed object | `True` (public) | `followers`, `followersCount`, `node(id:)` on a `Follow` |
+| `baseapp_follows.view_following` | the actor | `True` (public) | `following`, `followingCount`, `node(id:)` on a `Follow` |
+
+Because `add_follow` is checked only when creating, a user can always remove an existing
+follow, even after the target stops being followable (for example a profile that was
+deactivated, or one a project-level rule no longer allows following).
+
+### Private followers / following
+
+Follows are public by default. To make them private, override `view_followers` and/or
+`view_following`. When a check fails:
+
+- `followers` / `following` resolve to an empty connection;
+- `followersCount` / `followingCount` resolve to `null` (not `0`), so clients can tell
+  "hidden" apart from "none";
+- `node(id:)` on a `Follow` resolves to `null` unless the viewer may see the actor's
+  `following` **or** the target's `followers`.
+
+Rows inside a visible connection are not re-checked one by one.
+
+```python
+import swapper
+from baseapp_follows.permissions import FollowsPermissionsBackend
+
+Profile = swapper.load_model("baseapp_profiles", "Profile")
+
+
+class PrivateFollowsPermissionsBackend(FollowsPermissionsBackend):
+    def has_perm(self, user_obj, perm, obj=None):
+        if perm in ("baseapp_follows.view_followers", "baseapp_follows.view_following"):
+            # Only the profile's own members (and staff) see who it follows / who follows it.
+            return user_obj.is_staff or (
+                isinstance(obj, Profile)
+                and user_obj.has_perm(f"{Profile._meta.app_label}.use_profile", obj)
+            )
+        return super().has_perm(user_obj, perm, obj)
+```
+
+### Customizing
 
 You can inherit `baseapp_follows.permissions.FollowsPermissionsBackend` to customize permissions:
 
