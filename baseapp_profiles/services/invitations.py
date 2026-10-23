@@ -44,7 +44,7 @@ from baseapp_profiles.conf import (
 from baseapp_profiles.exceptions import ProfileMembershipError
 
 from ._utils import send_on_commit
-from .members import validate_role
+from .members import set_extra_fields, validate_role
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +148,7 @@ def _open_invitation(
     invited_user: AbstractBaseUser | None,
     invited_by: AbstractBaseUser | None,
     message: str,
+    extra_fields: Mapping | None = None,
 ) -> "ProfileUserRole":
     """
     Create a PENDING invitation for `invitee` on `profile`, or revive the row that stands
@@ -218,6 +219,7 @@ def _open_invitation(
             message=message,
             invited_by=invited_by,
         )
+    set_extra_fields(invitation, extra_fields)
     _reset_for_send(invitation)
     try:
         with transaction.atomic():
@@ -237,10 +239,14 @@ def send_invitations(
     role: int | None = None,
     invited_by: AbstractBaseUser | None = None,
     message: str = "",
+    extra_fields: Mapping | None = None,
 ) -> SentInvitations:
     """
     Invite each of `invitees` (emails, `Invitee`s or dicts with `email`, `first_name`,
     `last_name`) to `profile` with `role` (MANAGER by default).
+
+    `extra_fields` (field name -> value) is set on every row the send opens, for the
+    columns a project adds to its concrete `ProfileUserRole`.
 
     All-or-nothing: a conflict on any email, or an invitee the project's validator refuses,
     rolls back the whole batch. Once the rows are saved, each email goes out unless the
@@ -269,6 +275,7 @@ def send_invitations(
                 invited_user=find_user_by_email(item.email),
                 invited_by=invited_by,
                 message=message or "",
+                extra_fields=extra_fields,
             )
             for item in items
         ]
@@ -290,10 +297,14 @@ def _ensure_resend_allowed(invitation: "ProfileUserRole") -> None:
 
 
 def resend_invitation(
-    invitation: "ProfileUserRole", *, by: AbstractBaseUser | None = None
+    invitation: "ProfileUserRole",
+    *,
+    by: AbstractBaseUser | None = None,
+    extra_fields: Mapping | None = None,
 ) -> SentInvitations:
     """
     Send a PENDING or EXPIRED invitation again with a fresh token and expiry date.
+    `extra_fields` is set on the row that is sent.
 
     With history on, an invitation that has expired stays on record as EXPIRED and the
     resend opens a new row for the same person (returned in `invitations`).
@@ -319,8 +330,10 @@ def resend_invitation(
                 invited_user=invitation.user or find_user_by_email(invitee.email),
                 invited_by=by or invitation.invited_by,
                 message=invitation.message,
+                extra_fields=extra_fields,
             )
         else:
+            set_extra_fields(invitation, extra_fields)
             _reset_for_send(invitation)
             invitation.save()
 

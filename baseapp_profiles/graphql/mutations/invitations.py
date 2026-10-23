@@ -15,6 +15,7 @@ from baseapp_profiles.exceptions import ProfileMembershipError
 from baseapp_profiles.services import invitations as invitation_service
 
 from ..object_types import ProfileRoleTypesEnum
+from .base import ExtensibleMutation
 from .roles import validate_assignable_role
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ class ProfileInviteeInput(graphene.InputObjectType):
     last_name = graphene.String()
 
 
-class ProfileSendInvitation(RelayMutation):
+class ProfileSendInvitation(ExtensibleMutation):
     profile_user_roles = graphene.List(get_object_type_for_model(ProfileUserRole))
     emails_sent = graphene.Int()
     emails_held = graphene.Int(
@@ -97,6 +98,7 @@ class ProfileSendInvitation(RelayMutation):
                 role=input.get("role"),
                 invited_by=info.context.user,
                 message=input.get("message") or "",
+                extra_fields=cls.extra_fields_from_input(info, input),
             )
         except ProfileMembershipError as error:
             raise as_graphql_error(error)
