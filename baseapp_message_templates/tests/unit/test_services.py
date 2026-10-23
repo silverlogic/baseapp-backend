@@ -2,6 +2,7 @@ import pytest
 
 import baseapp_core.tests.factories as core_factories
 import baseapp_message_templates.tests.factories as f
+from baseapp_message_templates.checks import check_test_send_limit
 from baseapp_message_templates.permissions import MessageTemplatesPermissionsBackend
 from baseapp_message_templates.services import (
     consume_test_send_quota,
@@ -15,16 +16,34 @@ pytestmark = pytest.mark.django_db
 
 @pytest.mark.parametrize(
     "rate, expected",
-    [("10/h", (10, 3600)), ("3/minute", (3, 60)), ("1/d", (1, 86400)), ("", None), (None, None)],
+    [
+        ("10/h", (10, 3600)),
+        ("10/hour", (10, 3600)),
+        ("3/minute", (3, 60)),
+        ("3/Minutes", (3, 60)),
+        ("5/sec", (5, 1)),
+        ("1/d", (1, 86400)),
+        ("", None),
+        (None, None),
+    ],
 )
 def test_parse_rate(rate, expected) -> None:
     assert parse_rate(rate) == expected
 
 
-@pytest.mark.parametrize("rate", ["ten/h", "10", "10/w"])
+@pytest.mark.parametrize("rate", ["ten/h", "10", "10/w", "10/month", "10/hx", "10/"])
 def test_parse_rate_rejects_invalid(rate) -> None:
     with pytest.raises(ValueError):
         parse_rate(rate)
+
+
+def test_system_check_rejects_invalid_limit(settings) -> None:
+    settings.BASEAPP_MESSAGE_TEMPLATES_TEST_SEND_LIMIT = "10/month"
+    errors = check_test_send_limit(None)
+    assert [error.id for error in errors] == ["baseapp_message_templates.E001"]
+
+    settings.BASEAPP_MESSAGE_TEMPLATES_TEST_SEND_LIMIT = "10/hour"
+    assert check_test_send_limit(None) == []
 
 
 def test_no_limit(settings) -> None:

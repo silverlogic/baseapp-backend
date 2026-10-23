@@ -17,7 +17,14 @@ if TYPE_CHECKING:
     from .models import EmailTemplate
 
 DEFAULT_TEST_SEND_LIMIT = "10/h"
-_PERIODS = {"s": 1, "m": 60, "h": 60 * 60, "d": 24 * 60 * 60}
+_SECONDS = {"second": 1, "minute": 60, "hour": 60 * 60, "day": 24 * 60 * 60}
+_PERIODS = {
+    **_SECONDS,
+    **{f"{name}s": seconds for name, seconds in _SECONDS.items()},
+    **{name[0]: seconds for name, seconds in _SECONDS.items()},
+    "sec": 1,
+    "min": 60,
+}
 
 
 class PreviewError(Exception):
@@ -29,17 +36,21 @@ class RateLimitExceeded(Exception):
 
 
 def parse_rate(rate: str | None) -> tuple[int, int] | None:
-    """Parse ``"10/h"`` (or ``"10/hour"``, ``s``/``m``/``h``/``d``) into ``(count, seconds)``.
+    """Parse ``"10/h"`` into ``(count, seconds)``.
 
-    ``None`` or ``""`` means no limit.
+    The period is ``s``, ``m``, ``h`` or ``d``, or the whole unit name (``"10/hour"``,
+    ``"3/minutes"``); anything else, such as ``"10/month"``, is rejected. ``None`` or ``""``
+    means no limit.
     """
     if not rate:
         return None
     count, _sep, period = str(rate).partition("/")
     try:
-        return int(count), _PERIODS[period.strip()[0].lower()]
-    except (ValueError, KeyError, IndexError):
-        raise ValueError(f"Invalid rate {rate!r}; use '<count>/<s|m|h|d>', e.g. '10/h'.")
+        return int(count), _PERIODS[period.strip().lower()]
+    except (ValueError, KeyError):
+        raise ValueError(
+            f"Invalid rate {rate!r}; use '<count>/<second|minute|hour|day>', e.g. '10/h'."
+        )
 
 
 def consume_test_send_quota(user: "AbstractBaseUser") -> bool:

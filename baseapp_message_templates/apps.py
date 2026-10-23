@@ -1,3 +1,4 @@
+from django.db import router
 from django.db.models.signals import post_migrate
 from django.utils.translation import gettext_lazy as _
 
@@ -12,6 +13,8 @@ def sync_registered_email_templates(sender, using="default", apps=None, **kwargs
         model = (apps or sender.apps).get_model("baseapp_message_templates", "EmailTemplate")
     except LookupError:  # migrated backwards past the model
         return
+    if not router.allow_migrate_model(using, model):
+        return
     sync_email_templates(using=using, model=model)
 
 
@@ -24,6 +27,8 @@ class PackageConfig(BaseAppConfig):
 
     def ready(self) -> None:
         super().ready()
+        from . import checks  # noqa: F401  (registers the system checks)
+
         post_migrate.connect(
             sync_registered_email_templates,
             sender=self,

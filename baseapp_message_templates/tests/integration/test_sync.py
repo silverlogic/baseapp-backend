@@ -44,6 +44,21 @@ def test_post_migrate_handler() -> None:
     assert EmailTemplate.objects.filter(name="tests/one").exists()
 
 
+def test_post_migrate_handler_respects_database_routers(settings) -> None:
+    settings.DATABASE_ROUTERS = [
+        "baseapp_message_templates.tests.integration.test_sync.NoMessageTemplatesRouter"
+    ]
+    register_email_template("tests/one", label="One")
+    app_config = apps.get_app_config("baseapp_message_templates")
+    sync_registered_email_templates(sender=app_config, using="default", apps=apps)
+    assert not EmailTemplate.objects.exists()
+
+
+class NoMessageTemplatesRouter:
+    def allow_migrate(self, db, app_label, **hints) -> bool | None:
+        return False if app_label == "baseapp_message_templates" else None
+
+
 def test_post_migrate_handler_skips_missing_model() -> None:
     class NoModels:
         def get_model(self, *args) -> None:
