@@ -1,4 +1,5 @@
 import pytest
+from django.contrib.contenttypes.models import ContentType
 from django.test import override_settings
 
 from baseapp_core.hashids.strategies import (
@@ -48,6 +49,8 @@ def test_nullable_paths_keep_rows_and_annotate_none() -> None:
 
 def test_public_id_reads_the_annotation(django_assert_num_queries) -> None:
     DummyPublicIdChildModelFactory.create_batch(3)
+    # Warm the content type cache, so the count does not depend on test order.
+    ContentType.objects.get_for_model(DummyPublicIdChildModel)
 
     with django_assert_num_queries(1):
         rows = list(annotate_public_ids(DummyPublicIdChildModel.objects.all()))
