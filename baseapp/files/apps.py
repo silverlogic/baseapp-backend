@@ -10,7 +10,9 @@ class FilesConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
 
     def ready(self) -> None:
         super().ready()
-        from . import checks  # noqa: F401  (registers the private storage checks)
+        # Register the system checks: private storage, protected downloads.
+        from . import checks  # noqa: F401
+        from .downloads import checks as download_checks  # noqa: F401
 
     def register_shared_services(self, registry):
         from .services.metadata import FilesMetadataService
