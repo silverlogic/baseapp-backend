@@ -7,9 +7,9 @@ from django_prose_editor.fields import ProseEditorField
 from model_utils.models import TimeStampedModel
 
 from .custom_templates import get_full_copy_template
+from .registry import email_templates, render_email_template
 from .sendgrid import mass_send_personalized_mail, send_personalized_mail
 from .utils import attach_files, random_name_in
-
 
 class CaseInsensitiveCharField(models.CharField):
     description = "Case insensitive character"
@@ -52,6 +52,14 @@ class EmailTemplate(TimeStampedModel):
     class Meta:
         ordering = ["-id"]
 
+    def __str__(self) -> str:
+        return self.name
+
+    @property
+    def is_registered(self) -> bool:
+        """Whether code registered this name with ``register_email_template``."""
+        return email_templates.is_registered(self.name)
+
     def send_via_sendgrid(self, personalization, attachments=[]) -> None:
         if not self.sendgrid_template_id:
             raise Exception("SendGrid template ID required to send message via SendGrid")
@@ -71,26 +79,43 @@ class EmailTemplate(TimeStampedModel):
         attachments=[],
         custom_subject="",
     ) -> None:
-        if not self.html_content:
-            raise Exception("HTML content required to send e-mail")
+        """Send this template to ``recipients``.
 
-        if not use_base_template:
-            base_template_route = ""
+        A registered name renders through ``render_email_template`` (its files plus this row's
+        editable fields), so ``use_base_template`` and ``extended_with`` do not apply: the
+        template files own their layout. Other names render this row's content as before.
+        """
+        if email_templates.is_registered(self.name):
+            rendered = render_email_template(
+                self.name,
+                context,
+                recipient=recipients[0] if recipients else None,
+                row=self,
+            )
+            html_content, text_content = rendered.body_html, rendered.body_text
+            copy_template_subject = rendered.subject
         else:
-            base_template_route = extended_with or settings.DEFAULT_EMAIL_TEMPLATE
+            if not self.html_content:
+                raise Exception("HTML content required to send e-mail")
 
-        html_content, text_content, copy_template_subject = get_full_copy_template(
-            self, context, use_base_template, base_template_route
-        )
+            if not use_base_template:
+                base_template_route = ""
+            else:
+                base_template_route = extended_with or settings.DEFAULT_EMAIL_TEMPLATE
+
+            html_content, text_content, copy_template_subject = get_full_copy_template(
+                self, context, use_base_template, base_template_route
+            )
         subject = custom_subject if custom_subject else copy_template_subject
         mail = EmailMultiAlternatives(
             subject, text_content, from_email=settings.DEFAULT_FROM_EMAIL, to=recipients
         )
 
         # combine static attachments from template with dynamic attachments
-        mail.attach_alternative(html_content, "text/html")
-        all_attachments = list(self.static_attachments.all()) + attachments
-        attach_files(mail, all_attachments)
+        if html_content:
+            mail.attach_alternative(html_content, "text/html")
+        static_attachments = list(self.static_attachments.all()) if self.pk else []
+        attach_files(mail, static_attachments + list(attachments))
 
         mail.send()
 

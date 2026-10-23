@@ -1,6 +1,6 @@
 # BaseApp Message Templates
 
-Reusable app for admin-managed email and SMS templates: edit content in the Django admin (Prose or CKEditor), render it through Jinja2, and send via SendGrid (template id or dynamic) or plain custom HTML.
+Reusable app for email and SMS templates: edit content in the Django admin (Prose or CKEditor), render it through Jinja2, and send via SendGrid (template id or dynamic) or plain custom HTML. Projects can also [declare templates in code](#code-declared-templates-registry) with file defaults and let staff override parts of them.
 
 `baseapp_message_templates` follows the [plugin architecture](../baseapp_core/plugins/README.md): it registers itself as a plugin so it participates in `INSTALLED_APPS` aggregation. It contributes no auth backends, GraphQL roots, or URLs, and its models (`EmailTemplate`, `Attachment`, `SmsTemplate`) are **concrete** (not swappable) — the package ships their migrations, so there's nothing to subclass.
 
@@ -215,9 +215,99 @@ SENDGRID_API_KEY = env("SENDGRID_API_KEY")
 SENDGRID_SANDBOX_MODE_IN_DEBUG = False
 ```
 
+## Code-declared templates (registry)
+
+Projects that keep their email copy in template files can declare each email in code and let
+staff override parts of it, without a database row being required to send. Register templates
+from `AppConfig.ready()`:
+
+```python
+from django.utils.translation import gettext_lazy as _
+
+from baseapp_message_templates.registry import Placeholder, register_email_template
+
+
+class OrdersConfig(AppConfig):
+    def ready(self) -> None:
+        register_email_template(
+            "orders/shipped",
+            label=_("Order shipped"),
+            group="orders",
+            description=_("Sent when an order leaves the warehouse"),
+            placeholders=[
+                Placeholder("order.number", help=_("Order number"), sample="A-1001"),
+                Placeholder("user.first_name", help=_("First name"), sample="Ada"),
+            ],
+            editable=("subject",),  # any of "subject", "plain_text_content", "html_content"
+            sample_context=lambda: {"order": {"items": [{"name": "Mug"}]}},  # optional
+        )
+```
+
+The default copy lives in three files, found by `BASEAPP_MESSAGE_TEMPLATES_FILE_PATTERNS`
+(`emails/orders/shipped.subject.txt.j2`, `.body.txt.j2` and `.body.html.j2` by default). The
+html file is optional. Pass `subject_template=`, `text_template=` or `html_template=` to point a
+template at other files. Any configured engine may render the files (Jinja2 or Django).
+
+Render and send with your own email code:
+
+```python
+from baseapp_message_templates.registry import render_email_template
+
+rendered = render_email_template(
+    "orders/shipped",
+    {"order": order, "user": user},
+    recipient=user.email,              # passed to BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT
+    overrides={"subject": "..."},      # optional per-send text for editable parts
+    fallback="orders/default",         # optional: used when the files of the name are missing
+)
+rendered.subject, rendered.body_text, rendered.body_html, rendered.customized
+```
+
+How each part is resolved:
+
+- For an **editable** part, the first non-blank of `overrides[part]` and the field of the
+  `EmailTemplate` row with the same name wins. It is rendered with the **Django** template engine
+  against a context limited to the declared placeholder roots (`order`, `user` above) plus
+  `BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT`, so staff text cannot reach other context values.
+  Autoescaping is off for the subject and the plain text and on for the html.
+- Otherwise the part's **file** is rendered with the full context through `render_to_string`.
+- The html part also receives `body_text`, the rendered plain text, so a plain-text override
+  flows into a branded html layout (`{{ body_text|e|linebreaks }}` or similar).
+- The subject's whitespace is collapsed to single spaces. A missing html file renders as `""`.
+- Names that are **not registered** render their files by pattern and ignore overrides, so
+  `render_email_template` can replace a project's own `render_to_string` calls gradually.
+
+`EmailTemplate.send()` and `send_template_email()` use the registry for registered names (the
+files own their layout, so `use_base_template` does not apply); `send_template_email()` also
+sends a registered name that has no row yet. Unregistered names behave exactly as before.
+
+Other helpers in `baseapp_message_templates.registry`:
+
+| Function | Purpose |
+|---|---|
+| `preview_email_template(name, overrides=None, *, recipient=None)` | Renders with sample values: placeholder `sample`s expanded into nested dicts, merged with `sample_context()`. Values without a sample print as `{{ name }}`. The result is a `RenderedEmail` with a `preview_subject` alias. |
+| `validate_override(name, field, text) -> list[str]` | Error messages for staff text: Django template syntax, tags outside `ALLOWED_OVERRIDE_TAGS` (`include`, `load`, `debug`… are rejected) and placeholder roots that were not declared. Blank text is valid (it resets the part). |
+| `sync_email_templates()` | Creates a blank `EmailTemplate` row per registered name. Runs after every `migrate` and as `./manage.py sync_email_templates`. Existing rows are never changed. |
+| `get_default_source(name, part)` | Raw source of a part's default file, for showing the default next to an override. |
+| `is_customized(row)` | Whether a row overrides an editable part. |
+| `email_templates` | The registry itself (`get`, `list(group=None)`, `is_registered`, `unregister`). |
+
+### Settings
+
+| Setting | Default | Purpose |
+|---|---|---|
+| `BASEAPP_MESSAGE_TEMPLATES_FILE_PATTERNS` | `{"subject": "emails/{name}.subject.txt.j2", "text": "emails/{name}.body.txt.j2", "html": "emails/{name}.body.html.j2"}` | Where the default copy of a name lives. Partial dicts are merged over the default. |
+| `BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT` | `None` | Dotted path to `callable(recipient) -> dict` with values every email receives (site name, support address…). Its keys may be used in overrides without being declared. |
+| `BASEAPP_MESSAGE_TEMPLATES_TEST_SENDER` | `None` | Dotted path to `callable(email_message, *, template, user) -> None` that delivers test emails (`template` is the name), e.g. through the project's logged email backend. `None` calls `email_message.send()`. |
+| `BASEAPP_MESSAGE_TEMPLATES_TEST_SEND_LIMIT` | `"10/h"` | Test emails per user per period (`s`, `m`, `h`, `d`), counted in the default cache. `None` disables the limit. |
+
 ## EmailTemplate model
 
 This model is responsible for customizing your e-mail template and sending mail. At minimum, an instance of `EmailTemplate` must have a unique name and either a SendGrid template ID or some custom HTML content. The `subject`, `plain_text_content`, and `attachments` are optional.
+
+`plain_text_content` is a plain `TextField`: it is never sanitized as HTML, so `&` and `<` are
+stored as typed. For a [registered](#code-declared-templates-registry) name, the row only holds
+staff overrides; its blank fields fall back to the template files.
 
 ### Static attachments
 
