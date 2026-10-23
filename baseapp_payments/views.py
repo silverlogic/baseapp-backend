@@ -13,6 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from baseapp_core.graphql import get_pk_from_relay_id
 from baseapp_core.rest_framework.decorators import action
 from baseapp_core.rest_framework.mixins import DestroyModelMixin
 
@@ -34,7 +35,6 @@ from .utils import (
     STRIPE_SUBSCRIPTION_LIST_STATUSES,
     StripeService,
     StripeWebhookHandler,
-    get_entity_pk_from_relay_id,
 )
 
 if TYPE_CHECKING:
@@ -94,7 +94,7 @@ class StripeSubscriptionViewset(
         if not entity_id:
             raise ValidationError({"entity_id": [_("This field is required.")]})
         if isinstance(entity_id, str):
-            entity_id = get_entity_pk_from_relay_id(entity_id)
+            entity_id = get_pk_from_relay_id(entity_id) or None
         if not entity_id:
             raise NotFound("Customer not found")
         customer = Customer.objects.filter(entity_id=entity_id).first()
@@ -107,7 +107,9 @@ class StripeSubscriptionViewset(
         if not entity_id:
             return Response({"error": "entity_id is required"}, status=400)
         if isinstance(entity_id, str):
-            entity_id = get_entity_pk_from_relay_id(entity_id)
+            # "" is what get_pk_from_relay_id answers for a non-relay id; querying on
+            # it raises ValueError from the pk field rather than returning nothing.
+            entity_id = get_pk_from_relay_id(entity_id) or None
         customer = (
             Customer.objects.filter(entity_id=entity_id).first() if entity_id is not None else None
         )
@@ -213,11 +215,14 @@ class StripeCustomerViewset(
             if entity_id is None:
                 raise NotFound("Customer not found")
         else:
-            entity_id = get_entity_pk_from_relay_id(relay_id)
-            if entity_id is None:
-                # Not a relay id, so this is the raw-pk case. DRF resolves it and runs
-                # the object permission check itself. Testing for "" here instead let
-                # a raw pk that happens to decode as base64 (1400, say) miss its row.
+            try:
+                entity_id = get_pk_from_relay_id(relay_id)
+            except (ValueError, TypeError):
+                entity_id = None
+            if not entity_id:
+                # get_pk_from_relay_id answers "" for anything that is not a relay id,
+                # so this is the raw-pk case. DRF resolves it and runs the object
+                # permission check itself.
                 return super().get_object()
         try:
             obj = self.queryset.get(entity_id=entity_id)
@@ -249,7 +254,7 @@ class StripeCustomerViewset(
             # pops it unconditionally, so reaching it without one is a 500.
             raise ValidationError({"entity_id": [_("This field is required.")]})
         if isinstance(entity_id, str):
-            entity_id = get_entity_pk_from_relay_id(entity_id)
+            entity_id = get_pk_from_relay_id(entity_id) or None
         if not entity_id:
             raise NotFound("Entity not found")
         entity_model = apps.get_model(config.STRIPE_CUSTOMER_ENTITY_MODEL)
