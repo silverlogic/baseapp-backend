@@ -21,11 +21,24 @@ class CommentsPermissionsBackend(BaseBackend):
         if perm in [f"{app_label}.add_comment", f"{app_label}.reply_comment"]:
             return user_obj.is_authenticated and _is_comments_enabled(obj)
 
+        if perm == f"{app_label}.view_target_comments":
+            # Read gate for the comments of a target (obj): its comments, its comments count,
+            # node(id) of each comment and the comment subscription. Granted by default, so the
+            # comments list and the subscription keep applying
+            # BASEAPP_COMMENTS_CAN_ANONYMOUS_VIEW_COMMENTS on their own as before. Subclass this
+            # backend to restrict a target. When a comment is the target, obj is that comment.
+            return True
+
         if perm == f"{app_label}.view_comment":
             if not obj:
                 # Anyone can view a comment
                 return True
             elif isinstance(obj, Comment):
+                if obj.target_document_id and not user_obj.has_perm(
+                    f"{app_label}.view_target_comments", obj.target
+                ):
+                    return False
+
                 if obj.status == CommentStatus.PUBLISHED:
                     return True
 

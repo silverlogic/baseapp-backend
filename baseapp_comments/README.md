@@ -142,6 +142,47 @@ AUTHENTICATION_BACKENDS = [
 
 ```
 
+### Restricting who sees comments on a target
+
+By default anyone who can see a target can read its comments.
+`BASEAPP_COMMENTS_CAN_ANONYMOUS_VIEW_COMMENTS = False` hides the comments list and the subscription
+from anonymous users, as before. To keep the comments of some targets private, for example
+internal notes on a record, deny `baseapp_comments.view_target_comments` for that target (`obj` is
+the target). The app label follows your swapped `Comment` model. The check is applied to every read
+path:
+
+- `CommentsInterface.comments` returns no comments and `commentsCount` returns zeros.
+- `node(id)` / `comment(id)` of a comment returns `null`, because `view_comment` also requires
+  `view_target_comments` on the comment's target.
+- `onCommentChange(targetObjectId: ...)` joins no group, and every notification is checked again
+  with `view_comment` for each subscriber, so a permission revoked after subscribing, or a
+  subscriber of every comment (`view_all_comments`), does not receive it.
+
+```python
+import swapper
+
+from baseapp_comments.permissions import CommentsPermissionsBackend
+
+Comment = swapper.load_model("baseapp_comments", "Comment")
+
+
+class MyCommentsPermissionsBackend(CommentsPermissionsBackend):
+    def has_perm(self, user_obj, perm, obj=None):
+        if perm == "baseapp_comments.view_target_comments" and isinstance(obj, Account):
+            return user_obj.is_staff
+        return super().has_perm(user_obj, perm, obj)
+```
+
+Django grants a permission when any backend does, so replace the default backend with your subclass
+in `AUTHENTICATION_BACKENDS` (see above) instead of adding a second one.
+
+To also hide comment counts and comment nodes from anonymous users, return
+`user_obj.is_authenticated` for this permission.
+
+When a comment is itself the target of comments (its replies), `obj` is that comment. If the
+restricted targets allow replies, deny those too, for example by walking up with
+`while isinstance(obj, Comment): obj = obj.target`, or refuse `reply_comment` on them.
+
 ## How to Develop
 
 General development instructions can be found in the [main README](../README.md#how-to-develop).

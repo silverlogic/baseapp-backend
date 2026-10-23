@@ -43,6 +43,11 @@ def create_object_type_from_dict(name, d) -> type[graphene.ObjectType]:
 CommentsCount = create_object_type_from_dict("CommentsCount", default_comments_count())
 
 
+def _can_view_target_comments(target: models.Model, info: GQLInfo) -> bool:
+    """Whether the current user may read the comments of `target` (see the README)."""
+    return info.context.user.has_perm(f"{app_label}.view_target_comments", target)
+
+
 class CommentsInterface(RelayNode):
     comments_count = graphene.Field(CommentsCount, required=True)
     comments = DjangoConnectionField(get_object_type_for_model(Comment))
@@ -52,6 +57,8 @@ class CommentsInterface(RelayNode):
         model = Comment
 
     def resolve_comments_count(root, info: GQLInfo, **kwargs) -> dict:
+        if not _can_view_target_comments(root, info):
+            return default_comments_count()
         if service := shared_services.get("commentable_metadata"):
             return service.get_comments_count(root)
         return default_comments_count()
@@ -75,6 +82,9 @@ class CommentsInterface(RelayNode):
             settings, "BASEAPP_COMMENTS_CAN_ANONYMOUS_VIEW_COMMENTS", True
         )
         if not CAN_ANONYMOUS_VIEW_COMMENTS and not info.context.user.is_authenticated:
+            return skip_ast_walker(Comment.objects.none())
+
+        if not _can_view_target_comments(root, info):
             return skip_ast_walker(Comment.objects.none())
 
         is_root_a_comment = isinstance(root, Comment)
