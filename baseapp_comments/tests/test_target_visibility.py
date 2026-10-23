@@ -49,6 +49,22 @@ staff_only_page_comments = override_settings(
     )
 )
 
+
+class SubscribeGateOnlyBackend(StaffOnlyPageCommentsBackend):
+    """Grants view_comment on every comment, so only the subscribe gate can hide page comments."""
+
+    def has_perm(self, user_obj, perm, obj=None) -> bool | None:
+        if perm == f"{app_label}.view_comment":
+            return True
+        return super().has_perm(user_obj, perm, obj)
+
+
+subscribe_gate_only = override_settings(
+    AUTHENTICATION_BACKENDS=_backends_with(
+        "baseapp_comments.tests.test_target_visibility.SubscribeGateOnlyBackend"
+    )
+)
+
 TARGET_COMMENTS_QUERY = """
     query TargetComments($id: ID!) {
         node(id: $id) {
@@ -217,8 +233,9 @@ async def _create_comment(target) -> str:
 
 @pytest.mark.asyncio
 @pytest.mark.django_db(transaction=True)
-@staff_only_page_comments
+@subscribe_gate_only
 async def test_cant_subscribe_to_a_restricted_target(graphql_ws_user_client) -> None:
+    """publish lets every comment through here, so only the subscribe gate stops the event."""
     client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
     page = await database_sync_to_async(PageFactory)()
     page_relay_id = await database_sync_to_async(lambda: page.relay_id)()
@@ -250,15 +267,10 @@ async def test_can_subscribe_to_a_permitted_target(
     await client.finalize()
 
 
-@pytest.mark.asyncio
 @pytest.mark.django_db(transaction=True)
-async def test_cant_subscribe_to_an_unknown_target(graphql_ws_user_client) -> None:
-    client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
-
-    await _subscribe(client, "UGFnZTo5OTk5OTk=")  # Page:999999
-    await _subscribe(client, "not-a-relay-id")
-    await client.assert_no_messages()
-    await client.finalize()
+@pytest.mark.parametrize("relay_id", ["UGFnZTo5OTk5OTk=", "not-a-relay-id"])  # Page:999999
+def test_subscribe_joins_no_group_for_an_unknown_target(django_user_client, relay_id) -> None:
+    assert _subscription_groups(django_user_client.user, relay_id) == []
 
 
 @pytest.mark.asyncio
