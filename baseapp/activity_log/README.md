@@ -59,6 +59,11 @@ def create_comment(request, body):
         service.set_public_activity(verb="baseapp_comments.add_comment")
 ```
 
+An activity is one entry per request, shared by everything the request changes. When part of a
+request must stay private, call `service.set_private_activity()`: it undoes an earlier
+`set_public_activity` in the request and makes later ones do nothing, so the whole entry stays
+private.
+
 ### Hiding event diffs
 
 The `diff` of an event (`NodeLogEvent.diff`) holds the values that changed, for example the body of
