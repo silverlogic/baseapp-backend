@@ -64,11 +64,16 @@ class NotificationService(SharedServiceProvider):
         email_message=None,
         push_title=None,
         push_description=None,
+        email_template=None,
+        email_context=None,
+        email_options=None,
         **kwargs,
     ) -> list[tuple[Any, Any]]:
         """Notify one or many recipients, honouring each one's notification settings.
 
         ``recipient`` is a user, a list/tuple/set or QuerySet of users, or an auth ``Group``.
+        ``email_template``, ``email_context`` and ``email_options`` reach only the email sender;
+        they are never stored in ``Notification.data`` nor sent to the push task.
         Returns the ``notify.send`` results of every recipient, concatenated.
         """
         if getattr(
@@ -95,6 +100,9 @@ class NotificationService(SharedServiceProvider):
                     email_message=email_message,
                     push_title=push_title,
                     push_description=push_description,
+                    email_template=email_template,
+                    email_context=email_context,
+                    email_options=email_options,
                     **kwargs,
                 )
             )
@@ -115,6 +123,9 @@ class NotificationService(SharedServiceProvider):
         email_message,
         push_title,
         push_description,
+        email_template=None,
+        email_context=None,
+        email_options=None,
         **kwargs,
     ) -> list[tuple[Any, Any]]:
         NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationSetting")
@@ -144,7 +155,7 @@ class NotificationService(SharedServiceProvider):
                 else None
             )
 
-            sent = get_email_sender()(
+            self._send_email(
                 recipient,
                 notification,
                 sender=sender,
@@ -156,13 +167,11 @@ class NotificationService(SharedServiceProvider):
                 send_push=send_push,
                 email_subject=email_subject or description,
                 email_message=email_message or description,
+                email_template=email_template,
+                email_context=email_context,
+                email_options=email_options,
                 **kwargs,
             )
-
-            # A sender returns False when it decided not to send.
-            if notification and sent is not False:
-                notification.emailed = True
-                notification.save(update_fields=["emailed"])
 
         if send_push and can_user_receive_notification(
             recipient.id, verb, NotificationSetting.NotificationChannelTypes.PUSH
@@ -181,3 +190,13 @@ class NotificationService(SharedServiceProvider):
             )
 
         return notifications
+
+    @staticmethod
+    def _send_email(recipient: Any, notification: Any, **context: Any) -> None:
+        """Call the configured email sender and mark ``notification`` as emailed."""
+        sent = get_email_sender()(recipient, notification, **context)
+
+        # A sender returns False when it decided not to send.
+        if notification and sent is not False:
+            notification.emailed = True
+            notification.save(update_fields=["emailed"])

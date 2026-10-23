@@ -4,12 +4,13 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import swapper
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
 from django.db.models import Q
 from django.template.exceptions import TemplateDoesNotExist
-from django.template.loader import render_to_string
+from django.template.loader import get_template, render_to_string
 from django.utils import timezone
 from django.utils.text import slugify
 
@@ -22,42 +23,122 @@ from .groups import (
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser
 
+logger = logging.getLogger(__name__)
 
-def render_verb_template_or_default(verb, context, template_type, extension) -> str:
+
+NOTIFICATION_EMAIL_TEMPLATE_DIR = "emails/notifications"
+DEFAULT_NOTIFICATION_EMAIL_TEMPLATE = "emails/notification"
+NOTIFICATION_EMAIL_TEMPLATE_PARTS = (("subject", "txt"), ("body", "txt"), ("body", "html"))
+EMAIL_OPTION_KEYS = ("from_email", "reply_to", "cc", "bcc", "attachments")
+
+
+def _template_exists(name: str) -> bool:
     try:
-        return render_to_string(
-            f"emails/notifications/{verb}-{template_type}.{extension}.j2",
-            context=context,
-        )
+        get_template(name)
     except TemplateDoesNotExist:
-        logging.warning(
-            f"Template emails/notifications/{verb}-{template_type}.{extension}.j2 does not exist, falling back to default template"
-        )
-        return render_to_string(
-            f"emails/notification-{template_type}.{extension}.j2",
-            context=context,
-        )
+        return False
+    return True
 
 
-def send_email_notification(to, context) -> None:
-    verb = slugify(context["verb"])
-
-    subject = render_verb_template_or_default(verb, context, "subject", "txt")
-    subject = " ".join(subject.strip().split())
-
-    text_message = render_verb_template_or_default(verb, context, "body", "txt")
-    html_message = render_verb_template_or_default(verb, context, "body", "html")
-
-    send_mail(
-        subject, text_message, html_message=html_message, from_email=None, recipient_list=[to]
+def _has_notification_email_template(base: str) -> bool:
+    return any(
+        _template_exists(f"{base}-{part}.{extension}.j2")
+        for part, extension in NOTIFICATION_EMAIL_TEMPLATE_PARTS
     )
 
 
-def send_notification_email(recipient: Any, notification: Any, **context: Any) -> None:
-    """Default ``BASEAPP_NOTIFICATIONS_EMAIL_SENDER``: render the ``.j2`` templates and send_mail."""
-    send_email_notification(
+def resolve_notification_email_template(verb: str, template: str | None = None) -> str | None:
+    """Base name of the email templates for ``verb``, or ``None`` when it must not be emailed.
+
+    The parts are ``{base}-subject.txt.j2``, ``{base}-body.txt.j2`` and ``{base}-body.html.j2``.
+    An explicit ``template`` wins. Otherwise the first base with at least one part is used:
+    ``emails/notifications/{verb}`` (the raw verb, dots kept), then the legacy
+    ``emails/notifications/{slugify(verb)}``, then ``emails/notification``. With
+    ``BASEAPP_NOTIFICATIONS_EMAIL_REQUIRE_VERB_TEMPLATE = True`` there is no generic fallback and a
+    verb without its own templates resolves to ``None``.
+    """
+    if template:
+        return template
+
+    for name in dict.fromkeys((verb, slugify(verb))):
+        base = f"{NOTIFICATION_EMAIL_TEMPLATE_DIR}/{name}"
+        if name and _has_notification_email_template(base):
+            return base
+
+    if getattr(settings, "BASEAPP_NOTIFICATIONS_EMAIL_REQUIRE_VERB_TEMPLATE", False):
+        return None
+    return DEFAULT_NOTIFICATION_EMAIL_TEMPLATE
+
+
+def render_notification_email_part(base: str, context: dict, part: str, extension: str) -> str:
+    """Render one part of ``base``, falling back to the default part when it does not exist."""
+    name = f"{base}-{part}.{extension}.j2"
+    try:
+        return render_to_string(name, context=context)
+    except TemplateDoesNotExist:
+        if base == DEFAULT_NOTIFICATION_EMAIL_TEMPLATE:
+            raise
+        logger.warning("Template %s does not exist, falling back to default template", name)
+        return render_to_string(
+            f"{DEFAULT_NOTIFICATION_EMAIL_TEMPLATE}-{part}.{extension}.j2", context=context
+        )
+
+
+def render_verb_template_or_default(verb, context, template_type, extension) -> str:
+    """Render ``template_type`` of the templates of ``verb`` (used as given), or the default."""
+    return render_notification_email_part(
+        f"{NOTIFICATION_EMAIL_TEMPLATE_DIR}/{verb}", context, template_type, extension
+    )
+
+
+def send_email_notification(
+    to, context, template: str | None = None, options: dict | None = None
+) -> bool:
+    """Render the notification email for ``context["verb"]`` and send it to ``to``.
+
+    ``template`` is an explicit template base (see :func:`resolve_notification_email_template`).
+    ``options`` may hold ``from_email``, ``reply_to``, ``cc``, ``bcc`` and ``attachments``
+    (``(filename, content, mimetype)`` tuples or MIME objects); other keys are ignored. Returns
+    ``False`` when no template applies and nothing was sent.
+    """
+    base = resolve_notification_email_template(context["verb"], template)
+    if base is None:
+        return False
+
+    subject = render_notification_email_part(base, context, "subject", "txt")
+    subject = " ".join(subject.strip().split())
+    text_message = render_notification_email_part(base, context, "body", "txt")
+    html_message = render_notification_email_part(base, context, "body", "html")
+
+    options = {key: value for key, value in (options or {}).items() if key in EMAIL_OPTION_KEYS}
+    message = EmailMultiAlternatives(subject, text_message, to=[to], **options)
+    message.attach_alternative(html_message, "text/html")
+    message.send()
+    return True
+
+
+def send_notification_email(
+    recipient: Any,
+    notification: Any,
+    *,
+    email_template: str | None = None,
+    email_context: dict | None = None,
+    email_options: dict | None = None,
+    **context: Any,
+) -> bool:
+    """Default ``BASEAPP_NOTIFICATIONS_EMAIL_SENDER``: render the ``.j2`` templates and send.
+
+    ``email_template`` replaces the verb's templates, ``email_context`` is merged into the render
+    context and ``email_options`` is passed on as ``options`` to :func:`send_email_notification`.
+    """
+    return send_email_notification(
         to=recipient.email,
-        context=dict(notification=notification, recipient=recipient, **context),
+        context={
+            **dict(notification=notification, recipient=recipient, **context),
+            **(email_context or {}),
+        },
+        template=email_template,
+        options=email_options,
     )
 
 
