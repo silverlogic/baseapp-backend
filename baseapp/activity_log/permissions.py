@@ -1,4 +1,5 @@
 from django.apps import apps
+from django.conf import settings
 from django.contrib.auth.backends import BaseBackend
 
 from baseapp_core.plugins import apply_if_installed
@@ -30,6 +31,13 @@ class ActivityLogPermissionsBackend(BaseBackend):
     }
 
     def has_perm(self, user_obj, perm, obj=None) -> bool:
+        # The diff of an event holds the changed values (a comment's body, for example), so a
+        # project can make it superuser-only. Defaults to public, as before.
+        if perm == self.PERM_VIEW_NODE_DIFF and not getattr(
+            settings, "BASEAPP_ACTIVITY_LOG_PUBLIC_NODE_DIFF", True
+        ):
+            return bool(user_obj.is_superuser)
+
         # Public permissions
         if perm in self.PUBLIC_PERMISSIONS:
             return True

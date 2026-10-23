@@ -1,12 +1,32 @@
 import channels_graphql_ws
 import graphene
 import swapper
+from channels.db import database_sync_to_async
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+
+from baseapp_core.graphql import get_obj_from_relay_id
+from baseapp_core.hashids.strategies.interfaces import GraphQLResolverStrategy
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
+app_label = Comment._meta.app_label
 CommentObjectType = Comment.get_graphql_object_type()
+
+
+def _can_view_target_comments(info, user, target_object_id: str) -> bool:
+    try:
+        target = get_obj_from_relay_id(info, target_object_id)
+    except (
+        GraphQLResolverStrategy.NoInstanceFound,
+        ObjectDoesNotExist,
+        ValidationError,
+        AttributeError,
+        ValueError,
+    ):
+        # An id that resolves to nothing can't receive comments, so there is nothing to join.
+        return False
+    return target is not None and user.has_perm(f"{app_label}.view_target_comments", target)
 
 
 class OnCommentChange(channels_graphql_ws.Subscription):
@@ -21,12 +41,13 @@ class OnCommentChange(channels_graphql_ws.Subscription):
         target_object_id = graphene.ID()
 
     @staticmethod
-    def subscribe(root, info, target_object_id=None) -> list[str]:
+    async def subscribe(root, info, target_object_id=None) -> list[str]:
         user = info.context.channels_scope.get("user", AnonymousUser())
         groups = []
 
         if not target_object_id:
-            if user.has_perm("baseapp_comments.view_all_comment"):
+            # Permission checks may hit the database, which is not allowed in the event loop.
+            if await database_sync_to_async(user.has_perm)(f"{app_label}.view_all_comments"):
                 return ["all"]
 
         CAN_ANONYMOUS_VIEW_COMMENTS = getattr(
@@ -36,6 +57,10 @@ class OnCommentChange(channels_graphql_ws.Subscription):
             return []
 
         if target_object_id:
+            if not await database_sync_to_async(_can_view_target_comments)(
+                info, user, target_object_id
+            ):
+                return []
             groups.append(target_object_id)
 
         return groups
@@ -55,6 +80,12 @@ class OnCommentChange(channels_graphql_ws.Subscription):
             settings, "BASEAPP_COMMENTS_CAN_ANONYMOUS_VIEW_COMMENTS", True
         )
         if not CAN_ANONYMOUS_VIEW_COMMENTS and not user.is_authenticated:
+            return None
+
+        # Visibility can change after subscribing, and the "all" group carries every target, so
+        # check each comment again for this subscriber. Returning None skips the notification.
+        comment = created_comment or updated_comment
+        if comment is not None and not user.has_perm(f"{app_label}.view_comment", comment):
             return None
 
         if created_comment:
