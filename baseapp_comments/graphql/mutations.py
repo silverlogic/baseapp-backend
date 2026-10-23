@@ -29,10 +29,15 @@ def _set_public_activity(info: graphene.ResolveInfo, verb: str, target: Model | 
 
     Call it only after the permission checks, so a refused mutation is never made public.
     """
-    if not info.context.user.has_perm(f"{app_label}.publish_comment_activity", target):
+    service = shared_services.get("activity_log")
+    if not service:
         return
-    if service := shared_services.get("activity_log"):
+    if info.context.user.has_perm(f"{app_label}.publish_comment_activity", target):
         service.set_public_activity(verb=verb)
+    else:
+        # The activity log records one entry per request, so an earlier or later public
+        # mutation in the same request must not make this one public.
+        service.set_private_activity()
 
 
 class CommentForm(forms.ModelForm):

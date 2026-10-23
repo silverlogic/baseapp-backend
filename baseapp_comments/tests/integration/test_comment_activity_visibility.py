@@ -158,3 +158,32 @@ def test_refused_comment_create_sets_no_public_activity(graphql_user_client, cel
 
     assert content["errors"][0]["extensions"]["code"] == "permission_required"
     assert _public_verbs() == []
+
+
+TWO_COMMENTS_GRAPHQL = """
+    mutation TwoComments($first: CommentCreateInput!, $second: CommentCreateInput!) {
+        first: commentCreate(input: $first) { comment { node { id } } }
+        second: commentCreate(input: $second) { comment { node { id } } }
+    }
+"""
+
+
+@private_page_comment_activity
+@pytest.mark.parametrize("private_first", [True, False])
+def test_a_private_comment_keeps_the_whole_request_private(
+    graphql_user_client, celery_config, private_first
+) -> None:
+    """The activity log has one entry per request, shared by both mutations."""
+    private_input = {"targetObjectId": PageFactory().relay_id, "body": "internal note"}
+    public_input = {"targetObjectId": CommentFactory().relay_id, "body": "public comment"}
+    first, second = (
+        (private_input, public_input) if private_first else (public_input, private_input)
+    )
+
+    content = graphql_user_client(
+        TWO_COMMENTS_GRAPHQL, variables={"first": first, "second": second}
+    ).json()
+
+    assert "errors" not in content, content
+    assert Comment.objects.filter(body__in=["internal note", "public comment"]).count() == 2
+    assert _public_verbs() == []
