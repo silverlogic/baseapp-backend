@@ -6,6 +6,7 @@ from django.test.utils import CaptureQueriesContext
 
 from baseapp_core.tests.factories import UserFactory
 from baseapp_notifications.groups import (
+    extend_notification_group,
     get_notification_group,
     get_notification_group_for_verb,
     is_registered_verb,
@@ -59,6 +60,69 @@ def test_channels_accept_members_values_and_names(notification_groups_registry) 
     )
 
     assert group.channels == (Channels.EMAIL, Channels.IN_APP)
+
+
+def test_extend_appends_verbs_and_keeps_order(notification_groups_registry) -> None:
+    register_notification_group("a", label="A", verbs=["a.one"])
+    register_notification_group("b", label="B")
+
+    group = extend_notification_group("a", ["a.two", "x.three"])
+
+    assert group.verbs == ("a.one", "a.two", "x.three")
+    assert get_notification_group("a") is group
+    assert [group.key for group in list_notification_groups()] == ["a", "b"]
+    assert get_notification_group_for_verb("x.three") is group
+
+
+def test_extend_is_idempotent(notification_groups_registry) -> None:
+    register_notification_group("a", label="A", verbs=["a.one"])
+
+    extend_notification_group("a", ["a.two"])
+    extend_notification_group("a", ["a.two", "a.one"])
+
+    assert get_notification_group("a").verbs == ("a.one", "a.two")
+
+
+@pytest.mark.parametrize(
+    "key,verbs",
+    [("missing", ["x"]), ("prefix", ["prefix.x"]), ("explicit", "explicit.x")],
+)
+def test_extend_rejects(notification_groups_registry, key, verbs) -> None:
+    register_notification_group("prefix", label="Prefix")
+    register_notification_group("explicit", label="Explicit", verbs=["explicit.one"])
+
+    with pytest.raises(ImproperlyConfigured):
+        extend_notification_group(key, verbs)
+
+
+def test_register_replaces_extended_verbs_by_default(notification_groups_registry) -> None:
+    register_notification_group("a", label="A", verbs=["a.one"])
+    extend_notification_group("a", ["a.two"])
+
+    assert register_notification_group("a", label="A", verbs=["a.one"]).verbs == ("a.one",)
+
+
+def test_register_keep_verbs_keeps_extended_verbs(notification_groups_registry) -> None:
+    register_notification_group("a", label="A", verbs=["a.one"])
+    extend_notification_group("a", ["a.two"])
+
+    group = register_notification_group("a", label="A2", verbs=["a.zero", "a.one"], keep_verbs=True)
+
+    assert group.verbs == ("a.zero", "a.one", "a.two")
+    assert group.label == "A2"
+    # Nothing to keep on a first registration or over a prefix group.
+    assert register_notification_group("b", label="B", verbs=["b.one"], keep_verbs=True).verbs == (
+        "b.one",
+    )
+    register_notification_group("c", label="C")
+    assert register_notification_group("c", label="C", verbs=["c.one"], keep_verbs=True).verbs == (
+        "c.one",
+    )
+
+
+def test_register_keep_verbs_needs_explicit_verbs(notification_groups_registry) -> None:
+    with pytest.raises(ImproperlyConfigured):
+        register_notification_group("a", label="A", keep_verbs=True)
 
 
 @pytest.mark.parametrize(
