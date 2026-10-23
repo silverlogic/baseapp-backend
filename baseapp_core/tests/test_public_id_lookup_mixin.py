@@ -3,6 +3,7 @@ import uuid
 from typing import Any
 
 import pytest
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import QuerySet
 from django.test import override_settings
 from rest_framework import serializers, viewsets
@@ -157,6 +158,8 @@ class TestPublicIdLookupMixin:
 
     def test_list_is_annotated(self, django_assert_num_queries) -> None:
         DummyPublicIdModelFactory.create_batch(3)
+        # Warm the content type cache, so the count does not depend on test order.
+        ContentType.objects.get_for_model(DummyPublicIdModel)
         for viewset_class in (DummyViewSet, DummyOwnQuerysetViewSet):
             with django_assert_num_queries(1):
                 response = list_view(viewset_class)

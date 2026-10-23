@@ -1,6 +1,7 @@
 import uuid
 
 import pytest
+from django.contrib.contenttypes.models import ContentType
 from django.test import override_settings
 from rest_framework import serializers
 
@@ -117,6 +118,8 @@ class TestPublicIdRelatedField:
                 fields = ("parent",)
 
         queryset = DummyPublicIdChildModel.objects.prefetch_related("parent__document")
+        # Warm the content type cache, so the count does not depend on test order.
+        ContentType.objects.get_for_model(DummyPublicIdModel)
         # 1 for the rows, 1 for the parents and 1 for their documents.
         with django_assert_num_queries(3):
             data = ParentOnlySerializer(queryset, many=True).data
