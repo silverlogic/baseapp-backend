@@ -42,7 +42,7 @@ class PostViewSet(PublicIdLookupMixin, viewsets.ModelViewSet):
 - A public id of another model, or one that maps to nothing, answers 404.
 - The integer pk is still accepted while `allow_pk_lookup` is true. Set it on the ViewSet, or project-wide with `BASEAPP_PUBLIC_ID_ALLOW_PK_LOOKUP` (default `True`). When it is false, `/posts/12/` answers 404 for a model that uses public ids.
 - `lookup_value_regex` defaults to `PUBLIC_ID_LOOKUP_REGEX` (an integer or a UUID4), so the router emits one detail pattern for both. A ViewSet that looks up by something else (a slug, a non-UUID4 key) sets its own `lookup_value_regex`.
-- `filter_queryset` annotates `mapped_public_id`, so rendering `public_id` in a list costs no query per row, even when the ViewSet overrides `get_queryset`. Set `annotate_mapped_public_id = False` to skip it.
+- `filter_queryset` annotates `mapped_public_id`, so rendering `public_id` in a list costs no query per row, even when the ViewSet overrides `get_queryset`. Set `annotate_mapped_public_id = False` to skip it. `get_queryset()` itself is not annotated: a custom action that serializes `self.get_queryset()` directly should pass it through `self.filter_queryset()` or `annotate_public_ids()`.
 
 #### Serializers: `PublicIdField` and `PublicIdRelatedField`
 
@@ -60,7 +60,7 @@ class PostSerializer(serializers.Serializer):
     tags = PublicIdRelatedField(queryset=Tag.objects.all(), many=True)
 ```
 
-`baseapp_core.rest_framework.serializers.ModelSerializer` already renders the model's own `id` as its public id. With `BASEAPP_REST_PUBLIC_ID_RELATED_FIELDS = True` (default `False`, because it changes the output of existing endpoints) it also maps foreign keys and many-to-many fields to models that use public ids onto `PublicIdRelatedField`.
+`baseapp_core.rest_framework.serializers.ModelSerializer` already renders the model's own `id` as its public id. With `BASEAPP_REST_PUBLIC_ID_RELATED_FIELDS = True` (default `False`, because it changes the output of existing endpoints) it also maps foreign keys and many-to-many fields to models that use public ids onto `PublicIdRelatedField`. Every such field then reads the related object's public id, which costs one query per related object unless the queryset loads it (see [Avoiding a query per row](#avoiding-a-query-per-row-annotate_public_ids)), so annotate or prefetch the list querysets before turning the setting on.
 
 #### Filters: `PublicIdFilter` and `PublicIdMultipleFilter`
 

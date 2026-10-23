@@ -29,7 +29,8 @@ class PublicIdLookupMixin:
     - The detail route only matches an integer or a UUID4 (`PUBLIC_ID_LOOKUP_REGEX`); set
       `lookup_value_regex` on the viewset to look up by anything else.
     - Querysets are annotated with `mapped_public_id`, so serializing a list does not query the
-      DocumentId table once per row. Set `annotate_mapped_public_id = False` to skip it.
+      DocumentId table once per row. Set `annotate_mapped_public_id = False` to skip it. This is
+      done in `filter_queryset`, so `get_queryset()` alone is not annotated.
     """
 
     lookup_value_regex = PUBLIC_ID_LOOKUP_REGEX
