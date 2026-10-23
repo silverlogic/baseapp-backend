@@ -135,6 +135,10 @@ def find_user_by_email(email: str) -> AbstractBaseUser | None:
     return User._default_manager.filter(**{f"{email_field}__iexact": email}).first()
 
 
+def _email_of(user: AbstractBaseUser) -> str:
+    return (getattr(user, user.get_email_field_name(), "") or "").casefold()
+
+
 def can_invite_member(membership: "ProfileUserRole") -> bool:
     """
     Whether an invitation may claim the ACTIVE row `membership`, according to
@@ -227,7 +231,12 @@ def _open_invitation(
     reuse = None
     if open_row is not None:
         if open_row.status == Status.ACTIVE:
-            if not can_invite_member(open_row):
+            # A row found by a stale invited_email belongs to whoever its user is now: only
+            # a row without a user, or whose user has this email, may be claimed.
+            claimable = (
+                open_row.user is None or _email_of(open_row.user) == invitee.email.casefold()
+            )
+            if not claimable or not can_invite_member(open_row):
                 raise ProfileMembershipError(
                     _("%(email)s is already a member of this profile") % {"email": invitee.email},
                     "already_member",
@@ -676,8 +685,7 @@ def _ensure_respondable(invitation: "ProfileUserRole") -> None:
 def _bind_user(invitation: "ProfileUserRole", user: AbstractBaseUser) -> None:
     """Attach `user` to the invitation, refusing anyone it was not sent to."""
     if invitation.user_id is None:
-        user_email = (getattr(user, user.get_email_field_name(), "") or "").casefold()
-        if user_email != (invitation.invited_email or "").casefold():
+        if _email_of(user) != (invitation.invited_email or "").casefold():
             raise ProfileMembershipError(
                 _("This invitation was sent to a different user"), "wrong_user"
             )
@@ -813,6 +821,12 @@ def accept_invitation_with_signup(
         # Lock the row and re-check, so two submissions of the form cannot both sign up.
         invitation = _lock_for_response(invitation)
 
+        if invitation.user is not None and _email_of(invitation.user) != email.casefold():
+            # The account changed its email since the invitation was sent: the token only
+            # proves control of the old address, not of this account.
+            raise ProfileMembershipError(
+                _("This invitation was sent to a different user"), "wrong_user"
+            )
         user = invitation.user or find_user_by_email(email)
         if user is not None and user.is_active:
             raise ProfileMembershipError(

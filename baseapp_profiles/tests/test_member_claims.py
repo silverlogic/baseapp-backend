@@ -119,6 +119,19 @@ class TestSend:
         assert tasks.send_invitation_email_task(invitation.pk) is True
         assert len(mailoutbox) == 1
 
+    def test_a_row_whose_user_changed_email_is_not_claimed(self, claims, placeholder) -> None:
+        """A stale invited_email on the row must not hand someone else's account over."""
+        placeholder.invited_email = "ann@example.com"
+        placeholder.save(update_fields=["invited_email"])
+        User.objects.filter(pk=placeholder.user_id).update(email="ann.new@example.com")
+
+        with pytest.raises(ProfileMembershipError) as excinfo:
+            claim(placeholder)
+
+        assert excinfo.value.code == "already_member"
+        placeholder.refresh_from_db()
+        assert not placeholder.invitation_token
+
 
 class TestManage:
     def test_resend_renews_the_token(self, claims, placeholder) -> None:
@@ -218,6 +231,17 @@ class TestRespond:
         with pytest.raises(ProfileMembershipError) as excinfo:
             service.accept_invitation_with_signup(invitation.invitation_token, password=PASSWORD)
         assert excinfo.value.code in ("user_exists", "already_responded")
+
+    def test_signup_refuses_an_account_that_changed_its_email(self, claims, placeholder) -> None:
+        invitation = claim(placeholder)
+        User.objects.filter(pk=placeholder.user_id).update(email="ann.new@example.com")
+
+        with pytest.raises(ProfileMembershipError) as excinfo:
+            service.accept_invitation_with_signup(invitation.invitation_token, password=PASSWORD)
+
+        assert excinfo.value.code == "wrong_user"
+        user = User.objects.get(pk=placeholder.user_id)
+        assert not user.is_active and not user.has_usable_password()
 
     def test_an_expired_claim_cannot_be_accepted(self, claims, placeholder) -> None:
         invitation = claim(placeholder)
