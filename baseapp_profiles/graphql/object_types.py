@@ -34,13 +34,41 @@ def can_view_profile_members(user, profile) -> bool:
     return user.has_perm(f"{profile_app_label}.view_profile_members", profile)
 
 
+def can_view_profile_invitations(user, profile, context=None) -> bool:
+    """
+    Whether `user` may see `profile`'s invitations: rows that are not memberships (pending,
+    declined, expired, cancelled) and every row's invitation details.
+
+    Pass the request as `context` to remember the answer for the rest of the request; it is
+    asked once per field of every row in a members list.
+    """
+    if not user.is_authenticated:
+        return False
+    cache = None
+    if hasattr(context, "__dict__"):
+        cache = vars(context).setdefault("_baseapp_profiles_can_view_invitations", {})
+        if (user.pk, profile.pk) in cache:
+            return cache[(user.pk, profile.pk)]
+    allowed = user.has_perm(f"{profile_app_label}.view_profile_invitations", profile)
+    if cache is not None:
+        cache[(user.pk, profile.pk)] = allowed
+    return allowed
+
+
+def member_statuses() -> list[int]:
+    """The statuses shown to someone who may see a profile's members but not its invitations."""
+    return [ProfileUserRole.ProfileRoleStatus.ACTIVE, ProfileUserRole.ProfileRoleStatus.INACTIVE]
+
+
 ProfileRoleTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoles)
 ProfileRoleStatusTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRoleStatus)
 
 
 def is_expired_invitation(role) -> bool:
-    """True when a pending invitation has passed its expiration date."""
-    return role.status == ProfileUserRole.ProfileRoleStatus.PENDING and role.is_invitation_expired()
+    """True when a pending invitation (or member claim) has passed its expiration date."""
+    from baseapp_profiles.services.invitations import awaits_answer
+
+    return role.is_invitation_expired() and awaits_answer(role)
 
 
 @lru_cache(maxsize=1)
@@ -114,7 +142,7 @@ class BaseProfileUserRoleObjectType:
 
     @classmethod
     def _can_view_invitation_fields(cls, info, instance) -> bool:
-        return can_view_profile_members(info.context.user, instance.profile)
+        return can_view_profile_invitations(info.context.user, instance.profile, info.context)
 
     def resolve_invited_email(self, info) -> str | None:
         if not BaseProfileUserRoleObjectType._can_view_invitation_fields(info, self):
@@ -182,12 +210,11 @@ class BaseProfileUserRoleObjectType:
         return is_expired_invitation(self)
 
     def resolve_profile(self, info) -> "Profile | None":
-        # Only expose the org profile while the invitation is still actionable — pending and
-        # not yet expired (never for accepted/declined/expired roles).
-        is_actionable = (
-            self.status == ProfileUserRole.ProfileRoleStatus.PENDING
-            and not self.is_invitation_expired()
-        )
+        from baseapp_profiles.services.invitations import awaits_answer
+
+        # Only expose the org profile while the invitation is still actionable — pending (or
+        # an open member claim) and not yet expired (never for accepted/declined/expired roles).
+        is_actionable = awaits_answer(self) and not self.is_invitation_expired()
         return self.profile if is_actionable else None
 
 
@@ -204,6 +231,10 @@ class ProfileUserRoleObjectType(DjangoObjectType, BaseProfileUserRoleObjectType)
             return None
         if not can_view_profile_members(info.context.user, node.profile):
             return None
+        if node.status not in member_statuses() and not can_view_profile_invitations(
+            info.context.user, node.profile, info.context
+        ):
+            return None
         return node
 
 
@@ -215,6 +246,18 @@ class ProfileInvitationPreview(graphene.ObjectType):
     role = graphene.Field(ProfileRoleTypesEnum, required=True)
     status = graphene.Field(ProfileRoleStatusTypesEnum, required=True)
     expires_at = graphene.DateTime()
+    invited_first_name = graphene.String(description="The invitee's first name, if given.")
+    invited_last_name = graphene.String(description="The invitee's last name, if given.")
+    inviter_name = graphene.String(
+        description="Who sent the invitation (full name or email); null when nobody did."
+    )
+    message = graphene.String(description="The inviter's personal note.")
+    profile_image = ThumbnailField(required=False, description="The profile's image.")
+    requires_sign_in = graphene.Boolean(
+        required=True,
+        description="An active account exists for the invited email: the invitee signs in "
+        "to accept instead of signing up.",
+    )
 
 
 class ProfileInterface(RelayNode):
@@ -226,16 +269,12 @@ class ProfilesInterface(RelayNode):
 
     def resolve_profiles(self, info, **kwargs) -> "QuerySet[Profile]":
         if info.context.user.is_authenticated and info.context.user == self:
-            # distinct() is required: the OR spans the to-many `members` relation, so the
-            # JOIN returns one row per member and would otherwise duplicate an owned profile
-            # once per member (e.g. every time someone is invited).
-            return (
-                Profile.objects.filter(
-                    Q(owner_id=info.context.user.id) | Q(members__user_id=info.context.user.id)
-                )
-                .distinct()
-                .order_by("name")
-            )
+            # The profiles the user can switch to: their own and those they are an ACTIVE
+            # member of. A pending, declined or deactivated membership grants no
+            # `use_profile`, so it is not offered.
+            return Profile.objects.filter(
+                Q(owner_id=info.context.user.id) | active_membership_subquery(info.context.user)
+            ).order_by("name")
         return Profile.objects.none()
 
 
@@ -309,11 +348,15 @@ class BaseProfileObjectType(object):
         if not can_view_profile_members(info.context.user, instance):
             return instance.members.none()
 
+        members = instance.members.all()
+        if not can_view_profile_invitations(info.context.user, instance, info.context):
+            # Someone who may see the members but not the invitations sees the members only.
+            members = members.filter(status__in=member_statuses())
         if keep_invitation_history() and kwargs.get("status") is None:
             # With history on a person can have many closed rows; list the people who are
             # members or invited unless the client asks for a status.
-            return instance.members.open()
-        return instance.members.all()
+            members = members.open()
+        return members
 
 
 class ProfileObjectType(BaseProfileObjectType, DjangoObjectType):

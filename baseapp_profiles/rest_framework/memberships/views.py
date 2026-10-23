@@ -11,6 +11,7 @@ from rest_framework.throttling import BaseThrottle
 
 from baseapp_core.rest_framework.decorators import action
 from baseapp_profiles.exceptions import ProfileMembershipError
+from baseapp_profiles.permissions import can_override_last_admin
 from baseapp_profiles.services import invitations as invitation_service
 from baseapp_profiles.services import members as member_service
 
@@ -20,6 +21,7 @@ from .permissions import (
     CanAddProfileMembers,
     CanChangeProfileMembers,
     CanDeleteProfileMembers,
+    CanViewProfileInvitations,
     CanViewProfileMembers,
     HasCurrentProfile,
     get_current_profile,
@@ -118,7 +120,10 @@ class ProfileMembersViewSet(
         serializer.is_valid(raise_exception=True)
         try:
             member_service.change_member_role(
-                membership, serializer.validated_data["role"], by=request.user
+                membership,
+                serializer.validated_data["role"],
+                by=request.user,
+                allow_last_admin=can_override_last_admin(request.user, membership.profile),
             )
         except ProfileMembershipError as error:
             raise ProfileMembershipAPIError(error)
@@ -126,7 +131,12 @@ class ProfileMembersViewSet(
 
     def destroy(self, request: Request, *args, **kwargs) -> Response:
         try:
-            member_service.remove_member(self.get_object(), by=request.user)
+            membership = self.get_object()
+            member_service.remove_member(
+                membership,
+                by=request.user,
+                allow_last_admin=can_override_last_admin(request.user, membership.profile),
+            )
         except ProfileMembershipError as error:
             raise ProfileMembershipAPIError(error)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -135,7 +145,11 @@ class ProfileMembersViewSet(
     def deactivate(self, request: Request, *args, **kwargs) -> Response:
         membership = self.get_object()
         try:
-            member_service.deactivate_member(membership, by=request.user)
+            member_service.deactivate_member(
+                membership,
+                by=request.user,
+                allow_last_admin=can_override_last_admin(request.user, membership.profile),
+            )
         except ProfileMembershipError as error:
             raise ProfileMembershipAPIError(error)
         return self._respond(membership)
@@ -202,7 +216,7 @@ class ProfileInvitationsViewSet(
 
         permissions = [IsAuthenticated(), HasCurrentProfile()]
         if self.action in ("list", "retrieve"):
-            permissions.append(CanViewProfileMembers())
+            permissions += [CanViewProfileMembers(), CanViewProfileInvitations()]
         elif self.action == "cancel":
             permissions.append(CanDeleteProfileMembers())
         else:

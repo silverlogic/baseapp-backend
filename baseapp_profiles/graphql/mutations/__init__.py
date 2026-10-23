@@ -1,3 +1,4 @@
+from .base import ExtensibleMutation
 from .invitations import (
     ProfileAcceptInvitation,
     ProfileAcceptInvitationWithSignup,
@@ -42,6 +43,7 @@ class ProfilesMutations(object):
 
 __all__ = [
     "ProfilesMutations",
+    "ExtensibleMutation",
     "BaseProfileSerializer",
     "ProfileCreate",
     "ProfileCreateSerializer",

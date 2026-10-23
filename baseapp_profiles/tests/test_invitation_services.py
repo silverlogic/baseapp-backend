@@ -698,6 +698,22 @@ class TestConcurrentResponses:
         assert excinfo.value.code == "invalid_token"
         assert not ProfileUserRole.objects.filter(profile=profile).exists()
 
+    @pytest.mark.parametrize("respond", [service.accept_invitation, service.decline_invitation])
+    def test_a_stale_resend_does_not_reopen_an_answer(self, profile, respond) -> None:
+        invitee = UserFactory(email="ann@example.com")
+        invitation = invite(profile)
+        stale = ProfileUserRole.objects.get(pk=invitation.pk)
+        respond(invitation.invitation_token, invitee)
+        invitation.refresh_from_db()
+        answered = (invitation.status, invitation.responded_at, invitation.invitation_token)
+
+        with pytest.raises(ProfileMembershipError) as excinfo:
+            service.resend_invitation(stale)
+
+        assert excinfo.value.code == "invalid_status"
+        invitation.refresh_from_db()
+        assert (invitation.status, invitation.responded_at, invitation.invitation_token) == answered
+
     @pytest.mark.usefixtures("cancel_midway", "keep_history")
     @pytest.mark.parametrize("respond", [service.accept_invitation, service.decline_invitation])
     def test_a_cancelled_invitation_stays_cancelled(self, profile, respond) -> None:

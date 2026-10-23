@@ -58,10 +58,13 @@ invitation_cancelled = Signal()
 # Kwargs: instance
 invitation_expired = Signal()
 
+# Kwargs: instance, by. Sent for each member added directly, without an invitation.
+member_added = Signal()
+
 # Kwargs: instance, old_role, new_role, by
 member_role_changed = Signal()
 
-# Kwargs: instance, by
+# Kwargs: instance, by, reason (may be empty)
 member_deactivated = Signal()
 
 # Kwargs: instance, by

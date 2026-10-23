@@ -92,6 +92,8 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
         unique_together = [("target_content_type", "target_object_id")]
         permissions = [
             ("use_profile", _("can use profile")),
+            ("view_profile_invitations", _("can view the invitations of any profile")),
+            ("override_last_admin", _("can remove or demote the last admin of a profile")),
         ]
         swappable = swapper.swappable_setting("baseapp_profiles", "Profile")
 

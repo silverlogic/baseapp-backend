@@ -10,6 +10,10 @@ Two settings change how history is kept (see the README): with
 `BASEAPP_PROFILES_INVITATION_KEEP_HISTORY` on, a cancelled invitation is marked CANCELLED
 rather than deleted, and inviting an email again adds a new row instead of reusing the
 declined, expired or cancelled one.
+
+With `BASEAPP_PROFILES_INVITATION_CAN_INVITE_MEMBER` a project lets an invitation claim an
+existing ACTIVE row (a placeholder member whose account was never used). The invitation is
+carried on that row without changing its status; see `is_member_claim`.
 """
 
 import logging
@@ -31,17 +35,21 @@ from django.utils.translation import gettext_lazy as _
 from baseapp_profiles import signals
 from baseapp_profiles.conf import (
     invitation_async_send,
+    invitation_can_invite_member,
+    invitation_email_sender,
     invitation_expiration_days,
     invitation_max_per_send,
     invitation_pre_send_hook,
+    invitation_resend_min_interval,
     invitation_signup_can_reactivate,
     invitation_signup_enabled,
+    invitation_validator,
     keep_invitation_history,
 )
 from baseapp_profiles.exceptions import ProfileMembershipError
 
 from ._utils import send_on_commit
-from .members import validate_role
+from .members import set_extra_fields, validate_role
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +86,17 @@ class PublicInvitation:
     role: int
     status: int
     expires_at: datetime | None
+    invited_first_name: str = ""
+    invited_last_name: str = ""
+    # Who sent it (full name, else email); empty when nobody did (an import, say).
+    inviter_name: str = ""
+    message: str = ""
+    # The profile's image field file (falsy when it has none).
+    profile_image: object = None
+    # An active account exists for the invited email, so the invitee signs in to accept
+    # (accept-with-signup refuses it with `user_exists`). It may have no usable password,
+    # say a social login: the acceptance page offers the project's sign-in either way.
+    requires_sign_in: bool = False
 
 
 # --- Sending -----------------------------------------------------------------------------
@@ -116,16 +135,65 @@ def find_user_by_email(email: str) -> AbstractBaseUser | None:
     return User._default_manager.filter(**{f"{email_field}__iexact": email}).first()
 
 
-def _reset_for_send(invitation: "ProfileUserRole") -> None:
-    """Re-open `invitation` as PENDING with a fresh token and expiry date."""
+def _email_of(user: AbstractBaseUser) -> str:
+    return (getattr(user, user.get_email_field_name(), "") or "").casefold()
+
+
+def can_invite_member(membership: "ProfileUserRole") -> bool:
+    """
+    Whether an invitation may claim the ACTIVE row `membership`, according to
+    `BASEAPP_PROFILES_INVITATION_CAN_INVITE_MEMBER` (by default it may not).
+    """
+    hook = invitation_can_invite_member()
+    return hook is not None and bool(hook(membership))
+
+
+def is_member_claim(invitation: "ProfileUserRole") -> bool:
+    """
+    Whether `invitation` is an ACTIVE membership carrying an unanswered invitation that
+    claims it: it has a token, has not been answered since it was sent, and the project's
+    `BASEAPP_PROFILES_INVITATION_CAN_INVITE_MEMBER` still allows it.
+
+    Accepting a claim keeps the row (and its pk) ACTIVE and binds the invitee's account
+    to it; cancelling clears the token.
+    """
+    return (
+        invitation.status == Status.ACTIVE
+        and bool(invitation.invitation_token)
+        and invitation.responded_at is None
+        and can_invite_member(invitation)
+    )
+
+
+def awaits_answer(invitation: "ProfileUserRole") -> bool:
+    """Whether `invitation` can still be answered: PENDING, or an open member claim."""
+    return invitation.status == Status.PENDING or is_member_claim(invitation)
+
+
+def _renew_token(invitation: "ProfileUserRole") -> None:
+    """Give `invitation` a fresh token and expiry date, as unanswered."""
     now = timezone.now()
-    invitation.status = Status.PENDING
     invitation.invited_at = now
     invitation.invitation_expires_at = now + timedelta(days=invitation_expiration_days())
     invitation.responded_at = None
+    invitation.generate_invitation_token()
+
+
+def _reset_for_send(invitation: "ProfileUserRole") -> None:
+    """Re-open `invitation` as PENDING with a fresh token and expiry date."""
+    invitation.status = Status.PENDING
     invitation.deactivated_at = None
     invitation.deactivated_by = None
-    invitation.generate_invitation_token()
+    _renew_token(invitation)
+
+
+def _validate_invitee(
+    profile: "Profile", invitee: Invitee, invited_by: AbstractBaseUser | None
+) -> None:
+    """Let `BASEAPP_PROFILES_INVITATION_VALIDATOR` refuse the invitee."""
+    validator = invitation_validator()
+    if validator is not None:
+        validator(profile, invitee, invited_by)
 
 
 def _open_invitation(
@@ -136,14 +204,18 @@ def _open_invitation(
     invited_user: AbstractBaseUser | None,
     invited_by: AbstractBaseUser | None,
     message: str,
+    extra_fields: Mapping | None = None,
 ) -> "ProfileUserRole":
     """
     Create a PENDING invitation for `invitee` on `profile`, or revive the row that stands
     in its way. Must run inside a transaction: it locks the person's existing rows.
 
-    Raises on a hard conflict: the person is already an active member, or holds a pending
-    invitation that has not expired.
+    Raises on a hard conflict: the person is already an active member (unless the project
+    lets the invitation claim their row), or holds a pending invitation that has not
+    expired. The project's validator may refuse the invitee first.
     """
+    _validate_invitee(profile, invitee, invited_by)
+
     match = Q(invited_email__iexact=invitee.email)
     if invited_user is not None:
         match |= Q(user=invited_user)
@@ -159,9 +231,28 @@ def _open_invitation(
     reuse = None
     if open_row is not None:
         if open_row.status == Status.ACTIVE:
-            raise ProfileMembershipError(
-                _("%(email)s is already a member of this profile") % {"email": invitee.email},
-                "already_member",
+            # A row found by a stale invited_email belongs to whoever its user is now: only
+            # a row without a user, or whose user has this email, may be claimed.
+            claimable = (
+                open_row.user is None or _email_of(open_row.user) == invitee.email.casefold()
+            )
+            if not claimable or not can_invite_member(open_row):
+                raise ProfileMembershipError(
+                    _("%(email)s is already a member of this profile") % {"email": invitee.email},
+                    "already_member",
+                )
+            if is_member_claim(open_row) and not open_row.is_invitation_expired():
+                raise ProfileMembershipError(
+                    _("An invitation has already been sent to %(email)s")
+                    % {"email": invitee.email},
+                    "duplicate_invitation",
+                )
+            return _open_member_claim(
+                open_row,
+                invitee,
+                invited_by=invited_by,
+                message=message,
+                extra_fields=extra_fields,
             )
         if open_row.status == Status.PENDING:
             if not open_row.is_invitation_expired():
@@ -204,6 +295,7 @@ def _open_invitation(
             message=message,
             invited_by=invited_by,
         )
+    set_extra_fields(invitation, extra_fields)
     _reset_for_send(invitation)
     try:
         with transaction.atomic():
@@ -216,6 +308,29 @@ def _open_invitation(
     return invitation
 
 
+def _open_member_claim(
+    membership: "ProfileUserRole",
+    invitee: Invitee,
+    *,
+    invited_by: AbstractBaseUser | None,
+    message: str,
+    extra_fields: Mapping | None,
+) -> "ProfileUserRole":
+    """
+    Carry an invitation on the ACTIVE row `membership`. Its status, role and user stay as
+    they are; only the invitation fields are written.
+    """
+    membership.invited_email = invitee.email
+    membership.invited_first_name = invitee.first_name or membership.invited_first_name
+    membership.invited_last_name = invitee.last_name or membership.invited_last_name
+    membership.message = message
+    membership.invited_by = invited_by
+    set_extra_fields(membership, extra_fields)
+    _renew_token(membership)
+    membership.save()
+    return membership
+
+
 def send_invitations(
     profile: "Profile",
     invitees: Iterable[str | Invitee | Mapping],
@@ -223,14 +338,18 @@ def send_invitations(
     role: int | None = None,
     invited_by: AbstractBaseUser | None = None,
     message: str = "",
+    extra_fields: Mapping | None = None,
 ) -> SentInvitations:
     """
     Invite each of `invitees` (emails, `Invitee`s or dicts with `email`, `first_name`,
     `last_name`) to `profile` with `role` (MANAGER by default).
 
-    All-or-nothing: a conflict on any email rolls back the whole batch. Once the rows are
-    saved, each email goes out unless the pre-send hook holds it; a failed email does not
-    undo its invitation.
+    `extra_fields` (field name -> value) is set on every row the send opens, for the
+    columns a project adds to its concrete `ProfileUserRole`.
+
+    All-or-nothing: a conflict on any email, or an invitee the project's validator refuses,
+    rolls back the whole batch. Once the rows are saved, each email goes out unless the
+    pre-send hook holds it; a failed email does not undo its invitation.
     """
     if role is None:
         role = ProfileUserRole.ProfileRoles.MANAGER
@@ -255,6 +374,7 @@ def send_invitations(
                 invited_user=find_user_by_email(item.email),
                 invited_by=invited_by,
                 message=message or "",
+                extra_fields=extra_fields,
             )
             for item in items
         ]
@@ -265,23 +385,50 @@ def send_invitations(
     return result
 
 
+def _ensure_resend_allowed(invitation: "ProfileUserRole") -> None:
+    """Refuse a resend sooner than `BASEAPP_PROFILES_INVITATION_RESEND_MIN_INTERVAL`."""
+    interval = invitation_resend_min_interval()
+    last_sent = invitation.last_sent_at or invitation.invited_at
+    if interval and last_sent and timezone.now() - last_sent < timedelta(seconds=interval):
+        raise ProfileMembershipError(
+            _("This invitation was sent moments ago. Try again later."), "resend_too_soon"
+        )
+
+
 def resend_invitation(
-    invitation: "ProfileUserRole", *, by: AbstractBaseUser | None = None
+    invitation: "ProfileUserRole",
+    *,
+    by: AbstractBaseUser | None = None,
+    extra_fields: Mapping | None = None,
 ) -> SentInvitations:
     """
-    Send a PENDING or EXPIRED invitation again with a fresh token and expiry date.
+    Send a PENDING or EXPIRED invitation (or an open member claim) again with a fresh
+    token and expiry date. `extra_fields` is set on the row that is sent.
 
     With history on, an invitation that has expired stays on record as EXPIRED and the
     resend opens a new row for the same person (returned in `invitations`).
     """
-    if invitation.status not in [Status.EXPIRED, Status.PENDING]:
-        raise ProfileMembershipError(
-            _("Can only resend expired or pending invitations"), "invalid_status"
-        )
-
     with transaction.atomic():
+        # Lock and re-read: the invitee may have answered since `invitation` was loaded, and
+        # saving the stale copy would reopen their answer with a fresh token.
+        if ProfileUserRole.objects.select_for_update().filter(pk=invitation.pk).first() is None:
+            raise ProfileMembershipError(
+                _("Can only resend expired or pending invitations"), "invalid_status"
+            )
+        invitation.refresh_from_db()
+        claim = is_member_claim(invitation)
+        if not claim and invitation.status not in [Status.EXPIRED, Status.PENDING]:
+            raise ProfileMembershipError(
+                _("Can only resend expired or pending invitations"), "invalid_status"
+            )
+        _ensure_resend_allowed(invitation)
+
         is_expired = invitation.status == Status.EXPIRED or invitation.is_invitation_expired()
-        if keep_invitation_history() and is_expired:
+        if claim:
+            set_extra_fields(invitation, extra_fields)
+            _renew_token(invitation)
+            invitation.save()
+        elif keep_invitation_history() and is_expired:
             invitee = Invitee(
                 email=(invitation.invited_email or "").lower(),
                 first_name=invitation.invited_first_name,
@@ -294,8 +441,10 @@ def resend_invitation(
                 invited_user=invitation.user or find_user_by_email(invitee.email),
                 invited_by=by or invitation.invited_by,
                 message=invitation.message,
+                extra_fields=extra_fields,
             )
         else:
+            set_extra_fields(invitation, extra_fields)
             _reset_for_send(invitation)
             invitation.save()
 
@@ -342,7 +491,7 @@ def release_invitation(
 
     Returns whether the email went out (or was queued).
     """
-    if invitation.status != Status.PENDING:
+    if not awaits_answer(invitation):
         raise ProfileMembershipError(_("Can only send pending invitations"), "invalid_status")
     if invitation.invitation_expires_at is None:
         invitation.invitation_expires_at = timezone.now() + timedelta(
@@ -381,11 +530,12 @@ def deliver_invitation(
 def send_invitation_email_now(
     invitation: "ProfileUserRole", *, inviter: AbstractBaseUser | None = None
 ) -> bool:
-    """Render and send the invitation email, then count it and send `invitation_sent`."""
-    from baseapp_profiles import emails
-
+    """
+    Email the invitation through `BASEAPP_PROFILES_INVITATION_EMAIL_SENDER`, then count it
+    and send `invitation_sent`.
+    """
     try:
-        emails.send_invitation_email(invitation, inviter)
+        invitation_email_sender()(invitation, inviter)
     except Exception:
         logger.exception("Failed to send invitation email for invitation %s", invitation.pk)
         return False
@@ -409,17 +559,22 @@ def cancel_invitation(
     """
     Withdraw a PENDING invitation. With history on the row is kept as CANCELLED (its token
     then reports the cancellation); otherwise it is deleted.
+
+    Cancelling a member claim clears its token and leaves the membership as it was.
     """
-    if invitation.status != Status.PENDING:
+    if not awaits_answer(invitation):
         raise ProfileMembershipError(_("Can only cancel pending invitations"), "invalid_status")
 
     with transaction.atomic():
         # Lock and re-check: the invitee may have accepted or declined since `invitation`
         # was loaded, and that answer must not be overwritten or deleted.
         current = ProfileUserRole.objects.select_for_update().filter(pk=invitation.pk).first()
-        if current is None or current.status != Status.PENDING:
+        if current is None or not awaits_answer(current):
             raise ProfileMembershipError(_("Can only cancel pending invitations"), "invalid_status")
-        if keep_invitation_history():
+        if current.status == Status.ACTIVE:
+            invitation.invitation_token = None
+            invitation.save(update_fields=["invitation_token"])
+        elif keep_invitation_history():
             invitation.status = Status.CANCELLED
             invitation.deactivated_at = timezone.now()
             invitation.deactivated_by = by
@@ -456,7 +611,9 @@ def expire_invitations(now: datetime | None = None) -> int:
 
 def get_invitation_by_token(token: str) -> "ProfileUserRole":
     invitation = (
-        ProfileUserRole.objects.select_related("profile").filter(invitation_token=token).first()
+        ProfileUserRole.objects.select_related("profile", "invited_by")
+        .filter(invitation_token=token)
+        .first()
         if token
         else None
     )
@@ -469,25 +626,48 @@ def lookup_invitation(token: str) -> PublicInvitation | None:
     """
     The public view of an invitation: enough for an acceptance page to greet the invitee.
 
-    An overdue PENDING invitation is reported as EXPIRED without being written.
+    An overdue PENDING invitation is reported as EXPIRED without being written. An open
+    member claim reads PENDING (or EXPIRED), though the row itself stays ACTIVE.
     """
     try:
         invitation = get_invitation_by_token(token)
     except ProfileMembershipError:
         return None
-    status = invitation.status
+    status = Status.PENDING if is_member_claim(invitation) else invitation.status
     if status == Status.PENDING and invitation.is_invitation_expired():
         status = Status.EXPIRED
+    invited_email = invitation.invited_email or ""
+    account = invitation.user or (find_user_by_email(invited_email) if invited_email else None)
     return PublicInvitation(
         profile_name=invitation.profile.name or "",
-        invited_email=invitation.invited_email or "",
+        invited_email=invited_email,
         role=invitation.role,
         status=status,
         expires_at=invitation.invitation_expires_at,
+        invited_first_name=invitation.invited_first_name,
+        invited_last_name=invitation.invited_last_name,
+        inviter_name=_display_name(invitation.invited_by),
+        message=invitation.message,
+        profile_image=invitation.profile.image or None,
+        # The inverse of accept_invitation_with_signup's rule, so the page never offers a
+        # sign-up that would be refused.
+        requires_sign_in=bool(account is not None and account.is_active),
     )
 
 
+def _display_name(user: AbstractBaseUser | None) -> str:
+    if user is None:
+        return ""
+    full_name = user.get_full_name() if hasattr(user, "get_full_name") else ""
+    return full_name or getattr(user, user.get_email_field_name(), "") or ""
+
+
 def _ensure_respondable(invitation: "ProfileUserRole") -> None:
+    if is_member_claim(invitation):
+        # The row is a membership, so an overdue claim is refused without being written.
+        if invitation.is_invitation_expired():
+            raise ProfileMembershipError(_("This invitation has expired"), "expired_invitation")
+        return
     if invitation.status == Status.PENDING and invitation.is_invitation_expired():
         expire_invitation(invitation)
     if invitation.status == Status.EXPIRED:
@@ -505,8 +685,7 @@ def _ensure_respondable(invitation: "ProfileUserRole") -> None:
 def _bind_user(invitation: "ProfileUserRole", user: AbstractBaseUser) -> None:
     """Attach `user` to the invitation, refusing anyone it was not sent to."""
     if invitation.user_id is None:
-        user_email = (getattr(user, user.get_email_field_name(), "") or "").casefold()
-        if user_email != (invitation.invited_email or "").casefold():
+        if _email_of(user) != (invitation.invited_email or "").casefold():
             raise ProfileMembershipError(
                 _("This invitation was sent to a different user"), "wrong_user"
             )
@@ -579,7 +758,9 @@ def decline_invitation(token: str, user: AbstractBaseUser) -> "ProfileUserRole":
     with transaction.atomic():
         invitation = _lock_for_response(invitation)
         _bind_user(invitation, user)
-        invitation.status = Status.DECLINED
+        if invitation.status != Status.ACTIVE:
+            # Declining a member claim leaves the membership as it was.
+            invitation.status = Status.DECLINED
         invitation.responded_at = timezone.now()
         invitation.save()
         send_on_commit(signals.invitation_declined, invitation, user=user)
@@ -640,6 +821,12 @@ def accept_invitation_with_signup(
         # Lock the row and re-check, so two submissions of the form cannot both sign up.
         invitation = _lock_for_response(invitation)
 
+        if invitation.user is not None and _email_of(invitation.user) != email.casefold():
+            # The account changed its email since the invitation was sent: the token only
+            # proves control of the old address, not of this account.
+            raise ProfileMembershipError(
+                _("This invitation was sent to a different user"), "wrong_user"
+            )
         user = invitation.user or find_user_by_email(email)
         if user is not None and user.is_active:
             raise ProfileMembershipError(

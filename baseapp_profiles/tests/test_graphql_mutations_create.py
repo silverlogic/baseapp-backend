@@ -125,7 +125,7 @@ def test_integrity_error_that_is_not_a_duplicate_returns_a_generic_error(
 
     # An IntegrityError that is not an existing membership (e.g. a FK violation) must return a
     # generic error, not be misreported as "already_member".
-    with patch.object(ProfileUserRole.objects, "create", side_effect=IntegrityError("boom")):
+    with patch.object(ProfileUserRole, "save", side_effect=IntegrityError("boom")):
         response = graphql_user_client(
             PROFILE_USER_ROLE_CREATE_GRAPHQL,
             variables={
