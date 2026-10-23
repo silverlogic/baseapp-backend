@@ -30,9 +30,11 @@ class ProfilesQueries:
         ProfileInvitationPreview,
         token=graphene.String(required=True),
         description=(
-            "Public summary of an invitation for its acceptance page: profile name, invited "
-            "email, role, status (an overdue pending invitation reads EXPIRED) and expiry. "
-            "Needs no sign-in — the token is the authorization. Null for an unknown token."
+            "Public summary of an invitation for its acceptance page: profile name and image, "
+            "invited email and name, inviter, message, role, status (an overdue pending "
+            "invitation reads EXPIRED), expiry and whether the invitee must sign in rather "
+            "than sign up. Needs no sign-in — the token is the authorization. Null for an "
+            "unknown token."
         ),
     )
 
@@ -50,6 +52,12 @@ class ProfilesQueries:
             role=invitation.role,
             status=invitation.status,
             expires_at=invitation.expires_at,
+            invited_first_name=invitation.invited_first_name,
+            invited_last_name=invitation.invited_last_name,
+            inviter_name=invitation.inviter_name or None,
+            message=invitation.message,
+            profile_image=invitation.profile_image,
+            requires_sign_in=invitation.requires_sign_in,
         )
 
     def resolve_profile_invitation(

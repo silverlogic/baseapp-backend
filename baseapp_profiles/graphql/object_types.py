@@ -245,6 +245,18 @@ class ProfileInvitationPreview(graphene.ObjectType):
     role = graphene.Field(ProfileRoleTypesEnum, required=True)
     status = graphene.Field(ProfileRoleStatusTypesEnum, required=True)
     expires_at = graphene.DateTime()
+    invited_first_name = graphene.String(description="The invitee's first name, if given.")
+    invited_last_name = graphene.String(description="The invitee's last name, if given.")
+    inviter_name = graphene.String(
+        description="Who sent the invitation (full name or email); null when nobody did."
+    )
+    message = graphene.String(description="The inviter's personal note.")
+    profile_image = ThumbnailField(required=False, description="The profile's image.")
+    requires_sign_in = graphene.Boolean(
+        required=True,
+        description="An active account with a password exists for the invited email: the "
+        "invitee signs in to accept instead of signing up.",
+    )
 
 
 class ProfileInterface(RelayNode):

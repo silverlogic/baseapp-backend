@@ -81,6 +81,16 @@ class PublicInvitation:
     role: int
     status: int
     expires_at: datetime | None
+    invited_first_name: str = ""
+    invited_last_name: str = ""
+    # Who sent it (full name, else email); empty when nobody did (an import, say).
+    inviter_name: str = ""
+    message: str = ""
+    # The profile's image field file (falsy when it has none).
+    profile_image: object = None
+    # An active account with a usable password exists for the invited email, so the
+    # invitee signs in to accept rather than signing up.
+    requires_sign_in: bool = False
 
 
 # --- Sending -----------------------------------------------------------------------------
@@ -495,7 +505,9 @@ def expire_invitations(now: datetime | None = None) -> int:
 
 def get_invitation_by_token(token: str) -> "ProfileUserRole":
     invitation = (
-        ProfileUserRole.objects.select_related("profile").filter(invitation_token=token).first()
+        ProfileUserRole.objects.select_related("profile", "invited_by")
+        .filter(invitation_token=token)
+        .first()
         if token
         else None
     )
@@ -517,13 +529,30 @@ def lookup_invitation(token: str) -> PublicInvitation | None:
     status = invitation.status
     if status == Status.PENDING and invitation.is_invitation_expired():
         status = Status.EXPIRED
+    invited_email = invitation.invited_email or ""
+    account = invitation.user or (find_user_by_email(invited_email) if invited_email else None)
     return PublicInvitation(
         profile_name=invitation.profile.name or "",
-        invited_email=invitation.invited_email or "",
+        invited_email=invited_email,
         role=invitation.role,
         status=status,
         expires_at=invitation.invitation_expires_at,
+        invited_first_name=invitation.invited_first_name,
+        invited_last_name=invitation.invited_last_name,
+        inviter_name=_display_name(invitation.invited_by),
+        message=invitation.message,
+        profile_image=invitation.profile.image or None,
+        requires_sign_in=bool(
+            account is not None and account.is_active and account.has_usable_password()
+        ),
     )
+
+
+def _display_name(user: AbstractBaseUser | None) -> str:
+    if user is None:
+        return ""
+    full_name = user.get_full_name() if hasattr(user, "get_full_name") else ""
+    return full_name or getattr(user, user.get_email_field_name(), "") or ""
 
 
 def _ensure_respondable(invitation: "ProfileUserRole") -> None:
