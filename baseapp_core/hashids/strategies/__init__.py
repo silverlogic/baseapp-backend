@@ -1,7 +1,8 @@
 from typing import TYPE_CHECKING, Any, Optional, Type
 
 from django.conf import settings
-from django.db.models import QuerySet
+from django.core.exceptions import FieldDoesNotExist
+from django.db.models import F, QuerySet
 
 from baseapp_core.hashids.models import LegacyWithPkMixin
 from baseapp_core.hashids.strategies.bundle import HashidsStrategyBundle
@@ -231,7 +232,9 @@ def annotate_public_ids(queryset: QuerySet, *fk_paths: str, include_self: bool =
       already annotated). `DocumentIdMixin.public_id` reads it.
     - Each foreign key path gets `<path>_public_id`, for example `annotate_public_ids(qs, "author",
       "post__author")` adds `author_public_id` and `post__author_public_id`.
-      `PublicIdRelatedField` reads it.
+      `PublicIdRelatedField` reads it through `get_annotated_public_id`, which also checks the
+      `<prefix>_public_id_pk` annotations (the key of each relation on the path as loaded) so
+      that it ignores the public id once a relation is reassigned, as an update does.
 
     Only models that use the public id strategy are annotated, so with `ENABLE_PUBLIC_ID_LOGIC =
     False`, or for a model without `DocumentIdMixin`, this adds nothing. Paths must follow
@@ -256,5 +259,62 @@ def annotate_public_ids(queryset: QuerySet, *fk_paths: str, include_self: bool =
             annotations.update(
                 strategy.queryset_annotator.get_annotations(related_model, field=path, alias=alias)
             )
+            # The key each relation on the path had when the row was loaded, so that
+            # `get_annotated_public_id` can tell when the relation was reassigned since.
+            names = path.split("__")
+            for index in range(len(names)):
+                prefix = "__".join(names[: index + 1])
+                key_alias = _loaded_key_alias(prefix)
+                if key_alias not in queryset.query.annotations:
+                    annotations[key_alias] = F(prefix)
 
     return queryset.annotate(**annotations) if annotations else queryset
+
+
+def _loaded_key_alias(path: str) -> str:
+    return f"{path}_public_id_pk"
+
+
+_MISSING = object()
+
+
+def get_annotated_public_id(instance: "Model", path: str) -> Any | None:
+    """The `<path>_public_id` that `annotate_public_ids` loaded on `instance`, or None.
+
+    It is also None when the annotation may be stale: a relation on the path was reassigned on
+    the instance after the row was loaded, for example by `serializer.save()` in an update.
+    Callers then read the live relation instead.
+    """
+    public_id = instance.__dict__.get(f"{path}_public_id")
+    if public_id is None:
+        return None
+
+    obj = instance
+    names = path.split("__")
+    for index, name in enumerate(names):
+        loaded_key = instance.__dict__.get(
+            _loaded_key_alias("__".join(names[: index + 1])), _MISSING
+        )
+        if loaded_key is _MISSING:
+            return None
+        try:
+            field = obj._meta.get_field(name)
+        except FieldDoesNotExist:
+            return None
+        is_cached = field.is_cached(obj)
+        if field.concrete:
+            current_key = obj.__dict__.get(field.attname, loaded_key)
+        elif is_cached:
+            related = field.get_cached_value(obj)
+            current_key = related.pk if related is not None else None
+        else:
+            current_key = loaded_key
+        if current_key != loaded_key:
+            return None
+        if not is_cached:
+            # The rest of the path was never loaded on this instance, so nothing reassigned it.
+            return public_id
+        obj = field.get_cached_value(obj)
+        if obj is None:
+            return None
+    return public_id

@@ -9,13 +9,18 @@ from rest_framework import serializers, viewsets
 from rest_framework.response import Response
 from rest_framework.test import APIRequestFactory
 
-from baseapp_core.rest_framework.fields import PublicIdField
+from baseapp_core.hashids.strategies import annotate_public_ids
+from baseapp_core.rest_framework.fields import PublicIdField, PublicIdRelatedField
 from baseapp_core.rest_framework.mixins import (
     PUBLIC_ID_LOOKUP_REGEX,
     PublicIdLookupMixin,
 )
 from baseapp_core.rest_framework.routers import DefaultRouter
-from testproject.testapp.models import DummyLegacyModel, DummyPublicIdModel
+from testproject.testapp.models import (
+    DummyLegacyModel,
+    DummyPublicIdChildModel,
+    DummyPublicIdModel,
+)
 from testproject.testapp.tests.factories import (
     DummyLegacyModelFactory,
     DummyPublicIdChildModelFactory,
@@ -61,6 +66,35 @@ class DummyLegacyViewSet(PublicIdLookupMixin, viewsets.ReadOnlyModelViewSet):
     )
     permission_classes = []
     authentication_classes = []
+
+
+class ChildSerializer(serializers.ModelSerializer):
+    id = PublicIdField()
+    parent = PublicIdRelatedField(queryset=DummyPublicIdModel.objects.all())
+    previous = PublicIdRelatedField(
+        queryset=DummyPublicIdChildModel.objects.all(), required=False, allow_null=True
+    )
+    previous_parent = PublicIdRelatedField(
+        source="previous.parent", read_only=True, allow_null=True
+    )
+
+    class Meta:
+        model = DummyPublicIdChildModel
+        fields = ("id", "name", "parent", "previous", "previous_parent")
+
+
+class ChildViewSet(PublicIdLookupMixin, viewsets.ModelViewSet):
+    serializer_class = ChildSerializer
+    permission_classes = []
+    authentication_classes = []
+
+    def get_queryset(self) -> QuerySet[DummyPublicIdChildModel]:
+        return annotate_public_ids(
+            DummyPublicIdChildModel.objects.select_related("parent"),
+            "parent",
+            "previous",
+            "previous__parent",
+        )
 
 
 def retrieve(viewset_class: type[viewsets.GenericViewSet], lookup: Any) -> Response:
@@ -145,3 +179,64 @@ class TestPublicIdLookupMixin:
         assert pattern.match("42")
         assert not pattern.match(str(uuid.uuid1()))
         assert not pattern.match("abc")
+
+
+class TestPublicIdLookupMixinWrites:
+    def patch(self, child: DummyPublicIdChildModel, data: dict) -> Response:
+        view = ChildViewSet.as_view({"patch": "partial_update"})
+        return view(factory.patch("/", data, format="json"), pk=str(child.public_id))
+
+    def test_update_renders_the_new_relations(self) -> None:
+        child = DummyPublicIdChildModelFactory(previous=DummyPublicIdChildModelFactory())
+        new_parent = DummyPublicIdModelFactory()
+        new_previous = DummyPublicIdChildModelFactory()
+
+        response = self.patch(
+            child,
+            {"parent": str(new_parent.public_id), "previous": str(new_previous.public_id)},
+        )
+
+        assert response.status_code == 200, response.data
+        child.refresh_from_db()
+        assert child.parent == new_parent
+        assert child.previous == new_previous
+        assert response.data["id"] == str(child.public_id)
+        assert response.data["parent"] == str(new_parent.public_id)
+        assert response.data["previous"] == str(new_previous.public_id)
+        assert response.data["previous_parent"] == str(new_previous.parent.public_id)
+
+    def test_update_to_null(self) -> None:
+        child = DummyPublicIdChildModelFactory(previous=DummyPublicIdChildModelFactory())
+
+        response = self.patch(child, {"previous": None})
+
+        assert response.status_code == 200, response.data
+        assert response.data["previous"] is None
+        assert response.data["previous_parent"] is None
+
+    def test_update_of_other_fields_keeps_the_annotated_ids(self) -> None:
+        child = DummyPublicIdChildModelFactory(previous=DummyPublicIdChildModelFactory())
+
+        response = self.patch(child, {"name": "renamed"})
+
+        assert response.status_code == 200, response.data
+        assert response.data["name"] == "renamed"
+        assert response.data["parent"] == str(child.parent.public_id)
+        assert response.data["previous_parent"] == str(child.previous.parent.public_id)
+
+    def test_retrieve_reads_the_annotations(self, django_assert_num_queries) -> None:
+        child = DummyPublicIdChildModelFactory(previous=DummyPublicIdChildModelFactory())
+        expected = {
+            "id": str(child.public_id),
+            "name": child.name,
+            "parent": str(child.parent.public_id),
+            "previous": str(child.previous.public_id),
+            "previous_parent": str(child.previous.parent.public_id),
+        }
+        view = ChildViewSet.as_view({"get": "retrieve"})
+
+        # 1 to resolve the public id in the URL and 1 for the row with its annotations.
+        with django_assert_num_queries(2):
+            response = view(factory.get("/"), pk=expected["id"])
+
+        assert response.data == expected

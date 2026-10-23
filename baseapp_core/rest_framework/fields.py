@@ -14,6 +14,7 @@ from rest_framework.relations import PKOnlyObject
 
 from baseapp_core.hashids.strategies import (
     drf_get_pk_from_public_id_or_pk,
+    get_annotated_public_id,
     get_hashids_strategy_from_instance_or_cls,
     should_use_public_id,
 )
@@ -145,8 +146,8 @@ class PublicIdRelatedField(serializers.RelatedField):
     """A `PrimaryKeyRelatedField` that speaks public ids.
 
     - Output: the related object's public id. It reads the `<source>_public_id` annotation that
-      `annotate_public_ids(queryset, "<source>")` adds, then a prefetched `<source>__document`,
-      and only then queries.
+      `annotate_public_ids(queryset, "<source>")` adds (unless the relation was reassigned since
+      the row was loaded), then a prefetched `<source>__document`, and only then queries.
     - Input: the related object's public id. A public id of another model is rejected. The
       integer pk is accepted while `allow_pk_lookup` is true (default:
       `BASEAPP_PUBLIC_ID_ALLOW_PK_LOOKUP`).
@@ -177,9 +178,10 @@ class PublicIdRelatedField(serializers.RelatedField):
         return model_cls is not None and not should_use_public_id(model_cls)
 
     def get_attribute(self, instance: Any) -> Any:
-        annotation = "__".join(self.source_attrs) + "_public_id"
         if self.source_attrs and isinstance(instance, models.Model):
-            public_id = instance.__dict__.get(annotation)
+            # Not used once the relation is reassigned (an update), so the response shows the
+            # new related id rather than the one loaded with the row.
+            public_id = get_annotated_public_id(instance, "__".join(self.source_attrs))
             if public_id is not None:
                 return _PublicIdOnlyObject(public_id)
         return super().get_attribute(instance)

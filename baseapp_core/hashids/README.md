@@ -91,6 +91,7 @@ def get_queryset(self):
 
 - The queryset's own rows get `mapped_public_id` (pass `include_self=False` to skip), which `public_id` reads.
 - Each path gets `<path>_public_id` (`author_public_id`, `thread__owner_public_id`), which `PublicIdRelatedField` reads for the matching `source`. Paths must follow foreign keys or one-to-one fields.
+- Each relation on a path also gets `<prefix>_public_id_pk` (`author_public_id_pk`, `thread_public_id_pk`, `thread__owner_public_id_pk`): its key when the row was loaded. `PublicIdRelatedField` reads the public id through `get_annotated_public_id(instance, path)`, which returns `None` once a relation on the path has been reassigned on the instance, so the response to an update renders the new related id rather than the annotated one.
 - For many-to-many and reverse relations, prefetch the documents instead: `prefetch_related("tags__document")`. `public_id` reads a prefetched `document` relation without a query.
 
 Lower level, `PublicIdQuerysetAnnotatorStrategy.get_annotations(model_cls, field="pk", alias="mapped_public_id")` returns the annotation for any pk path and alias.
