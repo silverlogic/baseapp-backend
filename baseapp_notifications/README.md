@@ -157,12 +157,17 @@ Arguments:
 - **push_description**: A string. (Required). The "body" of your push notification
 - **push_title**: A string. (Optional). This will override the Title of your notification (apple and google uses the name defined on your build files)
 - **extra**: A dict with data of any type. (Optional)
+- **email_template**: Base name of the email templates to use instead of the verb's (see [How to customize email notification templates](#how-to-customize-email-notification-templates)). (Optional)
+- **email_context**: A dict merged into the email's render context. Model instances are fine: it is never stored. (Optional)
+- **email_options**: A dict of delivery options for the email sender. The default sender reads `from_email`, `reply_to`, `cc`, `bcc` and `attachments` (`(filename, content, mimetype)` tuples or MIME objects) and ignores other keys, so a custom sender can accept its own. (Optional)
+
+`email_template`, `email_context` and `email_options` only reach the email sender. They are not stored in `Notification.data` and not sent to the push task.
 
 **Extra data**: ou can also send any arbitrary kwargs and they will be added to `Notification.data` JSONField.
 
 **Where a notification links to**: pass `url="/path/to/item"`; it is stored in `Notification.data["url"]`. This is the convention clients use for "where clicking the notification goes", so prefer it over custom keys.
 
-Push notifications are queued with `transaction.on_commit`: inside a transaction they are sent after it commits, and not at all if it rolls back. In tests, wrap the call in `django_capture_on_commit_callbacks(execute=True)` (pytest-django) or `TestCase.captureOnCommitCallbacks(execute=True)` to assert on the push task.
+Push and email notifications are sent with `transaction.on_commit`: inside a transaction they go out after it commits, and not at all if it rolls back. Outside a transaction they are sent right away, as before. `Notification.emailed` is set once the email has been sent. In tests, wrap the call in `django_capture_on_commit_callbacks(execute=True)` (pytest-django) or `TestCase.captureOnCommitCallbacks(execute=True)` to assert on the push task, `mail.outbox` or `emailed`.
 
 ## Email notifications
 
@@ -185,21 +190,32 @@ if service := shared_services.get("notifications"):
 
 ### How to customize email notification templates
 
-By default it will look for templates based in your `slugify(verb)`, so can implement the following files with the following content in your project for each verb you want to customize:
+An email has three parts: `{base}-subject.txt.j2`, `{base}-body.txt.j2` and `{base}-body.html.j2`. The base is picked in this order:
 
-Create `templates/emails/notifications/{verb_slugified}-subject.txt.j2` with:
+1. `email_template`, when passed to `send_notification`;
+2. `emails/notifications/{verb}`, the raw verb with its dots (`emails/notifications/comments.reply-subject.txt.j2`);
+3. `emails/notifications/{slugify(verb)}`, the older naming, which keeps working;
+4. `emails/notification`, the generic templates of this package.
+
+A base is used when at least one of its parts exists; a part it lacks falls back to the generic one. Set `BASEAPP_NOTIFICATIONS_EMAIL_REQUIRE_VERB_TEMPLATE = True` to drop step 4: a verb without templates of its own (and no `email_template`) is then not emailed, and `Notification.emailed` stays `False`. That turns "this verb sends an email" into "this verb has a template".
+
+Custom senders can apply the same rule with `resolve_notification_email_template(verb, template=None)` from `baseapp_notifications.utils`. It returns the base name, or `None` when the verb must not be emailed.
+
+For each verb you want to customize, create the following files in your project:
+
+Create `templates/emails/notifications/{verb}-subject.txt.j2` with:
 
 ```jinja2
 {% include "emails/notification-subject.txt.j2" %}
 ```
 
-Create `templates/emails/notifications/{verb_slugified}-body.txt.j2` with:
+Create `templates/emails/notifications/{verb}-body.txt.j2` with:
 
 ```jinja2
 {% extends "emails/notification-body.txt.j2" %}
 ```
 
-Create `templates/emails/notifications/{verb_slugified}-body.html.j2` with:
+Create `templates/emails/notifications/{verb}-body.html.j2` with:
 
 ```jinja2
 {% extends "emails/notification-body.html.j2" %}
@@ -234,7 +250,8 @@ BASEAPP_NOTIFICATIONS_EMAIL_SENDER = "apps.notifications.emails.send_notificatio
 def send_notification_email(recipient, notification, **context):
     # notification is the in-app Notification, or None when add_to_history=False or in-app is muted.
     # context holds sender, verb, description, action_object, target, email_subject,
-    # email_message, add_to_history, send_push and every extra kwarg passed to send_notification.
+    # email_message, add_to_history, send_push, email_template, email_context, email_options
+    # and every extra kwarg passed to send_notification.
     ...
     return True  # return False when nothing was sent, so the notification is not marked emailed
 ```
@@ -274,15 +291,26 @@ class CommentsConfig(AppConfig):
         register_notification_group("security", label=_("Security"), is_locked=True)
 ```
 
-`register_notification_group(key, *, label, description="", verbs=None, audience=None, is_locked=False, channels=None)`:
+`register_notification_group(key, *, label, description="", verbs=None, audience=None, is_locked=False, channels=None, keep_verbs=False)`:
 
 - **key**: stable identifier, stored as `NotificationSetting.verb` for the group's preferences.
 - **verbs**: the verbs the group owns. `None` owns `key` and every `key.*` verb (the longest matching key wins, so `chats.mentions` beats `chats`); a list owns exactly those verbs.
 - **audience**: `callable(user) -> bool` deciding who sees and may change the group. `None` means everyone. It does not restrict sending. If it raises, the error is logged and the group is hidden from that user.
 - **is_locked**: locked groups ignore every setting (including `_ALL_`) and cannot be changed through the API.
 - **channels**: the channels users can configure, as `NotificationChannelTypes` members, values or names. Defaults to in-app, email and push.
+- **keep_verbs**: when the key is already registered with explicit `verbs`, keep those verbs after the new ones instead of replacing them. Needs an explicit `verbs` list.
 
-Registering a key again replaces the group. Read the registry with `get_notification_group(key)`, `list_notification_groups(user=None)`, `get_notification_group_for_verb(verb)` and `is_registered_verb(verb)`, all in `baseapp_notifications.groups`.
+Registering a key again replaces the group, unless `keep_verbs=True`.
+
+Apps that add verbs to a group another app registered use `extend_notification_group(key, verbs)`:
+
+```python
+from baseapp_notifications.groups import extend_notification_group
+
+extend_notification_group("moderation", ["events.reported"])
+```
+
+It appends the verbs (skipping ones the group already owns, so calling it again changes nothing) and keeps the group's place in the list. It raises `ImproperlyConfigured` for an unknown key or a group registered without `verbs`, which already owns every `key.*` verb. Re-registering the group drops the added verbs unless it passes `keep_verbs=True`. Read the registry with `get_notification_group(key)`, `list_notification_groups(user=None)`, `get_notification_group_for_verb(verb)` and `is_registered_verb(verb)`, all in `baseapp_notifications.groups`.
 
 How settings resolve: `can_user_receive_notification(user_id, verb, channel)` reads `NotificationSetting` rows whose `verb` is one of:
 
@@ -300,6 +328,7 @@ To catch typos, set `BASEAPP_NOTIFICATIONS_REQUIRE_REGISTERED_VERBS = True`: `se
 | --- | --- | --- |
 | `BASEAPP_NOTIFICATIONS_EMAIL_SENDER` | `"baseapp_notifications.utils.send_notification_email"` | Dotted path to `callable(recipient, notification, **context)` that sends notification emails. A path that cannot be imported fails `manage.py check` (`baseapp_notifications.E001`/`E002`). |
 | `BASEAPP_NOTIFICATIONS_REQUIRE_REGISTERED_VERBS` | `False` | Reject verbs that no registered notification group owns. |
+| `BASEAPP_NOTIFICATIONS_EMAIL_REQUIRE_VERB_TEMPLATE` | `False` | Email a verb only when it has its own templates (or `email_template` is passed); no generic fallback. |
 
 ## Public API documentation
 
@@ -315,6 +344,8 @@ query {
   }
 }
 ```
+
+`actor`, `target` and `actionObject` are `Node`s. When the object's model has no `Node` type in the schema, the field is `null` instead of failing the query (over HTTP and in the subscription).
 
 Filter notifications by group (verb equal to the key or starting with `<key>.`, plus the explicit verbs of a registered group):
 
