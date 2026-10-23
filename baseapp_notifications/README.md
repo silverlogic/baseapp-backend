@@ -197,9 +197,9 @@ An email has three parts: `{base}-subject.txt.j2`, `{base}-body.txt.j2` and `{ba
 3. `emails/notifications/{slugify(verb)}`, the older naming, which keeps working;
 4. `emails/notification`, the generic templates of this package.
 
-A base is used when at least one of its parts exists; a part it lacks falls back to the generic one. Set `BASEAPP_NOTIFICATIONS_EMAIL_REQUIRE_VERB_TEMPLATE = True` to drop step 4: a verb without templates of its own (and no `email_template`) is then not emailed, and `Notification.emailed` stays `False`. That turns "this verb sends an email" into "this verb has a template".
+A base is used when at least one of its parts exists. Each part is taken from the first of these bases that has it, so a part the raw-verb templates lack comes from the slug templates, then from the generic ones (an `email_template` falls back to the generic parts only). Set `BASEAPP_NOTIFICATIONS_EMAIL_REQUIRE_VERB_TEMPLATE = True` to drop step 4: a verb without templates of its own (and no `email_template`) is then not emailed, and `Notification.emailed` stays `False`. That turns "this verb sends an email" into "this verb has a template".
 
-Custom senders can apply the same rule with `resolve_notification_email_template(verb, template=None)` from `baseapp_notifications.utils`. It returns the base name, or `None` when the verb must not be emailed.
+Custom senders can apply the same rule with `resolve_notification_email_template(verb, template=None)` from `baseapp_notifications.utils`. It returns the first base name, or `None` when the verb must not be emailed. `get_notification_email_template_bases(verb, template=None)` returns every base in order (or `None`), for senders that fall back per part.
 
 For each verb you want to customize, create the following files in your project:
 

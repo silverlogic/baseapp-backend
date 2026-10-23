@@ -229,6 +229,21 @@ def test_require_verb_template_sends_nothing_without_a_template(
     }
 
 
+def test_each_part_falls_back_through_raw_then_slug_then_generic(
+    outbox, send_notification, django_capture_on_commit_callbacks
+) -> None:
+    # The raw name defines only the subject and the legacy slug name only the text body.
+    user = UserFactory()
+
+    with django_capture_on_commit_callbacks(execute=True):
+        send_notification(sender=user, recipient=user, **email_only(verb="tests.mixed"))
+
+    [message] = outbox
+    assert message.subject == "mixed raw subject"
+    assert "mixed slug txt message" in message.body
+    assert "Hello" in message.alternatives[0][0]
+
+
 # Validation and failures
 
 
