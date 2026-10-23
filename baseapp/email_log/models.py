@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Optional
 
@@ -5,6 +6,7 @@ import swapper
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.core.mail import EmailMessage
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.db.models import Q
@@ -13,6 +15,8 @@ from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from .status import EmailLogStatus, djmail_statuses_for, status_from_djmail
+
+logger = logging.getLogger(__name__)
 
 
 class EmailLogQuerySet(models.QuerySet):
@@ -202,6 +206,20 @@ class AbstractEmailLog(TimeStampedModel):
     def error(self) -> str:
         """The transport error djmail recorded (its traceback), or the channel's error."""
         return self.message.exception if self.message_id else self.delivery_error
+
+    def get_email_message(self) -> Optional[EmailMessage]:
+        """
+        The ``EmailMessage`` djmail pickled when the email was written, attachments and
+        headers included. ``None`` when the djmail message is gone, holds no pickle (rows
+        imported from elsewhere) or cannot be unpickled.
+        """
+        if self.message_id is None or not self.message.data:
+            return None
+        try:
+            return self.message.get_email_message()
+        except Exception:
+            logger.exception("Could not unpickle the djmail message of email log %s", self.pk)
+            return None
 
     def mark_delivery(self, status: str, *, error: str = "") -> None:
         """Record the delivery state of a row of another channel (it has no djmail message)."""
