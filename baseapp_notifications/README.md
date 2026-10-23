@@ -345,7 +345,7 @@ query {
 }
 ```
 
-`actor`, `target` and `actionObject` are `Node`s. When the object's model has no `Node` type in the schema, the field is `null` instead of failing the query (over HTTP and in the subscription).
+`actor`, `target` and `actionObject` are `Node`s. When the object's model has no `Node` type in the schema, the field is `null` instead of failing the query (over HTTP and in the subscription). The check is graphql-core's `is_type_of` on each `Node` type, cached per schema and model; a type whose own `is_type_of` accepts only some instances of a model is not supported by this cache.
 
 Filter notifications by group (verb equal to the key or starting with `<key>.`, plus the explicit verbs of a registered group):
 

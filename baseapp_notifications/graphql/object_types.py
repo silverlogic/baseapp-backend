@@ -1,3 +1,4 @@
+import weakref
 from typing import TYPE_CHECKING
 
 import graphene
@@ -117,9 +118,12 @@ def _accepts(
     return False
 
 
-# (schema, interface name, model) -> bool. Django types only compare the model, so the answer
-# is the same for every instance of a model.
-_model_has_node_type: dict[tuple, bool] = {}
+# schema -> {(interface name, model): bool}. Django types only compare the model, so the answer
+# is cached per model; a type whose own is_type_of accepts only some instances of a model would
+# need its own resolver. Weak keys let rebuilt schemas (tests, autoreload) be collected.
+_model_has_node_type: "weakref.WeakKeyDictionary[GraphQLSchema, dict[tuple, bool]]" = (
+    weakref.WeakKeyDictionary()
+)
 
 
 def resolve_node_or_none(obj, info: graphene.ResolveInfo):
@@ -137,10 +141,11 @@ def resolve_node_or_none(obj, info: graphene.ResolveInfo):
     if not isinstance(obj, Model):
         return obj if _accepts(info.schema, interface, obj, info) else None
 
-    key = (info.schema, interface.name, type(obj))
-    if key not in _model_has_node_type:
-        _model_has_node_type[key] = _accepts(info.schema, interface, obj, info)
-    return obj if _model_has_node_type[key] else None
+    cache = _model_has_node_type.setdefault(info.schema, {})
+    key = (interface.name, type(obj))
+    if key not in cache:
+        cache[key] = _accepts(info.schema, interface, obj, info)
+    return obj if cache[key] else None
 
 
 class BaseNotificationNode:
