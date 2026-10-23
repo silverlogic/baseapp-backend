@@ -1,15 +1,22 @@
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 from django_prose_editor.fields import ProseEditorField
 from model_utils.models import TimeStampedModel
+
+from baseapp_core.graphql import RelayModel
 
 from .custom_templates import get_full_copy_template
 from .registry import email_templates, render_email_template
 from .sendgrid import mass_send_personalized_mail, send_personalized_mail
 from .utils import attach_files, random_name_in
+
+if TYPE_CHECKING:
+    from baseapp_core.graphql import DjangoObjectType
+
 
 class CaseInsensitiveCharField(models.CharField):
     description = "Case insensitive character"
@@ -18,7 +25,7 @@ class CaseInsensitiveCharField(models.CharField):
         return "citext"
 
 
-class EmailTemplate(TimeStampedModel):
+class EmailTemplate(RelayModel, TimeStampedModel):
     name = CaseInsensitiveCharField(
         max_length=255,
         unique=True,
@@ -51,9 +58,18 @@ class EmailTemplate(TimeStampedModel):
 
     class Meta:
         ordering = ["-id"]
+        permissions = [
+            ("send_test_emailtemplate", _("Can send test emails of an email template")),
+        ]
 
     def __str__(self) -> str:
         return self.name
+
+    @classmethod
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
+        from .graphql.object_types import EmailTemplateObjectType
+
+        return EmailTemplateObjectType
 
     @property
     def is_registered(self) -> bool:

@@ -1,8 +1,8 @@
 # BaseApp Message Templates
 
-Reusable app for email and SMS templates: edit content in the Django admin (Prose or CKEditor), render it through Jinja2, and send via SendGrid (template id or dynamic) or plain custom HTML. Projects can also [declare templates in code](#code-declared-templates-registry) with file defaults and let staff override parts of them.
+Reusable app for email and SMS templates: edit content in the Django admin (Prose or CKEditor), render it through Jinja2, and send via SendGrid (template id or dynamic) or plain custom HTML. Projects can also [declare templates in code](#code-declared-templates-registry) with file defaults and let staff override parts of them through the [GraphQL API](#graphql-api).
 
-`baseapp_message_templates` follows the [plugin architecture](../baseapp_core/plugins/README.md): it registers itself as a plugin so it participates in `INSTALLED_APPS` aggregation. It contributes no auth backends, GraphQL roots, or URLs, and its models (`EmailTemplate`, `Attachment`, `SmsTemplate`) are **concrete** (not swappable) — the package ships their migrations, so there's nothing to subclass.
+`baseapp_message_templates` follows the [plugin architecture](../baseapp_core/plugins/README.md): it registers itself as a plugin so it participates in `INSTALLED_APPS` aggregation. It contributes GraphQL roots (`emailTemplates`, `emailTemplateUpdate`, `emailTemplateSendTest`) and an auth backend slot, and no URLs. Its models (`EmailTemplate`, `Attachment`, `SmsTemplate`) are **concrete** (not swappable) — the package ships their migrations, so there's nothing to subclass.
 
 ## How to install
 
@@ -300,6 +300,73 @@ Other helpers in `baseapp_message_templates.registry`:
 | `BASEAPP_MESSAGE_TEMPLATES_BASE_CONTEXT` | `None` | Dotted path to `callable(recipient) -> dict` with values every email receives (site name, support address…). Its keys may be used in overrides without being declared. |
 | `BASEAPP_MESSAGE_TEMPLATES_TEST_SENDER` | `None` | Dotted path to `callable(email_message, *, template, user) -> None` that delivers test emails (`template` is the name), e.g. through the project's logged email backend. `None` calls `email_message.send()`. |
 | `BASEAPP_MESSAGE_TEMPLATES_TEST_SEND_LIMIT` | `"10/h"` | Test emails per user per period (`s`, `m`, `h`, `d`), counted in the default cache. `None` disables the limit. |
+
+## GraphQL API
+
+The plugin contributes these roots (registered automatically through the plugin registry):
+
+```graphql
+query {
+  emailTemplates(group: String, q: String, isEditable: Boolean, isCustomized: Boolean, first: Int, after: String) {
+    edges {
+      node {
+        id name label group description isRegistered
+        editableFields            # e.g. ["subject", "plainTextContent"]
+        placeholders { name help sample }
+        subject plainTextContent htmlContent     # the saved overrides
+        defaultSubject defaultPlainText          # raw source of the default files
+        isCustomized
+        previewSubject                           # subject rendered with sample values
+        preview(subject: String, plainTextContent: String, htmlContent: String) {
+          subject bodyText bodyHtml              # unsaved text can be previewed
+        }
+      }
+    }
+  }
+}
+
+mutation {
+  emailTemplateUpdate(input: {id: ID!, subject: String, plainTextContent: String, htmlContent: String}) {
+    emailTemplate { id subject isCustomized }
+    errors { field messages }
+  }
+  emailTemplateSendTest(input: {id: ID!, subject: String, plainTextContent: String, htmlContent: String}) {
+    sentTo
+    errors { field messages }
+  }
+}
+```
+
+- `emailTemplates` lists rows ordered by name, and is empty without `view_emailtemplate`.
+  `node(id:)` returns `null` without it. `q` matches the name, label or group. Rows of
+  unregistered names are listed with `isRegistered: false` and no editable fields (edit them in
+  the Django admin as before).
+- `emailTemplateUpdate` needs `change_emailtemplate`. Parts that are not editable and text
+  rejected by `validate_override` come back as field errors, and nothing is saved. A blank value
+  resets that part to its default.
+- `emailTemplateSendTest` needs `send_test_emailtemplate`. It renders the sample values (with
+  any unsaved text given), prefixes the subject with `[Test]`, and sends **only to the requesting
+  user's own address** through `BASEAPP_MESSAGE_TEMPLATES_TEST_SENDER`, within
+  `BASEAPP_MESSAGE_TEMPLATES_TEST_SEND_LIMIT`. Errors carry the codes `permission_required`,
+  `not_found`, `no_email`, `rate_limited` and `preview_failed` (the template needs real data).
+- `preview` raises `invalid_template` or `preview_failed` errors the same way.
+
+### Permissions
+
+`view_emailtemplate` and `change_emailtemplate` are Django's model permissions;
+`send_test_emailtemplate` is a custom permission added by migration `0005`. Grant them through
+groups or user permissions. The GraphQL layer checks them against the template
+(`user.has_perm(perm, template)`), which Django's `ModelBackend` never grants, so add the
+package's backend slot to `AUTHENTICATION_BACKENDS`. It answers those object-level checks with
+the model-level permission; list your own backend after it to grant more:
+
+```python
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    # ...
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_message_templates"),
+]
+```
 
 ## EmailTemplate model
 
