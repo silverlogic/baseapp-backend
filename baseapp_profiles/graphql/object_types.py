@@ -65,8 +65,10 @@ ProfileRoleStatusTypesEnum = graphene.Enum.from_enum(ProfileUserRole.ProfileRole
 
 
 def is_expired_invitation(role) -> bool:
-    """True when a pending invitation has passed its expiration date."""
-    return role.status == ProfileUserRole.ProfileRoleStatus.PENDING and role.is_invitation_expired()
+    """True when a pending invitation (or member claim) has passed its expiration date."""
+    from baseapp_profiles.services.invitations import awaits_answer
+
+    return role.is_invitation_expired() and awaits_answer(role)
 
 
 @lru_cache(maxsize=1)
@@ -208,12 +210,11 @@ class BaseProfileUserRoleObjectType:
         return is_expired_invitation(self)
 
     def resolve_profile(self, info) -> "Profile | None":
-        # Only expose the org profile while the invitation is still actionable — pending and
-        # not yet expired (never for accepted/declined/expired roles).
-        is_actionable = (
-            self.status == ProfileUserRole.ProfileRoleStatus.PENDING
-            and not self.is_invitation_expired()
-        )
+        from baseapp_profiles.services.invitations import awaits_answer
+
+        # Only expose the org profile while the invitation is still actionable — pending (or
+        # an open member claim) and not yet expired (never for accepted/declined/expired roles).
+        is_actionable = awaits_answer(self) and not self.is_invitation_expired()
         return self.profile if is_actionable else None
 
 

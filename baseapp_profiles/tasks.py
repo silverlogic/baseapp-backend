@@ -13,15 +13,14 @@ def send_invitation_email_task(invitation_id: int, inviter_id: int | None = None
     Send one invitation email; queued on commit when `BASEAPP_PROFILES_INVITATION_ASYNC_SEND`
     is on. An invitation answered, cancelled or deleted in the meantime is skipped.
     """
-    from baseapp_profiles.services.invitations import send_invitation_email_now
+    from baseapp_profiles.services.invitations import (
+        awaits_answer,
+        send_invitation_email_now,
+    )
 
     ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
-    invitation = (
-        ProfileUserRole.objects.select_related("profile")
-        .filter(pk=invitation_id, status=ProfileUserRole.ProfileRoleStatus.PENDING)
-        .first()
-    )
-    if invitation is None:
+    invitation = ProfileUserRole.objects.select_related("profile").filter(pk=invitation_id).first()
+    if invitation is None or not awaits_answer(invitation):
         logger.info("Invitation %s is no longer pending; not sending it", invitation_id)
         return False
 
