@@ -9,6 +9,8 @@ import swapper
 from django.conf import settings
 from django.test import override_settings
 
+from baseapp_core.hashids.utils import is_uuid4
+from baseapp_core.models import DocumentId
 from baseapp_core.tests.factories import UserFactory
 from baseapp_follows.permissions import FollowsPermissionsBackend
 from baseapp_profiles.tests.factories import ProfileFactory
@@ -180,3 +182,21 @@ def test_follow_node_is_visible_from_either_side(django_user_client, graphql_use
         for row in (as_actor, as_target):
             content = graphql_user_client(FOLLOW_NODE_QUERY, variables={"id": row.relay_id}).json()
             assert content["data"]["node"]["id"] == row.relay_id
+
+
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
+def test_follow_node_by_public_id_respects_visibility(graphql_user_client, follow_graph) -> None:
+    """Clients send public UUIDs, which resolve through the public-id strategy."""
+    _profile, following_row, _follower_row = follow_graph
+    public_id = str(DocumentId.get_or_create_for_object(following_row).public_id)
+    assert is_uuid4(public_id)
+
+    content = graphql_user_client(FOLLOW_NODE_QUERY, variables={"id": public_id}).json()
+    assert content["data"]["node"]["id"] == public_id
+
+    with override_settings(
+        AUTHENTICATION_BACKENDS=_backends_with(PrivateFollowsPermissionsBackend)
+    ):
+        content = graphql_user_client(FOLLOW_NODE_QUERY, variables={"id": public_id}).json()
+
+    assert content["data"]["node"] is None
