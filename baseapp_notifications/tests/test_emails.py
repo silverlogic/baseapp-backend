@@ -120,6 +120,41 @@ def test_email_options_with_the_default_sender(
     assert message.alternatives[0][1] == "text/html"
 
 
+# Email after commit
+
+
+def test_email_is_sent_after_commit(
+    outbox, send_notification, django_capture_on_commit_callbacks
+) -> None:
+    user = UserFactory()
+
+    with django_capture_on_commit_callbacks() as callbacks:
+        send_notification(sender=user, recipient=user, **email_only())
+        assert outbox == []
+        assert Notification.objects.get().emailed is False
+
+    for callback in callbacks:
+        callback()
+
+    assert len(outbox) == 1
+    assert Notification.objects.get().emailed is True
+
+
+def test_email_is_dropped_on_rollback(
+    outbox, send_notification, django_capture_on_commit_callbacks
+) -> None:
+    user = UserFactory()
+
+    with django_capture_on_commit_callbacks(execute=True) as callbacks:
+        with pytest.raises(RuntimeError):
+            with transaction.atomic():
+                send_notification(sender=user, recipient=user, **email_only())
+                raise RuntimeError
+
+    assert callbacks == []
+    assert outbox == []
+
+
 # Template resolution
 
 

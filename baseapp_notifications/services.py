@@ -155,22 +155,27 @@ class NotificationService(SharedServiceProvider):
                 else None
             )
 
-            self._send_email(
-                recipient,
-                notification,
-                sender=sender,
-                verb=verb,
-                action_object=action_object,
-                description=description,
-                target=target,
-                add_to_history=add_to_history,
-                send_push=send_push,
-                email_subject=email_subject or description,
-                email_message=email_message or description,
-                email_template=email_template,
-                email_context=email_context,
-                email_options=email_options,
-                **kwargs,
+            # Mail after commit, like push: a rollback sends nothing and the sender sees
+            # committed data.
+            transaction.on_commit(
+                partial(
+                    self._send_email,
+                    recipient,
+                    notification,
+                    sender=sender,
+                    verb=verb,
+                    action_object=action_object,
+                    description=description,
+                    target=target,
+                    add_to_history=add_to_history,
+                    send_push=send_push,
+                    email_subject=email_subject or description,
+                    email_message=email_message or description,
+                    email_template=email_template,
+                    email_context=email_context,
+                    email_options=email_options,
+                    **kwargs,
+                )
             )
 
         if send_push and can_user_receive_notification(
