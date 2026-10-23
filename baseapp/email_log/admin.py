@@ -101,6 +101,7 @@ class EmailLogAdmin(ModelAdmin):
                     "idempotency_key",
                     "created",
                     "modified",
+                    "scrubbed_at",
                 )
             },
         ),

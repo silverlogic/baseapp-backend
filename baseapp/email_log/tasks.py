@@ -17,6 +17,7 @@ from djmail.models import Message
 from .attachments import delete_stored_attachments
 from .models import get_email_log_model
 from .services import close_connection, deliver_message, open_connection, record_failure
+from .status import status_from_djmail
 
 logger = logging.getLogger(__name__)
 
@@ -190,27 +191,52 @@ def _delete_rows(EmailLog: type, ids: list) -> int:
     return deleted
 
 
+def _summary(message: Optional[dict]) -> dict:
+    """
+    What a scrubbed email row keeps of its djmail message, in the row's own columns: the
+    subject, sender, status and sent date. Nothing for rows without a message.
+    """
+    if message is None:
+        return {}
+    return {
+        "delivery_subject": message["subject"] or "",
+        "delivery_from_email": message["from_email"] or "",
+        "delivery_status": status_from_djmail(message["status"]),
+        "delivered_at": message["sent_at"],
+    }
+
+
 def _scrub_rows(EmailLog: type, ids: list) -> int:
     """
     Remove the content of rows kept for their idempotency key: their djmail message (the
     row's ``message`` becomes empty), stored attachments, render context and channel text.
-    Who, what and when stay, and so does the key.
+    Who, what and when stay: the message's subject, sender, status and sent date are copied
+    to the row first, and the key is kept. ``scrubbed_at`` marks the row.
     """
     scrubbed = 0
     for chunk in _chunks(ids):
         rows = list(EmailLog.objects.filter(pk__in=chunk).values("pk", "message_id", "attachments"))
         with transaction.atomic():
             message_ids = [row["message_id"] for row in rows if row["message_id"]]
+            messages = {
+                message["uuid"]: message
+                for message in Message.objects.filter(uuid__in=message_ids).values(
+                    "uuid", "subject", "from_email", "status", "sent_at"
+                )
+            }
             Message.objects.filter(uuid__in=message_ids).delete()
+            now = timezone.now()
             for row in rows:
                 EmailLog.objects.filter(pk=row["pk"]).update(
+                    **_summary(messages.get(row["message_id"])),
                     context={},
                     delivery_body_text="",
                     attachments=[
                         {key: value for key, value in entry.items() if key != "path"}
                         for entry in row["attachments"] or []
                     ],
-                    modified=timezone.now(),
+                    scrubbed_at=now,
+                    modified=now,
                 )
             scrubbed += len(rows)
         for row in rows:

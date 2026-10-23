@@ -1,7 +1,9 @@
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
 from django.core import mail
+from django.utils import timezone
 from djmail.models import Message
 
 import baseapp_core.tests.factories as f
@@ -13,6 +15,7 @@ from baseapp.email_log.services import (
     resend,
     send_logged,
 )
+from baseapp.email_log.tasks import purge_email_logs
 
 from .helpers import make_email
 
@@ -239,3 +242,34 @@ def test_resend_of_a_failed_email(failing_transport, settings) -> None:
     assert copy.status == "sent"
     log.refresh_from_db()
     assert log.status == "failed"
+
+
+@pytest.fixture
+def scrubbed(original, settings) -> "EmailLog":
+    """``original`` past the retention and scrubbed by the purge: its context is gone."""
+    EmailLog.objects.filter(pk=original.pk).update(created=timezone.now() - timedelta(days=30))
+    settings.BASEAPP_EMAIL_LOG_RETENTION_DAYS = 14
+    assert purge_email_logs()["scrubbed"] == 1
+    original.refresh_from_db()
+    mail.outbox.clear()
+    return original
+
+
+def test_a_scrubbed_row_is_not_re_rendered(scrubbed, settings) -> None:
+    # Re-rendering the template with the emptied context would send it with nothing filled in.
+    settings.BASEAPP_EMAIL_LOG_RENDERER = "baseapp.email_log.tests.helpers.render_template"
+
+    with pytest.raises(ResendError, match="purged"):
+        resend(scrubbed)
+
+    assert mail.outbox == []
+    assert EmailLog.objects.count() == 1
+
+
+def test_a_scrubbed_row_cannot_be_resent_or_rebuilt(scrubbed) -> None:
+    with pytest.raises(ResendError, match="purged"):
+        resend(scrubbed, to=["new@example.com"])
+    with pytest.raises(ResendError, match="purged"):
+        email_message_for(scrubbed)
+
+    assert mail.outbox == []

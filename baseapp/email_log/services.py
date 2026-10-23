@@ -406,11 +406,13 @@ def email_message_for(log: "AbstractEmailLog") -> EmailMessage:
     cc, bcc and reply-to, and the attachments in the attachment storage; custom headers are
     then lost.
 
-    Raises ``ResendError`` for rows of other channels, when the djmail message is gone,
-    and when an attachment the row lists cannot be read.
+    Raises ``ResendError`` for rows of other channels, for rows the purge scrubbed, when
+    the djmail message is gone, and when an attachment the row lists cannot be read.
     """
     if log.channel != log.Channel.EMAIL:
         raise ResendError("Only email rows have an email message.")
+    if log.scrubbed_at is not None:
+        raise ResendError("The content of this email was purged.")
     original = log.get_email_message()
     if original is not None:
         return original
@@ -440,6 +442,9 @@ def email_message_for(log: "AbstractEmailLog") -> EmailMessage:
 def _render(
     log: "AbstractEmailLog", original: Optional[EmailMessage], renderer: Callable[[str, dict], dict]
 ) -> EmailMessage:
+    if log.scrubbed_at is not None:
+        # Its context is gone: rendering would send the template with nothing filled in.
+        raise ResendError("The content of this email was purged.")
     rendered = renderer(log.template, log.context) or {}
     email = EmailMultiAlternatives(
         subject=rendered.get("subject", log.subject),
@@ -472,11 +477,13 @@ def resend(
     With ``BASEAPP_EMAIL_LOG_RENDERER`` configured and a template on the row, the message
     is re-rendered from the template and the stored context. Otherwise the original is sent
     again as it was (see ``email_message_for``). ``to`` replaces the To recipients; cc and
-    bcc are kept. Raises ``ResendError`` for other channels, for an empty ``to``, and when
-    there is nothing left to send.
+    bcc are kept. Raises ``ResendError`` for other channels, for an empty ``to``, for rows
+    the purge scrubbed (with or without a renderer), and when there is nothing left to send.
     """
     if log.channel != log.Channel.EMAIL:
         raise ResendError("Only email rows can be resent.")
+    if log.scrubbed_at is not None:
+        raise ResendError("The content of this email was purged.")
     if isinstance(to, str):
         to = [to]
     if to is not None and not to:

@@ -96,10 +96,17 @@ def test_rows_with_an_idempotency_key_are_scrubbed_not_deleted(
         {"name": "invoice.pdf", "content_type": "application/pdf", "size": 4}
     ]
     assert not (attachment_storage / path).exists()
-    # Who, what and when remain.
+    # Who, what and when remain, the djmail message's subject, sender, status and sent
+    # date included.
     assert keyed.recipients == ["to@example.com"]
     assert keyed.template == "orders/confirmed"
     assert keyed.category == "orders"
+    assert keyed.subject == "Your invoice"
+    assert keyed.from_email == "from@example.com"
+    assert keyed.status == EmailLog.Status.SENT
+    assert keyed.sent_at is not None
+    assert keyed.scrubbed_at is not None
+    assert list(EmailLog.objects.with_status(EmailLog.Status.SENT)) == [keyed]
     # The key keeps blocking a second send.
     assert send_logged(make_email(), idempotency_key="order-1") == keyed
     assert Message.objects.count() == 0
@@ -120,6 +127,7 @@ def test_scrubs_the_text_of_keyed_rows_of_other_channels(settings) -> None:
     sms.refresh_from_db()
     assert sms.delivery_body_text == ""
     assert sms.delivery_to == "+1"
+    assert sms.scrubbed_at is not None
 
 
 def test_purge_idempotent_deletes_keyed_rows(settings) -> None:
