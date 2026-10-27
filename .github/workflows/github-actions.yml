@@ -65,9 +65,16 @@ jobs:
 
       # Name                   Version ID             Fix Versions
       # ---------------------- ------- -------------- ------------
+      # twisted                26.4.0  CVE-2026-106454  => # no fix version available yet
+      # twisted                26.4.0  CVE-2026-115774  => # fixed only in 26.10.0rc1, no final release yet
+      # twisted                26.4.0  CVE-2026-115775  => # fixed only in 26.10.0rc1, no final release yet
+      # twisted                26.4.0  CVE-2026-115776  => # fixed only in 26.10.0rc1, no final release yet
+      # twisted                26.4.0  CVE-2026-115778  => # fixed only in 26.10.0rc1, no final release yet
+      # twisted                26.4.0  CVE-2026-115877  => # fixed only in 26.10.0rc1, no final release yet
+      # twisted                26.4.0  CVE-2026-83813   => # fixed only in 26.10.0rc1, no final release yet
       - name: Run pip-audit (installed dependencies)
         if: steps.requirements_installation.outcome == 'success' && startsWith(matrix.django-version, '5.2')
-        run: docker compose exec -T web pip-audit --skip-editable
+        run: docker compose exec -T web pip-audit --skip-editable --ignore-vuln CVE-2026-106454 --ignore-vuln CVE-2026-115774 --ignore-vuln CVE-2026-115775 --ignore-vuln CVE-2026-115776 --ignore-vuln CVE-2026-115778 --ignore-vuln CVE-2026-115877 --ignore-vuln CVE-2026-83813
 
       - name: upload coverage report
         if: matrix.python-version == '3.12' && startsWith(matrix.django-version, '5.2')
