@@ -941,7 +941,9 @@ def sync_email_templates(using: str = "default", model: Any = None) -> int:
     never changed. Returns the number of rows created.
     """
     if model is None:
-        from .models import EmailTemplate as model
+        from .models import EmailTemplate
+
+        model = EmailTemplate
 
     names = [template.name for template in email_templates.list()]
     if not names:
