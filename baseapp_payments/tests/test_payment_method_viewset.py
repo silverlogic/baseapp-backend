@@ -301,3 +301,41 @@ class TestPaymentMethodBillingUpdate:
         assert args[0] == "pm_123"
         assert kwargs["billing_details"] == {"name": "Ada Lovelace"}
         assert "pk" not in kwargs
+
+
+class TestRawNumericEntityIds:
+    """Some raw pks are also valid base64 ("1400") and used to decode to a garbage pk."""
+
+    viewname = "v1:customers-payment-methods"
+
+    @pytest.mark.parametrize("value", ["12", "140", "1400", "1401", 1400])
+    def test_a_raw_pk_is_never_decoded(self, value) -> None:
+        from baseapp_payments.views import entity_pk_from_id
+
+        assert entity_pk_from_id(value) == value
+
+    def test_an_unreadable_id_is_none(self) -> None:
+        from baseapp_payments.views import entity_pk_from_id
+
+        assert entity_pk_from_id("") is None
+        assert entity_pk_from_id(None) is None
+        assert entity_pk_from_id("not a relay id") is None
+
+    @patch("baseapp_payments.views.StripeService.retrieve_customer")
+    @patch("baseapp_payments.views.StripeService.get_customer_payment_methods")
+    def test_a_customer_whose_pk_decodes_as_base64_is_found(
+        self,
+        mock_get_customer_payment_methods: MagicMock,
+        mock_retrieve_customer: MagicMock,
+        user_client: Client,
+    ) -> None:
+        mock_get_customer_payment_methods.return_value = []
+        mock_retrieve_customer.return_value = {"id": "cus_123", "invoice_settings": {}}
+        profile = ProfileFactory(pk=1400, owner=user_client.user)
+        user_client.user.profile = profile
+        user_client.user.save()
+        CustomerFactory(entity=profile, remote_customer_id="cus_123")
+
+        response = user_client.get(reverse(self.viewname, kwargs={"entity_id": 1400}))
+
+        responseEquals(response, status.HTTP_200_OK)
