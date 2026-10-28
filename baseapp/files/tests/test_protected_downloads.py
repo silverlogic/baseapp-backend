@@ -19,7 +19,6 @@ from django.core.files.storage import FileSystemStorage, InMemoryStorage
 from django.db import models
 from django.http import Http404
 from django.test import RequestFactory, override_settings
-from graphene_django import DjangoObjectType
 from graphql_relay import to_global_id
 from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied
@@ -46,6 +45,7 @@ from baseapp.files.storage import (
     files_storage_is_private,
     get_wrapped_files_storage,
 )
+from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql.testing.fixtures import graphql_query
 from baseapp_core.tests.factories import UserFactory
 from baseapp_core.tests.fixtures import Client, DjangoClient
