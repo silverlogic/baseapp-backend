@@ -13,6 +13,10 @@ try:
 except InvalidCacheBackendError:
     cache = None
 
+# A missing or unreadable source is cached for a short while only, so a restored file recovers.
+FAILED_THUMBNAIL_CACHE_TIMEOUT = 60 * 5
+_CACHE_MISS = object()
+
 
 class FileInterface(graphene.Interface):
     url = graphene.String()
@@ -66,8 +70,8 @@ class ThumbnailField(graphene.Field):
 
             if cache:
                 cache_key = self._get_cache_key(instance, width, height)
-                value_from_cache = cache.get(cache_key)
-                if value_from_cache:
+                value_from_cache = cache.get(cache_key, _CACHE_MISS)
+                if value_from_cache is not _CACHE_MISS:
                     return value_from_cache
 
             thumbnailer = get_thumbnailer(instance)
@@ -80,7 +84,8 @@ class ThumbnailField(graphene.Field):
                 absolute_url = None
 
             if cache:
-                cache.set(cache_key, absolute_url, timeout=None)
+                timeout = None if absolute_url else FAILED_THUMBNAIL_CACHE_TIMEOUT
+                cache.set(cache_key, absolute_url, timeout=timeout)
 
             return absolute_url
 
