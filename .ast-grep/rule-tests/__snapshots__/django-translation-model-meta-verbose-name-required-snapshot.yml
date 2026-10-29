@@ -55,6 +55,57 @@ snapshots:
       start: 0
       end: 77
   ? |
+    class Order(AbstractOrder):
+        class Meta:
+            ordering = ["-id"]
+  : labels:
+    - source: |-
+        class Order(AbstractOrder):
+            class Meta:
+                ordering = ["-id"]
+      style: primary
+      start: 0
+      end: 70
+    - source: AbstractOrder
+      style: secondary
+      start: 12
+      end: 25
+    - source: (AbstractOrder)
+      style: secondary
+      start: 11
+      end: 26
+    - source: |
+        class Order(AbstractOrder):
+            class Meta:
+                ordering = ["-id"]
+      style: secondary
+      start: 0
+      end: 71
+  ? |
+    class Order(RelayModel):
+        name = models.CharField(max_length=255)
+  : labels:
+    - source: |-
+        class Order(RelayModel):
+            name = models.CharField(max_length=255)
+      style: primary
+      start: 0
+      end: 68
+    - source: RelayModel
+      style: secondary
+      start: 12
+      end: 22
+    - source: (RelayModel)
+      style: secondary
+      start: 11
+      end: 23
+    - source: |
+        class Order(RelayModel):
+            name = models.CharField(max_length=255)
+      style: secondary
+      start: 0
+      end: 69
+  ? |
     class Order(models.Model):
         class Meta:
             ordering = ["-id"]

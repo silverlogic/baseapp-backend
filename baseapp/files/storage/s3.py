@@ -1,5 +1,4 @@
 import posixpath
-import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from botocore.exceptions import ClientError
@@ -9,13 +8,12 @@ from django.utils.crypto import salted_hmac
 from django.utils.http import content_disposition_header
 
 from ..content_safety import is_inline_safe
-from .base import BaseUploadHandler
+from .base import BaseUploadHandler, safe_extension
 
 if TYPE_CHECKING:
     from ..models import AbstractFile
 
 S3_KEY_SALT = "baseapp.files.storage.s3.S3MultipartUploadHandler"
-SAFE_EXTENSION_RE = re.compile(r"^[A-Za-z0-9]{1,16}$")
 
 
 class S3MultipartUploadHandler(BaseUploadHandler):
@@ -170,24 +168,23 @@ class S3MultipartUploadHandler(BaseUploadHandler):
         """
         Storage name for ``file_obj``, stable across initiate, complete and abort.
 
-        Initiate, complete and abort run in separate requests and the S3 key is not persisted,
-        so it must be derived deterministically. An HMAC of the file's pk and creation time
-        keeps it stable per file while staying unguessable for public-read buckets.
+        Initiate, complete and abort run in separate requests, so the name is fixed when the
+        upload starts and kept in ``upload_storage_name`` (see
+        ``UploadService.initiate_multipart_upload``); it then cannot move if the upload folder
+        would change meanwhile, e.g. because the file is attached elsewhere.
 
-        The extension comes from the client-supplied file name, so it is taken from the
-        basename and kept only when it is a short alphanumeric suffix; anything else (path
-        separators, empty or overlong suffixes) falls back to ``bin``.
+        Uploads started before that field existed have no stored name. Theirs is derived as
+        it always was: an HMAC of the file's pk and creation time, unguessable for
+        public-read buckets, with the extension taken from the client-supplied file name.
         """
-        basename = posixpath.basename((file_obj.file_name or "").replace("\\", "/"))
-        ext = basename.rsplit(".", 1)[-1] if "." in basename else ""
-        if not SAFE_EXTENSION_RE.match(ext):
-            ext = "bin"
+        if file_obj.upload_storage_name:
+            return file_obj.upload_storage_name
         digest = salted_hmac(
             S3_KEY_SALT,
             f"{file_obj.pk}:{file_obj.created.isoformat()}",
             algorithm="sha256",
         ).hexdigest()[:32]
-        return posixpath.join("files", f"{digest}.{ext}")
+        return posixpath.join("files", f"{digest}.{safe_extension(file_obj.file_name)}")
 
     def _get_s3_key(self, file_obj: "AbstractFile") -> str:
         """Full S3 object key, including the storage's `location` prefix."""

@@ -5,6 +5,8 @@
   (i.e. someone added or changed a translatable string without regenerating).
 * **Completeness** — every ``.po`` under the checked locale directories must have
   zero untranslated and zero fuzzy entries (``msgfmt --statistics``).
+* **Compiled** — every ``.po`` has a committed ``.mo`` with the same messages and
+  plural rule (the header's other metadata is ignored).
 
 Locale directories default to ``settings.LOCALE_PATHS``; pass ``--locale-dir`` to
 check others (e.g. a package's ``locale/``). Locales default to every entry of
@@ -12,9 +14,11 @@ check others (e.g. a package's ``locale/``). Locales default to every entry of
 """
 
 import difflib
+import gettext
 import os
 import re
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -66,6 +70,31 @@ def parse_statistics(text: str) -> dict[str, int]:
     return stats
 
 
+def compiled_messages(mo_file: Path) -> tuple[dict, str | None]:
+    """Messages (header excluded) and the plural rule of a compiled catalog."""
+    with mo_file.open("rb") as fp:
+        translations = gettext.GNUTranslations(fp)
+    messages = {key: value for key, value in translations._catalog.items() if key != ""}
+    return messages, translations._info.get("plural-forms")
+
+
+def compiled_catalog_problem(po_file: Path) -> str | None:
+    """Why the committed ``.mo`` next to ``po_file`` doesn't match it, or ``None``."""
+    mo_file = po_file.with_suffix(".mo")
+    if not mo_file.exists():
+        return f"{mo_file} is missing"
+    with tempfile.TemporaryDirectory() as tmp:
+        fresh = Path(tmp) / "django.mo"
+        result = subprocess.run(
+            ["msgfmt", "-o", str(fresh), str(po_file)], capture_output=True, text=True, check=False
+        )
+        if result.returncode != 0:
+            raise CommandError(f"msgfmt failed for {po_file}:\n{result.stderr}")
+        if compiled_messages(mo_file) != compiled_messages(fresh):
+            return f"{mo_file} does not match its .po"
+    return None
+
+
 def normalized_catalog(po_file: Path) -> str:
     """Catalog text with gettext's line wrapping undone and the POT-Creation-Date blanked.
 
@@ -113,7 +142,7 @@ def snapshot_diff(before: dict[Path, str], after: dict[Path, str]) -> str:
 
 
 class Command(BaseCommand):
-    help = "Fail if translation catalogs are stale or have untranslated / fuzzy entries."
+    help = "Fail if translation catalogs are stale, incomplete, or not compiled to a matching .mo."
 
     def add_arguments(self, parser: Any) -> None:
         parser.add_argument(
@@ -170,7 +199,15 @@ class Command(BaseCommand):
                     )
                 elif options["verbosity"] > 0:
                     self.stdout.write(f"{po_file}: {stats['translated']} translated, complete.")
+                problem = compiled_catalog_problem(po_file)
+                if problem:
+                    failures.append(
+                        f"{problem}. Run `pre-commit run compile-translations --all-files` "
+                        "and commit the .mo files."
+                    )
 
         if failures:
             raise CommandError("\n\n".join(failures))
-        self.stdout.write(self.style.SUCCESS("Translation catalogs are fresh and complete."))
+        self.stdout.write(
+            self.style.SUCCESS("Translation catalogs are fresh, complete and compiled.")
+        )

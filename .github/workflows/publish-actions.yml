@@ -30,11 +30,6 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Compile translation catalogs
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq gettext
-          bash scripts/i18n/compilemessages.sh
-
       - name: Build distribution
         working-directory: .
         run: uv build
