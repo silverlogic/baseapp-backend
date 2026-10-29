@@ -139,7 +139,7 @@ def test_can_override_email_message(outbox, send_notification) -> None:
     assert "custom message" in outbox[0].body
 
 
-@pytest.mark.parametrize("language", ["es"])
+@pytest.mark.parametrize("language", ["es", "pt"])
 def test_send_email_notification_uses_recipient_language(
     language, outbox, send_notification
 ) -> None:

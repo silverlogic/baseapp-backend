@@ -24,7 +24,7 @@ def test_user_language_activates_and_restores() -> None:
     assert translation.get_language() == "en"
 
 
-@pytest.mark.parametrize("language", ["es"])
+@pytest.mark.parametrize("language", ["es", "pt"])
 def test_user_language_translates_package_strings(language) -> None:
     with user_language(SimpleNamespace(preferred_language=language)):
         translated = translation.gettext("Case insensitive character")
