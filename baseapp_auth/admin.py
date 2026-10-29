@@ -102,7 +102,7 @@ class AbstractUserAdmin(UserAdmin):
         for user in queryset:
             send_password_expired_email(user)
 
-    force_expire_password.short_description = "Expire password"
+    force_expire_password.short_description = _("Expire password")
 
     def is_password_expired(self, obj) -> bool:
         return obj.password_expired

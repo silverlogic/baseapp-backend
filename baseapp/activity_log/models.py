@@ -24,7 +24,9 @@ if apps.is_installed("baseapp_profiles"):
     ProfileModel = swapper.get_model_name("baseapp_profiles", "Profile")
 
     class ProfileMixin(models.Model):
-        profile = models.ForeignKey(ProfileModel, on_delete=models.DO_NOTHING)
+        profile = models.ForeignKey(
+            ProfileModel, verbose_name=_("profile"), on_delete=models.DO_NOTHING
+        )
 
         class Meta:
             abstract = True
@@ -33,16 +35,18 @@ if apps.is_installed("baseapp_profiles"):
 
 
 class ActivityLog(*inheritances, DocumentIdMixin, RelayModel):
-    id = models.UUIDField(primary_key=True, editable=False)
-    created_at = models.DateTimeField()
-    updated_at = models.DateTimeField()
-    user = models.ForeignKey(get_user_model(), on_delete=models.DO_NOTHING)
-    ip_address = models.TextField()
-    verb = models.TextField()
-    visibility = models.TextField()
-    url = models.TextField()
-    metadata = models.JSONField()
+    id = models.UUIDField(_("id"), primary_key=True, editable=False)
+    created_at = models.DateTimeField(_("created at"))
+    updated_at = models.DateTimeField(_("updated at"))
+    user = models.ForeignKey(get_user_model(), verbose_name=_("user"), on_delete=models.DO_NOTHING)
+    ip_address = models.TextField(_("IP address"))
+    verb = models.TextField(_("verb"))
+    visibility = models.TextField(_("visibility"))
+    url = models.TextField(_("URL"))
+    metadata = models.JSONField(_("metadata"))
 
     class Meta:
         managed = False
         db_table = "v_activity_log"
+        verbose_name = _("activity log")
+        verbose_name_plural = _("activity logs")
