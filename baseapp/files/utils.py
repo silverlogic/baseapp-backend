@@ -28,8 +28,13 @@ def recalculate_files_count(parent):
 
     # Count by a non-null column: Count("file_content_type") ignores NULL rows,
     # under-counting files with no content type. Bucket NULLs under "unknown"
-    # to match the pgtrigger that maintains this same JSON on insert/update.
-    files_count_qs = parent.files.values("file_content_type").annotate(count=models.Count("id"))
+    # to match the pgtrigger that maintains this same JSON on insert/update, which also
+    # counts completed uploads only.
+    files_count_qs = (
+        parent.files.filter(upload_status=parent.files.model.UploadStatus.COMPLETED)
+        .values("file_content_type")
+        .annotate(count=models.Count("id"))
+    )
     file_target.files_count = default_files_count()
     for item in files_count_qs:
         count = item["count"]

@@ -58,6 +58,24 @@ Customer = swapper.load_model("baseapp_payments", "Customer")
 Subscription = swapper.load_model("baseapp_payments", "Subscription")
 
 
+def entity_pk_from_id(value: "str | int | None") -> "str | int | None":
+    """The pk an ``entity_id`` names: a raw pk as is, a relay id decoded, else None.
+
+    A purely numeric string is a raw pk and is never decoded. Some of them are also valid
+    base64 (``"1400"``), and decoding one as a relay id yields a garbage pk instead of
+    ``""``, which used to skip the raw-pk path and 404 a real customer. A relay id is base64
+    of ``"Type:pk"`` and so is never all digits.
+    """
+    if value is None or value == "":
+        return None
+    if isinstance(value, int) or (isinstance(value, str) and value.isdigit()):
+        return value
+    try:
+        return get_pk_from_relay_id(value) or None
+    except (ValueError, TypeError):
+        return None
+
+
 class StripeSubscriptionViewset(
     viewsets.GenericViewSet,
     viewsets.mixins.RetrieveModelMixin,
@@ -93,8 +111,7 @@ class StripeSubscriptionViewset(
     def _customer_from_entity_id(self, entity_id: "str | int | None") -> "BaseCustomer":
         if not entity_id:
             raise ValidationError({"entity_id": [_("This field is required.")]})
-        if isinstance(entity_id, str):
-            entity_id = get_pk_from_relay_id(entity_id) or None
+        entity_id = entity_pk_from_id(entity_id)
         if not entity_id:
             raise NotFound(_("Customer not found"))
         customer = Customer.objects.filter(entity_id=entity_id).first()
@@ -106,10 +123,8 @@ class StripeSubscriptionViewset(
         entity_id = request.query_params.get("entity_id")
         if not entity_id:
             return Response({"error": "entity_id is required"}, status=400)
-        if isinstance(entity_id, str):
-            # "" is what get_pk_from_relay_id answers for a non-relay id; querying on
-            # it raises ValueError from the pk field rather than returning nothing.
-            entity_id = get_pk_from_relay_id(entity_id) or None
+        # None for an unreadable id; querying on "" would raise ValueError from the pk field.
+        entity_id = entity_pk_from_id(entity_id)
         customer = (
             Customer.objects.filter(entity_id=entity_id).first() if entity_id is not None else None
         )
@@ -215,15 +230,12 @@ class StripeCustomerViewset(
             if entity_id is None:
                 raise NotFound(_("Customer not found"))
         else:
-            try:
-                entity_id = get_pk_from_relay_id(relay_id)
-            except (ValueError, TypeError):
-                entity_id = None
-            if not entity_id:
-                # get_pk_from_relay_id answers "" for anything that is not a relay id,
-                # so this is the raw-pk case. DRF resolves it and runs the object
-                # permission check itself.
+            if relay_id.isdigit() or not entity_pk_from_id(relay_id):
+                # A raw pk (or anything that isn't a relay id): DRF resolves it and runs
+                # the object permission check itself. Checked before decoding, because some
+                # raw pks are also valid base64 and decode to a garbage pk.
                 return super().get_object()
+            entity_id = entity_pk_from_id(relay_id)
         try:
             obj = self.queryset.get(entity_id=entity_id)
         except (Customer.DoesNotExist, ValueError, TypeError):
@@ -253,8 +265,7 @@ class StripeCustomerViewset(
             # The serializer only sets `entity` when entity_id is truthy but create()
             # pops it unconditionally, so reaching it without one is a 500.
             raise ValidationError({"entity_id": [_("This field is required.")]})
-        if isinstance(entity_id, str):
-            entity_id = get_pk_from_relay_id(entity_id) or None
+        entity_id = entity_pk_from_id(entity_id)
         if not entity_id:
             raise NotFound(_("Entity not found"))
         entity_model = apps.get_model(config.STRIPE_CUSTOMER_ENTITY_MODEL)

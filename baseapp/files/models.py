@@ -17,12 +17,12 @@ from baseapp_core.models import (
     DocumentId,
     DocumentIdMixin,
     DocumentIdUniqueTargetMixin,
-    random_name_in,
 )
 from baseapp_core.pghelpers import pgtrigger_register_default_track
 from baseapp_core.swapper import init_swapped_models
 
 from .storage import get_files_storage
+from .storage.base import file_upload_to
 from .utils import default_files_count
 
 if TYPE_CHECKING:
@@ -33,6 +33,9 @@ class FileTargetCountFunc(pgtrigger.Func):
     """
     Reusable pgtrigger function for updating FileTarget counts.
     Dynamically resolves table names for swappable models.
+
+    Only completed uploads are counted: a file is attached when its upload starts, so a
+    pending, failed or aborted one must not count as one of the target's files.
     """
 
     def render(
@@ -46,6 +49,7 @@ class FileTargetCountFunc(pgtrigger.Func):
         return self.func.format(
             file_table=meta.db_table,
             file_target_table=FileTarget._meta.db_table,
+            completed=AbstractFile.UploadStatus.COMPLETED.value,
         )
 
 
@@ -74,7 +78,7 @@ def file_target_insert_trigger():
                             COALESCE(file_content_type, 'unknown') as file_content_type,
                             COUNT(*)::int as count
                         FROM {file_table}
-                        WHERE parent_id = NEW.parent_id
+                        WHERE parent_id = NEW.parent_id AND upload_status = '{completed}'
                         GROUP BY file_content_type
                     ) counts;
 
@@ -118,7 +122,7 @@ def file_target_update_trigger():
                             COALESCE(file_content_type, 'unknown') as file_content_type,
                             COUNT(*)::int as count
                         FROM {file_table}
-                        WHERE parent_id = OLD.parent_id
+                        WHERE parent_id = OLD.parent_id AND upload_status = '{completed}'
                         GROUP BY file_content_type
                     ) counts;
 
@@ -140,7 +144,7 @@ def file_target_update_trigger():
                             COALESCE(file_content_type, 'unknown') as file_content_type,
                             COUNT(*)::int as count
                         FROM {file_table}
-                        WHERE parent_id = NEW.parent_id
+                        WHERE parent_id = NEW.parent_id AND upload_status = '{completed}'
                         GROUP BY file_content_type
                     ) counts;
 
@@ -180,7 +184,7 @@ def file_target_delete_trigger():
                             COALESCE(file_content_type, 'unknown') as file_content_type,
                             COUNT(*)::int as count
                         FROM {file_table}
-                        WHERE parent_id = OLD.parent_id
+                        WHERE parent_id = OLD.parent_id AND upload_status = '{completed}'
                         GROUP BY file_content_type
                     ) counts;
 
@@ -308,7 +312,8 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
     )
     file = models.FileField(
         max_length=512,
-        upload_to=random_name_in("files"),
+        # Inside the folder `get_upload_folder` names, like uploads.
+        upload_to=file_upload_to,
         # BASEAPP_FILES_STORAGE; a callable so a project can switch to private storage.
         storage=get_files_storage,
         verbose_name=_("file"),
@@ -364,6 +369,15 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
         help_text=_("S3 multipart upload ID for in-progress uploads"),
     )
 
+    # Where an upload is written, fixed when it starts ("" for uploads started before it was kept)
+    upload_storage_name = models.CharField(
+        max_length=512,
+        blank=True,
+        default="",
+        verbose_name=_("upload storage name"),
+        help_text=_("Storage name the upload is written to, fixed when the upload starts"),
+    )
+
     # Metadata for multipart uploads
     total_parts = models.PositiveIntegerField(
         null=True,
@@ -388,6 +402,19 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
         verbose_name=_("upload expires at"),
         help_text=_("Expiration time for pending uploads"),
     )
+
+    def get_upload_folder(self) -> str:
+        """
+        Folder, inside the files storage, that this file is stored in. Read when its upload
+        starts (or when it is saved directly); the name it produces is kept from then on.
+
+        Override it in a concrete model to partition files, e.g. per tenant or per parent
+        object. Use identifiers that are not personal data, since they end up in the URL.
+        It must be a plain relative path (``a/b``) that leaves room for the generated name in
+        the 512-character ``file`` field: ``.`` and ``..`` segments, empty segments,
+        backslashes and over-long folders are rejected with ``ValueError``.
+        """
+        return "files"
 
     def save(self, *args, **kwargs):
         """
