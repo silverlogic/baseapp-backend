@@ -5,6 +5,7 @@ from django.apps import apps
 from django.conf import settings
 from django.core.cache import InvalidCacheBackendError, caches
 from easy_thumbnails.engine import NoSourceGenerator
+from easy_thumbnails.exceptions import InvalidImageFormatError
 from easy_thumbnails.files import get_thumbnailer
 
 try:
@@ -73,7 +74,9 @@ class ThumbnailField(graphene.Field):
             try:
                 url = thumbnailer.get_thumbnail({"size": (width, height)}).url
                 absolute_url = info.context.build_absolute_uri(url)
-            except NoSourceGenerator:
+            except (NoSourceGenerator, InvalidImageFormatError):
+                # The source can't be read as an image (e.g. the file is missing from storage),
+                # so the thumbnail resolves to null instead of failing the whole query.
                 absolute_url = None
 
             if cache:
