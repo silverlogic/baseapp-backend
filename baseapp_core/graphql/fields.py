@@ -5,12 +5,17 @@ from django.apps import apps
 from django.conf import settings
 from django.core.cache import InvalidCacheBackendError, caches
 from easy_thumbnails.engine import NoSourceGenerator
+from easy_thumbnails.exceptions import InvalidImageFormatError
 from easy_thumbnails.files import get_thumbnailer
 
 try:
     cache = caches[settings.THUMBNAIL_CACHE]
 except InvalidCacheBackendError:
     cache = None
+
+# A missing or unreadable source is cached for a short while only, so a restored file recovers.
+FAILED_THUMBNAIL_CACHE_TIMEOUT = 60 * 5
+_CACHE_MISS = object()
 
 
 class FileInterface(graphene.Interface):
@@ -65,19 +70,22 @@ class ThumbnailField(graphene.Field):
 
             if cache:
                 cache_key = self._get_cache_key(instance, width, height)
-                value_from_cache = cache.get(cache_key)
-                if value_from_cache:
+                value_from_cache = cache.get(cache_key, _CACHE_MISS)
+                if value_from_cache is not _CACHE_MISS:
                     return value_from_cache
 
             thumbnailer = get_thumbnailer(instance)
             try:
                 url = thumbnailer.get_thumbnail({"size": (width, height)}).url
                 absolute_url = info.context.build_absolute_uri(url)
-            except NoSourceGenerator:
+            except (NoSourceGenerator, InvalidImageFormatError):
+                # The source can't be read as an image (e.g. the file is missing from storage),
+                # so the thumbnail resolves to null instead of failing the whole query.
                 absolute_url = None
 
             if cache:
-                cache.set(cache_key, absolute_url, timeout=None)
+                timeout = None if absolute_url else FAILED_THUMBNAIL_CACHE_TIMEOUT
+                cache.set(cache_key, absolute_url, timeout=timeout)
 
             return absolute_url
 
