@@ -40,14 +40,6 @@ valid:
 
         class Meta:
             verbose_name = _("Order")
-invalid:
-  - |
-    class Order(models.Model):
-        name = models.CharField(max_length=255)
-  - |
-    class Order(models.Model):
-        class Meta:
-            ordering = ["-id"]
   - |
     class Order(AbstractOrder):
         class Meta(AbstractOrder.Meta):
@@ -58,5 +50,19 @@ invalid:
             permissions = [*AbstractUser.Meta.permissions]
   - |
     class Customer(BaseCustomer):
-        class Meta(BaseCustomer.Meta):
-            pass
+        tracker = FieldTracker(["entity"])
+invalid:
+  - |
+    class Order(models.Model):
+        name = models.CharField(max_length=255)
+  - |
+    class Order(models.Model):
+        class Meta:
+            ordering = ["-id"]
+  - |
+    class Order(AbstractOrder):
+        class Meta:
+            ordering = ["-id"]
+  - |
+    class Order(RelayModel):
+        name = models.CharField(max_length=255)

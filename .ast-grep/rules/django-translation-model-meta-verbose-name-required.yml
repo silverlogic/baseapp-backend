@@ -1,9 +1,9 @@
 id: django-translation-model-meta-verbose-name-required
 language: Python
 severity: error
-message: "Every concrete model in `apps/` must declare `class Meta` with an explicit `verbose_name = _(\"...\")` (and `verbose_name_plural`), even when it inherits a package abstract's `Meta` — the project catalog can only translate what the project declares. See .claude/skills/backend-conventions/references/translations.md"
-# Project code only: the baseapp_* packages ship abstract models whose Meta the
-# consuming project is expected to extend.
+message: "A concrete model in `apps/` needs a translated `verbose_name = _(\"...\")` (and `verbose_name_plural`) in its `Meta`. A model extending a package abstract (`Abstract*` / `Base*`) inherits the package's labels: leave `Meta` out or extend the parent's (`class Meta(AbstractX.Meta)`), because a plain `class Meta:` drops them. See .claude/skills/backend-conventions/references/translations.md"
+# Project code only. The baseapp_* abstracts declare their own translated labels, which a
+# subclass inherits unless it replaces `Meta` with one that doesn't extend the parent's.
 files:
   - "apps/**/models.py"
 ignores:
@@ -60,3 +60,24 @@ rule:
                       has:
                         field: left
                         regex: ^verbose_name$
+    # Allowed: extends a package abstract and keeps its labels (no plain `class Meta:`).
+    - not:
+        all:
+          - has:
+              field: superclasses
+              has:
+                stopBy: end
+                regex: ^(Abstract|Base)\w+$
+          - not:
+              has:
+                field: body
+                has:
+                  kind: class_definition
+                  all:
+                    - has:
+                        field: name
+                        regex: ^Meta$
+                    - not:
+                        has:
+                          field: superclasses
+                          kind: argument_list

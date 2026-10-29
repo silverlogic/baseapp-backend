@@ -68,7 +68,7 @@ The `See ...` paths in rule messages point at the `backend-conventions` /
 | `django-translation-use-gettext-lazy` | error | `_` is always `gettext_lazy`; eager `gettext` only inside request-time bodies, imported by name (translations.md) |
 | `django-translation-model-fields-lazy` | error | `verbose_name` / `help_text` / `label` wrapped in `_()` (translations.md) |
 | `django-translation-meta-verbose-name-lazy` | error | `Meta.verbose_name` / `verbose_name_plural` and `AppConfig.verbose_name` wrapped in `_()` (translations.md) |
-| `django-translation-model-meta-verbose-name-required` | error | `apps/**/models.py` only — every concrete model declares `Meta.verbose_name = _(...)`, even when extending a package abstract's `Meta` (translations.md) |
+| `django-translation-model-meta-verbose-name-required` | error | `apps/**/models.py` only — a concrete model declares `Meta.verbose_name = _(...)`, unless it extends a package abstract (`Abstract*` / `Base*`) and keeps its labels (no `Meta`, or `class Meta(Parent.Meta)`) (translations.md) |
 | `django-translation-choices-label-lazy` | error | `TextChoices` / `IntegerChoices` labels and inline `choices=[...]` labels wrapped in `_()` (translations.md) |
 | `django-translation-validation-error-literal` | error | No bare string anywhere inside `ValidationError(...)` — positional, `detail=`, dict values, list items (translations.md, error-shape.md) |
 | `django-translation-admin-labels-lazy` | error | `short_description` and `@admin.display` / `@admin.action` `description=` wrapped in `_()` (translations.md) |
