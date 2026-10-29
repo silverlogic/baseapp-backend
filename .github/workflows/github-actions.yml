@@ -47,7 +47,6 @@ jobs:
         if: steps.ast_grep.outcome == 'success'
         run: |
           docker compose exec -T web uv run --python ${{ matrix.python-version }} bash scripts/i18n/check_translations.sh
-          docker compose exec -T web bash scripts/i18n/compilemessages.sh
 
       - name: Install tests requirements with Django ${{ matrix.django-version }}
         if: steps.translations.outcome == 'success'

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-16 22:43+0000\n"
+"POT-Creation-Date: 2026-10-29 20:43+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -198,6 +198,16 @@ msgstr "ID do upload"
 #: models.py
 msgid "S3 multipart upload ID for in-progress uploads"
 msgstr "ID do upload multipart do S3 para uploads em andamento"
+
+#: models.py
+msgid "upload storage name"
+msgstr "nome do armazenamento do upload"
+
+#: models.py
+msgid "Storage name the upload is written to, fixed when the upload starts"
+msgstr ""
+"Nome do armazenamento em que o upload é gravado, definido quando o upload "
+"começa"
 
 #: models.py
 msgid "total parts"
