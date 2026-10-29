@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -6,6 +7,7 @@ from django.core.management.base import CommandError
 
 from baseapp_core.management.commands.check_translations import (
     catalog_statistics,
+    compiled_catalog_problem,
     default_locales,
     parse_statistics,
 )
@@ -27,6 +29,10 @@ def write_catalog(root: Path, locale: str, body: str) -> Path:
     return po_file
 
 
+def compile_mo(po_file: Path) -> None:
+    subprocess.run(["msgfmt", "-o", str(po_file.with_suffix(".mo")), str(po_file)], check=True)
+
+
 def test_catalog_statistics_counts_fuzzy_and_untranslated(tmp_path) -> None:
     po_file = write_catalog(
         tmp_path,
@@ -45,7 +51,7 @@ def test_default_locales_skip_the_source_language(settings) -> None:
 
 
 def test_command_passes_for_complete_catalogs(tmp_path) -> None:
-    write_catalog(tmp_path, "es", 'msgid "Hello"\nmsgstr "Hola"\n')
+    compile_mo(write_catalog(tmp_path, "es", 'msgid "Hello"\nmsgstr "Hola"\n'))
     call_command("check_translations", "--no-makemessages", locale_dirs=[str(tmp_path)])
 
 
@@ -53,6 +59,44 @@ def test_command_fails_for_incomplete_catalogs(tmp_path) -> None:
     write_catalog(tmp_path, "es", 'msgid "Hello"\nmsgstr ""\n')
     with pytest.raises(CommandError, match="1 untranslated"):
         call_command("check_translations", "--no-makemessages", locale_dirs=[str(tmp_path)])
+
+
+def test_command_fails_when_the_mo_is_missing(tmp_path) -> None:
+    write_catalog(tmp_path, "es", 'msgid "Hello"\nmsgstr "Hola"\n')
+    with pytest.raises(CommandError, match="django.mo is missing"):
+        call_command("check_translations", "--no-makemessages", locale_dirs=[str(tmp_path)])
+
+
+def test_compiled_catalog_problem_reports_a_stale_mo(tmp_path) -> None:
+    po_file = write_catalog(tmp_path, "es", 'msgid "Hello"\nmsgstr "Hola"\n')
+    compile_mo(po_file)
+    po_file.write_text(HEADER + '\nmsgid "Hello"\nmsgstr "Buenas"\n', encoding="utf-8")
+    assert (
+        compiled_catalog_problem(po_file) == f"{po_file.with_suffix('.mo')} does not match its .po"
+    )
+
+
+def test_compiled_catalog_problem_ignores_header_metadata(tmp_path) -> None:
+    po_file = write_catalog(tmp_path, "es", 'msgid "Hello"\nmsgstr "Hola"\n')
+    compile_mo(po_file)
+    po_file.write_text(
+        HEADER.replace(
+            '"Language: es\\n"\n', '"Language: es\\n"\n"POT-Creation-Date: 2026-10-29\\n"\n'
+        )
+        + '\nmsgid "Hello"\nmsgstr "Hola"\n',
+        encoding="utf-8",
+    )
+    assert compiled_catalog_problem(po_file) is None
+
+
+def test_compiled_catalog_problem_reports_a_changed_plural_rule(tmp_path) -> None:
+    po_file = write_catalog(tmp_path, "pt", 'msgid "Hello"\nmsgstr "Olá"\n')
+    compile_mo(po_file)
+    po_file.write_text(
+        HEADER.replace("plural=(n != 1)", "plural=(n > 1)") + '\nmsgid "Hello"\nmsgstr "Olá"\n',
+        encoding="utf-8",
+    )
+    assert compiled_catalog_problem(po_file) is not None
 
 
 def test_command_fails_when_no_catalogs(tmp_path) -> None:

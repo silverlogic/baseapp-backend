@@ -96,23 +96,23 @@ docker compose run --rm web pre-commit run --all-files
 
 ## Translations
 
-Every package keeps its own catalogs in `<package>/locale/{es,pt}/LC_MESSAGES/django.po`
-(new `.mo` files are gitignored and compiled in CI / Docker / the publish job; the `es` `.mo`
-files that already shipped stay tracked, recompile them when their `.po` changes). CI fails when a
-catalog is stale (`makemessages` would change it) or incomplete (untranslated / fuzzy):
+Every package keeps its own catalogs in `<package>/locale/{es,pt}/LC_MESSAGES/django.po`, with
+the compiled `django.mo` committed next to each one, so installing the package needs no gettext.
+The `compile-translations` pre-commit hook recompiles a staged `.po` and stops the commit until
+its `.mo` is staged too. CI fails when a catalog is stale (`makemessages` would change it),
+incomplete (untranslated / fuzzy), or its `.mo` doesn't match the `.po`:
 
 ```bash
 docker compose run --rm web uv run bash scripts/i18n/makemessages.sh       # regenerate every package catalog
 docker compose run --rm web uv run bash scripts/i18n/check_translations.sh # the CI gate (fresh + complete)
-docker compose run --rm web bash scripts/i18n/compilemessages.sh           # build the .mo files
+pre-commit run compile-translations --all-files                             # rebuild any stale .mo
 ```
 
 `makemessages` is `baseapp_core`'s override: it extracts `_()` from Jinja `.j2` templates and
 reads defaults from `BA_MAKEMESSAGES_DEFAULTS` (`testproject/settings.py`). Add a new package to
 `scripts/i18n/packages.sh` and translate the generated entries before merging.
 
-The root `conftest.py` compiles every catalog before the tests run, so a clean checkout only needs
-`gettext` (already in the image). Portuguese ships as `locale/pt` (Brazilian Portuguese copy) under
+Portuguese ships as `locale/pt` (Brazilian Portuguese copy) under
 the language code `pt`, the code `TranslatedField` columns, `URLPath.language` and
 `User.preferred_language` already store: keep `pt` (not `pt-br`) in `LANGUAGES`. A request for
 `pt-br` resolves to `pt` through Django's language fallback.
