@@ -6,6 +6,7 @@ import swapper
 from constance import config
 from django.apps import apps
 from django.conf import settings
+from django.db import IntegrityError, transaction
 from django.http import HttpRequest, JsonResponse
 
 if TYPE_CHECKING:
@@ -98,7 +99,16 @@ class StripeWebhookHandler:
             entity_id = customer_data["metadata"].get("entity_id")
             entity_model = apps.get_model(config.STRIPE_CUSTOMER_ENTITY_MODEL)
             entity = entity_model.objects.get(id=entity_id)
-            Customer.objects.create(entity=entity, remote_customer_id=customer_data["id"])
+            try:
+                with transaction.atomic():
+                    Customer.objects.create(entity=entity, remote_customer_id=customer_data["id"])
+            except IntegrityError:
+                # The API creates the Stripe customer before inserting its row, so this event
+                # can arrive while that insert is uncommitted: the check above misses it, and
+                # this insert waits on it and fails once it commits. Same remote id means the
+                # row we wanted is there; anything else is a real conflict.
+                if not Customer.objects.filter(remote_customer_id=customer_data["id"]).exists():
+                    raise
             return JsonResponse({"status": "success"}, status=200)
         except Exception as e:
             logger.exception(e)
