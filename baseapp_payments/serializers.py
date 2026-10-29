@@ -1,7 +1,8 @@
 import logging
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
+import stripe
 import swapper
 from constance import config
 from django.apps import apps
@@ -11,6 +12,7 @@ from rest_framework import serializers
 
 from baseapp_core.graphql import get_pk_from_relay_id
 
+from .models import BaseCustomer, BaseSubscription
 from .utils import (
     STRIPE_LIVE_SUBSCRIPTION_STATUSES,
     StripeService,
@@ -18,10 +20,9 @@ from .utils import (
     stripe_id,
 )
 
-if TYPE_CHECKING:
-    import stripe
-
-    from .models import BaseCustomer, BaseSubscription
+# stripe and the models are imported at runtime, not under TYPE_CHECKING: drf-spectacular
+# resolves the SerializerMethodField getters' annotations with typing.get_type_hints() to
+# build /api/schema/, and a TYPE_CHECKING-only name there is a NameError.
 
 logger = logging.getLogger(__name__)
 
