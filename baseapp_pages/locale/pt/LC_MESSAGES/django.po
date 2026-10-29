@@ -27,7 +27,7 @@ msgstr "BaseApp Páginas"
 
 #: graphql/mutations.py
 msgid "URL Path already being used"
-msgstr "Caminho de URL já está em uso"
+msgstr "Este caminho de URL já está em uso"
 
 #: graphql/mutations.py
 msgid "You don't have permission to create a page"

@@ -91,11 +91,11 @@ msgstr "alvo"
 
 #: templates/admin/base_site.html
 msgid "BaseApp staging logo"
-msgstr "Logo do BaseApp (staging)"
+msgstr "Logo de staging do BaseApp"
 
 #: templates/admin/base_site.html
 msgid "BaseApp production logo"
-msgstr "Logo do BaseApp (produção)"
+msgstr "Logo de produção do BaseApp"
 
 #: utils.py
 msgid "Wrong natural key, please use the format app_label.ModelName"

@@ -79,8 +79,8 @@ msgstr "metadados"
 
 #: models.py
 msgid "activity log"
-msgstr "registro de atividade"
+msgstr "registro de atividades"
 
 #: models.py
 msgid "activity logs"
-msgstr "registros de atividade"
+msgstr "registros de atividades"

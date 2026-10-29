@@ -316,11 +316,11 @@ msgstr "quantidade"
 
 #: models.py
 msgid "unread message count"
-msgstr "contagem de mensagens não lidas"
+msgstr "quantidade de mensagens não lidas"
 
 #: models.py
 msgid "unread message counts"
-msgstr "contagens de mensagens não lidas"
+msgstr "quantidades de mensagens não lidas"
 
 #: models.py
 msgid "read"

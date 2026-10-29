@@ -245,7 +245,7 @@ msgstr "atribuído a"
 
 #: models.py
 msgid "made superuser"
-msgstr "tornado superusuário"
+msgstr "promovido a superusuário"
 
 #: models.py
 msgid "superuser update log"

@@ -20,7 +20,7 @@ msgstr ""
 
 #: apps.py
 msgid "BaseApp Cloudflare Stream Field"
-msgstr "BaseApp Campo Cloudflare Stream"
+msgstr "BaseApp Campo de Cloudflare Stream"
 
 #: templates/baseapp_cloudflare_stream_field/admin_async_file_input.html
 msgid "Preview"

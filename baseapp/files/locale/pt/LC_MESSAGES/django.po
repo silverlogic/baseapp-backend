@@ -345,7 +345,7 @@ msgstr "Você não tem permissão para cancelar este upload"
 
 #: rest_framework/uploads/views.py
 msgid "Only an upload that hasn't completed can be aborted."
-msgstr "Só é possível cancelar um envio que ainda não foi concluído."
+msgstr "Só é possível cancelar um upload que ainda não foi concluído."
 
 #: rest_framework/uploads/views.py
 msgid "Failed to abort upload."

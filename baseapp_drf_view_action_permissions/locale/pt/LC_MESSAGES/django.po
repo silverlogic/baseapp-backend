@@ -39,7 +39,7 @@ msgstr "permissões"
 
 #: models.py
 msgid "exclude permissions"
-msgstr "permissões excluídas"
+msgstr "permissões negadas"
 
 #: models.py
 msgid "role"

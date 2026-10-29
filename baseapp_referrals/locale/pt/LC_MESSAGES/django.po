@@ -35,4 +35,4 @@ msgstr "indicação de usuário"
 
 #: models.py
 msgid "user referrals"
-msgstr "indicações de usuários"
+msgstr "indicações de usuário"

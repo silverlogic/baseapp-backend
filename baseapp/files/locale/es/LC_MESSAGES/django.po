@@ -247,7 +247,7 @@ msgstr "Este enlace de descarga ha expirado."
 
 #: rest_framework/files/download_views.py
 msgid "Invalid download link."
-msgstr "Enlace de descarga no válido."
+msgstr "Enlace de descarga inválido."
 
 #: rest_framework/files/download_views.py rest_framework/files/views.py
 #: rest_framework/uploads/presigned_views.py rest_framework/uploads/views.py

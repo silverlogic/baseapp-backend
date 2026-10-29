@@ -30,7 +30,7 @@ msgstr "Detalles"
 #: admin.py
 msgid "You must be a superuser with MFA enabled to perform this action."
 msgstr ""
-"Debes ser un superusuario con Autentificación de dos factores habilitado "
+"Debes ser un superusuario con autenticación multifactor (MFA) habilitada "
 "para realizar esta acción."
 
 #: admin.py
@@ -136,7 +136,7 @@ msgstr ""
 
 #: models.py
 msgid "staff status"
-msgstr "estado del personal"
+msgstr "estado de staff"
 
 #: models.py
 msgid "Designates whether the user can log into this admin site."
@@ -265,16 +265,13 @@ msgstr "registros de actualización de superusuario"
 msgid ""
 "This password must contain at least %(min_length)d capital letter characters."
 msgstr ""
-"Esta contraseña debe contener al menos %(min_length)d caracteres de letra "
-"mayúscula."
+"Esta contraseña debe contener al menos %(min_length)d letras mayúsculas."
 
 #: password_validators.py
 #, python-format
 msgid ""
 "Your password must contain at least %(min_length)d capital letter characters."
-msgstr ""
-"Tu contraseña debe contener al menos %(min_length)d caracteres de letra "
-"mayúscula."
+msgstr "Tu contraseña debe contener al menos %(min_length)d letras mayúsculas."
 
 #: password_validators.py
 #, python-format
@@ -327,12 +324,12 @@ msgid ""
 "A reset password link will be sent to you if an account is registered under "
 "that email."
 msgstr ""
-"Un enlace para restablecer la contraseña se enviará a usted si hay una "
-"cuenta registrada bajo ese correo electrónico."
+"Se te enviará un enlace para restablecer la contraseña si hay una cuenta "
+"registrada con ese correo electrónico."
 
 #: rest_framework/jwt/views.py
 msgid "Unsupported action for JWTAuthViewSet"
-msgstr "Acción no soportada para JWTAuthViewSet"
+msgstr "Acción no admitida para JWTAuthViewSet"
 
 #: rest_framework/login/serializers.py
 msgid "Unable to login with provided credentials."
@@ -340,11 +337,11 @@ msgstr "No se puede iniciar sesión con las credenciales proporcionadas."
 
 #: rest_framework/register/serializers.py
 msgid "That email is already in use.  Choose another."
-msgstr "Este correo electrónico ya está en uso. Elija otro."
+msgstr "Ese correo electrónico ya está en uso. Elige otro."
 
 #: rest_framework/register/serializers.py rest_framework/users/serializers.py
 msgid "Invalid referral code."
-msgstr "Código de referencia inválido."
+msgstr "Código de referido inválido."
 
 #: rest_framework/users/mixins.py rest_framework/users/views.py
 msgid "Invalid permission format."
@@ -372,7 +369,7 @@ msgstr "Esta no es tu contraseña actual."
 
 #: rest_framework/users/serializers.py
 msgid "User does not exist."
-msgstr "Usuario no existe."
+msgstr "El usuario no existe."
 
 #: rest_framework/users/serializers.py rest_framework/users/views.py
 msgid "You do not have permission to perform this action."
@@ -380,7 +377,7 @@ msgstr "No tienes permiso para realizar esta acción."
 
 #: rest_framework/users/serializers.py
 msgid "Permission with this codename does not exist."
-msgstr "Permiso con este código no existe."
+msgstr "No existe un permiso con este codename."
 
 #: templates/admin/widgets/grouped_permission_widget.html
 msgid "Filter permissions…"

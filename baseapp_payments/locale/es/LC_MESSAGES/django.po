@@ -77,8 +77,8 @@ msgid ""
 "You already have an active subscription to this product. Current "
 "subscription is on price: %(price_id)s"
 msgstr ""
-"Ya tienes una suscripción activa a este producto. La suscripción actual está "
-"en el precio: %(price_id)s"
+"Ya tienes una suscripción activa a este producto. La suscripción actual "
+"tiene el precio: %(price_id)s"
 
 #: serializers.py
 msgid "An error occurred while checking existing subscriptions."

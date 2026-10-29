@@ -31,7 +31,7 @@ msgstr "Você não pode bloquear a si mesmo"
 
 #: models.py
 msgid "blocking"
-msgstr "bloqueando"
+msgstr "bloqueador"
 
 #: models.py
 msgid "blockers"

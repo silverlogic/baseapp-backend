@@ -49,7 +49,7 @@ msgstr "Todos"
 
 #: models.py
 msgid "Email"
-msgstr "Email"
+msgstr "Correo electrónico"
 
 #: models.py
 msgid "Push"

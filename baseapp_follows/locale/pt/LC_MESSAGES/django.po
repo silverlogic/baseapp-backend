@@ -59,8 +59,8 @@ msgstr "alvo"
 
 #: models.py
 msgid "follow"
-msgstr "seguimento"
+msgstr "seguidor"
 
 #: models.py
 msgid "follows"
-msgstr "seguimentos"
+msgstr "seguidores"

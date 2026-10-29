@@ -24,7 +24,7 @@ msgstr "BaseApp Referidos"
 
 #: models.py
 msgid "referrer"
-msgstr "referente"
+msgstr "referidor"
 
 #: models.py
 msgid "referee"
@@ -36,4 +36,4 @@ msgstr "referido de usuario"
 
 #: models.py
 msgid "user referrals"
-msgstr "referidos de usuarios"
+msgstr "referidos de usuario"
