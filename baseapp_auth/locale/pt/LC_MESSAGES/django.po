@@ -611,8 +611,8 @@ msgid ""
 "Great to have you on board! Let's make sure your email is all set. Please "
 "confirm your email address by clicking the button below:"
 msgstr ""
-"Que bom ter você conosco! Vamos garantir que seu e-mail esteja tudo certo. "
-"Confirme seu endereço de e-mail clicando no botão abaixo:"
+"Que bom ter você conosco! Vamos garantir que esteja tudo certo com o seu e-"
+"mail. Confirme seu endereço de e-mail clicando no botão abaixo:"
 
 #: templates/users/emails/welcome-body.html.j2
 msgid "Confirm Email Address"
