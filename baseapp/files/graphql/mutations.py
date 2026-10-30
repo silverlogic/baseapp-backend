@@ -11,6 +11,7 @@ from baseapp_core.models import DocumentId
 from baseapp_core.plugins import shared_services
 
 from ..base import FileableModel
+from ..downloads.graphql import ProtectedFileMutations
 from ..permissions import anonymous_uploads_allowed
 from ..tokens import bind_upload_tokens
 from .interfaces import FilesInterface
@@ -206,6 +207,6 @@ class FileDelete(RelayMutation):
         return FileDelete(deleted_id=relay_id, parent=parent)
 
 
-class FilesMutations(object):
+class FilesMutations(ProtectedFileMutations):
     file_attach_to_target = FileAttachToTarget.Field()
     file_delete = FileDelete.Field()

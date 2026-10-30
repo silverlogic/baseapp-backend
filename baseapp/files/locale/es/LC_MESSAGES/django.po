@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-29 20:43+0000\n"
+"POT-Creation-Date: 2026-10-30 14:54+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -21,6 +21,70 @@ msgstr ""
 #: apps.py
 msgid "BaseApp Files"
 msgstr "BaseApp Archivos"
+
+#: downloads/exceptions.py
+msgid "This file is no longer available."
+msgstr "Este archivo ya no está disponible."
+
+#: downloads/graphql.py
+msgid "Registry key of the file field."
+msgstr "Clave de registro del campo de archivo."
+
+#: downloads/graphql.py
+msgid "Id of the object holding the file."
+msgstr "Id del objeto que contiene el archivo."
+
+#: downloads/graphql.py
+msgid "Name the file downloads as."
+msgstr "Nombre con el que se descarga el archivo."
+
+#: downloads/graphql.py
+msgid "Type the file is served with."
+msgstr "Tipo con el que se sirve el archivo."
+
+#: downloads/graphql.py
+msgid "Size in bytes; null when unknown."
+msgstr "Tamaño en bytes; null si se desconoce."
+
+#: downloads/graphql.py
+msgid "The protected file, or null without access."
+msgstr "El archivo protegido, o null si no hay acceso."
+
+#: downloads/graphql.py downloads/services.py downloads/views.py
+msgid "File not found."
+msgstr "Archivo no encontrado."
+
+#: downloads/graphql.py downloads/registry.py
+msgid "You don't have permission to download this file."
+msgstr "No tienes permiso para descargar este archivo."
+
+#: downloads/graphql.py
+msgid "Absolute download URL."
+msgstr "URL de descarga absoluta."
+
+#: downloads/graphql.py
+msgid "When the link stops working."
+msgstr "Cuándo deja de funcionar el enlace."
+
+#: downloads/graphql.py
+msgid "ProtectedFile.key"
+msgstr "ProtectedFile.key"
+
+#: downloads/graphql.py
+msgid "ProtectedFile.objectId, or the object's Relay id."
+msgstr "ProtectedFile.objectId, o el id de Relay del objeto."
+
+#: downloads/views.py rest_framework/files/download_views.py
+msgid "Invalid download link."
+msgstr "Enlace de descarga inválido."
+
+#: downloads/views.py rest_framework/files/download_views.py
+msgid "This download link has expired."
+msgstr "Este enlace de descarga ha expirado."
+
+#: downloads/views.py
+msgid "This download link is no longer valid."
+msgstr "Este enlace de descarga ya no es válido."
 
 #: graphql/mutations.py
 msgid "At least one file must be provided"
@@ -240,14 +304,6 @@ msgstr "Los archivos no están habilitados para este objeto."
 #: models.py
 msgid "files"
 msgstr "archivos"
-
-#: rest_framework/files/download_views.py
-msgid "This download link has expired."
-msgstr "Este enlace de descarga ha expirado."
-
-#: rest_framework/files/download_views.py
-msgid "Invalid download link."
-msgstr "Enlace de descarga inválido."
 
 #: rest_framework/files/download_views.py rest_framework/files/views.py
 #: rest_framework/uploads/presigned_views.py rest_framework/uploads/views.py
