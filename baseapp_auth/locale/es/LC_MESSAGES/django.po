@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-17 01:11+0000\n"
+"POT-Creation-Date: 2026-10-30 14:53+0000\n"
 "PO-Revision-Date: 2024-06-24 21:24+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -72,6 +72,214 @@ msgid ""
 msgstr ""
 "Determinar si el usuario conectado tiene un permiso específico para este "
 "objeto."
+
+#: impersonation/admin.py
+msgid "Revoke selected sessions"
+msgstr "Revocar las sesiones seleccionadas"
+
+#: impersonation/apps.py
+msgid "BaseApp Impersonation"
+msgstr "Suplantación de BaseApp"
+
+#: impersonation/exceptions.py
+msgid "The impersonation session has ended."
+msgstr "La sesión de suplantación ha terminado."
+
+#: impersonation/exceptions.py
+msgid "This action is not allowed while viewing as another user."
+msgstr "Esta acción no está permitida mientras ves como otro usuario."
+
+#: impersonation/exceptions.py
+msgid "This action is never allowed while acting as another user."
+msgstr "Esta acción nunca está permitida mientras actúas como otro usuario."
+
+#: impersonation/graphql/interfaces.py
+msgid ""
+"The impersonation session of the current request, when this user is its "
+"target. Null otherwise, and on every other user."
+msgstr ""
+"La sesión de suplantación de la solicitud actual, cuando este usuario es su "
+"objetivo. Null en otro caso y en cualquier otro usuario."
+
+#: impersonation/graphql/mutations.py
+msgid "Access token of the session."
+msgstr "Token de acceso de la sesión."
+
+#: impersonation/graphql/mutations.py
+msgid "Refresh token of the session."
+msgstr "Token de actualización de la sesión."
+
+#: impersonation/graphql/mutations.py
+msgid "The user to act as."
+msgstr "El usuario como el que actuar."
+
+#: impersonation/graphql/mutations.py
+msgid "Why the session is needed."
+msgstr "Por qué se necesita la sesión."
+
+#: impersonation/graphql/mutations.py
+msgid "End the current impersonation session first."
+msgstr "Termina primero la sesión de suplantación actual."
+
+#: impersonation/graphql/mutations.py
+msgid "User not found."
+msgstr "Usuario no encontrado."
+
+#: impersonation/graphql/mutations.py
+msgid "You don't have permission to act as this user."
+msgstr "No tienes permiso para actuar como este usuario."
+
+#: impersonation/graphql/mutations.py
+msgid "The session to end. Defaults to the current request's session."
+msgstr ""
+"La sesión que se va a terminar. Por defecto, la sesión de la solicitud "
+"actual."
+
+#: impersonation/graphql/mutations.py
+msgid "There is no impersonation session to end."
+msgstr "No hay ninguna sesión de suplantación que terminar."
+
+#: impersonation/graphql/mutations.py
+msgid "You don't have permission to end this session."
+msgstr "No tienes permiso para terminar esta sesión."
+
+#: impersonation/graphql/object_types.py
+msgid "Why the session ended. Null while it runs."
+msgstr "Por qué terminó la sesión. Null mientras está activa."
+
+#: impersonation/graphql/object_types.py
+msgid "Whether the session is still running."
+msgstr "Si la sesión sigue activa."
+
+#: impersonation/models.py
+msgid "Ended by the impersonator"
+msgstr "Terminada por el suplantador"
+
+#: impersonation/models.py
+msgid "Expired"
+msgstr "Caducada"
+
+#: impersonation/models.py
+msgid "Revoked"
+msgstr "Revocada"
+
+#: impersonation/models.py
+msgid "impersonator"
+msgstr "suplantador"
+
+#: impersonation/models.py
+msgid "Empty once the impersonator's account is deleted."
+msgstr "Vacío una vez que se elimina la cuenta del suplantador."
+
+#: impersonation/models.py
+msgid "target"
+msgstr "objetivo"
+
+#: impersonation/models.py
+msgid "reason"
+msgstr "motivo"
+
+#: impersonation/models.py
+msgid "read only"
+msgstr "solo lectura"
+
+#: impersonation/models.py
+msgid "Whether writes were refused during this session."
+msgstr "Si se rechazaron las escrituras durante esta sesión."
+
+#: impersonation/models.py
+msgid "started at"
+msgstr "iniciada el"
+
+#: impersonation/models.py
+msgid "expires at"
+msgstr "caduca el"
+
+#: impersonation/models.py
+msgid "ended at"
+msgstr "terminada el"
+
+#: impersonation/models.py
+msgid "end reason"
+msgstr "motivo de finalización"
+
+#: impersonation/models.py
+msgid "IP address"
+msgstr "dirección IP"
+
+#: impersonation/models.py
+msgid "user agent"
+msgstr "agente de usuario"
+
+#: impersonation/models.py
+msgid "impersonation session"
+msgstr "sesión de suplantación"
+
+#: impersonation/models.py
+msgid "impersonation sessions"
+msgstr "sesiones de suplantación"
+
+#: impersonation/models.py
+msgid "session"
+msgstr "sesión"
+
+#: impersonation/models.py
+msgid "created"
+msgstr "creado"
+
+#: impersonation/models.py
+msgid "method"
+msgstr "método"
+
+#: impersonation/models.py
+msgid "path"
+msgstr "ruta"
+
+#: impersonation/models.py
+msgid "operation name"
+msgstr "nombre de la operación"
+
+#: impersonation/models.py
+msgid "The GraphQL mutation, when the write was one."
+msgstr "La mutación de GraphQL, cuando la escritura fue una."
+
+#: impersonation/models.py
+msgid "status code"
+msgstr "código de estado"
+
+#: impersonation/models.py
+msgid "The HTTP status of a REST write. Empty for GraphQL mutations."
+msgstr ""
+"El estado HTTP de una escritura REST. Vacío para las mutaciones de GraphQL."
+
+#: impersonation/models.py
+msgid "succeeded"
+msgstr "correcta"
+
+#: impersonation/models.py
+msgid ""
+"Whether the write succeeded: a REST status below 400, or a GraphQL mutation "
+"that raised no error and returned no errors. Empty when unknown."
+msgstr ""
+"Si la escritura fue correcta: un estado REST inferior a 400 o una mutación "
+"de GraphQL que no lanzó ni devolvió errores. Vacío si se desconoce."
+
+#: impersonation/models.py
+msgid "impersonation action"
+msgstr "acción de suplantación"
+
+#: impersonation/models.py
+msgid "impersonation actions"
+msgstr "acciones de suplantación"
+
+#: impersonation/services.py
+msgid "A reason is required."
+msgstr "Se requiere un motivo."
+
+#: impersonation/services.py
+#, python-format
+msgid "The reason must be at most %(max)s characters."
+msgstr "El motivo debe tener como máximo %(max)s caracteres."
 
 #: models.py
 msgid "profile"

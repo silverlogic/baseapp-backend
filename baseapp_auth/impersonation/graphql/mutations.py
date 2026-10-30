@@ -58,6 +58,8 @@ class ImpersonationStart(RelayMutation):
                 request.user, target, input["reason"], request=request
             )
         except ValidationError as exc:
+            # exc.messages are already translated by start_impersonation.
+            # ast-grep-ignore: django-translation-validation-error-literal
             raise GraphQLError(" ".join(exc.messages), extensions={"code": "invalid_input"})
         except ImpersonationNotAllowed:
             raise GraphQLError(
