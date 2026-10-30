@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-17 01:11+0000\n"
+"POT-Creation-Date: 2026-10-30 14:55+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -88,6 +88,24 @@ msgstr "documento alvo"
 #: models.py
 msgid "target"
 msgstr "alvo"
+
+#: rest_framework/fields.py
+msgid "This field is required."
+msgstr "Este campo é obrigatório."
+
+#: rest_framework/fields.py
+#, python-brace-format
+msgid "Invalid id \"{pk_value}\" - object does not exist."
+msgstr "Id \"{pk_value}\" inválido: o objeto não existe."
+
+#: rest_framework/fields.py
+#, python-brace-format
+msgid "Incorrect type. Expected an id, received {data_type}."
+msgstr "Tipo incorreto. Era esperado um id, mas foi recebido {data_type}."
+
+#: rest_framework/filters.py
+msgid "Select a valid id. That id is not one of the available choices."
+msgstr "Selecione um id válido. Esse id não está entre as opções disponíveis."
 
 #: templates/admin/base_site.html
 msgid "BaseApp staging logo"
