@@ -101,7 +101,7 @@ class TestPkDRFResolverStrategy:
 
     def test_cant_resolve_public_id_of_different_model(self, resolver) -> None:
         dummy = DummyPublicIdModelFactory()
-        with pytest.raises(Exception):
+        with pytest.raises(resolver.NoInstanceFound):
             resolver.resolve_public_id_to_pk(
                 str(dummy.public_id), expected_model=DummyLegacyModelFactory._meta.model
             )

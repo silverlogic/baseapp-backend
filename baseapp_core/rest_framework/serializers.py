@@ -1,5 +1,6 @@
 from typing import Any
 
+from django.conf import settings
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField as PhoneNumberModelField
 from phonenumber_field.serializerfields import PhoneNumberField
@@ -8,7 +9,12 @@ from rest_framework.serializers import ModelSerializer as OrigModelSerializer
 
 from baseapp_core.hashids.strategies import should_use_public_id
 
-from .fields import ThumbnailImageField
+from .fields import PublicIdRelatedField, ThumbnailImageField
+
+
+def _use_public_id_related_fields() -> bool:
+    """`settings.BASEAPP_REST_PUBLIC_ID_RELATED_FIELDS` (default False)."""
+    return bool(getattr(settings, "BASEAPP_REST_PUBLIC_ID_RELATED_FIELDS", False))
 
 
 class ModelSerializer(OrigModelSerializer):
@@ -41,6 +47,24 @@ class ModelSerializer(OrigModelSerializer):
 
         if issubclass(field_class, PhoneNumberField) and model_field.blank:
             field_kwargs["allow_blank"] = True
+        return field_class, field_kwargs
+
+    def build_relational_field(
+        self, field_name, relation_info
+    ) -> tuple[type[serializers.Field], dict[str, Any]]:
+        """
+        With `BASEAPP_REST_PUBLIC_ID_RELATED_FIELDS = True`, foreign keys and many-to-many
+        fields to a model that uses public ids are rendered and accepted as public ids
+        (`PublicIdRelatedField`) instead of integer pks.
+        """
+        field_class, field_kwargs = super().build_relational_field(field_name, relation_info)
+        if (
+            field_class is self.serializer_related_field
+            and issubclass(field_class, serializers.PrimaryKeyRelatedField)
+            and _use_public_id_related_fields()
+            and should_use_public_id(relation_info.related_model)
+        ):
+            field_class = PublicIdRelatedField
         return field_class, field_kwargs
 
 
