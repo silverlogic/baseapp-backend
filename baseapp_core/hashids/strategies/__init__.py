@@ -118,6 +118,12 @@ def graphql_to_global_id_using_strategy(model_instance, type_, id) -> str:
 
 
 def graphql_get_node_from_global_id_using_strategy(info, global_id, only_type=None) -> Any:
+    # Clients send `node(id: "")` while the id they'd look up isn't known yet (e.g.
+    # `currentProfile?.id || ''`). An empty id names no node, so resolve it to null like a
+    # missing one instead of raising "Unable to parse global ID" from the legacy strategy.
+    if not global_id:
+        return None
+
     if is_uuid4(global_id) and _is_public_id_logic_enabled():
         public_id_strategy = get_public_id_strategy()
         try:
