@@ -97,6 +97,14 @@ AUTH_USER_MODEL = "users.User"
 LANGUAGE_CODE = "en"
 LANGUAGES = [("en", _("English")), ("es", _("Spanish")), ("pt", _("Portuguese"))]
 
+# Defaults for `makemessages` when run inside a package directory (scripts/i18n/makemessages.sh).
+BA_MAKEMESSAGES_DEFAULTS = {
+    "extensions": ["html", "txt", "py", "j2"],
+    "ignore_patterns": ["tests", "migrations"],
+    "add_location": "file",
+    "no_obsolete": True,
+}
+
 # Celery
 CELERY_BROKER_URL = "memory:///"
 CELERY_RESULT_BACKEND = "cache+memory:///"
