@@ -1,4 +1,5 @@
 from django.apps import apps
+from django.dispatch import Signal
 
 from .models import update_or_create_profile
 
@@ -36,3 +37,38 @@ def update_user_profile(instance, created, **kwargs) -> None:
     if instance.profile_id:
         return
     update_or_create_profile(instance, instance, f"{instance.first_name} {instance.last_name}")
+
+
+# Membership and invitation lifecycle. Every signal is sent with `sender` set to the
+# concrete ProfileUserRole model and `instance` set to the row, once the surrounding
+# transaction has committed. `by` is the user who acted, or None for system actions.
+
+# Kwargs: instance, inviter (the user named in the email, may be None)
+invitation_sent = Signal()
+
+# Kwargs: instance, user, created_user (True when the invitee signed up while accepting)
+invitation_accepted = Signal()
+
+# Kwargs: instance, user
+invitation_declined = Signal()
+
+# Kwargs: instance, by. With invitation history off the row is already deleted.
+invitation_cancelled = Signal()
+
+# Kwargs: instance
+invitation_expired = Signal()
+
+# Kwargs: instance, by. Sent for each member added directly, without an invitation.
+member_added = Signal()
+
+# Kwargs: instance, old_role, new_role, by
+member_role_changed = Signal()
+
+# Kwargs: instance, by, reason (may be empty)
+member_deactivated = Signal()
+
+# Kwargs: instance, by
+member_reactivated = Signal()
+
+# Kwargs: instance, by. The row is already deleted.
+member_removed = Signal()

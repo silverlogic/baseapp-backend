@@ -61,4 +61,4 @@ class MemberFilter(django_filters.FilterSet):
 
     class Meta:
         model = ProfileUserRole
-        fields = ["role", "order_by", "q"]
+        fields = ["role", "status", "order_by", "q"]
