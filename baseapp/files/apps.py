@@ -1,3 +1,5 @@
+from django.utils.translation import gettext_lazy as _
+
 from baseapp_core.plugins import BaseAppConfig, GraphQLContributor, ServicesContributor
 
 
@@ -5,7 +7,7 @@ class FilesConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
     default = True
     name = "baseapp.files"
     label = "baseapp_files"
-    verbose_name = "BaseApp Files"
+    verbose_name = _("BaseApp Files")
     default_auto_field = "django.db.models.BigAutoField"
 
     def ready(self) -> None:
