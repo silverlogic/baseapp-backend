@@ -57,7 +57,9 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
         _("banner image"), upload_to=random_name_in("profile_banner_images"), blank=True, null=True
     )
     biography = models.TextField(_("biography"), blank=True, null=True)
-    status = models.IntegerField(choices=ProfileStatus.choices, default=ProfileStatus.PUBLIC)
+    status = models.IntegerField(
+        _("status"), choices=ProfileStatus.choices, default=ProfileStatus.PUBLIC
+    )
 
     # Nullable so a profile can exist without an owner — e.g. an organization created by an
     # importer or admin action and run entirely by its ADMIN members. Ownership checks go
@@ -96,6 +98,8 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
             ("override_last_admin", _("can remove or demote the last admin of a profile")),
         ]
         swappable = swapper.swappable_setting("baseapp_profiles", "Profile")
+        verbose_name = _("profile")
+        verbose_name_plural = _("profiles")
 
     def __str__(self) -> str:
         return self.name or str(self.pk)
@@ -565,9 +569,11 @@ class AbstractProfileUserRole(DocumentIdMixin, RelayModel, models.Model):
         on_delete=models.CASCADE,
         verbose_name=_("profile"),
     )
-    role = models.IntegerField(choices=ProfileRoles.choices, default=ProfileRoles.MANAGER)
+    role = models.IntegerField(
+        _("role"), choices=ProfileRoles.choices, default=ProfileRoles.MANAGER
+    )
     status = models.IntegerField(
-        choices=ProfileRoleStatus.choices, default=ProfileRoleStatus.INACTIVE
+        _("status"), choices=ProfileRoleStatus.choices, default=ProfileRoleStatus.INACTIVE
     )
 
     invited_email = models.EmailField(
@@ -653,6 +659,8 @@ class AbstractProfileUserRole(DocumentIdMixin, RelayModel, models.Model):
     class Meta:
         abstract = True
         swappable = swapper.swappable_setting("baseapp_profiles", "ProfileUserRole")
+        verbose_name = _("profile user role")
+        verbose_name_plural = _("profile user roles")
         # Uniqueness only holds among *open* rows (see `open_statuses()`), so a declined,
         # expired or cancelled invitation can stay on record next to a newer one for the
         # same person. Statuses are spelled out as numbers: the constraint must not change

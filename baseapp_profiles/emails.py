@@ -4,10 +4,11 @@ import swapper
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
-from django.utils import timezone
+from django.utils import formats, timezone
 
 from baseapp_core.deep_links import get_deep_link
 from baseapp_core.exceptions import DeepLinkFetchError
+from baseapp_core.i18n import user_language
 
 from .conf import invitation_expiration_days
 
@@ -90,19 +91,25 @@ def send_invitation_email(invitation, inviter=None) -> None:
     invitee_name = " ".join(
         name for name in (invitation.invited_first_name, invitation.invited_last_name) if name
     )
-    context = {
-        "inviter_name": _display_name(inviter) or invitation.profile.name,
-        "invitee_name": invitee_name,
-        "profile_name": invitation.profile.name,
-        "role": invitation.get_role_display(),
-        "message": invitation.message,
-        "accept_url": accept_url,
-        "expiration_date": expires_at.strftime("%B %d, %Y") if expires_at else "",
-    }
-
-    subject = render_to_string("profiles/emails/invitation-subject.txt.j2", context).strip()
-    message = render_to_string("profiles/emails/invitation-body.txt.j2", context)
-    html_message = render_to_string("profiles/emails/invitation-body.html.j2", context)
+    # Invitees without an account yet get the inviter's language. The role label and the
+    # date are localized too, so they are built inside the override.
+    with user_language(invitation.user or inviter):
+        context = {
+            "inviter_name": _display_name(inviter) or invitation.profile.name,
+            "invitee_name": invitee_name,
+            "profile_name": invitation.profile.name,
+            "role": invitation.get_role_display(),
+            "message": invitation.message,
+            "accept_url": accept_url,
+            "expiration_date": (
+                formats.date_format(timezone.localtime(expires_at), "DATE_FORMAT")
+                if expires_at
+                else ""
+            ),
+        }
+        subject = render_to_string("profiles/emails/invitation-subject.txt.j2", context).strip()
+        message = render_to_string("profiles/emails/invitation-body.txt.j2", context)
+        html_message = render_to_string("profiles/emails/invitation-body.html.j2", context)
 
     send_mail(
         subject,
