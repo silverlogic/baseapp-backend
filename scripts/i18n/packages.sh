@@ -8,6 +8,7 @@ set -euo pipefail
 I18N_PACKAGES=(
   baseapp/activity_log
   baseapp/content_feed
+  baseapp/email_log
   baseapp/files
   baseapp_api_key
   baseapp_auth
