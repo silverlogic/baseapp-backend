@@ -8,6 +8,7 @@ from django.utils.translation import gettext_lazy as _
 from nested_admin.nested import NestedTabularInline
 
 from .models import Attachment, EmailTemplate, SmsTemplate
+from .registry import get_registered_template, validate_override
 
 try:
     from ckeditor.widgets import CKEditorWidget
@@ -39,7 +40,16 @@ class EmailTemplateAdminForm(forms.ModelForm):
                     )
                 )
             self.fields["html_content"].widget = CKEditorWidget()
-            self.fields["plain_text_content"].widget = CKEditorWidget()
+
+    def clean(self) -> dict[str, Any]:
+        """Check the editable parts of a registered template like the GraphQL editor does."""
+        cleaned_data = super().clean()
+        registered = get_registered_template(cleaned_data.get("name") or "")
+        for part in registered.editable if registered else ():
+            if part in self.fields and part not in self.errors:
+                for message in validate_override(registered.name, part, cleaned_data.get(part)):
+                    self.add_error(part, message)
+        return cleaned_data
 
 
 class EmailTemplateAdmin(admin.ModelAdmin):
