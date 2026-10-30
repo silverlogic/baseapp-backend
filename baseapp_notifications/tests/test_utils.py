@@ -155,7 +155,7 @@ def test_can_override_email_message(
 
 @pytest.mark.parametrize("language", ["es", "pt"])
 def test_send_email_notification_uses_recipient_language(
-    language, outbox, send_notification
+    language, outbox, send_notification, django_capture_on_commit_callbacks
 ) -> None:
     recipient = UserFactory(preferred_language=language)
     with translation.override(language):
@@ -163,16 +163,18 @@ def test_send_email_notification_uses_recipient_language(
     assert see_on_app != "See on App"
 
     translation.activate("en")
-    send_notification(
-        sender=recipient,
-        recipient=recipient,
-        verb="sent to email",
-        description="this is my description",
-        notification_url="https://example.com",
-        add_to_history=False,
-        send_email=True,
-        send_push=False,
-    )
+    # Notification emails are sent once the transaction commits.
+    with django_capture_on_commit_callbacks(execute=True):
+        send_notification(
+            sender=recipient,
+            recipient=recipient,
+            verb="sent to email",
+            description="this is my description",
+            notification_url="https://example.com",
+            add_to_history=False,
+            send_email=True,
+            send_push=False,
+        )
 
     assert len(outbox) == 1
     html = outbox[0].alternatives[0][0]
