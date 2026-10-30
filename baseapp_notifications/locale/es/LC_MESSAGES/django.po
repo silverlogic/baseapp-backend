@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:28+0000\n"
+"POT-Creation-Date: 2026-10-30 14:58+0000\n"
 "PO-Revision-Date: 2024-06-18 22:43+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -23,9 +23,57 @@ msgstr ""
 msgid "BaseApp Notifications"
 msgstr "BaseApp Notificaciones"
 
+#: graphql/filters.py
+msgid "Notifications whose verb is the group key or starts with `<group>.`."
+msgstr ""
+"Notificaciones cuyo verbo es la clave del grupo o empieza por `<group>.`."
+
 #: graphql/mutations.py
 msgid "Mark as read or unread"
 msgstr "Marcar como leído o no leído"
+
+#: graphql/mutations.py
+#, python-format
+msgid "Unknown notification group: %(group)s"
+msgstr "Grupo de notificaciones desconocido: %(group)s"
+
+#: graphql/mutations.py
+#, python-format
+msgid "Notification group %(group)s cannot be changed"
+msgstr "El grupo de notificaciones %(group)s no se puede cambiar"
+
+#: graphql/mutations.py
+msgid "Key of a registered notification group."
+msgstr "Clave de un grupo de notificaciones registrado."
+
+#: graphql/mutations.py
+msgid "ALL sets every channel of the group at once."
+msgstr "ALL configura todos los canales del grupo a la vez."
+
+#: graphql/mutations.py
+msgid "The changed groups with their resulting state."
+msgstr "Los grupos modificados con su estado resultante."
+
+#: graphql/mutations.py
+#, python-format
+msgid "Notification group %(group)s has no %(channel)s channel"
+msgstr "El grupo de notificaciones %(group)s no tiene el canal %(channel)s"
+
+#: graphql/object_types.py
+msgid "Whether the viewer receives this group on this channel."
+msgstr "Si el usuario recibe este grupo en este canal."
+
+#: graphql/object_types.py
+msgid "Group key; use it as `group` in mutations and filters."
+msgstr "Clave del grupo; úsala como `group` en mutaciones y filtros."
+
+#: graphql/object_types.py
+msgid "Locked groups are always delivered and cannot be changed."
+msgstr "Los grupos bloqueados siempre se entregan y no se pueden cambiar."
+
+#: graphql/object_types.py
+msgid "Registered notification groups the viewer can configure."
+msgstr "Grupos de notificaciones registrados que el usuario puede configurar."
 
 #: models.py
 msgid "notification"

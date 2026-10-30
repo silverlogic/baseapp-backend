@@ -1,13 +1,72 @@
+import logging
+from collections.abc import Callable
+from functools import partial
 from typing import Any
 
 import swapper
 from django.apps import apps
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
+from django.db import transaction
+from django.db.models import QuerySet
+from django.utils.module_loading import import_string
 from notifications.signals import notify
 
 from baseapp_core.plugins import SharedServiceProvider
 
+from .groups import is_registered_verb
 from .tasks import send_push_notification
-from .utils import can_user_receive_notification, send_email_notification
+from .utils import (
+    can_user_receive_notification,
+    validate_email_context,
+    validate_email_options,
+)
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_EMAIL_SENDER = "baseapp_notifications.utils.send_notification_email"
+
+
+def get_email_sender() -> Callable[..., Any]:
+    """The callable configured in ``BASEAPP_NOTIFICATIONS_EMAIL_SENDER``."""
+    return import_string(
+        getattr(settings, "BASEAPP_NOTIFICATIONS_EMAIL_SENDER", DEFAULT_EMAIL_SENDER)
+    )
+
+
+def get_recipients(recipient: Any) -> list[Any]:
+    """Flatten a user, a list/tuple/set or QuerySet of users, or an auth ``Group`` into users."""
+    if isinstance(recipient, QuerySet):
+        return list(recipient)
+    if isinstance(recipient, (list, tuple, set)):
+        return [user for user in recipient if user is not None]
+    if apps.is_installed("django.contrib.auth"):
+        from django.contrib.auth.models import Group
+
+        if isinstance(recipient, Group):
+            return list(recipient.user_set.all())
+    return [recipient]
+
+
+def run_after_commit(func: Callable[[], Any], description: str) -> None:
+    """Run ``func`` once the current transaction commits, or right away outside one.
+
+    Inside a transaction the data is already committed when ``func`` runs, so an exception is
+    logged rather than raised: raising there would skip every later ``on_commit`` callback (other
+    recipients' email and push, other apps' hooks). Outside a transaction ``func`` runs now and
+    raises to the caller, as before.
+    """
+    if not transaction.get_connection().in_atomic_block:
+        func()
+        return
+
+    def run() -> None:
+        try:
+            func()
+        except Exception:
+            logger.exception("Sending %s after commit failed", description)
+
+    transaction.on_commit(run, robust=True)
 
 
 class NotificationService(SharedServiceProvider):
@@ -33,6 +92,71 @@ class NotificationService(SharedServiceProvider):
         email_message=None,
         push_title=None,
         push_description=None,
+        email_template=None,
+        email_context=None,
+        email_options=None,
+        **kwargs,
+    ) -> list[tuple[Any, Any]]:
+        """Notify one or many recipients, honouring each one's notification settings.
+
+        ``recipient`` is a user, a list/tuple/set or QuerySet of users, or an auth ``Group``.
+        ``email_template``, ``email_context`` and ``email_options`` reach only the email sender;
+        they are never stored in ``Notification.data`` nor sent to the push task.
+        Returns the ``notify.send`` results of every recipient, concatenated.
+        """
+        if getattr(
+            settings, "BASEAPP_NOTIFICATIONS_REQUIRE_REGISTERED_VERBS", False
+        ) and not is_registered_verb(verb):
+            raise ImproperlyConfigured(
+                f"Notification verb {verb!r} does not belong to a registered notification group."
+            )
+        # Fail here, not after commit where the error could only be logged.
+        validate_email_context(email_context)
+        validate_email_options(email_options)
+
+        notifications = []
+        for user in get_recipients(recipient):
+            notifications.extend(
+                self._send_to_recipient(
+                    sender,
+                    user,
+                    verb,
+                    description=description,
+                    action_object=action_object,
+                    target=target,
+                    add_to_history=add_to_history,
+                    send_push=send_push,
+                    send_email=send_email,
+                    email_subject=email_subject,
+                    email_message=email_message,
+                    push_title=push_title,
+                    push_description=push_description,
+                    email_template=email_template,
+                    email_context=email_context,
+                    email_options=email_options,
+                    **kwargs,
+                )
+            )
+        return notifications
+
+    def _send_to_recipient(
+        self,
+        sender,
+        recipient,
+        verb,
+        description,
+        action_object,
+        target,
+        add_to_history,
+        send_push,
+        send_email,
+        email_subject,
+        email_message,
+        push_title,
+        push_description,
+        email_template=None,
+        email_context=None,
+        email_options=None,
         **kwargs,
     ) -> list[tuple[Any, Any]]:
         NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationSetting")
@@ -62,12 +186,14 @@ class NotificationService(SharedServiceProvider):
                 else None
             )
 
-            send_email_notification(
-                to=recipient.email,
-                context=dict(
-                    notification=notification,
+            # Mail after commit, like push: a rollback sends nothing and the sender sees
+            # committed data.
+            run_after_commit(
+                partial(
+                    self._send_email,
+                    recipient,
+                    notification,
                     sender=sender,
-                    recipient=recipient,
                     verb=verb,
                     action_object=action_object,
                     description=description,
@@ -76,24 +202,39 @@ class NotificationService(SharedServiceProvider):
                     send_push=send_push,
                     email_subject=email_subject or description,
                     email_message=email_message or description,
+                    email_template=email_template,
+                    email_context=email_context,
+                    email_options=email_options,
                     **kwargs,
                 ),
+                f"the {verb!r} notification email to user {recipient.pk}",
             )
-
-            if notification:
-                notification.emailed = True
-                notification.save(update_fields=["emailed"])
 
         if send_push and can_user_receive_notification(
             recipient.id, verb, NotificationSetting.NotificationChannelTypes.PUSH
         ):
-            send_push_notification.delay(
-                recipient.id,
-                push_title=push_title,
-                push_description=push_description or description,
-                # TO DO:
-                # serialize all objects so devices can use this data if necessary
-                **kwargs,
+            # Queue after commit so the worker sees committed data and a rollback sends nothing.
+            run_after_commit(
+                partial(
+                    send_push_notification.delay,
+                    recipient.id,
+                    push_title=push_title,
+                    push_description=push_description or description,
+                    # TO DO:
+                    # serialize all objects so devices can use this data if necessary
+                    **kwargs,
+                ),
+                f"the {verb!r} push notification to user {recipient.pk}",
             )
 
         return notifications
+
+    @staticmethod
+    def _send_email(recipient: Any, notification: Any, **context: Any) -> None:
+        """Call the configured email sender and mark ``notification`` as emailed."""
+        sent = get_email_sender()(recipient, notification, **context)
+
+        # A sender returns False when it decided not to send.
+        if notification and sent is not False:
+            notification.emailed = True
+            notification.save(update_fields=["emailed"])
