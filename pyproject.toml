@@ -4,6 +4,18 @@ build-backend = 'setuptools.build_meta'
 
 [tool.uv]
 required-version = "0.10.9"
+# uv only rebuilds a path/workspace dependency when these change. Package data
+# (templates, compiled .mo catalogs) must be part of the key or a cached wheel
+# silently ships stale files.
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "MANIFEST.in" },
+    { file = "**/*.py" },
+    { file = "**/*.po" },
+    { file = "**/*.mo" },
+    { file = "**/*.html" },
+    { file = "**/*.j2" },
+]
 
 [project]
 name = "baseapp_backend"

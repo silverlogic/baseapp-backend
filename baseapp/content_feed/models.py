@@ -40,11 +40,13 @@ class AbstractContentPost(*inheritances, DocumentIdMixin, RelayModel, TimeStampe
         related_name="content_posts",
         on_delete=models.CASCADE,
     )
-    content = models.TextField()
+    content = models.TextField(_("content"))
 
     class Meta:
         abstract = True
         swappable = swapper.swappable_setting("baseapp_content_feed", "ContentPost")
+        verbose_name = _("content post")
+        verbose_name_plural = _("content posts")
 
     @classmethod
     def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
@@ -67,6 +69,8 @@ class AbstractContentPostImage(DocumentIdMixin, RelayModel):
     class Meta:
         abstract = True
         swappable = swapper.swappable_setting("baseapp_content_feed", "ContentPostImage")
+        verbose_name = _("content post image")
+        verbose_name_plural = _("content post images")
 
     @classmethod
     def get_graphql_object_type(cls) -> type["DjangoObjectType"]:

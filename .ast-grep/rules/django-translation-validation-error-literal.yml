@@ -1,0 +1,59 @@
+id: django-translation-validation-error-literal
+language: Python
+severity: error
+message: "API error messages reach the caller: wrap them in `gettext_lazy` — `ValidationError({\"field\": [_(\"msg\")]})`, `PermissionDenied(_(\"msg\"))`, `GraphQLError(_(\"msg\"))`, never a bare string. See .claude/skills/backend-conventions/references/translations.md and error-shape.md"
+ignores:
+  - "**/migrations/**"
+  - "**/tests/**"
+# Any string literal anywhere inside a `ValidationError(...)` / DRF `APIException`
+# subclass / `GraphQLError(...)` call, except the positions that are not messages:
+# dict keys, `code=` style keyword arguments, subscripts (`messages["email"]`),
+# arguments of other calls, and anything already inside a gettext call.
+constraints:
+  ERR:
+    # exact class names (optionally dotted): `serializers.ValidationError`, `exceptions.NotFound`,
+    # but not project-specific `CustomerNotFound(Exception)` internals.
+    regex: ^([\w.]+\.)?(ValidationError|GraphQLError|APIException|PermissionDenied|NotFound|NotAuthenticated|AuthenticationFailed|ParseError|MethodNotAllowed|NotAcceptable|UnsupportedMediaType|Throttled)$
+rule:
+  kind: string
+  inside:
+    stopBy: end
+    kind: argument_list
+    inside:
+      kind: call
+      has:
+        field: function
+        pattern: $ERR
+  all:
+    - not:
+        inside:
+          stopBy: end
+          kind: call
+          has:
+            field: function
+            regex: ^(_|gettext|gettext_lazy|ngettext|ngettext_lazy|pgettext|pgettext_lazy|npgettext|npgettext_lazy)$
+    - not:
+        all:
+          - nthChild: 1
+          - inside:
+              kind: pair
+    - not:
+        inside:
+          stopBy: end
+          kind: keyword_argument
+          not:
+            has:
+              field: name
+              regex: ^(detail|message)$
+    - not:
+        inside:
+          kind: subscript
+    - not:
+        inside:
+          kind: argument_list
+          inside:
+            kind: call
+            not:
+              has:
+                field: function
+                pattern: $ERR
