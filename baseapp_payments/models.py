@@ -6,6 +6,7 @@ from django.apps import apps
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 
@@ -13,17 +14,20 @@ class BaseCustomer(TimeStampedModel):
     entity_type = models.ForeignKey(
         ContentType,
         on_delete=models.CASCADE,
+        verbose_name=_("entity type"),
         # Abstract and swappable, so a literal name would clash between the
         # concrete Customer of any two apps that both subclass this.
         related_name="%(app_label)s_%(class)ss",
     )
-    entity_id = models.PositiveIntegerField()
+    entity_id = models.PositiveIntegerField(_("entity id"))
     entity = GenericForeignKey("entity_type", "entity_id")
-    remote_customer_id = models.CharField(max_length=255)
+    remote_customer_id = models.CharField(_("remote customer id"), max_length=255)
 
     class Meta:
         abstract = True
         swappable = swapper.swappable_setting("baseapp_payments", "Customer")
+        verbose_name = _("customer")
+        verbose_name_plural = _("customers")
         # One Customer per billed entity. Dropped incidentally by the invoice-endpoint
         # commit (#305); without it two concurrent requests for the same profile each
         # create a row, and each row gets its own Stripe customer.
@@ -71,14 +75,19 @@ class BaseSubscription(TimeStampedModel):
         swapper.get_model_name("baseapp_payments", "Customer"),
         on_delete=models.CASCADE,
         related_name="subscriptions",
+        verbose_name=_("customer"),
     )
     # Unique on its own rather than paired with the customer: the viewset resolves a
     # subscription with lookup_field="remote_subscription_id" and the webhook handler
     # filters on it alone, so a second row with the same id is MultipleObjectsReturned
     # on read and a multi-row delete on cancellation. A Stripe subscription id belongs
     # to exactly one customer anyway, which the old (customer, id) pair did not say.
-    remote_subscription_id = models.CharField(max_length=255, unique=True)
+    remote_subscription_id = models.CharField(
+        _("remote subscription id"), max_length=255, unique=True
+    )
 
     class Meta:
         abstract = True
         swappable = swapper.swappable_setting("baseapp_payments", "Subscription")
+        verbose_name = _("subscription")
+        verbose_name_plural = _("subscriptions")

@@ -1,0 +1,114 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-15 20:34+0000\n"
+"PO-Revision-Date: 2026-10-12 15:10+0000\n"
+"Last-Translator: BaseApp i18n <dev@tsl.io>\n"
+"Language-Team: Portuguese (Brazil)\n"
+"Language: pt\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: admin.py
+msgid ""
+"MESSAGE_TEMPLATES_EDITOR is set to 'ckeditor' but django-ckeditor is not "
+"installed."
+msgstr ""
+"MESSAGE_TEMPLATES_EDITOR está definido como 'ckeditor', mas o django-"
+"ckeditor não está instalado."
+
+#: apps.py
+msgid "BaseApp Message Templates"
+msgstr "BaseApp Modelos de Mensagem"
+
+#: models.py
+msgid "Case insensitive character"
+msgstr "Caractere sem distinção de maiúsculas e minúsculas"
+
+#: models.py
+msgid "name"
+msgstr "nome"
+
+#: models.py
+msgid "Unique name used to identify this message"
+msgstr "Nome único usado para identificar esta mensagem"
+
+#: models.py
+msgid "SendGrid template ID"
+msgstr "ID do modelo do SendGrid"
+
+#: models.py
+msgid "subject"
+msgstr "assunto"
+
+#: models.py
+msgid "Email subject line"
+msgstr "Assunto do e-mail"
+
+#: models.py
+msgid "HTML content"
+msgstr "conteúdo HTML"
+
+#: models.py
+msgid "Text that will be inputted into Template html version"
+msgstr "Texto que será inserido na versão HTML do modelo"
+
+#: models.py
+msgid "plain text content"
+msgstr "conteúdo em texto simples"
+
+#: models.py
+msgid "Text that will be inputted into Template plain text version"
+msgstr "Texto que será inserido na versão em texto simples do modelo"
+
+#: models.py
+msgid "email template"
+msgstr "modelo de e-mail"
+
+#: models.py
+msgid "email templates"
+msgstr "modelos de e-mail"
+
+#: models.py
+msgid "template"
+msgstr "modelo"
+
+#: models.py
+msgid "file"
+msgstr "arquivo"
+
+#: models.py
+msgid "filename"
+msgstr "nome do arquivo"
+
+#: models.py
+msgid "attachment"
+msgstr "anexo"
+
+#: models.py
+msgid "attachments"
+msgstr "anexos"
+
+#: models.py
+msgid "message"
+msgstr "mensagem"
+
+#: models.py
+msgid "Message to be sent"
+msgstr "Mensagem a ser enviada"
+
+#: models.py
+msgid "SMS template"
+msgstr "modelo de SMS"
+
+#: models.py
+msgid "SMS templates"
+msgstr "modelos de SMS"
