@@ -23,9 +23,11 @@ FileTarget = swapper.load_model("baseapp_files", "FileTarget")
 
 # Baseline for `filesCount` + `isFilesEnabled` on one Comment node: 1× relay
 # `node()` (documentid + content_type JOIN) + 1× `comments_comment` load with
-# `FileTarget` inlined as a Subquery via `pre_optimization_hook`.
+# `FileTarget` inlined as a Subquery via `pre_optimization_hook`, + 2× for the
+# `view_comment` check, which loads the comment's target (its content type and
+# the target row) to ask `view_target_comments`.
 # Update this number deliberately if you change the resolver / annotation path.
-EXPECTED_FILES_INTERFACE_QUERY_COUNT = 2
+EXPECTED_FILES_INTERFACE_QUERY_COUNT = 4
 
 COUNTS_ONLY_QUERY = """
     query GetTarget($id: ID!) {

@@ -133,8 +133,9 @@ def test_paginated_comments_with_mentions_does_not_explode_query_count(
     # optimizer hook (which would re-introduce a per-comment fan-out of
     # 9 queries: DocumentId lookup + Mention COUNT + page + 3 Mention
     # node fetches + 3 Profile DocumentId lookups → 45 queries for 5
-    # comments). If this trips, inspect the captured SQL before bumping.
-    assert len(ctx.captured_queries) <= 19, (
+    # comments). If this trips, inspect the captured SQL before bumping. Includes 2 queries for
+    # the target's own comment node: view_comment loads its target (view_target_comments).
+    assert len(ctx.captured_queries) <= 21, (
         f"Mentions connection issued {len(ctx.captured_queries)} queries. "
         "Likely cause: resolver dropped the optimizer hook, "
         "the Profile prefetch lost its `mapped_public_id` annotation, "

@@ -3,6 +3,7 @@ import swapper
 from django import forms
 from django.apps import apps
 from django.conf import settings
+from django.db.models import Model
 from django.utils.translation import gettext_lazy as _
 from graphene_django.forms.mutation import _set_errors_flag_to_context
 from graphene_django.types import ErrorType
@@ -16,11 +17,27 @@ from baseapp_core.graphql import (
 )
 from baseapp_core.plugins import shared_services
 
-from .object_types import CommentsInterface
+from .object_types import CommentsInterface, viewable_comment
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
 app_label = Comment._meta.app_label
 CommentObjectType = Comment.get_graphql_object_type()
+
+
+def _set_public_activity(info: graphene.ResolveInfo, verb: str, target: Model | None) -> None:
+    """Log the mutation as a public activity, unless the target's comment activity is private.
+
+    Call it only after the permission checks, so a refused mutation is never made public.
+    """
+    service = shared_services.get("activity_log")
+    if not service:
+        return
+    if info.context.user.has_perm(f"{app_label}.publish_comment_activity", target):
+        service.set_public_activity(verb=verb)
+    else:
+        # The activity log records one entry per request, so an earlier or later public
+        # mutation in the same request must not make this one public.
+        service.set_private_activity()
 
 
 class CommentForm(forms.ModelForm):
@@ -30,6 +47,13 @@ class CommentForm(forms.ModelForm):
 
 
 class CommentCreate(RelayMutation):
+    """Create a comment.
+
+    To add writable fields of a swapped Comment model, subclass it with an Input that extends
+    `CommentCreate.Input`, `Meta.name = "CommentCreatePayload"` (keeps the GraphQL type names) and a
+    `get_form_class()` that returns a form with the extra fields (see the README).
+    """
+
     comment = graphene.Field(CommentObjectType._meta.connection.Edge)
 
     class Input:
@@ -42,12 +66,14 @@ class CommentCreate(RelayMutation):
             profile_id = graphene.ID(required=False)
 
     @classmethod
+    def get_form_class(cls) -> type[forms.ModelForm]:
+        """The form that validates and saves the comment's writable fields."""
+        return CommentForm
+
+    @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input) -> "CommentCreate":
         activity_name = f"{app_label}.add_comment"
-
-        if service := shared_services.get("activity_log"):
-            service.set_public_activity(verb=activity_name)
 
         target = get_obj_from_relay_id(info, input.get("target_object_id"))
 
@@ -84,8 +110,10 @@ class CommentCreate(RelayMutation):
                     extensions={"code": "permission_required"},
                 )
 
+        _set_public_activity(info, activity_name, target)
+
         mentioned_profile_ids = input.pop("mentioned_profile_ids", None) or []
-        form = CommentForm(instance=comment, data=input)
+        form = cls.get_form_class()(instance=comment, data=input)
         if form.is_valid():
             form.save()
 
@@ -113,12 +141,19 @@ class CommentCreate(RelayMutation):
 
 
 class CommentUpdate(RelayMutation):
+    """Edit a comment. Extend it like `CommentCreate`, with `Meta.name = "CommentUpdatePayload"`."""
+
     comment = graphene.Field(CommentObjectType)
 
     class Input:
         id = graphene.ID(required=True)
         body = graphene.String(required=True)
         mentioned_profile_ids = graphene.List(graphene.ID, required=False)
+
+    @classmethod
+    def get_form_class(cls) -> type[forms.ModelForm]:
+        """The form that validates and saves the comment's writable fields."""
+        return CommentForm
 
     @classmethod
     @login_required
@@ -134,12 +169,11 @@ class CommentUpdate(RelayMutation):
                 extensions={"code": "permission_required"},
             )
 
-        if service := shared_services.get("activity_log"):
-            service.set_public_activity(verb=activity_name)
+        _set_public_activity(info, activity_name, comment.target)
 
         comment.is_edited = True
 
-        form = CommentForm(instance=comment, data=input)
+        form = cls.get_form_class()(instance=comment, data=input)
         if form.is_valid():
             comment = form.save()
 
@@ -180,8 +214,7 @@ class CommentPin(RelayMutation):
                 extensions={"code": "permission_required"},
             )
 
-        if service := shared_services.get("activity_log"):
-            service.set_public_activity(verb=activity_name)
+        _set_public_activity(info, activity_name, comment.target)
 
         MAX_PINS_PER_THREAD = getattr(settings, "BASEAPP_COMMENTS_MAX_PINS_PER_THREAD", None)
         if MAX_PINS_PER_THREAD is not None:
@@ -238,7 +271,11 @@ class CommentDelete(RelayMutation):
 
         obj.delete()
 
-        return CommentDelete(deleted_id=relay_id, target=target, in_reply_to=in_reply_to)
+        return CommentDelete(
+            deleted_id=relay_id,
+            target=viewable_comment(target, info),
+            in_reply_to=viewable_comment(in_reply_to, info),
+        )
 
 
 class CommentsMutations(object):
