@@ -1,11 +1,11 @@
 {% extends 'emails/base.txt.j2' %}
 
 {% block content %}
-{% trans %}Hello,{% endtrans %}
+{{ _("Hello,") }}
 
-{% trans %}Your email address has been changed to {{ new_email }}. Please click below to confirm your new email address:{% endtrans %}
+{{ _("Your email address has been changed to %(new_email)s. Please click below to confirm your new email address:", new_email=new_email) }}
 
 {{ url }}
 
-{% trans %}If you did not initiate this change, please contact our support team as soon as possible.{% endtrans %}
+{{ _("If you did not initiate this change, please contact our support team as soon as possible.") }}
 {% endblock content %}

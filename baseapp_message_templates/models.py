@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 class CaseInsensitiveCharField(models.CharField):
-    description = "Case insensitive character"
+    description = _("Case insensitive character")
 
     def db_type(self, connection) -> str:
         return "citext"
@@ -27,13 +27,15 @@ class CaseInsensitiveCharField(models.CharField):
 
 class EmailTemplate(RelayModel, TimeStampedModel):
     name = CaseInsensitiveCharField(
+        _("name"),
         max_length=255,
         unique=True,
-        help_text="Unique name used to identify this message",
+        help_text=_("Unique name used to identify this message"),
     )
 
     # SendGrid
     sendgrid_template_id = models.CharField(
+        _("SendGrid template ID"),
         max_length=255,
         blank=True,
         null=True,
@@ -41,23 +43,27 @@ class EmailTemplate(RelayModel, TimeStampedModel):
 
     # Core
     subject = models.CharField(
-        max_length=255, blank=True, null=True, help_text="Email subject line"
+        _("subject"), max_length=255, blank=True, null=True, help_text=_("Email subject line")
     )
     html_content = ProseEditorField(
+        _("HTML content"),
         blank=True,
-        help_text="Text that will be inputted into Template html version",
+        help_text=_("Text that will be inputted into Template html version"),
         null=True,
         extensions=getattr(settings, "PROSE_EDITOR_EXTENSIONS", None),
         sanitize=getattr(settings, "PROSE_EDITOR_SANITIZE", False),
     )
     # Plain text, never HTML: the prose sanitizer would escape "&" and "<".
     plain_text_content = models.TextField(
+        _("plain text content"),
         blank=True,
-        help_text="Text that will be inputted into Template plain text version",
+        help_text=_("Text that will be inputted into Template plain text version"),
     )
 
     class Meta:
         ordering = ["-id"]
+        verbose_name = _("email template")
+        verbose_name_plural = _("email templates")
         permissions = [
             ("send_test_emailtemplate", _("Can send test emails of an email template")),
         ]
@@ -139,25 +145,36 @@ class EmailTemplate(RelayModel, TimeStampedModel):
 class Attachment(TimeStampedModel):
     template = models.ForeignKey(
         EmailTemplate,
+        verbose_name=_("template"),
         related_name="static_attachments",
         null=False,
         on_delete=models.CASCADE,
     )
-    file = models.FileField(upload_to=random_name_in("copy_template_file"))
+    file = models.FileField(_("file"), upload_to=random_name_in("copy_template_file"))
     filename = models.CharField(
+        _("filename"),
         max_length=255,
         blank=True,
         null=True,
     )
 
+    class Meta:
+        verbose_name = _("attachment")
+        verbose_name_plural = _("attachments")
+
 
 class SmsTemplate(TimeStampedModel):
     name = CaseInsensitiveCharField(
+        _("name"),
         max_length=255,
         unique=True,
-        help_text="Unique name used to identify this message",
+        help_text=_("Unique name used to identify this message"),
     )
-    message = models.TextField(blank=True, null=True, help_text="Message to be sent")
+    message = models.TextField(
+        _("message"), blank=True, null=True, help_text=_("Message to be sent")
+    )
 
     class Meta:
         ordering = ["-id"]
+        verbose_name = _("SMS template")
+        verbose_name_plural = _("SMS templates")
