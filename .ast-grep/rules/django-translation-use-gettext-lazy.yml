@@ -1,7 +1,7 @@
 id: django-translation-use-gettext-lazy
 language: Python
-severity: hint
-message: "Prefer `from django.utils.translation import gettext_lazy as _`. Eager `gettext` is only safe inside function bodies that run at request time — never for module-level strings (models, serializers, choices, constants). See .claude/skills/backend-conventions/references/translations.md"
+severity: error
+message: "Import `gettext_lazy as _` from `django.utils.translation`, not `gettext as _`. Eager `gettext` is only safe inside function bodies that run at request time — never for module-level strings (models, serializers, choices, constants); if you need it, import it under its own name. See .claude/skills/backend-conventions/references/translations.md"
 ignores:
   - "**/migrations/**"
 rule:

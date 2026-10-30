@@ -1,4 +1,5 @@
 import logging
+import sys
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -16,9 +17,14 @@ class TestBaseJSONFormatter:
         return BaseJSONFormatter()
 
     def _make_record(
-        self, message="test message", name="test.logger", level=logging.INFO
+        self,
+        message="test message",
+        name="test.logger",
+        level=logging.INFO,
+        exc_info=None,
+        stack_info=None,
     ) -> logging.LogRecord:
-        return logging.LogRecord(name, level, "", 0, message, None, None)
+        return logging.LogRecord(name, level, "", 0, message, None, exc_info, sinfo=stack_info)
 
     def test_json_record_includes_message(self, formatter) -> None:
         record = self._make_record("hello world")
@@ -85,6 +91,45 @@ class TestBaseJSONFormatter:
         record = self._make_record()
         result = formatter.json_record("msg", {}, record)
         assert "trace.id" not in result
+
+    def test_json_record_includes_exception_traceback(self, formatter) -> None:
+        try:
+            raise ValueError("boom-xyz")
+        except ValueError:
+            record = self._make_record(level=logging.ERROR, exc_info=sys.exc_info())
+        result = formatter.json_record("msg", {}, record)
+        assert "Traceback" in result["error.stack_trace"]
+        assert "ValueError: boom-xyz" in result["error.stack_trace"]
+
+    def test_json_record_falls_back_to_exc_text(self, formatter) -> None:
+        record = self._make_record(level=logging.ERROR)
+        record.exc_text = "Traceback (most recent call last):\n  RuntimeError: cached"
+        result = formatter.json_record("msg", {}, record)
+        assert result["error.stack_trace"] == record.exc_text
+
+    def test_json_record_no_stack_trace_without_exception(self, formatter) -> None:
+        record = self._make_record(level=logging.WARNING)
+        result = formatter.json_record("msg", {}, record)
+        assert "error.stack_trace" not in result
+        assert "error.stack_info" not in result
+
+    def test_json_record_includes_stack_info(self, formatter) -> None:
+        record = self._make_record(stack_info="Stack (most recent call last):\n  frame")
+        result = formatter.json_record("msg", {}, record)
+        assert "frame" in result["error.stack_info"]
+
+    def test_format_with_exception_is_single_line_json(self, formatter) -> None:
+        import json
+
+        try:
+            raise RuntimeError("multi\nline")
+        except RuntimeError:
+            record = self._make_record(level=logging.ERROR, exc_info=sys.exc_info())
+        rendered = formatter.format(record)
+        assert "\n" not in rendered
+        data = json.loads(rendered)
+        assert data["log.level"] == "ERROR"
+        assert "RuntimeError: multi" in data["error.stack_trace"]
 
     def test_to_json_removes_request_key(self, formatter) -> None:
         import json
