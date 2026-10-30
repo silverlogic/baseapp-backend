@@ -1,4 +1,6 @@
 include README.md
+# Translation catalogs of every package (sources and compiled files).
+global-include *.po *.mo
 recursive-exclude testproject *
 
 include baseapp/README.md

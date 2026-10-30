@@ -45,16 +45,19 @@ class AbstractRate(
 ):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
+        verbose_name=_("user"),
         related_name="ratings",
         on_delete=models.CASCADE,
     )
 
-    value = models.IntegerField(default=0, blank=False, null=False)
+    value = models.IntegerField(_("value"), default=0, blank=False, null=False)
 
     class Meta:
         abstract = True
         swappable = swapper.swappable_setting("baseapp_ratings", "Rate")
         unique_together = [["user", "target_document"]]
+        verbose_name = _("rate")
+        verbose_name_plural = _("rates")
 
     def __str__(self) -> str:
         return "Rating (%s) by %s" % (
@@ -111,10 +114,10 @@ class AbstractRatableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
     ratable model, following the plugin architecture pattern.
     """
 
-    ratings_count = models.IntegerField(default=0, editable=False)
-    ratings_sum = models.IntegerField(default=0, editable=False)
-    ratings_average = models.FloatField(default=0, editable=False)
-    is_ratings_enabled = models.BooleanField(default=True)
+    ratings_count = models.IntegerField(_("ratings count"), default=0, editable=False)
+    ratings_sum = models.IntegerField(_("ratings sum"), default=0, editable=False)
+    ratings_average = models.FloatField(_("ratings average"), default=0, editable=False)
+    is_ratings_enabled = models.BooleanField(_("is ratings enabled"), default=True)
 
     class Meta:
         abstract = True

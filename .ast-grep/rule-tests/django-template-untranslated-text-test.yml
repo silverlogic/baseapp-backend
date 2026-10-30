@@ -1,0 +1,40 @@
+id: django-template-untranslated-text
+valid:
+  - |
+    {% load i18n %}
+    <p>{% trans "Please login to see this page." %}</p>
+  - |
+    <p>{% blocktrans %}Check your email for instructions.{% endblocktrans %}</p>
+  - |
+    <p>{{ _("Check your email for instructions.") }}</p>
+  - |
+    <img src="{{ static('emails/logo.png') }}" alt="{{ _('Logo') }}" />
+  - |
+    <img src="x.png" alt="{% trans 'Logo' %}" />
+  - |
+    <div class="flex flex-col gap-8">{{ users_monthly_stats.total }}</div>
+  - |
+    <span class="ml-auto">83%</span>
+  - |
+    <script>var greeting = "Hello world";</script>
+  - |
+    <style>.t-body2 { font-family: 'Public Sans'; }</style>
+  - |
+    <a href="https://www.x.com/" target="_blank" rel="noopener noreferrer"></a>
+  - |
+    <span class="material-symbols-outlined text-white">history_2</span>
+  - |
+    <span class="material-icons">expand_more</span>
+invalid:
+  - |
+    <p>Please login to see this page.</p>
+  - |
+    <p>Check your email for instructions.</p>
+  - |
+    <img src="{{ static('emails/logo.png') }}" alt="Logo" />
+  - |
+    <a href="#" title="Events">history</a>
+  - |
+    <input type="text" placeholder="Search users">
+  - |
+    <span class="footer-caption">123 Sample Street, Floor 1</span>
