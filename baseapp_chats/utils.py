@@ -168,8 +168,23 @@ def send_chatroom_update_system_messages(
             )
 
 
+DEFAULT_ROOM_URL_TEMPLATE = "{front_url}/chat?roomId={room_id}"
+
+
+def get_chat_room_url(room: Model) -> str:
+    """
+    Front-end URL of `room`, built from `BASEAPP_CHATS_ROOM_URL_TEMPLATE`.
+
+    The template gets `{front_url}` (`settings.FRONT_URL`) and `{room_id}` (the room's relay
+    id), e.g. "{front_url}/messages/{room_id}".
+    """
+    template = getattr(settings, "BASEAPP_CHATS_ROOM_URL_TEMPLATE", DEFAULT_ROOM_URL_TEMPLATE)
+    return template.format(front_url=settings.FRONT_URL, room_id=room.relay_id)
+
+
 def send_new_chat_message_notification(room, message, info) -> None:
     if service := shared_services.get("notifications"):
+        notification_url = get_chat_room_url(room)
         for participant in room.participants.all():
             recipients = participant.profile.get_all_users()
             for recipient in recipients:
@@ -184,7 +199,7 @@ def send_new_chat_message_notification(room, message, info) -> None:
                     target=room,
                     level="info",
                     description=_("You got a new message"),
-                    notification_url=f"{settings.FRONT_URL}/chat?roomId={room.relay_id}",
+                    notification_url=notification_url,
                     push_title=_("New message"),
                     push_description=_("You got a new message"),
                 )
