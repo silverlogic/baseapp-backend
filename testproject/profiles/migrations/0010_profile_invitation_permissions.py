@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("profiles", "0008_invitation_lifecycle"),
+        ("profiles", "0009_invitation_lifecycle"),
     ]
 
     operations = [
@@ -17,7 +17,9 @@ class Migration(migrations.Migration):
                     ("use_profile", "can use profile"),
                     ("view_profile_invitations", "can view the invitations of any profile"),
                     ("override_last_admin", "can remove or demote the last admin of a profile"),
-                ]
+                ],
+                "verbose_name": "profile",
+                "verbose_name_plural": "profiles",
             },
         ),
     ]

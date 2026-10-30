@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("profiles", "0006_profileuserrole_invitation_expires_at_and_more"),
+        ("profiles", "0007_alter_profile_options_alter_profileuserrole_options_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
