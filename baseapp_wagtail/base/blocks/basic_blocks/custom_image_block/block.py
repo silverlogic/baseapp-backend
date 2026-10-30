@@ -1,8 +1,13 @@
 from typing import Any
 
+from django.utils.functional import lazy
+from django.utils.safestring import mark_safe
+from django.utils.translation import gettext_lazy as _
 from wagtail.blocks import CharBlock, StructBlock
 
 from ..custom_image_chooser_block import CustomImageChooserBlock
+
+mark_safe_lazy = lazy(mark_safe, str)
 
 
 class CustomImageBlock(StructBlock):
@@ -15,7 +20,11 @@ class CustomImageBlock(StructBlock):
                 "alt_text",
                 CharBlock(
                     required=False,
-                    help_text='If this is a <a href="https://www.w3.org/WAI/tutorials/images/decorative/" target="_blank">decorative image</a>, please leave this field blank.',
+                    help_text=mark_safe_lazy(
+                        _(
+                            'If this is a <a href="https://www.w3.org/WAI/tutorials/images/decorative/" target="_blank">decorative image</a>, please leave this field blank.'
+                        )
+                    ),
                 ),
             ),
         ]

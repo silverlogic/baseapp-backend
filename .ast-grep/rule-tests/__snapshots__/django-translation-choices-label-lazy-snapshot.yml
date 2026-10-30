@@ -1,0 +1,196 @@
+id: django-translation-choices-label-lazy
+snapshots:
+  ? |
+    class Status(TextChoices):
+        DRAFT = ("draft", "Draft")
+  : labels:
+    - source: DRAFT = ("draft", "Draft")
+      style: primary
+      start: 31
+      end: 57
+    - source: TextChoices
+      style: secondary
+      start: 13
+      end: 24
+    - source: TextChoices
+      style: secondary
+      start: 13
+      end: 24
+    - source: |-
+        class Status(TextChoices):
+            DRAFT = ("draft", "Draft")
+      style: secondary
+      start: 0
+      end: 57
+    - source: DRAFT = ("draft", "Draft")
+      style: secondary
+      start: 31
+      end: 57
+    - source: DRAFT = ("draft", "Draft")
+      style: secondary
+      start: 31
+      end: 57
+    - source: '"Draft"'
+      style: secondary
+      start: 49
+      end: 56
+    - source: ("draft", "Draft")
+      style: secondary
+      start: 39
+      end: 57
+  ? |
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+  : labels:
+    - source: DRAFT = "draft", "Draft"
+      style: primary
+      start: 38
+      end: 62
+    - source: models.TextChoices
+      style: secondary
+      start: 13
+      end: 31
+    - source: models.TextChoices
+      style: secondary
+      start: 13
+      end: 31
+    - source: |-
+        class Status(models.TextChoices):
+            DRAFT = "draft", "Draft"
+      style: secondary
+      start: 0
+      end: 62
+    - source: DRAFT = "draft", "Draft"
+      style: secondary
+      start: 38
+      end: 62
+    - source: DRAFT = "draft", "Draft"
+      style: secondary
+      start: 38
+      end: 62
+    - source: '"Draft"'
+      style: secondary
+      start: 55
+      end: 62
+    - source: '"draft", "Draft"'
+      style: secondary
+      start: 46
+      end: 62
+  ? |
+    class Status(models.TextChoices):
+        DRAFT = "draft", _("Draft")
+        LIVE = "live", "Live"
+  : labels:
+    - source: LIVE = "live", "Live"
+      style: primary
+      start: 70
+      end: 91
+    - source: models.TextChoices
+      style: secondary
+      start: 13
+      end: 31
+    - source: models.TextChoices
+      style: secondary
+      start: 13
+      end: 31
+    - source: |-
+        class Status(models.TextChoices):
+            DRAFT = "draft", _("Draft")
+            LIVE = "live", "Live"
+      style: secondary
+      start: 0
+      end: 91
+    - source: |-
+        DRAFT = "draft", _("Draft")
+            LIVE = "live", "Live"
+      style: secondary
+      start: 38
+      end: 91
+    - source: LIVE = "live", "Live"
+      style: secondary
+      start: 70
+      end: 91
+    - source: '"Live"'
+      style: secondary
+      start: 85
+      end: 91
+    - source: '"live", "Live"'
+      style: secondary
+      start: 77
+      end: 91
+  ? |
+    class Verbs(models.IntegerChoices):
+        SENT = 1, "sent"
+  : labels:
+    - source: SENT = 1, "sent"
+      style: primary
+      start: 40
+      end: 56
+    - source: models.IntegerChoices
+      style: secondary
+      start: 12
+      end: 33
+    - source: models.IntegerChoices
+      style: secondary
+      start: 12
+      end: 33
+    - source: |-
+        class Verbs(models.IntegerChoices):
+            SENT = 1, "sent"
+      style: secondary
+      start: 0
+      end: 56
+    - source: SENT = 1, "sent"
+      style: secondary
+      start: 40
+      end: 56
+    - source: SENT = 1, "sent"
+      style: secondary
+      start: 40
+      end: 56
+    - source: '"sent"'
+      style: secondary
+      start: 50
+      end: 56
+    - source: 1, "sent"
+      style: secondary
+      start: 47
+      end: 56
+  ? |
+    status = models.CharField(choices=[("draft", "Draft"), ("live", _("Live"))])
+  : labels:
+    - source: ("draft", "Draft")
+      style: primary
+      start: 35
+      end: 53
+    - source: choices
+      style: secondary
+      start: 26
+      end: 33
+    - source: choices=[("draft", "Draft"), ("live", _("Live"))]
+      style: secondary
+      start: 26
+      end: 75
+    - source: '"Draft"'
+      style: secondary
+      start: 45
+      end: 52
+  ? |
+    status = models.CharField(max_length=10, choices=(("draft", "Draft"),))
+  : labels:
+    - source: ("draft", "Draft")
+      style: primary
+      start: 50
+      end: 68
+    - source: choices
+      style: secondary
+      start: 41
+      end: 48
+    - source: choices=(("draft", "Draft"),)
+      style: secondary
+      start: 41
+      end: 70
+    - source: '"Draft"'
+      style: secondary
+      start: 60
+      end: 67
