@@ -48,8 +48,9 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "djmail",
-    "django_jinja",
+    # baseapp_core before django_jinja: both define `makemessages`, Django keeps the first.
     "baseapp_core",
+    "django_jinja",
     "easy_thumbnails",
     "constance",
     "constance.backends.database",

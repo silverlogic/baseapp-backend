@@ -1,0 +1,40 @@
+id: django-translation-choices-label-lazy
+valid:
+  - |
+    class Status(models.TextChoices):
+        DRAFT = "draft", _("Draft")
+        PUBLISHED = "published", _("Published")
+  - |
+    class Verbs(models.IntegerChoices):
+        SENT = 1, _("sent")
+  - |
+    class Status(TextChoices):
+        DRAFT = "draft", gettext_lazy("Draft")
+  - |
+    class Status(models.TextChoices):
+        DRAFT = "draft"
+  - |
+    status = models.CharField(choices=[("draft", _("Draft")), ("live", _("Live"))])
+  - |
+    class Plain:
+        PAIR = "a", "b"
+  - |
+    STATUS_PAIRS = (("draft", "Draft"),)
+invalid:
+  - |
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+  - |
+    class Verbs(models.IntegerChoices):
+        SENT = 1, "sent"
+  - |
+    class Status(TextChoices):
+        DRAFT = ("draft", "Draft")
+  - |
+    class Status(models.TextChoices):
+        DRAFT = "draft", _("Draft")
+        LIVE = "live", "Live"
+  - |
+    status = models.CharField(choices=[("draft", "Draft"), ("live", _("Live"))])
+  - |
+    status = models.CharField(max_length=10, choices=(("draft", "Draft"),))
