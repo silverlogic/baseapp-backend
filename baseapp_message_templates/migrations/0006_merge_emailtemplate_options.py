@@ -6,7 +6,10 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("baseapp_message_templates", "0005_alter_attachment_options_alter_emailtemplate_options_and_more"),
+        (
+            "baseapp_message_templates",
+            "0005_alter_attachment_options_alter_emailtemplate_options_and_more",
+        ),
         ("baseapp_message_templates", "0005_emailtemplate_send_test_permission"),
     ]
 
