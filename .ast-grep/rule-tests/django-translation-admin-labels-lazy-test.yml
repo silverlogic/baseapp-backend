@@ -1,0 +1,39 @@
+id: django-translation-admin-labels-lazy
+valid:
+  - |
+    force_expire_password.short_description = _("Expire password")
+  - |
+    @admin.display(description=_("Actor"))
+    def get_actor_object(self, obj):
+        return str(obj.actor)
+  - |
+    @admin.action(description=_("Expire selected passwords"))
+    def force_expire_password(self, request, queryset):
+        pass
+  - |
+    @admin.display(ordering="created", boolean=True)
+    def is_recent(self, obj):
+        return True
+  - |
+    field = graphene.String(description="Developer-facing schema docs are not translated.")
+  - |
+    short_description = _("Body html")
+invalid:
+  - |
+    force_expire_password.short_description = "Expire password"
+  - |
+    short_description = "Body html"
+  - |
+    @admin.display(description="Actor")
+    def get_actor_object(self, obj):
+        return str(obj.actor)
+  - |
+    @admin.action(description="Expire selected passwords")
+    def force_expire_password(self, request, queryset):
+        pass
+  - |
+    @display(description="Actor", ordering="actor")
+    def get_actor_object(self, obj):
+        return str(obj.actor)
+  - |
+    created_by_display.short_description = f"Created By {suffix}"

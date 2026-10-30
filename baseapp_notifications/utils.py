@@ -14,6 +14,8 @@ from django.template.loader import get_template, render_to_string
 from django.utils import timezone
 from django.utils.text import slugify
 
+from baseapp_core.i18n import user_language
+
 from .groups import (
     ALL_VERBS_SETTING,
     NotificationGroup,
@@ -153,9 +155,10 @@ def send_email_notification(
     def render(part: str, extension: str) -> str:
         return render_to_string([f"{base}-{part}.{extension}.j2" for base in bases], context)
 
-    subject = " ".join(render("subject", "txt").strip().split())
-    text_message = render("body", "txt")
-    html_message = render("body", "html")
+    with user_language(context.get("recipient")):
+        subject = " ".join(render("subject", "txt").strip().split())
+        text_message = render("body", "txt")
+        html_message = render("body", "html")
 
     message = EmailMultiAlternatives(
         subject, text_message, to=[to], **get_email_message_options(options)

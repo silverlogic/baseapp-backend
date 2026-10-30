@@ -113,7 +113,7 @@ class AbstractComment(
         max_length=10,
         null=True,
         blank=True,
-        help_text=_("languaged used in the comment"),
+        help_text=_("language used in the comment"),
     )
 
     is_edited = models.BooleanField(default=False, verbose_name=_("is edited"))

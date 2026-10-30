@@ -80,24 +80,25 @@ class AbstractUser(
     RelayModel,
     AbstractBaseUser,
 ):
-    email = CaseInsensitiveEmailField(unique=True, db_index=True)
-    is_email_verified = models.BooleanField(default=False)
+    email = CaseInsensitiveEmailField(_("email"), unique=True, db_index=True)
+    is_email_verified = models.BooleanField(_("email verified"), default=False)
     date_joined = models.DateTimeField(_("date joined"), default=timezone.now)
     password_changed_date = models.DateTimeField(
         _("last date password was changed"), default=timezone.now
     )
 
     # Changing email
-    new_email = CaseInsensitiveEmailField(blank=True)
+    new_email = CaseInsensitiveEmailField(_("new email"), blank=True)
     is_new_email_confirmed = models.BooleanField(
+        _("new email confirmed"),
         default=False,
-        help_text="Has the user confirmed they want an email change?",
+        help_text=_("Has the user confirmed they want an email change?"),
     )
 
     # Details
-    first_name = models.CharField(max_length=100, blank=True)
-    last_name = models.CharField(max_length=100, blank=True)
-    phone_number = PhoneNumberField(blank=True, null=True, unique=True)
+    first_name = models.CharField(_("first name"), max_length=100, blank=True)
+    last_name = models.CharField(_("last name"), max_length=100, blank=True)
+    phone_number = PhoneNumberField(_("phone number"), blank=True, null=True, unique=True)
 
     is_active = models.BooleanField(
         _("active"),
@@ -116,7 +117,9 @@ class AbstractUser(
 
     objects = UserManager()
 
-    preferred_language = models.CharField(max_length=9, choices=settings.LANGUAGES, default="en")
+    preferred_language = models.CharField(
+        _("preferred language"), max_length=9, choices=settings.LANGUAGES, default="en"
+    )
     timezone = models.CharField(
         _("timezone"),
         max_length=64,
@@ -197,32 +200,36 @@ class PasswordValidation(models.Model):
     class Validators(TextChoices):
         UserAttributeSimilarityValidator = (
             "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-            "User Attribute Similarity",
+            _("User Attribute Similarity"),
         )
         MinimumLengthValidator = (
             "django.contrib.auth.password_validation.MinimumLengthValidator",
-            "Minimum Length",
+            _("Minimum Length"),
         )
         CommonPasswordValidator = (
             "django.contrib.auth.password_validation.CommonPasswordValidator",
-            "Common Password",
+            _("Common Password"),
         )
         NumericPasswordValidator = (
             "django.contrib.auth.password_validation.NumericPasswordValidator",
-            "Numeric Password",
+            _("Numeric Password"),
         )
         MustContainCapitalLetterValidator = (
             "baseapp_auth.password_validators.MustContainCapitalLetterValidator",
-            "Must Contain Capital Letter",
+            _("Must Contain Capital Letter"),
         )
         MustContainSpecialCharacterValidator = (
             "baseapp_auth.password_validators.MustContainSpecialCharacterValidator",
-            "Must Contain Special Character",
+            _("Must Contain Special Character"),
         )
 
-    name = models.CharField(max_length=255, choices=Validators.choices)
-    options = models.JSONField(null=True, blank=True)
-    is_active = models.BooleanField(default=True)
+    name = models.CharField(_("name"), max_length=255, choices=Validators.choices)
+    options = models.JSONField(_("options"), null=True, blank=True)
+    is_active = models.BooleanField(_("active"), default=True)
+
+    class Meta:
+        verbose_name = _("password validation")
+        verbose_name_plural = _("password validations")
 
     def __str__(self) -> str:
         return self.name
@@ -233,10 +240,16 @@ class SuperuserUpdateLog(TimeStampedModel):
         settings.AUTH_USER_MODEL,
         related_name="superuser_assigner_logs",
         on_delete=models.CASCADE,
+        verbose_name=_("assigner"),
     )
     assignee = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="superuser_assignee_logs",
         on_delete=models.CASCADE,
+        verbose_name=_("assignee"),
     )
-    made_superuser = models.BooleanField()
+    made_superuser = models.BooleanField(_("made superuser"))
+
+    class Meta:
+        verbose_name = _("superuser update log")
+        verbose_name_plural = _("superuser update logs")
