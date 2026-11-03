@@ -2,10 +2,14 @@ import logging
 
 import pytest
 
+from baseapp_core.graphql.testing.fixtures import GraphQLClient
+
 pytestmark = pytest.mark.django_db
 
 
-def test_malformed_query_is_a_client_error_not_a_logged_exception(graphql_client, caplog) -> None:
+def test_malformed_query_is_a_client_error_not_a_logged_exception(
+    graphql_client: GraphQLClient, caplog: pytest.LogCaptureFixture
+) -> None:
     """Regression for BASEAPP-BACKEND-TEMPLATE-FT (also FW, FV, FX).
 
     A query that fails to parse is a client mistake. The view must still answer with the
@@ -25,7 +29,7 @@ def test_malformed_query_is_a_client_error_not_a_logged_exception(graphql_client
     assert error_records == []
 
 
-def test_well_formed_query_still_executes(graphql_client) -> None:
+def test_well_formed_query_still_executes(graphql_client: GraphQLClient) -> None:
     response = graphql_client("query { __typename }")
 
     assert response.status_code == 200
