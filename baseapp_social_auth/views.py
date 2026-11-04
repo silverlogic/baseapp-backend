@@ -7,6 +7,7 @@ from django.conf import settings
 from django.http import Http404, HttpResponse
 from django.utils.decorators import method_decorator
 from django.utils.encoding import iri_to_uri
+from django.utils.translation import gettext_lazy as _
 from django.views.decorators.cache import never_cache
 from requests import HTTPError
 from rest_framework import serializers, status, viewsets
@@ -35,10 +36,13 @@ class SocialAuthViewSet(SocialTokenOnlyAuthView, viewsets.GenericViewSet):
         try:
             return self.do(request, *args, **kwargs)
         except Http404:
-            raise serializers.ValidationError({"provider": ["Invalid provider"]})
+            raise serializers.ValidationError({"provider": [_("Invalid provider")]})
         except pipeline_module.EmailNotProvidedError:
+            # Machine-readable error code consumed by clients, not user-facing copy.
+            # ast-grep-ignore: django-translation-validation-error-literal
             raise serializers.ValidationError({"email": "no_email_provided"})
         except pipeline_module.EmailAlreadyExistsError:
+            # ast-grep-ignore: django-translation-validation-error-literal
             raise serializers.ValidationError({"email": "email_already_in_use"})
 
     @method_decorator(never_cache)
@@ -139,5 +143,6 @@ class SocialAuthViewSet(SocialTokenOnlyAuthView, viewsets.GenericViewSet):
 
     def respond_error(self, error) -> Response:
         if isinstance(error, (AuthException, HTTPError)):
+            # ast-grep-ignore: django-translation-validation-error-literal
             raise serializers.ValidationError({"non_field_errors": "invalid_credentials"})
         return Response(status=status.HTTP_400_BAD_REQUEST)

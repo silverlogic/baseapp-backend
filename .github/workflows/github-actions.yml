@@ -42,8 +42,14 @@ jobs:
           docker compose exec -T web uv run --python ${{ matrix.python-version }} ast-grep test
           docker compose exec -T web uv run --python ${{ matrix.python-version }} ast-grep scan
 
-      - name: Install tests requirements with Django ${{ matrix.django-version }}
+      - name: translation catalogs (fresh, complete, compiled)
+        id: translations
         if: steps.ast_grep.outcome == 'success'
+        run: |
+          docker compose exec -T web uv run --python ${{ matrix.python-version }} bash scripts/i18n/check_translations.sh
+
+      - name: Install tests requirements with Django ${{ matrix.django-version }}
+        if: steps.translations.outcome == 'success'
         id: requirements_installation
         run: |
           docker compose exec -T web uv pip install --python ${{ matrix.python-version }} "Django~=${{ matrix.django-version }}"

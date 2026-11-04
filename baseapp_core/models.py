@@ -67,14 +67,20 @@ class DocumentId(TimeStampedModel):
     """
 
     public_id = models.UUIDField(
+        _("public id"),
         default=uuid.uuid4,
         editable=False,
-        help_text="Public-facing UUID identifier",
+        help_text=_("Public-facing UUID identifier"),
     )
     content_type = models.ForeignKey(
-        ContentType, on_delete=models.CASCADE, help_text="The model type this UUID maps to"
+        ContentType,
+        on_delete=models.CASCADE,
+        verbose_name=_("content type"),
+        help_text=_("The model type this UUID maps to"),
     )
-    object_id = models.PositiveBigIntegerField(help_text="The primary key of the mapped object")
+    object_id = models.PositiveBigIntegerField(
+        _("object id"), help_text=_("The primary key of the mapped object")
+    )
     content_object = GenericForeignKey("content_type", "object_id")
 
     class Meta:
@@ -82,8 +88,8 @@ class DocumentId(TimeStampedModel):
         indexes = [
             models.Index(fields=["public_id"]),
         ]
-        verbose_name = "Document ID"
-        verbose_name_plural = "Document IDs"
+        verbose_name = _("document ID")
+        verbose_name_plural = _("document IDs")
 
     def __str__(self) -> str:
         return f"{self.content_type.model}:{self.object_id} -> {self.public_id}"

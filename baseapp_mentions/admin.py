@@ -1,5 +1,6 @@
 import swapper
 from django.contrib import admin
+from django.utils.translation import gettext_lazy as _
 
 from baseapp_core.admin_helpers import ModelAdmin
 
@@ -11,7 +12,7 @@ class BaseMentionAdmin(ModelAdmin):
     list_display = ("id", "profile", "get_target_object", "created")
     list_filter = ("created",)
 
-    @admin.display(description="Target")
+    @admin.display(description=_("Target"))
     def get_target_object(self, obj) -> str:
         # `DocumentIdTargetMixin.target` resolves the underlying content object.
         content_obj = obj.target

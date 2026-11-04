@@ -1,0 +1,87 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-15 20:33+0000\n"
+"PO-Revision-Date: 2026-10-12 16:00+0000\n"
+"Last-Translator: BaseApp i18n <dev@tsl.io>\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
+"1 : 2;\n"
+
+#: apps.py
+msgid "BaseApp DRF View Action Permissions"
+msgstr "BaseApp Permisos de acciones de vistas DRF"
+
+#: models.py
+msgid "name"
+msgstr "nombre"
+
+#: models.py
+msgid "slug"
+msgstr "slug"
+
+#: models.py
+msgid "groups"
+msgstr "grupos"
+
+#: models.py
+msgid "permissions"
+msgstr "permisos"
+
+#: models.py
+msgid "exclude permissions"
+msgstr "permisos excluidos"
+
+#: models.py
+msgid "role"
+msgstr "rol"
+
+#: models.py
+msgid "roles"
+msgstr "roles"
+
+#: models.py
+msgid "created at"
+msgstr "creado el"
+
+#: models.py
+msgid "modified at"
+msgstr "modificado el"
+
+#: models.py
+msgid "IP address"
+msgstr "dirección IP"
+
+#: models.py
+msgid "is whitelisted"
+msgstr "en lista blanca"
+
+#: models.py
+msgid "If checked, this IP will be whitelisted"
+msgstr "Si está marcado, esta IP estará en la lista blanca"
+
+#: models.py
+msgid "unrestricted roles"
+msgstr "roles sin restricción"
+
+#: models.py
+msgid "List of roles that will be unrestricted for this IP"
+msgstr "Lista de roles que no tendrán restricciones para esta IP"
+
+#: models.py
+msgid "IP restriction"
+msgstr "restricción de IP"
+
+#: models.py
+msgid "IP restrictions"
+msgstr "restricciones de IP"

@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class AbstractBaseChatRoom(TimeStampedModel, DocumentIdMixin, RelayModel):
-    title = models.CharField(max_length=255, blank=True, null=True)
+    title = models.CharField(_("title"), max_length=255, blank=True, null=True)
     image = models.ImageField(
         _("image"), upload_to=random_name_in("chat_room_images"), blank=True, null=True
     )
@@ -42,6 +42,7 @@ class AbstractBaseChatRoom(TimeStampedModel, DocumentIdMixin, RelayModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        verbose_name=_("created by"),
     )
     created_by_profile = models.ForeignKey(
         swapper.get_model_name("baseapp_profiles", "Profile"),
@@ -49,22 +50,28 @@ class AbstractBaseChatRoom(TimeStampedModel, DocumentIdMixin, RelayModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        verbose_name=_("created by profile"),
     )
     last_message = models.ForeignKey(
         swapper.get_model_name("baseapp_chats", "Message"),
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
+        verbose_name=_("last message"),
     )
-    last_message_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
-    participants_count = models.IntegerField(default=0)
-    messages_count = models.IntegerField(default=0)
-    is_group = models.BooleanField(default=False)
+    last_message_time = models.DateTimeField(
+        _("last message time"), null=True, blank=True, default=timezone.now
+    )
+    participants_count = models.IntegerField(_("participants count"), default=0)
+    messages_count = models.IntegerField(_("messages count"), default=0)
+    is_group = models.BooleanField(_("group"), default=False)
 
     class Meta:
         abstract = True
         ordering = ["-last_message_time", "-created"]
         swappable = swapper.swappable_setting("baseapp_chats", "ChatRoom")
+        verbose_name = _("chat room")
+        verbose_name_plural = _("chat rooms")
 
     def __str__(self) -> str:
         return str(self.pk)
@@ -88,13 +95,14 @@ class AbstractBaseMessage(TimeStampedModel, DocumentIdMixin, RelayModel):
     def description(self) -> str:
         return self.label
 
-    content = models.TextField(null=True, blank=True)
+    content = models.TextField(_("content"), null=True, blank=True)
     content_linked_profile_actor = models.ForeignKey(
         swapper.get_model_name("baseapp_profiles", "Profile"),
         related_name="linked_as_content_actor_set",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        verbose_name=_("content linked profile actor"),
     )
     content_linked_profile_target = models.ForeignKey(
         swapper.get_model_name("baseapp_profiles", "Profile"),
@@ -102,22 +110,30 @@ class AbstractBaseMessage(TimeStampedModel, DocumentIdMixin, RelayModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        verbose_name=_("content linked profile target"),
     )
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name=_("user"),
     )
     profile = models.ForeignKey(
         swapper.get_model_name("baseapp_profiles", "Profile"),
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        verbose_name=_("profile"),
     )
 
     message_type = models.IntegerField(
-        choices=MessageType.choices, default=MessageType.USER_MESSAGE
+        _("message type"), choices=MessageType.choices, default=MessageType.USER_MESSAGE
     )
-    verb = models.IntegerField(choices=Verbs.choices, default=Verbs.SENT_MESSAGE, db_index=True)
+    verb = models.IntegerField(
+        _("verb"), choices=Verbs.choices, default=Verbs.SENT_MESSAGE, db_index=True
+    )
 
     room = models.ForeignKey(
         swapper.get_model_name("baseapp_chats", "ChatRoom"),
@@ -126,6 +142,7 @@ class AbstractBaseMessage(TimeStampedModel, DocumentIdMixin, RelayModel):
         related_name="messages",
         on_delete=models.CASCADE,
         db_index=True,
+        verbose_name=_("room"),
     )
 
     in_reply_to = models.ForeignKey(
@@ -134,6 +151,7 @@ class AbstractBaseMessage(TimeStampedModel, DocumentIdMixin, RelayModel):
         null=True,
         blank=True,
         related_name="replies",
+        verbose_name=_("in reply to"),
     )
 
     action_object_content_type = models.ForeignKey(
@@ -143,17 +161,22 @@ class AbstractBaseMessage(TimeStampedModel, DocumentIdMixin, RelayModel):
         related_name="+",
         on_delete=models.CASCADE,
         db_index=True,
+        verbose_name=_("action object content type"),
     )
-    action_object_object_id = models.IntegerField(blank=True, null=True, db_index=True)
+    action_object_object_id = models.IntegerField(
+        _("action object id"), blank=True, null=True, db_index=True
+    )
     action_object = GenericForeignKey("action_object_content_type", "action_object_object_id")
-    deleted = models.BooleanField(default=False)
+    deleted = models.BooleanField(_("deleted"), default=False)
 
-    extra_data = models.JSONField(blank=True, null=True)
+    extra_data = models.JSONField(_("extra data"), blank=True, null=True)
 
     class Meta:
         abstract = True
         ordering = ["-created"]
         swappable = swapper.swappable_setting("baseapp_chats", "Message")
+        verbose_name = _("message")
+        verbose_name_plural = _("messages")
 
     def __str__(self) -> str:
         ctx = {
@@ -240,22 +263,28 @@ class AbstractChatRoomParticipant(TimeStampedModel, DocumentIdMixin, RelayModel)
         on_delete=models.CASCADE,
         null=True,
         blank=True,
+        verbose_name=_("profile"),
     )
     room = models.ForeignKey(
         swapper.get_model_name("baseapp_chats", "ChatRoom"),
         related_name="participants",
         on_delete=models.CASCADE,
+        verbose_name=_("room"),
     )
     role = models.IntegerField(
-        choices=ChatRoomParticipantRoles.choices, default=ChatRoomParticipantRoles.MEMBER
+        _("role"),
+        choices=ChatRoomParticipantRoles.choices,
+        default=ChatRoomParticipantRoles.MEMBER,
     )
-    accepted_at = models.DateTimeField(null=True, blank=True)
-    has_archived_room = models.BooleanField(default=False)
+    accepted_at = models.DateTimeField(_("accepted at"), null=True, blank=True)
+    has_archived_room = models.BooleanField(_("has archived room"), default=False)
 
     class Meta:
         abstract = True
         ordering = ["-role", "profile__name"]
         swappable = swapper.swappable_setting("baseapp_chats", "ChatRoomParticipant")
+        verbose_name = _("chat room participant")
+        verbose_name_plural = _("chat room participants")
 
     @classmethod
     def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
@@ -269,18 +298,23 @@ class AbstractUnreadMessageCount(DocumentIdMixin, RelayModel):
         swapper.get_model_name("baseapp_chats", "ChatRoom"),
         related_name="unread_messages",
         on_delete=models.CASCADE,
+        verbose_name=_("room"),
     )
     profile = models.ForeignKey(
-        swapper.get_model_name("baseapp_profiles", "Profile"), on_delete=models.CASCADE
+        swapper.get_model_name("baseapp_profiles", "Profile"),
+        on_delete=models.CASCADE,
+        verbose_name=_("profile"),
     )
-    marked_unread = models.BooleanField(default=False)
-    count = models.IntegerField(default=0)
+    marked_unread = models.BooleanField(_("marked unread"), default=False)
+    count = models.IntegerField(_("count"), default=0)
 
     class Meta:
         abstract = True
         ordering = ["id"]
         unique_together = ["room_id", "profile_id"]
         swappable = swapper.swappable_setting("baseapp_chats", "UnreadMessageCount")
+        verbose_name = _("unread message count")
+        verbose_name_plural = _("unread message counts")
 
 
 class AbstractMessageStatus(DocumentIdMixin, RelayModel):
@@ -288,17 +322,22 @@ class AbstractMessageStatus(DocumentIdMixin, RelayModel):
         swapper.get_model_name("baseapp_chats", "Message"),
         on_delete=models.CASCADE,
         related_name="statuses",
+        verbose_name=_("message"),
     )
     profile = models.ForeignKey(
-        swapper.get_model_name("baseapp_profiles", "Profile"), on_delete=models.CASCADE
+        swapper.get_model_name("baseapp_profiles", "Profile"),
+        on_delete=models.CASCADE,
+        verbose_name=_("profile"),
     )
-    is_read = models.BooleanField(default=False)
-    read_at = models.DateTimeField(null=True, blank=True)
+    is_read = models.BooleanField(_("read"), default=False)
+    read_at = models.DateTimeField(_("read at"), null=True, blank=True)
 
     class Meta:
         abstract = True
         unique_together = ["message_id", "profile_id"]
         swappable = swapper.swappable_setting("baseapp_chats", "MessageStatus")
+        verbose_name = _("message status")
+        verbose_name_plural = _("message statuses")
 
 
 # Resolve the concrete swap targets (e.g. social_chats.ChatRoom) so the

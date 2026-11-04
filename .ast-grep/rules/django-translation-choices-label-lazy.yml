@@ -1,0 +1,45 @@
+id: django-translation-choices-label-lazy
+language: Python
+severity: error
+message: "Choice labels are user-facing: wrap them in `gettext_lazy` — `DRAFT = \"draft\", _(\"Draft\")` in a `TextChoices` / `IntegerChoices`, or `(\"draft\", _(\"Draft\"))` in an inline `choices=[...]`. See .claude/skills/backend-conventions/references/translations.md"
+ignores:
+  - "**/migrations/**"
+  - "**/tests/**"
+rule:
+  any:
+    # DRAFT = "draft", "Draft"  (inside a Choices subclass)
+    - kind: assignment
+      has:
+        field: right
+        any:
+          - kind: expression_list
+          - kind: tuple
+        has:
+          kind: string
+          nthChild:
+            position: 1
+            reverse: true
+      inside:
+        kind: expression_statement
+        inside:
+          kind: block
+          inside:
+            kind: class_definition
+            has:
+              field: superclasses
+              has:
+                stopBy: end
+                regex: Choices$
+    # choices=[("draft", "Draft")]
+    - kind: tuple
+      has:
+        kind: string
+        nthChild:
+          position: 1
+          reverse: true
+      inside:
+        stopBy: end
+        kind: keyword_argument
+        has:
+          field: name
+          regex: ^choices$
