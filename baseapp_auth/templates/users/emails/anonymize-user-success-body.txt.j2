@@ -1,9 +1,9 @@
 {% extends 'emails/base.txt.j2' %}
 
 {% block content %}
-{% trans %}Hello,{% endtrans %}
+{{ _("Hello,") }}
 
-{% trans %}Your account has been successfully anonymized.{% endtrans %}
+{{ _("Your account has been successfully anonymized.") }}
 
-{% trans %}If you have any questions or concerns, please contact our support team.{% endtrans %}
+{{ _("If you have any questions or concerns, please contact our support team.") }}
 {% endblock %}

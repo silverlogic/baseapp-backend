@@ -1,9 +1,10 @@
 id: django-translation-model-fields-lazy
 language: Python
-severity: warning
-message: "User-facing strings (`verbose_name`, `help_text`, `label`) must be wrapped in `gettext_lazy`: `verbose_name=_(\"Name\")`. See .claude/skills/backend-conventions/references/translations.md"
+severity: error
+message: "User-facing strings (`verbose_name`, `help_text`, `label`) must be wrapped in `gettext_lazy`: `verbose_name=_(\"Name\")`. Bare strings never reach the translation catalogs. See .claude/skills/backend-conventions/references/translations.md"
 ignores:
   - "**/migrations/**"
+  - "**/tests/**"
 rule:
   kind: keyword_argument
   all:

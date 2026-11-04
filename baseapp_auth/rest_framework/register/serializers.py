@@ -1,7 +1,7 @@
 from typing import Any
 
 from django.contrib.auth import get_user_model
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from baseapp_auth.password_validators import apply_password_validators

@@ -1,0 +1,31 @@
+id: django-translation-meta-verbose-name-lazy
+language: Python
+severity: error
+message: "`verbose_name` / `verbose_name_plural` on a model `Meta` or an `AppConfig` must be wrapped in `gettext_lazy`: `verbose_name = _(\"User\")`. These labels render in the admin sidebar, changelists and DRF/GraphQL field names. See .claude/skills/backend-conventions/references/translations.md"
+ignores:
+  - "**/migrations/**"
+  - "**/tests/**"
+rule:
+  kind: assignment
+  all:
+    - has:
+        field: left
+        regex: ^(verbose_name|verbose_name_plural)$
+    - has:
+        field: right
+        kind: string
+  inside:
+    kind: expression_statement
+    inside:
+      kind: block
+      inside:
+        kind: class_definition
+        any:
+          - has:
+              field: name
+              regex: ^Meta$
+          - has:
+              field: superclasses
+              has:
+                stopBy: end
+                regex: AppConfig$

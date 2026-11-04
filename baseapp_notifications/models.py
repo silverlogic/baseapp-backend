@@ -47,6 +47,8 @@ class AbstractNotification(BaseAbstractNotification, DocumentIdMixin, RelayModel
 
     class Meta(BaseAbstractNotification.Meta):
         abstract = True
+        verbose_name = _("notification")
+        verbose_name_plural = _("notifications")
         # This model must reference "notifications.Notification" due to the dependency on django-notifications-community
         swappable = swapper.swappable_setting("notifications", "Notification")
 
@@ -92,6 +94,8 @@ class AbstractNotificationSetting(TimeStampedModel, DocumentIdMixin, RelayModel)
     class Meta:
         abstract = True
         swappable = swapper.swappable_setting("baseapp_notifications", "NotificationSetting")
+        verbose_name = _("notification setting")
+        verbose_name_plural = _("notification settings")
 
     class NotificationChannelTypes(models.IntegerChoices):
         ALL = 0, _("All")
@@ -104,11 +108,14 @@ class AbstractNotificationSetting(TimeStampedModel, DocumentIdMixin, RelayModel)
             return self.label
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, related_name="notifications_settings", on_delete=models.CASCADE
+        settings.AUTH_USER_MODEL,
+        related_name="notifications_settings",
+        on_delete=models.CASCADE,
+        verbose_name=_("user"),
     )
-    channel = models.IntegerField(choices=NotificationChannelTypes.choices)
-    verb = models.CharField(max_length=255)
-    is_active = models.BooleanField(default=True)
+    channel = models.IntegerField(_("channel"), choices=NotificationChannelTypes.choices)
+    verb = models.CharField(_("verb"), max_length=255)
+    is_active = models.BooleanField(_("active"), default=True)
 
     @classmethod
     def get_graphql_object_type(cls) -> type["DjangoObjectType"]:

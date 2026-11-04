@@ -1,11 +1,12 @@
+{% load i18n %}
 <div>
     {% if widget.preview %}
     <p class="file-upload">
-        <a href="{{ widget.preview }}" target="_blank">Preview</a>
+        <a href="{{ widget.preview }}" target="_blank">{% translate "Preview" %}</a>
         <span> . </span>
-        <a href="{{ widget.dashboard }}" target="_blank">Details</a>
+        <a href="{{ widget.dashboard }}" target="_blank">{% translate "Details" %}</a>
         <span> . </span>
-        <a href="{{ widget.analytics }}" target="_blank">Analytics</a>
+        <a href="{{ widget.analytics }}" target="_blank">{% translate "Analytics" %}</a>
         {% if not widget.required %}
         <span> . </span>
         <span class="file-upload clearable-file-input">

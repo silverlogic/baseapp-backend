@@ -3,16 +3,15 @@
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
-#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-19 01:22+0000\n"
+"POT-Creation-Date: 2026-10-12 15:28+0000\n"
 "PO-Revision-Date: 2024-06-18 22:43+0000\n"
-"Last-Translator:   <pr@tsl.io>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
+"Last-Translator: BaseApp i18n <dev@tsl.io>\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -20,20 +19,62 @@ msgstr ""
 "1 : 2;\n"
 "X-Translated-Using: django-rosetta 0.10.0\n"
 
-msgid "All"
-msgstr "Todos"
+#: apps.py
+msgid "BaseApp Notifications"
+msgstr "BaseApp Notificaciones"
 
-msgid "Email"
-msgstr "Email"
-
-msgid "Push"
-msgstr "Push"
-
-msgid "In-App"
-msgstr "Dentro da aplicación"
-
+#: graphql/mutations.py
 msgid "Mark as read or unread"
 msgstr "Marcar como leído o no leído"
 
+#: models.py
+msgid "notification"
+msgstr "notificación"
+
+#: models.py
+msgid "notifications"
+msgstr "notificaciones"
+
+#: models.py
+msgid "notification setting"
+msgstr "configuración de notificación"
+
+#: models.py
+msgid "notification settings"
+msgstr "configuraciones de notificación"
+
+#: models.py
+msgid "All"
+msgstr "Todos"
+
+#: models.py
+msgid "Email"
+msgstr "Correo electrónico"
+
+#: models.py
+msgid "Push"
+msgstr "Push"
+
+#: models.py
+msgid "In-App"
+msgstr "En la aplicación"
+
+#: models.py
+msgid "user"
+msgstr "usuario"
+
+#: models.py
+msgid "channel"
+msgstr "canal"
+
+#: models.py
+msgid "verb"
+msgstr "verbo"
+
+#: models.py
+msgid "active"
+msgstr "activo"
+
+#: templates/emails/notification-body.html.j2
 msgid "See on App"
 msgstr "Ver en la aplicación"
