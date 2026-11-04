@@ -1,0 +1,62 @@
+id: django-translation-validation-error-literal
+valid:
+  - |
+    raise serializers.ValidationError({"email": [_("This email is already in use.")]})
+  - |
+    raise ValidationError({"non_field_errors": [_("Order total exceeds limit.")]})
+  - |
+    raise exceptions.ValidationError(_("Invalid token."), code="invalid")
+  - |
+    raise ValidationError({"email": _("Already in use.")})
+  - |
+    raise ValidationError({"amount": [_("Must be at least %(min)s.") % {"min": 1}]})
+  - |
+    raise ValidationError(gettext("Invalid."))
+  - |
+    raise ValidationError(ngettext("%d item", "%d items", n) % n)
+  - |
+    raise ValidationError(detail=_("Invalid."), code="invalid")
+  - |
+    raise ValidationError(errors)
+  - |
+    raise ValidationError({field_name: [message]})
+  - |
+    raise ValidationError({"email": [messages["email"]]})
+  - |
+    raise PermissionDenied(_("You do not have permission to perform this action."))
+  - |
+    raise GraphQLError(_("authentication required"), extensions={"code": "authentication_required"})
+  - |
+    raise NotFound()
+  - |
+    raise SomeOtherError("Internal detail, not user-facing.")
+invalid:
+  - |
+    raise serializers.ValidationError("This email is already in use.")
+  - |
+    raise ValidationError("`created_from` must be earlier than or equal to `created_to`.")
+  - |
+    raise exceptions.ValidationError("Invalid token.", code="invalid")
+  - |
+    raise ValidationError({"email": "Already in use."})
+  - |
+    raise ValidationError({"email": ["Already in use."]})
+  - |
+    raise ValidationError({"non_field_errors": [_("Translated."), "Not translated."]})
+  - |
+    raise ValidationError(f"Unknown field {name}")
+  - |
+    raise ValidationError(detail="Invalid.")
+  - |
+    raise ValidationError("Must be at least %(min)s." % {"min": 1})
+  - |
+    raise PermissionDenied("You do not have permission to perform this action.")
+  - |
+    raise exceptions.NotFound("Profile not found.")
+  - |
+    raise GraphQLError(
+        "authentication required",
+        extensions={"code": "authentication_required"},
+    )
+  - |
+    raise AuthenticationFailed(detail="Invalid credentials.")

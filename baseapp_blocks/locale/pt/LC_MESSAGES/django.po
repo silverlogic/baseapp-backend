@@ -1,0 +1,62 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-15 20:33+0000\n"
+"PO-Revision-Date: 2026-10-12 15:10+0000\n"
+"Last-Translator: BaseApp i18n <dev@tsl.io>\n"
+"Language-Team: Portuguese (Brazil)\n"
+"Language: pt\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: apps.py
+msgid "BaseApp Blocks"
+msgstr "BaseApp Bloqueios"
+
+#: graphql/mutations.py
+msgid "You don't have permission to perform this action"
+msgstr "Você não tem permissão para realizar esta ação"
+
+#: graphql/mutations.py
+msgid "You cannot block yourself"
+msgstr "Você não pode bloquear a si mesmo"
+
+#: models.py
+msgid "blocking"
+msgstr "bloqueador"
+
+#: models.py
+msgid "blockers"
+msgstr "bloqueadores"
+
+#: models.py
+msgid "user"
+msgstr "usuário"
+
+#: models.py
+msgid "block"
+msgstr "bloqueio"
+
+#: models.py
+msgid "blocks"
+msgstr "bloqueios"
+
+#: models.py
+msgid "blockers count"
+msgstr "quantidade de bloqueadores"
+
+#: models.py
+msgid "blocking count"
+msgstr "quantidade de bloqueados"
+
+#: models.py
+msgid "blockable metadata"
+msgstr "metadados de bloqueio"
