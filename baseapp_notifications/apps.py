@@ -23,6 +23,8 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
 
         notify.connect(notify_handler, dispatch_uid="notifications.models.notification")
 
+        from . import checks  # noqa: F401  (registers the email sender check)
+
     def register_shared_services(self, registry) -> None:
         from .services import NotificationService
 
