@@ -1,10 +1,14 @@
-{{ _("Hi there,") }}
+{% if invitee_name %}{{ _("Hi %(name)s,", name=invitee_name) }}{% else %}{{ _("Hi there,") }}{% endif %}
 
 {{ _("%(inviter)s has invited you to join %(profile)s as a %(role)s.", inviter=inviter_name, profile=profile_name, role=role) }}
+{% if message %}
+
+{{ message }}
+{% endif %}
 
 {{ _("Click the link below to accept:") }}
 {{ accept_url }}
 
-{{ _("This invitation will expire on %(expiration)s.", expiration=expiration_date) }}
+{% if expiration_date %}{{ _("This invitation will expire on %(expiration)s.", expiration=expiration_date) }}{% endif %}
 
 {{ _("If you didn't expect this invitation, you can safely ignore this email.") }}

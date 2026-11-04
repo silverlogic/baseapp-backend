@@ -10,7 +10,7 @@ from baseapp_core.deep_links import get_deep_link
 from baseapp_core.exceptions import DeepLinkFetchError
 from baseapp_core.i18n import user_language
 
-from .constants import INVITATION_EXPIRATION_DAYS
+from .conf import invitation_expiration_days
 
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
@@ -33,8 +33,9 @@ def create_invitation(
         invited_email=invited_email.lower(),
         role=role,
         status=ProfileUserRole.ProfileRoleStatus.PENDING,
+        invited_by=inviter,
         invited_at=timezone.now(),
-        invitation_expires_at=timezone.now() + timedelta(days=INVITATION_EXPIRATION_DAYS),
+        invitation_expires_at=timezone.now() + timedelta(days=invitation_expiration_days()),
     )
 
     invitation.generate_invitation_token()
@@ -43,7 +44,19 @@ def create_invitation(
     return invitation
 
 
-def send_invitation_email(invitation, inviter) -> None:
+def _display_name(user) -> str:
+    if user is None:
+        return ""
+    full_name = user.get_full_name() if hasattr(user, "get_full_name") else ""
+    return full_name or getattr(user, "email", "") or ""
+
+
+def get_accept_url(invitation) -> str:
+    """
+    The link that opens `invitation` for its invitee: a deep link when one can be made,
+    otherwise `FRONT_ACCEPT_INVITATION_URL` with the token. Custom email senders
+    (`BASEAPP_PROFILES_INVITATION_EMAIL_SENDER`) use it to link to the same page.
+    """
     token = invitation.invitation_token
     fallback_url = settings.FRONT_ACCEPT_INVITATION_URL.format(token=token)
 
@@ -62,20 +75,36 @@ def send_invitation_email(invitation, inviter) -> None:
             },
         )
     except DeepLinkFetchError:
-        accept_url = fallback_url
-    else:
-        accept_url = deep_link["url"]
+        return fallback_url
+    return deep_link["url"]
 
+
+def send_invitation_email(invitation, inviter=None) -> None:
+    """
+    Email `invitation` to its invited address. `inviter` is named in the email; without one
+    (an invitation sent by an importer or released after review) the profile is named.
+
+    The default `BASEAPP_PROFILES_INVITATION_EMAIL_SENDER`.
+    """
+    accept_url = get_accept_url(invitation)
+    expires_at = invitation.invitation_expires_at
+    invitee_name = " ".join(
+        name for name in (invitation.invited_first_name, invitation.invited_last_name) if name
+    )
     # Invitees without an account yet get the inviter's language. The role label and the
     # date are localized too, so they are built inside the override.
     with user_language(invitation.user or inviter):
         context = {
-            "inviter_name": inviter.get_full_name() or inviter.email,
+            "inviter_name": _display_name(inviter) or invitation.profile.name,
+            "invitee_name": invitee_name,
             "profile_name": invitation.profile.name,
             "role": invitation.get_role_display(),
+            "message": invitation.message,
             "accept_url": accept_url,
-            "expiration_date": formats.date_format(
-                timezone.localtime(invitation.invitation_expires_at), "DATE_FORMAT"
+            "expiration_date": (
+                formats.date_format(timezone.localtime(expires_at), "DATE_FORMAT")
+                if expires_at
+                else ""
             ),
         }
         subject = render_to_string("profiles/emails/invitation-subject.txt.j2", context).strip()

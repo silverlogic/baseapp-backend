@@ -39,7 +39,7 @@ class BlocksPermissionsBackend(BaseBackend):
 
             if isinstance(obj, Profile):
                 return (
-                    obj.owner_id == user_obj.id
+                    obj.is_owned_by(user_obj)
                     or user_obj.has_perm(use_profile_perm, obj)
                     or user_obj.has_perm(perm)
                 )
