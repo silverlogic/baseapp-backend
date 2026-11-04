@@ -442,6 +442,9 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
         verbose_name_plural = _("files")
         swappable = swapper.swappable_setting("baseapp_files", "File")
 
+    def __str__(self) -> str:
+        return self.name or self.file_name or super().__str__()
+
     @classmethod
     def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
         from .graphql.object_types import FileObjectType
