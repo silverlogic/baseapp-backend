@@ -3,8 +3,8 @@ class BaseAppBackendPDFException(Exception):
 
 
 class BaseAppBackendPDFChromeNotInstalledException(BaseAppBackendPDFException):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__("google-chrome is not installed")
+    def __init__(self, binary: str = "google-chrome", *args, **kwargs) -> None:
+        super().__init__(f"{binary} is not installed")
 
 
 class BaseAppBackendPDFRenderToPDFException(BaseAppBackendPDFException):
