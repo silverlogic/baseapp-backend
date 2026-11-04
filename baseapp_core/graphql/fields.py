@@ -15,6 +15,10 @@ except InvalidCacheBackendError:
 
 # A missing or unreadable source is cached for a short while only, so a restored file recovers.
 FAILED_THUMBNAIL_CACHE_TIMEOUT = 60 * 5
+# Bump this when the meaning of a cached value changes. v1 stored ``None`` for a failed thumbnail
+# with no expiry but never served it, so those entries must not be read as hits now that ``None``
+# is a valid cached result.
+THUMBNAIL_CACHE_KEY_VERSION = "v2"
 _CACHE_MISS = object()
 
 
@@ -60,9 +64,14 @@ class ThumbnailField(graphene.Field):
         super(ThumbnailField, self).__init__(type, **kwargs)
 
     def get_resolver(self, parent_resolver) -> Callable:
+        """Wrap the file resolver so the field resolves to a thumbnail URL of the requested size."""
         resolver = self.resolver or parent_resolver
 
         def built_thumbnail(instance, info, width, height, **kwargs) -> str | None:
+            """Return the absolute thumbnail URL, or ``None`` when the source can't be thumbnailed.
+
+            Results are cached: a URL indefinitely, a failure for ``FAILED_THUMBNAIL_CACHE_TIMEOUT``.
+            """
             instance = resolver(instance, info, **kwargs)
 
             if not instance:
@@ -92,4 +101,5 @@ class ThumbnailField(graphene.Field):
         return built_thumbnail
 
     def _get_cache_key(self, instance, width, height) -> str:
-        return f"et:thumbnail:{instance.url}:{width}:{height}"
+        """Build the cache key for one file at one size, namespaced by the cache-value version."""
+        return f"et:thumbnail:{THUMBNAIL_CACHE_KEY_VERSION}:{instance.url}:{width}:{height}"

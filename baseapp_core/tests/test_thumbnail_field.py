@@ -1,5 +1,6 @@
 from unittest.mock import ANY, MagicMock
 
+from django.core.cache.backends.locmem import LocMemCache
 from django.core.files.base import ContentFile
 from django.core.files.storage import InMemoryStorage
 from django.db import models
@@ -54,4 +55,26 @@ def test_thumbnail_failure_is_cached_briefly(monkeypatch) -> None:
         ANY,
         None,
         timeout=fields.FAILED_THUMBNAIL_CACHE_TIMEOUT,
+    )
+
+
+def test_thumbnail_ignores_failures_cached_by_previous_versions(monkeypatch) -> None:
+    # Before the cache-value version was introduced, a failed thumbnail was cached as None with
+    # no expiry but treated as a miss. Those entries must stay invisible now that a cached None
+    # is a hit, or a file replaced with a readable image would resolve to null forever.
+    cache = LocMemCache("thumbnail-test", {})
+    monkeypatch.setattr(fields, "cache", cache)
+    get_thumbnailer = MagicMock()
+    get_thumbnailer.return_value.get_thumbnail.return_value.url = "/media/thumb.png"
+    monkeypatch.setattr(fields, "get_thumbnailer", get_thumbnailer)
+    restored_file = FieldFile(instance=None, field=models.FileField(), name="files/restored.png")
+    cache.set(f"et:thumbnail:{restored_file.url}:48:48", None, timeout=None)
+    resolver = ThumbnailField().get_resolver(lambda instance, info, **kwargs: restored_file)
+    info = MagicMock()
+    info.context.build_absolute_uri.return_value = "http://testserver/media/thumb.png"
+
+    assert resolver(None, info, width=48, height=48) == "http://testserver/media/thumb.png"
+    get_thumbnailer.assert_called_once_with(restored_file)
+    assert cache.get(f"et:thumbnail:v2:{restored_file.url}:48:48") == (
+        "http://testserver/media/thumb.png"
     )
