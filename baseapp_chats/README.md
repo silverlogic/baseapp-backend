@@ -146,6 +146,7 @@ Chats consumes the following services lazily via `shared_services.get(...)` — 
 | Setting | Default | Description |
 |---|---|---|
 | `BASEAPP_CHATS_ENABLE_SYSTEM_MESSAGES` | `True` | When `False`, suppresses all system-generated messages (group created/renamed, participant added/removed, etc.). Useful for projects that want chat rooms without automated activity messages. |
+| `BASEAPP_CHATS_ROOM_URL_TEMPLATE` | `"{front_url}/chat?roomId={room_id}"` | Front-end URL of a chat room, used as the `notification_url` of new-message notifications. `{front_url}` is `settings.FRONT_URL` and `{room_id}` the room's relay id. Set it when your frontend serves chats on another route, e.g. `"{front_url}/messages?roomId={room_id}"`. `baseapp_chats.utils.get_chat_room_url(room)` returns the formatted URL for your own links. Only these two placeholders exist: any other (a typo such as `{roomId}`) raises `KeyError` when a message notification is sent, not at startup. `{room_id}` is inserted as is, without URL encoding (relay ids and public ids are URL-safe). |
 
 ## How to develop
 
