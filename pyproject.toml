@@ -127,7 +127,7 @@ dev = [
     "easy-thumbnails==2.10.1",
     "rest-social-auth==10.0.0",
     "urllib3==2.8.0",
-    "twisted==26.4.0",
+    "twisted==26.10.0",
     "channels==4.3.1",
     "django-notifications-community",
     "django-push-notifications[apns-async,fcm,wp]==3.3.0",
@@ -159,7 +159,7 @@ testproject = [
     "pytest-django==4.11.1",
     "responses==0.25.8",
     "rest-social-auth==10.0.0",
-    "twisted==26.4.0",
+    "twisted==26.10.0",
     "urllib3==2.8.0",
     "testproject",
 ]
