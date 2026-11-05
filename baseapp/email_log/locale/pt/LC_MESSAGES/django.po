@@ -1,0 +1,222 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-30 15:09+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: admin.py
+msgid "status"
+msgstr "status"
+
+#: admin.py
+msgid "Message"
+msgstr "Mensagem"
+
+#: admin.py
+msgid "Metadata"
+msgstr "Metadados"
+
+#: admin.py
+msgid "djmail message"
+msgstr "mensagem do djmail"
+
+#: admin.py
+msgid "body text"
+msgstr "texto do corpo"
+
+#: admin.py
+msgid "body HTML"
+msgstr "HTML do corpo"
+
+#: admin.py
+msgid "error"
+msgstr "erro"
+
+#: admin.py
+msgid "failed attempts"
+msgstr "tentativas com falha"
+
+#: admin.py
+msgid "Resend the selected emails"
+msgstr "Reenviar os e-mails selecionados"
+
+#: admin.py
+#, python-format
+msgid "Resent %d email."
+msgid_plural "Resent %d emails."
+msgstr[0] "%d e-mail reenviado."
+msgstr[1] "%d e-mails reenviados."
+
+#: apps.py
+msgid "BaseApp Email Log"
+msgstr "Registro de e-mails do BaseApp"
+
+#: models.py
+msgid "Email"
+msgstr "E-mail"
+
+#: models.py
+msgid "SMS"
+msgstr "SMS"
+
+#: models.py
+msgid "Other"
+msgstr "Outro"
+
+#: models.py
+msgid "message"
+msgstr "mensagem"
+
+#: models.py
+msgid "channel"
+msgstr "canal"
+
+#: models.py
+msgid "recipients"
+msgstr "destinatários"
+
+#: models.py
+msgid "cc"
+msgstr "cc"
+
+#: models.py
+msgid "bcc"
+msgstr "cco"
+
+#: models.py
+msgid "reply to"
+msgstr "responder para"
+
+#: models.py
+msgid "template"
+msgstr "modelo"
+
+#: models.py
+msgid "context"
+msgstr "contexto"
+
+#: models.py
+msgid "Render context, kept to re-render the message on resend."
+msgstr ""
+"Contexto de renderização, guardado para renderizar a mensagem de novo ao "
+"reenviá-la."
+
+#: models.py
+msgid "attachments"
+msgstr "anexos"
+
+#: models.py
+msgid "Name, content type and size of each attachment, and its storage path."
+msgstr ""
+"Nome, tipo de conteúdo e tamanho de cada anexo, e seu caminho de "
+"armazenamento."
+
+#: models.py
+msgid "related content type"
+msgstr "tipo de conteúdo relacionado"
+
+#: models.py
+msgid "related object id"
+msgstr "id do objeto relacionado"
+
+#: models.py
+msgid "related label"
+msgstr "rótulo relacionado"
+
+#: models.py
+msgid "category"
+msgstr "categoria"
+
+#: models.py
+msgid "sent by"
+msgstr "enviado por"
+
+#: models.py
+msgid "resend of"
+msgstr "reenvio de"
+
+#: models.py
+msgid "idempotency key"
+msgstr "chave de idempotência"
+
+#: models.py
+msgid "delivery to"
+msgstr "entrega para"
+
+#: models.py
+msgid "delivery subject"
+msgstr "assunto da entrega"
+
+#: models.py
+msgid "delivery from"
+msgstr "remetente da entrega"
+
+#: models.py
+msgid "delivery body text"
+msgstr "texto do corpo da entrega"
+
+#: models.py
+msgid "delivery status"
+msgstr "status da entrega"
+
+#: models.py
+msgid "delivered at"
+msgstr "entregue em"
+
+#: models.py
+msgid "delivery error"
+msgstr "erro de entrega"
+
+#: models.py
+msgid "scrubbed at"
+msgstr "depurado em"
+
+#: models.py
+msgid ""
+"When the purge removed the content and kept the row for its idempotency key. "
+"A scrubbed row cannot be resent."
+msgstr ""
+"Quando a limpeza removeu o conteúdo e manteve a linha pela chave de "
+"idempotência. Uma linha depurada não pode ser reenviada."
+
+#: models.py
+msgid "email log"
+msgstr "registro de e-mail"
+
+#: models.py
+msgid "email logs"
+msgstr "registros de e-mail"
+
+#: status.py
+msgid "Queued"
+msgstr "Na fila"
+
+#: status.py
+msgid "Sending"
+msgstr "Enviando"
+
+#: status.py
+msgid "Sent"
+msgstr "Enviado"
+
+#: status.py
+msgid "Failed"
+msgstr "Falhou"
+
+#: status.py
+msgid "Discarded"
+msgstr "Descartado"
