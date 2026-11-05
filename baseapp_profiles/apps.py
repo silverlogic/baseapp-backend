@@ -25,6 +25,10 @@ class PackageConfig(
     verbose_name = _("BaseApp Profiles")
     default_auto_field = "django.db.models.AutoField"
 
+    def ready(self) -> None:
+        super().ready()
+        from . import checks  # noqa: F401  (registers the discoverability filter check)
+
     def register_shared_services(self, registry: SharedServiceRegistry) -> None:
         from .services import GraphQLProfileService
 
