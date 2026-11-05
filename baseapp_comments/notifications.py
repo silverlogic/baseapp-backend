@@ -8,12 +8,20 @@ from baseapp_core.plugins import shared_services
 
 Comment = swapper.load_model("baseapp_comments", "Comment")
 User = get_user_model()
+app_label = Comment._meta.app_label
+
+
+def _can_view_target_comments(recipient: User, comment: Comment) -> bool:
+    """The notification links to the comment, so only notify users who may read it."""
+    return recipient.has_perm(f"{app_label}.view_target_comments", comment.target)
 
 
 @shared_task
 def send_reply_created_notification(comment_pk) -> None:
     if service := shared_services.get("notifications"):
         comment = Comment.objects.get(pk=comment_pk)
+        if not _can_view_target_comments(comment.in_reply_to.user, comment):
+            return
         sender = getattr(comment, "profile", None) or comment.user
         service.send_notification(
             add_to_history=True,
@@ -37,6 +45,8 @@ def send_comment_created_notification(comment_pk, recipient_id) -> None:
     if service := shared_services.get("notifications"):
         comment = Comment.objects.get(pk=comment_pk)
         recipient = User.objects.get(pk=recipient_id)
+        if not _can_view_target_comments(recipient, comment):
+            return
         sender = getattr(comment, "profile", None) or comment.user
         service.send_notification(
             add_to_history=True,

@@ -29,16 +29,19 @@ class ReactionToggle(RelayMutation):
     @classmethod
     @login_required
     def mutate_and_get_payload(cls, root, info, **input) -> "ReactionToggle":
-        target = get_obj_from_relay_id(info, input.get("target_object_id"))
-        target_document = DocumentId.get_or_create_for_object(target)
+        # Through get_node, so a target the user can't see (node(id) returns null) can't be
+        # reacted to, nor read back from the payload.
+        target = get_obj_from_relay_id(info, input.get("target_object_id"), get_node=True)
         reaction_type = input["reaction_type"]
         activity_name = "baseapp_reactions.add_reaction"
 
-        if not info.context.user.has_perm(activity_name, target):
+        if target is None or not info.context.user.has_perm(activity_name, target):
             raise GraphQLError(
                 str(_("You don't have permission to perform this action")),
                 extensions={"code": "permission_required"},
             )
+
+        target_document = DocumentId.get_or_create_for_object(target)
 
         if service := shared_services.get("activity_log"):
             service.set_public_activity(verb=activity_name)

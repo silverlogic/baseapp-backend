@@ -43,6 +43,24 @@ def create_object_type_from_dict(name, d) -> type[graphene.ObjectType]:
 CommentsCount = create_object_type_from_dict("CommentsCount", default_comments_count())
 
 
+def _can_view_target_comments(target: models.Model, info: GQLInfo) -> bool:
+    """Whether the current user may read the comments of `target` (see the README)."""
+    return info.context.user.has_perm(f"{app_label}.view_target_comments", target)
+
+
+def viewable_comment(obj: models.Model | None, info: GQLInfo) -> models.Model | None:
+    """Return `obj`, or `None` when it is a comment the current user may not `view_comment`.
+
+    For fields that return a comment without going through `get_node`, such as a foreign key or
+    a mutation payload. Other objects are returned unchanged.
+    """
+    if isinstance(obj, Comment) and not info.context.user.has_perm(
+        f"{app_label}.view_comment", obj
+    ):
+        return None
+    return obj
+
+
 class CommentsInterface(RelayNode):
     comments_count = graphene.Field(CommentsCount, required=True)
     comments = DjangoConnectionField(get_object_type_for_model(Comment))
@@ -52,6 +70,8 @@ class CommentsInterface(RelayNode):
         model = Comment
 
     def resolve_comments_count(root, info: GQLInfo, **kwargs) -> dict:
+        if not _can_view_target_comments(root, info):
+            return default_comments_count()
         if service := shared_services.get("commentable_metadata"):
             return service.get_comments_count(root)
         return default_comments_count()
@@ -75,6 +95,9 @@ class CommentsInterface(RelayNode):
             settings, "BASEAPP_COMMENTS_CAN_ANONYMOUS_VIEW_COMMENTS", True
         )
         if not CAN_ANONYMOUS_VIEW_COMMENTS and not info.context.user.is_authenticated:
+            return skip_ast_walker(Comment.objects.none())
+
+        if not _can_view_target_comments(root, info):
             return skip_ast_walker(Comment.objects.none())
 
         is_root_a_comment = isinstance(root, Comment)
@@ -150,9 +173,17 @@ class BaseCommentObjectType:
     def resolve_target(root, info, **kwargs) -> models.Model | None:
         if not root.target_document_id:
             return None
-        return resolve_document_content_object(
+        target = resolve_document_content_object(
             root.target_document, info, cache_attr="_comment_target_cache"
         )
+        # A comment can be the target of other comments, and the client picks the target.
+        return viewable_comment(target, info)
+
+    def resolve_in_reply_to(root, info, **kwargs) -> "Comment | None":
+        # Foreign keys don't go through get_node, so check the parent here.
+        if not root.in_reply_to_id:
+            return None
+        return viewable_comment(root.in_reply_to, info)
 
     @classmethod
     def pre_optimization_hook(cls, queryset, optimizer) -> models.QuerySet:
