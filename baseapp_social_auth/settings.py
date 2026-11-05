@@ -15,6 +15,9 @@ SOCIAL_AUTH_PIPELINE = [
     # already part of the auth response from the provider, but sometimes this
     # could hit a provider API.
     "social_core.pipeline.social_auth.social_details",
+    # Derive first/last name from the full name (and vice versa) when the provider
+    # only sends one of them, e.g. Twitter.
+    "social_core.pipeline.social_auth.social_names",
     # Get the social uid from whichever service we're authing thru. The uid is
     # the unique identifier of the given user in the provider.
     "social_core.pipeline.social_auth.social_uid",
