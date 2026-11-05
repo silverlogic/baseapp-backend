@@ -8,6 +8,11 @@ profile_app_label = Profile._meta.app_label
 
 class FollowsPermissionsBackend(BaseBackend):
     def has_perm(self, user_obj, perm, obj=None) -> bool | None:
+        if perm in ("baseapp_follows.view_followers", "baseapp_follows.view_following"):
+            # Follows are public by default. `obj` is the followed object for
+            # `view_followers` and the actor for `view_following`; override these in a
+            # subclass to make followers / following lists private.
+            return True
         if perm == "baseapp_follows.add_follow":
             # TO DO: check if not blocked?
             return user_obj.is_authenticated

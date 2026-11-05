@@ -39,6 +39,23 @@ class BaseFollowObjectType:
         interfaces = (RelayNode,)
         filterset_class = FollowsFilter
 
+    @classmethod
+    def get_node(cls, info: graphene.ResolveInfo, id: str) -> "Follow | None":
+        """
+        Resolve `node(id:)` only when the viewer may see this follow from one of its
+        sides: the actor's `following` (`view_following`) or the target's `followers`
+        (`view_followers`). Keeps a follow private when both lists are private.
+        """
+        follow = super().get_node(info, id)
+        if follow is None:
+            return None
+        user = info.context.user
+        if user.has_perm(
+            "baseapp_follows.view_following", follow.actor.content_object
+        ) or user.has_perm("baseapp_follows.view_followers", follow.target.content_object):
+            return follow
+        return None
+
     def resolve_actor_object(self, info: graphene.ResolveInfo) -> object:
         return resolve_document_content_object(self.actor, info)
 
