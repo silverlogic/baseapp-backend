@@ -14,12 +14,14 @@ class PublicIdQuerysetAnnotatorStrategy(QuerysetAnnotatorStrategy):
         queryset = queryset.annotate(**annotations)
         return queryset
 
-    def get_annotations(self, model_cls: TModel) -> dict[str, Any]:
+    def get_annotations(
+        self, model_cls: TModel, field: str = "pk", alias: str = "mapped_public_id"
+    ) -> dict[str, Any]:
         return {
-            "mapped_public_id": Subquery(
+            alias: Subquery(
                 DocumentId.objects.filter(
                     content_type=ContentType.objects.get_for_model(model_cls),
-                    object_id=OuterRef("pk"),
+                    object_id=OuterRef(field),
                 ).values("public_id")
             )
         }

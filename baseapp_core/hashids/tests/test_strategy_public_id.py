@@ -2,6 +2,7 @@ import uuid
 from unittest.mock import MagicMock
 
 import pytest
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 
 from baseapp_core.graphql.relay import Node
@@ -11,9 +12,15 @@ from baseapp_core.hashids.strategies.public_id import (
     PublicIdQuerysetAnnotatorStrategy,
     PublicIdResolverStrategy,
 )
-from testproject.testapp.models import DummyLegacyModel, DummyPublicIdModel
+from baseapp_core.models import DocumentId
+from testproject.testapp.models import (
+    DummyLegacyModel,
+    DummyPublicIdChildModel,
+    DummyPublicIdModel,
+)
 from testproject.testapp.tests.factories import (
     DummyLegacyModelFactory,
+    DummyPublicIdChildModelFactory,
     DummyPublicIdModelFactory,
 )
 
@@ -37,6 +44,53 @@ class TestPublicIdResolverStrategy:
         random_uuid = uuid.uuid4()
         result = resolver.resolve_id(str(random_uuid), model_cls=DummyPublicIdModel)
         assert result is None
+
+    def test_resolve_id_returns_none_for_another_models_id(self, resolver) -> None:
+        child = DummyPublicIdChildModelFactory()
+        assert resolver.resolve_id(child.public_id, model_cls=DummyPublicIdModel) is None
+        assert resolver.resolve_id(child.public_id, model_cls=DummyPublicIdChildModel) == child
+
+    def test_resolve_id_without_model_cls_returns_any_model(self, resolver) -> None:
+        child = DummyPublicIdChildModelFactory()
+        assert resolver.resolve_id(child.public_id) == child
+
+    def test_resolve_id_returns_none_for_a_dangling_mapping(self, resolver) -> None:
+        dummy = DummyPublicIdModelFactory()
+        public_id = dummy.public_id
+        DummyPublicIdModel.objects.filter(pk=dummy.pk)._raw_delete(DummyPublicIdModel.objects.db)
+        DocumentId.objects.get_or_create(
+            content_type=ContentType.objects.get_for_model(DummyPublicIdModel),
+            object_id=dummy.pk,
+            defaults={"public_id": public_id},
+        )
+        assert resolver.resolve_id(public_id, model_cls=DummyPublicIdModel) is None
+
+    def test_get_id_from_instance_reads_prefetched_document(
+        self, resolver, django_assert_num_queries
+    ) -> None:
+        dummy = DummyPublicIdModelFactory()
+        expected = dummy.public_id
+        instance = DummyPublicIdModel.objects.prefetch_related("document").get(pk=dummy.pk)
+        with django_assert_num_queries(0):
+            assert resolver.get_id_from_instance(instance) == expected
+
+    def test_get_id_from_instance_reads_empty_prefetched_document(
+        self, resolver, django_assert_num_queries
+    ) -> None:
+        dummy = DummyPublicIdModelFactory()
+        DocumentId.objects.filter(object_id=dummy.pk).delete()
+        instance = DummyPublicIdModel.objects.prefetch_related("document").get(pk=dummy.pk)
+        with django_assert_num_queries(0):
+            assert resolver.get_id_from_instance(instance) is None
+
+    def test_get_id_from_instance_reads_prefetched_related_document(
+        self, resolver, django_assert_num_queries
+    ) -> None:
+        DummyPublicIdChildModelFactory.create_batch(3)
+        children = list(DummyPublicIdChildModel.objects.prefetch_related("parent__document"))
+        with django_assert_num_queries(0):
+            for child in children:
+                assert resolver.get_id_from_instance(child.parent) is not None
 
     def test_resolve_id_returns_none_for_invalid_uuid(self, resolver) -> None:
         invalid_id = "not-a-uuid"
@@ -123,6 +177,15 @@ class TestPublicIdGraphQLResolverStrategy:
 
 @pytest.mark.django_db
 class TestPublicIdQuerysetAnnotatorStrategy:
+    def test_get_annotations_for_a_foreign_key(self) -> None:
+        child = DummyPublicIdChildModelFactory()
+        strategy = PublicIdQuerysetAnnotatorStrategy()
+        annotations = strategy.get_annotations(
+            DummyPublicIdModel, field="parent", alias="parent_public_id"
+        )
+        row = DummyPublicIdChildModel.objects.annotate(**annotations).get(pk=child.pk)
+        assert row.parent_public_id == child.parent.public_id
+
     def test_annotate_adds_mapped_public_id(self) -> None:
         DummyPublicIdModelFactory()
         strategy = PublicIdQuerysetAnnotatorStrategy()
@@ -143,3 +206,23 @@ class TestPublicIdDRFResolverStrategy:
         dummy = DummyPublicIdModelFactory()
         result = resolver.resolve_public_id_to_pk(str(dummy.public_id))
         assert result == dummy.pk
+
+    def test_resolve_public_id_to_pk_checks_the_expected_model(self, resolver) -> None:
+        dummy = DummyPublicIdModelFactory()
+        result = resolver.resolve_public_id_to_pk(
+            str(dummy.public_id), expected_model=DummyPublicIdModel
+        )
+        assert result == dummy.pk
+
+    def test_resolve_public_id_to_pk_rejects_another_models_public_id(self, resolver) -> None:
+        child = DummyPublicIdChildModelFactory()
+        with pytest.raises(resolver.NoInstanceFound):
+            resolver.resolve_public_id_to_pk(
+                str(child.public_id), expected_model=DummyPublicIdModel
+            )
+
+    def test_resolve_public_id_to_pk_returns_none_for_unknown_public_id(self, resolver) -> None:
+        assert (
+            resolver.resolve_public_id_to_pk(str(uuid.uuid4()), expected_model=DummyPublicIdModel)
+            is None
+        )

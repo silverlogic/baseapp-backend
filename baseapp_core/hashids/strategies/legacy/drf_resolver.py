@@ -1,12 +1,9 @@
 from typing import Any, Optional, Type
 
-from baseapp_core.hashids.strategies.interfaces.id_resolver import IdResolverStrategy
+from baseapp_core.hashids.strategies.interfaces import DRFResolverStrategy
 
 
-class LegacyDRFResolverStrategy:
-    def __init__(self, id_resolver: IdResolverStrategy) -> None:
-        self.id_resolver = id_resolver
-
+class LegacyDRFResolverStrategy(DRFResolverStrategy):
     def resolve_public_id_to_pk(  # NOSONAR
         self, id: str, expected_model: Optional[Type[Any]] = None
     ) -> Optional[int]:
