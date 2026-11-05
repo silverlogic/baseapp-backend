@@ -1,0 +1,55 @@
+id: django-translation-meta-verbose-name-lazy
+valid:
+  - |
+    class Order(models.Model):
+        class Meta:
+            verbose_name = _("Order")
+            verbose_name_plural = _("Orders")
+  - |
+    class Order(AbstractOrder):
+        class Meta(AbstractOrder.Meta):
+            verbose_name = _("Order")
+  - |
+    class OrdersConfig(AppConfig):
+        name = "apps.orders"
+        verbose_name = _("Orders")
+  - |
+    class OrdersConfig(BaseAppConfig, SerializersContributor):
+        name = "apps.orders"
+        verbose_name = _("Orders")
+  - |
+    class Order(models.Model):
+        class Meta:
+            ordering = ["-id"]
+            db_table = "orders"
+  - |
+    verbose_name = "not inside a class at all"
+invalid:
+  - |
+    class Order(models.Model):
+        class Meta:
+            verbose_name = "Order"
+  - |
+    class Order(models.Model):
+        class Meta:
+            verbose_name = _("Order")
+            verbose_name_plural = "Orders"
+  - |
+    class Order(AbstractOrder):
+        class Meta(AbstractOrder.Meta):
+            verbose_name = "Order"
+  - |
+    class OrdersConfig(AppConfig):
+        name = "apps.orders"
+        verbose_name = "Orders"
+  - |
+    class OrdersConfig(apps.AppConfig):
+        verbose_name = "Orders"
+  - |
+    class OrdersConfig(BaseAppConfig, SerializersContributor):
+        name = "apps.orders"
+        verbose_name = "Orders"
+  - |
+    class Order(models.Model):
+        class Meta:
+            verbose_name = f"Order {suffix}"

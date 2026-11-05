@@ -1,15 +1,15 @@
 {% extends "admin/base_site.html" %}
-{% load static %}
+{% load i18n static %}
 
 {% block branding %}
 <h1 id="site-name">
     <a href="{% url 'admin:index' %}">
         {% if site_header == "Django administration staging"%}
-        <img src="{% static 'admin/horizontal_staging.png' %}" height="70px" alt="BaseApp staging logo">
+        <img src="{% static 'admin/horizontal_staging.png' %}" height="70px" alt="{% translate 'BaseApp staging logo' %}">
         {% elif site_header == "Django administration development"%}
         {{site_header}}
         {% else %}
-        <img src="{% static 'admin/horizontal_production.png' %}" height="70px" alt="BaseApp production logo">
+        <img src="{% static 'admin/horizontal_production.png' %}" height="70px" alt="{% translate 'BaseApp production logo' %}">
         {% endif %}
     </a>
 </h1>

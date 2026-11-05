@@ -9,6 +9,18 @@ required-version = "0.10.9"
 override-dependencies = [
     "graphql-core>=3.2.12,<3.3",
 ]
+# uv only rebuilds a path/workspace dependency when these change. Package data
+# (templates, compiled .mo catalogs) must be part of the key or a cached wheel
+# silently ships stale files.
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "MANIFEST.in" },
+    { file = "**/*.py" },
+    { file = "**/*.po" },
+    { file = "**/*.mo" },
+    { file = "**/*.html" },
+    { file = "**/*.j2" },
+]
 
 [project]
 name = "baseapp_backend"
@@ -120,7 +132,7 @@ dev = [
     "easy-thumbnails==2.10.1",
     "rest-social-auth==11.0.0",
     "urllib3==2.8.0",
-    "twisted==26.4.0",
+    "twisted==26.10.0",
     "channels==4.3.1",
     "django-notifications-community",
     "django-push-notifications[apns-async,fcm,wp]==3.3.0",
@@ -152,7 +164,7 @@ testproject = [
     "pytest-django==4.11.1",
     "responses==0.25.8",
     "rest-social-auth==11.0.0",
-    "twisted==26.4.0",
+    "twisted==26.10.0",
     "urllib3==2.8.0",
     "testproject",
 ]

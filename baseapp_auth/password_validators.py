@@ -6,7 +6,7 @@ from django.contrib.auth.password_validation import (
     validate_password,
 )
 from django.core.exceptions import ValidationError
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 
 from baseapp_auth.models import PasswordValidation
 
@@ -26,8 +26,7 @@ class MustContainCapitalLetterValidator:
     def get_help_text(self) -> str:
         return _(
             "Your password must contain at least %(min_length)d capital letter characters."
-            % {"min_length": self.min_length}
-        )
+        ) % {"min_length": self.min_length}
 
 
 class MustContainSpecialCharacterValidator:
@@ -43,10 +42,9 @@ class MustContainSpecialCharacterValidator:
             )
 
     def get_help_text(self) -> str:
-        return _(
-            "Your password must contain at least %(min_length)d special characters."
-            % {"min_length": self.min_length}
-        )
+        return _("Your password must contain at least %(min_length)d special characters.") % {
+            "min_length": self.min_length
+        }
 
 
 def apply_password_validators(password, user=None) -> None:

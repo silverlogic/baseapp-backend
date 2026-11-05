@@ -13,3 +13,11 @@ repos:
     rev: 5.0.4
     hooks:
     - id: flake8
+-   repo: local
+    hooks:
+    - id: compile-translations
+      name: compile translation catalogs (.po -> .mo)
+      entry: python scripts/i18n/compile_catalogs.py
+      language: python
+      additional_dependencies: [polib==1.2.0]
+      files: \.po$

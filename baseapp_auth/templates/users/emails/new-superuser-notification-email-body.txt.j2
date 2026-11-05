@@ -1,9 +1,9 @@
 {% extends 'emails/base.txt.j2' %}
 
 {% block content %}
-{% trans %}Hello Superusers,{% endtrans %}
+{{ _("Hello Superusers,") }}
 
-{% trans %}Please be notified that {{ assignee }} is a superuser now assigned by {{ assigner }}.{% endtrans %}
+{{ _("Please be notified that %(assignee)s is a superuser now assigned by %(assigner)s.", assignee=assignee, assigner=assigner) }}
 
-{% trans %}If this was unexpected, please contact our support team.{% endtrans %}
+{{ _("If this was unexpected, please contact our support team.") }}
 {% endblock content %}
