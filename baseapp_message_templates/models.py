@@ -1,4 +1,4 @@
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
@@ -7,9 +7,15 @@ from django.utils.translation import gettext_lazy as _
 from django_prose_editor.fields import ProseEditorField
 from model_utils.models import TimeStampedModel
 
+from baseapp_core.graphql import RelayModel
+
 from .custom_templates import get_full_copy_template
+from .registry import email_templates, render_email_template
 from .sendgrid import mass_send_personalized_mail, send_personalized_mail
 from .utils import attach_files, random_name_in
+
+if TYPE_CHECKING:
+    from baseapp_core.graphql import DjangoObjectType
 
 
 class CaseInsensitiveCharField(models.CharField):
@@ -19,7 +25,7 @@ class CaseInsensitiveCharField(models.CharField):
         return "citext"
 
 
-class EmailTemplate(TimeStampedModel):
+class EmailTemplate(RelayModel, TimeStampedModel):
     name = CaseInsensitiveCharField(
         _("name"),
         max_length=255,
@@ -47,18 +53,34 @@ class EmailTemplate(TimeStampedModel):
         extensions=getattr(settings, "PROSE_EDITOR_EXTENSIONS", None),
         sanitize=getattr(settings, "PROSE_EDITOR_SANITIZE", False),
     )
-    plain_text_content = ProseEditorField(
+    # Plain text, never HTML: the prose sanitizer would escape "&" and "<".
+    plain_text_content = models.TextField(
         _("plain text content"),
         blank=True,
         help_text=_("Text that will be inputted into Template plain text version"),
-        extensions=getattr(settings, "PROSE_EDITOR_EXTENSIONS", None),
-        sanitize=getattr(settings, "PROSE_EDITOR_SANITIZE", False),
     )
 
     class Meta:
         ordering = ["-id"]
         verbose_name = _("email template")
         verbose_name_plural = _("email templates")
+        permissions = [
+            ("send_test_emailtemplate", _("Can send test emails of an email template")),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
+
+    @classmethod
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
+        from .graphql.object_types import EmailTemplateObjectType
+
+        return EmailTemplateObjectType
+
+    @property
+    def is_registered(self) -> bool:
+        """Whether code registered this name with ``register_email_template``."""
+        return email_templates.is_registered(self.name)
 
     def send_via_sendgrid(self, personalization, attachments=[]) -> None:
         if not self.sendgrid_template_id:
@@ -79,26 +101,43 @@ class EmailTemplate(TimeStampedModel):
         attachments=[],
         custom_subject="",
     ) -> None:
-        if not self.html_content:
-            raise Exception("HTML content required to send e-mail")
+        """Send this template to ``recipients``.
 
-        if not use_base_template:
-            base_template_route = ""
+        A registered name renders through ``render_email_template`` (its files plus this row's
+        editable fields), so ``use_base_template`` and ``extended_with`` do not apply: the
+        template files own their layout. Other names render this row's content as before.
+        """
+        if email_templates.is_registered(self.name):
+            rendered = render_email_template(
+                self.name,
+                context,
+                recipient=recipients[0] if recipients else None,
+                row=self,
+            )
+            html_content, text_content = rendered.body_html, rendered.body_text
+            copy_template_subject = rendered.subject
         else:
-            base_template_route = extended_with or settings.DEFAULT_EMAIL_TEMPLATE
+            if not self.html_content:
+                raise Exception("HTML content required to send e-mail")
 
-        html_content, text_content, copy_template_subject = get_full_copy_template(
-            self, context, use_base_template, base_template_route
-        )
+            if not use_base_template:
+                base_template_route = ""
+            else:
+                base_template_route = extended_with or settings.DEFAULT_EMAIL_TEMPLATE
+
+            html_content, text_content, copy_template_subject = get_full_copy_template(
+                self, context, use_base_template, base_template_route
+            )
         subject = custom_subject if custom_subject else copy_template_subject
         mail = EmailMultiAlternatives(
             subject, text_content, from_email=settings.DEFAULT_FROM_EMAIL, to=recipients
         )
 
         # combine static attachments from template with dynamic attachments
-        mail.attach_alternative(html_content, "text/html")
-        all_attachments = list(self.static_attachments.all()) + attachments
-        attach_files(mail, all_attachments)
+        if html_content:
+            mail.attach_alternative(html_content, "text/html")
+        static_attachments = list(self.static_attachments.all()) if self.pk else []
+        attach_files(mail, static_attachments + list(attachments))
 
         mail.send()
 
