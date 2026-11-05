@@ -90,6 +90,44 @@ class TestCustomerEvents:
         assert Customer.objects.get(remote_customer_id="cus_dupe").pk == customer.pk
 
     @patch("baseapp_payments.utils.stripe.Webhook.construct_event")
+    def test_customer_created_racing_the_api_insert_is_acknowledged(
+        self, mock_construct: MagicMock
+    ) -> None:
+        """Regression for BASEAPP-BACKEND-TEMPLATE-G9.
+
+        The API calls Stripe before inserting the row, so the event can arrive while that
+        insert is still uncommitted: the pre-check misses it and our insert then hits the
+        unique (entity) constraint. Stubbing the pre-check reproduces that ordering.
+        """
+        customer = CustomerFactory(remote_customer_id="cus_race")
+        mock_construct.return_value = _event(
+            "customer.created",
+            {"id": "cus_race", "metadata": {"entity_id": str(customer.entity_id)}},
+        )
+        with patch("django.db.models.query.QuerySet.first", return_value=None):
+            response = StripeWebhookHandler().webhook_handler(
+                _post(**{"HTTP_STRIPE_SIGNATURE": "sig"}), "whsec_123"
+            )
+        assert response.status_code == 200
+        assert Customer.objects.filter(entity_id=customer.entity_id).count() == 1
+
+    @patch("baseapp_payments.utils.stripe.Webhook.construct_event")
+    def test_customer_created_for_an_entity_billed_under_another_id_still_errors(
+        self, mock_construct: MagicMock
+    ) -> None:
+        """A conflicting remote id is not the race above, so it stays a logged 500."""
+        customer = CustomerFactory(remote_customer_id="cus_original")
+        mock_construct.return_value = _event(
+            "customer.created",
+            {"id": "cus_other", "metadata": {"entity_id": str(customer.entity_id)}},
+        )
+        response = StripeWebhookHandler().webhook_handler(
+            _post(**{"HTTP_STRIPE_SIGNATURE": "sig"}), "whsec_123"
+        )
+        assert response.status_code == 500
+        assert not Customer.objects.filter(remote_customer_id="cus_other").exists()
+
+    @patch("baseapp_payments.utils.stripe.Webhook.construct_event")
     def test_customer_created_for_an_unknown_email_does_not_500(
         self, mock_construct: MagicMock
     ) -> None:
