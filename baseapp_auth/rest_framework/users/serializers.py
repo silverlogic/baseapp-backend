@@ -80,7 +80,10 @@ class UserBaseSerializer(ModelSerializer):
 
 class UserSerializer(UserBaseSerializer):
     class Meta(UserBaseSerializer.Meta):
-        pass
+        # The name fields live here, not on UserBaseSerializer, so they don't end up in the JWT
+        # claims (JWT_CLAIM_SERIALIZER_CLASS defaults to UserBaseSerializer).
+        fields = UserBaseSerializer.Meta.fields + ("first_name", "last_name")
+        private_fields = UserBaseSerializer.Meta.private_fields + ("first_name", "last_name")
 
     def validate_referred_by_code(self, referred_by_code) -> str:
         if use_referrals() and referred_by_code:
@@ -111,7 +114,14 @@ class UserSerializer(UserBaseSerializer):
                     profile.image = None
                 profile.save(update_fields=["image"])
 
-        return super().update(instance, validated_data)
+        instance = super().update(instance, validated_data)
+
+        # A database trigger copies the name onto the profile; reload it so the response matches.
+        if "first_name" in validated_data or "last_name" in validated_data:
+            if profile := getattr(instance, "profile", None):
+                profile.refresh_from_db(fields=["name"])
+
+        return instance
 
     def to_representation(self, user) -> dict[str, Any]:
         request = self.context["request"]

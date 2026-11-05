@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-17 01:11+0000\n"
+"POT-Creation-Date: 2026-10-30 14:50+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -326,6 +326,18 @@ msgstr "Ação não suportada para JWTAuthViewSet"
 #: rest_framework/login/serializers.py
 msgid "Unable to login with provided credentials."
 msgstr "Não foi possível entrar com as credenciais informadas."
+
+#: rest_framework/mfa/policy.py
+msgid ""
+"Multi-factor authentication is required for your account. Add another method "
+"before removing this one."
+msgstr ""
+"Sua conta exige autenticação multifator. Adicione outro método antes de "
+"remover este."
+
+#: rest_framework/mfa/views.py
+msgid "This change is not allowed."
+msgstr "Esta alteração não é permitida."
 
 #: rest_framework/register/serializers.py
 msgid "That email is already in use.  Choose another."
