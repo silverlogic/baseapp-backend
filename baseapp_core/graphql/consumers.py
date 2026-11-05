@@ -13,6 +13,7 @@ from rest_framework.authtoken.models import Token
 
 from baseapp_core.authentication import authenticate_jwt_async
 from baseapp_core.graphql import get_pk_from_relay_id
+from baseapp_core.plugins import shared_services
 
 python_version = sys.version_info
 
@@ -33,7 +34,23 @@ async def threadpool_for_sync_resolvers(next_middleware, root, info, *args, **kw
     return result
 
 
-class GraphqlWsAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
+# An optional shared service whose provider adds GraphQL middleware to WebSocket operations
+# (`get_middleware() -> list`), which never run `GRAPHENE["MIDDLEWARE"]`. The middleware is
+# appended after the consumer's own, so it runs first; it must be async-aware.
+GRAPHQL_WS_MIDDLEWARE_SERVICE = "graphql_ws.middleware"
+
+
+class SharedMiddlewareMixin:
+    """Adds the middleware of the `graphql_ws.middleware` shared service, if any."""
+
+    def __init__(self, *args, **kwargs) -> None:
+        provider = shared_services.get(GRAPHQL_WS_MIDDLEWARE_SERVICE)
+        if provider is not None and isinstance(self.middleware, (list, tuple, type(None))):
+            self.middleware = [*(self.middleware or ()), *provider.get_middleware()]
+        super().__init__(*args, **kwargs)
+
+
+class GraphqlWsAuthenticatedConsumer(SharedMiddlewareMixin, channels_graphql_ws.GraphqlWsConsumer):
     middleware = [threadpool_for_sync_resolvers]
 
     schema = graphene_settings.SCHEMA
@@ -71,7 +88,9 @@ class GraphqlWsAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
             return
 
 
-class GraphqlWsJWTAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
+class GraphqlWsJWTAuthenticatedConsumer(
+    SharedMiddlewareMixin, channels_graphql_ws.GraphqlWsConsumer
+):
     middleware = [threadpool_for_sync_resolvers]
 
     schema = graphene_settings.SCHEMA

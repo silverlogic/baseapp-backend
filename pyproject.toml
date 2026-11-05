@@ -208,6 +208,7 @@ baseapp_api_key = ["*.j2", "*.html"]
 
 [project.entry-points."baseapp.plugins"]
 baseapp_auth = "baseapp_auth.plugin:AuthPlugin"
+baseapp_impersonation = "baseapp_auth.impersonation.plugin:ImpersonationPlugin"
 baseapp_api_key = "baseapp_api_key.plugin:ApiKeyPlugin"
 baseapp_profiles = "baseapp_profiles.plugin:ProfilesPlugin"
 baseapp_activity_log = "baseapp.activity_log.plugin:ActivityLogPlugin"
