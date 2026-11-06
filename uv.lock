@@ -10,9 +10,6 @@ resolution-markers = [
     "python_full_version < '3.14' and platform_python_implementation != 'PyPy'",
 ]
 
-[manifest]
-overrides = [{ name = "graphql-core", specifier = ">=3.2.12,<3.3" }]
-
 [[package]]
 name = "aioapns"
 version = "3.3.1"
@@ -475,7 +472,7 @@ testproject = [
 
 [package.metadata]
 requires-dist = [
-    { name = "baseapp-django-channels-graphql-ws", marker = "extra == 'graphql'", specifier = "==1.0.0rc9" },
+    { name = "baseapp-django-channels-graphql-ws", marker = "extra == 'graphql'", git = "https://github.com/silverlogic/DjangoChannelsGraphqlWs?rev=282dd4dc216877d452c639bc26797a7d04fb0975" },
     { name = "baseapp-django-trench", marker = "extra == 'auth'", specifier = ">=0.4.4" },
     { name = "beautifulsoup4", marker = "extra == 'messagetemplates'", specifier = ">=4.6" },
     { name = "celery", specifier = ">=5.2.7" },
@@ -595,8 +592,8 @@ testproject = [
 
 [[package]]
 name = "baseapp-django-channels-graphql-ws"
-version = "1.0.0rc9"
-source = { registry = "https://pypi.org/simple" }
+version = "1.0.0rc10"
+source = { git = "https://github.com/silverlogic/DjangoChannelsGraphqlWs?rev=282dd4dc216877d452c639bc26797a7d04fb0975#282dd4dc216877d452c639bc26797a7d04fb0975" }
 dependencies = [
     { name = "aiohttp" },
     { name = "asgiref" },
@@ -605,10 +602,6 @@ dependencies = [
     { name = "graphene" },
     { name = "graphql-core" },
     { name = "msgpack" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/31/ee/4fe18b890d007c1f1404017f2296c6162023e7bc30ae5a7c65f632990263/baseapp_django_channels_graphql_ws-1.0.0rc9.tar.gz", hash = "sha256:0ee8db6c8aac2c27d2984cc6f591a845f4dbc2a2367e99a097aed9a21cfc04dc", size = 28831, upload-time = "2024-04-11T14:27:26.631Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/4c/c2/365821f86375757f01a3699cda3311f3a56d0b4d6015b98c42a0bd3b4523/baseapp_django_channels_graphql_ws-1.0.0rc9-py3-none-any.whl", hash = "sha256:48cade346fb29bd4cc640ff627b33c13c38979eb3f093084269115139c762be2", size = 34278, upload-time = "2024-04-11T14:27:24.787Z" },
 ]
 
 [[package]]
@@ -2201,11 +2194,11 @@ wheels = [
 
 [[package]]
 name = "graphql-core"
-version = "3.2.12"
+version = "3.2.13"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/11/7f/671c1046fe72ba5b62be2de3979ea9e61cb3dba8f1edfb880b811f8bdf8b/graphql_core-3.2.12.tar.gz", hash = "sha256:4579094d5fc8a1a59555a9b18e51b320779d9bbc63e2302c519af0c4919d9543", size = 531478, upload-time = "2026-08-27T20:25:48.607Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4e/5e/aa0d4e701b50db0bab71b125dd19ddb0f98c638d008d6f7e3d8ce9cbc92e/graphql_core-3.2.13.tar.gz", hash = "sha256:bb81dd266d4ab7b591bd976f1b23639d97776cb9ac1a896b4a93c271e11ed618", size = 577471, upload-time = "2026-09-27T12:22:57.136Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4e/b6/304c572e79b9e82982dbd5091e26a89f5018e565868091d804c2142f6ba5/graphql_core-3.2.12-py3-none-any.whl", hash = "sha256:3d8f104532070485e13caa4092c1e71cda2ba6cffd96e98f285111ee10ed1e51", size = 216042, upload-time = "2026-08-27T20:25:47.234Z" },
+    { url = "https://files.pythonhosted.org/packages/1f/b4/b52a324b0b297ddc49b8ea31a51d39fae63132f694a267b9381d94e2e0af/graphql_core-3.2.13-py3-none-any.whl", hash = "sha256:b0eb04f2c31556b2310a77c8fb53c74e8b56570f8fea594d89c6ef7827dbb497", size = 268191, upload-time = "2026-09-27T12:22:55.661Z" },
 ]
 
 [[package]]
