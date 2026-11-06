@@ -5,7 +5,11 @@ build-backend = 'setuptools.build_meta'
 [tool.uv]
 required-version = "0.10.9"
 # baseapp-django-channels-graphql-ws 1.0.0rc9 pins graphql-core==3.2.3, which is vulnerable
-# (CVE-2026-75507, CVE-2026-75508). Projects consuming the [graphql] extra need the same override.
+# (CVE-2026-75507, CVE-2026-75508). uv applies this override to this workspace only: projects
+# consuming the [graphql] extra need the same override in their own pyproject.toml (the
+# baseapp-backend-template already carries it). The interim ends once 1.0.0rc10 is published
+# from https://github.com/silverlogic/DjangoChannelsGraphqlWs/pull/4 (graphql-core >=3.2.13):
+# then bump the [graphql] pin and delete this override.
 override-dependencies = [
     "graphql-core>=3.2.12,<3.3",
 ]
