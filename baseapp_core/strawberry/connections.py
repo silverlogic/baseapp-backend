@@ -8,8 +8,9 @@ import django_filters
 import strawberry
 import strawberry_django
 from django import forms
+from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db import models
-from graphql import GraphQLError
+from graphene_django.forms import GlobalIDFormField, GlobalIDMultipleChoiceField
 from graphql_relay import cursor_to_offset, offset_to_cursor
 from strawberry import relay
 from strawberry.annotation import StrawberryAnnotation
@@ -42,15 +43,17 @@ class CountedConnection(DjangoListConnection[relay.NodeType]):
 
 # Mirrors graphene_django.forms.converter.convert_form_field (most specific class first).
 _FORM_FIELD_TYPES: list[tuple[type, Any]] = [
+    (GlobalIDMultipleChoiceField, list[Optional[strawberry.ID]]),
+    (GlobalIDFormField, strawberry.ID),
     (forms.ModelMultipleChoiceField, list[Optional[strawberry.ID]]),
     (forms.ModelChoiceField, strawberry.ID),
     (forms.MultipleChoiceField, list[Optional[str]]),
     (forms.UUIDField, uuid.UUID),
     (forms.BooleanField, bool),
     (forms.NullBooleanField, bool),
-    (forms.IntegerField, int),
+    (forms.DecimalField, decimal.Decimal),  # Decimal/FloatField subclass IntegerField
     (forms.FloatField, float),
-    (forms.DecimalField, decimal.Decimal),
+    (forms.IntegerField, int),
     (forms.DateTimeField, datetime.datetime),
     (forms.DateField, datetime.date),
     (forms.TimeField, datetime.time),
@@ -74,7 +77,11 @@ def _declared_field_type(model: type[models.Model], field_name: str) -> Any:
     for field in strawberry_type.__strawberry_definition__.fields:
         if field.python_name == field_name and field.type_annotation is not None:
             annotation = field.type_annotation.annotation
-            if isinstance(annotation, str) or type(annotation).__name__ == "StrawberryAuto":
+            if (
+                isinstance(annotation, str)
+                or annotation is Any
+                or type(annotation).__name__ == "StrawberryAuto"
+            ):
                 return None
             args = [a for a in get_args(annotation) if a is not type(None)]
             return args[0] if args else annotation
@@ -89,10 +96,10 @@ def _filter_type(filterset_class: type[django_filters.FilterSet], name: str, fil
         model = filterset_class._meta.model
         try:
             model_field = model._meta.get_field(filter_field.field_name)
-        except Exception:
+        except FieldDoesNotExist:
             model_field = None
         if model_field is not None:
-            if model_field.is_relation:
+            if model_field.is_relation or model_field.primary_key:
                 return strawberry.ID
             if declared := _declared_field_type(model, model_field.name):
                 return declared
@@ -137,7 +144,8 @@ def apply_filterset(
     data = {k: getattr(v, "value", v) for k, v in data.items() if v is not None}
     filterset = filterset_class(data=data, queryset=queryset, request=info.context)
     if not filterset.is_valid():
-        raise GraphQLError(str(filterset.errors.get_json_data()))
+        # Same exception and payload as DjangoFilterConnectionField.
+        raise ValidationError(filterset.form.errors.as_json())
     return filterset.qs
 
 
@@ -190,7 +198,8 @@ class BaseAppConnectionExtension(StrawberryDjangoConnectionExtension):
         filters = {k: kwargs.pop(k) for k in list(kwargs) if k in self.filter_names}
         if offset:
             if kwargs.get("before") is not None:
-                raise GraphQLError(
+                # Same exception and text as graphene-django.
+                raise ValueError(
                     f"You can't provide a `before` value at the same time as an `offset` value "
                     f"to properly paginate the `{info.field_name}` connection."
                 )

@@ -23,6 +23,15 @@ class OrganizationsPlugin(BaseAppPlugin):
             graphql_mutations=[
                 "baseapp_organizations.graphql.mutations.OrganizationsMutations",
             ],
+            strawberry_queries=[
+                "baseapp_organizations.strawberry.queries.OrganizationsQueries",
+            ],
+            strawberry_mutations=[
+                "baseapp_organizations.strawberry.mutations.OrganizationsMutations",
+            ],
+            strawberry_types=[
+                "baseapp_organizations.strawberry.types.OrganizationType",
+            ],
             required_packages=[
                 {"baseapp_profiles": "Organizations are tied to a Profile."},
             ],

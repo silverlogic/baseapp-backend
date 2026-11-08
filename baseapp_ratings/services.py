@@ -71,3 +71,7 @@ class RatableMetadataService(SharedServiceProvider):
 
     def annotate_queryset(self, queryset) -> QuerySet:
         return self._get_model().annotate_queryset(queryset)
+
+    def get_annotations(self, model_cls) -> dict:
+        """The `annotate_queryset` expressions for `model_cls`, for per-field optimizer hints."""
+        return self._get_model().get_annotations(model_cls)

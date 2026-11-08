@@ -19,3 +19,8 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
         from .graphql.shared_interfaces import get_chat_rooms_interface
 
         registry.register("ChatRoomsInterface", get_chat_rooms_interface)
+
+    def register_strawberry_shared_interfaces(self, registry) -> None:
+        from .strawberry import get_chat_rooms_interface
+
+        registry.register("ChatRoomsInterface", get_chat_rooms_interface)

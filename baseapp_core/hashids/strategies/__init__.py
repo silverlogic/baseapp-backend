@@ -12,6 +12,15 @@ if TYPE_CHECKING:
     from django.db.models import Model
 
 
+def is_strawberry_info(info: Any) -> bool:
+    """True when `info` comes from the Strawberry schema (it needs the Strawberry type lookup)."""
+    try:
+        from strawberry import Schema
+    except ImportError:
+        return False
+    return isinstance(getattr(info, "schema", None), Schema)
+
+
 def _is_public_id_logic_enabled() -> bool:
     """`settings.ENABLE_PUBLIC_ID_LOGIC` (default True).
 

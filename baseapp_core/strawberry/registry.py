@@ -39,6 +39,10 @@ class StrawberryTypeRegistry:
 type_registry = StrawberryTypeRegistry()
 
 
+class UnregisteredModelError(KeyError):
+    """A KeyError, so strawberry-django defers the field type until the model is registered."""
+
+
 @dataclass(frozen=True)
 class ModelLazyType(LazyType):
     """A LazyType resolved through the registry at schema build time, not by module path."""
@@ -48,7 +52,7 @@ class ModelLazyType(LazyType):
     def resolve_type(self) -> type[Any]:
         strawberry_type = type_registry.get_type_for_model(self.model)
         if strawberry_type is None:
-            raise LookupError(f"No Strawberry type registered for {self.model.__name__}")
+            raise UnregisteredModelError(f"No Strawberry type registered for {self.model.__name__}")
         return strawberry_type
 
 

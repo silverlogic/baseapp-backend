@@ -3,6 +3,7 @@ from typing import Any
 
 import strawberry
 import strawberry_django
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.db.models import Model, QuerySet
 from strawberry.types import Info
@@ -99,6 +100,17 @@ class AbstractUserType:
         if not info.context.user.has_perm(f"{user_app_label}.view_user", node):
             return None
         return node
+
+    # PageInterface.metadata hook (baseapp_pages).
+    metadata_only = ("first_name", "last_name")
+
+    @classmethod
+    def resolve_metadata(cls, root: Model, info: Info) -> Any:
+        if not apps.is_installed("baseapp_pages"):
+            return None
+        from baseapp_pages.strawberry.interfaces import MetadataValues
+
+        return MetadataValues(meta_title=root.get_full_name())
 
 
 def user_interfaces() -> tuple[type, ...]:

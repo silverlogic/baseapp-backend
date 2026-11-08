@@ -135,30 +135,34 @@ class AbstractRatableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
         Adds `_ratable_ratings_count`, `_ratable_ratings_sum`,
         `_ratable_ratings_average`, `_ratable_is_ratings_enabled`.
         """
-        model_cls = queryset.model
+        return queryset.annotate(**cls.get_annotations(queryset.model))
+
+    @classmethod
+    def get_annotations(cls, model_cls) -> dict[str, models.Expression]:
+        """The expressions `annotate_queryset` adds, for a queryset of `model_cls`."""
         ct_id = ContentType.objects.get_for_model(model_cls).pk
         metadata_qs = cls.objects.filter(
             target__content_type_id=ct_id,
             target__object_id=OuterRef("pk"),
         )
-        return queryset.annotate(
-            _ratable_ratings_count=Coalesce(
+        return {
+            "_ratable_ratings_count": Coalesce(
                 Subquery(metadata_qs.values("ratings_count")[:1]),
                 Value(0),
             ),
-            _ratable_ratings_sum=Coalesce(
+            "_ratable_ratings_sum": Coalesce(
                 Subquery(metadata_qs.values("ratings_sum")[:1]),
                 Value(0),
             ),
-            _ratable_ratings_average=Coalesce(
+            "_ratable_ratings_average": Coalesce(
                 Subquery(metadata_qs.values("ratings_average")[:1]),
                 Value(0.0),
             ),
-            _ratable_is_ratings_enabled=Coalesce(
+            "_ratable_is_ratings_enabled": Coalesce(
                 Subquery(
                     metadata_qs.values("is_ratings_enabled")[:1],
                     output_field=models.BooleanField(),
                 ),
                 Value(True),
             ),
-        )
+        }

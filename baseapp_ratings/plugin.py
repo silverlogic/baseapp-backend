@@ -31,6 +31,15 @@ class RatingsPlugin(BaseAppPlugin):
             graphql_mutations=[
                 "baseapp_ratings.graphql.mutations.RatingsMutations",
             ],
+            strawberry_queries=[
+                "baseapp_ratings.strawberry.queries.RatingsQueries",
+            ],
+            strawberry_mutations=[
+                "baseapp_ratings.strawberry.mutations.RatingsMutations",
+            ],
+            strawberry_types=[
+                "baseapp_ratings.strawberry.types.RateType",
+            ],
             # Deps
             required_packages=[],
             optional_packages=[

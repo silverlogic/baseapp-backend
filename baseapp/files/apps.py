@@ -14,12 +14,17 @@ class FilesConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
         super().ready()
         from . import checks  # noqa: F401  (registers the private storage checks)
 
-    def register_shared_services(self, registry):
+    def register_shared_services(self, registry) -> None:
         from .services.metadata import FilesMetadataService
 
         registry.register(FilesMetadataService())
 
-    def register_graphql_shared_interfaces(self, registry):
+    def register_graphql_shared_interfaces(self, registry) -> None:
         from .graphql.interfaces import get_files_interface
+
+        registry.register("FilesInterface", get_files_interface)
+
+    def register_strawberry_shared_interfaces(self, registry) -> None:
+        from .strawberry import get_files_interface
 
         registry.register("FilesInterface", get_files_interface)

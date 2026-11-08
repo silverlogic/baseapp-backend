@@ -21,6 +21,17 @@ class PackageConfig(BaseAppConfig, GraphQLContributor, ServicesContributor):
         registry.register("UserActivityLogInterface", get_user_activity_log_interface)
         registry.register("ProfileActivityLogInterface", get_profile_activity_log_interface)
 
+    def register_strawberry_shared_interfaces(self, registry) -> None:
+        from .strawberry import (
+            get_node_activity_log_interface,
+            get_profile_activity_log_interface,
+            get_user_activity_log_interface,
+        )
+
+        registry.register("NodeActivityLogInterface", get_node_activity_log_interface)
+        registry.register("UserActivityLogInterface", get_user_activity_log_interface)
+        registry.register("ProfileActivityLogInterface", get_profile_activity_log_interface)
+
     def register_shared_services(self, registry) -> None:
         from .services import ActivityLogService
 

@@ -36,6 +36,18 @@ class CommentsPlugin(BaseAppPlugin):
             graphql_subscriptions=[
                 "baseapp_comments.graphql.subscriptions.CommentsSubscriptions",
             ],
+            strawberry_queries=[
+                "baseapp_comments.strawberry.queries.CommentsQueries",
+            ],
+            strawberry_mutations=[
+                "baseapp_comments.strawberry.mutations.CommentsMutations",
+            ],
+            strawberry_subscriptions=[
+                "baseapp_comments.strawberry.subscriptions.CommentsSubscriptions",
+            ],
+            strawberry_types=[
+                "baseapp_comments.strawberry.types.CommentType",
+            ],
             # Deps
             required_packages=[],
             optional_packages=[

@@ -29,6 +29,9 @@ class FilesPlugin(BaseAppPlugin):
             graphql_mutations=[
                 "baseapp.files.graphql.mutations.FilesMutations",
             ],
+            strawberry_queries=["baseapp.files.strawberry.queries.FilesQueries"],
+            strawberry_mutations=["baseapp.files.strawberry.mutations.FilesMutations"],
+            strawberry_types=["baseapp.files.strawberry.types.FileType"],
             v1_urlpatterns=self.v1_urlpatterns,
             django_extra_settings={
                 # STORAGES alias holding uploaded files. Point it at a private storage

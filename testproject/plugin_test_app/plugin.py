@@ -45,4 +45,6 @@ class TestPlugin(BaseAppPlugin):
             graphql_queries=["testproject.plugin_test_app.graphql.queries.TestQueries"],
             graphql_mutations=["testproject.plugin_test_app.graphql.mutations.TestMutations"],
             graphql_subscriptions=[],
+            strawberry_queries=["testproject.plugin_test_app.strawberry.TestQueries"],
+            strawberry_mutations=["testproject.plugin_test_app.strawberry.TestMutations"],
         )

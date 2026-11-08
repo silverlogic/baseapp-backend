@@ -22,6 +22,12 @@ class FollowsPlugin(BaseAppPlugin):
             graphql_mutations=[
                 "baseapp_follows.graphql.mutations.FollowsMutations",
             ],
+            strawberry_mutations=[
+                "baseapp_follows.strawberry.mutations.FollowsMutations",
+            ],
+            strawberry_types=[
+                "baseapp_follows.strawberry.types.FollowType",
+            ],
             # Deps
             required_packages=[
                 {

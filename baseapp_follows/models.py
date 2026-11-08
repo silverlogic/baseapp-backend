@@ -39,22 +39,26 @@ class AbstractFollowableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
         Resolves the model ContentType id once per call (Django's ContentType manager
         caches until `ContentType.objects.clear_cache()`).
         """
-        model_cls = queryset.model
+        return queryset.annotate(**cls.get_annotations(queryset.model))
+
+    @classmethod
+    def get_annotations(cls, model_cls) -> dict[str, models.Expression]:
+        """The expressions `annotate_queryset` adds, for a queryset of `model_cls`."""
         ct_id = ContentType.objects.get_for_model(model_cls).pk
         metadata_qs = cls.objects.filter(
             target__content_type_id=ct_id,
             target__object_id=OuterRef("pk"),
         )
-        return queryset.annotate(
-            _followable_followers_count=Coalesce(
+        return {
+            "_followable_followers_count": Coalesce(
                 Subquery(metadata_qs.values("followers_count")[:1]),
                 Value(0),
             ),
-            _followable_following_count=Coalesce(
+            "_followable_following_count": Coalesce(
                 Subquery(metadata_qs.values("following_count")[:1]),
                 Value(0),
             ),
-        )
+        }
 
 
 class AbstractFollow(DocumentIdMixin, RelayModel, TimeStampedModel):

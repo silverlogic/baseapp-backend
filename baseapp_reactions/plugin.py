@@ -35,6 +35,15 @@ class ReactionsPlugin(BaseAppPlugin):
             graphql_mutations=[
                 "baseapp_reactions.graphql.mutations.ReactionsMutations",
             ],
+            strawberry_queries=[
+                "baseapp_reactions.strawberry.queries.ReactionsQueries",
+            ],
+            strawberry_mutations=[
+                "baseapp_reactions.strawberry.mutations.ReactionsMutations",
+            ],
+            strawberry_types=[
+                "baseapp_reactions.strawberry.types.ReactionType",
+            ],
             # Deps
             required_packages=[],
             optional_packages=[

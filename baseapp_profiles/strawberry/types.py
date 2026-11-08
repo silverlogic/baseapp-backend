@@ -5,6 +5,7 @@ from typing import Any, Optional
 import strawberry
 import strawberry_django
 import swapper
+from django.apps import apps
 from django.db.models import Model, Q, QuerySet
 from strawberry.types import Info
 
@@ -136,6 +137,19 @@ class AbstractProfileType:
         if not info.context.user.has_perm(f"{profile_app_label}.view_profile", node):
             return None
         return node
+
+    # PageInterface.metadata hook (baseapp_pages).
+    metadata_only = ("name", "image")
+
+    @classmethod
+    def resolve_metadata(cls, root: Model, info: Info) -> Any:
+        if not apps.is_installed("baseapp_pages"):
+            return None
+        from baseapp_pages.strawberry.interfaces import MetadataValues
+
+        return MetadataValues(
+            meta_title=root.name, meta_og_type="profile", meta_og_image=root.image
+        )
 
 
 # Columns read by the permission backends; deferred columns would be refetched per access.

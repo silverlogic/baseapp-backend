@@ -176,7 +176,11 @@ class AbstractReactableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
         sort on a real expression. Mirrors the public-name pattern
         `CommentableMetadata.annotate_queryset` uses for `replies_count_total`.
         """
-        model_cls = queryset.model
+        return queryset.annotate(**cls.get_annotations(queryset.model))
+
+    @classmethod
+    def get_annotations(cls, model_cls) -> dict:
+        """The expressions `annotate_queryset` adds, keyed by alias, for rows of `model_cls`."""
         ct_id = ContentType.objects.get_for_model(model_cls).pk
         metadata_qs = cls.objects.filter(
             target__content_type_id=ct_id,
@@ -187,17 +191,17 @@ class AbstractReactableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
                 "total"
             )[:1]
         )
-        return queryset.annotate(
-            _reactable_reactions_count=Subquery(metadata_qs.values("reactions_count")[:1]),
-            _reactable_is_reactions_enabled=Coalesce(
+        return {
+            "_reactable_reactions_count": Subquery(metadata_qs.values("reactions_count")[:1]),
+            "_reactable_is_reactions_enabled": Coalesce(
                 Subquery(
                     metadata_qs.values("is_reactions_enabled")[:1],
                     output_field=models.BooleanField(),
                 ),
                 Value(True),
             ),
-            reactions_count_total=Coalesce(
+            "reactions_count_total": Coalesce(
                 Cast(total_subq, output_field=IntegerField()),
                 Value(0),
             ),
-        )
+        }

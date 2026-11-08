@@ -23,3 +23,8 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
         from .graphql.interfaces import get_comments_interface
 
         registry.register("CommentsInterface", get_comments_interface)
+
+    def register_strawberry_shared_interfaces(self, registry) -> None:
+        from .strawberry import get_comments_interface
+
+        registry.register("CommentsInterface", get_comments_interface)

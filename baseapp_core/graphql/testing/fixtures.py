@@ -93,6 +93,20 @@ def graphql_query(
     return resp
 
 
+@pytest.fixture(scope="session", autouse=True)
+def build_graphql_schemas() -> None:
+    """Import the URL conf (which builds the schemas) while every app is installed.
+
+    Otherwise a test that disables apps can be the first to load it and leave a schema
+    without those apps for the rest of the session.
+    """
+    from importlib import import_module
+
+    from django.conf import settings
+
+    import_module(settings.ROOT_URLCONF)
+
+
 @pytest.fixture
 def graphql_client(django_client) -> GraphQLClient:
     def func(*args, **kwargs) -> HttpResponse | tuple[HttpResponse, QueryData]:

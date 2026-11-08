@@ -61,3 +61,7 @@ class CommentableMetadataService(SharedServiceProvider):
         """Annotate queryset with commentable metadata for N+1 prevention."""
         CommentableMetadata = self._get_model()
         return CommentableMetadata.annotate_queryset(queryset)
+
+    def get_annotations(self, model_cls) -> dict:
+        """The `annotate_queryset` expressions for rows of `model_cls`, keyed by alias."""
+        return self._get_model().get_annotations(model_cls)

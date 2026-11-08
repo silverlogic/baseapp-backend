@@ -49,7 +49,9 @@ class PublicIdGraphQLResolverStrategy(GraphQLResolverStrategy):
 
         _type = _content_type.model_class().__name__
 
-        if hasattr(info.schema, "get_type_by_name"):  # Strawberry
+        from baseapp_core.hashids.strategies import is_strawberry_info
+
+        if is_strawberry_info(info):
             from baseapp_core.strawberry.relay import strawberry_node_type
 
             return getattr(strawberry_node_type(info, _type, only_type), "get_node", None)

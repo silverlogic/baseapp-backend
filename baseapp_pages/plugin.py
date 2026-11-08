@@ -23,6 +23,15 @@ class PagesPlugin(BaseAppPlugin):
             graphql_mutations=[
                 "baseapp_pages.graphql.mutations.PagesMutations",
             ],
+            strawberry_queries=[
+                "baseapp_pages.strawberry.queries.PagesQueries",
+            ],
+            strawberry_mutations=[
+                "baseapp_pages.strawberry.mutations.PagesMutations",
+            ],
+            strawberry_types=[
+                "baseapp_pages.strawberry.types.PageType",
+            ],
             required_packages=[],
             optional_packages=[
                 "baseapp_comments",

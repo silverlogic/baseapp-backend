@@ -19,6 +19,9 @@ class ContentFeedPlugin(BaseAppPlugin):
             graphql_mutations=[
                 "baseapp.content_feed.graphql.mutations.ContentFeedMutations",
             ],
+            strawberry_queries=["baseapp.content_feed.strawberry.queries.ContentFeedQueries"],
+            strawberry_mutations=["baseapp.content_feed.strawberry.mutations.ContentFeedMutations"],
+            strawberry_types=["baseapp.content_feed.strawberry.types.ContentPostType"],
             required_packages=[],
             optional_packages=[
                 {

@@ -13,6 +13,9 @@ class MentionsPlugin(BaseAppPlugin):
     def get_settings(self) -> PackageSettings:
         return PackageSettings(
             INSTALLED_APPS=[],
+            strawberry_types=[
+                "baseapp_mentions.strawberry.types.MentionType",
+            ],
             required_packages=[
                 {
                     "baseapp_profiles": "Mention targets a Profile via FK; this app relies on baseapp_profiles' Profile model."

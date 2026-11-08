@@ -24,3 +24,10 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
         from .graphql.interfaces import FollowsInterface
 
         registry.register("FollowsInterface", FollowsInterface)
+
+    def register_strawberry_shared_interfaces(
+        self, registry: GraphQLSharedInterfaceRegistry
+    ) -> None:
+        from .strawberry import get_follows_interface
+
+        registry.register("FollowsInterface", get_follows_interface)

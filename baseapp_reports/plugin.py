@@ -25,6 +25,16 @@ class ReportsPlugin(BaseAppPlugin):
             graphql_mutations=[
                 "baseapp_reports.graphql.mutations.ReportsMutations",
             ],
+            strawberry_queries=[
+                "baseapp_reports.strawberry.queries.ReportsQueries",
+            ],
+            strawberry_mutations=[
+                "baseapp_reports.strawberry.mutations.ReportsMutations",
+            ],
+            strawberry_types=[
+                "baseapp_reports.strawberry.types.ReportTypeType",
+                "baseapp_reports.strawberry.types.ReportObjectType",
+            ],
             # Deps
             required_packages=[],
             optional_packages=[

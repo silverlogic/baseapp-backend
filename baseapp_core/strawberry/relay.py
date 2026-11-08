@@ -2,10 +2,10 @@ from typing import TYPE_CHECKING, Any, Optional
 
 import strawberry
 from django.db.models import Model, QuerySet
-from graphql import GraphQLError
 from graphql_relay import from_global_id
 from strawberry.types import Info
 from strawberry_django.optimizer import optimize
+from strawberry_django.resolvers import django_resolver
 from strawberry_django.utils.typing import get_django_definition
 
 from baseapp_core.hashids.strategies import (
@@ -21,10 +21,6 @@ from .registry import type_registry
 
 if TYPE_CHECKING:
     from strawberry.types.base import StrawberryObjectDefinition
-
-
-def is_strawberry_info(info: Any) -> bool:
-    return hasattr(getattr(info, "schema", None), "get_type_by_name")
 
 
 def strawberry_node_type(info: Info, type_name: str, only_type: Any = None) -> Any:
@@ -51,6 +47,7 @@ class Node:
     """Relay `Node` whose ids come from the hashids strategies, byte-identical to Graphene's."""
 
     @strawberry.field(name="id", description="The ID of the object")
+    @django_resolver(qs_hook=None)  # may read DocumentId: async-safe in subscription payloads
     def global_id(self, info: Info) -> strawberry.ID:
         return strawberry.ID(
             graphql_to_global_id_using_strategy(self, info._raw_info.parent_type.name, self.pk)
@@ -89,7 +86,8 @@ def decode_global_id(info: Info, global_id: str) -> tuple[type | None, Any]:
             if _is_model_public_id_compatible(model):
                 return type_registry.get_type_for_model(model), pk
     if global_id.isdigit():
-        raise GraphQLError("Can't resolve PK query without a specific type provided")
+        # Same exception and text as the Graphene PK strategy.
+        raise Exception("Can't resolve PK query without a specific type provided")
     type_name, pk = from_global_id(global_id)
     if not type_name:
         return None, None
@@ -127,14 +125,14 @@ def typed_node_field(type_ref: Any, **kwargs: Any) -> Any:
         if id.isdigit():
             model = get_django_definition(expected).model
             if not _is_model_pk_compatible(model):
-                raise GraphQLError(f"{model.__name__} is not compatible with the PK strategy")
+                raise Exception(f"{model.__name__} is not compatible with the PK strategy")
             return expected.get_node(info, int(id))
         strawberry_type, pk = decode_global_id(info, id)
         if strawberry_type is None:
             return None
         if strawberry_type is not expected:
             name = expected.__strawberry_definition__.name
-            raise GraphQLError(f"Must receive a {name} id.")
+            raise AssertionError(f"Must receive a {name} id.")
         return strawberry_type.get_node(info, pk)
 
     kwargs.setdefault("description", "The ID of the object")

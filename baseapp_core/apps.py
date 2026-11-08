@@ -18,3 +18,9 @@ class PackageConfig(AppConfig):
         # Apply all registered pgtrigger domain triggers (chats, etc.).
         # Runs before makemigrations autodetection sees `_meta.triggers`.
         apply_pgtrigger_tracks()
+
+        try:
+            from .strawberry.subscriptions import install_graphene_bridge
+        except ImportError:  # the `strawberry` extra is not installed
+            return
+        install_graphene_bridge()

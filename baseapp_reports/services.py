@@ -52,3 +52,7 @@ class ReportableMetadataService(SharedServiceProvider):
     def annotate_queryset(self, queryset) -> QuerySet:
         """Annotate `queryset` with reportable metadata for N+1 prevention."""
         return self._get_model().annotate_queryset(queryset)
+
+    def get_annotations(self, model_cls) -> dict:
+        """The `annotate_queryset` expressions for `model_cls`, for per-field optimizer hints."""
+        return self._get_model().get_annotations(model_cls)

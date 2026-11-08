@@ -28,6 +28,10 @@ class ChatsPlugin(BaseAppPlugin):
             graphql_subscriptions=[
                 "baseapp_chats.graphql.subscriptions.ChatsSubscriptions",
             ],
+            strawberry_queries=["baseapp_chats.strawberry.queries.ChatsQueries"],
+            strawberry_mutations=["baseapp_chats.strawberry.mutations.ChatsMutations"],
+            strawberry_subscriptions=["baseapp_chats.strawberry.subscriptions.ChatsSubscriptions"],
+            strawberry_types=["baseapp_chats.strawberry.types.ChatRoomType"],
             required_packages=[
                 {"baseapp_profiles": "Chat participants and message authors are Profile FKs."},
             ],

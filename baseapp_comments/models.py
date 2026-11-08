@@ -218,7 +218,11 @@ class AbstractCommentableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel)
         Resolves the model ContentType id once per call (Django's ContentType manager caches
         until ContentType.objects.clear_cache()).
         """
-        model_cls = queryset.model
+        return queryset.annotate(**cls.get_annotations(queryset.model))
+
+    @classmethod
+    def get_annotations(cls, model_cls) -> dict:
+        """The expressions `annotate_queryset` adds, keyed by alias, for rows of `model_cls`."""
         ct_id = ContentType.objects.get_for_model(model_cls).pk
         metadata_qs = cls.objects.filter(
             target__content_type_id=ct_id,
@@ -243,7 +247,7 @@ class AbstractCommentableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel)
                 Subquery(replies_total_sq, output_field=IntegerField()),
                 Value(0),
             )
-        return queryset.annotate(**annotations)
+        return annotations
 
 
 # Both init_swapped_models calls are placed here so that when the first one (Comment)

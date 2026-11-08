@@ -2,6 +2,38 @@
 
 Status: proposal, backed by a proof of concept on branch `feature/strawberry-poc` of `baseapp-backend`.
 
+## 0. Status of the full port
+
+Every package in `baseapp-backend` now has a Strawberry port next to its Graphene code, served
+at `/graphql/strawberry`. Graphene still serves `/graphql` unchanged. How the port is built:
+
+- **Schema parity gate.** `manage.py strawberry_parity` diffs the two schemas;
+  `baseapp_core/tests/test_strawberry_schema_parity.py` fails on any mismatch in ported types.
+  Setting `STRAWBERRY_SCHEMA_COMPLETE=1` also fails on anything not ported.
+- **Behaviour gate.** `GRAPHQL_TEST_ENDPOINT=/graphql/strawberry` runs every existing GraphQL
+  test against Strawberry. The same suite then proves both implementations.
+- **Relations like `fields = "__all__"`.** `django_type(..., relations=...)` exposes model
+  relations to other registered types when the schema is built, with Graphene's names,
+  nullability and FilterSet arguments. No package declares fields for another package's models.
+- **Mutations delegate to the Graphene logic.** Strawberry declares the input and payload types;
+  `graphene_relay_mutation` runs the Graphene class's `mutate_and_get_payload` and maps the
+  result. Both endpoints share one implementation while they coexist. Several resolvers also
+  reuse the Graphene types' plain helper methods for the same reason.
+- **Subscriptions are bridged.** Every Graphene `Subscription.broadcast` also publishes to a
+  Strawberry channel group, so publishers are not touched until Graphene goes away.
+- **Authentication mirrors Graphene.** The Strawberry view uses the DRF authentication classes
+  listed in `GRAPHENE["MIDDLEWARE"]` (or `STRAWBERRY_AUTHENTICATION_CLASSES`).
+
+What removing Graphene then involves, mechanically:
+
+1. Move each Graphene mutation's `mutate_and_get_payload` body and the resolver helpers the
+   Strawberry code reuses into Graphene-free modules, and point the Strawberry code there.
+2. Replace each `Subscription.broadcast(group=G, payload=P)` call with
+   `broadcast(subscription_group("<Name>", G), P)` and delete the bridge.
+3. Set `STRAWBERRY_AUTHENTICATION_CLASSES` explicitly, drop the Graphene branches of the
+   hashids strategies, and delete every `<package>/graphql/` module and the Graphene settings.
+4. Serve Strawberry at `/graphql`, then unpin Strawberry and move to graphql-core 3.3.
+
 ## 1. Recommendation
 
 Migrate, incrementally. Strawberry (`strawberry-graphql` + `strawberry-graphql-django`) can carry

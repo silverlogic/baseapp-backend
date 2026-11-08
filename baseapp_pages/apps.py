@@ -19,3 +19,8 @@ class PackageConfig(BaseAppConfig, GraphQLContributor, ServicesContributor):
         from .graphql.interfaces import get_page_interface
 
         registry.register("PageInterface", get_page_interface)
+
+    def register_strawberry_shared_interfaces(self, registry) -> None:
+        from .strawberry import get_page_interface
+
+        registry.register("PageInterface", get_page_interface)

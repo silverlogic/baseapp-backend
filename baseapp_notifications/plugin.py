@@ -34,6 +34,16 @@ class NotificationsPlugin(BaseAppPlugin):
             graphql_subscriptions=[
                 "baseapp_notifications.graphql.subscriptions.NotificationsSubscription",
             ],
+            strawberry_mutations=[
+                "baseapp_notifications.strawberry.mutations.NotificationsMutations",
+            ],
+            strawberry_subscriptions=[
+                "baseapp_notifications.strawberry.subscriptions.NotificationsSubscription",
+            ],
+            strawberry_types=[
+                "baseapp_notifications.strawberry.types.NotificationType",
+                "baseapp_notifications.strawberry.types.NotificationSettingType",
+            ],
             # Plugin deps
             required_packages=[],
             optional_packages=[

@@ -166,3 +166,43 @@ docker compose run --rm -e DJANGO_SETTINGS_MODULE=testproject.settings web \
 docker compose run --rm -e GRAPHQL_TEST_ENDPOINT=/graphql/strawberry web \
   uv run pytest baseapp_comments/tests -q --reuse-db
 ```
+
+## Lessons from the full port
+
+- **Async safety.** `Node.id` and every `strawberry_django.field` resolver run through
+  `django_resolver`, so they work in subscription payloads. Plain `strawberry.field` resolvers
+  that touch the ORM don't; use `strawberry_django.field` on anything a subscription can reach.
+  Schema extensions must not touch the ORM in `on_execute` for websocket operations.
+- **Lazy types in return annotations** crash like `graphql_type=` does on Strawberry Django
+  fields: on interfaces use `@strawberry.field(graphql_type=Optional[Lazy])`. To give such a
+  field optimizer hints, set its `.store` after the class is defined (see `Node` and pages'
+  `_MetadataOptimizerStore`).
+- **Metadata services**: give the metadata model a `get_annotations(model_cls)` classmethod and
+  have `annotate_queryset` call it; interface fields then annotate only their own expression with
+  `model_from_info(info)`.
+- **Virtual relations through `DocumentId`**: a callable `prefetch_related` hint returning
+  `Prefetch(fk, DocumentId.objects.prefetch_related(GenericPrefetch("content_object",
+  [optimize(Model._default_manager.all(), info)])))`, plus `only=["<fk>_id"]` (follows). For
+  connections, also window-paginate the prefetch and `mark_optimized_by_prefetching` (mentions).
+- **GFK targets through `DocumentId`**: `prefetch_related=["target_document__content_object"]` and
+  copy `mapped_public_id` from the loaded `DocumentId` in the resolver (reports, ratings).
+- **FilterSets that order by annotated aliases** need the annotation added in a FilterSet
+  subclass: the FilterSet runs after the optimizer (comments).
+- **A root connection whose resolver needs a FilterSet argument**: leave `filterset_class` off,
+  declare the arguments on the resolver and call `apply_filterset` yourself (`allReportTypes`).
+- **Graphene `filter_fields={"id": ["exact"]}`** becomes a FilterSet with a relay-id filter
+  (`GlobalIDFilter` maps to `ID`).
+- **Optional apps**: arguments, fields and relations that depend on an installed app can be
+  declared conditionally in the class body with `apps.is_installed(...)`.
+- **Shared interfaces without `id` in Graphene** (`graphene.Interface`, not `RelayNode`) must not
+  inherit `Node`.
+- **Types a shared interface references** belong in the interface's module, so they exist even
+  when a test disables the package that normally lists them.
+- **Non-model values returned for a model type** need `is_type_of` on the type.
+- **`TranslatedField`**: `only=[to_attribute(name, code) for code, _ in settings.LANGUAGES]`.
+- **`max_results=`** reproduces Graphene's `max_limit`; nullable FKs that Django would INNER JOIN
+  (unmanaged views) should be prefetched instead of select-related.
+- **Tests that patch Graphene internals** (`GraphQLView.schema`, `graphene_settings.SCHEMA`,
+  Graphene type modules) only test Graphene; they are expected to fail on the Strawberry endpoint.
+- **Exact query-count assertions** pin Graphene's counts; Strawberry often needs fewer. Re-pin them
+  to Strawberry's counts when Graphene is removed.

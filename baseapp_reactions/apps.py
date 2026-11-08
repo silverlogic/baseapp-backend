@@ -23,3 +23,8 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
         from .graphql.interfaces import get_reactions_interface
 
         registry.register("ReactionsInterface", get_reactions_interface)
+
+    def register_strawberry_shared_interfaces(self, registry) -> None:
+        from .strawberry import get_reactions_interface
+
+        registry.register("ReactionsInterface", get_reactions_interface)

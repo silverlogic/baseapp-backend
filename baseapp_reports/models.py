@@ -175,15 +175,19 @@ class AbstractReportableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
         resolving `reports_count` for many rows of the same model.
         Adds `_reportable_reports_count` (zero-total dict when no metadata row exists).
         """
-        model_cls = queryset.model
+        return queryset.annotate(**cls.get_annotations(queryset.model))
+
+    @classmethod
+    def get_annotations(cls, model_cls) -> dict[str, models.Expression]:
+        """The expressions `annotate_queryset` adds, for a queryset of `model_cls`."""
         ct_id = ContentType.objects.get_for_model(model_cls).pk
         metadata_qs = cls.objects.filter(
             target__content_type_id=ct_id,
             target__object_id=OuterRef("pk"),
         )
-        return queryset.annotate(
-            _reportable_reports_count=Coalesce(
+        return {
+            "_reportable_reports_count": Coalesce(
                 Subquery(metadata_qs.values("reports_count")[:1]),
                 Value(default_reports_count(), output_field=models.JSONField()),
             ),
-        )
+        }

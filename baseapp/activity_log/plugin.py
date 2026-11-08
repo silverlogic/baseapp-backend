@@ -26,6 +26,13 @@ class ActivityLogPlugin(BaseAppPlugin):
             graphql_queries=[
                 "baseapp.activity_log.graphql.queries.ActivityLogQueries",
             ],
+            strawberry_queries=[
+                "baseapp.activity_log.strawberry.queries.ActivityLogQueries",
+            ],
+            strawberry_types=[
+                "baseapp.activity_log.strawberry.types.ActivityLogType",
+                "baseapp.activity_log.strawberry.types.NodeLogEventType",
+            ],
             # Plugin deps
             required_packages=[],
             optional_packages=[],

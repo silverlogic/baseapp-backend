@@ -81,7 +81,7 @@ class BlocksInterface(Node):
 
 # Both FKs point at Profile; strawberry-django only adds the first one when Block is listed
 # under a Profile, so the other would be refetched per row.
-@django_type(Block, only=["actor_id", "target_id"])
+@django_type(Block, only=["actor_id", "target_id"], relations=("user",))
 class BlockType(Node):
     actor: ProfileLazyType | None
     target: ProfileLazyType | None
