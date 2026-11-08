@@ -21,7 +21,9 @@ class CoreQueries:
 
 
 @strawberry.type
-class CoreMutations:
+class DeleteNodeMutations:
+    """Opt-in root `deleteNode` (Graphene's `DeleteNode.Field()`)."""
+
     delete_node = delete_node_mutation()
 
 
@@ -44,13 +46,13 @@ def build_schema(
 
     Every registered model type is included, after its relations are exposed.
     """
-    subscriptions = tuple(subscriptions)
+    mutations, subscriptions = tuple(mutations), tuple(subscriptions)
     expose_all_relations()
     registered = [entry.strawberry_type for entry in type_registry.entries().values()]
     schema_kwargs["types"] = [*schema_kwargs.get("types", ()), *dict.fromkeys(registered)]
     return Schema(
         query=merge_types("Query", (*queries, CoreQueries)),
-        mutation=merge_types("Mutation", (*mutations, CoreMutations)),
+        mutation=merge_types("Mutation", mutations) if mutations else None,
         subscription=merge_types("Subscription", tuple(subscriptions)) if subscriptions else None,
         extensions=[DjangoOptimizerExtension, OperationContextExtension, *extensions],
         **schema_kwargs,
