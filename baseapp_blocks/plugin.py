@@ -21,6 +21,9 @@ class BlocksPlugin(BaseAppPlugin):
             graphql_mutations=[
                 "baseapp_blocks.graphql.mutations.BlocksMutations",
             ],
+            strawberry_mutations=[
+                "baseapp_blocks.strawberry.mutations.BlocksMutations",
+            ],
             required_packages=[
                 {
                     "baseapp_profiles": "Block.actor / Block.target are Profile FKs and BlocksInterface resolvers disambiguate by the current Profile."

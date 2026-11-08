@@ -33,6 +33,9 @@ class ProfilesPlugin(BaseAppPlugin):
             graphql_mutations=[
                 "baseapp_profiles.graphql.mutations.ProfilesMutations",
             ],
+            strawberry_types=[
+                "baseapp_profiles.strawberry.types.ProfileType",
+            ],
             required_packages=[],
             optional_packages=[
                 "baseapp_blocks",

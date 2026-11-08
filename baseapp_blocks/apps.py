@@ -20,3 +20,8 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
         from .graphql.interfaces import get_blocks_interface
 
         registry.register("BlocksInterface", get_blocks_interface)
+
+    def register_strawberry_shared_interfaces(self, registry) -> None:
+        from .strawberry import get_blocks_interface
+
+        registry.register("BlocksInterface", get_blocks_interface)

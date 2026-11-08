@@ -5,7 +5,9 @@ import baseapp_wagtail.urls as baseapp_wagtail_urls
 from baseapp_core.graphql import GraphQLView
 from baseapp_core.plugins import plugin_registry
 from baseapp_core.rest_framework.routers import DefaultRouter
+from baseapp_core.strawberry.views import GraphQLView as StrawberryGraphQLView
 from baseapp_e2e.rest_framework.views import E2EViewSet
+from testproject.strawberry_schema import schema as strawberry_schema
 
 __all__ = [
     "urlpatterns",
@@ -20,6 +22,7 @@ router.register(r"e2e", E2EViewSet, basename="e2e")
 
 urlpatterns = [
     path("graphql", GraphQLView.as_view(graphiql=True)),
+    path("graphql/strawberry", StrawberryGraphQLView.as_view(schema=strawberry_schema)),
     path("admin/", admin.site.urls),
     path("v1/", include((v1_urlpatterns, "v1"), namespace="v1")),
     path("", include(baseapp_wagtail_urls)),

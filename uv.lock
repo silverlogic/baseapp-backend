@@ -358,6 +358,10 @@ socialauth = [
     { name = "social-auth-app-django" },
     { name = "social-auth-core" },
 ]
+strawberry = [
+    { name = "strawberry-graphql" },
+    { name = "strawberry-graphql-django" },
+]
 urlshortening = [
     { name = "short-url" },
 ]
@@ -369,7 +373,7 @@ wagtail = [
 [package.dev-dependencies]
 dev = [
     { name = "ast-grep-cli" },
-    { name = "baseapp-backend", extra = ["auth", "graphql", "messagetemplates", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "urlshortening", "wagtail"] },
+    { name = "baseapp-backend", extra = ["auth", "graphql", "messagetemplates", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "strawberry", "urlshortening", "wagtail"] },
     { name = "black" },
     { name = "channels" },
     { name = "channels-redis" },
@@ -396,7 +400,7 @@ dev = [
     { name = "urllib3" },
 ]
 testproject = [
-    { name = "baseapp-backend", extra = ["auth", "graphql", "messagetemplates", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "urlshortening", "wagtail"] },
+    { name = "baseapp-backend", extra = ["auth", "graphql", "messagetemplates", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "strawberry", "urlshortening", "wagtail"] },
     { name = "black" },
     { name = "channels" },
     { name = "channels-redis" },
@@ -479,17 +483,19 @@ requires-dist = [
     { name = "social-auth-app-django", marker = "extra == 'socialauth'", specifier = ">=6.0.1,<7.0.0" },
     { name = "social-auth-core", marker = "extra == 'socialauth'", specifier = ">=5.0.0,<6.0.0" },
     { name = "stevedore", specifier = ">=5.7.0" },
+    { name = "strawberry-graphql", marker = "extra == 'strawberry'", specifier = ">=0.327.7,<0.328" },
+    { name = "strawberry-graphql-django", marker = "extra == 'strawberry'", specifier = ">=0.91.0,<0.92" },
     { name = "stripe", marker = "extra == 'payments'", specifier = ">=11.5.0,<15" },
     { name = "swapper", specifier = ">=1.3" },
     { name = "wagtail", marker = "extra == 'wagtail'", specifier = ">=7.0" },
     { name = "wagtail-headless-preview", marker = "extra == 'wagtail'", specifier = "==0.8" },
 ]
-provides-extras = ["auth", "referrals", "graphql", "pages", "payments", "notifications", "urlshortening", "messagetemplates", "wagtail", "socialauth", "pdf", "api-key"]
+provides-extras = ["auth", "referrals", "graphql", "strawberry", "pages", "payments", "notifications", "urlshortening", "messagetemplates", "wagtail", "socialauth", "pdf", "api-key"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "ast-grep-cli", specifier = ">=0.42.3" },
-    { name = "baseapp-backend", extras = ["auth", "graphql", "messagetemplates", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "urlshortening", "wagtail"], editable = "." },
+    { name = "baseapp-backend", extras = ["auth", "graphql", "messagetemplates", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "strawberry", "urlshortening", "wagtail"], editable = "." },
     { name = "black", specifier = "==26.3.1" },
     { name = "channels", specifier = "==4.3.1" },
     { name = "channels-redis", specifier = "==4.3.0" },
@@ -516,7 +522,7 @@ dev = [
     { name = "urllib3", specifier = "==2.8.0" },
 ]
 testproject = [
-    { name = "baseapp-backend", extras = ["auth", "graphql", "messagetemplates", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "urlshortening", "wagtail"], editable = "." },
+    { name = "baseapp-backend", extras = ["auth", "graphql", "messagetemplates", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "strawberry", "urlshortening", "wagtail"], editable = "." },
     { name = "black", specifier = "==26.3.1" },
     { name = "channels", specifier = "==4.3.1" },
     { name = "channels-redis", specifier = "==4.3.0" },
@@ -1138,6 +1144,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/c6/7e/37732ea80eebc30e976e4cdab15c190bc42d96959a42e38ddf6f8c60468f/coverage-7.15.4-cp315-cp315t-win_amd64.whl", hash = "sha256:288bde2a2d7ab6b6c2d7252fcde8b524387f2d970bdba9658fc6f8bbcaef0f9b", size = 225895, upload-time = "2026-08-06T13:50:17.928Z" },
     { url = "https://files.pythonhosted.org/packages/c6/08/1e00f7923eaaba45fb3d51dd794125fc766304b1df264f3a9c6557bfb30e/coverage-7.15.4-cp315-cp315t-win_arm64.whl", hash = "sha256:68be5e1de60ff13c9095bbec0e5a7fa45b33b101752215b91345ea1f61c4a278", size = 225213, upload-time = "2026-08-06T13:50:19.981Z" },
     { url = "https://files.pythonhosted.org/packages/b4/d9/e70c286c979378f061d8266e279b686ab0b0b688e1fe0af864684f23a77d/coverage-7.15.4-py3-none-any.whl", hash = "sha256:964730a1e9de9c0cf11be6a1a3c79ce419c34882842abd256086ba4698705e84", size = 214332, upload-time = "2026-08-06T13:50:22.192Z" },
+]
+
+[[package]]
+name = "cross-web"
+version = "0.7.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/47/ba/8a36b60ef65ba7645d1328af7da6717174b1cb3df7fc6e2785bc7f023876/cross_web-0.7.1.tar.gz", hash = "sha256:67f871856086da02230785d3d0c26c06c720f947c532ba95aed446a2f0a2ff82", size = 333336, upload-time = "2026-11-06T12:40:49.532Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b8/1d/b4026176658af1f95f6823b1722136a4a9e6faa90b40bdf2307e0fab5e7c/cross_web-0.7.1-py3-none-any.whl", hash = "sha256:5371ba320978f715bc73fa1bf520439ee55e85d5df5a663a8999378c15f05616", size = 25494, upload-time = "2026-11-06T12:40:48.38Z" },
 ]
 
 [[package]]
@@ -3932,6 +3950,36 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/db/a1/3b8ed9c1fc3aa6eebb57732d924ddaa0500ecc3b638d0454816320994383/stevedore-5.9.1.tar.gz", hash = "sha256:e97a2667923efda926e8713fde6a73616df68210a3cbc6f02b48967b676fd8bf", size = 518111, upload-time = "2026-08-20T15:25:14.754Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c5/97/bba6e7ec2f5498b9dcb7b1b6400086b80ae5a8ebaff4b25e8c8add75f439/stevedore-5.9.1-py3-none-any.whl", hash = "sha256:5c8ff3a9f336cc1a06ac0f597bc79d11a2f950bfd32e290ca56b5a301fafafbf", size = 54931, upload-time = "2026-08-20T15:25:13.602Z" },
+]
+
+[[package]]
+name = "strawberry-graphql"
+version = "0.327.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cross-web" },
+    { name = "graphql-core" },
+    { name = "packaging" },
+    { name = "python-dateutil" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/03/dd/928852c07ceb4881281bd1d9472f11d2bbe1ccb5b400f1aba2529a754f53/strawberry_graphql-0.327.7.tar.gz", hash = "sha256:b84f968f8753037508c8f370b8c64da408e3bf759553d6e814a5a4dc88152fb2", size = 243869, upload-time = "2026-09-07T19:36:24.934Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0d/09/e0deac5d4f466f6ecae1b91a91d1a291aad1890960a5d891bb80bda3425c/strawberry_graphql-0.327.7-py3-none-any.whl", hash = "sha256:0c653f16fe2a35b5a672fb5492cee5243a2f44f209247a946eddc1a6399b2284", size = 347817, upload-time = "2026-09-07T19:36:22.775Z" },
+]
+
+[[package]]
+name = "strawberry-graphql-django"
+version = "0.91.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "asgiref" },
+    { name = "django" },
+    { name = "strawberry-graphql" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/96/1e/5028456b4177746031d57a8056a07d4028012612b50d3d7c56b3c594c3c1/strawberry_graphql_django-0.91.0.tar.gz", hash = "sha256:284bb982221a5f33dff1e9c2c444db6fdc6748e0e92feac1318b700d060e01d6", size = 97755, upload-time = "2026-10-01T15:34:04.839Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/63/24/889187f49e9d3087794752c103721eb48db32aeb130cb0fdfc44d107ec81/strawberry_graphql_django-0.91.0-py3-none-any.whl", hash = "sha256:a803a0465bd7c0a9ca0ddff8e0cec8c73789f51ce234efe235b8612a1e109ffe", size = 122128, upload-time = "2026-10-01T15:34:03.68Z" },
 ]
 
 [[package]]

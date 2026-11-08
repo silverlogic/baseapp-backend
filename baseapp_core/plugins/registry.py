@@ -239,5 +239,14 @@ class PluginRegistry:
         subscriptions_classes_or_strings = self.get("graphql_subscriptions")
         return self._collect_classes_or_strings(subscriptions_classes_or_strings)
 
+    def get_all_strawberry_queries(self) -> List[Any]:
+        return self._collect_classes_or_strings(self.get("strawberry_queries"))
+
+    def get_all_strawberry_mutations(self) -> List[Any]:
+        return self._collect_classes_or_strings(self.get("strawberry_mutations"))
+
+    def get_all_strawberry_types(self) -> List[Any]:
+        return self._collect_classes_or_strings(self.get("strawberry_types"))
+
 
 plugin_registry = PluginRegistry()

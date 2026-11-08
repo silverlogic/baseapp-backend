@@ -57,6 +57,12 @@ class GraphQLContributor:
         """
         pass
 
+    def register_strawberry_shared_interfaces(
+        self, registry: "GraphQLSharedInterfaceRegistry"
+    ) -> None:
+        """Strawberry counterpart of register_graphql_shared_interfaces (register a getter)."""
+        pass
+
 
 class SerializersContributor:
     """
@@ -89,6 +95,7 @@ class BaseAppConfig(AppConfig):
             graphql_shared_interfaces,
             shared_serializer_registry,
             shared_services,
+            strawberry_shared_interfaces,
         )
 
         if isinstance(self, ServicesContributor):
@@ -97,3 +104,4 @@ class BaseAppConfig(AppConfig):
             self.register_shared_serializers(shared_serializer_registry)
         if isinstance(self, GraphQLContributor):
             self.register_graphql_shared_interfaces(graphql_shared_interfaces)
+            self.register_strawberry_shared_interfaces(strawberry_shared_interfaces)

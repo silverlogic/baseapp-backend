@@ -73,3 +73,5 @@ class GraphQLSharedInterfaceRegistry:
 
 
 graphql_shared_interfaces = GraphQLSharedInterfaceRegistry()
+# Strawberry interfaces register a getter function, never the class itself.
+strawberry_shared_interfaces = GraphQLSharedInterfaceRegistry()
