@@ -245,6 +245,9 @@ class PluginRegistry:
     def get_all_strawberry_mutations(self) -> List[Any]:
         return self._collect_classes_or_strings(self.get("strawberry_mutations"))
 
+    def get_all_strawberry_subscriptions(self) -> List[Any]:
+        return self._collect_classes_or_strings(self.get("strawberry_subscriptions"))
+
     def get_all_strawberry_types(self) -> List[Any]:
         return self._collect_classes_or_strings(self.get("strawberry_types"))
 

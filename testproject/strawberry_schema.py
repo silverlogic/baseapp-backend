@@ -6,6 +6,7 @@ from baseapp_profiles.strawberry.extensions import CurrentProfileExtension
 schema = build_schema(
     queries=[UsersQueries, *plugin_registry.get_all_strawberry_queries()],
     mutations=plugin_registry.get_all_strawberry_mutations(),
+    subscriptions=plugin_registry.get_all_strawberry_subscriptions(),
     types=plugin_registry.get_all_strawberry_types(),
     extensions=[CurrentProfileExtension],
 )

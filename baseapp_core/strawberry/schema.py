@@ -36,6 +36,7 @@ def build_schema(
     *,
     queries: Iterable[type],
     mutations: Iterable[type] = (),
+    subscriptions: Iterable[type] = (),
     extensions: Sequence[type[SchemaExtension] | SchemaExtension] = (),
     **schema_kwargs: Any,
 ) -> Schema:
@@ -43,12 +44,14 @@ def build_schema(
 
     Every registered model type is included, after its relations are exposed.
     """
+    subscriptions = tuple(subscriptions)
     expose_all_relations()
     registered = [entry.strawberry_type for entry in type_registry.entries().values()]
     schema_kwargs["types"] = [*schema_kwargs.get("types", ()), *dict.fromkeys(registered)]
     return Schema(
         query=merge_types("Query", (*queries, CoreQueries)),
         mutation=merge_types("Mutation", (*mutations, CoreMutations)),
+        subscription=merge_types("Subscription", tuple(subscriptions)) if subscriptions else None,
         extensions=[DjangoOptimizerExtension, OperationContextExtension, *extensions],
         **schema_kwargs,
     )

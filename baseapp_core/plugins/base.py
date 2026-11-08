@@ -56,6 +56,7 @@ class PackageSettings(BaseModel):
     graphql_subscriptions: List[Any] = Field(default_factory=list)
     strawberry_queries: List[Any] = Field(default_factory=list)
     strawberry_mutations: List[Any] = Field(default_factory=list)
+    strawberry_subscriptions: List[Any] = Field(default_factory=list)
     strawberry_types: List[Any] = Field(default_factory=list)
 
     # --- Plugin deps ---
