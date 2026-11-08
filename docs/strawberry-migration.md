@@ -24,6 +24,27 @@ at `/graphql/strawberry`. Graphene still serves `/graphql` unchanged. How the po
 - **Authentication mirrors Graphene.** The Strawberry view uses the DRF authentication classes
   listed in `GRAPHENE["MIDDLEWARE"]` (or `STRAWBERRY_AUTHENTICATION_CLASSES`).
 
+Verification on the port branches:
+
+| Check | Result |
+|---|---|
+| `baseapp-backend` full suite, Graphene endpoint | 1957 passed, 0 failed |
+| `baseapp-backend` full suite, Strawberry endpoint | 1933 passed, 24 failed (22 expected, see below; the other 2 since fixed) |
+| Template full suite, Graphene endpoint | 611 passed, 0 failed |
+| Template full suite, Strawberry endpoint | 595 passed, 16 failed (all expected) |
+| Schema diff, test project and template | only the dropped `_debug` / `DjangoDebug*` |
+| Frontend: `relay-compiler` on all 135 documents against each schema | identical `__generated__` output |
+
+The expected Strawberry failures fall into three groups:
+
+- Tests whose documents select `_debug` (dropped on purpose).
+- Tests that patch Graphene internals (`GraphQLView.schema`, Graphene type modules).
+- Exact query-count assertions pinned to Graphene, where Strawberry needs fewer queries
+  (comments listing 13 → 7, users list 5 → 1, follows list 10 → 6). Re-pin them at removal.
+
+The Strawberry suite must run on a fresh test database (`--create-db`). Transactional tests flush
+data that migrations create (Wagtail's root page), and a reused database keeps that loss.
+
 What removing Graphene then involves, mechanically:
 
 1. Move each Graphene mutation's `mutate_and_get_payload` body and the resolver helpers the
