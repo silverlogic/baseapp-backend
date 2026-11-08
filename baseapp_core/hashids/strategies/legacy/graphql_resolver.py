@@ -46,6 +46,13 @@ class LegacyGraphQLResolverStrategy(GraphQLResolverStrategy):
 
     def get_instance_from_global_id(self, info, global_id, get_node=False) -> "Model":
         gid_type, gid = from_global_id(global_id)
+        if hasattr(info.schema, "get_type_by_name"):  # Strawberry
+            from baseapp_core.strawberry.relay import strawberry_node_type
+
+            strawberry_type = strawberry_node_type(info, gid_type)
+            if get_node:
+                return strawberry_type.get_node(info, gid)
+            return strawberry_type.__strawberry_django_definition__.model.objects.get(pk=gid)
         object_type = info.schema.get_type(gid_type)
         if get_node:
             return object_type.graphene_type.get_node(info, gid)

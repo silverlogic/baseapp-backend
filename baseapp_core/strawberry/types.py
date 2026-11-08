@@ -49,17 +49,33 @@ class PublicIdOptimizerStore(OptimizerStore):
         return self.with_resolved_callables(info).with_prefix(prefix, info=info)
 
 
-def django_type(model: type[Model], **kwargs: Any) -> Callable[[_T], _T]:
+def django_type(
+    model: type[Model],
+    *,
+    filterset_class: Any = None,
+    relations: str | tuple[str, ...] | list[str] = (),
+    exclude_relations: tuple[str, ...] | list[str] = (),
+    **kwargs: Any,
+) -> Callable[[_T], _T]:
     """`strawberry_django.type` with BaseApp defaults.
 
     - The GraphQL name is the model name (as Graphene's `DjangoObjectType` did).
     - The type is registered for `type_for_model(model)` lookups; later registrations override.
+    - `filterset_class` gives relation-derived connections to this type their filter arguments.
+    - `relations="__all__"` (or a tuple of names) exposes model relations to other registered
+      types when the schema is built, like graphene-django's `fields = "__all__"`.
     """
 
     def wrapper(cls: _T) -> _T:
         kwargs.setdefault("name", model.__name__)
         processed = strawberry_django.type(model, **kwargs)(cls)
-        type_registry.register(model, processed)
+        type_registry.register(
+            model,
+            processed,
+            filterset_class=filterset_class,
+            relations=relations if relations == "__all__" else tuple(relations),
+            exclude=tuple(exclude_relations),
+        )
         return processed
 
     return wrapper

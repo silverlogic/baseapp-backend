@@ -183,6 +183,8 @@ GRAPHENE = {
     ),
     "SCHEMA_OUTPUT": "schema.graphql",
 }
+# GRAPHQL_TEST_ENDPOINT=/graphql/strawberry runs the GraphQL test clients against Strawberry.
+GRAPHENE["TESTING_ENDPOINT"] = env("GRAPHQL_TEST_ENDPOINT", default="") or "/graphql"
 
 # Must be absolute URLs for use in emails.
 MEDIA_ROOT = str(BASE_DIR.parent / "media")

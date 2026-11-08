@@ -1,4 +1,8 @@
-"""Strawberry GraphQL layer (proof of concept), served side by side with the Graphene schema."""
+"""Strawberry GraphQL layer, served side by side with the Graphene schema."""
+
+from .optimizer import install as _install_optimizer_overrides
+
+_install_optimizer_overrides()
 
 from .connections import CountedConnection  # noqa
 from .mutations import (  # noqa

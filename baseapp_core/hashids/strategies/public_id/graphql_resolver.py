@@ -49,6 +49,11 @@ class PublicIdGraphQLResolverStrategy(GraphQLResolverStrategy):
 
         _type = _content_type.model_class().__name__
 
+        if hasattr(info.schema, "get_type_by_name"):  # Strawberry
+            from baseapp_core.strawberry.relay import strawberry_node_type
+
+            return getattr(strawberry_node_type(info, _type, only_type), "get_node", None)
+
         graphene_type = info.schema.get_type(_type)
         if graphene_type is None:
             raise Exception(f'Relay Node "{_type}" not found in schema')

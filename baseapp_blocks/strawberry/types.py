@@ -16,6 +16,7 @@ from baseapp_core.strawberry import (
     model_from_info,
     type_for_model,
 )
+from baseapp_core.strawberry.connections import connection
 
 Block = swapper.load_model("baseapp_blocks", "Block")
 Profile = swapper.load_model("baseapp_profiles", "Profile")
@@ -38,13 +39,13 @@ def _metadata_annotation(name: str, builder: str) -> dict[str, Callable[[Info], 
 class BlocksInterface(Node):
     """Blocks fields for any blockable model. Optimizer hints live on the fields themselves."""
 
-    @strawberry_django.connection(CountedConnection[BlockLazyType] | None)
+    @connection(CountedConnection[BlockLazyType] | None)
     def blockers(self, info: Info) -> Iterable[Model]:
         if info.context.user.has_perm("baseapp_blocks.view_block-blockers", self):
             return self.blockers.all()
         return Block.objects.none()
 
-    @strawberry_django.connection(CountedConnection[BlockLazyType] | None)
+    @connection(CountedConnection[BlockLazyType] | None)
     def blocking(self, info: Info) -> Iterable[Model]:
         if info.context.user.has_perm("baseapp_blocks.view_block-blocking", self):
             return self.blocking.all()

@@ -1,24 +1,39 @@
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from django.db.models import Model
 from strawberry.types.lazy_type import LazyType
+
+
+@dataclass
+class TypeEntry:
+    strawberry_type: type
+    filterset_class: Any = None
+    relations: Literal["__all__"] | tuple[str, ...] = ()
+    exclude: tuple[str, ...] = ()
 
 
 class StrawberryTypeRegistry:
     """Model -> Strawberry type map. The last registration wins, so projects can override types."""
 
     def __init__(self) -> None:
-        self._types: dict[type[Model], type] = {}
+        self._entries: dict[type[Model], TypeEntry] = {}
 
-    def register(self, model: type[Model], strawberry_type: type) -> None:
-        self._types[model] = strawberry_type
+    def register(self, model: type[Model], strawberry_type: type, **options: Any) -> None:
+        self._entries[model] = TypeEntry(strawberry_type, **options)
+
+    def get_entry(self, model: type[Model]) -> TypeEntry | None:
+        for candidate in (model, model._meta.concrete_model, *model.__mro__):
+            if candidate in self._entries:
+                return self._entries[candidate]
+        return None
 
     def get_type_for_model(self, model: type[Model]) -> type | None:
-        for candidate in (model, model._meta.concrete_model, *model.__mro__):
-            if candidate in self._types:
-                return self._types[candidate]
-        return None
+        entry = self.get_entry(model)
+        return entry.strawberry_type if entry else None
+
+    def entries(self) -> dict[type[Model], TypeEntry]:
+        return dict(self._entries)
 
 
 type_registry = StrawberryTypeRegistry()

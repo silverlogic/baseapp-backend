@@ -43,3 +43,11 @@ class PackageConfig(
 
         registry.register("ProfileInterface", get_profile_interface)
         registry.register("ProfilesInterface", get_profiles_list_interface)
+
+    def register_strawberry_shared_interfaces(
+        self, registry: GraphQLSharedInterfaceRegistry
+    ) -> None:
+        from .strawberry import get_profile_interface, get_profiles_interface
+
+        registry.register("ProfileInterface", get_profile_interface)
+        registry.register("ProfilesInterface", get_profiles_interface)

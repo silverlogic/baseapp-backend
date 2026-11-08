@@ -1,7 +1,8 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 import strawberry
 from django.db.models import Model, QuerySet
+from graphql import GraphQLError
 from graphql_relay import from_global_id
 from strawberry.types import Info
 from strawberry_django.optimizer import optimize
@@ -22,6 +23,22 @@ if TYPE_CHECKING:
     from strawberry.types.base import StrawberryObjectDefinition
 
 
+def is_strawberry_info(info: Any) -> bool:
+    return hasattr(getattr(info, "schema", None), "get_type_by_name")
+
+
+def strawberry_node_type(info: Info, type_name: str, only_type: Any = None) -> Any:
+    """The Strawberry `Node` type named `type_name`, with Graphene's lookup errors."""
+    origin = getattr(info.schema.get_type_by_name(type_name), "origin", None)
+    if origin is None:
+        raise Exception(f'Relay Node "{type_name}" not found in schema')
+    if only_type is not None:
+        assert origin is only_type, f"Must receive a {only_type.__name__} id."
+    if not issubclass(origin, Node):
+        raise Exception(f'ObjectType "{type_name}" does not implement the "Node" interface.')
+    return origin
+
+
 def model_from_info(info: Info) -> type[Model] | None:
     """Return the Django model behind the GraphQL type that owns the field being resolved."""
     type_def = info.schema.get_type_by_name(info._raw_info.parent_type.name)
@@ -38,6 +55,11 @@ class Node:
         return strawberry.ID(
             graphql_to_global_id_using_strategy(self, info._raw_info.parent_type.name, self.pk)
         )
+
+    @classmethod
+    def resolve_id_attr(cls) -> str:
+        """Lookup attribute strawberry-django uses when it lists this type's model nodes."""
+        return "pk"
 
     @classmethod
     def get_node(cls, info: Info, pk: Any) -> Model | None:
@@ -66,16 +88,13 @@ def decode_global_id(info: Info, global_id: str) -> tuple[type | None, Any]:
             model = content_type.model_class()
             if _is_model_public_id_compatible(model):
                 return type_registry.get_type_for_model(model), pk
+    if global_id.isdigit():
+        raise GraphQLError("Can't resolve PK query without a specific type provided")
     type_name, pk = from_global_id(global_id)
     if not type_name:
         return None, None
     type_def: "StrawberryObjectDefinition | None" = info.schema.get_type_by_name(type_name)
-    strawberry_type = getattr(type_def, "origin", None)
-    if strawberry_type is not None:
-        model = get_django_definition(strawberry_type).model
-        if global_id.isdigit() and not _is_model_pk_compatible(model):
-            return None, None
-    return strawberry_type, pk
+    return getattr(type_def, "origin", None), pk
 
 
 def get_instance_from_global_id(info: Info, global_id: str) -> Model | None:
@@ -98,3 +117,25 @@ def resolve_node(info: Info, id: strawberry.ID) -> Node | None:
 
 def node_field() -> Any:
     return strawberry.field(resolver=resolve_node, description="Fetches an object given its ID")
+
+
+def typed_node_field(type_ref: Any, **kwargs: Any) -> Any:
+    """Graphene's `Node.Field(SomeType)`: `field(id: ID!): SomeType`, rejecting other types' ids."""
+
+    def resolver(info: Info, id: strawberry.ID) -> Any:
+        expected = type_ref.resolve_type() if hasattr(type_ref, "resolve_type") else type_ref
+        if id.isdigit():
+            model = get_django_definition(expected).model
+            if not _is_model_pk_compatible(model):
+                raise GraphQLError(f"{model.__name__} is not compatible with the PK strategy")
+            return expected.get_node(info, int(id))
+        strawberry_type, pk = decode_global_id(info, id)
+        if strawberry_type is None:
+            return None
+        if strawberry_type is not expected:
+            name = expected.__strawberry_definition__.name
+            raise GraphQLError(f"Must receive a {name} id.")
+        return strawberry_type.get_node(info, pk)
+
+    kwargs.setdefault("description", "The ID of the object")
+    return strawberry.field(resolver=resolver, graphql_type=Optional[type_ref], **kwargs)

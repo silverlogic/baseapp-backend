@@ -26,6 +26,7 @@ class AuthPlugin(BaseAppPlugin):
         return PackageSettings(
             required_packages=["baseapp_core"],
             v1_urlpatterns=self.v1_urlpatterns,
+            strawberry_types=["baseapp_auth.strawberry.types.UserType"],
         )
 
     @staticmethod

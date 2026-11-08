@@ -11,7 +11,6 @@ from django.test import override_settings
 from graphql_relay import to_global_id
 from rest_framework.authtoken.models import Token
 
-from baseapp_core.strawberry.parity import compare_schemas
 from baseapp_core.strawberry.testing import (
     GRAPHENE_GRAPHQL_URL,
     STRAWBERRY_GRAPHQL_URL,
@@ -65,31 +64,6 @@ BLOCK_TOGGLE_WITH_CLIENT_ID = BLOCK_TOGGLE_GRAPHQL.replace(
     "blockToggle(input: $input) {\n    clientMutationId\n    errors { field messages }\n    blockDeletedId",
 )
 
-# Differences accepted on purpose. Anything else in the ported types fails the test.
-ACCEPTED_SCHEMA_DIFFS = {
-    # Strawberry interfaces that inherit Node declare it; additive, harmless for clients.
-    ("BlocksInterface", "interfaces"),
-    # Graphene's DjangoConnectionField `offset` arg; no frontend operation uses it.
-    ("BlocksInterface.blockers(offset)", "argument"),
-    ("BlocksInterface.blocking(offset)", "argument"),
-    ("Profile.blockers(offset)", "argument"),
-    ("Profile.blocking(offset)", "argument"),
-}
-# Only partially ported in the POC: these types' remaining fields still live in Graphene alone.
-PARTIAL_TYPES = {"Profile", "Query", "Mutation"}
-NOT_YET_PORTED = {
-    ("Profile", "interfaces"),
-    ("Block.user", "missing field"),  # needs the User type
-    ("BlockTogglePayload._debug", "missing field"),  # DjangoDebug has no Strawberry equivalent
-}
-
-
-def _is_accepted(diff) -> bool:
-    key = (diff.path, diff.kind)
-    if key in ACCEPTED_SCHEMA_DIFFS or key in NOT_YET_PORTED:
-        return True
-    return diff.kind == "missing field" and diff.path.split(".")[0] in PARTIAL_TYPES
-
 
 def _make_superuser(client) -> None:
     client.user.is_superuser = True
@@ -107,15 +81,6 @@ def _assert_not_more_queries(result, label: str) -> None:
         f"{result.report(label)}\nGRAPHENE:{result.graphene.queries.log}"
         f"\nSTRAWBERRY:{result.strawberry.queries.log}"
     )
-
-
-def test_schema_parity_for_ported_types() -> None:
-    from testproject.graphql import schema as graphene_schema
-    from testproject.strawberry_schema import schema as strawberry_schema
-
-    diffs = compare_schemas(graphene_schema.graphql_schema, strawberry_schema._schema)
-    unexpected = [str(d) for d in diffs if not _is_accepted(d)]
-    assert unexpected == [], "\n".join(unexpected)
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)

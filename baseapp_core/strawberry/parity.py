@@ -70,8 +70,13 @@ def _compare_type(name: str, old: GraphQLNamedType, new: GraphQLNamedType) -> li
     if isinstance(new, (GraphQLObjectType, GraphQLInterfaceType)):
         old_ifaces = sorted(i.name for i in old.interfaces)
         new_ifaces = sorted(i.name for i in new.interfaces)
+        if isinstance(new, GraphQLInterfaceType) and "Node" not in old_ifaces:
+            # Strawberry interfaces that inherit Node declare it: additive, harmless for clients.
+            new_ifaces = [i for i in new_ifaces if i != "Node"]
         if old_ifaces != new_ifaces:
-            diffs.append(SchemaDiff(name, "interfaces", str(old_ifaces), str(new_ifaces)))
+            diffs.append(
+                SchemaDiff(name, "interfaces", ", ".join(old_ifaces), ", ".join(new_ifaces))
+            )
 
     if not isinstance(new, (GraphQLObjectType, GraphQLInterfaceType, GraphQLInputObjectType)):
         return diffs
@@ -113,3 +118,14 @@ def compare_schemas(
             continue
         diffs.extend(_compare_type(name, old, new))
     return sorted(diffs)
+
+
+def missing_types(graphene_schema: GraphQLSchema, strawberry_schema: GraphQLSchema) -> list[str]:
+    """Graphene types the Strawberry schema does not define yet."""
+    return sorted(
+        name
+        for name, type_ in graphene_schema.type_map.items()
+        if not is_introspection_type(type_)
+        and not is_specified_scalar_type(type_)
+        and name not in strawberry_schema.type_map
+    )
