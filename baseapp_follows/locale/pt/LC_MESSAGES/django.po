@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-15 20:33+0000\n"
+"POT-Creation-Date: 2026-11-09 03:28+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -20,14 +20,6 @@ msgstr ""
 #: apps.py
 msgid "BaseApp Follows"
 msgstr "BaseApp Seguidores"
-
-#: graphql/mutations.py
-msgid "You don't have permission to perform this action"
-msgstr "Você não tem permissão para realizar esta ação"
-
-#: graphql/mutations.py
-msgid "The owner cannot leave"
-msgstr "O proprietário não pode sair"
 
 #: models.py
 msgid "followers count"
@@ -64,3 +56,11 @@ msgstr "seguidor"
 #: models.py
 msgid "follows"
 msgstr "seguidores"
+
+#: strawberry/mutations.py
+msgid "You don't have permission to perform this action"
+msgstr "Você não tem permissão para realizar esta ação"
+
+#: strawberry/mutations.py
+msgid "The owner cannot leave"
+msgstr "O proprietário não pode sair"

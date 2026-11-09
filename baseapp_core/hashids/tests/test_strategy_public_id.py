@@ -1,10 +1,8 @@
 import uuid
-from unittest.mock import MagicMock
 
 import pytest
 from django.core.exceptions import ValidationError
 
-from baseapp_core.graphql.relay import Node
 from baseapp_core.hashids.strategies.public_id import (
     PublicIdDRFResolverStrategy,
     PublicIdGraphQLResolverStrategy,
@@ -16,6 +14,8 @@ from testproject.testapp.tests.factories import (
     DummyLegacyModelFactory,
     DummyPublicIdModelFactory,
 )
+
+from .helpers import strawberry_info
 
 
 @pytest.mark.django_db
@@ -62,39 +62,6 @@ class TestPublicIdGraphQLResolverStrategy:
         result = resolver.to_global_id(dummy_instance, DummyLegacyModel, dummy_instance.pk)
         assert result is None
 
-    def test_get_node_from_global_id_uses_resolve_id(
-        self, resolver: PublicIdGraphQLResolverStrategy
-    ) -> None:
-        dummy_instance = DummyPublicIdModelFactory()
-        graphene_type_mock = MagicMock()
-        graphene_type_mock._meta.name = "DummyPublicIdModel"
-        graphene_type_mock._meta.interfaces = [Node]
-        graphene_type_mock.get_node = MagicMock(return_value=dummy_instance)
-        mock_info = MagicMock()
-        mock_info.schema.get_type = MagicMock(
-            return_value=MagicMock(graphene_type=graphene_type_mock)
-        )
-
-        result = resolver.get_node_from_global_id(mock_info, dummy_instance.public_id)
-
-        assert result.pk == dummy_instance.pk
-
-    def test_get_node_from_global_id_returns_none_for_nonexistent_id(
-        self, resolver: PublicIdGraphQLResolverStrategy
-    ) -> None:
-        info = MagicMock()
-        random_uuid = uuid.uuid4()
-        with pytest.raises(resolver.NoInstanceFound):
-            resolver.get_node_from_global_id(info, str(random_uuid))
-
-    def test_get_node_from_global_id_returns_none_for_invalid_uuid(
-        self, resolver: PublicIdGraphQLResolverStrategy
-    ) -> None:
-        info = MagicMock()
-        invalid_id = "not-a-uuid"
-        with pytest.raises(ValidationError):
-            resolver.get_node_from_global_id(info, invalid_id)
-
     def test_get_pk_from_global_id(self, resolver: PublicIdGraphQLResolverStrategy) -> None:
         dummy_instance = DummyPublicIdModelFactory()
         assert resolver.get_pk_from_global_id(dummy_instance.public_id) == dummy_instance.pk
@@ -109,12 +76,7 @@ class TestPublicIdGraphQLResolverStrategy:
         self, resolver: PublicIdGraphQLResolverStrategy
     ) -> None:
         dummy_instance = DummyPublicIdModelFactory()
-        info = MagicMock()
-        graphene_type_mock = MagicMock()
-        graphene_type_mock._meta.name = "DummyPublicIdModel"
-        graphene_type_mock._meta.interfaces = [Node]
-        graphene_type_mock.get_node = MagicMock(return_value=dummy_instance)
-        info.schema.get_type = MagicMock(return_value=MagicMock(graphene_type=graphene_type_mock))
+        info = strawberry_info(dummy_instance)
         assert (
             resolver.get_instance_from_global_id(info, dummy_instance.public_id, get_node=True)
             == dummy_instance

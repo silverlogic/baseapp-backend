@@ -19,7 +19,7 @@ class FollowableMetadataService(SharedServiceProvider):
     that has a `DocumentId`. Registered in `apps.py` `ready()`.
 
     Mirrors `baseapp_comments.CommentableMetadataService` so resolvers and
-    `pre_optimization_hook` consumers can stay consistent across packages.
+    optimizer-hint consumers can stay consistent across packages.
     """
 
     @property

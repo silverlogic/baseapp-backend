@@ -46,7 +46,7 @@ class TestRatingsWithoutBaseappProfiles:
 
         with (
             patch(
-                "baseapp_ratings.graphql.mutations.get_obj_from_relay_id",
+                "baseapp_ratings.strawberry.mutations.get_obj_from_relay_id",
                 return_value=target,
             ),
             patch(
@@ -54,11 +54,11 @@ class TestRatingsWithoutBaseappProfiles:
                 return_value=True,
             ),
             patch(
-                "baseapp_ratings.graphql.mutations.DocumentId.get_or_create_for_object",
+                "baseapp_ratings.strawberry.mutations.DocumentId.get_or_create_for_object",
                 return_value=fake_document,
             ),
             patch(
-                "baseapp_ratings.graphql.mutations.RateModel.objects.create",
+                "baseapp_ratings.strawberry.mutations.RateModel.objects.create",
                 return_value=fake_rate,
             ) as create_rate,
         ):
@@ -83,7 +83,7 @@ class TestRatingsWithoutBaseappProfiles:
 
         with (
             patch(
-                "baseapp_ratings.graphql.mutations.get_obj_from_relay_id",
+                "baseapp_ratings.strawberry.mutations.get_obj_from_relay_id",
                 return_value=target,
             ),
             patch(
@@ -91,14 +91,16 @@ class TestRatingsWithoutBaseappProfiles:
                 return_value=True,
             ),
             patch(
-                "baseapp_ratings.graphql.mutations.DocumentId.get_or_create_for_object",
+                "baseapp_ratings.strawberry.mutations.DocumentId.get_or_create_for_object",
                 return_value=object(),
             ),
             patch(
-                "baseapp_ratings.graphql.mutations.RateModel.objects.create",
+                "baseapp_ratings.strawberry.mutations.RateModel.objects.create",
                 return_value=RateModel(pk=2, value=5, user=django_user_client.user),
             ),
-            patch("baseapp_ratings.graphql.mutations.get_pk_from_relay_id") as get_pk_from_relay_id,
+            patch(
+                "baseapp_ratings.strawberry.mutations.get_pk_from_relay_id"
+            ) as get_pk_from_relay_id,
         ):
             response = graphql_user_client(
                 RATE_CREATE_GRAPHQL,
@@ -119,41 +121,25 @@ class TestRatingsWithoutBaseappProfiles:
         self, with_disabled_apps, django_user_client, graphql_user_client
     ) -> None:
         RateModel = swapper.load_model("baseapp_ratings", "Rate")
-        User = swapper.load_model("users", "User")
 
-        root = User(pk=200)
-        fake_rate = RateModel(pk=3, value=5, user=django_user_client.user)
-        fake_content_type = object()
+        user = django_user_client.user
+        fake_rate = RateModel(pk=3, value=5, user=user)
         queryset = Mock()
-        queryset.first.return_value = fake_rate
+        queryset.filter.return_value.first.return_value = fake_rate
 
-        with (
-            patch(
-                "baseapp_core.graphql.relay.Node.get_node_from_global_id",
-                return_value=root,
-            ),
-            patch(
-                "baseapp_ratings.graphql.object_types.ContentType.objects.get_for_model",
-                return_value=fake_content_type,
-            ),
-            patch(
-                "baseapp_ratings.graphql.object_types.RateModel.objects.filter",
-                return_value=queryset,
-            ) as rate_filter,
-        ):
+        with patch(
+            "baseapp_ratings.strawberry.interfaces._rates_of", return_value=queryset
+        ) as rates_of:
             response = graphql_user_client(
                 MY_RATING_QUERY,
-                variables={"id": "target-relay-id"},
+                variables={"id": user.relay_id},
             )
             content = response.json()
 
         assert "errors" not in content
         assert content["data"]["node"]["myRating"]["value"] == 5
-        rate_filter.assert_called_once_with(
-            target_document__content_type=fake_content_type,
-            target_document__object_id=200,
-            user=django_user_client.user,
-        )
+        assert rates_of.call_args.args[0].pk == user.pk
+        queryset.filter.assert_called_once_with(user=user)
 
     def test_add_rate_with_profile_permission_is_disabled_without_profiles(
         self, with_disabled_apps

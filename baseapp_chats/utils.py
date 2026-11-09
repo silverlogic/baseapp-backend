@@ -8,6 +8,7 @@ from django.db.models import Model
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from baseapp_core.graphql import get_pk_from_relay_id
 from baseapp_core.plugins import shared_services
 
 CONTENT_LINKED_PROFILE_ACTOR = "{content_linked_profile_actor}"
@@ -63,13 +64,13 @@ def send_message(
         action_object=action_object,
         extra_data=extra_data,
     )
-    from baseapp_chats.graphql.subscriptions import ChatRoomOnMessage
+    from baseapp_chats.broadcasts import new_message
 
     room.last_message_time = message.created
     room.last_message = message
     room.save()
 
-    ChatRoomOnMessage.new_message(room_id=room_id or room.relay_id, message=message)
+    new_message(message, room_id=room_id or room.relay_id)
 
     return message
 
@@ -188,3 +189,32 @@ def send_new_chat_message_notification(room, message, info) -> None:
                     push_title=_("New message"),
                     push_description=_("You got a new message"),
                 )
+
+
+def remove_marked_unread(room: Model, profile: Model) -> None:
+    UnreadMessageCount.objects.filter(profile=profile, room=room, marked_unread=True).update(
+        marked_unread=False
+    )
+
+
+def read_messages(room: Model, profile: Model, message_ids: Iterable[str] | None = None) -> Any:
+    """Mark `profile`'s unread messages in `room` (or only `message_ids`) as read.
+
+    Returns the queryset of messages that were marked and broadcasts the new unread count.
+    """
+    from baseapp_chats.broadcasts import send_updated_chat_count
+
+    messages_status_qs = MessageStatus.objects.filter(profile_id=profile.pk, is_read=False)
+    if message_ids:
+        message_pks = [get_pk_from_relay_id(message_id) for message_id in message_ids]
+        messages_status_qs = messages_status_qs.filter(message_id__in=message_pks)
+    else:
+        messages_status_qs = messages_status_qs.filter(message__room_id=room.pk)
+
+    messages = Message.objects.filter(
+        pk__in=messages_status_qs.values_list("message_id", flat=True)
+    )
+    messages_status_qs.update(is_read=True, read_at=timezone.now())
+
+    send_updated_chat_count(profile=profile, profile_id=profile.relay_id)
+    return messages

@@ -8,7 +8,7 @@ from strawberry.types import Info
 from baseapp_core.strawberry import CountedConnection, Node, type_for_model
 from baseapp_core.strawberry.connections import connection
 
-from ..graphql.filters import ProfileFilter
+from ..filters import ProfileFilter
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ProfileLazyType = type_for_model(Profile)

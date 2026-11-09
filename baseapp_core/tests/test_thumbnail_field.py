@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from unittest.mock import ANY, MagicMock
 
 from django.core.cache.backends.locmem import LocMemCache
@@ -6,15 +7,19 @@ from django.core.files.storage import InMemoryStorage
 from django.db import models
 from django.db.models.fields.files import FieldFile
 
-from baseapp_core.graphql import fields
-from baseapp_core.graphql.fields import ThumbnailField
+from baseapp_core.strawberry import fields
+from baseapp_core.strawberry.fields import build_thumbnail_url
+
+
+def _resolver(file: FieldFile) -> Callable[..., str | None]:
+    return lambda root, info, width, height: build_thumbnail_url(file, info, width, height)
 
 
 def test_thumbnail_of_file_missing_from_storage_resolves_to_none() -> None:
     # Regression for Sentry BASEAPP-BACKEND-TEMPLATE-G2: a file whose blob is gone from storage
     # raised InvalidImageFormatError and failed the whole GraphQL query.
     missing_file = FieldFile(instance=None, field=models.FileField(), name="files/missing.png")
-    resolver = ThumbnailField().get_resolver(lambda instance, info, **kwargs: missing_file)
+    resolver = _resolver(missing_file)
     info = MagicMock()
 
     assert resolver(None, info, width=48, height=48) is None
@@ -27,7 +32,7 @@ def test_thumbnail_of_file_that_is_not_an_image_resolves_to_none() -> None:
     storage = InMemoryStorage()
     name = storage.save("files/not-an-image.png", ContentFile(b"not an image"))
     not_an_image = FieldFile(instance=None, field=models.FileField(storage=storage), name=name)
-    resolver = ThumbnailField().get_resolver(lambda instance, info, **kwargs: not_an_image)
+    resolver = _resolver(not_an_image)
     info = MagicMock()
 
     assert resolver(None, info, width=48, height=48) is None
@@ -43,7 +48,7 @@ def test_thumbnail_failure_is_cached_briefly(monkeypatch) -> None:
     get_thumbnailer = MagicMock()
     monkeypatch.setattr(fields, "get_thumbnailer", get_thumbnailer)
     missing_file = FieldFile(instance=None, field=models.FileField(), name="files/cached.png")
-    resolver = ThumbnailField().get_resolver(lambda instance, info, **kwargs: missing_file)
+    resolver = _resolver(missing_file)
 
     assert resolver(None, MagicMock(), width=48, height=48) is None
     get_thumbnailer.assert_not_called()
@@ -69,7 +74,7 @@ def test_thumbnail_ignores_failures_cached_by_previous_versions(monkeypatch) -> 
     monkeypatch.setattr(fields, "get_thumbnailer", get_thumbnailer)
     restored_file = FieldFile(instance=None, field=models.FileField(), name="files/restored.png")
     cache.set(f"et:thumbnail:{restored_file.url}:48:48", None, timeout=None)
-    resolver = ThumbnailField().get_resolver(lambda instance, info, **kwargs: restored_file)
+    resolver = _resolver(restored_file)
     info = MagicMock()
     info.context.build_absolute_uri.return_value = "http://testserver/media/thumb.png"
 

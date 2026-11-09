@@ -30,10 +30,10 @@
       "prompt": "Our Message resolver reads root.deleted and root.message_type, but neither is exposed in GraphQL. The messages list issues one extra query per message. Fix it.",
       "files": [],
       "assertions": [
-        "Adds the fields to optimizer.only_fields inside pre_optimization_hook",
+        "Adds the columns to only=[...] on the django_type (or the resolver's strawberry_django.field)",
         "Explains that the optimizer defers columns not selected by GraphQL, so each access triggers a per-row refresh_from_db",
-        "Calls super().pre_optimization_hook(queryset, optimizer)",
-        "Does not suggest graphene_django_optimizer or gql_optimizer.query()",
+        "Does not add select_related/only calls inside the resolver or get_queryset to work around it",
+        "Does not suggest Graphene optimizer APIs (pre_optimization_hook, query_optimizer, gql_optimizer)",
         "Recommends pinning the result with a query-count test"
       ]
     },
@@ -42,23 +42,23 @@
       "prompt": "I'm adding a bookmarksCount field to a shared GraphQL interface that Comment, Page and ContentPost all mix in. How do I keep it from doing a query per row without every consuming block changing its own code?",
       "files": [],
       "assertions": [
-        "Recommends attaching a function to the field's optimizer_hook attribute rather than editing each consumer's pre_optimization_hook",
-        "Explains the hook fires only when the field is selected",
-        "Builds the subquery from compiler.optimizer.model rather than a hardcoded model",
-        "Guards against compiler.optimizer or its model being None",
-        "Mentions the interface needs Meta.model so the AST walker descends into the inline fragment"
+        "Puts an annotate= hint on the interface field (strawberry_django.field) rather than editing each implementing type",
+        "Explains the hint applies only when the field is selected",
+        "Builds the subquery from model_from_info(info) rather than a hardcoded model",
+        "Reads the annotation through a service getter with a query fallback",
+        "Does not suggest Graphene optimizer_hook / pre_optimization_hook"
       ]
     },
     {
       "id": "connection-field-choice",
-      "prompt": "I added a pre_optimization_hook to ProfileObjectType but the profiles list query count didn't change at all. What's going on?",
+      "prompt": "I added only= and annotate= hints for ProfileType but a custom profiles list I wrote still issues a query per profile. What's going on?",
       "files": [],
       "assertions": [
-        "Identifies that graphene_django.filter.DjangoFilterConnectionField does not run the query_optimizer compiler",
-        "Recommends switching to query_optimizer.DjangoConnectionField",
-        "Notes that filtering still works via Meta.filterset_class on the optimized class",
-        "Warns that neighbouring code is an unreliable guide because the repo is mid-migration",
-        "Suggests capturing the query count before and after the switch"
+        "Checks that the field is declared with baseapp_core.strawberry.connections.connection rather than returning a list from a plain strawberry.field",
+        "Checks that the resolver returns an unevaluated queryset (no list(), no optimize() call)",
+        "Checks hand-built Prefetch querysets are passed through optimize(queryset, info)",
+        "Checks whether the resolver reads a column or relation not covered by a hint",
+        "Suggests capturing the query count before and after the fix"
       ]
     },
     {
@@ -79,22 +79,22 @@
       "files": [],
       "assertions": [
         "Guards the model field with apps.is_installed and mixes it in at class-definition time",
-        "Uses apply_if_installed for the GraphQL Meta.fields entry",
+        "Uses apply_if_installed for the django_type(relations=...) entry or strawberry_shared_interfaces.get with a string name",
         "Declares baseapp_profiles in optional_packages, not required_packages",
         "Guards any shared_services.get(...) result against None",
         "Adds a test under tests/integration/ using with_disabled_apps_context"
       ]
     },
     {
-      "id": "no-legacy-optimizer",
-      "prompt": "Add a new ObjectType for the Bookmark model. The neighbouring blocks mix in gql_optimizer.OptimizedDjangoObjectType — should I?",
+      "id": "overridable-type",
+      "prompt": "Add a GraphQL type for the swappable Bookmark model so projects that swap the model can also extend the type.",
       "files": [],
       "assertions": [
-        "Says no, and subclasses only baseapp_core.graphql.DjangoObjectType",
-        "Explains that gql_optimizer.query() is never called so the mixin is inert",
-        "Identifies graphene-django-query-optimizer (query_optimizer) as the live library",
-        "Notes baseapp_core.DjangoObjectType already subclasses query_optimizer.DjangoObjectType",
-        "Does not recommend gql_optimizer.resolver_hints or gql_optimizer.query"
+        "Puts the fields on an abstract @strawberry_django.type(Bookmark, name=\"AbstractBookmark\") base",
+        "Registers the package type with @django_type(Bookmark, ...) from baseapp_core.strawberry, Node as the last base",
+        "Explains projects re-register with @django_type(ProjectBookmark, ...) and the last registration wins",
+        "References the type elsewhere with type_for_model(Bookmark), not by importing the class",
+        "Lists the types module under strawberry_types in plugin.py"
       ]
     }
   ]

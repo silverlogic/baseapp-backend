@@ -2,7 +2,7 @@
 
 ## Overview
 
-This module provides the `CurrentProfileMixin` to enable the same current profile functionality in REST framework views that exists in Django middleware and GraphQL middleware.
+This module provides the `CurrentProfileMixin` to enable the same current profile functionality in REST framework views that exists in the Django middleware and the GraphQL schema extension.
 
 ## How It Works
 
@@ -15,7 +15,7 @@ The `CurrentProfileMixin` reads the `Current-Profile` header from the request an
 
 This replicates the logic from:
 - `baseapp_profiles.middleware.CurrentProfileMiddleware` (Django middleware)
-- `baseapp_profiles.graphql.middleware.CurrentProfileMiddleware` (GraphQL middleware)
+- `baseapp_profiles.strawberry.extensions.CurrentProfileExtension` (GraphQL schema extension)
 
 ## Usage
 

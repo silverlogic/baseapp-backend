@@ -2,9 +2,9 @@ from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import OuterRef, QuerySet, Subquery
-from query_optimizer.typing import TModel
 
 from baseapp_core.hashids.strategies.interfaces import QuerysetAnnotatorStrategy
+from baseapp_core.hashids.strategies.interfaces.queryset_annotator import TModel
 from baseapp_core.models import DocumentId
 
 

@@ -9,8 +9,7 @@ from baseapp_core.strawberry import CountedConnection, type_for_model
 from baseapp_core.strawberry.connections import connection
 from baseapp_core.strawberry.relay import typed_node_field
 
-from ..graphql.object_types import FileFilter
-from ..graphql.queries import FilesQueries as GrapheneFilesQueries
+from ..filters import FileFilter
 
 File = swapper.load_model("baseapp_files", "File")
 FileLazyType = type_for_model(File)
@@ -24,6 +23,9 @@ class FilesQueries:
         description="Files created by the current user.",
     )
     def my_files(self, info: Info) -> Iterable[Model]:
-        return GrapheneFilesQueries.resolve_my_files(None, info)
+        if not info.context.user.is_authenticated:
+            return File.objects.none()
+        # Total ordering: AbstractFile has no Meta.ordering and cursors need a stable order.
+        return File.objects.filter(created_by=info.context.user).order_by("-created", "-pk")
 
     file = typed_node_field(FileLazyType)

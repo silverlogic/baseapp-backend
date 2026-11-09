@@ -1,0 +1,19 @@
+id: graphql-use-django-type
+language: Python
+severity: error
+message: "Model types (`Node` subclasses) must use `baseapp_core.strawberry.django_type` (model-name GraphQL name, type registry for `type_for_model` and project overrides, relations, filterset), not bare `strawberry_django.type`. Bare `strawberry_django.type(Model, name=\"AbstractX\")` is only for abstract field bases. See .claude/skills/backend-conventions/references/graphql-file-layout.md"
+ignores:
+  - "**/migrations/**"
+rule:
+  kind: decorated_definition
+  all:
+    - has:
+        kind: decorator
+        regex: ^@strawberry_django\.type\b
+    - has:
+        field: definition
+        kind: class_definition
+        has:
+          field: superclasses
+          has:
+            regex: ^((strawberry\.)?relay\.)?Node$

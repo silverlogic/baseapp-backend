@@ -17,12 +17,6 @@ class PagesPlugin(BaseAppPlugin):
                     "baseapp_pages.permissions.PagesPermissionsBackend",
                 ],
             },
-            graphql_queries=[
-                "baseapp_pages.graphql.queries.PagesQueries",
-            ],
-            graphql_mutations=[
-                "baseapp_pages.graphql.mutations.PagesMutations",
-            ],
             strawberry_queries=[
                 "baseapp_pages.strawberry.queries.PagesQueries",
             ],

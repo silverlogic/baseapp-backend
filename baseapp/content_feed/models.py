@@ -1,5 +1,3 @@
-from typing import TYPE_CHECKING
-
 import swapper
 from django.apps import apps
 from django.conf import settings
@@ -9,9 +7,6 @@ from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql import RelayModel
 from baseapp_core.models import DocumentIdMixin, random_name_in
-
-if TYPE_CHECKING:
-    from baseapp_core.graphql import DjangoObjectType
 
 inheritances = []
 
@@ -48,12 +43,6 @@ class AbstractContentPost(*inheritances, DocumentIdMixin, RelayModel, TimeStampe
         verbose_name = _("content post")
         verbose_name_plural = _("content posts")
 
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import ContentPostObjectType
-
-        return ContentPostObjectType
-
 
 class AbstractContentPostImage(DocumentIdMixin, RelayModel):
     image = models.ImageField(
@@ -71,9 +60,3 @@ class AbstractContentPostImage(DocumentIdMixin, RelayModel):
         swappable = swapper.swappable_setting("baseapp_content_feed", "ContentPostImage")
         verbose_name = _("content post image")
         verbose_name_plural = _("content post images")
-
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import ContentPostImageObjectType
-
-        return ContentPostImageObjectType

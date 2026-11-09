@@ -19,15 +19,6 @@ class ChatsPlugin(BaseAppPlugin):
                 ],
             },
             django_extra_settings={},
-            graphql_queries=[
-                "baseapp_chats.graphql.queries.ChatsQueries",
-            ],
-            graphql_mutations=[
-                "baseapp_chats.graphql.mutations.ChatsMutations",
-            ],
-            graphql_subscriptions=[
-                "baseapp_chats.graphql.subscriptions.ChatsSubscriptions",
-            ],
             strawberry_queries=["baseapp_chats.strawberry.queries.ChatsQueries"],
             strawberry_mutations=["baseapp_chats.strawberry.mutations.ChatsMutations"],
             strawberry_subscriptions=["baseapp_chats.strawberry.subscriptions.ChatsSubscriptions"],

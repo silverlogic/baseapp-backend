@@ -1,13 +1,10 @@
-import importlib
-from types import ModuleType
 from unittest.mock import Mock, patch
 
-import graphene
 import pytest
 import swapper
-from graphene_django.settings import graphene_settings
+from django.apps import apps as django_apps
 
-from baseapp_core.graphql.views import GraphQLView
+from baseapp.content_feed.strawberry.types import content_post_relations
 
 pytestmark = pytest.mark.django_db
 
@@ -27,49 +24,6 @@ CONTENT_POST_CREATE_GRAPHQL = """
         }
     }
 """
-
-CONTENT_POSTS_WITH_PROFILE_FIELD_GRAPHQL = """
-    query {
-        contentPosts {
-            edges {
-                node {
-                    content
-                    profile {
-                        id
-                    }
-                }
-            }
-        }
-    }
-"""
-
-
-def _build_content_feed_schema_without_profiles_branch() -> tuple[graphene.Schema, ModuleType]:
-    from django.apps import apps as django_apps
-
-    original_is_installed = django_apps.is_installed
-
-    def _is_installed_without_profiles(app_name) -> bool:
-        if app_name == "baseapp_profiles":
-            return False
-        return original_is_installed(app_name)
-
-    with patch.object(django_apps, "is_installed", side_effect=_is_installed_without_profiles):
-        object_types_module = importlib.reload(
-            importlib.import_module("baseapp.content_feed.graphql.object_types")
-        )
-        importlib.reload(importlib.import_module("baseapp.content_feed.graphql.queries"))
-        queries_module = importlib.import_module("baseapp.content_feed.graphql.queries")
-        importlib.reload(importlib.import_module("baseapp.content_feed.graphql.mutations"))
-        mutations_module = importlib.import_module("baseapp.content_feed.graphql.mutations")
-
-    class Query(graphene.ObjectType, queries_module.ContentFeedQueries):
-        pass
-
-    class Mutation(graphene.ObjectType, mutations_module.ContentFeedMutations):
-        pass
-
-    return graphene.Schema(query=Query, mutation=Mutation), object_types_module
 
 
 @pytest.mark.parametrize("with_disabled_apps", [["baseapp_profiles"]], indirect=True)
@@ -102,19 +56,16 @@ class TestContentFeedWithoutBaseappProfiles:
 
         with (
             patch(
-                "baseapp.content_feed.graphql.mutations.ContentPostForm",
+                "baseapp.content_feed.strawberry.mutations.ContentPostForm",
                 return_value=form,
             ),
             patch(
-                "baseapp.content_feed.graphql.mutations.apps.is_installed",
+                "baseapp.content_feed.strawberry.mutations.apps.is_installed",
                 side_effect=lambda app_name: False if app_name == "baseapp_profiles" else True,
             ),
+            # One shared registry: also stubs the `isReactionsEnabled` resolver's lookup.
             patch(
-                "baseapp.content_feed.graphql.mutations.shared_services.get",
-                side_effect=_shared_services_get,
-            ),
-            patch(
-                "baseapp_reactions.graphql.object_types.shared_services.get",
+                "baseapp.content_feed.strawberry.mutations.shared_services.get",
                 side_effect=_shared_services_get,
             ),
         ):
@@ -141,21 +92,13 @@ class TestContentFeedWithoutBaseappProfiles:
         if hasattr(instance, "profile"):
             assert instance.profile is None
 
-    def test_content_posts_schema_hides_profile_field_when_profiles_disabled(
-        self,
-        with_disabled_apps,
-        graphql_user_client,
+    def test_content_post_type_hides_profile_field_when_profiles_disabled(
+        self, with_disabled_apps
     ) -> None:
-        schema, _ = _build_content_feed_schema_without_profiles_branch()
-        with (
-            patch.object(graphene_settings, "SCHEMA", schema),
-            patch.object(GraphQLView, "schema", schema),
+        original = django_apps.is_installed
+        with patch.object(
+            django_apps,
+            "is_installed",
+            side_effect=lambda name: name != "baseapp_profiles" and original(name),
         ):
-            response = graphql_user_client(CONTENT_POSTS_WITH_PROFILE_FIELD_GRAPHQL)
-        content = response.json()
-
-        assert "errors" in content
-        assert any(
-            "Cannot query field 'profile' on type 'ContentPost'" in error["message"]
-            for error in content["errors"]
-        )
+            assert content_post_relations() == ("user",)

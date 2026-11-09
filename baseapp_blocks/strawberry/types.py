@@ -6,6 +6,7 @@ import strawberry_django
 import swapper
 from django.db.models import Model
 from strawberry.types import Info
+from strawberry_django.resolvers import django_resolver
 
 from baseapp_core.graphql import get_pk_from_relay_id
 from baseapp_core.plugins import shared_services
@@ -68,6 +69,7 @@ class BlocksInterface(Node):
         return None
 
     @strawberry.field
+    @django_resolver(qs_hook=None)  # async-safe in subscription payloads
     def is_blocked_by_me(self, info: Info, profile_id: strawberry.ID | None = None) -> bool | None:
         user = info.context.user
         if not user.is_authenticated:

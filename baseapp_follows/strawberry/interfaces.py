@@ -7,6 +7,7 @@ import swapper
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model, QuerySet
 from strawberry.types import Info
+from strawberry_django.resolvers import django_resolver
 
 from baseapp_core.graphql import get_pk_from_relay_id
 from baseapp_core.plugins import shared_services
@@ -18,7 +19,7 @@ from baseapp_core.strawberry import (
 )
 from baseapp_core.strawberry.connections import connection
 
-from ..graphql.object_types import FollowsFilter
+from ..filters import FollowsFilter
 from ..services import FollowableMetadataService
 
 Follow = swapper.load_model("baseapp_follows", "Follow")
@@ -69,6 +70,7 @@ class FollowsInterface(Node):
         return _service().get_following_count(self)
 
     @strawberry.field
+    @django_resolver(qs_hook=None)  # async-safe in subscription payloads
     def is_followed_by_me(self, info: Info, profile_id: strawberry.ID | None = None) -> bool | None:
         user = info.context.user
         if not user.is_authenticated:

@@ -9,12 +9,13 @@ from django.db.models import BooleanField, Model, OuterRef, Subquery, Value
 from django.db.models.functions import Coalesce
 from strawberry.types import Info
 
+from baseapp_core.plugins import shared_services
 from baseapp_core.strawberry import CountedConnection, model_from_info, type_for_model
 from baseapp_core.strawberry.connections import connection
 from baseapp_core.strawberry.scalars import GenericScalar
 
-from ..graphql.interfaces import FilesInterface as GrapheneFilesInterface
-from ..graphql.object_types import FileFilter
+from ..filters import FileFilter
+from ..utils import default_files_count
 
 File = swapper.load_model("baseapp_files", "File")
 FileTarget = swapper.load_model("baseapp_files", "FileTarget")
@@ -43,14 +44,26 @@ def _is_files_enabled_annotation(info: Info) -> Any:
 class FilesInterface:
     @strawberry_django.field(annotate={"_file_target_files_count": _files_count_annotation})
     def files_count(self, info: Info) -> GenericScalar | None:
-        return GrapheneFilesInterface.resolve_files_count(self, info)
+        if service := shared_services.get("files_metadata"):
+            return service.get_files_count(self)
+        return default_files_count()
 
     @strawberry_django.field(
         annotate={"_file_target_is_files_enabled": _is_files_enabled_annotation}
     )
     def is_files_enabled(self, info: Info) -> bool | None:
-        return GrapheneFilesInterface.resolve_is_files_enabled(self, info)
+        if service := shared_services.get("files_metadata"):
+            return service.is_files_enabled(self)
+        return True
 
     @connection(CountedConnection[type_for_model(File)] | None, filterset_class=FileFilter)
     def files(self, info: Info) -> Iterable[Model]:
-        return GrapheneFilesInterface.resolve_files(self, info)
+        service = shared_services.get("files_metadata")
+        if service is not None and not service.is_files_enabled(self):
+            return File.objects.none()
+        # Completed uploads only, totally ordered so cursor pagination is stable.
+        return File.objects.filter(
+            parent__content_type=ContentType.objects.get_for_model(self),
+            parent__object_id=self.pk,
+            upload_status=File.UploadStatus.COMPLETED,
+        ).order_by("-created", "-pk")

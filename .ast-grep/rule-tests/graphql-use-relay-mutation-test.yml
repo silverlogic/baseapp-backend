@@ -1,19 +1,35 @@
 id: graphql-use-relay-mutation
 valid:
   - |
-    class CreateOrder(RelayMutation):
-        class Input:
-            amount = graphene.Int(required=True)
+    @strawberry.type
+    class OrdersMutations:
+        @relay_mutation(login_required=True)
+        def create_order(self, info: Info, input: CreateOrderInput) -> CreateOrderPayload | None:
+            ...
+  - |
+    @strawberry.type
+    class OrdersMutations:
+        delete_order = relay_mutation(resolver, login_required=True)
 invalid:
   - |
-    class CreateOrder(graphene.Mutation):
-        class Arguments:
-            amount = graphene.Int(required=True)
+    @strawberry.type
+    class OrdersMutations:
+        @strawberry.mutation
+        def create_order(self, info: Info, amount: int) -> Order:
+            ...
   - |
-    class CreateOrder(graphene.relay.ClientIDMutation):
-        class Input:
-            amount = graphene.Int(required=True)
+    @strawberry.type
+    class OrdersMutations:
+        @strawberry.mutation(description="Create an order")
+        def create_order(self, info: Info, amount: int) -> Order:
+            ...
   - |
-    class CreateOrder(relay.ClientIDMutation):
-        class Input:
-            amount = graphene.Int(required=True)
+    @strawberry.type
+    class OrdersMutations:
+        @strawberry_django.mutation
+        def create_order(self, info: Info, amount: int) -> Order:
+            ...
+  - |
+    @strawberry.type
+    class OrdersMutations:
+        create_order = strawberry.mutation(resolver=create_order_resolver)

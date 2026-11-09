@@ -1,6 +1,5 @@
 import logging
 import re
-from typing import TYPE_CHECKING
 
 import pghistory
 import pgtrigger
@@ -23,9 +22,6 @@ from baseapp_core.plugins import shared_services
 from baseapp_core.swapper import init_swapped_models
 from baseapp_profiles.managers import ProfileManager
 from baseapp_profiles.utils import pad_handle, to_ascii_handle
-
-if TYPE_CHECKING:
-    from baseapp_core.graphql import DjangoObjectType
 
 logger = logging.getLogger(__name__)
 
@@ -160,12 +156,6 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
             .filter(models.Q(members__user=user) | models.Q(owner=user))
             .exists()
         )
-
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import ProfileObjectType
-
-        return ProfileObjectType
 
     def save(self, *args, **kwargs) -> None:
         created = self._state.adding
@@ -595,12 +585,6 @@ class AbstractProfileUserRole(DocumentIdMixin, RelayModel, models.Model):
 
     def __str__(self) -> str:
         return f"{self.user} as {self.role} in {self.profile}"
-
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import ProfileUserRoleObjectType
-
-        return ProfileUserRoleObjectType
 
 
 def update_or_create_profile(instance, owner, profile_name) -> None:

@@ -24,7 +24,7 @@ def _can_anonymous_view_comments() -> bool:
 
 
 def _groups(user: Any, target_object_id: str | None) -> list[str]:
-    """The Graphene `OnCommentChange.subscribe` groups."""
+    """Channel groups a subscriber listens on (`all` needs `view_all_comment`)."""
     if not target_object_id and user.has_perm("baseapp_comments.view_all_comment"):
         return ["all"]
     if not _can_anonymous_view_comments() and not user.is_authenticated:

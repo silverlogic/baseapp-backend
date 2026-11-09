@@ -1,19 +1,18 @@
-# Porting a package from Graphene to Strawberry
+# Porting Graphene code to Strawberry
 
-How to port one `baseapp_*` package's GraphQL layer while Graphene keeps serving `/graphql`.
+BaseApp's GraphQL layer is Strawberry (strawberry-graphql + strawberry-graphql-django); Graphene
+is gone. This guide maps Graphene patterns to their Strawberry equivalents, for writing new
+package code and for porting a project's own `apps/*/graphql` code.
 Reference implementations: `baseapp_auth/strawberry/`, `baseapp_profiles/strawberry/`,
 `baseapp_blocks/strawberry/`. Core helpers: `baseapp_core/strawberry/`.
 
-## Definition of done for a package
+## Keeping the schema contract
 
-1. `manage.py strawberry_parity --type <EachType>` shows no mismatch for the package's types
-   (missing fields that belong to *other, unported* packages are fine).
-2. The package's tests pass on both endpoints:
-   `pytest <pkg>/tests` and `GRAPHQL_TEST_ENDPOINT=/graphql/strawberry pytest <pkg>/tests`.
-   Strawberry may use *fewer* queries than an exact-count assertion expects; report those.
-   Failures caused by other unported packages ("Cannot query field X", "Unknown type Y") are fine.
-3. `baseapp_core/tests/test_strawberry_schema_parity.py` passes.
-4. Graphene code is untouched (except when a test proves a shared bug).
+The served schema is the frontend's contract. `testproject/schema.graphql` is the committed SDL;
+`baseapp_core/tests/test_graphql_schema_snapshot.py` fails on any difference. When porting
+Graphene code, export the Graphene SDL first and diff it against the Strawberry schema
+(`baseapp_core.strawberry.parity.compare_schemas`) until nothing differs. After an intentional
+change: `manage.py graphql_schema --out testproject/schema.graphql`.
 
 ## Layout
 
@@ -125,7 +124,7 @@ getter (above); consumers list names in `strawberry_shared_interfaces.get(...)`.
 
 ## Mutations
 
-Declare input and payload types matching the SDL and delegate the logic to the Graphene class:
+Declare input and payload types matching the SDL and write the resolver with `relay_mutation`:
 
 ```python
 @strawberry.input(name="XCreateInput")
@@ -136,25 +135,37 @@ class XCreateInput(RelayMutationInput):
 
 @strawberry.type(name="XCreatePayload")
 class XCreatePayload(RelayMutationPayload):
-    x: Edge[XLazy] | None = None    # graphene ..._meta.connection.Edge
+    x: Edge[XLazy] | None = None
     other: XLazy | None = None
 
 @strawberry.type
 class XMutations:
-    x_create = graphene_relay_mutation(graphene_mutations.XCreate, XCreateInput, XCreatePayload)
+    @relay_mutation(login_required=True)
+    def x_create(self, info: Info, input: XCreateInput) -> XCreatePayload | None:
+        target = get_obj_from_relay_id(info, input.target_object_id)
+        if not info.context.user.has_perm("app.add_x", target):
+            raise PermissionError(_("You don't have permission to perform this action"))
+        serializer = XSerializer(data=input_data(input), context={"request": info.context})
+        if not serializer.is_valid():
+            return XCreatePayload(errors=serializer_errors(serializer))
+        x = serializer.save()
+        return XCreatePayload(x=Edge(node=x, cursor=offset_to_cursor(0)))
 ```
 
-`graphene_relay_mutation` passes `**input` exactly as Graphene would (snake_case, omitted fields
-absent, Django `Choices` members kept, nested inputs as attribute dicts) and maps the returned
-Graphene payload (edges, `ErrorType`s, instances) onto the Strawberry payload. `info.context` is
-the request, so `login_required`, `info.context.user` and `info.context.FILES` keep working.
+- `relay_mutation` echoes `clientMutationId`; `login_required=True` raises `authentication
+  required` (`code: authentication_required`) before the resolver runs.
+- `input_data(input)` gives the fields the client sent, snake_cased (omitted fields absent);
+  `add_request_files(info, data)` adds multipart files. Enums declared with `choices_enum` /
+  `enum_from_choices` arrive as Django `Choices` members.
+- Exceptions become top-level GraphQL errors; validation errors go in `errors`.
+- `info.context` is the Django request (`info.context.user`, `info.context.FILES`).
 
 ## Subscriptions
 
 Async generators over `baseapp_core.strawberry.subscriptions.listen(info, groups)`; publishers call
 `broadcast(group, payload)` (payloads cross the channel layer: send ids, re-fetch with
 `database_sync_to_async`). Test with `strawberry.channels.testing.GraphQLWebsocketCommunicator`
-(see `baseapp_core/tests/test_strawberry_subscriptions.py`).
+(see `baseapp_core/tests/test_graphql_subscriptions.py`).
 
 ## Running checks
 
@@ -162,12 +173,11 @@ From `baseapp-backend/`, with a compose project name of your own:
 
 ```bash
 docker compose run --rm -e DJANGO_SETTINGS_MODULE=testproject.settings web \
-  uv run python manage.py strawberry_parity --type Comment --type CommentsInterface
-docker compose run --rm -e GRAPHQL_TEST_ENDPOINT=/graphql/strawberry web \
-  uv run pytest baseapp_comments/tests -q --reuse-db
+  uv run python manage.py graphql_schema --out testproject/schema.graphql --check
+docker compose run --rm web uv run pytest baseapp_comments/tests -q --create-db
 ```
 
-## Lessons from the full port
+## Lessons from the port
 
 - **Async safety.** `Node.id` and every `strawberry_django.field` resolver run through
   `django_resolver`, so they work in subscription payloads. Plain `strawberry.field` resolvers
@@ -202,7 +212,7 @@ docker compose run --rm -e GRAPHQL_TEST_ENDPOINT=/graphql/strawberry web \
 - **`TranslatedField`**: `only=[to_attribute(name, code) for code, _ in settings.LANGUAGES]`.
 - **`max_results=`** reproduces Graphene's `max_limit`; nullable FKs that Django would INNER JOIN
   (unmanaged views) should be prefetched instead of select-related.
-- **Tests that patch Graphene internals** (`GraphQLView.schema`, `graphene_settings.SCHEMA`,
-  Graphene type modules) only test Graphene; they are expected to fail on the Strawberry endpoint.
-- **Exact query-count assertions** pin Graphene's counts; Strawberry often needs fewer. Re-pin them
-  to Strawberry's counts when Graphene is removed.
+- **Exact query-count assertions** ported from Graphene usually drop: Strawberry's optimizer needed
+  fewer queries everywhere in BaseApp (comments 13 → 7, users 5 → 1, follows 10 → 6).
+- **Publishers** call `broadcast(subscription_group("<Name>", group), payload)` directly (the
+  former Graphene subscription class name is kept as `<Name>`, so groups did not change).

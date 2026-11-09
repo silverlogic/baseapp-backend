@@ -32,18 +32,18 @@ class TestServicesContributor:
 class TestGraphQLContributor:
     """Test suite for GraphQLContributor mixin."""
 
-    def test_register_graphql_shared_interfaces_default_no_op(self) -> None:
-        """Default register_graphql_shared_interfaces does nothing and does not raise."""
+    def test_register_strawberry_shared_interfaces_default_no_op(self) -> None:
+        """Default register_strawberry_shared_interfaces does nothing and does not raise."""
         registry = GraphQLSharedInterfaceRegistry()
         contributor = GraphQLContributor()
-        contributor.register_graphql_shared_interfaces(registry)
+        contributor.register_strawberry_shared_interfaces(registry)
         assert len(registry._registry) == 0
 
-    def test_register_graphql_shared_interfaces_accepts_registry(self) -> None:
-        """register_graphql_shared_interfaces accepts a GraphQLSharedInterfaceRegistry."""
+    def test_register_strawberry_shared_interfaces_accepts_registry(self) -> None:
+        """register_strawberry_shared_interfaces accepts a GraphQLSharedInterfaceRegistry."""
         registry = GraphQLSharedInterfaceRegistry()
         contributor = GraphQLContributor()
-        contributor.register_graphql_shared_interfaces(registry)
+        contributor.register_strawberry_shared_interfaces(registry)
         assert registry.get_interface("any") is None
 
 
@@ -57,8 +57,10 @@ class RecordingAppConfig(BaseAppConfig, ServicesContributor, GraphQLContributor)
     def register_shared_services(self, registry: SharedServiceRegistry) -> None:
         self.recorded.append(("register_shared_services", registry))
 
-    def register_graphql_shared_interfaces(self, registry: GraphQLSharedInterfaceRegistry) -> None:
-        self.recorded.append(("register_graphql_shared_interfaces", registry))
+    def register_strawberry_shared_interfaces(
+        self, registry: GraphQLSharedInterfaceRegistry
+    ) -> None:
+        self.recorded.append(("register_strawberry_shared_interfaces", registry))
 
 
 class TestBaseAppConfig:
@@ -72,11 +74,15 @@ class TestBaseAppConfig:
         assert len(services_calls) == 1
         assert isinstance(services_calls[0][1], SharedServiceRegistry)
 
-    def test_ready_calls_register_graphql_shared_interfaces_when_graphql_contributor(self) -> None:
-        """ready() calls register_graphql_shared_interfaces with registry when config is GraphQLContributor."""
+    def test_ready_calls_register_strawberry_shared_interfaces_when_graphql_contributor(
+        self,
+    ) -> None:
+        """ready() calls register_strawberry_shared_interfaces with registry when config is GraphQLContributor."""
         config = RecordingAppConfig("baseapp_core", baseapp_core)
         config.ready()
-        graphql_calls = [r for r in config.recorded if r[0] == "register_graphql_shared_interfaces"]
+        graphql_calls = [
+            r for r in config.recorded if r[0] == "register_strawberry_shared_interfaces"
+        ]
         assert len(graphql_calls) == 1
         assert isinstance(graphql_calls[0][1], GraphQLSharedInterfaceRegistry)
 
@@ -86,4 +92,4 @@ class TestBaseAppConfig:
         config.ready()
         assert len(config.recorded) == 2
         assert config.recorded[0][0] == "register_shared_services"
-        assert config.recorded[1][0] == "register_graphql_shared_interfaces"
+        assert config.recorded[1][0] == "register_strawberry_shared_interfaces"

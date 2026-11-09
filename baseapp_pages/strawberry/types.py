@@ -16,7 +16,7 @@ from baseapp_core.strawberry import Node, django_type, type_for_model
 from baseapp_core.strawberry.complexity import check_max_complexity
 from baseapp_core.strawberry.enums import enum_from_choices
 
-from ..graphql.object_types import PageFilter
+from ..filters import PageFilter
 from ..models import Metadata
 from .interfaces import MetadataValues, PageInterface
 

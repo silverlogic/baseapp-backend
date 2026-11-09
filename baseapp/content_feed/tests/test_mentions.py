@@ -2,7 +2,7 @@
 
 Mentions live in `baseapp_mentions.Mention` — the ContentPost model no longer
 carries a `mentioned_profiles` M2M. The GraphQL `mentions` connection on
-`ContentPostObjectType` is provided by `MentionsInterface` and returns
+`ContentPost` is provided by `MentionsInterface` and returns
 `Mention` nodes that expose the related `profile`.
 
 `baseapp.content_feed` only ships a Create mutation upstream. The cases below

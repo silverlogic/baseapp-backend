@@ -5,7 +5,7 @@ from baseapp_core.strawberry import CountedConnection, type_for_model
 from baseapp_core.strawberry.connections import connection
 from baseapp_core.strawberry.relay import typed_node_field
 
-from ..graphql.filters import ContentPostFilter
+from ..filters import ContentPostFilter
 
 ContentPost = swapper.load_model("baseapp_content_feed", "ContentPost")
 ContentPostLazyType = type_for_model(ContentPost)

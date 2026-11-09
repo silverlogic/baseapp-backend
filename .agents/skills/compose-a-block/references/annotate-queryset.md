@@ -128,47 +128,67 @@ annotation with no matching row is `None`, not `0`).
 
 ## Step 4 — apply it
 
-Three places, in order of preference:
+Give the metadata model a `get_annotations(model_cls)` classmethod returning the expressions keyed
+by alias (`annotate_queryset` is then `queryset.annotate(**cls.get_annotations(queryset.model))`),
+and expose it on the service. Apply it in order of preference:
 
 ```python
-# 1. pre_optimization_hook — the GraphQL read path
-if service := shared_services.get("commentable_metadata"):
-    queryset = service.annotate_queryset(queryset)
+# 1. field-level optimizer hint — annotated only when the field is selected.
+#    Preferred for shared-interface fields; see optimizer-hooks.md.
+def _metadata_annotation(name: str) -> dict:
+    def annotation(info: Info) -> Any:
+        service = shared_services.get("commentable_metadata")
+        return service.get_annotations(model_from_info(info))[name]
 
-# 2. get_queryset — when the type is reached through a non-optimized path
-#    baseapp/content_feed/graphql/object_types.py:63
+    return {name: annotation}
+
+
+@strawberry_django.field(annotate=_metadata_annotation("_commentable_comments_count"))
+def comments_count(self, info: Info) -> CommentsCount: ...
+
+# 2. get_queryset — when the annotation is needed regardless of selection
 @classmethod
-def get_queryset(cls, queryset, info) -> "QuerySet":
+def get_queryset(cls, queryset: QuerySet, info: Info, **kwargs: Any) -> QuerySet:
     if service := shared_services.get("reactable_metadata"):
         queryset = service.annotate_queryset(queryset)
     return queryset
-
-# 3. field-level optimizer_hook — pay only when the field is selected
-#    See optimizer-hooks.md. Preferred for shared-interface fields.
 ```
 
-Public annotations become filterable and orderable.
-`baseapp_comments/graphql/filters.py:18`:
+Public annotations become filterable and orderable. The FilterSet runs *after* the optimizer, so a
+FilterSet that orders by an annotation adds it itself, only when asked
+(`baseapp_comments/strawberry/filters.py`):
 
 ```python
+_ORDERING_ANNOTATIONS = {
+    "replies_count_total": "commentable_metadata",
+    "reactions_count_total": "reactable_metadata",
+}
+
+
+class CommentFilter(django_filters.FilterSet):
     order_by = django_filters.OrderingFilter(
         fields=(
             ("created", "created"),
-            ("is_pinned", "is_pinned"),
-            # `reactions_count_total` is annotated in `BaseCommentObjectType.pre_optimization_hook`,
-            # if `baseapp_reactions` is installed.
             *apply_if_installed(
-                "baseapp_reactions",
-                [("reactions_count_total", "reactions_count_total")],
+                "baseapp_reactions", [("reactions_count_total", "reactions_count_total")]
             ),
-            # `replies_count_total` is annotated in `BaseCommentObjectType.pre_optimization_hook`
             ("replies_count_total", "replies_count_total"),
         )
     )
+
+    def filter_queryset(self, queryset: QuerySet) -> QuerySet:
+        ordering = self.form.cleaned_data.get("order_by") or []
+        for alias in {value.lstrip("-") for value in ordering} & _ORDERING_ANNOTATIONS.keys():
+            service = shared_services.get(_ORDERING_ANNOTATIONS[alias])
+            if service and alias not in queryset.query.annotations:
+                queryset = queryset.annotate(
+                    **{alias: service.get_annotations(queryset.model)[alias]}
+                )
+        return super().filter_queryset(queryset)
 ```
 
-Note the comments naming where the annotation comes from — a filter referencing an annotation that
-some other file must supply is exactly the coupling that breaks silently. Document it at both ends.
+Keep the alias → service map next to the ordering fields — a filter referencing an annotation that
+some other file must supply is exactly the coupling that breaks silently.
 
 ## Maintaining the counter on the write path
 

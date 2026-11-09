@@ -40,27 +40,20 @@ class GraphQLContributor:
     """
     Mixin for AppConfig: register GraphQL shared interfaces at runtime in ready().
 
-    Override register_graphql_shared_interfaces() and call the shared interface registry
+    Override register_strawberry_shared_interfaces() and call the shared interface registry
     for each named shared interface your app provides. Consumers explicitly
     opt in by name when defining their GraphQL types.
     """
 
-    def register_graphql_shared_interfaces(
-        self, registry: "GraphQLSharedInterfaceRegistry"
-    ) -> None:
-        """
-        Register this app's GraphQL shared interfaces with the runtime registry.
-
-        Override in your app and call graphql_shared_interfaces.register(name, interface)
-        for each shared interface you provide. Shared interfaces are app-agnostic; consumers
-        opt in by name.
-        """
-        pass
-
     def register_strawberry_shared_interfaces(
         self, registry: "GraphQLSharedInterfaceRegistry"
     ) -> None:
-        """Strawberry counterpart of register_graphql_shared_interfaces (register a getter)."""
+        """
+        Register this app's Strawberry shared interfaces with the runtime registry.
+
+        Override in your app and call registry.register(name, getter) for each shared interface
+        you provide; the getter imports and returns the interface. Consumers opt in by name.
+        """
         pass
 
 
@@ -92,7 +85,6 @@ class BaseAppConfig(AppConfig):
     def ready(self) -> None:
         """Run runtime registration: services, serializers, and GraphQL capabilities."""
         from . import (
-            graphql_shared_interfaces,
             shared_serializer_registry,
             shared_services,
             strawberry_shared_interfaces,
@@ -103,5 +95,4 @@ class BaseAppConfig(AppConfig):
         if isinstance(self, SerializersContributor):
             self.register_shared_serializers(shared_serializer_registry)
         if isinstance(self, GraphQLContributor):
-            self.register_graphql_shared_interfaces(graphql_shared_interfaces)
             self.register_strawberry_shared_interfaces(strawberry_shared_interfaces)

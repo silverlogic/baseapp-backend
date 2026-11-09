@@ -1,244 +1,166 @@
-import textwrap
+"""`onNotificationChange` over graphql-transport-ws on the Strawberry schema."""
+
+import asyncio
+from typing import Any
 
 import pytest
 import swapper
 from channels.db import database_sync_to_async
+from channels.layers import get_channel_layer
+from rest_framework_simplejwt.tokens import RefreshToken
+from strawberry.channels.testing import GraphQLWebsocketCommunicator
 
+from baseapp_core.strawberry.subscriptions import GraphQLWSConsumer, subscription_group
 from baseapp_core.tests.factories import UserFactory
 
 from .factories import NotificationFactory
 
-pytestmark = pytest.mark.django_db(transaction=True)
+pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.asyncio]
 
 Notification = swapper.load_model("notifications", "Notification")
 
-SUBSCRIPTION_QUERY = textwrap.dedent("""
-    subscription op_name {
+SUBSCRIPTION = """
+    subscription {
       onNotificationChange {
         createdNotification {
           node {
             id
+            unread
+            level
+            verb
+            data
+            actor { id __typename }
+            recipient { id }
           }
         }
-
-        updatedNotification {
-          id
-          unread
-        }
-
+        updatedNotification { id unread }
         deletedNotificationId
       }
     }
-    """)
+"""
 
 
-@pytest.mark.asyncio
-async def test_user_recieves_new_notification_subscription_event(
-    django_user_client, graphql_ws_user_client
-) -> None:
-    # Establish & initialize WebSocket GraphQL connection.
-    client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
+def _application() -> Any:
+    from baseapp_core.strawberry.schema import get_schema
 
-    # Subscribe to GraphQL subscription.
-    sub_id = await client.send(
-        msg_type="subscribe",
-        payload={
-            "query": SUBSCRIPTION_QUERY,
-            "operationName": "op_name",
-        },
-    )
-    await client.assert_no_messages()
-
-    notification = await database_sync_to_async(NotificationFactory)(
-        recipient=django_user_client.user
-    )
-
-    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
-    notification_relay_id = await database_sync_to_async(lambda: notification.relay_id)()
-
-    # Check that subscription message were sent.
-    resp = await client.receive(assert_id=sub_id, assert_type="next")
-    assert (
-        resp["data"]["onNotificationChange"]["createdNotification"]["node"]["id"]
-        == notification_relay_id
-    )
-
-    # Disconnect and wait the application to finish gracefully.
-    await client.finalize()
+    return GraphQLWSConsumer.as_asgi(schema=get_schema())
 
 
-@pytest.mark.asyncio
-async def test_another_user_do_not_recieves_new_notification_subscription_event(
-    graphql_ws_user_client,
-) -> None:
-    # Establish & initialize WebSocket GraphQL connection.
-    client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
-
-    # Subscribe to GraphQL subscription.
-    await client.send(
-        msg_type="subscribe",
-        payload={
-            "query": SUBSCRIPTION_QUERY,
-            "operationName": "op_name",
-        },
-    )
-    await client.assert_no_messages()
-
-    await database_sync_to_async(NotificationFactory)()
-
-    # Check that subscription message were sent.
-    await client.assert_no_messages()
-
-    # Disconnect and wait the application to finish gracefully.
-    await client.finalize()
+@database_sync_to_async
+def _user_with_token() -> tuple[Any, dict[str, str]]:
+    user = UserFactory()
+    refresh = RefreshToken.for_user(user)
+    # Current-Profile, as the frontend sends it: without it CurrentProfileExtension reads
+    # `user.profile` synchronously inside the event loop.
+    return user, {
+        "Authorization": str(refresh.access_token),
+        "Refresh": str(refresh),
+        "Current-Profile": user.profile.relay_id,
+    }
 
 
-@pytest.mark.asyncio
-async def test_user_recieves_updated_notification_subscription_event(
-    django_user_client, graphql_ws_user_client
-) -> None:
-    notification = await database_sync_to_async(NotificationFactory)(
-        recipient=django_user_client.user
-    )
-
-    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
-    notification_relay_id = await database_sync_to_async(lambda: notification.relay_id)()
-
-    # Establish & initialize WebSocket GraphQL connection.
-    client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
-
-    # Subscribe to GraphQL subscription.
-    sub_id = await client.send(
-        msg_type="subscribe",
-        payload={
-            "query": SUBSCRIPTION_QUERY,
-            "operationName": "op_name",
-        },
-    )
-    await client.assert_no_messages()
-
-    notification.unread = False
-    await notification.asave()
-
-    # Check that subscription message were sent.
-    resp = await client.receive(assert_id=sub_id, assert_type="next")
-    assert (
-        resp["data"]["onNotificationChange"]["updatedNotification"]["id"] == notification_relay_id
-    )
-    assert resp["data"]["onNotificationChange"]["updatedNotification"]["unread"] is False
-
-    # Disconnect and wait the application to finish gracefully.
-    await client.finalize()
+@database_sync_to_async
+def _relay_id(instance: Any) -> str:
+    return instance.relay_id
 
 
-@pytest.mark.asyncio
-async def test_user_recieves_deleted_notification_subscription_event(
-    django_user_client, graphql_ws_user_client
-) -> None:
-    notification = await database_sync_to_async(NotificationFactory)(
-        recipient=django_user_client.user
-    )
-
-    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
-    relay_id = await database_sync_to_async(lambda: notification.relay_id)()
-
-    # Establish & initialize WebSocket GraphQL connection.
-    client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
-
-    # Subscribe to GraphQL subscription.
-    sub_id = await client.send(
-        msg_type="subscribe",
-        payload={
-            "query": SUBSCRIPTION_QUERY,
-            "operationName": "op_name",
-        },
-    )
-    await client.assert_no_messages()
-
-    await notification.adelete()
-
-    # Check that subscription message were sent.
-    resp = await client.receive(assert_id=sub_id, assert_type="next")
-    assert resp["data"]["onNotificationChange"]["deletedNotificationId"] == relay_id
-
-    # Disconnect and wait the application to finish gracefully.
-    await client.finalize()
+async def _wait_until_subscribed(user: Any) -> None:
+    group = subscription_group("OnNotificationChange", str(user.pk))
+    layer = get_channel_layer()
+    for _ in range(200):
+        if layer.groups.get(group):
+            return
+        await asyncio.sleep(0.01)
+    raise AssertionError("subscription never joined its group")
 
 
-@pytest.mark.asyncio
-async def test_user_receives_bulk_created_notification_subscription_events(
-    django_user_client, graphql_ws_user_client
-) -> None:
+def _next_result(ws: GraphQLWebsocketCommunicator) -> "asyncio.Future[Any]":
+    return asyncio.ensure_future(anext(aiter(ws.subscribe(SUBSCRIPTION))))
+
+
+async def test_created_notification_reaches_the_recipient() -> None:
+    user, params = await _user_with_token()
+    async with GraphQLWebsocketCommunicator(
+        _application(), "/graphql", connection_params=params
+    ) as ws:
+        result = _next_result(ws)
+        await _wait_until_subscribed(user)
+        notification = await database_sync_to_async(NotificationFactory)(recipient=user)
+        result = await asyncio.wait_for(result, 5)
+
+    assert result.errors is None
+    node = result.data["onNotificationChange"]["createdNotification"]["node"]
+    assert node["id"] == await _relay_id(notification)
+    assert node["unread"] is True
+    assert node["level"] == "INFO"
+    assert node["actor"] == {"id": await _relay_id(notification.actor), "__typename": "User"}
+    assert node["recipient"] == {"id": await _relay_id(user)}
+    assert result.data["onNotificationChange"]["updatedNotification"] is None
+
+
+async def test_updated_notification_reaches_the_recipient() -> None:
+    user, params = await _user_with_token()
+    notification = await database_sync_to_async(NotificationFactory)(recipient=user)
+    async with GraphQLWebsocketCommunicator(
+        _application(), "/graphql", connection_params=params
+    ) as ws:
+        result = _next_result(ws)
+        await _wait_until_subscribed(user)
+        notification.unread = False
+        await notification.asave()
+        result = await asyncio.wait_for(result, 5)
+
+    assert result.errors is None
+    assert result.data["onNotificationChange"]["updatedNotification"] == {
+        "id": await _relay_id(notification),
+        "unread": False,
+    }
+
+
+async def test_deleted_notification_reaches_the_recipient() -> None:
+    user, params = await _user_with_token()
+    notification = await database_sync_to_async(NotificationFactory)(recipient=user)
+    relay_id = await _relay_id(notification)
+    async with GraphQLWebsocketCommunicator(
+        _application(), "/graphql", connection_params=params
+    ) as ws:
+        result = _next_result(ws)
+        await _wait_until_subscribed(user)
+        await notification.adelete()
+        result = await asyncio.wait_for(result, 5)
+
+    assert result.errors is None
+    assert result.data["onNotificationChange"]["deletedNotificationId"] == relay_id
+
+
+async def test_bulk_created_notifications_reach_only_their_recipient() -> None:
+    user, params = await _user_with_token()
+    other = await database_sync_to_async(UserFactory)()
     actor = await database_sync_to_async(UserFactory)()
+    async with GraphQLWebsocketCommunicator(
+        _application(), "/graphql", connection_params=params
+    ) as ws:
+        result = _next_result(ws)
+        await _wait_until_subscribed(user)
+        others = await database_sync_to_async(NotificationFactory.build)(
+            recipient=other, actor=actor
+        )
+        mine = await database_sync_to_async(NotificationFactory.build)(recipient=user, actor=actor)
+        await database_sync_to_async(Notification.objects.bulk_create)([others])
+        created = await database_sync_to_async(Notification.objects.bulk_create)([mine])
+        result = await asyncio.wait_for(result, 5)
 
-    # Establish & initialize WebSocket GraphQL connection.
-    client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
-
-    # Subscribe to GraphQL subscription.
-    sub_id = await client.send(
-        msg_type="subscribe",
-        payload={
-            "query": SUBSCRIPTION_QUERY,
-            "operationName": "op_name",
-        },
-    )
-    await client.assert_no_messages()
-
-    # Build two unsaved notification instances and bulk-create them.
-    # .build() triggers a ContentType DB lookup via GenericForeignKey, so it must run in a thread.
-    n1 = await database_sync_to_async(NotificationFactory.build)(
-        recipient=django_user_client.user, actor=actor
-    )
-    n2 = await database_sync_to_async(NotificationFactory.build)(
-        recipient=django_user_client.user, actor=actor
-    )
-    created = await database_sync_to_async(Notification.objects.bulk_create)([n1, n2])
-
-    # Collect the relay IDs assigned after bulk_create.
-    relay_ids = await database_sync_to_async(lambda: {n.relay_id for n in created})()
-
-    # Expect one createdNotification event per bulk-created notification.
-    received_ids = set()
-    for _ in range(2):
-        resp = await client.receive(assert_id=sub_id, assert_type="next")
-        received_ids.add(resp["data"]["onNotificationChange"]["createdNotification"]["node"]["id"])
-
-    assert received_ids == relay_ids
-
-    # Disconnect and wait the application to finish gracefully.
-    await client.finalize()
+    assert result.errors is None
+    node = result.data["onNotificationChange"]["createdNotification"]["node"]
+    assert node["id"] == await _relay_id(created[0])
 
 
-@pytest.mark.asyncio
-async def test_another_user_does_not_receive_bulk_created_notification_subscription_events(
-    graphql_ws_user_client,
-) -> None:
-    actor = await database_sync_to_async(UserFactory)()
-    other_recipient = await database_sync_to_async(UserFactory)()
-
-    # Establish & initialize WebSocket GraphQL connection (authenticated as a different user).
-    client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
-
-    # Subscribe to GraphQL subscription.
-    await client.send(
-        msg_type="subscribe",
-        payload={
-            "query": SUBSCRIPTION_QUERY,
-            "operationName": "op_name",
-        },
-    )
-    await client.assert_no_messages()
-
-    # Bulk-create notifications for a different user — the connected user must not receive events.
-    n1 = await database_sync_to_async(NotificationFactory.build)(
-        recipient=other_recipient, actor=actor
-    )
-    n2 = await database_sync_to_async(NotificationFactory.build)(
-        recipient=other_recipient, actor=actor
-    )
-    await database_sync_to_async(Notification.objects.bulk_create)([n1, n2])
-
-    await client.assert_no_messages()
-
-    # Disconnect and wait the application to finish gracefully.
-    await client.finalize()
+async def test_anonymous_subscription_receives_nothing() -> None:
+    user = await database_sync_to_async(UserFactory)()
+    async with GraphQLWebsocketCommunicator(_application(), "/graphql") as ws:
+        result = _next_result(ws)
+        await asyncio.sleep(0.1)
+        await database_sync_to_async(NotificationFactory)(recipient=user)
+        with pytest.raises(asyncio.TimeoutError):
+            await asyncio.wait_for(asyncio.shield(result), 0.5)
+        result.cancel()

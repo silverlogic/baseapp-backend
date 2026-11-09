@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-17 01:11+0000\n"
+"POT-Creation-Date: 2026-11-09 03:27+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -61,13 +61,6 @@ msgid ""
 msgstr ""
 "As senhas não são armazenadas em texto puro, então não há como ver a senha "
 "deste usuário, mas você pode <a href='../password/'>alterar a senha.</a>"
-
-#: graphql/permissions.py
-msgid ""
-"Determine if the logged in user has a specific permission for this object."
-msgstr ""
-"Determina se o usuário autenticado tem uma permissão específica para este "
-"objeto."
 
 #: models.py
 msgid "profile"
@@ -370,6 +363,13 @@ msgstr "Você não tem permissão para realizar esta ação."
 #: rest_framework/users/serializers.py
 msgid "Permission with this codename does not exist."
 msgstr "Não existe permissão com este codename."
+
+#: strawberry/permissions.py
+msgid ""
+"Determine if the logged in user has a specific permission for this object."
+msgstr ""
+"Determina se o usuário autenticado tem uma permissão específica para este "
+"objeto."
 
 #: templates/admin/widgets/grouped_permission_widget.html
 msgid "Filter permissions…"

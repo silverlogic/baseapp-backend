@@ -4,19 +4,25 @@ import strawberry
 import strawberry_django
 import swapper
 from django.db.models import Model
-from graphene_django.filter.utils import get_filterset_class
+from django_filters import FilterSet
 from strawberry.types import Info
 
 from baseapp_core.plugins import apply_if_installed
 from baseapp_core.strawberry import Node, django_type, type_for_model
 from baseapp_core.strawberry.enums import enum_from_choices
+from baseapp_core.strawberry.filters import GlobalIDFilter
 
 Reaction = swapper.load_model("baseapp_reactions", "Reaction")
 ReactionLazyType = type_for_model(Reaction)
 ReactionTypesEnum = enum_from_choices(Reaction.ReactionTypes, "ReactionTypes")
 
-# The FilterSet graphene-django derives from `filter_fields = {"id": ["exact"]}` (global id filter).
-ReactionFilter = get_filterset_class(None, model=Reaction, fields={"id": ["exact"]})
+
+class ReactionFilter(FilterSet):
+    id = GlobalIDFilter(field_name="id", lookup_expr="exact")
+
+    class Meta:
+        model = Reaction
+        fields = ["id"]
 
 
 def _reactions_count_type() -> type:
@@ -44,7 +50,7 @@ class AbstractReactionType:
     @classmethod
     def get_node(cls, info: Info, pk: Any) -> Model | None:
         node = super().get_node(info, pk)
-        # Same permission Graphene's ReactionObjectType.get_node checks.
+        # Historical: reactions reuse the comments view permission.
         if not info.context.user.has_perm("baseapp_comments.view_comment", node):
             return None
         return node

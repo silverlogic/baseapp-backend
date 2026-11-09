@@ -10,8 +10,6 @@ import strawberry_django
 from django import forms
 from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db import models
-from graphene_django.forms import GlobalIDFormField, GlobalIDMultipleChoiceField
-from graphql_relay import cursor_to_offset, offset_to_cursor
 from strawberry import relay
 from strawberry.annotation import StrawberryAnnotation
 from strawberry.types import Info
@@ -19,6 +17,19 @@ from strawberry.types.arguments import StrawberryArgument
 from strawberry.types.field import StrawberryField
 from strawberry_django.fields.field import StrawberryDjangoConnectionExtension
 from strawberry_django.relay import DjangoListConnection
+
+from .filters import GlobalIDFormField, GlobalIDMultipleChoiceField
+
+
+def offset_to_cursor(offset: int) -> str:
+    return relay.to_base64("arrayconnection", offset)
+
+
+def cursor_to_offset(cursor: str) -> int | None:
+    try:
+        return int(relay.from_base64(cursor)[1])
+    except (ValueError, TypeError):
+        return None
 
 
 @strawberry.type(name="Edge", description="An edge in a connection.")
@@ -41,7 +52,7 @@ class CountedConnection(DjangoListConnection[relay.NodeType]):
         return len(self.edges)
 
 
-# Mirrors graphene_django.forms.converter.convert_form_field (most specific class first).
+# Form field -> argument type (most specific class first).
 _FORM_FIELD_TYPES: list[tuple[type, Any]] = [
     (GlobalIDMultipleChoiceField, list[Optional[strawberry.ID]]),
     (GlobalIDFormField, strawberry.ID),
@@ -89,7 +100,7 @@ def _declared_field_type(model: type[models.Model], field_name: str) -> Any:
 
 
 def _filter_type(filterset_class: type[django_filters.FilterSet], name: str, filter_field) -> Any:
-    """Argument type for one filter, following graphene_django.filter.utils."""
+    """Argument type for one filter (`ID` for primary keys and relations)."""
     if name not in filterset_class.declared_filters:
         if filter_field.lookup_expr == "isnull":
             return bool

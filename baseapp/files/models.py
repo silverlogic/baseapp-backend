@@ -1,5 +1,3 @@
-from typing import TYPE_CHECKING
-
 import pgtrigger
 import swapper
 from django.apps import apps
@@ -24,9 +22,6 @@ from baseapp_core.swapper import init_swapped_models
 from .storage import get_files_storage
 from .storage.base import file_upload_to
 from .utils import default_files_count
-
-if TYPE_CHECKING:
-    from baseapp_core.graphql import DjangoObjectType
 
 
 class FileTargetCountFunc(pgtrigger.Func):
@@ -441,12 +436,6 @@ class AbstractFile(*file_inheritances, DocumentIdMixin, RelayModel, TimeStampedM
         verbose_name = _("file")
         verbose_name_plural = _("files")
         swappable = swapper.swappable_setting("baseapp_files", "File")
-
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import FileObjectType
-
-        return FileObjectType
 
 
 # Resolve the concrete swap target (e.g. files.File) so the count triggers are

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:27+0000\n"
+"POT-Creation-Date: 2026-11-09 03:27+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -21,126 +21,6 @@ msgstr ""
 #: apps.py
 msgid "BaseApp Chats"
 msgstr "BaseApp Chats"
-
-#: graphql/mutations.py
-msgid "You don't have permission to send a message as this profile"
-msgstr "No tienes permiso para enviar un mensaje como este perfil"
-
-#: graphql/mutations.py
-msgid "You can't create a chatroom with those participants"
-msgstr "No puedes crear una sala de chat con esos participantes"
-
-#: graphql/mutations.py
-msgid "You need add at least one participant"
-msgstr "Debes agregar al menos un participante"
-
-#: graphql/mutations.py
-msgid "Title is required for group chats"
-msgstr "El título es obligatorio para los chats grupales"
-
-#: graphql/mutations.py
-msgid "You don't have permission to create a room"
-msgstr "No tienes permiso para crear una sala"
-
-#: graphql/mutations.py
-msgid "Some participants are not valid"
-msgstr "Algunos participantes no son válidos"
-
-#: graphql/mutations.py
-msgid "This room cannot be updated"
-msgstr "Esta sala no puede ser actualizada"
-
-#: graphql/mutations.py
-msgid "You don't have permission to act as this profile"
-msgstr "No tienes permiso para actuar como este perfil"
-
-#: graphql/mutations.py
-msgid "You can't add those participants to a chatroom"
-msgstr "No puedes agregar esos participantes a una sala de chat"
-
-#: graphql/mutations.py
-msgid "You don't have permission to update this room"
-msgstr "No tienes permiso para actualizar esta sala"
-
-#: graphql/mutations.py
-msgid "Some rooms are not valid"
-msgstr "Algunas salas no son válidas"
-
-#: graphql/mutations.py
-msgid ""
-"You don't have permission to add participants to one or more of the selected "
-"rooms"
-msgstr ""
-"No tienes permiso para agregar participantes a una o más de las salas "
-"seleccionadas"
-
-#: graphql/mutations.py
-msgid "This profile is not valid"
-msgstr "Este perfil no es válido"
-
-#: graphql/mutations.py
-msgid "You can't add this participant to a chatroom"
-msgstr "No puedes agregar este participante a una sala de chat"
-
-#: graphql/mutations.py
-msgid "You need to select at least one room"
-msgstr "Debes seleccionar al menos una sala"
-
-#: graphql/mutations.py
-msgid "You don't have permission to use this profile"
-msgstr "No tienes permiso para usar este perfil"
-
-#: graphql/mutations.py
-msgid "The target participant is not part of the room"
-msgstr "El participante objetivo no forma parte de la sala"
-
-#: graphql/mutations.py
-msgid "The room must have at least one admin"
-msgstr "La sala debe tener al menos un administrador"
-
-#: graphql/mutations.py
-msgid "You don't have permission to send a message in this room"
-msgstr "No tienes permiso para enviar un mensaje en esta sala"
-
-#: graphql/mutations.py
-msgid "You need to write something"
-msgstr "Debes escribir algo"
-
-#: graphql/mutations.py
-msgid "You can't write more than 1000 characters"
-msgstr "No puedes escribir más de 1000 caracteres"
-
-#: graphql/mutations.py
-msgid "Message does not exist"
-msgstr "El mensaje no existe"
-
-#: graphql/mutations.py
-msgid "You don't have permission to update this message"
-msgstr "No tienes permiso para actualizar este mensaje"
-
-#: graphql/mutations.py
-msgid "You cannot edit an empty message"
-msgstr "No puedes editar un mensaje vacío"
-
-#: graphql/mutations.py
-msgid "Message must be no longer than 1000 characters"
-msgstr "El mensaje no debe tener más de 1000 caracteres"
-
-#: graphql/mutations.py
-msgid "This message has already been deleted"
-msgstr "Este mensaje ya ha sido eliminado"
-
-#: graphql/mutations.py
-msgid "Participant is not part of the room."
-msgstr "El participante no forma parte de la sala."
-
-#: graphql/mutations.py
-msgid "You don't have permission to archive this chatroom as this profile"
-msgstr "No tienes permiso para archivar esta sala de chat como este perfil"
-
-#: graphql/object_types.py
-msgid "Profile Not Found"
-msgstr "Perfil no encontrado"
 
 #: models.py
 msgid "title"
@@ -337,6 +217,126 @@ msgstr "estado del mensaje"
 #: models.py
 msgid "message statuses"
 msgstr "estados de los mensajes"
+
+#: strawberry/mutations.py
+msgid "Some rooms are not valid"
+msgstr "Algunas salas no son válidas"
+
+#: strawberry/mutations.py
+msgid ""
+"You don't have permission to add participants to one or more of the selected "
+"rooms"
+msgstr ""
+"No tienes permiso para agregar participantes a una o más de las salas "
+"seleccionadas"
+
+#: strawberry/mutations.py
+msgid "You don't have permission to send a message as this profile"
+msgstr "No tienes permiso para enviar un mensaje como este perfil"
+
+#: strawberry/mutations.py
+msgid "You can't create a chatroom with those participants"
+msgstr "No puedes crear una sala de chat con esos participantes"
+
+#: strawberry/mutations.py
+msgid "You need add at least one participant"
+msgstr "Debes agregar al menos un participante"
+
+#: strawberry/mutations.py
+msgid "Title is required for group chats"
+msgstr "El título es obligatorio para los chats grupales"
+
+#: strawberry/mutations.py
+msgid "You don't have permission to create a room"
+msgstr "No tienes permiso para crear una sala"
+
+#: strawberry/mutations.py
+msgid "Some participants are not valid"
+msgstr "Algunos participantes no son válidos"
+
+#: strawberry/mutations.py
+msgid "This room cannot be updated"
+msgstr "Esta sala no puede ser actualizada"
+
+#: strawberry/mutations.py
+msgid "You don't have permission to act as this profile"
+msgstr "No tienes permiso para actuar como este perfil"
+
+#: strawberry/mutations.py
+msgid "You can't add those participants to a chatroom"
+msgstr "No puedes agregar esos participantes a una sala de chat"
+
+#: strawberry/mutations.py
+msgid "You don't have permission to update this room"
+msgstr "No tienes permiso para actualizar esta sala"
+
+#: strawberry/mutations.py
+msgid "This profile is not valid"
+msgstr "Este perfil no es válido"
+
+#: strawberry/mutations.py
+msgid "You can't add this participant to a chatroom"
+msgstr "No puedes agregar este participante a una sala de chat"
+
+#: strawberry/mutations.py
+msgid "You need to select at least one room"
+msgstr "Debes seleccionar al menos una sala"
+
+#: strawberry/mutations.py
+msgid "You don't have permission to send a message in this room"
+msgstr "No tienes permiso para enviar un mensaje en esta sala"
+
+#: strawberry/mutations.py
+msgid "You need to write something"
+msgstr "Debes escribir algo"
+
+#: strawberry/mutations.py
+msgid "You can't write more than 1000 characters"
+msgstr "No puedes escribir más de 1000 caracteres"
+
+#: strawberry/mutations.py
+msgid "Message does not exist"
+msgstr "El mensaje no existe"
+
+#: strawberry/mutations.py
+msgid "You don't have permission to update this message"
+msgstr "No tienes permiso para actualizar este mensaje"
+
+#: strawberry/mutations.py
+msgid "You cannot edit an empty message"
+msgstr "No puedes editar un mensaje vacío"
+
+#: strawberry/mutations.py
+msgid "Message must be no longer than 1000 characters"
+msgstr "El mensaje no debe tener más de 1000 caracteres"
+
+#: strawberry/mutations.py
+msgid "This message has already been deleted"
+msgstr "Este mensaje ya ha sido eliminado"
+
+#: strawberry/mutations.py
+msgid "Participant is not part of the room."
+msgstr "El participante no forma parte de la sala."
+
+#: strawberry/mutations.py
+msgid "You don't have permission to archive this chatroom as this profile"
+msgstr "No tienes permiso para archivar esta sala de chat como este perfil"
+
+#: strawberry/mutations.py
+msgid "You don't have permission to use this profile"
+msgstr "No tienes permiso para usar este perfil"
+
+#: strawberry/mutations.py
+msgid "The target participant is not part of the room"
+msgstr "El participante objetivo no forma parte de la sala"
+
+#: strawberry/mutations.py
+msgid "The room must have at least one admin"
+msgstr "La sala debe tener al menos un administrador"
+
+#: strawberry/types.py
+msgid "Profile Not Found"
+msgstr "Perfil no encontrado"
 
 #: utils.py
 msgid "You got a new message"

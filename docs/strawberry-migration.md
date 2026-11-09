@@ -1,59 +1,55 @@
 # Graphene → Strawberry migration plan (BaseApp stack)
 
-Status: proposal, backed by a proof of concept on branch `feature/strawberry-poc` of `baseapp-backend`.
+Status: **done** on branch `feature/strawberry-poc`. Graphene is removed; Strawberry serves
+`/graphql` (HTTP and the graphql-transport-ws WebSocket). Sections 1–9 below are the original plan,
+kept for context.
 
-## 0. Status of the full port
+## 0. Where things ended up
 
-Every package in `baseapp-backend` now has a Strawberry port next to its Graphene code, served
-at `/graphql/strawberry`. Graphene still serves `/graphql` unchanged. How the port is built:
+- **One GraphQL layer.** Every package's GraphQL code lives in `<package>/strawberry/`; the
+  `<package>/graphql/` modules, `graphene`, `graphene-django`, both query optimizers,
+  `graphene-file-upload`, `graphql-relay` and `baseapp-django-channels-graphql-ws` are gone. The
+  `graphql` extra now installs Strawberry; the separate `strawberry` extra is gone.
+- **Same contract.** `testproject/schema.graphql` is the committed SDL (the former Graphene schema
+  minus `_debug`); `baseapp_core/tests/test_graphql_schema_snapshot.py` fails on any difference.
+  `manage.py graphql_schema --out <file> [--check]` exports or verifies it. The frontend's Relay
+  documents compile to identical artifacts against it.
+- **Mutations are native** `relay_mutation` resolvers (the Graphene `mutate_and_get_payload` logic
+  moved over unchanged: same permission checks, errors and payloads).
+- **Subscriptions** publish with `broadcast(subscription_group("<Name>", group), payload)`; group
+  names kept the former Graphene class names, so nothing changed for subscribers.
+- **Authentication** comes from `STRAWBERRY_AUTHENTICATION_CLASSES` (DRF classes);
+  `STRAWBERRY_SCHEMA` names the schema module (`testproject.graphql.schema`, the template's
+  `apps.graphql.schema`).
+- **`baseapp_core.graphql`** keeps only Graphene-free helpers: `RelayModel` (`relay_id` now comes
+  from the Strawberry type registry), the Relay id utilities, `capture_database_queries` and the
+  test fixtures. The hashids strategies are Strawberry-only; legacy ids use
+  `baseapp_core.hashids.utils.to_global_id` / `from_global_id`.
+- **Plugins** declare `strawberry_queries/mutations/subscriptions/types` and
+  `register_strawberry_shared_interfaces`; the `graphql_*` keys, `GRAPHENE__MIDDLEWARE` and
+  `register_graphql_shared_interfaces` are gone.
 
-- **Schema parity gate.** `manage.py strawberry_parity` diffs the two schemas;
-  `baseapp_core/tests/test_strawberry_schema_parity.py` fails on any mismatch in ported types.
-  Setting `STRAWBERRY_SCHEMA_COMPLETE=1` also fails on anything not ported.
-- **Behaviour gate.** `GRAPHQL_TEST_ENDPOINT=/graphql/strawberry` runs every existing GraphQL
-  test against Strawberry. The same suite then proves both implementations.
-- **Relations like `fields = "__all__"`.** `django_type(..., relations=...)` exposes model
-  relations to other registered types when the schema is built, with Graphene's names,
-  nullability and FilterSet arguments. No package declares fields for another package's models.
-- **Mutations delegate to the Graphene logic.** Strawberry declares the input and payload types;
-  `graphene_relay_mutation` runs the Graphene class's `mutate_and_get_payload` and maps the
-  result. Both endpoints share one implementation while they coexist. Several resolvers also
-  reuse the Graphene types' plain helper methods for the same reason.
-- **Subscriptions are bridged.** Every Graphene `Subscription.broadcast` also publishes to a
-  Strawberry channel group, so publishers are not touched until Graphene goes away.
-- **Authentication mirrors Graphene.** The Strawberry view uses the DRF authentication classes
-  listed in `GRAPHENE["MIDDLEWARE"]` (or `STRAWBERRY_AUTHENTICATION_CLASSES`).
-
-Verification on the port branches:
+Verification:
 
 | Check | Result |
 |---|---|
-| `baseapp-backend` full suite, Graphene endpoint | 1957 passed, 0 failed |
-| `baseapp-backend` full suite, Strawberry endpoint | 1933 passed, 24 failed (22 expected, see below; the other 2 since fixed) |
-| Template full suite, Graphene endpoint | 611 passed, 0 failed |
-| Template full suite, Strawberry endpoint | 595 passed, 16 failed (all expected) |
-| Schema diff, test project and template | only the dropped `_debug` / `DjangoDebug*` |
-| Frontend: `relay-compiler` on all 135 documents against each schema | identical `__generated__` output |
+| `baseapp-backend` full suite | 1861 passed, 0 failed |
+| Template full suite | 610 passed, 0 failed |
+| Schema snapshot (test project) and template schema export | match / builds |
+| flake8, `ast-grep scan`, translation catalogs | clean |
 
-The expected Strawberry failures fall into three groups:
+Query counts went down wherever a test pins them (comments listing 13 → 7, users list 5 → 1,
+follows list 10 → 6); the assertions are re-pinned to the new counts.
 
-- Tests whose documents select `_debug` (dropped on purpose).
-- Tests that patch Graphene internals (`GraphQLView.schema`, Graphene type modules).
-- Exact query-count assertions pinned to Graphene, where Strawberry needs fewer queries
-  (comments listing 13 → 7, users list 5 → 1, follows list 10 → 6). Re-pin them at removal.
+Still open:
 
-The Strawberry suite must run on a fresh test database (`--create-db`). Transactional tests flush
-data that migrations create (Wagtail's root page), and a reused database keeps that loss.
-
-What removing Graphene then involves, mechanically:
-
-1. Move each Graphene mutation's `mutate_and_get_payload` body and the resolver helpers the
-   Strawberry code reuses into Graphene-free modules, and point the Strawberry code there.
-2. Replace each `Subscription.broadcast(group=G, payload=P)` call with
-   `broadcast(subscription_group("<Name>", G), P)` and delete the bridge.
-3. Set `STRAWBERRY_AUTHENTICATION_CLASSES` explicitly, drop the Graphene branches of the
-   hashids strategies, and delete every `<package>/graphql/` module and the Graphene settings.
-4. Serve Strawberry at `/graphql`, then unpin Strawberry and move to graphql-core 3.3.
+- **Unpin Strawberry.** `strawberry-graphql` 0.327.x / `strawberry-graphql-django` 0.91.x are the
+  last releases on `graphql-core 3.2`; moving to current releases and `graphql-core 3.3` is now
+  unblocked and should be its own change.
+- **Client projects** with their own `apps/*/graphql` Graphene code port it with
+  `docs/strawberry-porting-guide.md`.
+- `pageCreate`, `profileCreate`, `organizationCreate`, `contentPostCreate` and `commentCreate`
+  return their edge with a null `cursor` (selecting `cursor` errors), exactly as Graphene did.
 
 ## 1. Recommendation
 
@@ -156,7 +152,7 @@ tests, not by reading code, which is the argument for making the gates mandatory
 | WebSocket consumer, `broadcast`, `listen` | `baseapp_core/strawberry/subscriptions.py` | `baseapp_core/graphql/consumers.py`, `Subscription.broadcast` |
 | Current-Profile header | `baseapp_profiles/strawberry/extensions.py` | `CurrentProfileMiddleware` (Graphene) |
 | Plugin roots | `PackageSettings.strawberry_queries / strawberry_mutations / strawberry_types`, `GraphQLContributor.register_strawberry_shared_interfaces` | `graphql_queries` / `graphql_mutations`, `register_graphql_shared_interfaces` |
-| Parity tooling | `baseapp_core/strawberry/parity.py`, `testing.py`, `baseapp_blocks/tests/test_strawberry_parity.py` | new |
+| Schema diff, snapshot test, ws test helpers | `baseapp_core/strawberry/parity.py`, `testing.py`, `baseapp_core/tests/test_graphql_schema_snapshot.py` | new |
 
 Key design choices:
 
@@ -315,14 +311,13 @@ About 9–12 dev-weeks in total. Graphene code today is ~9k lines in 70 non-test
 3. Keep the Relay mutation shape (`input`, `clientMutationId`, `errors`) long term, or plan a later,
    frontend-coordinated move to Strawberry-native mutations.
 
-## Running the POC
+## Running the checks
 
 ```bash
 # from baseapp-backend/
-docker compose run --rm web uv run pytest -s \
-  baseapp_blocks/tests/test_strawberry_parity.py \
-  baseapp_core/tests/test_strawberry_core.py \
-  baseapp_core/tests/test_strawberry_subscriptions.py
+docker compose run --rm web uv run pytest -q --create-db
+docker compose run --rm -e DJANGO_SETTINGS_MODULE=testproject.settings web \
+  uv run python manage.py graphql_schema --out testproject/schema.graphql --check
 ```
 
-GraphiQL for the Strawberry schema is served at `/graphql/strawberry` next to Graphene's `/graphql`.
+GraphiQL is served at `/graphql`.

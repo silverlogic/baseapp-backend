@@ -16,11 +16,6 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
         registry.register(MentionsService())
         registry.register(MentionableMetadataService())
 
-    def register_graphql_shared_interfaces(self, registry) -> None:
-        from .graphql.shared_interfaces import get_mentions_interface
-
-        registry.register("MentionsInterface", get_mentions_interface)
-
     def register_strawberry_shared_interfaces(self, registry) -> None:
         from .strawberry import get_mentions_interface
 

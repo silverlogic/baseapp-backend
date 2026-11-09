@@ -24,8 +24,8 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
 
         registry.register(FooableMetadataService())
 
-    def register_graphql_shared_interfaces(self, registry) -> None:
-        from .graphql.interfaces import get_foos_interface
+    def register_strawberry_shared_interfaces(self, registry) -> None:
+        from .strawberry import get_foos_interface
 
         registry.register("FoosInterface", get_foos_interface)
 ```
@@ -44,11 +44,8 @@ into the block *above* any `baseapp_core` import.
 | Mixin | Method | Registers |
 |---|---|---|
 | `ServicesContributor` | `register_shared_services(self, registry)` | `SharedServiceProvider` instances |
-| `GraphQLContributor` | `register_graphql_shared_interfaces(self, registry)` | interface getters, by name |
+| `GraphQLContributor` | `register_strawberry_shared_interfaces(self, registry)` | Strawberry interface getters, by name |
 | `SerializersContributor` | `register_shared_serializers(self, registry)` | DRF serializers, by key |
-
-> `baseapp_core/plugins/README.md` shows `register_graphql_shared_interfaces(self)` without the
-> `registry` argument. That is stale — every real `apps.py` takes `registry`.
 
 Note the asymmetry: services register themselves by their own `service_name` property
 (`registry.register(FooableMetadataService())`), while interfaces and serializers are registered

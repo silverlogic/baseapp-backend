@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-15 20:34+0000\n"
+"POT-Creation-Date: 2026-11-09 02:22+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -21,14 +21,6 @@ msgstr ""
 #: apps.py
 msgid "BaseApp Reports"
 msgstr "BaseApp Reportes"
-
-#: graphql/mutations.py
-msgid "You don't have permission to perform this action"
-msgstr "No tienes permiso para realizar esta acción"
-
-#: graphql/mutations.py
-msgid "You cannot report yourself"
-msgstr "No puedes reportarte a ti mismo"
 
 #: models.py
 msgid "key"
@@ -77,3 +69,11 @@ msgstr "cantidad de reportes"
 #: models.py
 msgid "reportable metadata"
 msgstr "metadatos de reporte"
+
+#: strawberry/mutations.py
+msgid "You don't have permission to perform this action"
+msgstr "No tienes permiso para realizar esta acción"
+
+#: strawberry/mutations.py
+msgid "You cannot report yourself"
+msgstr "No puedes reportarte a ti mismo"

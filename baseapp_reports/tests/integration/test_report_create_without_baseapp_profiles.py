@@ -54,15 +54,15 @@ class TestReportsWithoutBaseappProfiles:
 
         with (
             patch(
-                "baseapp_reports.graphql.mutations.get_obj_from_relay_id",
+                "baseapp_reports.strawberry.mutations.get_obj_from_relay_id",
                 side_effect=[target, report_type],
             ),
             patch(
-                "baseapp_reports.graphql.mutations.DocumentId.get_or_create_for_object",
+                "baseapp_reports.strawberry.mutations.DocumentId.get_or_create_for_object",
                 return_value=fake_document,
             ),
             patch(
-                "baseapp_reports.graphql.mutations.Report.objects.create",
+                "baseapp_reports.strawberry.mutations.Report.objects.create",
                 return_value=fake_report,
             ) as create_report,
         ):
@@ -95,10 +95,10 @@ class TestReportsWithoutBaseappProfiles:
 
         with (
             patch(
-                "baseapp_reports.graphql.mutations.get_obj_from_relay_id",
+                "baseapp_reports.strawberry.mutations.get_obj_from_relay_id",
                 side_effect=[target, report_type],
             ),
-            patch("baseapp_reports.graphql.mutations.Report.objects.create") as create_report,
+            patch("baseapp_reports.strawberry.mutations.Report.objects.create") as create_report,
         ):
             response = graphql_user_client(
                 REPORT_CREATE_GRAPHQL,
@@ -124,10 +124,10 @@ class TestReportsWithoutBaseappProfiles:
 
         with (
             patch(
-                "baseapp_reports.graphql.mutations.get_obj_from_relay_id",
+                "baseapp_reports.strawberry.mutations.get_obj_from_relay_id",
                 side_effect=[target, report_type],
             ),
-            patch("baseapp_reports.graphql.mutations.Report.objects.create") as create_report,
+            patch("baseapp_reports.strawberry.mutations.Report.objects.create") as create_report,
         ):
             response = graphql_user_client(
                 REPORT_CREATE_GRAPHQL,
@@ -151,7 +151,7 @@ class TestReportsWithoutBaseappProfiles:
         fake_queryset = ReportType.objects.none()
 
         with patch(
-            "baseapp_reports.graphql.queries.ReportType.objects.all",
+            "baseapp_reports.strawberry.queries.ReportType.objects.all",
             return_value=fake_queryset,
         ):
             response = graphql_client(REPORT_TYPES_LIST_GRAPHQL)

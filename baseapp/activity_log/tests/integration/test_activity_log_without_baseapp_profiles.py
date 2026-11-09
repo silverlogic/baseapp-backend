@@ -1,13 +1,14 @@
 import importlib
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from types import ModuleType
 from unittest.mock import Mock, patch
 
-import graphene
 import pytest
 from django.apps import apps as django_apps
-from graphene_django.settings import graphene_settings
 
-from baseapp.activity_log.graphql.filters import ActivityLogFilter
-from baseapp_core.graphql.views import GraphQLView
+from baseapp.activity_log.filters import ActivityLogFilter
+from baseapp.activity_log.strawberry.types import activity_log_interfaces
 
 pytestmark = pytest.mark.django_db
 
@@ -27,54 +28,25 @@ PROFILE_ACTIVITY_LOG_GRAPHQL = """
     }
 """
 
-LIST_ACTIVITY_LOG_WITH_PROFILE_FIELD_GRAPHQL = """
-    query {
-        activityLogs {
-            edges {
-                node {
-                    id
-                    profile {
-                        id
-                    }
-                }
-            }
-        }
-    }
-"""
 
-LIST_ACTIVITY_LOG_WITH_PROFILE_PK_FILTER_GRAPHQL = """
-    query {
-        activityLogs(profilePk: 1) {
-            edges {
-                node {
-                    id
-                }
-            }
-        }
-    }
-"""
+def _is_installed_without_profiles(original: Callable[[str], bool]) -> Callable[[str], bool]:
+    return lambda app_name: app_name != "baseapp_profiles" and original(app_name)
 
 
-def _build_activity_log_schema_without_profiles_branch() -> graphene.Schema:
-    original_is_installed = django_apps.is_installed
-
-    def _is_installed_without_profiles(app_name) -> bool:
-        if app_name == "baseapp_profiles":
-            return False
-        return original_is_installed(app_name)
-
-    # Force re-evaluation of module-level branches for schema fields/args.
-    with patch.object(django_apps, "is_installed", side_effect=_is_installed_without_profiles):
-        importlib.reload(importlib.import_module("baseapp.activity_log.graphql.filters"))
-        importlib.reload(importlib.import_module("baseapp.activity_log.graphql.object_types"))
-        queries_module = importlib.reload(
-            importlib.import_module("baseapp.activity_log.graphql.queries")
-        )
-
-    class Query(graphene.ObjectType, queries_module.ActivityLogQueries):
-        pass
-
-    return graphene.Schema(query=Query)
+@contextmanager
+def _reloaded_without_profiles(module_name: str) -> Iterator[ModuleType]:
+    """Re-run a module's import-time `is_installed` branches, restoring the module afterwards."""
+    module = importlib.import_module(module_name)
+    saved = dict(module.__dict__)
+    original = django_apps.is_installed
+    try:
+        with patch.object(
+            django_apps, "is_installed", side_effect=_is_installed_without_profiles(original)
+        ):
+            yield importlib.reload(module)
+    finally:
+        module.__dict__.clear()
+        module.__dict__.update(saved)
 
 
 @pytest.mark.parametrize("with_disabled_apps", [["baseapp_profiles"]], indirect=True)
@@ -94,39 +66,21 @@ class TestActivityLogWithoutBaseappProfiles:
         assert "errors" not in content
         assert content["data"]["node"]["activityLogs"]["edges"] == []
 
-    def test_activity_logs_query_hides_profile_field_when_profiles_are_disabled(
-        self, with_disabled_apps, graphql_user_client
+    def test_activity_log_type_drops_profile_field_when_profiles_are_disabled(
+        self, with_disabled_apps
     ) -> None:
-        schema = _build_activity_log_schema_without_profiles_branch()
-        with (
-            patch.object(graphene_settings, "SCHEMA", schema),
-            patch.object(GraphQLView, "schema", schema),
+        original = django_apps.is_installed
+        with patch.object(
+            django_apps, "is_installed", side_effect=_is_installed_without_profiles(original)
         ):
-            response = graphql_user_client(LIST_ACTIVITY_LOG_WITH_PROFILE_FIELD_GRAPHQL)
-        content = response.json()
+            assert activity_log_interfaces() == ()
 
-        assert "errors" in content
-        assert any(
-            "Cannot query field 'profile' on type 'ActivityLog'" in error["message"]
-            for error in content["errors"]
-        )
-
-    def test_activity_logs_query_hides_profile_pk_argument_when_profiles_are_disabled(
-        self, with_disabled_apps, graphql_user_client
+    def test_activity_log_filter_drops_profile_pk_when_profiles_are_disabled(
+        self, with_disabled_apps
     ) -> None:
-        schema = _build_activity_log_schema_without_profiles_branch()
-        with (
-            patch.object(graphene_settings, "SCHEMA", schema),
-            patch.object(GraphQLView, "schema", schema),
-        ):
-            response = graphql_user_client(LIST_ACTIVITY_LOG_WITH_PROFILE_PK_FILTER_GRAPHQL)
-        content = response.json()
-
-        assert "errors" in content
-        assert any(
-            "Unknown argument 'profilePk' on field 'Query.activityLogs'" in error["message"]
-            for error in content["errors"]
-        )
+        with _reloaded_without_profiles("baseapp.activity_log.filters") as filters:
+            assert "profile_pk" not in filters.ActivityLogFilter.base_filters
+        assert "profile_pk" in ActivityLogFilter.base_filters
 
     def test_list_profile_permission_is_not_granted_when_profiles_are_disabled(
         self,

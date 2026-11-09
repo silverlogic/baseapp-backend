@@ -24,7 +24,6 @@ class PackageSettings(BaseModel):
         {
             "MIDDLEWARE",
             "AUTHENTICATION_BACKENDS",
-            "GRAPHENE__MIDDLEWARE",
         }
     )
 
@@ -36,7 +35,6 @@ class PackageSettings(BaseModel):
         default_factory=dict, alias="AUTHENTICATION_BACKENDS"
     )
     middleware: SlottedList = Field(default_factory=dict, alias="MIDDLEWARE")
-    graphene_middleware: SlottedList = Field(default_factory=dict, alias="GRAPHENE__MIDDLEWARE")
 
     # --- Dict settings (merged) ---
     django_extra_settings: Dict[str, Any] = Field(default_factory=dict)
@@ -51,9 +49,6 @@ class PackageSettings(BaseModel):
     v1_urlpatterns: Callable[[include, path, re_path], List[Union[path, re_path]]] = Field(
         default_factory=lambda: []
     )
-    graphql_queries: List[Any] = Field(default_factory=list)
-    graphql_mutations: List[Any] = Field(default_factory=list)
-    graphql_subscriptions: List[Any] = Field(default_factory=list)
     strawberry_queries: List[Any] = Field(default_factory=list)
     strawberry_mutations: List[Any] = Field(default_factory=list)
     strawberry_subscriptions: List[Any] = Field(default_factory=list)

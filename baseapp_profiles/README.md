@@ -44,7 +44,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 ```
 
-4. Make sure your project's `graphql.py` composes the schema via `plugin_registry.get_all_graphql_*()` so `ProfilesQueries` and `ProfilesMutations` are picked up automatically. The GraphQL middleware slot (`GRAPHENE__MIDDLEWARE`, also keyed `baseapp_profiles`) carries the GraphQL-side `CurrentProfileMiddleware`.
+4. Make sure your project's Strawberry schema is built from `plugin_registry.get_all_strawberry_*()` (see `testproject/graphql.py`) so `ProfilesQueries` and `ProfilesMutations` are picked up automatically, and pass `baseapp_profiles.strawberry.extensions.CurrentProfileExtension` in its `extensions` (it sets `user.current_profile` from the `Current-Profile` header once per operation).
 
 5. Define the concrete models (see [models](#models)) and point the swapper settings at them:
 
@@ -140,7 +140,7 @@ When `baseapp_pages` is installed, each profile owns a URL handle (e.g. `/jonath
 
 | Field | Description |
 |---|---|
-| `profile(id)` | RelayNode fetch of a single `Profile`. `get_node` enforces `view_profile`. |
+| `profile(id)` | Relay node fetch of a single `Profile`. `get_node` enforces `view_profile`. |
 | `allProfiles` | Filterable connection of profiles (`ProfileFilter`). Non-superusers only see `PUBLIC` profiles plus their own. |
 
 ### Mutations (`ProfilesMutations`)
@@ -150,8 +150,11 @@ When `baseapp_pages` is installed, each profile owns a URL handle (e.g. `/jonath
 | `profileCreate` | Create a profile (optionally targeting another object via `target`). |
 | `profileUpdate` | Edit name, images, biography, phone, and URL handle (`url_path`). |
 | `profileDelete` | Delete a profile. |
-| `profileRoleUpdate` | Add/update a member's role/status on a profile. |
-| `profileRemoveMember` | Remove a member from a profile. |
+| `profileUserRoleCreate` / `profileUserRoleUpdate` / `profileUserRoleDelete` | Add members (active immediately), change a member's role, remove a member. |
+| `profileSendInvitation` / `profileResendInvitation` / `profileCancelInvitation` | Invite by email, resend or cancel a pending invitation. |
+| `profileAcceptInvitation` / `profileDeclineInvitation` | Respond to an invitation by its token. |
+
+Mutations live in `baseapp_profiles.strawberry.mutations`; the DRF serializers behind create/update in `baseapp_profiles.strawberry.serializers`.
 
 ### Shared GraphQL interfaces
 
@@ -161,31 +164,30 @@ Profiles **publishes** two interfaces via the registry — consume them by name 
 - `ProfilesInterface` — exposes a `profiles` connection for objects that have many.
 
 ```python
-from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.plugins import graphql_shared_interfaces
+from baseapp_core.plugins import strawberry_shared_interfaces
+from baseapp_core.strawberry import Node, django_type
 
 
-class MyObjectType(DjangoObjectType):
-    class Meta:
-        interfaces = graphql_shared_interfaces.get(RelayNode, "ProfileInterface")
-        model = MyModel
+@django_type(MyModel)
+class MyModelType(*strawberry_shared_interfaces.get("ProfileInterface"), Node):
+    pass
 ```
 
-`ProfileObjectType` itself **consumes** interfaces published by other packages, resolved by name so they degrade gracefully when the package is absent: `ProfileActivityLogInterface`, `PageInterface`, `FollowsInterface`, `ReportsInterface`, `BlocksInterface`, `ChatRoomsInterface` (plus `PermissionsInterface`, which comes from the always-present `baseapp_core`).
+`ProfileType` (`baseapp_profiles.strawberry.types`) itself **consumes** interfaces published by other packages, resolved by name so they degrade gracefully when the package is absent: `ProfileActivityLogInterface`, `PageInterface`, `FollowsInterface`, `ReportsInterface`, `BlocksInterface`, `ChatRoomsInterface` (plus `PermissionsInterface` from `baseapp_auth`). Projects override it by subclassing `AbstractProfileType` and re-decorating with `django_type(Profile, ...)`.
 
-To avoid N+1 on those interfaces' count fields, `BaseProfileObjectType.pre_optimization_hook` annotates the queryset through each metadata service it finds (`commentable_metadata`, `followable_metadata`, `reportable_metadata`). A project subclassing `BaseProfileObjectType` must preserve this hook.
+Those interfaces' count fields carry strawberry-django optimizer `annotate` hints, so the counts are annotated on demand (no N+1) for the package type and project overrides alike.
 
 ## Shared services & serializers
 
 ### Provided
 
-- **`profiles.graphql`** (`GraphQLProfileService`) — lets other packages obtain the (possibly swapped) Profile ObjectType / connection edge and create a profile from a mutation without importing `baseapp_profiles` directly:
+- **`profiles.graphql`** (`GraphQLProfileService`) — lets other packages obtain the Strawberry type of the (possibly swapped) Profile and create a profile from a mutation (returning its connection edge) without importing `baseapp_profiles` directly:
 
   ```python
   from baseapp_core.plugins import shared_services
 
   if service := shared_services.get("profiles.graphql"):
-      ObjectType = service.get_profile_object_type()
+      ProfileType = service.get_profile_type()
       edge = service.create_profile_from_mutation(info, target_instance, data)
   ```
 
@@ -200,7 +202,7 @@ All optional — behaviour degrades gracefully when the providing package is abs
 
 ### Optional packages
 
-`baseapp_blocks`, `baseapp_follows`, `baseapp_reports`, `baseapp_comments`, `baseapp_pages`, `baseapp.activity_log`, `baseapp_chats` — each enriches `ProfileObjectType` when installed.
+`baseapp_blocks`, `baseapp_follows`, `baseapp_reports`, `baseapp_comments`, `baseapp_pages`, `baseapp.activity_log`, `baseapp_chats` — each enriches `ProfileType` when installed.
 
 ## Middleware
 

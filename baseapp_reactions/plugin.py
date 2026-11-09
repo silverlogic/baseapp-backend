@@ -29,12 +29,6 @@ class ReactionsPlugin(BaseAppPlugin):
                 "BASEAPP_REACTIONS_NOTIFICATION_CREATED_EMAIL": True,
             },
             # Graphql
-            graphql_queries=[
-                "baseapp_reactions.graphql.queries.ReactionsQueries",
-            ],
-            graphql_mutations=[
-                "baseapp_reactions.graphql.mutations.ReactionsMutations",
-            ],
             strawberry_queries=[
                 "baseapp_reactions.strawberry.queries.ReactionsQueries",
             ],

@@ -13,12 +13,18 @@ from baseapp_core.strawberry.enums import choices_enum
 from baseapp_core.strawberry.fields import FileInterface, build_thumbnail_url
 from baseapp_core.strawberry.scalars import BigInt, JSONString
 
-from ..graphql.object_types import AbstractFileObjectType, FileFilter, can_view_file
+from ..filters import FileFilter
 from ..storage import files_storage, files_storage_is_private
 from ..thumbnails import private_thumbnail_name
 
 File = swapper.load_model("baseapp_files", "File")
+file_app_label = File._meta.app_label
+file_model_name = File._meta.model_name.lower()
 FileUploadStatusEnum = choices_enum(File, "upload_status")
+
+
+def can_view_file(info: Info, file_obj: Model) -> bool:
+    return info.context.user.has_perm(f"{file_app_label}.view_{file_model_name}", file_obj)
 
 
 @strawberry_django.type(File, name="AbstractFile")
@@ -49,7 +55,12 @@ class AbstractFileType:
 
     @strawberry_django.field(only=["file"])
     def url(self, info: Info) -> str | None:
-        return AbstractFileObjectType.resolve_url(self, info)
+        """Signed and expiring on private storage; None for viewers without `view_file`."""
+        if not can_view_file(info, self):
+            return None
+        if not self.file:
+            return getattr(self, "url", None)
+        return info.context.build_absolute_uri(self.file.url)
 
     @strawberry_django.field(only=["file"])
     def thumbnail(self, info: Info, width: int, height: int) -> str | None:

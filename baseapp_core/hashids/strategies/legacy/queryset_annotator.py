@@ -1,9 +1,9 @@
 from typing import Any
 
 from django.db.models import QuerySet
-from query_optimizer.typing import TModel
 
 from baseapp_core.hashids.strategies.interfaces import QuerysetAnnotatorStrategy
+from baseapp_core.hashids.strategies.interfaces.queryset_annotator import TModel
 
 
 class LegacyQuerysetAnnotatorStrategy(QuerysetAnnotatorStrategy):

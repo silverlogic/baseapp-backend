@@ -4,11 +4,11 @@
 
 BaseApp Backend is a monorepo of reusable Django packages (auth, profiles, comments, reactions, follows, blocks, chats, notifications, payments, etc.). It is consumed as a git submodule by project templates.
 
-**Core stack:** Django + DRF + Graphene Django (GraphQL) + Celery + PostgreSQL + Redis.
+**Core stack:** Django + DRF + Strawberry (`strawberry-graphql` + `strawberry-graphql-django`, GraphQL) + Channels + Celery + PostgreSQL + Redis.
 
-**Dual API surface:** Some features expose both a REST API (DRF) and a GraphQL API (Graphene Django with Relay). When adding features, default to GraphQL API, unless scoped otherwise.
+**Dual API surface:** Some features expose both a REST API (DRF) and a GraphQL API (Strawberry with Relay, served at `/graphql` over HTTP and the graphql-transport-ws WebSocket). When adding features, default to GraphQL API, unless scoped otherwise.
 
-**Making ObjectTypes overridable:** Models should expose `get_graphql_object_type()` so consuming projects can swap the ObjectType. Use `get_object_type_for_model()` throughout package code instead of importing the ObjectType directly.
+**Making types overridable:** Model types are registered per model by `baseapp_core.strawberry.django_type`; the last registration wins. Projects that swap a model re-register a type for it with `@django_type(ProjectModel, ...)`, usually subclassing the package's abstract `@strawberry_django.type(Model, name="AbstractX")` base. Package code references other types with `type_for_model(Model)` (a lazy, registry-resolved reference), never by importing the type class.
 
 **Model swapping:** When adding a concrete model to a package, use `django-swappable-models` so consuming projects can substitute their own model.
 
@@ -34,14 +34,17 @@ BaseApp Backend is a monorepo of reusable Django packages (auth, profiles, comme
 - Serialize choice fields by returning the key, not the display value.
 
 ### GraphQL
-- Models inherit `RelayModel` from `baseapp_core.graphql`.
-- ObjectTypes use `baseapp_core.graphql.DjangoObjectType` and implement `get_graphql_object_type()`.
-- Mutations inherit `RelayMutation` (provides `clientMutationId`, `errors`, `_debug`).
-- Always permission-check in `get_node` to prevent unauthorized access via `node(id: ...)`.
+Pattern reference: `docs/strawberry-porting-guide.md`; native examples: `baseapp_blocks/strawberry/`, `baseapp_auth/strawberry/`.
+- Models inherit `RelayModel` from `baseapp_core.graphql` (provides `relay_id`).
+- Layout: `<pkg>/strawberry/{types,queries,mutations,subscriptions,interfaces}.py`, listed in `plugin.py` under `strawberry_types` / `strawberry_queries` / `strawberry_mutations` / `strawberry_subscriptions`.
+- Model types use `@django_type(Model, ...)` from `baseapp_core.strawberry` (not bare `strawberry_django.type`), with `Node` as the last base; shared interfaces come from `strawberry_shared_interfaces.get("XInterface", ...)`.
+- Always permission-check in `get_node` (`super().get_node(info, pk)`, then `has_perm`) to prevent unauthorized access via `node(id: ...)`; scope lists in the `get_queryset` classmethod.
+- Mutations are `@relay_mutation(login_required=...)` resolvers taking an `input: XInput` (`RelayMutationInput`) and returning an `XPayload` (`RelayMutationPayload`: `clientMutationId`, `errors`). Map DRF serializer errors with `serializer_errors(serializer)`.
 - Put permissions in `permissions.py` and make use of Django's permissions system, which can also be shared with DRF as well.
-- Consider `graphene-django-query-optimizer` for complex cases or optimize with `select_related`/`prefetch_related` in `get_queryset`; 
-- Use `DjangoFilterConnectionField` + `FilterSet` for filterable list queries. `filters.py` can be shared with  DRF as well.
-- Document queries and mutations with docstrings and `description=` / `deprecated_reason=` fields.
+- Optimize with strawberry-django optimizer hints (`only=`, `select_related=`, `prefetch_related=`, `annotate=` on the type or field), not ad-hoc `select_related` in resolvers.
+- Filterable lists: `@connection(CountedConnection[XLazy] | None, filterset_class=XFilter)` returning a queryset. `filters.py` can be shared with DRF as well.
+- Subscriptions: async generators over `listen(info, [subscription_group(...)])`; publishers call `broadcast(group, payload)` (`baseapp_core.strawberry.subscriptions`).
+- Document queries and mutations with docstrings and `description=` / `deprecation_reason=`.
 
 **Formatting:** Black with `line-length=100`, isort with Black profile.
 
@@ -125,7 +128,7 @@ the language code `pt`, the code `TranslatedField` columns, `URLPath.language` a
 ## For AI Agents
 
 - Use the `compose-a-block` skill when creating or extending a package in this repo, and for any
-  GraphQL query-performance work (N+1s, `pre_optimization_hook`, annotations, connection fields).
+  GraphQL query-performance work (N+1s, optimizer hints, annotations, connection fields).
 - Use the `ensure-test-coverage` skill whenever implementing or modifying backend code.
 - Use the `run-development-commands` skill to translate intent into the correct Docker Compose commands.
 - Do not mark a task done until tests pass and coverage meets the threshold.

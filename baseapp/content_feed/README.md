@@ -22,7 +22,7 @@ INSTALLED_APPS = [
 ]
 ```
 
-2. Make sure your project's `graphql.py` composes the schema via `plugin_registry.get_all_graphql_*()` so `ContentFeedQueries` (`contentPost`, `contentPosts`) and `ContentFeedMutations` (`contentPostCreate`) are picked up automatically.
+2. Make sure your project's Strawberry schema is built from the plugin registry (`baseapp_core.strawberry.schema`) so `ContentFeedQueries` (`contentPost`, `contentPosts`) and `ContentFeedMutations` (`contentPostCreate`) are picked up automatically.
 
 3. Define the concrete models (see [models](#models)) and point the swapper settings at them:
 
@@ -80,16 +80,20 @@ class ContentPostImage(AbstractContentPostImage):
 
 ### Shared GraphQL interfaces
 
-`ContentPostObjectType` opts into shared interfaces by name (they degrade gracefully when the providing package is absent):
+`ContentPostType` (`baseapp.content_feed.strawberry.types`) opts into shared interfaces by name (they degrade gracefully when the providing package is absent):
 
 ```python
-interfaces = graphql_shared_interfaces.get(
-    RelayNode, "MentionsInterface", "ReactionsInterface"
-)
+class ContentPostType(
+    *strawberry_shared_interfaces.get(
+        "MentionsInterface", "ReactionsInterface", "CommentsInterface"
+    ),
+    Node,
+): ...
 ```
 
 - `MentionsInterface` (from `baseapp_mentions`) — exposes the post's mentions.
-- `ReactionsInterface` (from `baseapp_reactions`) — exposes `reactionsCount` / `isReactionsEnabled` / `reactions`. `ContentPostObjectType.get_queryset` annotates the reactable metadata up front so these resolvers don't N+1.
+- `ReactionsInterface` (from `baseapp_reactions`) — exposes `reactionsCount` / `isReactionsEnabled` / `reactions`. The interface fields carry optimizer hints, so these resolvers don't N+1.
+- `CommentsInterface` (from `baseapp_comments`) — exposes the post's comments.
 
 ## Shared services
 
@@ -97,7 +101,7 @@ interfaces = graphql_shared_interfaces.get(
 
 Content Feed consumes the following services lazily via `shared_services.get(...)` — they are all optional, behaviour degrades gracefully when absent:
 
-- `reactable_metadata` (from `baseapp_reactions`) — `set_is_reactions_enabled` on create and `annotate_queryset` when resolving the feed.
+- `reactable_metadata` (from `baseapp_reactions`) — `set_is_reactions_enabled` on create.
 - `mentions` (from `baseapp_mentions`) — `update_mentions` to track inline @-mentions in post content.
 
 ### Optional packages

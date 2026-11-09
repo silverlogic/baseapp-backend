@@ -17,22 +17,11 @@ class ProfilesPlugin(BaseAppPlugin):
                     "baseapp_profiles.middleware.CurrentProfileMiddleware",
                 ],
             },
-            GRAPHENE__MIDDLEWARE={
-                "baseapp_profiles": [
-                    "baseapp_profiles.graphql.middleware.CurrentProfileMiddleware",
-                ],
-            },
             AUTHENTICATION_BACKENDS={
                 "baseapp_profiles": [
                     "baseapp_profiles.permissions.ProfilesPermissionsBackend",
                 ],
             },
-            graphql_queries=[
-                "baseapp_profiles.graphql.queries.ProfilesQueries",
-            ],
-            graphql_mutations=[
-                "baseapp_profiles.graphql.mutations.ProfilesMutations",
-            ],
             strawberry_queries=[
                 "baseapp_profiles.strawberry.queries.ProfilesQueries",
             ],

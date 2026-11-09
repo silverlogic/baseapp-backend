@@ -8,7 +8,7 @@ from strawberry.types import Info
 from baseapp_core.strawberry import CountedConnection, Node
 from baseapp_core.strawberry.connections import connection
 
-from ..graphql.filters import NotificationFilter
+from ..filters import NotificationFilter
 from ..utils import can_user_receive_notification
 from .types import (
     Notification,

@@ -15,7 +15,7 @@ valid:
     def is_recent(self, obj):
         return True
   - |
-    field = graphene.String(description="Developer-facing schema docs are not translated.")
+    field: str = strawberry.field(description="Developer-facing schema docs are not translated.")
   - |
     short_description = _("Body html")
 invalid:

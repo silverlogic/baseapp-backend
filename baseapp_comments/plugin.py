@@ -27,15 +27,6 @@ class CommentsPlugin(BaseAppPlugin):
                 "BASEAPP_COMMENTS_NOTIFICATION_REPLY_EMAIL": True,
             },
             # GraphQL
-            graphql_queries=[
-                "baseapp_comments.graphql.queries.CommentsQueries",
-            ],
-            graphql_mutations=[
-                "baseapp_comments.graphql.mutations.CommentsMutations",
-            ],
-            graphql_subscriptions=[
-                "baseapp_comments.graphql.subscriptions.CommentsSubscriptions",
-            ],
             strawberry_queries=[
                 "baseapp_comments.strawberry.queries.CommentsQueries",
             ],

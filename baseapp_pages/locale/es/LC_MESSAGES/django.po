@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-15 20:34+0000\n"
+"POT-Creation-Date: 2026-11-09 03:28+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -25,18 +25,6 @@ msgstr "objetivo"
 #: apps.py
 msgid "BaseApp Pages"
 msgstr "BaseApp Páginas"
-
-#: graphql/mutations.py
-msgid "URL Path already being used"
-msgstr "La ruta URL ya está en uso"
-
-#: graphql/mutations.py
-msgid "You don't have permission to create a page"
-msgstr "No tienes permiso para crear una página"
-
-#: graphql/mutations.py
-msgid "You don't have permission to edit this page"
-msgstr "No tienes permiso para editar esta página"
 
 #: models.py
 msgid "path"
@@ -121,3 +109,15 @@ msgstr "página"
 #: models.py
 msgid "pages"
 msgstr "páginas"
+
+#: serializers.py
+msgid "URL Path already being used"
+msgstr "La ruta URL ya está en uso"
+
+#: strawberry/mutations.py
+msgid "You don't have permission to create a page"
+msgstr "No tienes permiso para crear una página"
+
+#: strawberry/mutations.py
+msgid "You don't have permission to edit this page"
+msgstr "No tienes permiso para editar esta página"

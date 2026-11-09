@@ -1,11 +1,11 @@
-"""Unit tests for baseapp.files.graphql.utils.attach_files_from_relay_ids."""
+"""Unit tests for baseapp.files.strawberry.utils.attach_files_from_relay_ids."""
 
 import pytest
 import swapper
 from django.contrib.auth import get_user_model
 from graphql.error import GraphQLError
 
-from baseapp.files.graphql.utils import attach_files_from_relay_ids
+from baseapp.files.strawberry.utils import attach_files_from_relay_ids
 from baseapp_comments.tests.factories import CommentFactory
 from baseapp_core.models import DocumentId
 

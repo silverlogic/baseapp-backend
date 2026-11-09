@@ -18,7 +18,7 @@ from baseapp_core.strawberry.connections import connection
 from baseapp_core.strawberry.enums import enum_from_choices
 from baseapp_core.strawberry.scalars import GenericScalar
 
-from ..graphql.filters import ActivityLogFilter, MiddlewareEventFilter
+from ..filters import ActivityLogFilter, MiddlewareEventFilter
 from ..models import ActivityLog, VisibilityTypes
 
 User = get_user_model()

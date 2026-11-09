@@ -35,7 +35,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 ```
 
-3. Make sure your project's `graphql.py` composes the schema via `plugin_registry.get_all_graphql_*()` so `OrganizationsQueries` (`organization`) and `OrganizationsMutations` (`organizationCreate`) are picked up automatically.
+3. Make sure your project's Strawberry schema is built from `plugin_registry.get_all_strawberry_*()` (see `testproject/graphql.py`) so `OrganizationsQueries` (`organization`) and `OrganizationsMutations` (`organizationCreate`) are picked up automatically.
 
 4. Define the concrete `Organization` model (see [models](#models)) and point the swapper setting at it:
 
@@ -97,7 +97,7 @@ mutation OrganizationCreateMutation($input: OrganizationCreateInput!) {
 }
 ```
 
-`OrganizationObjectType` exposes `pk` and `profile`, and composes `PermissionsInterface`. Most organization data (name, avatar, members, follows, …) is read through the linked `Profile` and its interfaces.
+`OrganizationType` (`baseapp_organizations.strawberry.types`) exposes `pk` and `profile`, and composes `PermissionsInterface`; projects override it by subclassing `AbstractOrganizationType`. Most organization data (name, avatar, members, follows, …) is read through the linked `Profile` and its interfaces.
 
 ## Shared services
 

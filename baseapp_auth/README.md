@@ -25,7 +25,7 @@ In the `rest_framework/` directory you can find a implementation of account-rela
 
 #### PermissionsInterface
 
-When your `DjangoObjectType` implements `PermissionsInterface` you are able to query for object-level permissions:
+When your Strawberry type implements `PermissionsInterface` (`baseapp_auth.strawberry.permissions`) you are able to query for object-level permissions:
 
 ```graphql
 query {

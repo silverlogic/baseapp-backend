@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING, Any, Optional
 
 import strawberry
 from django.db.models import Model, QuerySet
-from graphql_relay import from_global_id
 from strawberry.types import Info
 from strawberry_django.optimizer import optimize
 from strawberry_django.resolvers import django_resolver
@@ -14,7 +13,7 @@ from baseapp_core.hashids.strategies import (
     _is_public_id_logic_enabled,
     graphql_to_global_id_using_strategy,
 )
-from baseapp_core.hashids.utils import is_uuid4
+from baseapp_core.hashids.utils import from_global_id, is_uuid4
 from baseapp_core.models import DocumentId
 
 from .registry import type_registry

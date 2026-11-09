@@ -15,11 +15,6 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
 
         registry.register(RatableMetadataService())
 
-    def register_graphql_shared_interfaces(self, registry) -> None:
-        from .graphql.interfaces import get_ratings_interface
-
-        registry.register("RatingsInterface", get_ratings_interface)
-
     def register_strawberry_shared_interfaces(self, registry) -> None:
         from .strawberry import get_ratings_interface
 

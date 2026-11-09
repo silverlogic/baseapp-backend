@@ -32,7 +32,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 ```
 
-3. Make sure your project's `graphql.py` composes the schema via `plugin_registry.get_all_graphql_*()` so `BlocksMutations` (`blockToggle`) is picked up automatically.
+3. Make sure your project's Strawberry schema is built from `plugin_registry.get_all_strawberry_*()` (see `testproject/graphql.py`) so `BlocksMutations` (`blockToggle`) is picked up automatically.
 
 4. Define the concrete models (see [models](#models)) and point the swapper settings at them:
 
@@ -105,25 +105,24 @@ mutation BlockButtonMutation($input: BlockToggleInput!) {
 
 ### Shared GraphQL interface
 
-Blocks publishes one shared interface via the registry — consuming object types opt in by name instead of importing it directly:
+Blocks publishes one shared interface via the registry — consuming Strawberry types opt in by name instead of importing it directly:
 
 ```python
-from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.plugins import graphql_shared_interfaces
+from baseapp_core.plugins import strawberry_shared_interfaces
+from baseapp_core.strawberry import Node, django_type
 
 
-class ProfileObjectType(DjangoObjectType):
-    class Meta:
-        interfaces = graphql_shared_interfaces.get(RelayNode, "BlocksInterface")
-        model = Profile
+@django_type(Profile)
+class ProfileType(*strawberry_shared_interfaces.get("BlocksInterface"), Node):
+    ...
 ```
 
-When `baseapp_blocks` is installed the registry returns the real `BlocksInterface`; when it isn't, the call falls back to defaults so the type still works.
+When `baseapp_blocks` is installed the registry returns the real `BlocksInterface`; when it isn't, the interface is simply left out so the type still works.
 
 The interface exposes (all permission-gated):
 
 - `blockers` / `blocking` — paginated `Block` connections.
-- `blockersCount` / `blockingCount` — counts read from `BlockableMetadata`. Both ship a `query_optimizer` field-level hook so the counts are annotated on demand and never N+1.
+- `blockersCount` / `blockingCount` — counts read from `BlockableMetadata`. Both carry a strawberry-django optimizer `annotate` hint so the counts are annotated on demand and never N+1.
 - `isBlockedByMe(profileId)` — whether the current user (or the given profile) blocks this object.
 
 ### Permissions
@@ -140,7 +139,7 @@ The interface exposes (all permission-gated):
 
 Blocks registers two services in `apps.py.ready()`:
 
-- **`blockable_metadata`** (`BlockableMetadataService`) — read/maintain blocker & blocking counts for any `DocumentId`-backed object: `get_metadata` / `get_or_create_metadata`, `get_blockers_count` / `get_blocking_count`, `recompute_blockers_count` / `recompute_blocking_count`, and `annotate_queryset` for bulk (non-GraphQL) callers. The GraphQL path attaches each count on demand via the interface's optimizer hooks.
+- **`blockable_metadata`** (`BlockableMetadataService`) — read/maintain blocker & blocking counts for any `DocumentId`-backed object: `get_metadata` / `get_or_create_metadata`, `get_blockers_count` / `get_blocking_count`, `recompute_blockers_count` / `recompute_blocking_count`, and `annotate_queryset` for bulk (non-GraphQL) callers. The GraphQL path attaches each count on demand via the interface's optimizer hints.
 
   ```python
   from baseapp_core.plugins import shared_services
@@ -149,7 +148,7 @@ Blocks registers two services in `apps.py.ready()`:
       count = service.get_blockers_count(profile)
   ```
 
-- **`blocks.lookup`** (`BlockLookupService`) — `exclude_blocked_from_foreign_queryset(queryset, info)`. Lets other apps (e.g. comments) drop rows authored by profiles the current user blocks or is blocked by. Call it *before* the query optimizer evaluates the queryset:
+- **`blocks.lookup`** (`BlockLookupService`) — `exclude_blocked_from_foreign_queryset(queryset, info)`. Lets other apps (e.g. comments) drop rows authored by profiles the current user blocks or is blocked by. Call it *before* the queryset is optimized or evaluated:
 
   ```python
   from baseapp_core.plugins import shared_services

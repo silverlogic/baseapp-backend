@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:27+0000\n"
+"POT-Creation-Date: 2026-11-09 02:22+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -24,15 +24,6 @@ msgstr "corpo"
 #: apps.py
 msgid "BaseApp Comments"
 msgstr "BaseApp Comentários"
-
-#: graphql/mutations.py
-msgid "You don't have permission to perform this action"
-msgstr "Você não tem permissão para realizar esta ação"
-
-#: graphql/mutations.py
-#, python-format
-msgid "You can't pin more than %(max_pins)s comments in this thread"
-msgstr "Você não pode fixar mais de %(max_pins)s comentários neste tópico"
 
 #: models.py
 msgid "deleted"
@@ -119,6 +110,15 @@ msgstr "{user} respondeu ao seu comentário."
 #, python-brace-format
 msgid "{user} left a new comment."
 msgstr "{user} deixou um novo comentário."
+
+#: strawberry/mutations.py
+msgid "You don't have permission to perform this action"
+msgstr "Você não tem permissão para realizar esta ação"
+
+#: strawberry/mutations.py
+#, python-format
+msgid "You can't pin more than %(max_pins)s comments in this thread"
+msgstr "Você não pode fixar mais de %(max_pins)s comentários neste tópico"
 
 #: validators.py
 msgid ""

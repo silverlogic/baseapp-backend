@@ -1,5 +1,3 @@
-from typing import TYPE_CHECKING
-
 import swapper
 from django.apps import apps
 from django.conf import settings
@@ -16,9 +14,6 @@ from baseapp_core.models import (
     DocumentIdTargetMixin,
     DocumentIdUniqueTargetMixin,
 )
-
-if TYPE_CHECKING:
-    from baseapp_core.graphql import DjangoObjectType
 
 inheritances = []
 
@@ -99,12 +94,6 @@ class AbstractRate(
             metadata.save(
                 update_fields=["ratings_count", "ratings_sum", "ratings_average", "modified"]
             )
-
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import RatingObjectType
-
-        return RatingObjectType
 
 
 class AbstractRatableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):

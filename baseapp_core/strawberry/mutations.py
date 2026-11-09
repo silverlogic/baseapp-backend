@@ -20,7 +20,7 @@ class ErrorType:
 
 
 class IsAuthenticated(BasePermission):
-    """Same error shape as `baseapp_core.graphql.login_required`."""
+    """`authentication required` error with `code: authentication_required`."""
 
     error_extensions = {"code": "authentication_required"}
 
@@ -39,7 +39,7 @@ class RelayMutationInput:
 
 @strawberry.type
 class RelayMutationPayload:
-    """Base payload matching Graphene's `RelayMutation` (`clientMutationId` + `errors`)."""
+    """Base Relay payload: `clientMutationId` + `errors`."""
 
     client_mutation_id: str | None = None
     errors: list[ErrorType | None] | None = strawberry.field(
@@ -70,7 +70,7 @@ def relay_mutation(
 
 
 def input_data(mutation_input: Any, *, exclude: tuple[str, ...] = ()) -> dict[str, Any]:
-    """Input fields the client actually sent, snake_cased, like Graphene's `**input`.
+    """Input fields the client actually sent, snake_cased.
 
     Optional input fields should default to `strawberry.UNSET` so omitted fields stay omitted.
     """
@@ -94,7 +94,7 @@ def add_request_files(info: Info, data: dict[str, Any]) -> dict[str, Any]:
 
 
 def serializer_errors(serializer: Serializer) -> list[ErrorType]:
-    """Flatten DRF errors exactly like `baseapp_core.graphql.SerializerMutation`."""
+    """Flatten DRF serializer errors into `ErrorType`s (`field`, or `field.<index>.<sub>`)."""
     errors: dict[str, list[str]] = {}
     for field_name, messages in serializer.errors.items():
         index = 0
@@ -119,7 +119,7 @@ class DeleteNodePayload(RelayMutationPayload):
 
 
 def delete_node(info: Info, input: DeleteNodeInput) -> DeleteNodePayload:
-    """`baseapp_core.graphql.DeleteNode`: delete any node the user has `delete_<model>` on."""
+    """Delete any node the user has `delete_<model>` permission on."""
     from .relay import get_instance_from_global_id
 
     obj = get_instance_from_global_id(info, input.id)
@@ -138,82 +138,3 @@ def delete_node_mutation(**kwargs: Any) -> Any:
         return delete_node(info, input)
 
     return relay_mutation(resolver, login_required=True, **kwargs)
-
-
-class _InputDict(dict):
-    """Graphene `InputObjectType` values support both `value["x"]` and `value.x`."""
-
-    def __getattr__(self, name: str) -> Any:
-        try:
-            return self[name]
-        except KeyError as error:
-            raise AttributeError(name) from error
-
-
-def _to_graphene_value(value: Any) -> Any:
-    from django.db.models import Choices
-
-    if isinstance(value, enum.Enum):
-        return value if isinstance(value, Choices) else value.value
-    if isinstance(value, list):
-        return [_to_graphene_value(v) for v in value]
-    if dataclasses.is_dataclass(value) and not isinstance(value, type):
-        return _InputDict(
-            {
-                f.name: _to_graphene_value(getattr(value, f.name))
-                for f in dataclasses.fields(value)
-                if not isinstance(getattr(value, f.name), UnsetType)
-            }
-        )
-    return value
-
-
-def graphene_input(mutation_input: Any) -> dict[str, Any]:
-    """The `**input` a Graphene `mutate_and_get_payload` receives for this Strawberry input."""
-    data = _to_graphene_value(mutation_input)
-    data.pop("client_mutation_id", None)
-    return dict(data)
-
-
-def _from_graphene_value(value: Any) -> Any:
-    from .connections import Edge
-
-    if isinstance(value, list):
-        return [_from_graphene_value(v) for v in value]
-    class_name = type(value).__name__
-    if class_name == "ErrorType" and hasattr(value, "messages"):
-        return ErrorType(field=value.field, messages=list(value.messages))
-    if class_name.endswith("Edge") and hasattr(value, "node") and hasattr(value, "cursor"):
-        return Edge(node=value.node, cursor=value.cursor)
-    return value
-
-
-def delegate_to_graphene(
-    graphene_mutation: Any, info: Info, mutation_input: Any, payload_type: type
-) -> Any:
-    """Run a Graphene mutation's `mutate_and_get_payload` and map its result onto `payload_type`.
-
-    Both endpoints then share one implementation while the schemas coexist; when Graphene is
-    removed the logic moves out of the Graphene class.
-    """
-    result = graphene_mutation.mutate_and_get_payload(None, info, **graphene_input(mutation_input))
-    if result is None:
-        return None
-    values = {
-        f.name: _from_graphene_value(getattr(result, f.name, None))
-        for f in dataclasses.fields(payload_type)
-        if f.name != "client_mutation_id"
-    }
-    return payload_type(**values)
-
-
-def graphene_relay_mutation(
-    graphene_mutation: Any, input_type: type, payload_type: type, **field_kwargs: Any
-) -> Any:
-    """A Strawberry Relay mutation whose logic is the Graphene mutation's (see `delegate_to_graphene`)."""
-
-    def resolver(info: Info, input: input_type) -> payload_type | None:  # type: ignore[valid-type]
-        return delegate_to_graphene(graphene_mutation, info, input, payload_type)
-
-    field_kwargs.setdefault("description", graphene_mutation.__doc__)
-    return relay_mutation(resolver, **field_kwargs)

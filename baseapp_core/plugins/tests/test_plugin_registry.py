@@ -170,10 +170,10 @@ class TestPluginRegistry:
             assert settings["TEST_PLUGIN_ENABLED"] is True
 
     @pytest.mark.django_db
-    def test_get_all_graphql_queries_resolves_strings(
+    def test_get_all_strawberry_queries_resolves_strings(
         self, installed_apps_with_test_plugin
     ) -> None:
-        """Test that get_all_graphql_queries resolves string paths to classes."""
+        """Test that get_all_strawberry_queries resolves string paths to classes."""
         registry = PluginRegistry()
 
         with override_settings(INSTALLED_APPS=installed_apps_with_test_plugin):
@@ -182,7 +182,7 @@ class TestPluginRegistry:
             registry._settings_cache = {}
             registry.load_from_installed_apps()
 
-            queries = registry.get_all_graphql_queries()
+            queries = registry.get_all_strawberry_queries()
             assert isinstance(queries, list)
             # All items should be classes, not strings
             for query in queries:

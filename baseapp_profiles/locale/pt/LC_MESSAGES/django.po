@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:28+0000\n"
+"POT-Creation-Date: 2026-11-09 03:28+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -20,108 +20,6 @@ msgstr ""
 #: apps.py
 msgid "BaseApp Profiles"
 msgstr "BaseApp Perfis"
-
-#: graphql/mutations/invitations.py
-msgid "Invalid invitation token"
-msgstr "Token de convite inválido"
-
-#: graphql/mutations/invitations.py
-msgid "Invitation not found"
-msgstr "Convite não encontrado"
-
-#: graphql/mutations/invitations.py
-msgid "This invitation has expired"
-msgstr "Este convite expirou"
-
-#: graphql/mutations/invitations.py
-msgid "This invitation has already been responded to"
-msgstr "Este convite já foi respondido"
-
-#: graphql/mutations/invitations.py
-msgid "This invitation was sent to a different user"
-msgstr "Este convite foi enviado para outro usuário"
-
-#: graphql/mutations/invitations.py
-#, python-format
-msgid "%(email)s is already a member of this profile"
-msgstr "%(email)s já é membro deste perfil"
-
-#: graphql/mutations/invitations.py
-#, python-format
-msgid "An invitation has already been sent to %(email)s"
-msgstr "Um convite já foi enviado para %(email)s"
-
-#: graphql/mutations/invitations.py
-msgid "Cannot send invitation in current state"
-msgstr "Não é possível enviar o convite no estado atual"
-
-#: graphql/mutations/invitations.py graphql/mutations/profiles.py
-#: graphql/mutations/roles.py
-msgid "Profile not found"
-msgstr "Perfil não encontrado"
-
-#: graphql/mutations/invitations.py graphql/mutations/profiles.py
-#: graphql/mutations/roles.py
-msgid "You don't have permission to perform this action"
-msgstr "Você não tem permissão para realizar esta ação"
-
-#: graphql/mutations/invitations.py
-msgid "At least one email is required"
-msgstr "Pelo menos um e-mail é obrigatório"
-
-#: graphql/mutations/invitations.py
-msgid "The profile owner cannot accept an invitation to their own profile"
-msgstr ""
-"O proprietário do perfil não pode aceitar um convite para o próprio perfil"
-
-#: graphql/mutations/invitations.py
-msgid "Can only cancel pending invitations"
-msgstr "Só é possível cancelar convites pendentes"
-
-#: graphql/mutations/invitations.py
-msgid "Can only resend expired or pending invitations"
-msgstr "Só é possível reenviar convites expirados ou pendentes"
-
-#: graphql/mutations/profiles.py
-msgid "Username must be at least 8 characters long."
-msgstr "O nome de usuário deve ter pelo menos 8 caracteres."
-
-#: graphql/mutations/profiles.py
-msgid "Username can only contain letters and numbers."
-msgstr "O nome de usuário só pode conter letras e números."
-
-#: graphql/mutations/profiles.py
-#, python-format
-msgid "Username already in use, suggested username: %(suggested_username)s"
-msgstr "Nome de usuário já em uso, sugestão: %(suggested_username)s"
-
-#: graphql/mutations/roles.py
-msgid "Invalid role type"
-msgstr "Tipo de função inválido"
-
-#: graphql/mutations/roles.py
-msgid "The profile owner cannot be added as a member"
-msgstr "O proprietário do perfil não pode ser adicionado como membro"
-
-#: graphql/mutations/roles.py
-msgid "One or more of the selected users are already members of this profile"
-msgstr "Um ou mais dos usuários selecionados já são membros deste perfil"
-
-#: graphql/mutations/roles.py
-msgid "Unable to add the selected members"
-msgstr "Não foi possível adicionar os membros selecionados"
-
-#: graphql/mutations/roles.py
-msgid "Role is required"
-msgstr "A função é obrigatória"
-
-#: graphql/mutations/roles.py
-msgid "Role not found"
-msgstr "Função não encontrada"
-
-#: graphql/mutations/roles.py
-msgid "User role not found"
-msgstr "Função do usuário não encontrada"
 
 #: models.py
 msgid "public"
@@ -268,6 +166,102 @@ msgstr "função de usuário no perfil"
 #: models.py
 msgid "profile user roles"
 msgstr "funções de usuário no perfil"
+
+#: strawberry/invitations.py
+msgid "Invalid role type"
+msgstr "Tipo de função inválido"
+
+#: strawberry/invitations.py
+msgid "Invalid invitation token"
+msgstr "Token de convite inválido"
+
+#: strawberry/invitations.py
+msgid "Invitation not found"
+msgstr "Convite não encontrado"
+
+#: strawberry/invitations.py
+msgid "This invitation has expired"
+msgstr "Este convite expirou"
+
+#: strawberry/invitations.py
+msgid "This invitation has already been responded to"
+msgstr "Este convite já foi respondido"
+
+#: strawberry/invitations.py
+msgid "This invitation was sent to a different user"
+msgstr "Este convite foi enviado para outro usuário"
+
+#: strawberry/invitations.py
+#, python-format
+msgid "%(email)s is already a member of this profile"
+msgstr "%(email)s já é membro deste perfil"
+
+#: strawberry/invitations.py
+#, python-format
+msgid "An invitation has already been sent to %(email)s"
+msgstr "Um convite já foi enviado para %(email)s"
+
+#: strawberry/invitations.py
+msgid "Cannot send invitation in current state"
+msgstr "Não é possível enviar o convite no estado atual"
+
+#: strawberry/mutations.py
+msgid "You don't have permission to perform this action"
+msgstr "Você não tem permissão para realizar esta ação"
+
+#: strawberry/mutations.py
+msgid "Profile not found"
+msgstr "Perfil não encontrado"
+
+#: strawberry/mutations.py
+msgid "The profile owner cannot be added as a member"
+msgstr "O proprietário do perfil não pode ser adicionado como membro"
+
+#: strawberry/mutations.py
+msgid "One or more of the selected users are already members of this profile"
+msgstr "Um ou mais dos usuários selecionados já são membros deste perfil"
+
+#: strawberry/mutations.py
+msgid "Unable to add the selected members"
+msgstr "Não foi possível adicionar os membros selecionados"
+
+#: strawberry/mutations.py
+msgid "Role not found"
+msgstr "Função não encontrada"
+
+#: strawberry/mutations.py
+msgid "User role not found"
+msgstr "Função do usuário não encontrada"
+
+#: strawberry/mutations.py
+msgid "At least one email is required"
+msgstr "Pelo menos um e-mail é obrigatório"
+
+#: strawberry/mutations.py
+msgid "The profile owner cannot accept an invitation to their own profile"
+msgstr ""
+"O proprietário do perfil não pode aceitar um convite para o próprio perfil"
+
+#: strawberry/mutations.py
+msgid "Can only cancel pending invitations"
+msgstr "Só é possível cancelar convites pendentes"
+
+#: strawberry/mutations.py
+msgid "Can only resend expired or pending invitations"
+msgstr "Só é possível reenviar convites expirados ou pendentes"
+
+#: strawberry/serializers.py
+msgid "Username must be at least 8 characters long."
+msgstr "O nome de usuário deve ter pelo menos 8 caracteres."
+
+#: strawberry/serializers.py
+msgid "Username can only contain letters and numbers."
+msgstr "O nome de usuário só pode conter letras e números."
+
+#: strawberry/serializers.py
+#, python-format
+msgid "Username already in use, suggested username: %(suggested_username)s"
+msgstr "Nome de usuário já em uso, sugestão: %(suggested_username)s"
 
 #: templates/profiles/emails/invitation-body.html.j2
 msgid "You've been invited!"

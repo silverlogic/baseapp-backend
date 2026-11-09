@@ -10,7 +10,7 @@ from baseapp_core.strawberry import CountedConnection
 from baseapp_core.strawberry.connections import apply_filterset, connection
 from baseapp_core.strawberry.relay import get_instance_from_global_id, typed_node_field
 
-from ..graphql.filters import ReportTypeFilter
+from .filters import ReportTypeFilter
 from .types import ReportLazyType, ReportTypeLazyType
 
 ReportType = swapper.load_model("baseapp_reports", "ReportType")

@@ -32,11 +32,11 @@ AUTHENTICATION_BACKENDS = [
 ]
 ```
 
-3 - Make sure your `graphql.py` main file is loading queries, mutations and subscriptions from `plugin_registry`. The plugin contributes `FollowsMutations` (`followToggle`).
+3 - Make sure your Strawberry schema is built from `plugin_registry.get_all_strawberry_*()` (see `testproject/graphql.py`). The plugin contributes `FollowsMutations` (`followToggle`) and the `Follow` type.
 
 ## How to use
 
-You need to add `FollowsInterface` to any GraphQL `ObjectType` you want to be followable. The interface is registered as a shared interface, so you opt in by name — no direct cross-package import:
+You need to add `FollowsInterface` to any Strawberry type you want to be followable. The interface is registered as a shared interface, so you opt in by name — no direct cross-package import:
 
 ### FollowsInterface
 
@@ -55,16 +55,13 @@ Each `Follow` node exposes:
 - `actorObject`, `targetObject` — the resolved underlying model (Profile or anything else with a `DocumentId`), accessed through the GFK and a request-scoped cache.
 
 ```python
-from baseapp_core.graphql import DjangoObjectType, Node as RelayNode
-from baseapp_core.plugins import graphql_shared_interfaces
+from baseapp_core.plugins import strawberry_shared_interfaces
+from baseapp_core.strawberry import Node, django_type
 
 
-class MyModelObjectType(DjangoObjectType):
-    class Meta:
-        model = MyModel
-        interfaces = graphql_shared_interfaces.get(
-            RelayNode, "FollowsInterface"
-        )
+@django_type(MyModel)
+class MyModelType(*strawberry_shared_interfaces.get("FollowsInterface"), Node):
+    ...
 ```
 
 ### Mutation
@@ -116,7 +113,7 @@ if service:
     service.annotate_queryset(qs)           # see below
 ```
 
-`annotate_queryset(qs)` adds `_followable_followers_count` and `_followable_following_count` as `Subquery` annotations against `follows_followablemetadata`. Object types that implement `FollowsInterface` should call this in their `pre_optimization_hook` so per-row count resolution doesn't N+1. The Profile object type already does this — see [`baseapp_profiles/graphql/object_types.py`](../baseapp_profiles/graphql/object_types.py).
+`annotate_queryset(qs)` adds `_followable_followers_count` and `_followable_following_count` as `Subquery` annotations against `follows_followablemetadata`. `FollowsInterface`'s count fields add the same annotations through strawberry-django optimizer hints (`get_annotations(model)`), so types implementing the interface don't N+1 without any extra wiring.
 
 ### How to read counts efficiently — `annotate_queryset` is the standard read path
 
@@ -143,11 +140,9 @@ for profile in qs:
     print(profile._followable_followers_count, profile._followable_following_count)
 ```
 
-GraphQL resolvers that go through `FollowsInterface` get this for free as long as
-the object type's `pre_optimization_hook` calls `service.annotate_queryset(queryset)` —
-that's the only contract a custom object type needs to honor. `BaseProfileObjectType`
-already does it; new object types implementing `FollowsInterface` must too, otherwise
-list / connection queries silently regress to N+1 on the count fields.
+GraphQL resolvers that go through `FollowsInterface` get this for free: the
+`followersCount` / `followingCount` fields carry optimizer `annotate` hints, so the
+annotation is added to whatever queryset the optimizer builds for the implementing type.
 
 If you're reading counts outside GraphQL (REST, management commands, signals): always
 go through `service.get_followers_count(obj)` / `service.get_following_count(obj)`.
@@ -179,63 +174,54 @@ reconciliation job, **not** for the live request path.
 
 ### Pre-warming non-Profile follow targets
 
-`BaseFollowObjectType.pre_optimization_hook` (in [`baseapp_follows/graphql/object_types.py`](baseapp_follows/graphql/object_types.py)) wires a `GenericPrefetch("content_object", […])` against the `actor` and `target` `DocumentId`s of every Follow row in a connection so `actorObject` / `targetObject` resolve from a single batched fetch instead of one query per row. Out of the box that prefetch only includes `Profile` since profile-to-profile is the dominant case.
+`AbstractFollowType.actorObject` / `targetObject` (in [`baseapp_follows/strawberry/types.py`](strawberry/types.py)) carry a `document_prefetch` optimizer hint: a `GenericPrefetch("content_object", […])` against the `actor` and `target` `DocumentId`s of every Follow row in a connection, so the objects resolve from a single batched fetch instead of one query per row. Out of the box that prefetch only includes `Profile` since profile-to-profile is the dominant case.
 
-If your project lets users follow other entities (e.g. `Hive`, `Page`, `Organization`) and you query those connections at scale, subclass `BaseFollowObjectType` to extend the list:
+If your project lets users follow other entities (e.g. `Hive`, `Page`, `Organization`) and you query those connections at scale, override the type and pass the models to prefetch:
 
 ```python
-# apps/social/follows/graphql/object_types.py
-import swapper
-from baseapp_core.hashids.strategies import get_hashids_strategy_from_instance_or_cls
-from baseapp_core.plugins import shared_services
-from baseapp_follows.graphql.object_types import BaseFollowObjectType
-from baseapp_core.graphql import DjangoObjectType
+# apps/social/follows/strawberry/types.py
+from typing import Any, Optional
 
+import strawberry_django
+import swapper
+from strawberry.types import Info
+
+from baseapp_core.graphql import resolve_document_content_object
+from baseapp_core.strawberry import Node, django_type
+from baseapp_follows.filters import FollowsFilter
+from baseapp_follows.strawberry.types import AbstractFollowType, document_prefetch
+
+Follow = swapper.load_model("baseapp_follows", "Follow")
+Profile = swapper.load_model("baseapp_profiles", "Profile")
 Hive = swapper.load_model("hives", "Hive")
 
 
-def _annotated_qs(model):
-    """
-    Annotate a content_object model the same way pre_optimization_hook does for
-    Profile: relay-id (`mapped_public_id`) + followable counts so nested
-    `... on FollowsInterface { followersCount followingCount }` reads come from the
-    instance, not from a per-row FollowableMetadata fetch.
-    """
-    strategy = get_hashids_strategy_from_instance_or_cls(model)
-    qs = model.objects.annotate(**strategy.queryset_annotator.get_annotations(model))
-    if service := shared_services.get("followable_metadata"):
-        qs = service.annotate_queryset(qs)
-    return qs
+@django_type(Follow, filterset_class=FollowsFilter, relations=("user",))
+class FollowType(AbstractFollowType, Node):
+    @strawberry_django.field(
+        graphql_type=Optional[Node],
+        only=["actor_id"],
+        prefetch_related=document_prefetch("actor", [Profile, Hive]),
+    )
+    def actor_object(self, info: Info) -> Any:
+        return resolve_document_content_object(self.actor, info)
 
-
-class FollowObjectType(BaseFollowObjectType, DjangoObjectType):
-    class Meta(BaseFollowObjectType.Meta):
-        pass
-
-    @classmethod
-    def pre_optimization_hook(cls, queryset, optimizer):
-        queryset = super().pre_optimization_hook(queryset, optimizer)
-
-        from django.contrib.contenttypes.prefetch import GenericPrefetch
-        from django.db.models import Prefetch
-        from baseapp_core.models import DocumentId
-
-        document_qs = DocumentId.objects.select_related("content_type").prefetch_related(
-            GenericPrefetch("content_object", [_annotated_qs(Hive)]),
-        )
-        return queryset.prefetch_related(
-            Prefetch("actor", queryset=document_qs),
-            Prefetch("target", queryset=document_qs),
-        )
+    @strawberry_django.field(
+        graphql_type=Optional[Node],
+        only=["target_id"],
+        prefetch_related=document_prefetch("target", [Profile, Hive]),
+    )
+    def target_object(self, info: Info) -> Any:
+        return resolve_document_content_object(self.target, info)
 ```
 
-Then point swapper at the subclass via `BASEAPP_FOLLOWS_FOLLOW_MODEL` (or override the registered object type).
+List the module in your plugin's `strawberry_types` (the last registration for a model wins).
 
 **Notes:**
 
-- Each entry in the `GenericPrefetch` queryset list MUST be an unfiltered base queryset for one model (`Hive.objects.all()` shape, optionally `.annotate(...)`). Django selects the rows by `(content_type_id, object_id)` itself; passing `Model.objects.filter(pk__in=...)` is unnecessary and wrong.
+- Each model's queryset is its unfiltered default manager, optimized for the selection under the field. Django selects the rows by `(content_type_id, object_id)` itself.
 - Only models you actually expect to be followed at meaningful volume need pre-warming. For the long tail of rare types, the request-scoped cache in `resolve_document_content_object` (in `baseapp_core.graphql.utils`) collapses lookups to **one DB hit per unique target**, not per follow row — so the cost stays bounded.
-- Auto-discovery (e.g. inspecting the queryset to see which `content_type_id`s appear) isn't possible from `pre_optimization_hook`: the queryset is still lazy at that point and evaluating it would defeat the optimizer. The list is intentionally project-declared.
+- Auto-discovery (e.g. inspecting the queryset to see which `content_type_id`s appear) isn't possible from an optimizer hint: the queryset is still lazy at that point. The list is intentionally project-declared.
 
 ### Signals
 

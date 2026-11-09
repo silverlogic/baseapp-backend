@@ -10,7 +10,7 @@ from baseapp_core.strawberry import CountedConnection, type_for_model
 from baseapp_core.strawberry.connections import connection
 from baseapp_core.strawberry.relay import typed_node_field
 
-from ..graphql.filters import UsersFilter
+from ..filters import UsersFilter
 
 User = get_user_model()
 UserLazyType = type_for_model(User)

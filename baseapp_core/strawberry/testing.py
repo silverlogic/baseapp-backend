@@ -1,62 +1,60 @@
-"""Run one GraphQL operation against the Graphene and the Strawberry endpoints and compare them."""
+"""Helpers for testing subscriptions over graphql-transport-ws."""
 
-import copy
-from dataclasses import dataclass
+import asyncio
 from typing import Any
 
-from django.contrib.contenttypes.models import ContentType
-from django.test import Client
-
-from baseapp_core.graphql.testing.fixtures import graphql_query
-from baseapp_core.graphql.utils import QueryData, capture_database_queries
-
-GRAPHENE_GRAPHQL_URL = "/graphql"
-STRAWBERRY_GRAPHQL_URL = "/graphql/strawberry"
+from channels.db import database_sync_to_async
+from channels.layers import get_channel_layer
+from strawberry.channels.testing import GraphQLWebsocketCommunicator
 
 
-@dataclass
-class EndpointResult:
-    content: dict[str, Any]
-    queries: QueryData
+def _connection_params(user: Any, current_profile: bool) -> dict[str, str]:
+    from rest_framework_simplejwt.tokens import RefreshToken
+
+    refresh = RefreshToken.for_user(user)
+    params = {"Authorization": str(refresh.access_token), "Refresh": str(refresh)}
+    profile = getattr(user, "profile", None) if current_profile else None
+    if profile is not None:
+        params["Current-Profile"] = profile.relay_id
+    return params
 
 
-@dataclass
-class ParityResult:
-    graphene: EndpointResult
-    strawberry: EndpointResult
+async def ws_communicator(
+    user: Any = None,
+    *,
+    current_profile: bool = True,
+    path: str = "/graphql",
+    **connection_params: Any,
+) -> GraphQLWebsocketCommunicator:
+    """A communicator on the project schema, authenticated as `user` like the frontend does
+    (JWT `Authorization` + `Refresh`, and `Current-Profile` when the user has a profile)."""
+    from .schema import get_schema
+    from .subscriptions import GraphQLWSConsumer
 
-    def report(self, label: str) -> str:
-        return (
-            f"PARITY {label}: graphene={self.graphene.queries.count} queries, "
-            f"strawberry={self.strawberry.queries.count} queries"
-        )
-
-
-def run_on_endpoint(
-    client: Client,
-    url: str,
-    query: str,
-    variables: dict | None = None,
-    headers: dict | None = None,
-) -> EndpointResult:
-    ContentType.objects.clear_cache()
-    with capture_database_queries() as queries:
-        response = graphql_query(
-            query,
-            variables=copy.deepcopy(variables),
-            client=client,
-            graphql_url=url,
-            headers=headers,
-            extra={},
-        )
-    return EndpointResult(content=response.json(), queries=queries)
-
-
-def run_on_both(
-    client: Client, query: str, variables: dict | None = None, headers: dict | None = None
-) -> ParityResult:
-    """Graphene first, then Strawberry, each with a cold ContentType cache and its own query log."""
-    return ParityResult(
-        graphene=run_on_endpoint(client, GRAPHENE_GRAPHQL_URL, query, variables, headers),
-        strawberry=run_on_endpoint(client, STRAWBERRY_GRAPHQL_URL, query, variables, headers),
+    params = {}
+    if user is not None:
+        params = await database_sync_to_async(_connection_params)(user, current_profile)
+    params.update(connection_params)
+    application = GraphQLWSConsumer.as_asgi(schema=get_schema())
+    # Browsers always send Host; resolvers build absolute URLs from it.
+    headers = [(b"host", b"testserver")]
+    return GraphQLWebsocketCommunicator(
+        application, path, headers=headers, connection_params=params
     )
+
+
+async def wait_for_group(group: str, timeout: float = 2.0) -> None:
+    """Wait until a subscription joined `group` on the (in-memory) channel layer."""
+    layer = get_channel_layer()
+    for _ in range(int(timeout / 0.01)):
+        if layer.groups.get(group):
+            return
+        await asyncio.sleep(0.01)
+    raise AssertionError(f"no subscription joined {group}")
+
+
+def next_result(
+    ws: GraphQLWebsocketCommunicator, query: str, variables: dict | None = None
+) -> "asyncio.Future[Any]":
+    """Subscribe and return a future for the first result."""
+    return asyncio.ensure_future(anext(aiter(ws.subscribe(query, variables))))

@@ -1,5 +1,3 @@
-from typing import TYPE_CHECKING
-
 import swapper
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
@@ -15,9 +13,6 @@ from baseapp_core.models import (
     DocumentIdTargetMixin,
     DocumentIdUniqueTargetMixin,
 )
-
-if TYPE_CHECKING:
-    from baseapp_core.graphql import DjangoObjectType
 
 
 def default_reports_count() -> dict[str, int]:
@@ -61,12 +56,6 @@ class AbstractReportType(DocumentIdMixin, RelayModel, TimeStampedModel):
 
     def __str__(self) -> str:
         return self.label
-
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import ReportTypeObjectType
-
-        return ReportTypeObjectType
 
 
 class AbstractReport(DocumentIdTargetMixin, DocumentIdMixin, RelayModel, TimeStampedModel):
@@ -138,12 +127,6 @@ class AbstractReport(DocumentIdTargetMixin, DocumentIdMixin, RelayModel, TimeSta
 
         metadata.reports_count = counts
         metadata.save(update_fields=["reports_count", "modified"])
-
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import ReportObjectType
-
-        return ReportObjectType
 
 
 class AbstractReportableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):

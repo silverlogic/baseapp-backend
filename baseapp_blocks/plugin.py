@@ -18,9 +18,6 @@ class BlocksPlugin(BaseAppPlugin):
                     "baseapp_blocks.permissions.BlocksPermissionsBackend",
                 ],
             },
-            graphql_mutations=[
-                "baseapp_blocks.graphql.mutations.BlocksMutations",
-            ],
             strawberry_mutations=[
                 "baseapp_blocks.strawberry.mutations.BlocksMutations",
             ],

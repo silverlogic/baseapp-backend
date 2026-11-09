@@ -10,9 +10,8 @@ where a resolver reverts to a per-row `DocumentId.get_or_create_for_object`
 or per-row `count()`.
 
 `mentionsCount` and `isMentioningProfile` are fully batchable via subquery
-annotations on the parent queryset. `mentions` is a per-parent graphene
-connection and still grows linearly in parents — the dedicated test below
-documents and locks in that linearity instead of pretending it's flat.
+annotations on the parent queryset. `mentions` is prefetched through the
+parents' `DocumentId` rows, so it stays flat too.
 """
 
 from typing import TYPE_CHECKING
@@ -100,8 +99,7 @@ def _make_mentioned_comments(parent, n_children, profiles) -> "list[Comment]":
 
 def test_mentions_count_is_flat_across_paginated_parents(graphql_user_client) -> None:
     """`mentionsCount` resolves off the `_mentions_count` subquery annotation
-    added by `MentionableMetadataService.annotate_queryset` in
-    `BaseCommentObjectType.pre_optimization_hook`. The total query count must
+    the `MentionsInterface.mentionsCount` optimizer hint adds. The total query count must
     NOT grow with the number of child comments — doubling parents must keep
     the count flat."""
     from django.db import connection
@@ -185,15 +183,15 @@ def test_is_mentioning_profile_is_flat_across_paginated_parents(graphql_user_cli
 
 
 def test_mentions_connection_stays_flat_across_paginated_parents(graphql_user_client) -> None:
-    """`mentions` is wired into the optimizer via `MentionsInterface.mentions.optimizer_hook`,
-    which promotes the field to a real `prefetch_related('document__<reverse>')`
-    chain on the consumer's queryset. With that prefetch in place the entire
+    """`mentions` carries a `prefetch_related` optimizer hint on `MentionsInterface`,
+    which adds a real `prefetch_related('document__<reverse>')` chain on the
+    consumer's queryset. With that prefetch in place the entire
     mention set is loaded in one batched SELECT per page of consumers
     (plus one batched SELECT for the referenced Profiles), so the cost
     does NOT scale with the number of children — doubling children adds
     zero extra queries.
 
-    If a regression drops the optimizer hook (or the consumer model loses
+    If a regression drops the optimizer hint (or the consumer model loses
     its `document = GenericRelation(DocumentId)`), the resolver falls
     back to per-parent fan-out and this test trips.
     """
@@ -227,10 +225,10 @@ def test_mentions_connection_stays_flat_across_paginated_parents(graphql_user_cl
         )
     assert "errors" not in response_big.json(), response_big.json()
 
-    # With the optimizer hook in place, mentions for all children are
+    # With the optimizer hint in place, mentions for all children are
     # loaded in a single batched SELECT (`target_document_id IN (...)`), so the
     # delta is zero — the connection cost is independent of child count.
     # If this becomes positive again, the prefetch chain has been
-    # broken; see `MentionsInterface.mentions.optimizer_hook` and
+    # broken; see the `MentionsInterface.mentions` prefetch hint and
     # `Comment.document = GenericRelation(DocumentId, ...)`.
     assert len(ctx_big.captured_queries) - small_count == 0

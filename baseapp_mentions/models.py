@@ -1,5 +1,3 @@
-from typing import TYPE_CHECKING
-
 import swapper
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -7,9 +5,6 @@ from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import DocumentIdMixin, DocumentIdTargetMixin
-
-if TYPE_CHECKING:
-    from baseapp_core.graphql import DjangoObjectType
 
 
 class AbstractBaseMention(TimeStampedModel, DocumentIdTargetMixin, DocumentIdMixin, RelayModel):
@@ -37,9 +32,3 @@ class AbstractBaseMention(TimeStampedModel, DocumentIdTargetMixin, DocumentIdMix
 
     def __str__(self) -> str:
         return "{} mentioned in {}".format(self.profile, self.target_document)
-
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import MentionObjectType
-
-        return MentionObjectType

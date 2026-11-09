@@ -22,7 +22,7 @@ pytestmark = pytest.mark.django_db
 
 # Baseline for `ratingsCount` + `ratingsSum` + `ratingsAverage` on one User node:
 # 1× relay `node()` (documentid + content_type JOIN) + 1× `users_user` load with
-# `RatableMetadata` inlined as a Subquery via `pre_optimization_hook`.
+# `RatableMetadata` inlined as a Subquery via the fields' optimizer `annotate` hints.
 # Update this number deliberately if you change the resolver / annotation path.
 EXPECTED_RATINGS_INTERFACE_QUERY_COUNT = 2
 

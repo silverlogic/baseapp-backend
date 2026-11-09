@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-15 20:34+0000\n"
+"POT-Creation-Date: 2026-11-09 02:22+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -20,15 +20,6 @@ msgstr ""
 #: apps.py
 msgid "BaseApp Ratings"
 msgstr "BaseApp Avaliações"
-
-#: graphql/mutations.py
-msgid "You don't have permission to perform this action"
-msgstr "Você não tem permissão para realizar esta ação"
-
-#: graphql/mutations.py
-#, python-brace-format
-msgid "The maximum rating value is {0}"
-msgstr "O valor máximo de avaliação é {0}"
 
 #: models.py
 msgid "profile"
@@ -69,3 +60,12 @@ msgstr "avaliações habilitadas"
 #: models.py
 msgid "ratable metadata"
 msgstr "metadados de avaliação"
+
+#: strawberry/mutations.py
+msgid "You don't have permission to perform this action"
+msgstr "Você não tem permissão para realizar esta ação"
+
+#: strawberry/mutations.py
+#, python-brace-format
+msgid "The maximum rating value is {0}"
+msgstr "O valor máximo de avaliação é {0}"

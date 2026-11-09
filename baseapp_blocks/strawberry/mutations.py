@@ -2,7 +2,6 @@ import strawberry
 import swapper
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError
-from graphql_relay import offset_to_cursor
 from strawberry.types import Info
 
 from baseapp_core.strawberry import (
@@ -10,7 +9,7 @@ from baseapp_core.strawberry import (
     RelayMutationPayload,
     relay_mutation,
 )
-from baseapp_core.strawberry.connections import Edge
+from baseapp_core.strawberry.connections import Edge, offset_to_cursor
 from baseapp_core.strawberry.relay import get_instance_from_global_id
 
 from .types import BlockLazyType, BlocksInterface

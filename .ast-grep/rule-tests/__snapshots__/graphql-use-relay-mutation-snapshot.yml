@@ -1,38 +1,44 @@
 id: graphql-use-relay-mutation
 snapshots:
   ? |
-    class CreateOrder(graphene.Mutation):
-        class Arguments:
-            amount = graphene.Int(required=True)
+    @strawberry.type
+    class OrdersMutations:
+        @strawberry.mutation
+        def create_order(self, info: Info, amount: int) -> Order:
+            ...
   : labels:
-    - source: |-
-        class CreateOrder(graphene.Mutation):
-            class Arguments:
-                amount = graphene.Int(required=True)
+    - source: '@strawberry.mutation'
       style: primary
-      start: 0
-      end: 103
+      start: 44
+      end: 64
   ? |
-    class CreateOrder(graphene.relay.ClientIDMutation):
-        class Input:
-            amount = graphene.Int(required=True)
+    @strawberry.type
+    class OrdersMutations:
+        @strawberry.mutation(description="Create an order")
+        def create_order(self, info: Info, amount: int) -> Order:
+            ...
   : labels:
-    - source: |-
-        class CreateOrder(graphene.relay.ClientIDMutation):
-            class Input:
-                amount = graphene.Int(required=True)
+    - source: '@strawberry.mutation(description="Create an order")'
       style: primary
-      start: 0
-      end: 113
+      start: 44
+      end: 95
   ? |
-    class CreateOrder(relay.ClientIDMutation):
-        class Input:
-            amount = graphene.Int(required=True)
+    @strawberry.type
+    class OrdersMutations:
+        @strawberry_django.mutation
+        def create_order(self, info: Info, amount: int) -> Order:
+            ...
   : labels:
-    - source: |-
-        class CreateOrder(relay.ClientIDMutation):
-            class Input:
-                amount = graphene.Int(required=True)
+    - source: '@strawberry_django.mutation'
       style: primary
-      start: 0
-      end: 104
+      start: 44
+      end: 71
+  ? |
+    @strawberry.type
+    class OrdersMutations:
+        create_order = strawberry.mutation(resolver=create_order_resolver)
+  : labels:
+    - source: strawberry.mutation(resolver=create_order_resolver)
+      style: primary
+      start: 59
+      end: 110

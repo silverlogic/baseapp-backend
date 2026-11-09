@@ -44,7 +44,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 ```
 
-Make sure your graphql.py main file is loading queries, mutations and subscriptions from plugin_registry.
+Make sure your Strawberry schema loads queries, mutations and subscriptions from the plugin registry (`baseapp_core.strawberry.schema`).
 
 ## Usage
 

@@ -13,7 +13,6 @@ from baseapp_wagtail.settings import (
 # Application definition
 INSTALLED_APPS += [
     "channels",
-    "graphene_django",
     "django_quill",
     "social_django",
     "rest_social_auth",
@@ -81,11 +80,6 @@ MIDDLEWARE += [
     "baseapp_core.middleware.HistoryMiddleware",
     *WAGTAIL_MIDDLEWARE,
 ]
-
-GRAPHENE["MIDDLEWARE"] = (
-    # Slotted: use get("GRAPHENE__MIDDLEWARE", "slot_name") for explicit order; if plugin disabled, [].
-    *plugin_registry.get("GRAPHENE__MIDDLEWARE", "baseapp_profiles"),
-) + GRAPHENE["MIDDLEWARE"]
 
 ROOT_URLCONF = "testproject.urls"
 
@@ -266,11 +260,6 @@ BASEAPP_REFERRALS_USERREFERRAL_MODEL = "referrals.UserReferral"
 
 # Mentions
 BASEAPP_MENTIONS_MENTION_MODEL = "social_mentions.Mention"
-
-# Graphene query optimizer
-GRAPHQL_QUERY_OPTIMIZER = {
-    "ALLOW_CONNECTION_AS_DEFAULT_NESTED_TO_MANY_FIELD": True,
-}
 
 # Social auth
 SOCIAL_AUTH_PIPELINE_MODULE = "baseapp_social_auth.tests.pipeline"

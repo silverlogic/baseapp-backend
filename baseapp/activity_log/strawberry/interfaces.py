@@ -9,15 +9,15 @@ from strawberry.types import Info
 from baseapp_core.strawberry import CountedConnection
 from baseapp_core.strawberry.connections import connection
 
-from ..graphql.filters import ActivityLogFilter
+from ..filters import ActivityLogFilter
 from ..models import ActivityLog
 from .types import ActivityLogLazyType, VisibilityTypesEnum
 
 
 def activity_logs_connection(resolver: Any) -> Any:
-    """Graphene's `DjangoFilterConnectionField(..., first=Int(default_value=10), max_limit=100)`.
+    """Activity log connection: `first: Int = 10`, at most 100 results, `ActivityLogFilter` args.
 
-    `visibility` is accepted and ignored, as Graphene never passes it to the FilterSet.
+    `visibility` is accepted and ignored (kept for schema compatibility).
     """
     return connection(
         CountedConnection[ActivityLogLazyType] | None,

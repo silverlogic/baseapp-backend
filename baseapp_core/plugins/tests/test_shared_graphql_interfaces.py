@@ -1,22 +1,16 @@
-from graphene import Interface, ObjectType, String
+import strawberry
 
 from baseapp_core.plugins import (
     GraphQLSharedInterfaceRegistry,
-    graphql_shared_interfaces,
+    strawberry_shared_interfaces,
 )
 
 
-class MockInterface(Interface):
+@strawberry.interface
+class MockInterface:
     """Mock GraphQL interface for testing."""
 
-    test_field = String()
-
-
-class MockObjectType(ObjectType):
-    """Mock GraphQL object type for testing."""
-
-    class Meta:
-        interfaces = (MockInterface,)
+    test_field: str | None
 
 
 class TestGraphQLSharedInterfaceRegistry:
@@ -76,8 +70,9 @@ class TestGraphQLSharedInterfaceRegistry:
         registry = GraphQLSharedInterfaceRegistry()
         registry.register("test_interface", MockInterface)
 
-        class DefaultInterface(Interface):
-            default_field = String()
+        @strawberry.interface
+        class DefaultInterface:
+            default_field: str | None
 
         result = registry.get("test_interface", DefaultInterface)
         assert len(result) == 2
@@ -102,11 +97,13 @@ class TestGraphQLSharedInterfaceRegistry:
         """Test that registering an interface with existing name overwrites it."""
         registry = GraphQLSharedInterfaceRegistry()
 
-        class Interface1(Interface):
-            field1 = String()
+        @strawberry.interface
+        class Interface1:
+            field1: str | None
 
-        class Interface2(Interface):
-            field2 = String()
+        @strawberry.interface
+        class Interface2:
+            field2: str | None
 
         registry.register("test_interface", Interface1)
         assert registry.get_interface("test_interface") == Interface1
@@ -117,11 +114,13 @@ class TestGraphQLSharedInterfaceRegistry:
     def test_multiple_interfaces_registration(self) -> None:
         registry = GraphQLSharedInterfaceRegistry()
 
-        class Interface1(Interface):
-            field1 = String()
+        @strawberry.interface
+        class Interface1:
+            field1: str | None
 
-        class Interface2(Interface):
-            field2 = String()
+        @strawberry.interface
+        class Interface2:
+            field2: str | None
 
         registry.register("interface1", Interface1)
         registry.register("interface2", Interface2)
@@ -131,19 +130,19 @@ class TestGraphQLSharedInterfaceRegistry:
 
 
 class TestGraphQLSharedInterfaceRegistrySingleton:
-    """Test suite for the graphql_shared_interfaces singleton."""
+    """Test suite for the strawberry_shared_interfaces singleton."""
 
     def test_singleton_instance(self) -> None:
-        """Test that graphql_shared_interfaces is a singleton instance."""
-        assert isinstance(graphql_shared_interfaces, GraphQLSharedInterfaceRegistry)
+        """Test that strawberry_shared_interfaces is a singleton instance."""
+        assert isinstance(strawberry_shared_interfaces, GraphQLSharedInterfaceRegistry)
 
     def test_singleton_persistence(self) -> None:
         """Test that the singleton persists across imports."""
         from baseapp_core.plugins.shared_graphql_interfaces import (
-            graphql_shared_interfaces as registry1,
+            strawberry_shared_interfaces as registry1,
         )
         from baseapp_core.plugins.shared_graphql_interfaces import (
-            graphql_shared_interfaces as registry2,
+            strawberry_shared_interfaces as registry2,
         )
 
         assert registry1 is registry2

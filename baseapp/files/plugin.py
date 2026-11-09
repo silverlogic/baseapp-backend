@@ -23,12 +23,6 @@ class FilesPlugin(BaseAppPlugin):
                     "baseapp.files.permissions.FilesPermissionsBackend",
                 ],
             },
-            graphql_queries=[
-                "baseapp.files.graphql.queries.FilesQueries",
-            ],
-            graphql_mutations=[
-                "baseapp.files.graphql.mutations.FilesMutations",
-            ],
             strawberry_queries=["baseapp.files.strawberry.queries.FilesQueries"],
             strawberry_mutations=["baseapp.files.strawberry.mutations.FilesMutations"],
             strawberry_types=["baseapp.files.strawberry.types.FileType"],

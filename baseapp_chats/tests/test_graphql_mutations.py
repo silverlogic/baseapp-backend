@@ -2269,9 +2269,7 @@ def test_add_participant_broadcasts_room_updated(django_user_client, graphql_use
     room_new = _make_group(my_profile, members=[ProfileFactory()])
     room_existing = _make_group(my_profile, members=[contact])
 
-    with mock.patch(
-        "baseapp_chats.graphql.mutations.ChatRoomOnRoomUpdate.room_updated"
-    ) as room_updated_mock:
+    with mock.patch("baseapp_chats.strawberry.mutations.room_updated") as room_updated_mock:
         graphql_user_client(
             ADD_PARTICIPANT_TO_ROOMS_GRAPHQL,
             variables={
@@ -2286,7 +2284,7 @@ def test_add_participant_broadcasts_room_updated(django_user_client, graphql_use
 
     # Broadcasts fire only for the room that actually gained the participant.
     # (The system message emitted for that room triggers a second room_updated
-    # via ChatRoomOnRoomUpdate.new_message — also scoped to the same room.)
+    # via broadcasts.new_message — also scoped to the same room.)
     assert room_updated_mock.call_count >= 1
     assert all(call.args[0].pk == room_new.pk for call in room_updated_mock.call_args_list)
     added_calls = [
@@ -2307,7 +2305,7 @@ def test_add_participant_notification_failure_does_not_fail_mutation(
     room_b = _make_group(my_profile, members=[ProfileFactory()])
 
     with mock.patch(
-        "baseapp_chats.graphql.mutations.ChatRoomOnRoomUpdate.room_updated",
+        "baseapp_chats.strawberry.mutations.room_updated",
         side_effect=Exception("broadcast down"),
     ):
         response = graphql_user_client(

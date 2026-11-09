@@ -67,18 +67,22 @@ CELERY_TASK_ROUTES = {
 }
 ```
 
-4 - Make sure that your main `User`'s `DjangoObjectType` implements interface `NotificationsInterface`:
+4 - Make sure that your main `User`'s Strawberry type implements interface `NotificationsInterface`:
 
 ```python
-from baseapp_core.graphql import DjangoObjectType, Node as RelayNode
-from baseapp_core.plugins import graphql_shared_interfaces
+from baseapp_core.plugins import strawberry_shared_interfaces
+from baseapp_core.strawberry import Node, django_type
 
-class UserNode(DjangoObjectType):
-    class Meta:
-        interfaces = graphql_shared_interfaces.get(RelayNode, "NotificationsInterface")
+@django_type(User)
+class UserType(*strawberry_shared_interfaces.get("NotificationsInterface"), Node):
+    ...
 ```
 
-5 - Make sure your graphql.py main file is loading queries, mutations and subscriptions from plugin_registry.
+5 - Make sure your Strawberry schema loads queries, mutations and subscriptions from the plugin registry (`baseapp_core.strawberry.schema`).
+
+`onNotificationChange` events are published from `baseapp_notifications.subscriptions`
+(`send_created_notification`, `send_updated_notification`, `send_delete_notification`), which
+`Notification.save()`, `delete()` and `bulk_create()` already call.
 
 ## Setup Push notifications (apple and google)
 

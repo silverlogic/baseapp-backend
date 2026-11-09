@@ -1,20 +1,12 @@
 import json
-from collections.abc import Awaitable, Callable, Generator
+from collections.abc import Awaitable, Callable
+from typing import Any
 
-import channels
-import channels_graphql_ws
-import channels_graphql_ws.testing
-import django
 import pytest
-from channels.db import database_sync_to_async
 from django.http import HttpResponse
 from django.test import Client
-from graphene_django.settings import graphene_settings
-from rest_framework.authtoken.models import Token
 
 from baseapp_core.graphql.utils import QueryData, capture_database_queries
-
-from ..consumers import GraphqlWsAuthenticatedConsumer
 
 DEFAULT_GRAPHQL_URL = "/graphql"
 
@@ -32,7 +24,7 @@ def graphql_query(
     client=None,
     graphql_url=None,
     content_type="application/json",
-    extra={},
+    extra=None,
     queries=None,
 ) -> HttpResponse | tuple[HttpResponse, QueryData]:
     """
@@ -59,9 +51,9 @@ def graphql_query(
     if client is None:
         client = Client()
     if not graphql_url:
-        graphql_url = graphene_settings.TESTING_ENDPOINT
+        graphql_url = DEFAULT_GRAPHQL_URL
 
-    body = extra
+    body = dict(extra or {})
     body["query"] = query
     if operation_name:
         body["operationName"] = operation_name
@@ -133,127 +125,17 @@ def graphql_user_client(django_user_client) -> GraphQLClient:
 
 
 @pytest.fixture
-def graphql_websocket(
-    request,
-) -> Generator[Callable[..., channels_graphql_ws.testing.GraphqlWsClient], None, None]:
-    """PyTest fixture for testing GraphQL WebSocket backends.
+def graphql_ws_user_client(django_user_client) -> Callable[..., Awaitable[Any]]:
+    """Factory of graphql-transport-ws communicators authenticated as `django_user_client.user`.
 
-    The fixture provides a method to setup GraphQL testing backend for
-    the given GraphQL schema (query, mutation, and subscription). In
-    particular: it sets up an instance of `GraphqlWsConsumer` and an
-    instance of `GraphqlWsClient`. The former one is returned
-    from the function.
-
-    Syntax:
-        graphql_websocket(
-            *,
-            consumer_attrs=None,
-            communicator_kwds=None
-        ):
-
-    Args:
-        consumer_attrs: `GraphqlWsConsumer` attributes dict. Optional.
-        communicator_kwds: Extra keyword arguments for the Channels
-            `channels.testing.WebsocketCommunicator`. Optional.
-
-    Returns:
-        An instance of the `GraphqlWsClient` class which has many
-        useful GraphQL-related methods, see the `GraphqlWsClient`
-        class docstrings for details.
-
-    Use like this:
     ```
-    def test_something(graphql_websocket):
-        client = graphql_websocket(
-            # `GraphqlWsConsumer` settings.
-            consumer_attrs={"strict_ordering": True},
-            # `channels.testing.WebsocketCommunicator` settings.
-            communicator_kwds={"headers": [...]}
-        )
-        ...
+    async with await graphql_ws_user_client() as ws:
+        async for result in ws.subscribe(SUBSCRIPTION, variables): ...
     ```
-
     """
+    from baseapp_core.strawberry.testing import ws_communicator
 
-    # NOTE: We need Django DB to be initialized each time we work with
-    # `GraphqlWsConsumer`, because it uses threads and sometimes calls
-    # `django.db.close_old_connections()`.
-    # del db
+    async def connect(**connection_params: Any) -> Any:
+        return await ws_communicator(django_user_client.user, **connection_params)
 
-    issued_clients = []
-
-    def client_constructor(
-        *,
-        consumer_attrs=None,
-        communicator_kwds=None,
-    ) -> channels_graphql_ws.testing.GraphqlWsClient:
-        """Setup GraphQL consumer and the communicator for tests."""
-
-        ChannelsConsumer = GraphqlWsAuthenticatedConsumer
-
-        # Set additional attributes to the `ChannelsConsumer`.
-        if consumer_attrs is not None:
-            for attr, val in consumer_attrs.items():
-                setattr(ChannelsConsumer, attr, val)
-
-        application = channels.routing.ProtocolTypeRouter(
-            {
-                "websocket": channels.routing.URLRouter(
-                    [django.urls.path("graphql/", ChannelsConsumer.as_asgi())]
-                )
-            }
-        )
-
-        transport = channels_graphql_ws.testing.GraphqlWsTransport(
-            application=application,
-            path="graphql/",
-            communicator_kwds=communicator_kwds,
-        )
-
-        client = channels_graphql_ws.testing.GraphqlWsClient(transport)
-        issued_clients.append(client)
-        return client
-
-    yield client_constructor
-
-    # Assert all issued client are properly finalized.
-    for client in reversed(issued_clients):
-        assert not client.connected, f"Test has left connected client: {request.node.nodeid}!"
-
-
-@pytest.fixture
-def graphql_ws_client(
-    graphql_websocket,
-) -> Callable[..., Awaitable[channels_graphql_ws.testing.GraphqlWsClient]]:
-    async def internal_client(
-        django_user_client, consumer_attrs=None, communicator_kwds=None
-    ) -> channels_graphql_ws.testing.GraphqlWsClient:
-        client = graphql_websocket(
-            consumer_attrs=consumer_attrs, communicator_kwds=communicator_kwds
-        )
-
-        token, _ = await Token.objects.aget_or_create(user=django_user_client.user)
-        profile_id = await database_sync_to_async(
-            lambda: django_user_client.user.profile.relay_id
-        )()
-
-        await client.connect_and_init(
-            payload={"Authorization": token.key, "Current-Profile": profile_id}
-        )
-
-        return client
-
-    return internal_client
-
-
-@pytest.fixture
-def graphql_ws_user_client(
-    graphql_ws_client, django_user_client
-) -> Callable[..., Awaitable[channels_graphql_ws.testing.GraphqlWsClient]]:
-    async def internal_client(
-        consumer_attrs=None, communicator_kwds=None
-    ) -> channels_graphql_ws.testing.GraphqlWsClient:
-        client = await graphql_ws_client(django_user_client, consumer_attrs, communicator_kwds)
-        return client
-
-    return internal_client
+    return connect

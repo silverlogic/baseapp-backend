@@ -13,12 +13,6 @@ class ContentFeedPlugin(BaseAppPlugin):
     def get_settings(self) -> PackageSettings:
         return PackageSettings(
             INSTALLED_APPS=[],
-            graphql_queries=[
-                "baseapp.content_feed.graphql.queries.ContentFeedQueries",
-            ],
-            graphql_mutations=[
-                "baseapp.content_feed.graphql.mutations.ContentFeedMutations",
-            ],
             strawberry_queries=["baseapp.content_feed.strawberry.queries.ContentFeedQueries"],
             strawberry_mutations=["baseapp.content_feed.strawberry.mutations.ContentFeedMutations"],
             strawberry_types=["baseapp.content_feed.strawberry.types.ContentPostType"],

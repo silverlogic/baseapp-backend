@@ -124,7 +124,7 @@ def test_profile_activity_logs_only_include_own_profile(
 def test_profile_root_query_exposes_activity_logs_field(
     graphql_user_client, django_user_client
 ) -> None:
-    """ProfileObjectType surfaces activityLogs from ProfileActivityLogInterface on the profile query."""
+    """ProfileType surfaces activityLogs from ProfileActivityLogInterface on the profile query."""
     django_user_client.user.is_superuser = True
     django_user_client.user.save(update_fields=["is_superuser"])
 

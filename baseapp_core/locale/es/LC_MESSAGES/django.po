@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-17 01:11+0000\n"
+"POT-Creation-Date: 2026-11-09 03:28+0000\n"
 "PO-Revision-Date: 2024-06-18 22:42+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -22,22 +22,6 @@ msgstr ""
 #: apps.py
 msgid "BaseApp Core"
 msgstr "BaseApp Núcleo"
-
-#: graphql/decorators.py
-msgid "authentication required"
-msgstr "autenticación requerida"
-
-#: graphql/errors.py
-msgid "May contain more than one error for same field."
-msgstr "Puede contener más de un error para el mismo campo."
-
-#: graphql/mutations.py
-msgid "You don't have permission to delete this."
-msgstr "No tienes permiso para eliminar esto."
-
-#: graphql/translation.py
-msgid "Languages available"
-msgstr "Idiomas disponibles"
 
 #: models.py
 msgid "Case insensitive character"
@@ -90,6 +74,28 @@ msgstr "documento objetivo"
 #: models.py
 msgid "target"
 msgstr "objetivo"
+
+#: strawberry/complexity.py
+#, python-format
+msgid "Query complexity exceeds the maximum allowed of %(max)s"
+msgstr "La complejidad de la consulta supera el máximo permitido de %(max)s"
+
+#: strawberry/filters.py
+#, python-format
+msgid "Invalid ID: %(value)s"
+msgstr "ID no válido: %(value)s"
+
+#: strawberry/mutations.py
+msgid "authentication required"
+msgstr "autenticación requerida"
+
+#: strawberry/mutations.py
+msgid "May contain more than one error for same field."
+msgstr "Puede contener más de un error para el mismo campo."
+
+#: strawberry/mutations.py
+msgid "You don't have permission to delete this."
+msgstr "No tienes permiso para eliminar esto."
 
 #: templates/admin/base_site.html
 msgid "BaseApp staging logo"

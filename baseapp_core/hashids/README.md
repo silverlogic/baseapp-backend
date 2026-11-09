@@ -2,7 +2,7 @@
 
 HashIds provides a set of abstractions and helper functions designed to help models across the system avoid exposing sequential integer primary keys to external services, such as frontend applications. Compared to sequential PKs, public IDs make it significantly harder to infer other records, which is generally a safer and more appropriate approach than exposing raw database primary keys.
 
-To omit internal PKs, models must be made compatible with HashIds, and the appropriate abstractions must be used when defining queries, mutations, or subscriptions in Graphene, as well as when creating new endpoints in DRF.
+To omit internal PKs, models must be made compatible with HashIds, and the appropriate abstractions must be used when defining queries, mutations, or subscriptions in GraphQL (Strawberry), as well as when creating new endpoints in DRF.
 
 
 ## Making Your Apps Compatible With HashIds
@@ -11,17 +11,17 @@ To omit internal PKs, models must be made compatible with HashIds, and the appro
 
 This is fairly simple. We use the DocumentId pattern (see [Baseapp Core](../README.md#documentid-model) for more details). You just need to ensure that any model that should omit its internal integer primary key extends the `baseapp_core.models.DocumentIdMixin` abstraction.
 
-### Making Graphene ObjectTypes compatible with hashIds
+### Making GraphQL types compatible with hashIds
 
-This is also very simple. You just need implement the `baseapp_core.graphql.DjangoObjectType` abstraction and include the `baseapp_core.graphql.Node` interface in the ObjectType interfaces.
+Declare the type with `baseapp_core.strawberry.django_type` and make `baseapp_core.strawberry.Node` its last base. `Node.id` resolves through the strategies, and its optimizer hint (`PublicIdOptimizerStore`) annotates `mapped_public_id` when `id` is selected. Resolve incoming ids with `baseapp_core.strawberry.relay.get_instance_from_global_id(info, id)` or `baseapp_core.graphql.get_pk_from_relay_id(id)`; both accept public ids, pks and legacy global ids.
 
 ```python
-from baseapp_core.graphql import DjangoObjectType, Node as RelayNode
-from baseapp_chats.graphql.interfaces import ChatRoomsInterface
+from baseapp_core.plugins import strawberry_shared_interfaces
+from baseapp_core.strawberry import Node, django_type
 
-class ProfileObjectType(DjangoObjectType):
-    class Meta:
-        interfaces = (RelayNode, ChatRoomsInterface)
+@django_type(Profile, relations="__all__")
+class ProfileType(AbstractProfileType, *strawberry_shared_interfaces.get("ChatRoomsInterface"), Node):
+    pass
 ```
 
 ### Making DRF endpoints compatible with HashIds
@@ -55,7 +55,7 @@ The key idea behind this structure is that each folder represents a different st
 
 #### Legacy vs Public Id
 
-The Legacy strategy follows the default behavior of Django, DRF, and Graphene. It relies on model primary keys to handle queries and updates coming from external services. If you decide to keep using primary keys in the frontend, which is not recommended, you can disable the Public Id strategy with the Django setting `ENABLE_PUBLIC_ID_LOGIC = False`. When disabled, the system will rely exclusively on the Legacy strategy.
+The Legacy strategy follows the default behavior of Django, DRF, and Relay (base64 `Type:pk` global ids). It relies on model primary keys to handle queries and updates coming from external services. If you decide to keep using primary keys in the frontend, which is not recommended, you can disable the Public Id strategy with the Django setting `ENABLE_PUBLIC_ID_LOGIC = False`. When disabled, the system will rely exclusively on the Legacy strategy.
 
 The Public Id strategy uses the `public_id` field from the `DocumentId` model. This strategy is responsible for resolving and exposing public IDs and is the recommended approach.
 
@@ -63,7 +63,7 @@ The Public Id strategy uses the `public_id` field from the `DocumentId` model. T
 
 The `__init__.py` file contains the heuristics for selecting the appropriate strategy, as well as the public functions that other parts of the system can use to resolve public IDs for external service workflows.
 
-Some of these public functions are straightforward, such as `get_hashids_strategy_from_instance_or_cls`, which selects the appropriate strategy based on a model instance or class. Others are more complex and exist to support advanced use cases. Graphene is a good example, where multiple helper functions with different inputs and outputs are required to fully replace the default `global_id` pattern, which remains available through the Legacy strategy.
+Some of these public functions are straightforward, such as `get_hashids_strategy_from_instance_or_cls`, which selects the appropriate strategy based on a model instance or class. Others are more complex and exist to support advanced use cases. GraphQL is a good example, where multiple helper functions (`graphql_to_global_id_using_strategy`, `graphql_get_pk_from_global_id_using_strategy`, …) are required to fully replace the default Relay `global_id` pattern, which remains available through the Legacy strategy.
 
 For now, public facing functions should continue to live in this module. If a more organized structure becomes necessary, a proposal should be made to the CoP members.
 
@@ -81,7 +81,7 @@ Currently, the heuristics for selecting the Public Id strategy over the Legacy o
 
 Optimization is a critical aspect of the HashIds feature. When using the Public Id strategy, care must be taken to avoid introducing extra queries for each model instance when accessing `public_id`, since `DocumentId` is linked through a generic foreign key.
 
-This issue becomes more evident in GraphQL edge and node queries that involve large objects with deeply nested object types and large result sets. To address this, we introduced the `baseapp_core.graphql.DjangoObjectType` abstraction. By leveraging the `query_optimizer` package for Graphene, we dynamically annotate the resolution of these generic foreign keys based on the GraphQL query structure before executing the queryset. This approach prevents query explosions.
+This issue becomes more evident in GraphQL edge and node queries that involve large objects with deeply nested object types and large result sets. To address this, `Node.id` carries an optimizer hint (`baseapp_core.strawberry.types.PublicIdOptimizerStore`): when `id` is selected, strawberry-django's optimizer annotates the `public_id` subquery (`mapped_public_id`) on the queryset of the type that owns the field, at every nesting level, before the queryset runs. This approach prevents query explosions. Querysets built by hand inside optimizer hints must go through `strawberry_django.optimizer.optimize(queryset, info)` to get it.
 
 While the Public Id strategy still results in more queries than the Legacy mode, the overhead is now acceptable.
 

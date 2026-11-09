@@ -1,5 +1,3 @@
-from typing import TYPE_CHECKING
-
 import pghistory
 import pgtrigger
 import swapper
@@ -24,9 +22,6 @@ from baseapp_core.plugins import apply_if_installed
 from baseapp_core.swapper import init_swapped_models
 
 from .validators import blocked_words_validator
-
-if TYPE_CHECKING:
-    from baseapp_core.graphql import DjangoObjectType
 
 
 class CommentStatus(models.IntegerChoices):
@@ -165,12 +160,6 @@ class AbstractComment(
 
     def __str__(self) -> str:
         return "Comment #%s by %s" % (self.id, self.user_id)
-
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import CommentObjectType
-
-        return CommentObjectType
 
 
 def default_comments_count() -> dict[str, int]:

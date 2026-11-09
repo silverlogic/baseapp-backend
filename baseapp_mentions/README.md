@@ -22,7 +22,7 @@ INSTALLED_APPS = [
 ]
 ```
 
-2 - Make sure your `graphql.py` main file is loading queries, mutations and subscriptions from `plugin_registry`. The plugin contributes the `MentionsInterface` shared interface and the `mentions` / `mentionable_metadata` shared services — consumer mutations call into the services rather than importing this package directly.
+2 - Make sure your Strawberry schema is loading queries, mutations, subscriptions and types from `plugin_registry` (`get_all_strawberry_*()`). The plugin contributes the `MentionsInterface` shared interface and the `mentions` / `mentionable_metadata` shared services — consumer mutations call into the services rather than importing this package directly.
 
 3 - `baseapp_mentions` requires `baseapp_profiles` to be installed (mentions point at a `Profile` foreign key). The plugin declares this in `required_packages` so misconfigurations surface at startup.
 
@@ -33,16 +33,13 @@ INSTALLED_APPS = [
 `MentionsInterface` is a GraphQL interface that exposes mention data for the implementing object. It is registered as a shared interface, so you opt in by name — no direct cross-package import:
 
 ```python
-from baseapp_core.graphql import DjangoObjectType, Node as RelayNode
-from baseapp_core.plugins import graphql_shared_interfaces
+from baseapp_core.plugins import strawberry_shared_interfaces
+from baseapp_core.strawberry import Node, django_type
 
 
-class MyModelObjectType(DjangoObjectType):
-    class Meta:
-        model = MyModel
-        interfaces = graphql_shared_interfaces.get(
-            RelayNode, "MentionsInterface"
-        )
+@django_type(MyModel)
+class MyModelType(*strawberry_shared_interfaces.get("MentionsInterface"), Node):
+    ...
 ```
 
 The consuming model must expose a `document` `GenericRelation` to `baseapp_core.DocumentId` so the optimizer can walk `document__mentions` as a real Django prefetch path. `DocumentIdMixin` already declares it, so any consumer that inherits the mixin gets this for free.
@@ -53,7 +50,7 @@ Fields:
 - `mentionsCount` — `Int`, count of mentions for this object. Served from a correlated subquery annotation attached on demand by `MentionableMetadataService` when the field is selected.
 - `isMentioningProfile(profileId: ID!)` — `Boolean`, true when the given profile is mentioned in this object.
 
-All optimizer wiring lives on the interface fields themselves — consumers do **not** need to add anything to their own `pre_optimization_hook`. Each field carries an `optimizer_hook` that registers the necessary annotation or prefetch only when the field is selected, so queries that ignore mentions pay nothing.
+All optimizer wiring lives on the interface fields themselves — consumers do **not** need to add any optimizer hints to their own type. Each field carries strawberry-django optimizer hints (`annotate=` / `prefetch_related=`) that apply the necessary annotation or prefetch only when the field is selected, so queries that ignore mentions pay nothing.
 
 ### Writing mentions from consumer mutations — `mentions` service
 
@@ -93,7 +90,7 @@ if service:
     service.annotate_queryset(qs)           # adds _mentions_count + _mention_target_doc_id
 ```
 
-GraphQL resolvers go through `MentionsInterface` and get the annotation for free via the field-level `optimizer_hook` — there's nothing to wire up in the consuming object type. `annotate_queryset` is for callers outside the GraphQL path.
+GraphQL resolvers go through `MentionsInterface` and get the annotation for free via the field-level optimizer hints — there's nothing to wire up in the consuming object type. `annotate_queryset` is for callers outside the GraphQL path.
 
 ### Signals
 

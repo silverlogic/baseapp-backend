@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import swapper
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import OuterRef, Q, Subquery, Value
 from django.db.models.functions import Coalesce
-from query_optimizer.compiler import OptimizationCompiler
-from query_optimizer.typing import GQLInfo
 
 from baseapp_core.plugins import SharedServiceProvider
+
+if TYPE_CHECKING:
+    from strawberry.types import Info
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 
@@ -27,12 +30,12 @@ class BlockLookupService(SharedServiceProvider):
         return apps.is_installed("baseapp_blocks")
 
     def exclude_blocked_from_foreign_queryset(
-        self, queryset: models.QuerySet, info: GQLInfo
+        self, queryset: models.QuerySet, info: Info
     ) -> models.QuerySet:
         """
         Exclude comments from blocked/blocking profiles.
 
-        Must be called BEFORE evaluate_with_prefetch_hack / optimize
+        Must be called BEFORE the queryset is optimized/evaluated
         so that .exclude() cloning doesn't destroy the result cache.
         Sets `_BLOCKED_PROFILES_FILTERED_HINT` on the queryset so
         `get_queryset()` knows filtering was already applied.
@@ -179,11 +182,10 @@ class BlockableMetadataService(SharedServiceProvider):
     def annotate_queryset(self, queryset) -> models.QuerySet:
         """Bulk-annotate `queryset` with both counts. Useful for non-GraphQL
         callers (admin, DRF, management commands). The GraphQL path attaches
-        each annotation on-demand via the field-level optimizer hooks below."""
+        each annotation on demand via `BlocksInterface` field optimizer hints."""
         return self._get_model().annotate_queryset(queryset)
 
-    # --- Correlated subquery builders, used by both `annotate_queryset` on the
-    #     metadata model and the optimizer-compiler hooks below. -------------
+    # Correlated subquery builders, used by the `BlocksInterface` optimizer hints.
 
     def _blockers_count_subquery(self, model_cls) -> Coalesce:
         """Correlated subquery producing `blockers_count` for a row of `model_cls`."""
@@ -215,33 +217,4 @@ class BlockableMetadataService(SharedServiceProvider):
                 output_field=models.PositiveIntegerField(),
             ),
             Value(0),
-        )
-
-    def annotate_blockers_count_in_optimizer_compiler(self, compiler: OptimizationCompiler) -> None:
-        """Attach `_blockable_blockers_count` to the parent optimizer's annotations.
-
-        Wired from `BlocksInterface.blockers_count.optimizer_hook` so the
-        subquery only fires when the GraphQL query actually selects
-        `blockersCount`. Setting the annotation on `optimizer.annotations` also
-        triggers `query_optimizer`'s auto-promotion of `select_related` to
-        `prefetch_related` for nested FK paths (e.g. `block.target`), which is
-        what carries the annotation through to the nested Profile load.
-        """
-        parent = compiler.optimizer
-        if parent is None or parent.model is None:
-            return
-        parent.annotations.setdefault(
-            "_blockable_blockers_count", self._blockers_count_subquery(parent.model)
-        )
-
-    def annotate_blocking_count_in_optimizer_compiler(self, compiler: OptimizationCompiler) -> None:
-        """Attach `_blockable_blocking_count` to the parent optimizer's annotations.
-
-        Wired from `BlocksInterface.blocking_count.optimizer_hook` — same mechanism
-        as `annotate_blockers_count_in_optimizer_compiler`."""
-        parent = compiler.optimizer
-        if parent is None or parent.model is None:
-            return
-        parent.annotations.setdefault(
-            "_blockable_blocking_count", self._blocking_count_subquery(parent.model)
         )

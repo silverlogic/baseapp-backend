@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:28+0000\n"
+"POT-Creation-Date: 2026-11-09 03:28+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -21,10 +21,6 @@ msgstr ""
 #: apps.py
 msgid "BaseApp Organizations"
 msgstr "BaseApp Organizaciones"
-
-#: graphql/mutations.py
-msgid "You don't have permission to perform this action"
-msgstr "No tienes permiso para realizar esta acción"
 
 #: models.py
 msgid "name"
@@ -45,3 +41,7 @@ msgid ""
 msgstr ""
 "La cuenta no puede eliminarse porque eres propietario de una organización. "
 "Transfiere la propiedad o elimina la organización primero."
+
+#: strawberry/mutations.py
+msgid "You don't have permission to perform this action"
+msgstr "No tienes permiso para realizar esta acción"

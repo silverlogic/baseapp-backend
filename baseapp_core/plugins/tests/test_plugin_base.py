@@ -49,9 +49,9 @@ class TestPackageSettings:
         settings = PackageSettings(django_extra_settings={"TEST_SETTING": "test_value"})
         assert settings.django_extra_settings == {"TEST_SETTING": "test_value"}
 
-    def test_package_settings_graphql_queries(self) -> None:
-        settings = PackageSettings(graphql_queries=["test.graphql.queries.TestQueries"])
-        assert settings.graphql_queries == ["test.graphql.queries.TestQueries"]
+    def test_package_settings_strawberry_queries(self) -> None:
+        settings = PackageSettings(strawberry_queries=["test.strawberry.queries.TestQueries"])
+        assert settings.strawberry_queries == ["test.strawberry.queries.TestQueries"]
 
     def test_package_settings_model_dump_by_alias(self) -> None:
         settings = PackageSettings(installed_apps=["test_app"])

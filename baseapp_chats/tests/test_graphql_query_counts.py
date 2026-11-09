@@ -2,7 +2,7 @@
 
 These tests pin the cost of the paths the plugin refactor touched. They
 exist to trip when a future change loses a prefetch or drops an
-optimizer hook — the bounds are tight enough to catch a fan-out
+optimizer hint — the bounds are tight enough to catch a fan-out
 regression but loose enough to absorb optimizer-internal churn.
 
 Modelled after:
@@ -137,8 +137,8 @@ def test_paginated_chat_rooms_does_not_explode_query_count(
         f"Chat room listing issued {len(ctx.captured_queries)} queries. "
         "Likely causes (priority order):\n"
         "  - `last_message` lost its batched prefetch (now per-row)\n"
-        "  - `chat_rooms` reverted to `DjangoFilterConnectionField`\n"
-        "  - `ChatRoomsInterface.resolve_chat_rooms` block-exclusion "
+        "  - `chat_rooms` lost its optimized connection\n"
+        "  - `ChatRoomsInterface.chat_rooms` block-exclusion "
         "subqueries became per-row"
     )
 
@@ -148,7 +148,7 @@ def test_chat_rooms_listing_unread_count_subquery_runs_once_per_page(
 ) -> None:
     """SQL-shape guard for `unreadMessagesCount`.
 
-    `ChatRoomsInterface.resolve_unread_messages_count` aggregates
+    `ChatRoomsInterface.unread_messages_count` aggregates
     UnreadMessageCount with a single `Sum`. The single-profile
     `profile(id: ...)` query path should issue exactly one aggregate
     query touching `baseapp_chats_unreadmessagecount`, not one per row
@@ -189,23 +189,20 @@ def test_chat_rooms_listing_unread_count_subquery_runs_once_per_page(
 def test_mentions_interface_on_messages_rides_optimizer_prefetch(
     graphql_user_client, django_user_client
 ) -> None:
-    """Regression guard: the `MentionsInterface` optimizer hook on
-    `MessageObjectType` must batch the `document__<reverse>` mentions prefetch,
-    and the chats-side `pre_optimization_hook` must keep `room_id`,
-    `deleted`, and `message_type` in `only_fields`.
+    """Regression guard: the `MentionsInterface` optimizer hints on
+    `MessageType` must batch the `document__<reverse>` mentions prefetch,
+    and `MessageType`'s `only=` must keep `room_id`, `deleted`, and
+    `message_type` loaded.
 
     Three things have to line up to keep the count flat:
 
-    1. `chatRoom.allMessages` is `query_optimizer.DjangoConnectionField`
-       (not `graphene_django.filter.DjangoFilterConnectionField`),
-       so the optimizer compiler actually runs and fires the mentions
-       hook.
-    2. `MentionsInterface.mentions.optimizer_hook` is intact (walks
-       `document__<reverse>` through the parent optimizer).
-    3. `BaseMessageObjectType.pre_optimization_hook` adds `room_id`,
-       `deleted`, and `message_type` to `only_fields` so neither the
-       prefetch pipeline nor `resolve_content` triggers per-message
-       `refresh_from_db`.
+    1. `chatRoom.allMessages` is an optimized connection, so the
+       optimizer runs and applies the mentions hints.
+    2. `MentionsInterface.mentions` keeps its prefetch hint (walks
+       `document__<reverse>` from the parent queryset).
+    3. `MessageType`'s `only=` includes `room_id`, `deleted`, and
+       `message_type` so neither the prefetch pipeline nor `content`
+       triggers per-message `refresh_from_db`.
 
     Drop any of those and the count jumps: missing (1) → ~54;
     missing (3) → ~32 (5 prefetch-link refreshes + 10 deferred
@@ -234,11 +231,11 @@ def test_mentions_interface_on_messages_rides_optimizer_prefetch(
     assert len(ctx.captured_queries) <= 20, (
         f"Messages-with-mentions listing issued {len(ctx.captured_queries)} queries. "
         "Likely causes (in priority order):\n"
-        "  - `chatRoom.allMessages` reverted to `DjangoFilterConnectionField`\n"
-        "  - `BaseMessageObjectType.pre_optimization_hook` dropped one of "
-        "`room_id` / `deleted` / `message_type` from `only_fields`\n"
-        "  - `MentionsInterface.mentions.optimizer_hook` was lost\n"
-        "  - Message ObjectType lost its `document = GenericRelation(DocumentId)`"
+        "  - `chatRoom.allMessages` lost its optimized connection\n"
+        "  - `MessageType` `only=` dropped one of "
+        "`room_id` / `deleted` / `message_type`\n"
+        "  - `MentionsInterface.mentions` lost its prefetch hint\n"
+        "  - Message model lost its `document = GenericRelation(DocumentId)`"
     )
 
 
@@ -330,7 +327,7 @@ def test_manageable_listing_with_is_participant_stays_linear(
 
     `isParticipant(profileId:)` resolves one indexed EXISTS per row —
     an accepted per-row cost bounded by page size (same precedent as
-    `resolve_is_archived`). The relay-id decode of `profileId` is
+    `isArchived`). The relay-id decode of `profileId` is
     memoized per request, so it must NOT scale with row count.
 
     Baseline for 5 rooms is 26 queries: ~21 fixed (request setup,
@@ -377,7 +374,7 @@ def test_manageable_listing_with_is_participant_stays_linear(
         f"Manageable listing issued {len(ctx.captured_queries)} queries for "
         f"{n_rooms} rooms. Table histogram: {dict(tables)}\n"
         "Likely causes:\n"
-        "  - `resolve_is_participant` started hydrating profiles instead of EXISTS\n"
+        "  - `isParticipant` started hydrating profiles instead of EXISTS\n"
         "  - the `manageable` filter join lost `.distinct()` and duplicated rows\n"
         "  - a per-row COUNT crept into `participants_count` resolution"
     )

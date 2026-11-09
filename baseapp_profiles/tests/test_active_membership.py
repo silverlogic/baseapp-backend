@@ -204,7 +204,7 @@ class TestAssignableRoles:
         # cannot drift between them.
         from graphql.error import GraphQLError
 
-        from baseapp_profiles.graphql.mutations.roles import validate_assignable_role
+        from baseapp_profiles.strawberry.invitations import validate_assignable_role
 
         reserved = ProfileUserRole.ProfileRoles.MANAGER
         allowed = [r for r in ProfileUserRole.ProfileRoles.values if r != reserved]

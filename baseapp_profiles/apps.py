@@ -35,15 +35,6 @@ class PackageConfig(
 
         registry.register("profiles.jwt_profile", JWTProfileSerializer)
 
-    def register_graphql_shared_interfaces(self, registry: GraphQLSharedInterfaceRegistry) -> None:
-        from .graphql.interfaces import (
-            get_profile_interface,
-            get_profiles_list_interface,
-        )
-
-        registry.register("ProfileInterface", get_profile_interface)
-        registry.register("ProfilesInterface", get_profiles_list_interface)
-
     def register_strawberry_shared_interfaces(
         self, registry: GraphQLSharedInterfaceRegistry
     ) -> None:

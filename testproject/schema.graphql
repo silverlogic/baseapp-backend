@@ -1,0 +1,3162 @@
+type ActivityLog implements ActivityLogWithProfileInterface & Node {
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  ipAddress: String
+  verb: String
+  visibility: VisibilityTypes
+  url: String
+  metadata: GenericScalar
+  pk: Int
+  user: User
+  events(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    createdFrom: Date = null
+    createdTo: Date = null
+    userPk: Decimal = null
+  ): NodeLogEventConnection
+  profile: Profile
+
+  """The ID of the object"""
+  id: ID!
+}
+
+"""A connection to a list of items."""
+type ActivityLogConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [ActivityLogEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+"""An edge in a connection."""
+type ActivityLogEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: ActivityLog
+}
+
+interface ActivityLogWithProfileInterface {
+  profile: Profile
+}
+
+"""Integers that can exceed the 32-bit range of `Int`."""
+scalar BigInt
+
+type Block implements Node {
+  """The ID of the object"""
+  id: ID!
+  actor: Profile
+  target: Profile
+  created: DateTime!
+  modified: DateTime!
+  pk: Int
+  user: User
+}
+
+"""A connection to a list of items."""
+type BlockConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [BlockEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+"""An edge in a connection."""
+type BlockEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: Block
+}
+
+input BlockToggleInput {
+  clientMutationId: String = null
+  actorObjectId: ID!
+  targetObjectId: ID!
+}
+
+type BlockTogglePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  block: BlockEdge
+  target: BlocksInterface
+  actor: BlocksInterface
+  blockDeletedId: ID
+}
+
+interface BlocksInterface implements Node {
+  """The ID of the object"""
+  id: ID!
+  blockers(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+  ): BlockConnection
+  blocking(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+  ): BlockConnection
+  blockersCount: Int
+  blockingCount: Int
+  isBlockedByMe(profileId: ID = null): Boolean
+}
+
+type ChatRoom implements Node {
+  """The ID of the object"""
+  id: ID!
+  lastMessageTime: DateTime
+  participantsCount: Int!
+  isGroup: Boolean!
+  title: String
+  image(width: Int!, height: Int!): String
+  participants(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    q: String = null
+  ): ChatRoomParticipantConnection
+  allMessages(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    verb: Verbs = null
+  ): MessageConnection
+  unreadMessages(profileId: ID = null): UnreadMessageCount
+  isArchived(profileId: ID = null): Boolean
+  otherParticipant: ChatRoomParticipant
+  isSoleAdmin: Boolean
+  participantIds: [ID]
+
+  """Whether the given profile is a participant of this room."""
+  isParticipant(profileId: ID!): Boolean
+  lastMessage: Message
+}
+
+input ChatRoomArchiveInput {
+  clientMutationId: String = null
+  roomId: ID!
+  profileId: ID!
+  archive: Boolean!
+}
+
+type ChatRoomArchivePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  room: ChatRoom
+}
+
+"""A connection to a list of items."""
+type ChatRoomConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [ChatRoomEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+input ChatRoomCreateInput {
+  clientMutationId: String = null
+  profileId: ID!
+  participants: [ID]!
+  isGroup: Boolean = false
+  title: String
+}
+
+type ChatRoomCreatePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  room: ChatRoomEdge
+  profile: Profile
+}
+
+input ChatRoomDeleteMessageInput {
+  clientMutationId: String = null
+  id: ID!
+}
+
+type ChatRoomDeleteMessagePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  deletedMessage: MessageEdge
+}
+
+"""An edge in a connection."""
+type ChatRoomEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: ChatRoom
+}
+
+input ChatRoomEditMessageInput {
+  clientMutationId: String = null
+  id: ID!
+  content: String!
+  mentionedProfileIds: [ID]
+}
+
+type ChatRoomEditMessagePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  message: MessageEdge
+}
+
+type ChatRoomOnMessage {
+  message: MessageEdge
+}
+
+type ChatRoomOnMessagesCountUpdate {
+  profile: Profile
+}
+
+type ChatRoomOnRoomUpdate {
+  room: ChatRoomEdge
+  removedParticipants: [ChatRoomParticipant]
+  addedParticipants: [ChatRoomParticipant]
+}
+
+type ChatRoomParticipant implements Node {
+  """The ID of the object"""
+  id: ID!
+  hasArchivedRoom: Boolean!
+  role: ChatRoomParticipantRoles
+  profile: Profile
+}
+
+"""A connection to a list of items."""
+type ChatRoomParticipantConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [ChatRoomParticipantEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+"""An edge in a connection."""
+type ChatRoomParticipantEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: ChatRoomParticipant
+}
+
+enum ChatRoomParticipantRoles {
+  MEMBER
+  ADMIN
+}
+
+input ChatRoomReadMessagesInput {
+  clientMutationId: String = null
+  roomId: ID!
+  profileId: ID!
+  messageIds: [ID]
+}
+
+type ChatRoomReadMessagesPayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  room: ChatRoom
+  profile: Profile
+  messages: [Message]
+}
+
+input ChatRoomSendMessageInput {
+  clientMutationId: String = null
+  roomId: ID!
+  profileId: ID!
+  content: String!
+  inReplyToId: ID
+  mentionedProfileIds: [ID]
+}
+
+type ChatRoomSendMessagePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  message: MessageEdge
+}
+
+input ChatRoomToggleAdminInput {
+  clientMutationId: String = null
+  targetParticipantId: ID!
+  profileId: ID!
+  roomId: ID!
+}
+
+type ChatRoomToggleAdminPayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  participant: ChatRoomParticipantEdge
+}
+
+input ChatRoomUnreadInput {
+  clientMutationId: String = null
+  roomId: ID!
+  profileId: ID!
+}
+
+type ChatRoomUnreadPayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  room: ChatRoom
+  profile: Profile
+}
+
+input ChatRoomUpdateInput {
+  clientMutationId: String = null
+  roomId: ID!
+  profileId: ID!
+  title: String
+  image: Upload
+  deleteImage: Boolean = false
+  addParticipants: [ID] = []
+  removeParticipants: [ID] = []
+}
+
+type ChatRoomUpdatePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  room: ChatRoomEdge
+  removedParticipants: [ChatRoomParticipant]
+  addedParticipants: [ChatRoomParticipant]
+}
+
+input ChatRoomsAddParticipantInput {
+  clientMutationId: String = null
+  profileId: ID!
+  participantProfileId: ID!
+  roomIds: [ID!]!
+}
+
+type ChatRoomsAddParticipantPayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  rooms: [ChatRoom]
+  addedParticipants: [ChatRoomParticipant]
+}
+
+interface ChatRoomsInterface implements Node {
+  """The ID of the object"""
+  id: ID!
+  chatRooms(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    q: String = null
+
+    """Ordering"""
+    orderBy: String = null
+    profileId: String = null
+    unreadMessages: Boolean = null
+    archived: Boolean = null
+    isGroup: Boolean = null
+    manageable: Boolean = null
+  ): ChatRoomConnection
+  unreadMessagesCount: Int
+}
+
+type Comment implements CommentsInterface & PermissionsInterface & ReactionsInterface & MentionsInterface & NodeActivityLogInterface & FilesInterface & Node {
+  created: DateTime!
+  modified: DateTime!
+  body: String
+
+  """language used in the comment"""
+  language: String
+  isEdited: Boolean!
+  isPinned: Boolean!
+  status: CommentStatus
+  pk: Int
+  target: CommentsInterface
+
+  """The ID of the object"""
+  id: ID!
+  commentsCount: CommentsCount!
+  comments(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    q: String = null
+
+    """Ordering"""
+    orderBy: String = null
+  ): CommentConnection
+  isCommentsEnabled: Boolean!
+
+  """
+  Determine if the logged in user has a specific permission for this object.
+  """
+  hasPerm(perm: String!): Boolean
+  reactionsCount: ReactionsCount
+  reactions(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    id: ID = null
+  ): ReactionConnection
+  isReactionsEnabled: Boolean!
+  myReaction(profileId: ID = null): Reaction
+  mentions(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+  ): MentionConnection
+  mentionsCount: Int
+  isMentioningProfile(profileId: ID!): Boolean
+  nodeActivityLogs(
+    visibility: VisibilityTypes = null
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = 10
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    createdFrom: Date = null
+    createdTo: Date = null
+    userPk: Decimal = null
+    profilePk: Decimal = null
+    userName: String = null
+  ): ActivityLogConnection
+  filesCount: GenericScalar
+  isFilesEnabled: Boolean
+  files(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    noParent: Boolean = null
+  ): FileConnection
+  profile: Profile
+  user: User
+  inReplyTo: Comment
+}
+
+"""A connection to a list of items."""
+type CommentConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [CommentEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+input CommentCreateInput {
+  clientMutationId: String = null
+  targetObjectId: ID!
+  inReplyToId: ID
+  body: String!
+  mentionedProfileIds: [ID]
+  profileId: ID
+}
+
+type CommentCreatePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  comment: CommentEdge
+}
+
+input CommentDeleteInput {
+  clientMutationId: String = null
+  id: ID!
+}
+
+type CommentDeletePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  deletedId: ID
+  target: CommentsInterface
+  inReplyTo: Comment
+}
+
+"""An edge in a connection."""
+type CommentEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: Comment
+}
+
+input CommentPinInput {
+  clientMutationId: String = null
+  id: ID!
+}
+
+type CommentPinPayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  comment: Comment
+}
+
+enum CommentStatus {
+  DELETED
+  PUBLISHED
+}
+
+input CommentUpdateInput {
+  clientMutationId: String = null
+  id: ID!
+  body: String!
+  mentionedProfileIds: [ID]
+}
+
+type CommentUpdatePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  comment: Comment
+}
+
+type CommentsCount {
+  total: Int
+  main: Int
+  replies: Int
+  pinned: Int
+  reported: Int
+}
+
+interface CommentsInterface implements Node {
+  """The ID of the object"""
+  id: ID!
+  commentsCount: CommentsCount!
+  comments(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    q: String = null
+
+    """Ordering"""
+    orderBy: String = null
+  ): CommentConnection
+  isCommentsEnabled: Boolean!
+}
+
+type ContentPost implements MentionsInterface & ReactionsInterface & CommentsInterface & Node {
+  """The ID of the object"""
+  id: ID!
+  mentions(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+  ): MentionConnection
+  mentionsCount: Int
+  isMentioningProfile(profileId: ID!): Boolean
+  reactionsCount: ReactionsCount
+  reactions(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    id: ID = null
+  ): ReactionConnection
+  isReactionsEnabled: Boolean!
+  myReaction(profileId: ID = null): Reaction
+  commentsCount: CommentsCount!
+  comments(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    q: String = null
+
+    """Ordering"""
+    orderBy: String = null
+  ): CommentConnection
+  isCommentsEnabled: Boolean!
+  created: DateTime!
+  modified: DateTime!
+  content: String!
+  pk: Int
+  images(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    id: ID = null
+    post: ID = null
+  ): ContentPostImageConnection
+  profile: Profile
+  user: User!
+}
+
+"""A connection to a list of items."""
+type ContentPostConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [ContentPostEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+input ContentPostCreateInput {
+  clientMutationId: String = null
+  content: String!
+  isReactionsEnabled: Boolean!
+  mentionedProfileIds: [ID]
+}
+
+type ContentPostCreatePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  contentPost: ContentPostEdge
+}
+
+"""An edge in a connection."""
+type ContentPostEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: ContentPost
+}
+
+type ContentPostImage implements Node {
+  """The ID of the object"""
+  id: ID!
+  pk: Int
+  image(width: Int!, height: Int!): String
+  post: ContentPost!
+}
+
+"""A connection to a list of items."""
+type ContentPostImageConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [ContentPostImageEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+"""An edge in a connection."""
+type ContentPostImageEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: ContentPostImage
+}
+
+"""Date (isoformat)"""
+scalar Date
+
+"""Date with time (isoformat)"""
+scalar DateTime
+
+"""Decimal (fixed-point)"""
+scalar Decimal
+
+input DeleteNodeInput {
+  clientMutationId: String = null
+  id: ID!
+}
+
+type DeleteNodePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  deletedID: ID!
+}
+
+type ErrorType {
+  field: String!
+  messages: [String!]!
+}
+
+type File implements PermissionsInterface & FileInterface & CommentsInterface & ReactionsInterface & Node {
+  created: DateTime!
+  modified: DateTime!
+  fileContentType: String!
+  fileName: String!
+  fileSize: BigInt
+  name: String!
+  description: String!
+  uploadStatus: FilesFileUploadStatusChoices!
+  uploadId: String!
+  uploadStorageName: String!
+  totalParts: Int
+  uploadedParts: JSONString
+  uploadExpiresAt: DateTime
+  pk: Int
+  file: String!
+  parent: Node
+  url: String
+  thumbnail(width: Int!, height: Int!): String
+
+  """The ID of the object"""
+  id: ID!
+
+  """
+  Determine if the logged in user has a specific permission for this object.
+  """
+  hasPerm(perm: String!): Boolean
+  commentsCount: CommentsCount!
+  comments(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    q: String = null
+
+    """Ordering"""
+    orderBy: String = null
+  ): CommentConnection
+  isCommentsEnabled: Boolean!
+  reactionsCount: ReactionsCount
+  reactions(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    id: ID = null
+  ): ReactionConnection
+  isReactionsEnabled: Boolean!
+  myReaction(profileId: ID = null): Reaction
+  profile: Profile
+  createdBy: User
+}
+
+input FileAttachToTargetInput {
+  clientMutationId: String = null
+  fileRelayIds: [ID]!
+  targetObjectId: ID!
+  uploadTokens: [String!]
+}
+
+type FileAttachToTargetPayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  attachedFiles: [FileEdge!]!
+  target: FilesInterface!
+}
+
+"""A connection to a list of items."""
+type FileConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [FileEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+input FileDeleteInput {
+  clientMutationId: String = null
+  id: ID!
+}
+
+type FileDeletePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  deletedId: ID
+  parent: FilesInterface
+}
+
+"""An edge in a connection."""
+type FileEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: File
+}
+
+interface FileInterface {
+  url: String
+}
+
+enum FilesFileUploadStatusChoices {
+  PENDING
+  UPLOADING
+  COMPLETED
+  FAILED
+  ABORTED
+}
+
+interface FilesInterface {
+  filesCount: GenericScalar
+  isFilesEnabled: Boolean
+  files(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    noParent: Boolean = null
+  ): FileConnection
+}
+
+type Follow implements Node {
+  created: DateTime!
+  modified: DateTime!
+  targetIsFollowingBack: Boolean!
+  actorObject: Node
+  targetObject: Node
+
+  """The ID of the object"""
+  id: ID!
+  user: User
+}
+
+"""A connection to a list of items."""
+type FollowConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [FollowEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+"""An edge in a connection."""
+type FollowEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: Follow
+}
+
+input FollowToggleInput {
+  clientMutationId: String = null
+  actorObjectId: ID!
+  targetObjectId: ID!
+}
+
+type FollowTogglePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  follow: FollowEdge
+  target: FollowsInterface
+  actor: FollowsInterface
+  followDeletedId: ID
+}
+
+interface FollowsInterface implements Node {
+  """The ID of the object"""
+  id: ID!
+  followers(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    targetIsFollowingBack: Boolean = null
+  ): FollowConnection
+  following(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    targetIsFollowingBack: Boolean = null
+  ): FollowConnection
+  followersCount: Int
+  followingCount: Int
+  isFollowedByMe(profileId: ID = null): Boolean
+}
+
+"""
+The `GenericScalar` scalar type represents a generic GraphQL scalar value.
+"""
+scalar GenericScalar
+
+"""
+Allows use of a JSON String for input / output from the GraphQL schema.
+"""
+scalar JSONString
+
+"""Languages available"""
+enum Languages {
+  en
+  es
+  pt
+}
+
+type Mention implements Node {
+  created: DateTime!
+  modified: DateTime!
+
+  """The ID of the object"""
+  id: ID!
+  profile: Profile!
+}
+
+"""A connection to a list of items."""
+type MentionConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [MentionEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+"""An edge in a connection."""
+type MentionEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: Mention
+}
+
+interface MentionsInterface implements Node {
+  """The ID of the object"""
+  id: ID!
+  mentions(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+  ): MentionConnection
+  mentionsCount: Int
+  isMentioningProfile(profileId: ID!): Boolean
+}
+
+type Message implements MentionsInterface & Node {
+  """The ID of the object"""
+  id: ID!
+  mentions(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+  ): MentionConnection
+  mentionsCount: Int
+  isMentioningProfile(profileId: ID!): Boolean
+  created: DateTime!
+  deleted: Boolean!
+  messageType: MessageType
+  verb: Verbs
+  extraData: JSONString
+  content(profileId: ID = null): String
+  isRead(profileId: ID = null): Boolean
+  actionObject: Node
+  user: User
+  profile: Profile
+  room: ChatRoom
+  inReplyTo: Message
+}
+
+"""A connection to a list of items."""
+type MessageConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [MessageEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+"""An edge in a connection."""
+type MessageEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: Message
+}
+
+enum MessageType {
+  USER_MESSAGE
+  SYSTEM_GENERATED
+}
+
+type Metadata {
+  created: DateTime!
+  modified: DateTime!
+  targetObjectId: Int
+  language: Languages
+  metaTitle: String
+  metaDescription: String
+  metaRobots: String
+  metaOgType: String
+  metaOgImage(width: Int!, height: Int!): String
+  pk: Int
+}
+
+type Mutation {
+  blockToggle(input: BlockToggleInput!): BlockTogglePayload
+  chatRoomCreate(input: ChatRoomCreateInput!): ChatRoomCreatePayload
+  chatRoomUpdate(input: ChatRoomUpdateInput!): ChatRoomUpdatePayload
+
+  "Add one profile as a MEMBER participant to multiple group chat rooms at once.\n\n    All-or-nothing: if the acting profile can't add participants to any of the\n    requested rooms, nothing is written. Rooms where the profile is already a\n    participant are silently skipped (idempotent).\n    "
+  chatRoomsAddParticipant(input: ChatRoomsAddParticipantInput!): ChatRoomsAddParticipantPayload
+  chatRoomSendMessage(input: ChatRoomSendMessageInput!): ChatRoomSendMessagePayload
+  chatRoomEditMessage(input: ChatRoomEditMessageInput!): ChatRoomEditMessagePayload
+  chatRoomDeleteMessage(input: ChatRoomDeleteMessageInput!): ChatRoomDeleteMessagePayload
+  chatRoomReadMessages(input: ChatRoomReadMessagesInput!): ChatRoomReadMessagesPayload
+  chatRoomUnread(input: ChatRoomUnreadInput!): ChatRoomUnreadPayload
+  chatRoomArchive(input: ChatRoomArchiveInput!): ChatRoomArchivePayload
+  chatRoomToggleAdmin(input: ChatRoomToggleAdminInput!): ChatRoomToggleAdminPayload
+  commentCreate(input: CommentCreateInput!): CommentCreatePayload
+  commentUpdate(input: CommentUpdateInput!): CommentUpdatePayload
+  commentPin(input: CommentPinInput!): CommentPinPayload
+  commentDelete(input: CommentDeleteInput!): CommentDeletePayload
+  contentPostCreate(input: ContentPostCreateInput!): ContentPostCreatePayload
+
+  "\n    Attach one or more files to a target object.\n\n    Usage:\n        mutation {\n            fileAttachToTarget(input: {\n                fileRelayIds: [\"RmlsZU9iamVjdFR5cGU6MQ==\", \"RmlsZU9iamVjdFR5cGU6Mg==\"]\n                targetObjectId: \"Q29tbWVudE9iamVjdFR5cGU6MQ==\"\n                # Only for anonymous uploads: the tokens returned when they started.\n                uploadTokens: [\"...\"]\n            }) {\n                attachedFiles {\n                    node {\n                        id\n                        fileName\n                    }\n                }\n                target {\n                    ... on FilesInterface {\n                        filesCount\n                        isFilesEnabled\n                    }\n                }\n            }\n        }\n    "
+  fileAttachToTarget(input: FileAttachToTargetInput!): FileAttachToTargetPayload
+  fileDelete(input: FileDeleteInput!): FileDeletePayload
+  followToggle(input: FollowToggleInput!): FollowTogglePayload
+  notificationsMarkAsRead(input: NotificationsMarkAsReadInput!): NotificationsMarkAsReadPayload
+  notificationsMarkAllAsRead(input: NotificationsMarkAllAsReadInput!): NotificationsMarkAllAsReadPayload
+  notificationSettingToggle(input: NotificationSettingToggleInput!): NotificationSettingTogglePayload
+  organizationCreate(input: OrganizationCreateInput!): OrganizationCreatePayload
+  pageCreate(input: PageCreateInput!): PageCreatePayload
+  pageEdit(input: PageEditInput!): PageEditPayload
+  pageDelete(input: DeleteNodeInput!): DeleteNodePayload
+  profileCreate(input: ProfileCreateInput!): ProfileCreatePayload
+  profileUpdate(input: ProfileUpdateInput!): ProfileUpdatePayload
+  profileDelete(input: ProfileDeleteInput!): ProfileDeletePayload
+  profileUserRoleCreate(input: ProfileUserRoleCreateInput!): ProfileUserRoleCreatePayload
+  profileUserRoleUpdate(input: ProfileUserRoleUpdateInput!): ProfileUserRoleUpdatePayload
+  profileUserRoleDelete(input: ProfileUserRoleDeleteInput!): ProfileUserRoleDeletePayload
+  profileSendInvitation(input: ProfileSendInvitationInput!): ProfileSendInvitationPayload
+  profileAcceptInvitation(input: ProfileAcceptInvitationInput!): ProfileAcceptInvitationPayload
+  profileDeclineInvitation(input: ProfileDeclineInvitationInput!): ProfileDeclineInvitationPayload
+  profileCancelInvitation(input: ProfileCancelInvitationInput!): ProfileCancelInvitationPayload
+  profileResendInvitation(input: ProfileResendInvitationInput!): ProfileResendInvitationPayload
+  rateCreate(input: RateCreateInput!): RateCreatePayload
+  reactionToggle(input: ReactionToggleInput!): ReactionTogglePayload
+  reportCreate(input: ReportCreateInput!): ReportCreatePayload
+  testMutation: String
+  deleteNode(input: DeleteNodeInput!): DeleteNodePayload
+}
+
+"""An object with an ID"""
+interface Node {
+  """The ID of the object"""
+  id: ID!
+}
+
+interface NodeActivityLogInterface {
+  nodeActivityLogs(
+    visibility: VisibilityTypes = null
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = 10
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    createdFrom: Date = null
+    createdTo: Date = null
+    userPk: Decimal = null
+    profilePk: Decimal = null
+    userName: String = null
+  ): ActivityLogConnection
+}
+
+type NodeLogEvent implements Node {
+  """The ID of the object"""
+  id: ID!
+
+  """The event label."""
+  label: String
+
+  """When the event was created."""
+  createdAt: DateTime
+
+  """The object of the event."""
+  obj: Node
+
+  """The raw data of the event."""
+  data: GenericScalar
+
+  """The diff between the previous event of the same label."""
+  diff: GenericScalar
+  user: User
+}
+
+"""A connection to a list of items."""
+type NodeLogEventConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [NodeLogEventEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+"""An edge in a connection."""
+type NodeLogEventEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: NodeLogEvent
+}
+
+type Notification implements Node {
+  level: NotificationsNotificationLevelChoices!
+  unread: Boolean!
+  actorObjectId: String!
+  verb: String!
+  description: String
+  targetObjectId: String
+  actionObjectObjectId: String
+  timestamp: DateTime!
+  public: Boolean!
+  deleted: Boolean!
+  emailed: Boolean!
+  data: GenericScalar
+  actor: Node
+  target: Node
+  actionObject: Node
+  pk: Int
+
+  """The ID of the object"""
+  id: ID!
+  recipient: User!
+}
+
+enum NotificationChannelTypes {
+  ALL
+  EMAIL
+  PUSH
+  IN_APP
+}
+
+"""A connection to a list of items."""
+type NotificationConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [NotificationEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+"""An edge in a connection."""
+type NotificationEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: Notification
+}
+
+type NotificationSetting implements Node {
+  created: DateTime!
+  modified: DateTime!
+  channel: NotificationChannelTypes
+  verb: String!
+  isActive: Boolean!
+  pk: Int
+
+  """The ID of the object"""
+  id: ID!
+  user: User!
+}
+
+"""A connection to a list of items."""
+type NotificationSettingConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [NotificationSettingEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+"""An edge in a connection."""
+type NotificationSettingEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: NotificationSetting
+}
+
+input NotificationSettingToggleInput {
+  clientMutationId: String = null
+  verb: String!
+  channel: NotificationChannelTypes!
+}
+
+type NotificationSettingTogglePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  notificationSetting: NotificationSetting
+}
+
+interface NotificationsInterface implements Node {
+  """The ID of the object"""
+  id: ID!
+  notificationsUnreadCount: Int
+  notifications(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    level: NotificationsNotificationLevelChoices = null
+    unread: Boolean = null
+    verbs: String = null
+  ): NotificationConnection
+  notificationSettings(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+  ): NotificationSettingConnection
+  isNotificationSettingActive(verb: String!, channel: NotificationChannelTypes!): Boolean
+}
+
+input NotificationsMarkAllAsReadInput {
+  clientMutationId: String = null
+
+  """Mark as read or unread"""
+  read: Boolean!
+}
+
+type NotificationsMarkAllAsReadPayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  recipient: NotificationsInterface
+}
+
+input NotificationsMarkAsReadInput {
+  clientMutationId: String = null
+
+  """Mark as read or unread"""
+  read: Boolean!
+  notificationIds: [ID!]
+}
+
+type NotificationsMarkAsReadPayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  recipient: NotificationsInterface
+  notifications: [Notification]
+}
+
+enum NotificationsNotificationLevelChoices {
+  SUCCESS
+  INFO
+  WARNING
+  ERROR
+}
+
+type OnCommentChange {
+  createdComment: CommentEdge
+  updatedComment: Comment
+  deletedCommentId: ID
+}
+
+type OnNotificationChange {
+  createdNotification: NotificationEdge
+  updatedNotification: Notification
+  deletedNotificationId: ID
+}
+
+type Organization implements PermissionsInterface & Node {
+  pk: Int
+
+  """The ID of the object"""
+  id: ID!
+
+  """
+  Determine if the logged in user has a specific permission for this object.
+  """
+  hasPerm(perm: String!): Boolean
+  profile: Profile
+}
+
+input OrganizationCreateInput {
+  clientMutationId: String = null
+  name: String!
+  urlPath: String
+}
+
+type OrganizationCreatePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  organization: OrganizationEdge
+  profile: ProfileEdge
+}
+
+"""An edge in a connection."""
+type OrganizationEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: Organization
+}
+
+type Page implements PageInterface & CommentsInterface & PermissionsInterface & Node {
+  created: DateTime!
+  modified: DateTime!
+  status: PageStatus
+  pk: Int
+  title: String
+  body: String
+
+  """The ID of the object"""
+  id: ID!
+  urlPath: URLPath
+  urlPaths: [URLPath]
+  metadata: Metadata
+  commentsCount: CommentsCount!
+  comments(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    q: String = null
+
+    """Ordering"""
+    orderBy: String = null
+  ): CommentConnection
+  isCommentsEnabled: Boolean!
+
+  """
+  Determine if the logged in user has a specific permission for this object.
+  """
+  hasPerm(perm: String!): Boolean
+  user: User
+}
+
+"""A connection to a list of items."""
+type PageConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [PageEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+input PageCreateInput {
+  clientMutationId: String = null
+  user: String
+  title: String
+  body: String
+  urlPath: String
+}
+
+type PageCreatePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  page: PageEdge
+}
+
+"""An edge in a connection."""
+type PageEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: Page
+}
+
+input PageEditInput {
+  clientMutationId: String = null
+  id: ID!
+  user: String
+  title: String
+  body: String
+  urlPath: String
+}
+
+type PageEditPayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  page: Page
+}
+
+"""Information to aid in pagination."""
+type PageInfo {
+  """When paginating forwards, are there more items?"""
+  hasNextPage: Boolean!
+
+  """When paginating backwards, are there more items?"""
+  hasPreviousPage: Boolean!
+
+  """When paginating backwards, the cursor to continue."""
+  startCursor: String
+
+  """When paginating forwards, the cursor to continue."""
+  endCursor: String
+}
+
+interface PageInterface implements Node {
+  """The ID of the object"""
+  id: ID!
+  urlPath: URLPath
+  urlPaths: [URLPath]
+  metadata: Metadata
+}
+
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+}
+
+interface PermissionsInterface implements Node {
+  """The ID of the object"""
+  id: ID!
+
+  """
+  Determine if the logged in user has a specific permission for this object.
+  """
+  hasPerm(perm: String!): Boolean
+}
+
+type Profile implements ProfileActivityLogInterface & PageInterface & FollowsInterface & ReportsInterface & BlocksInterface & ChatRoomsInterface & PermissionsInterface & Node {
+  created: DateTime!
+  modified: DateTime!
+  name: String
+  biography: String
+  targetObjectId: Int
+  status: ProfilesProfileStatusChoices!
+  pk: Int
+  image(width: Int!, height: Int!): String
+  bannerImage(width: Int!, height: Int!): String
+  target: ProfileInterface
+  members(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    role: ProfileRoles = null
+
+    """Ordering"""
+    orderBy: String = null
+    q: String = null
+  ): ProfileUserRoleConnection
+  activityLogs(
+    visibility: VisibilityTypes = null
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = 10
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    createdFrom: Date = null
+    createdTo: Date = null
+    userPk: Decimal = null
+    profilePk: Decimal = null
+    userName: String = null
+  ): ActivityLogConnection
+
+  """The ID of the object"""
+  id: ID!
+  urlPath: URLPath
+  urlPaths: [URLPath]
+  metadata: Metadata
+  followers(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    targetIsFollowingBack: Boolean = null
+  ): FollowConnection
+  following(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    targetIsFollowingBack: Boolean = null
+  ): FollowConnection
+  followersCount: Int
+  followingCount: Int
+  isFollowedByMe(profileId: ID = null): Boolean
+  reportsCount: GenericScalar
+  reports(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    id: ID = null
+  ): ReportConnection
+  myReport: Report
+  blockers(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+  ): BlockConnection
+  blocking(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+  ): BlockConnection
+  blockersCount: Int
+  blockingCount: Int
+  isBlockedByMe(profileId: ID = null): Boolean
+  chatRooms(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    q: String = null
+
+    """Ordering"""
+    orderBy: String = null
+    profileId: String = null
+    unreadMessages: Boolean = null
+    archived: Boolean = null
+    isGroup: Boolean = null
+    manageable: Boolean = null
+  ): ChatRoomConnection
+  unreadMessagesCount: Int
+
+  """
+  Determine if the logged in user has a specific permission for this object.
+  """
+  hasPerm(perm: String!): Boolean
+  activitylogSet(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    createdFrom: Date = null
+    createdTo: Date = null
+    userPk: Decimal = null
+    profilePk: Decimal = null
+    userName: String = null
+  ): ActivityLogConnection!
+  user: User
+  comments(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    q: String = null
+
+    """Ordering"""
+    orderBy: String = null
+  ): CommentConnection!
+  reactions(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    id: ID = null
+  ): ReactionConnection!
+  contentPosts(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+
+    """Ordering"""
+    orderBy: String = null
+  ): ContentPostConnection!
+  files(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    noParent: Boolean = null
+  ): FileConnection!
+  ratings(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+  ): RateConnection!
+  organization: Organization
+  profileCreatedRooms(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    q: String = null
+
+    """Ordering"""
+    orderBy: String = null
+    profileId: String = null
+    unreadMessages: Boolean = null
+    archived: Boolean = null
+    isGroup: Boolean = null
+    manageable: Boolean = null
+  ): ChatRoomConnection!
+  chatroomparticipantSet(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    q: String = null
+  ): ChatRoomParticipantConnection!
+  unreadmessagecountSet(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+  ): UnreadMessageCountConnection!
+  linkedAsContentActorSet(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    verb: Verbs = null
+  ): MessageConnection!
+  linkedAsContentTargetSet(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    verb: Verbs = null
+  ): MessageConnection!
+  messageSet(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    verb: Verbs = null
+  ): MessageConnection!
+  mentionsReceived(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+  ): MentionConnection!
+  owner: User!
+}
+
+input ProfileAcceptInvitationInput {
+  clientMutationId: String = null
+  token: String!
+}
+
+type ProfileAcceptInvitationPayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  profileUserRole: ProfileUserRole
+  profile: Profile
+}
+
+interface ProfileActivityLogInterface {
+  activityLogs(
+    visibility: VisibilityTypes = null
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = 10
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    createdFrom: Date = null
+    createdTo: Date = null
+    userPk: Decimal = null
+    profilePk: Decimal = null
+    userName: String = null
+  ): ActivityLogConnection
+}
+
+input ProfileCancelInvitationInput {
+  clientMutationId: String = null
+  invitationId: ID!
+}
+
+type ProfileCancelInvitationPayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  success: Boolean
+}
+
+"""A connection to a list of items."""
+type ProfileConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [ProfileEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+input ProfileCreateInput {
+  clientMutationId: String = null
+  name: String!
+  owner: String
+  image: String
+  bannerImage: String
+  biography: String
+  urlPath: String
+  target: String
+  targetContentType: String
+  targetObjectId: Int
+}
+
+type ProfileCreatePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  profile: ProfileEdge
+}
+
+input ProfileDeclineInvitationInput {
+  clientMutationId: String = null
+  token: String!
+}
+
+type ProfileDeclineInvitationPayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  success: Boolean
+}
+
+input ProfileDeleteInput {
+  clientMutationId: String = null
+  id: ID!
+}
+
+type ProfileDeletePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  deletedId: ID
+}
+
+"""An edge in a connection."""
+type ProfileEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: Profile
+}
+
+interface ProfileInterface implements Node {
+  """The ID of the object"""
+  id: ID!
+  profile: Profile
+}
+
+input ProfileResendInvitationInput {
+  clientMutationId: String = null
+  invitationId: ID!
+}
+
+type ProfileResendInvitationPayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  profileUserRole: ProfileUserRole
+  emailSent: Boolean
+}
+
+enum ProfileRoleStatus {
+  ACTIVE
+  PENDING
+  INACTIVE
+  DECLINED
+  EXPIRED
+}
+
+enum ProfileRoles {
+  ADMIN
+  MANAGER
+}
+
+input ProfileSendInvitationInput {
+  clientMutationId: String = null
+  profileId: ID!
+  emails: [String!]!
+  role: ProfileRoles!
+}
+
+type ProfileSendInvitationPayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  profileUserRoles: [ProfileUserRole]
+  emailsSent: Int
+}
+
+input ProfileUpdateInput {
+  clientMutationId: String = null
+  id: ID!
+  owner: String
+  name: String
+  image: String
+  bannerImage: String
+  biography: String
+  urlPath: String
+  phoneNumber: String
+}
+
+type ProfileUpdatePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  profile: Profile
+}
+
+type ProfileUserRole implements Node {
+  """The ID of the object"""
+  id: ID!
+  pk: Int
+  role: ProfileRoles
+  status: ProfileRoleStatus
+  invitedEmail: String
+  invitedAt: DateTime
+  invitationExpiresAt: DateTime
+  respondedAt: DateTime
+  isExpired: Boolean
+  profile: Profile
+  user: User
+}
+
+"""A connection to a list of items."""
+type ProfileUserRoleConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [ProfileUserRoleEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+input ProfileUserRoleCreateInput {
+  clientMutationId: String = null
+  profileId: ID!
+  usersIds: [ID]
+  emailsToInvite: [String]
+  roleType: ProfileRoles = null
+}
+
+type ProfileUserRoleCreatePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  profileUserRoles: [ProfileUserRole]
+}
+
+input ProfileUserRoleDeleteInput {
+  clientMutationId: String = null
+  profileId: ID!
+  userId: ID!
+}
+
+type ProfileUserRoleDeletePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  deletedId: ID
+}
+
+"""An edge in a connection."""
+type ProfileUserRoleEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: ProfileUserRole
+}
+
+input ProfileUserRoleUpdateInput {
+  clientMutationId: String = null
+  profileId: ID!
+  userId: ID!
+  roleType: ProfileRoles!
+}
+
+type ProfileUserRoleUpdatePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  profileUserRole: ProfileUserRole
+}
+
+interface ProfilesInterface implements Node {
+  """The ID of the object"""
+  id: ID!
+  profiles(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    q: String = null
+
+    """Ordering"""
+    orderBy: String = null
+  ): ProfileConnection
+}
+
+enum ProfilesProfileStatusChoices {
+  A_1
+  A_2
+}
+
+type Query {
+  users(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    q: String = null
+
+    """Ordering"""
+    orderBy: String = null
+  ): UserConnection
+
+  """The ID of the object"""
+  user(id: ID!): User
+  me: User
+  activityLogs(
+    visibility: VisibilityTypes = null
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = 10
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    createdFrom: Date = null
+    createdTo: Date = null
+    userPk: Decimal = null
+    profilePk: Decimal = null
+    userName: String = null
+  ): ActivityLogConnection
+
+  """The ID of the object"""
+  chatRoom(id: ID!): ChatRoom
+
+  """The ID of the object"""
+  comment(id: ID!): Comment
+  allComments(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    q: String = null
+
+    """Ordering"""
+    orderBy: String = null
+  ): CommentConnection
+
+  """The ID of the object"""
+  contentPost(id: ID!): ContentPost
+  contentPosts(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+
+    """Ordering"""
+    orderBy: String = null
+  ): ContentPostConnection
+
+  """Files created by the current user."""
+  myFiles(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    noParent: Boolean = null
+  ): FileConnection
+
+  """The ID of the object"""
+  file(id: ID!): File
+
+  """The ID of the object"""
+  organization(id: ID!): Organization
+  allPages(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    status: PageStatus = null
+  ): PageConnection
+
+  """The ID of the object"""
+  page(id: ID!): Page
+  urlPath(path: String!): URLPath
+  allProfiles(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    q: String = null
+
+    """Ordering"""
+    orderBy: String = null
+  ): ProfileConnection
+
+  """The ID of the object"""
+  profile(id: ID!): Profile
+
+  """
+  Look up an invitation by its token so the acceptance page can show the right screen on load. Returns null when the token matches no invitation. The token is the authorization (this bypasses the member-only node gate); the org `profile` is hidden once the invitation has expired.
+  """
+  profileInvitation(token: String!): ProfileUserRole
+
+  """The ID of the object"""
+  rate(id: ID!): Rate
+
+  """The ID of the object"""
+  reaction(id: ID!): Reaction
+
+  """The ID of the object"""
+  report(id: ID!): Report
+
+  """The ID of the object"""
+  reportTypes(id: ID!): ReportType
+  allReportTypes(
+    topLevelOnly: Boolean = null
+    targetObjectId: String = null
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+  ): ReportTypeConnection
+  testQuery: String
+
+  """Fetches an object given its ID"""
+  node(id: ID!): Node
+}
+
+type Rate implements Node {
+  created: DateTime!
+  modified: DateTime!
+  value: Int!
+  target: Node
+
+  """The ID of the object"""
+  id: ID!
+  profile: Profile
+  user: User!
+}
+
+"""A connection to a list of items."""
+type RateConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [RateEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+input RateCreateInput {
+  clientMutationId: String = null
+  targetObjectId: ID!
+  value: Int!
+  profileId: ID
+}
+
+type RateCreatePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  rate: RateEdge
+  target: RatingsInterface
+}
+
+"""An edge in a connection."""
+type RateEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: Rate
+}
+
+interface RatingsInterface implements Node {
+  """The ID of the object"""
+  id: ID!
+  ratingsCount: Int
+  ratingsSum: Int
+  ratingsAverage: Float
+  ratings(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+  ): RateConnection
+  isRatingsEnabled: Boolean!
+  myRating(profileId: ID = null): Rate
+}
+
+type Reaction implements Node {
+  created: DateTime!
+  modified: DateTime!
+  reactionType: ReactionTypes
+  target: Node
+
+  """The ID of the object"""
+  id: ID!
+  profile: Profile
+  user: User!
+}
+
+"""A connection to a list of items."""
+type ReactionConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [ReactionEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+"""An edge in a connection."""
+type ReactionEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: Reaction
+}
+
+input ReactionToggleInput {
+  clientMutationId: String = null
+  targetObjectId: ID!
+  reactionType: ReactionTypes!
+  profileObjectId: ID
+}
+
+type ReactionTogglePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  reaction: ReactionEdge
+  target: ReactionsInterface
+  reactionDeletedId: ID
+}
+
+enum ReactionTypes {
+  LIKE
+  DISLIKE
+}
+
+type ReactionsCount {
+  LIKE: Int
+  DISLIKE: Int
+  total: Int
+}
+
+interface ReactionsInterface implements Node {
+  """The ID of the object"""
+  id: ID!
+  reactionsCount: ReactionsCount
+  reactions(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    id: ID = null
+  ): ReactionConnection
+  isReactionsEnabled: Boolean!
+  myReaction(profileId: ID = null): Reaction
+}
+
+type Report implements Node {
+  created: DateTime!
+  modified: DateTime!
+  reportSubject: String
+  target: Node
+
+  """The ID of the object"""
+  id: ID!
+  user: User!
+  reportType: ReportType
+}
+
+"""A connection to a list of items."""
+type ReportConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [ReportEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+input ReportCreateInput {
+  clientMutationId: String = null
+  targetObjectId: ID!
+  reportTypeId: ID!
+  reportSubject: String
+}
+
+type ReportCreatePayload {
+  clientMutationId: String
+
+  """May contain more than one error for same field."""
+  errors: [ErrorType]
+  report: ReportEdge
+  target: ReportsInterface
+}
+
+"""An edge in a connection."""
+type ReportEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: Report
+}
+
+type ReportType implements Node {
+  key: String!
+  label: String!
+
+  """The ID of the object"""
+  id: ID!
+  subTypes(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    topLevelOnly: Boolean = null
+    targetObjectId: String = null
+  ): ReportTypeConnection!
+  parentType: ReportType
+}
+
+"""A connection to a list of items."""
+type ReportTypeConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [ReportTypeEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+"""An edge in a connection."""
+type ReportTypeEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: ReportType
+}
+
+interface ReportsInterface {
+  reportsCount: GenericScalar
+  reports(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    id: ID = null
+  ): ReportConnection
+  myReport: Report
+}
+
+type Subscription {
+  chatRoomOnMessage(roomId: ID!, profileId: ID!): ChatRoomOnMessage
+  chatRoomOnRoomUpdate(profileId: ID!): ChatRoomOnRoomUpdate
+  chatRoomOnMessagesCountUpdate(profileId: ID!): ChatRoomOnMessagesCountUpdate
+  onCommentChange(targetObjectId: ID = null): OnCommentChange
+  onNotificationChange: OnNotificationChange
+}
+
+type URLPath implements Node {
+  """The ID of the object"""
+  id: ID!
+  created: DateTime!
+  modified: DateTime!
+  path: String!
+  language: Languages
+  isActive: Boolean!
+  pk: Int
+  target: PageInterface
+}
+
+type UnreadMessageCount implements Node {
+  """The ID of the object"""
+  id: ID!
+  count: Int!
+  markedUnread: Boolean!
+}
+
+"""A connection to a list of items."""
+type UnreadMessageCountConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [UnreadMessageCountEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+"""An edge in a connection."""
+type UnreadMessageCountEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: UnreadMessageCount
+}
+
+"""Represents a file upload."""
+scalar Upload
+
+type User implements RatingsInterface & UserActivityLogInterface & NotificationsInterface & ProfileInterface & ProfilesInterface & PageInterface & PermissionsInterface & Node {
+  lastLogin: DateTime
+  dateJoined: DateTime!
+  isActive: Boolean!
+  pk: Int
+  firstName: String @deprecated(reason: "Deprecated in favor of fullName and shortName")
+  lastName: String @deprecated(reason: "Deprecated in favor of fullName and shortName")
+  avatar(width: Int!, height: Int!): String
+  isAuthenticated: Boolean
+  fullName: String
+  email: String
+  phoneNumber: String
+  isSuperuser: Boolean
+  isStaff: Boolean
+  isEmailVerified: Boolean
+  passwordChangedDate: DateTime
+  newEmail: String
+  isNewEmailConfirmed: Boolean
+
+  """The ID of the object"""
+  id: ID!
+  ratingsCount: Int
+  ratingsSum: Int
+  ratingsAverage: Float
+  ratings(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+  ): RateConnection
+  isRatingsEnabled: Boolean!
+  myRating(profileId: ID = null): Rate
+  activityLogs(
+    visibility: VisibilityTypes = null
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = 10
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    createdFrom: Date = null
+    createdTo: Date = null
+    userPk: Decimal = null
+    profilePk: Decimal = null
+    userName: String = null
+  ): ActivityLogConnection
+  notificationsUnreadCount: Int
+  notifications(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    level: NotificationsNotificationLevelChoices = null
+    unread: Boolean = null
+    verbs: String = null
+  ): NotificationConnection
+  notificationSettings(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+  ): NotificationSettingConnection
+  isNotificationSettingActive(verb: String!, channel: NotificationChannelTypes!): Boolean
+  profile: Profile
+  profiles(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    q: String = null
+
+    """Ordering"""
+    orderBy: String = null
+  ): ProfileConnection
+  urlPath: URLPath
+  urlPaths: [URLPath]
+  metadata: Metadata
+
+  """
+  Determine if the logged in user has a specific permission for this object.
+  """
+  hasPerm(perm: String!): Boolean
+  comments(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    q: String = null
+
+    """Ordering"""
+    orderBy: String = null
+  ): CommentConnection!
+  reactions(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    id: ID = null
+  ): ReactionConnection!
+  pages(
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    status: PageStatus = null
+  ): PageConnection!
+}
+
+interface UserActivityLogInterface {
+  activityLogs(
+    visibility: VisibilityTypes = null
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String = null
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String = null
+
+    """Returns the first n items from the list."""
+    first: Int = 10
+
+    """Returns the items in the list that come after the specified cursor."""
+    last: Int = null
+    offset: Int = null
+    createdFrom: Date = null
+    createdTo: Date = null
+    userPk: Decimal = null
+    profilePk: Decimal = null
+    userName: String = null
+  ): ActivityLogConnection
+}
+
+"""A connection to a list of items."""
+type UserConnection {
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """Contains the nodes in this connection"""
+  edges: [UserEdge]!
+
+  """Total quantity of existing nodes."""
+  totalCount: Int
+  edgeCount: Int
+}
+
+"""An edge in a connection."""
+type UserEdge {
+  """A cursor for use in pagination"""
+  cursor: String!
+
+  """The item at the end of the edge"""
+  node: User
+}
+
+enum Verbs {
+  SENT_MESSAGE
+}
+
+enum VisibilityTypes {
+  PUBLIC
+  PRIVATE
+  INTERNAL
+}

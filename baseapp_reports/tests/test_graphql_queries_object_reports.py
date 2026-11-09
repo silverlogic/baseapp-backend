@@ -25,7 +25,7 @@ pytestmark = pytest.mark.django_db
 
 # Baseline for `reportsCount` on one Profile node: relay `node()` (documentid +
 # content_type JOIN) + `profiles_profile` load with `ReportableMetadata` inlined
-# as a Subquery via `pre_optimization_hook`.
+# as a Subquery via the field's optimizer `annotate` hint.
 # Update this number deliberately if you change the resolver / annotation path.
 EXPECTED_REPORTS_INTERFACE_QUERY_COUNT = 2
 

@@ -12,15 +12,6 @@ if TYPE_CHECKING:
     from django.db.models import Model
 
 
-def is_strawberry_info(info: Any) -> bool:
-    """True when `info` comes from the Strawberry schema (it needs the Strawberry type lookup)."""
-    try:
-        from strawberry import Schema
-    except ImportError:
-        return False
-    return isinstance(getattr(info, "schema", None), Schema)
-
-
 def _is_public_id_logic_enabled() -> bool:
     """`settings.ENABLE_PUBLIC_ID_LOGIC` (default True).
 
@@ -112,43 +103,6 @@ def graphql_to_global_id_using_strategy(model_instance, type_, id) -> str:
             return global_id
 
     return get_legacy_strategy().graphql_resolver.to_global_id(model_instance, type_, id)
-
-
-def graphql_get_node_from_global_id_using_strategy(info, global_id, only_type=None) -> Any:
-    # Clients send `node(id: "")` while the id they'd look up isn't known yet (e.g.
-    # `currentProfile?.id || ''`). An empty id names no node, so resolve it to null like a
-    # missing one instead of raising "Unable to parse global ID" from the legacy strategy.
-    if not global_id:
-        return None
-
-    if is_uuid4(global_id) and _is_public_id_logic_enabled():
-        public_id_strategy = get_public_id_strategy()
-        try:
-            node = public_id_strategy.graphql_resolver.get_node_from_global_id(
-                info, global_id, only_type
-            )
-            if node is None:
-                return None
-            if _is_model_public_id_compatible(node.__class__):
-                return node
-            raise Exception(f"{node.__class__} is not compatible with the Public ID strategy")
-        except public_id_strategy.graphql_resolver.NoInstanceFound:
-            pass
-
-    if global_id.isdigit():
-        pk_strategy = get_pk_strategy()
-        try:
-            node = pk_strategy.graphql_resolver.get_node_from_global_id(info, global_id, only_type)
-            if node is None:
-                return None
-            if _is_model_pk_compatible(node.__class__):
-                return node
-            raise Exception(f"{node.__class__.__name__} is not compatible with the PK strategy")
-        except pk_strategy.graphql_resolver.NoInstanceFound:
-            pass
-
-    legacy_strategy = get_legacy_strategy()
-    return legacy_strategy.graphql_resolver.get_node_from_global_id(info, global_id, only_type)
 
 
 def graphql_get_pk_from_global_id_using_strategy(global_id) -> int | str:

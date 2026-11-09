@@ -7,8 +7,6 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count, OuterRef, Subquery, Value
 from django.db.models.functions import Coalesce
-from query_optimizer.compiler import OptimizationCompiler
-from query_optimizer.optimizer import QueryOptimizer
 
 from baseapp_core.graphql.utils import get_pk_from_relay_id
 from baseapp_core.models import DocumentId
@@ -198,100 +196,9 @@ class MentionableMetadataService(SharedServiceProvider):
         the same hook works for any DocumentId-aware model (Comment, Message,
         ContentPost, ...). Used by non-GraphQL callers (DRF views, admin,
         management commands); the GraphQL path attaches each annotation
-        on-demand via the field-level optimizer hooks below.
+        on-demand via the `MentionsInterface` field optimizer hints.
         """
         return queryset.annotate(
             _mention_target_doc_id=self._target_doc_id_subquery(queryset.model),
             _mentions_count=self._mentions_count_subquery(queryset.model),
         )
-
-    def annotate_mentions_count_in_optimizer_compiler(self, compiler: OptimizationCompiler) -> None:
-        """Attach `_mentions_count` to the parent optimizer's annotations.
-
-        Wired from `MentionsInterface.mentions_count.optimizer_hook` so the
-        subquery only fires when the GraphQL query actually selects
-        `mentionsCount` — no wasted SQL on queries that ignore the field.
-        """
-        parent = compiler.optimizer
-        if parent is None or parent.model is None:
-            return
-        parent.annotations.setdefault(
-            "_mentions_count", self._mentions_count_subquery(parent.model)
-        )
-
-    def annotate_target_doc_id_in_optimizer_compiler(self, compiler: OptimizationCompiler) -> None:
-        """Attach `_mention_target_doc_id` to the parent optimizer's annotations.
-
-        Wired from `MentionsInterface.is_mentioning_profile.optimizer_hook` so
-        the per-row `Mention.objects.filter(target_document_id=…, profile_id=…).exists()`
-        in the resolver can read the doc pk off the row instead of issuing a
-        `DocumentId.get_or_create_for_object` per parent. `setdefault` so
-        sibling hooks that need the same annotation don't overwrite it.
-        """
-        parent = compiler.optimizer
-        if parent is None or parent.model is None:
-            return
-        parent.annotations.setdefault(
-            "_mention_target_doc_id", self._target_doc_id_subquery(parent.model)
-        )
-
-    def prefetch_mentions_in_optimizer_compiler(self, compiler: OptimizationCompiler) -> None:
-        """
-        Walks the parent optimizer through ``document__<reverse>`` (the
-        project-specific reverse accessor; see
-        ``DocumentIdTargetMixin.document_prefetch_path``).
-
-        The mentions connection is a "virtual relation" on the consuming
-        model — there's no direct FK or M2M from the consumer to Mention;
-        the link runs through DocumentId (consumer → document via
-        GenericRelation → target_document reverse-FK on the through-table).
-        Without a hint, the optimizer treats the field as opaque and falls back
-        to a per-parent fetch, producing an N+1.
-
-        Registering a child QueryOptimizer keyed on that path
-        promotes the field to a regular Django prefetch_related: one batched
-        SELECT for the parents' DocumentId rows, one batched SELECT for the
-        mentions, joined to Profile via select_related. The resolver
-        below reads the cached queryset off root.document.
-        """
-
-        parent_optimizer = compiler.optimizer
-        if parent_optimizer is None or parent_optimizer.model is None:
-            return
-
-        Mention = swapper.load_model("baseapp_mentions", "Mention")
-
-        prefetch_path = Mention.document_prefetch_path()
-        if prefetch_path in parent_optimizer.prefetch_related:
-            return
-
-        mentions_opt = QueryOptimizer(
-            model=Mention,
-            info=compiler.info,
-            name=prefetch_path,
-            parent=parent_optimizer,
-        )
-
-        # `recursive_set_annotations` in `BaseAppDjangoObjectType.pre_optimization_hook`
-        # gates annotation attachment on `"id" in only_fields`; without this, the
-        # Profile prefetch below would NOT receive its `mapped_public_id` annotation
-        # and the relay-id resolver would fall back to a per-row `DocumentId` lookup.
-        mentions_opt.only_fields.append("id")
-        mentions_opt.related_fields.extend(["target_document_id", "profile_id"])
-
-        profile_opt = QueryOptimizer(
-            model=Profile,
-            info=compiler.info,
-            name="profile",
-            parent=mentions_opt,
-        )
-        # Same gate: "id" in only_fields ⇒ Profile gets its `mapped_public_id`
-        # subquery annotated, killing the per-row DocumentId lookup on relay-id.
-        profile_opt.only_fields.append("id")
-        # With annotations attached, the optimizer promotes this from
-        # `select_related` to `prefetch_related` (so we get one batched Profile
-        # SELECT instead of N inline joins). Either path works for query count;
-        # the promotion happens automatically inside `QueryOptimizer.process`.
-        mentions_opt.select_related["profile"] = profile_opt
-
-        parent_optimizer.prefetch_related[prefetch_path] = mentions_opt

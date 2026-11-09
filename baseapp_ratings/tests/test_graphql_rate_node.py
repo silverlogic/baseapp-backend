@@ -1,7 +1,6 @@
-"""Rate node and RatingsInterface contract, exercised on whichever endpoint the tests target."""
+"""Rate node and RatingsInterface contract."""
 
 import pytest
-from django.conf import settings
 from django.test import override_settings
 
 from baseapp_core.tests.factories import UserFactory
@@ -96,6 +95,5 @@ def test_ratings_list_with_targets_is_flat(graphql_client_with_queries) -> None:
     assert len(small_response.json()["data"]["node"]["ratings"]["edges"]) == 2
     big_edges = big_response.json()["data"]["node"]["ratings"]["edges"]
     assert {e["node"]["target"]["id"] for e in big_edges} == {big.relay_id}
-    # Strawberry prefetches `target` (Graphene resolves it per row).
-    if settings.GRAPHENE["TESTING_ENDPOINT"].endswith("strawberry"):
-        assert big_queries.count == small_queries.count
+    # `target` is prefetched: no query per row.
+    assert big_queries.count == small_queries.count

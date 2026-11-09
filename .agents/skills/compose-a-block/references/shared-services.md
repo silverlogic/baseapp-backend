@@ -7,9 +7,9 @@ the consuming block must work when the provider isn't installed.
 | Need | Mechanism |
 |---|---|
 | Expose behaviour or data to other blocks | `shared_services` |
-| Add fields to another block's ObjectType | `graphql_shared_interfaces` |
+| Add fields to another block's GraphQL type | `strawberry_shared_interfaces` |
 | React to something that happened | Django signals |
-| Optional model field / GraphQL field | `apps.is_installed(...)` / `apply_if_installed(...)` |
+| Optional model field / GraphQL field or relation | `apps.is_installed(...)` / `apply_if_installed(...)` |
 
 ## Shared services
 
@@ -68,9 +68,10 @@ Never `shared_services.get(...)` at module import time — accessors are wrapped
 When absent, degrade to a sane default rather than raising:
 
 ```python
-    def resolve_foos_count(root, info, **kwargs) -> int:
+    @strawberry_django.field
+    def foos_count(self, info: Info) -> int:
         if service := shared_services.get("fooable_metadata"):
-            return service.get_foos_count(root)
+            return service.get_foos_count(self)
         return 0
 ```
 
@@ -78,23 +79,30 @@ When absent, degrade to a sane default rather than raising:
 
 ### Provider
 
-Register a **getter**, not the class, so the import stays deferred:
+Register a **getter**, not the class, so the import stays deferred. The getter lives in
+`strawberry/__init__.py`, which must not import Strawberry at module level
+(`baseapp_blocks/strawberry/__init__.py`):
 
 ```python
-# graphql/interfaces.py
+# strawberry/__init__.py
 def get_foos_interface() -> type["FoosInterface"]:
-    from .object_types import FoosInterface
+    from .interfaces import FoosInterface
 
     return FoosInterface
 ```
 
 ```python
 # apps.py
-    def register_graphql_shared_interfaces(self, registry) -> None:
-        from .graphql.interfaces import get_foos_interface
+    def register_strawberry_shared_interfaces(self, registry) -> None:
+        from .strawberry import get_foos_interface
 
         registry.register("FoosInterface", get_foos_interface)
 ```
+
+The interface itself is a `@strawberry.interface(name="FoosInterface")` subclassing `Node` (omit
+`Node` only if it has no `id`). Its fields are copied into every implementing type. Types the
+interface references belong in the interface's module, so they exist when the providing block's
+other modules are not loaded.
 
 ### Consumer
 
@@ -102,39 +110,44 @@ Opt in **by name**. Unregistered names are silently skipped, so a type can list 
 blocks that may not be installed:
 
 ```python
-class BaseCommentObjectType:
-    class Meta:
-        interfaces = graphql_shared_interfaces.get(
-            RelayNode,
-            CommentsInterface,
-            PermissionsInterface,
+# baseapp_comments/strawberry/types.py
+def comment_interfaces() -> tuple[type, ...]:
+    return (
+        CommentsInterface,
+        PermissionsInterface,
+        *strawberry_shared_interfaces.get(
             "ReactionsInterface",
             "MentionsInterface",
             "NodeActivityLogInterface",
-        )
+            "FilesInterface",
+        ),
+        Node,
+    )
+
+
+@django_type(Comment, filterset_class=CommentFilter, relations=("user", "in_reply_to"))
+class CommentType(AbstractCommentType, *comment_interfaces()):
+    pass
 ```
 
-The first argument is the relay node base; the rest are class objects (for interfaces from this
-block or a hard dependency) or **strings** (for optional ones). Use strings for anything optional —
-that is the whole point.
+Interfaces from this block or a hard dependency are class objects; optional ones are **strings**.
+Use strings for anything optional — that is the whole point. `Node` is always the last base.
 
-Interfaces that carry their own `optimizer_hook` wiring need nothing from the consumer. See
-`optimizer-hooks.md`, including the `Meta.model` requirement without which the AST walker skips the
-fragment.
+Interfaces whose fields carry their own optimizer hints need nothing from the consumer. See
+`optimizer-hooks.md`.
 
 ## `apply_if_installed`
 
-For optional entries in a list — GraphQL `Meta.fields`, admin `list_display`, filter tuples:
+For optional entries in a list — `django_type(relations=...)`, admin `list_display`, filter
+tuples:
 
 ```python
 from baseapp_core.plugins import apply_if_installed
 
-        fields = (
-            "pk",
-            "user",
-            *apply_if_installed("baseapp_profiles", ["profile"]),
-            "body",
-        )
+@django_type(
+    Comment,
+    relations=("user", "in_reply_to", *apply_if_installed("baseapp_profiles", ["profile"])),
+)
 ```
 
 Returns a type-matched empty value when the app is absent.

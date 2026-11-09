@@ -1,5 +1,6 @@
 import swapper
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import Signal
@@ -19,26 +20,56 @@ comment_created = Signal()
 comment_deleted = Signal()
 
 
-def on_comment_saved_graphql_subscription(sender, instance, created, **kwargs) -> None:
-    from baseapp_comments.graphql.subscriptions import OnCommentChange
+def _broadcast_comment_change(groups: list[str], payload: dict) -> None:
+    from baseapp_core.strawberry.subscriptions import broadcast, subscription_group
 
+    for group_name in groups:
+        broadcast(subscription_group("OnCommentChange", group_name), payload)
+
+
+def send_created_comment(comment) -> None:
+    groups = ["all"]
+    # Replies only reach the parent thread, not the target.
+    if comment.in_reply_to_id:
+        groups.append(comment.in_reply_to.relay_id)
+    elif comment.target_document_id:
+        try:
+            groups.append(comment.target.relay_id)
+        except ObjectDoesNotExist:
+            pass
+    _broadcast_comment_change(groups, {"created_comment": comment})
+
+
+def send_updated_comment(comment) -> None:
+    groups = ["all"]
+    if comment.target_document_id and comment.target and comment.target.relay_id:
+        groups.append(comment.target.relay_id)
+    if comment.in_reply_to_id:
+        groups.append(comment.in_reply_to.relay_id)
+    _broadcast_comment_change(groups, {"updated_comment": comment})
+
+
+def send_deleted_comment(comment_relay_id, target_relay_id, in_reply_to_relay_id) -> None:
+    groups = ["all"]
+    if target_relay_id:
+        groups.append(target_relay_id)
+    if in_reply_to_relay_id:
+        groups.append(in_reply_to_relay_id)
+    _broadcast_comment_change(groups, {"deleted_comment_id": comment_relay_id})
+
+
+def on_comment_saved_graphql_subscription(sender, instance, created, **kwargs) -> None:
     if created:
-        OnCommentChange.send_created_comment(comment=instance)
+        send_created_comment(instance)
     else:
-        OnCommentChange.send_updated_comment(comment=instance)
+        send_updated_comment(instance)
 
 
 def on_comment_deleted_graphql_subscription(sender, instance, **kwargs) -> None:
-    from baseapp_comments.graphql.subscriptions import OnCommentChange
-
-    comment_replay_id = instance.relay_id
-    target_relay_id = instance.target.relay_id if instance.target else None
-    in_reply_to_relay_id = instance.in_reply_to.relay_id if instance.in_reply_to_id else None
-
-    OnCommentChange.send_delete_comment(
-        comment_replay_id=comment_replay_id,
-        target_relay_id=target_relay_id,
-        in_reply_to_relay_id=in_reply_to_relay_id,
+    send_deleted_comment(
+        comment_relay_id=instance.relay_id,
+        target_relay_id=instance.target.relay_id if instance.target else None,
+        in_reply_to_relay_id=instance.in_reply_to.relay_id if instance.in_reply_to_id else None,
     )
 
 

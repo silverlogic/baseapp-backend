@@ -5,18 +5,28 @@ from typing import Any
 import strawberry
 import strawberry_django
 from django.conf import settings
+from django.core.cache import InvalidCacheBackendError, caches
 from easy_thumbnails.engine import NoSourceGenerator
 from easy_thumbnails.exceptions import InvalidImageFormatError
 from easy_thumbnails.files import get_thumbnailer
 from strawberry.types import Info
 
-from baseapp_core.graphql.fields import (
-    _CACHE_MISS,
-    FAILED_THUMBNAIL_CACHE_TIMEOUT,
-    THUMBNAIL_CACHE_KEY_VERSION,
-    cache,
-)
-from baseapp_core.graphql.translation import language_enum_name
+try:
+    cache = caches[settings.THUMBNAIL_CACHE]
+except InvalidCacheBackendError:
+    cache = None
+
+# A missing or unreadable source is cached for a short while only, so a restored file recovers.
+FAILED_THUMBNAIL_CACHE_TIMEOUT = 60 * 5
+# Bump when the meaning of a cached value changes (v1 cached failures as a never-served None).
+THUMBNAIL_CACHE_KEY_VERSION = "v2"
+_CACHE_MISS = object()
+
+
+def language_enum_name(code: str) -> str:
+    """GraphQL enum members can't contain "-": "pt-br" becomes "pt_br" (the value stays "pt-br")."""
+    return code.replace("-", "_")
+
 
 Languages = strawberry.enum(
     enum.Enum("Languages", {language_enum_name(code): code for code, _ in settings.LANGUAGES}),
@@ -36,7 +46,10 @@ class Thumbnail(FileInterface):
 
 
 def build_thumbnail_url(file: Any, info: Info, width: int, height: int) -> str | None:
-    """Same contract (and cache keys) as `baseapp_core.graphql.ThumbnailField`."""
+    """Absolute URL of a `width`x`height` thumbnail of `file`, or None when it can't be read.
+
+    Results are cached: a URL indefinitely, a failure for `FAILED_THUMBNAIL_CACHE_TIMEOUT`.
+    """
     if not file:
         return None
     cache_key = f"et:thumbnail:{THUMBNAIL_CACHE_KEY_VERSION}:{file.url}:{width}:{height}"

@@ -17,9 +17,6 @@ class GraphQLResolverStrategy:
     def to_global_id(self, model_instance, type_, id) -> str | None:
         raise NotImplementedError
 
-    def get_node_from_global_id(self, info, global_id, only_type=None) -> "Model | None":
-        raise NotImplementedError
-
     def get_pk_from_global_id(self, global_id) -> int | str:
         raise NotImplementedError
 

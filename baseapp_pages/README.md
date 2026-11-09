@@ -43,7 +43,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 ```
 
-4. Make sure your project's `graphql.py` composes the schema via `plugin_registry.get_all_graphql_*()` so `PagesQueries` (`urlPath`, `page`, `allPages`) and `PagesMutations` (`pageCreate`, `pageEdit`, `pageDelete`) are picked up automatically.
+4. Make sure your project's Strawberry schema is built from the plugin registry (`baseapp_core.strawberry.schema`) so `PagesQueries` (`urlPath`, `page`, `allPages`) and `PagesMutations` (`pageCreate`, `pageEdit`, `pageDelete`) are picked up automatically.
 
 5. Define the concrete `Page` model (see [models](#models)) and point the swapper setting at it:
 
@@ -124,58 +124,60 @@ Pages **publishes** `PageInterface` via the registry — consume it by name (no 
 - `metadata` — the `Metadata` for the object.
 
 ```python
-from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.plugins import graphql_shared_interfaces
+from baseapp_core.plugins import strawberry_shared_interfaces
+from baseapp_core.strawberry import Node, django_type
 
 
-class MyModelObjectType(DjangoObjectType):
-    class Meta:
-        model = MyModel
-        interfaces = graphql_shared_interfaces.get(RelayNode, "PageInterface")
+@django_type(MyModel)
+class MyModelType(*strawberry_shared_interfaces.get("PageInterface"), Node):
+    ...
 ```
 
-Object types implementing `PageInterface` should provide a `resolve_metadata`. To synthesize metadata from the instance:
+Types implementing `PageInterface` should provide a `resolve_metadata` classmethod, plus the
+`metadata_only` columns it reads (so the optimizer loads them). To synthesize metadata from the
+instance:
 
 ```python
 from django.apps import apps
 
 
-class MyModelObjectType(DjangoObjectType):
-    # ... Meta as above ...
+@django_type(MyModel)
+class MyModelType(*strawberry_shared_interfaces.get("PageInterface"), Node):
+    metadata_only = ("title", "body", "image")
 
     @classmethod
-    def resolve_metadata(cls, instance, info, **kwargs):
-        if apps.is_installed("baseapp_pages"):
-            from baseapp_pages.graphql.object_types import MetadataObjectType
+    def resolve_metadata(cls, root, info):
+        if not apps.is_installed("baseapp_pages"):
+            return None
+        from baseapp_pages.strawberry.interfaces import MetadataValues
 
-            return MetadataObjectType(
-                meta_title=instance.title,
-                meta_description=instance.body[:160],
-                meta_og_image=instance.image.url,
-                meta_robots="noindex,nofollow",
-            )
-        return None
+        return MetadataValues(
+            meta_title=root.title,
+            meta_description=root.body[:160],
+            meta_og_image=root.image.url,
+            meta_robots="noindex,nofollow",
+        )
 ```
 
 To support `Metadata` being set/overridden in the admin, fall back to a stored row first:
 
 ```python
     @classmethod
-    def resolve_metadata(cls, instance, info, **kwargs):
+    def resolve_metadata(cls, root, info):
         from django.contrib.contenttypes.models import ContentType
         from django.utils.translation import get_language
-        from baseapp_pages.graphql.object_types import MetadataObjectType
+        from baseapp_pages.models import Metadata
+        from baseapp_pages.strawberry.interfaces import MetadataValues
 
-        target_content_type = ContentType.objects.get_for_model(instance)
-        metadata = MetadataObjectType._meta.model.objects.filter(
-            target_content_type=target_content_type,
-            target_object_id=instance.id,
+        metadata = Metadata.objects.filter(
+            target_content_type=ContentType.objects.get_for_model(root),
+            target_object_id=root.id,
             language=get_language(),
         ).first()
-        return metadata or MetadataObjectType(meta_title=instance.title)
+        return metadata or MetadataValues(meta_title=root.title)
 ```
 
-`PageObjectType` itself composes `PageInterface`, `PermissionsInterface`, and (by name) `CommentsInterface`.
+`PageType` (`baseapp_pages.strawberry.types`) itself composes `PageInterface`, `PermissionsInterface`, and (by name) `CommentsInterface`.
 
 ## Shared service — `pages.url_path`
 

@@ -16,13 +16,24 @@ from baseapp_core.strawberry.connections import connection
 from baseapp_core.strawberry.enums import choices_enum, enum_from_choices
 from baseapp_core.strawberry.fields import thumbnail_field
 
-from ..graphql.filters import MemberFilter, ProfileFilter
-from ..graphql.object_types import can_view_profile_members, is_expired_invitation
+from ..filters import MemberFilter, ProfileFilter
 from .interfaces import ProfileInterface
 
 Profile = swapper.load_model("baseapp_profiles", "Profile")
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 profile_app_label = Profile._meta.app_label
+
+
+def can_view_profile_members(user: Any, profile: Model) -> bool:
+    if not user.is_authenticated:
+        return False
+    return user.has_perm(f"{profile_app_label}.view_profile_members", profile)
+
+
+def is_expired_invitation(role: Model) -> bool:
+    """True when a pending invitation has passed its expiration date."""
+    return role.status == ProfileUserRole.ProfileRoleStatus.PENDING and role.is_invitation_expired()
+
 
 ProfileLazyType = type_for_model(Profile)
 ProfileUserRoleLazyType = type_for_model(ProfileUserRole)

@@ -8,8 +8,8 @@ from strawberry.types import Info
 
 from baseapp_core.strawberry import Node, django_type, type_for_model
 
-from ..graphql.filters import ReportTypeFilter
 from ..permissions import VIEW_REPORT_PERMISSION
+from .filters import ReportTypeFilter
 
 Report = swapper.load_model("baseapp_reports", "Report")
 ReportType = swapper.load_model("baseapp_reports", "ReportType")

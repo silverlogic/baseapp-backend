@@ -22,8 +22,7 @@ MetadataLazyType = type_for_model(Metadata)
 
 @dataclasses.dataclass
 class MetadataValues:
-    """Metadata computed for an object without a `Metadata` row (Graphene's
-    `MetadataObjectType(...)` / `AbstractMetadataObjectType`). Unset fields resolve to null."""
+    """Metadata computed for an object without a `Metadata` row. Unset fields resolve to null."""
 
     meta_title: str | None = None
     meta_description: str | None = None

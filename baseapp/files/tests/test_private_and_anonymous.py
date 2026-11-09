@@ -35,6 +35,7 @@ from baseapp.files.services.cleanup import (
 )
 from baseapp.files.storage import files_storage, files_storage_is_private
 from baseapp.files.storage.local import LocalUploadHandler
+from baseapp.files.strawberry.types import FileType
 from baseapp.files.tokens import AnonymousUploadToken, FileDownloadToken
 from baseapp_comments.tests.factories import CommentFactory
 from baseapp_core.graphql.testing.fixtures import GraphQLClient, graphql_query
@@ -43,7 +44,6 @@ from baseapp_core.tests.factories import UserFactory
 from baseapp_core.tests.fixtures import Client
 
 File = swapper.load_model("baseapp_files", "File")
-FileObjectType = File.get_graphql_object_type()
 
 pytestmark = pytest.mark.django_db
 
@@ -350,7 +350,9 @@ class TestPrivateStorage:
         info = MagicMock()
         info.context.user = AnonymousUser()
 
-        assert FileObjectType.resolve_thumbnail(file_obj, info) is None
+        resolver = FileType.__strawberry_definition__.get_field("thumbnail").base_resolver
+
+        assert resolver.wrapped_func(file_obj, info, 10, 10) is None
 
 
 @pytest.mark.usefixtures("private_storage", "anonymous_uploads")
@@ -499,15 +501,6 @@ class TestUnclaimedAnonymousCleanup:
         assert delete_unclaimed_anonymous_file(file_obj.pk, cutoff) is False
         assert File.objects.filter(pk=file_obj.pk).exists()
         assert files_storage.exists(file_obj.file.name)
-
-
-class TestGetNode:
-    def test_get_node_takes_id_as_keyword(self, django_user_client: DjangoClient) -> None:
-        file_obj = stored_file(created_by=django_user_client.user)
-        info = MagicMock()
-        info.context.user = django_user_client.user
-
-        assert FileObjectType.get_node(info=info, id=file_obj.pk) == file_obj
 
 
 class TestUploadTempDir:

@@ -19,11 +19,6 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
 
         registry.register(ReactableMetadataService())
 
-    def register_graphql_shared_interfaces(self, registry) -> None:
-        from .graphql.interfaces import get_reactions_interface
-
-        registry.register("ReactionsInterface", get_reactions_interface)
-
     def register_strawberry_shared_interfaces(self, registry) -> None:
         from .strawberry import get_reactions_interface
 

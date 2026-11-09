@@ -28,12 +28,6 @@ class NotificationsPlugin(BaseAppPlugin):
                 "DJANGO_NOTIFICATIONS_CONFIG": {"USE_JSONFIELD": True},
             },
             # GraphQL
-            graphql_mutations=[
-                "baseapp_notifications.graphql.mutations.NotificationsMutations",
-            ],
-            graphql_subscriptions=[
-                "baseapp_notifications.graphql.subscriptions.NotificationsSubscription",
-            ],
             strawberry_mutations=[
                 "baseapp_notifications.strawberry.mutations.NotificationsMutations",
             ],

@@ -1,77 +1,49 @@
 """
-Runtime GraphQL capability registry. Capabilities are registered in
-AppConfig.ready(); no entry points. Consumers opt in by name when
-defining GraphQL object types.
+Runtime GraphQL shared-interface registry. Providers register a getter in AppConfig.ready();
+consumers opt in by name when defining their Strawberry types.
 """
 
 import inspect
-from typing import Any, Callable, Union
-
-from graphene import Interface
+from typing import Any, Callable
 
 from .readiness import require_django_ready
 
-# Lazy/callable that returns an interface class
-CapabilityValue = Union[Interface, Callable[[], Any]]
-
 
 class GraphQLSharedInterfaceRegistry:
-    """
-    Runtime-only registry. Providers register in ready() via register().
-    Consumers call get_interface(name) or get_interfaces(names, default_interfaces).
-    No schema mutation by side effect; consumers assemble interfaces explicitly.
-    """
+    """Name -> interface getter (or class). Consumers assemble interfaces explicitly."""
 
     def __init__(self) -> None:
-        self._registry: dict[str, CapabilityValue] = {}
+        self._registry: dict[str, Any] = {}
 
-    def register(self, name: str, interface: CapabilityValue) -> None:
-        """Register a GraphQL capability by name. Call from AppConfig.ready()."""
+    def register(self, name: str, interface: type | Callable[[], Any]) -> None:
+        """Register a shared interface by name. Call from AppConfig.ready()."""
         self._registry[name] = interface
 
     @require_django_ready
-    def get_interface(self, name: str) -> Interface | list[Interface]:
-        """Resolve and return the interface for name, or None if not registered."""
+    def get_interface(self, name: str) -> Any:
+        """The interface registered as `name` (a getter is called), or None."""
         value = self._registry.get(name)
-        if value is None:
-            return None
-        # If it's a class that is a subclass of Interface, return it directly
-        if inspect.isclass(value) and issubclass(value, Interface):
+        if value is None or inspect.isclass(value):
             return value
-        # If it's callable (function/lambda) but not a class, call it
-        if callable(value):
-            return value()
-        # Otherwise return as-is
-        return value
+        return value() if callable(value) else value
 
     @require_django_ready
-    def get(self, *interfaces: str | Interface) -> tuple:
-        """
-        Resolve and return a tuple of interfaces.
-        Accepts interface classes directly or registered names (strings).
-        Missing/unregistered names are silently skipped.
-        """
+    def get(self, *interfaces: str | type) -> tuple:
+        """Interfaces for registered names or classes; unregistered names are skipped."""
         result = []
-        for iface_name_or_class in interfaces:
-            if isinstance(iface_name_or_class, str):
-                iface = self.get_interface(iface_name_or_class)
-            elif isinstance(iface_name_or_class, type) and issubclass(
-                iface_name_or_class, Interface
-            ):
-                iface = iface_name_or_class
+        for name_or_class in interfaces:
+            if isinstance(name_or_class, str):
+                iface = self.get_interface(name_or_class)
+            elif inspect.isclass(name_or_class):
+                iface = name_or_class
             else:
                 raise TypeError(
-                    f"Invalid interface type: {iface_name_or_class} of type {type(iface_name_or_class)}"
+                    f"Invalid interface type: {name_or_class} of type {type(name_or_class)}"
                 )
-
             if iface is not None:
-                if isinstance(iface, list):
-                    result.extend(iface)
-                else:
-                    result.append(iface)
+                result.extend(iface if isinstance(iface, list) else [iface])
         return tuple(result)
 
 
-graphql_shared_interfaces = GraphQLSharedInterfaceRegistry()
 # Strawberry interfaces register a getter function, never the class itself.
 strawberry_shared_interfaces = GraphQLSharedInterfaceRegistry()

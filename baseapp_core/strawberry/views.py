@@ -13,23 +13,19 @@ from strawberry.types import ExecutionResult
 
 
 def authenticator_classes() -> list[type[BaseAuthentication]]:
-    """`STRAWBERRY_AUTHENTICATION_CLASSES`, or the DRF authentication classes listed in
-    `GRAPHENE["MIDDLEWARE"]` so both endpoints authenticate the same way while they coexist."""
-    configured = getattr(settings, "STRAWBERRY_AUTHENTICATION_CLASSES", None)
-    if configured is None:
-        configured = [
-            path
-            for path in getattr(settings, "GRAPHENE", {}).get("MIDDLEWARE", ())
-            if issubclass(import_string(path), BaseAuthentication)
-        ]
+    """DRF authentication classes from `STRAWBERRY_AUTHENTICATION_CLASSES` (paths or classes).
+
+    Without any, `request.user` stays what Django's session middleware set.
+    """
+    configured = getattr(settings, "STRAWBERRY_AUTHENTICATION_CLASSES", ())
     return [import_string(path) if isinstance(path, str) else path for path in configured]
 
 
 class GraphQLView(StrawberryGraphQLView):
     """Strawberry view whose `info.context` is the Django request, like Graphene's.
 
-    Keeping `info.context.user` / `info.context.headers` lets services written for Graphene
-    resolvers run unchanged. DRF authentication classes replace the Graphene auth middlewares.
+    Resolvers and services read `info.context.user` / `info.context.headers`; DRF authentication
+    classes authenticate the request.
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:

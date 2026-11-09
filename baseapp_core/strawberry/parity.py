@@ -1,9 +1,4 @@
-"""Schema parity between the Graphene schema and the Strawberry schema.
-
-During the migration the frontend keeps compiling against the Graphene SDL, so every type ported
-to Strawberry must expose the same contract. `compare_schemas` lists every difference for the
-types present in the Strawberry schema; a parity test pins the accepted ones.
-"""
+"""Diff two GraphQL schemas, to keep the served schema equal to the committed SDL contract."""
 
 from dataclasses import dataclass
 
@@ -38,11 +33,11 @@ def _kind(type_: GraphQLNamedType) -> str:
 class SchemaDiff:
     path: str
     kind: str
-    graphene: str
-    strawberry: str
+    expected: str
+    actual: str
 
     def __str__(self) -> str:
-        return f"{self.path}: {self.kind} (graphene={self.graphene}, strawberry={self.strawberry})"
+        return f"{self.path}: {self.kind} (expected={self.expected}, actual={self.actual})"
 
 
 def _fields_with_args(type_: GraphQLNamedType) -> dict[str, tuple[str, dict[str, str]]]:
@@ -104,28 +99,20 @@ def _compare_type(name: str, old: GraphQLNamedType, new: GraphQLNamedType) -> li
     return diffs
 
 
-def compare_schemas(
-    graphene_schema: GraphQLSchema, strawberry_schema: GraphQLSchema
-) -> list[SchemaDiff]:
-    """Differences for every named type defined by the Strawberry schema (root types included)."""
+def compare_schemas(expected: GraphQLSchema, actual: GraphQLSchema) -> list[SchemaDiff]:
+    """Every difference between the named types of `expected` and `actual`."""
     diffs: list[SchemaDiff] = []
-    for name, new in strawberry_schema.type_map.items():
+    for name, new in actual.type_map.items():
         if is_introspection_type(new) or is_specified_scalar_type(new):
             continue
-        old = graphene_schema.type_map.get(name)
+        old = expected.type_map.get(name)
         if old is None:
             diffs.append(SchemaDiff(name, "extra type", "-", _kind(new)))
             continue
         diffs.extend(_compare_type(name, old, new))
+    for name, old in expected.type_map.items():
+        if is_introspection_type(old) or is_specified_scalar_type(old):
+            continue
+        if name not in actual.type_map:
+            diffs.append(SchemaDiff(name, "missing type", _kind(old), "-"))
     return sorted(diffs)
-
-
-def missing_types(graphene_schema: GraphQLSchema, strawberry_schema: GraphQLSchema) -> list[str]:
-    """Graphene types the Strawberry schema does not define yet."""
-    return sorted(
-        name
-        for name, type_ in graphene_schema.type_map.items()
-        if not is_introspection_type(type_)
-        and not is_specified_scalar_type(type_)
-        and name not in strawberry_schema.type_map
-    )

@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import swapper
 from django.conf import settings
@@ -11,9 +11,6 @@ from notifications.base.models import NotificationQuerySet as BaseNotificationQu
 
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import DocumentIdMixin
-
-if TYPE_CHECKING:
-    from baseapp_core.graphql import DjangoObjectType
 
 
 class NotificationQuerySet(BaseNotificationQuerySet):
@@ -28,7 +25,7 @@ class NotificationQuerySet(BaseNotificationQuerySet):
         """Bulk-create notifications and broadcast a created event per row after commit."""
         result = super().bulk_create(objs, *args, **kwargs)
 
-        from baseapp_notifications.graphql.subscriptions import OnNotificationChange
+        from baseapp_notifications import subscriptions
 
         pks = [n.pk for n in result if n.pk]
         Model = self.model
@@ -36,7 +33,7 @@ class NotificationQuerySet(BaseNotificationQuerySet):
 
         def broadcast() -> None:
             for notification in Model._default_manager.using(db).filter(pk__in=pks):
-                OnNotificationChange.send_created_notification(notification=notification)
+                subscriptions.send_created_notification(notification=notification)
 
         transaction.on_commit(broadcast, using=db)
         return result
@@ -56,7 +53,7 @@ class AbstractNotification(BaseAbstractNotification, DocumentIdMixin, RelayModel
         created = self._state.adding
         super().save(*args, **kwargs)
 
-        from baseapp_notifications.graphql.subscriptions import OnNotificationChange
+        from baseapp_notifications import subscriptions
 
         pk = self.pk
         Notification = type(self)
@@ -66,9 +63,9 @@ class AbstractNotification(BaseAbstractNotification, DocumentIdMixin, RelayModel
             if notification is None:
                 return
             if created:
-                OnNotificationChange.send_created_notification(notification=notification)
+                subscriptions.send_created_notification(notification=notification)
             else:
-                OnNotificationChange.send_updated_notification(notification=notification)
+                subscriptions.send_updated_notification(notification=notification)
 
         transaction.on_commit(broadcast)
 
@@ -77,17 +74,11 @@ class AbstractNotification(BaseAbstractNotification, DocumentIdMixin, RelayModel
 
         super().delete(*args, **kwargs)
 
-        from baseapp_notifications.graphql.subscriptions import OnNotificationChange
+        from baseapp_notifications import subscriptions
 
-        OnNotificationChange.send_delete_notification(
+        subscriptions.send_delete_notification(
             recipient_id=self.recipient_id, notification_id=notification_relay_id
         )
-
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import NotificationNode
-
-        return NotificationNode
 
 
 class AbstractNotificationSetting(TimeStampedModel, DocumentIdMixin, RelayModel):
@@ -116,9 +107,3 @@ class AbstractNotificationSetting(TimeStampedModel, DocumentIdMixin, RelayModel)
     channel = models.IntegerField(_("channel"), choices=NotificationChannelTypes.choices)
     verb = models.CharField(_("verb"), max_length=255)
     is_active = models.BooleanField(_("active"), default=True)
-
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import NotificationSettingNode
-
-        return NotificationSettingNode

@@ -23,11 +23,6 @@ COMMENT_CREATE_GRAPHQL = """
                 field
                 messages
             }
-            _debug {
-                exceptions {
-                    stack
-                }
-            }
         }
     }
 """

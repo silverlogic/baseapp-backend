@@ -117,7 +117,7 @@ def test_user_activity_logs_only_include_own_user(graphql_user_client, django_us
 def test_user_root_query_exposes_activity_logs_field(
     graphql_user_client, django_user_client
 ) -> None:
-    """UserObjectType surfaces activityLogs from UserActivityLogInterface on the user query."""
+    """UserType surfaces activityLogs from UserActivityLogInterface on the user query."""
     verb = f"{Comment._meta.app_label}.add_comment"
     user = django_user_client.user
 

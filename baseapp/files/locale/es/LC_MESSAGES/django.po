@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-29 20:43+0000\n"
+"POT-Creation-Date: 2026-11-09 03:27+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -21,48 +21,6 @@ msgstr ""
 #: apps.py
 msgid "BaseApp Files"
 msgstr "BaseApp Archivos"
-
-#: graphql/mutations.py
-msgid "At least one file must be provided"
-msgstr "Se debe proporcionar al menos un archivo"
-
-#: graphql/mutations.py
-msgid "Target object not found"
-msgstr "Objeto objetivo no encontrado"
-
-#: graphql/mutations.py
-msgid "This object does not support file attachments"
-msgstr "Este objeto no admite archivos adjuntos"
-
-#: graphql/mutations.py
-msgid "Files are not enabled for this target"
-msgstr "Los archivos no están habilitados para este objetivo"
-
-#: graphql/mutations.py
-msgid "You don't have permission to attach files to this object"
-msgstr "No tienes permiso para adjuntar archivos a este objeto"
-
-#: graphql/mutations.py
-#, python-brace-format
-msgid "File not found: {file_id}"
-msgstr "Archivo no encontrado: {file_id}"
-
-#: graphql/mutations.py
-msgid "You don't have permission to attach this file"
-msgstr "No tienes permiso para adjuntar este archivo"
-
-#: graphql/mutations.py
-#, python-brace-format
-msgid "File {file_name} is already attached to another object"
-msgstr "El archivo {file_name} ya está adjunto a otro objeto"
-
-#: graphql/mutations.py graphql/utils.py
-msgid "You don't have permission to perform this action"
-msgstr "No tienes permiso para realizar esta acción"
-
-#: graphql/utils.py
-msgid "One or more files could not be found"
-msgstr "No se encontraron uno o más archivos"
 
 #: models.py
 msgid "target"
@@ -361,6 +319,52 @@ msgstr "Este objeto no admite archivos adjuntos."
 #: rest_framework/utils.py
 msgid "You don't have permission to attach files to this object."
 msgstr "No tienes permiso para adjuntar archivos a este objeto."
+
+#: strawberry/mutations.py
+#, python-brace-format
+msgid "File {file_name} is already attached to another object"
+msgstr "El archivo {file_name} ya está adjunto a otro objeto"
+
+#: strawberry/mutations.py
+#, python-brace-format
+msgid "File not found: {file_id}"
+msgstr "Archivo no encontrado: {file_id}"
+
+#: strawberry/mutations.py
+msgid "At least one file must be provided"
+msgstr "Se debe proporcionar al menos un archivo"
+
+#: strawberry/mutations.py
+msgid "Target object not found"
+msgstr "Objeto objetivo no encontrado"
+
+#: strawberry/mutations.py
+msgid "This object does not support file attachments"
+msgstr "Este objeto no admite archivos adjuntos"
+
+#: strawberry/mutations.py
+msgid "Files are not enabled for this target"
+msgstr "Los archivos no están habilitados para este objetivo"
+
+#: strawberry/mutations.py
+msgid "You don't have permission to attach files to this object"
+msgstr "No tienes permiso para adjuntar archivos a este objeto"
+
+#: strawberry/mutations.py
+msgid "You don't have permission to attach this file"
+msgstr "No tienes permiso para adjuntar este archivo"
+
+#: strawberry/mutations.py
+msgid "authentication required"
+msgstr "autenticación requerida"
+
+#: strawberry/mutations.py strawberry/utils.py
+msgid "You don't have permission to perform this action"
+msgstr "No tienes permiso para realizar esta acción"
+
+#: strawberry/utils.py
+msgid "One or more files could not be found"
+msgstr "No se encontraron uno o más archivos"
 
 #: tokens.py
 msgid "Missing token parameter"

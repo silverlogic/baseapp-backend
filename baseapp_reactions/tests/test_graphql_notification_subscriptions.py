@@ -1,3 +1,4 @@
+import asyncio
 import textwrap
 
 import pytest
@@ -6,6 +7,8 @@ from django.test import override_settings
 
 from baseapp_comments.tests.factories import CommentFactory
 from baseapp_core.graphql.testing.fixtures import graphql_query
+from baseapp_core.strawberry.subscriptions import subscription_group
+from baseapp_core.strawberry.testing import next_result, wait_for_group
 from baseapp_core.tests.factories import UserFactory
 from baseapp_core.tests.fixtures import DjangoClient
 
@@ -56,16 +59,11 @@ async def test_reaction_created_subscription_has_correct_unread_count(
     target_relay_id = await database_sync_to_async(lambda: target.relay_id)()
 
     # Subscribe as User A (the target owner who will receive the notification)
-    client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
-    try:
-        sub_id = await client.send(
-            msg_type="subscribe",
-            payload={
-                "query": NOTIFICATION_SUBSCRIPTION_QUERY,
-                "operationName": "op_name",
-            },
+    async with await graphql_ws_user_client() as ws:
+        created = next_result(ws, NOTIFICATION_SUBSCRIPTION_QUERY)
+        await wait_for_group(
+            subscription_group("OnNotificationChange", str(django_user_client.user.pk)), timeout=5
         )
-        await client.assert_no_messages()
 
         # Action: User B likes User A's comment via mutation
         liker = await database_sync_to_async(UserFactory)()
@@ -86,9 +84,8 @@ async def test_reaction_created_subscription_has_correct_unread_count(
         assert "errors" not in content
 
         # Verify: subscription message has correct verb and unread count
-        resp = await client.receive(assert_id=sub_id, assert_type="next")
-        notification = resp["data"]["onNotificationChange"]["createdNotification"]["node"]
+        result = await asyncio.wait_for(created, timeout=5)
+        assert result.errors is None
+        notification = result.data["onNotificationChange"]["createdNotification"]["node"]
         assert notification["verb"] == "REACTIONS.REACTION_CREATED"
         assert notification["recipient"]["notificationsUnreadCount"] == 1
-    finally:
-        await client.finalize()

@@ -233,16 +233,9 @@ def test_anon_following_list_query_count_is_flat(
     assert content["data"]["node"]["followingCount"] == 5
     assert len(content["data"]["node"]["following"]["edges"]) == 5
 
-    # Counts-only path is 2 queries (see test_anon_followers_and_following_counts_query_count).
-    # The following-list path adds, on top of that:
-    #   + ContentType.get for follows.follow (cleared above)
-    #   + COUNT(*) over follows_follow filtered by actor_id
-    #   + the connection fetch (Follow rows with mapped_public_id annotated)
-    #   + GenericPrefetch's batched DocumentId fetch for actor (1 query)
-    #   + GenericPrefetch's batched Profile fetch for actor (1 query, all rows in one IN())
-    #   + same pair for target (DocumentIds + Profiles batched)
-    # Total = 2 + 8 = 10. Independent of how many follow rows exist.
-    assert queries.count == 10
+    # Flat in the number of follow rows: the Follow page plus one batched DocumentId + Profile
+    # prefetch for the selected `targetObject` side only (Graphene needed 10).
+    assert queries.count == 6
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)

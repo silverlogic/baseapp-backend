@@ -46,7 +46,7 @@ class TestReactionsWithoutBaseappProfiles:
 
         with (
             patch(
-                "baseapp_reactions.graphql.mutations.get_obj_from_relay_id",
+                "baseapp_reactions.strawberry.mutations.get_obj_from_relay_id",
                 return_value=target,
             ),
             patch(
@@ -54,11 +54,11 @@ class TestReactionsWithoutBaseappProfiles:
                 return_value=True,
             ),
             patch(
-                "baseapp_reactions.graphql.mutations.DocumentId.get_or_create_for_object",
+                "baseapp_reactions.strawberry.mutations.DocumentId.get_or_create_for_object",
                 return_value=fake_document,
             ),
             patch(
-                "baseapp_reactions.graphql.mutations.Reaction.objects.get_or_create",
+                "baseapp_reactions.strawberry.mutations.Reaction.objects.get_or_create",
                 return_value=(reaction, True),
             ) as get_or_create,
         ):
@@ -89,7 +89,7 @@ class TestReactionsWithoutBaseappProfiles:
 
         with (
             patch(
-                "baseapp_reactions.graphql.mutations.get_obj_from_relay_id",
+                "baseapp_reactions.strawberry.mutations.get_obj_from_relay_id",
                 return_value=target,
             ) as get_obj_from_relay_id,
             patch(
@@ -97,11 +97,11 @@ class TestReactionsWithoutBaseappProfiles:
                 return_value=True,
             ),
             patch(
-                "baseapp_reactions.graphql.mutations.DocumentId.get_or_create_for_object",
+                "baseapp_reactions.strawberry.mutations.DocumentId.get_or_create_for_object",
                 return_value=object(),
             ),
             patch(
-                "baseapp_reactions.graphql.mutations.Reaction.objects.get_or_create",
+                "baseapp_reactions.strawberry.mutations.Reaction.objects.get_or_create",
                 return_value=(reaction, True),
             ),
         ):
@@ -125,42 +125,28 @@ class TestReactionsWithoutBaseappProfiles:
     def test_my_reaction_resolves_using_current_user_when_profiles_disabled(
         self, with_disabled_apps, django_user_client, graphql_user_client
     ) -> None:
+        from baseapp_comments.tests.factories import CommentFactory
+
         Reaction = swapper.load_model("baseapp_reactions", "Reaction")
-        Comment = swapper.load_model("baseapp_comments", "Comment")
 
-        root = Comment(pk=200)
+        root = CommentFactory()
         fake_reaction = Reaction(pk=3, reaction_type=Reaction.ReactionTypes.LIKE)
-        fake_content_type = object()
         queryset = Mock()
-        queryset.first.return_value = fake_reaction
+        queryset.filter.return_value.first.return_value = fake_reaction
 
-        with (
-            patch(
-                "baseapp_core.graphql.relay.Node.get_node_from_global_id",
-                return_value=root,
-            ),
-            patch(
-                "baseapp_reactions.graphql.object_types.ContentType.objects.get_for_model",
-                return_value=fake_content_type,
-            ),
-            patch(
-                "baseapp_reactions.graphql.object_types.Reaction.objects.filter",
-                return_value=queryset,
-            ) as reaction_filter,
-        ):
+        with patch(
+            "baseapp_reactions.strawberry.interfaces._reactions_for", return_value=queryset
+        ) as reactions_for:
             response = graphql_user_client(
                 MY_REACTION_GRAPHQL,
-                variables={"id": "comment-relay-id"},
+                variables={"id": root.relay_id},
             )
             content = response.json()
 
         assert "errors" not in content
         assert content["data"]["node"]["myReaction"]["reactionType"] == "LIKE"
-        reaction_filter.assert_called_once_with(
-            target_document__content_type=fake_content_type,
-            target_document__object_id=200,
-            user_id=django_user_client.user.id,
-        )
+        assert reactions_for.call_args.args[0].pk == root.pk
+        queryset.filter.assert_called_once_with(user_id=django_user_client.user.id)
 
     def test_add_reaction_with_profile_permission_is_disabled_without_profiles(
         self, with_disabled_apps

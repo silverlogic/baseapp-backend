@@ -95,9 +95,9 @@ documentable (you can comment *on* a comment).
 
 ## Why this makes optimization possible
 
-`DocumentId` also carries `public_id`, the relay id source. That is what lets the base
-`pre_optimization_hook` inline a single `mapped_public_id` subquery instead of one lookup per row
-(`query-optimization.md`). Adopting the mixins is what puts a block on the optimized path.
+`DocumentId` also carries `public_id`, the relay id source. That is what lets the optimizer hint on
+`Node.id` (`PublicIdOptimizerStore`) inline a single `mapped_public_id` subquery instead of one
+lookup per row (`query-optimization.md`). Adopting the mixins is what puts a block on the optimized path.
 
 ## Migrating a legacy GenericForeignKey
 

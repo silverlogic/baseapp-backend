@@ -175,16 +175,8 @@ DJMAIL_REAL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 
 # GraphQL
-GRAPHENE = {
-    "SCHEMA": "testproject.graphql.schema",
-    "MIDDLEWARE": (
-        "baseapp_core.graphql.LogExceptionMiddleware",
-        "baseapp_core.graphql.TokenAuthentication",
-    ),
-    "SCHEMA_OUTPUT": "schema.graphql",
-}
-# GRAPHQL_TEST_ENDPOINT=/graphql/strawberry runs the GraphQL test clients against Strawberry.
-GRAPHENE["TESTING_ENDPOINT"] = env("GRAPHQL_TEST_ENDPOINT", default="") or "/graphql"
+STRAWBERRY_SCHEMA = "testproject.graphql.schema"
+STRAWBERRY_AUTHENTICATION_CLASSES = ["rest_framework.authentication.TokenAuthentication"]
 
 # Must be absolute URLs for use in emails.
 MEDIA_ROOT = str(BASE_DIR.parent / "media")

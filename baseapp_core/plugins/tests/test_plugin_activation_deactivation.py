@@ -184,7 +184,7 @@ class TestPluginActivationDeactivation:
             registry.load_from_installed_apps()
 
             # Get GraphQL queries
-            queries_with_plugin = registry.get_all_graphql_queries()
+            queries_with_plugin = registry.get_all_strawberry_queries()
             initial_query_count = len(queries_with_plugin)
             assert initial_query_count > 0
 
@@ -196,7 +196,7 @@ class TestPluginActivationDeactivation:
             registry.load_from_installed_apps()
 
             # Get GraphQL queries again
-            queries_without_plugin = registry.get_all_graphql_queries()
+            queries_without_plugin = registry.get_all_strawberry_queries()
 
             # Test plugin's queries should not be present
             # Count should be reduced (or same if test plugin wasn't contributing)

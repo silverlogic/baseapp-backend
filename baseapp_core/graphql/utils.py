@@ -1,28 +1,23 @@
 import logging as _logging
 import traceback
-from collections.abc import Callable, Generator
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import graphene
 import sqlparse
 from django import db
 from django.db.backends import utils as _django_utils
 from django.db.models.sql import compiler as _compiler
 from django.db.models.sql import query as _query
-from graphene_django import views as _views
-from graphene_django.debug.sql import tracking as _tracking
-from graphene_django.registry import get_global_registry
+from strawberry.django import views as _views
 
 from .decorators import graphql_schema_required
 
 if TYPE_CHECKING:
     from django.db.models import Model
-
-    from .object_types import DjangoObjectType
 
 
 def get_pk_from_relay_id(relay_id) -> int | str:
@@ -33,7 +28,7 @@ def get_pk_from_relay_id(relay_id) -> int | str:
     return graphql_get_pk_from_global_id_using_strategy(relay_id)
 
 
-def get_obj_from_relay_id(info: graphene.ResolveInfo, relay_id, get_node=False) -> "Model":
+def get_obj_from_relay_id(info: Any, relay_id, get_node=False) -> "Model":
     from baseapp_core.hashids.strategies import (
         graphql_get_instance_from_global_id_using_strategy,
     )
@@ -45,34 +40,23 @@ def get_obj_from_relay_id(info: graphene.ResolveInfo, relay_id, get_node=False) 
 def get_obj_relay_id(obj) -> str:
     from baseapp_core.hashids.strategies import graphql_to_global_id_using_strategy
 
-    object_type = _cache_object_type(obj)
-    if not object_type:
-        raise Exception(f"Model {obj.__class__.__name__} does not inherit from RelayModel")
-    return graphql_to_global_id_using_strategy(obj, object_type._meta.name, obj.pk)
+    type_name = graphql_type_name(type(obj))
+    if not type_name:
+        raise Exception(f"Model {obj.__class__.__name__} has no registered GraphQL type")
+    return graphql_to_global_id_using_strategy(obj, type_name, obj.pk)
 
 
-def _cache_object_type(obj) -> "type[DjangoObjectType] | None":
-    if not hasattr(obj, "_graphql_object_type"):
-        registry = get_global_registry()
-        obj._graphql_object_type = registry.get_type_for_model(obj._meta.concrete_model)
+def graphql_type_name(model) -> str | None:
+    """GraphQL name of the Strawberry type registered for `model` (project overrides included)."""
+    from baseapp_core.strawberry.registry import type_registry
 
-        # if not found for concret_model, try with the base model
-        if not obj._graphql_object_type:
-            obj._graphql_object_type = registry.get_type_for_model(obj._meta.model)
-
-    return obj._graphql_object_type
-
-
-def get_object_type_for_model(model) -> Callable[[], "type[DjangoObjectType]"]:
-    def get_object_type() -> "type[DjangoObjectType]":
-        return model.get_graphql_object_type()
-
-    return get_object_type
+    strawberry_type = type_registry.get_type_for_model(model)
+    return strawberry_type.__strawberry_definition__.name if strawberry_type else None
 
 
 def resolve_document_content_object(
     document,
-    info: "graphene.ResolveInfo",
+    info: Any,
     *,
     cache_attr: str = "_document_content_object_cache",
 ) -> "Model | None":
@@ -119,7 +103,6 @@ BASE_PATH = str(Path(__file__).parent.parent.parent.resolve())
 SKIP_PATHS = [
     str(Path(_query.__file__).resolve()),
     str(Path(_compiler.__file__).resolve()),
-    str(Path(_tracking.__file__).resolve()),
     str(Path(_django_utils.__file__).resolve()),
     str(Path(_logging.__file__).resolve()),
 ]

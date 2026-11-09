@@ -23,8 +23,6 @@ from .managers import UserManager
 if TYPE_CHECKING:
     from django.db.models.fields.files import FieldFile
 
-    from baseapp_core.graphql import DjangoObjectType
-
 
 def use_relay_model() -> type:
     try:
@@ -173,12 +171,6 @@ class AbstractUser(
 
         expires_at = self.password_changed_date + timezone.timedelta(days=expiration_interval)
         return timezone.now() >= expires_at
-
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import UserObjectType
-
-        return UserObjectType
 
     def save(self, *args, **kwargs) -> None:
         if hasattr(self, "tracker"):

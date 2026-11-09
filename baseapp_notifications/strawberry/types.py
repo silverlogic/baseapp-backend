@@ -10,7 +10,7 @@ from baseapp_core.strawberry import Node, django_type, type_for_model
 from baseapp_core.strawberry.enums import choices_enum, enum_from_choices
 from baseapp_core.strawberry.scalars import GenericScalar
 
-from ..graphql.filters import NotificationFilter
+from ..filters import NotificationFilter
 
 Notification = swapper.load_model("notifications", "Notification")
 NotificationSetting = swapper.load_model("baseapp_notifications", "NotificationSetting")

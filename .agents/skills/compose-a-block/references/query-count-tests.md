@@ -12,7 +12,7 @@ Use `graphql_client_with_queries` (from `baseapp_core/graphql/testing/fixtures.p
 enumerate every query. It returns `(response, QueryData)`; `QueryData` records interpolated SQL
 plus an abridged stack per query, and `queries.log` pretty-prints them.
 
-`baseapp_auth/tests/graphql/test_queries_user.py:186`:
+Shape (from `baseapp_auth/tests/graphql/test_queries_user.py`):
 
 ```python
 def test_anon_can_query_users_list_with_optimized_query_with_public_id(
@@ -29,10 +29,10 @@ def test_anon_can_query_users_list_with_optimized_query_with_public_id(
     # With optimizer queries are expected to be 7:
     # 1. ContentType lookup for users.user (cold-cache; cached after first request in production)
     # 2. ContentType lookup for profiles.profile (cold-cache; same caching as above)
-    # 3. SELECT users_user with _ratable_* Subqueries inlined by
-    #    AbstractUserObjectType.pre_optimization_hook (RatableMetadataService.annotate_queryset)
+    # 3. SELECT users_user with _ratable_* Subqueries inlined by the RatingsInterface field
+    #    `annotate=` hints
     # 4. SELECT profiles_profile with _commentable_*, _followable_*, mapped_public_id Subqueries
-    #    inlined by ProfileObjectType.pre_optimization_hook
+    #    inlined by the selected interface fields and the Node.id hint
     # 5. SELECT COUNT(*) for pagination
     # 6. Same as #3 with LIMIT 10 for the returned page slice
     # 7. Same as #4 for the page's profiles
@@ -62,11 +62,11 @@ must hold. `baseapp_chats/tests/test_graphql_query_counts.py`:
     assert len(ctx.captured_queries) <= 20, (
         f"Messages-with-mentions listing issued {len(ctx.captured_queries)} queries. "
         "Likely causes (in priority order):\n"
-        "  - `chatRoom.allMessages` reverted to `DjangoFilterConnectionField`\n"
-        "  - `BaseMessageObjectType.pre_optimization_hook` dropped one of "
-        "`room_id` / `deleted` / `message_type` from `only_fields`\n"
-        "  - `MentionsInterface.mentions.optimizer_hook` was lost\n"
-        "  - Message ObjectType lost its `document = GenericRelation(DocumentId)`"
+        "  - `chatRoom.allMessages` lost its optimized connection\n"
+        "  - `MessageType` `only=` dropped one of "
+        "`room_id` / `deleted` / `message_type`\n"
+        "  - `MentionsInterface.mentions` lost its prefetch hint\n"
+        "  - Message model lost its `document = GenericRelation(DocumentId)`"
     )
 ```
 
@@ -164,8 +164,8 @@ query), `baseapp_follows/tests/test_graphql_queries_object_follows.py`,
 ## Checklist for a new block
 
 - One test per list path the block exposes.
-- One test per shared-interface field carrying an `optimizer_hook`, asserting it fires only when
-  selected.
+- One test per shared-interface field carrying an optimizer hint (`annotate=` /
+  `prefetch_related=`), asserting it applies only when selected.
 - A small-vs-big volume comparison on any connection.
 - If the block degrades without an optional dependency, a test with that app absent — use
   `with_disabled_apps` / `with_disabled_apps_context` from `baseapp_core/plugins/tests/fixtures.py`
@@ -184,7 +184,7 @@ docker compose run --rm web uv run --python 3.12 pytest baseapp/<name>/tests/ --
 `/opt/venv`. Plugin discovery is `stevedore` over the `baseapp.plugins` entry-point namespace
 (`baseapp_core/plugins/registry.py`) with no fallback, so without an installed distribution
 exactly **one** entry point is visible (`testproject_plugin_test_app`), no plugin's settings or
-GraphQL roots are aggregated, and tests fail in confusing ways. `uv run` builds and installs the
+`strawberry_*` roots are aggregated, and tests fail in confusing ways. `uv run` builds and installs the
 project first, which registers all entry points. CI does the same thing.
 
 Bare `pytest` *appears* to work once you have run `uv run` before, because that leaves a

@@ -1,7 +1,7 @@
 ---
 name: compose-a-block
 version: 1.0.0
-description: ALWAYS use this skill when creating, extending, or reviewing a reusable package ("block") inside the baseapp-backend monorepo, and whenever GraphQL query performance is in play anywhere in this repo. Trigger on requests like "add a new baseapp package for X", "scaffold baseapp_foo", "wire up a plugin", "register a shared service", "expose this via a GraphQL shared interface", "make this model swappable", "why is this query doing N+1", "this list endpoint is slow", "add a counter field without a query per row", "add a pre_optimization_hook", "annotate this queryset", "the optimizer isn't picking up my prefetch", or "add a query-count regression test". Covers package scaffolding, plugin.py + PackageSettings, entry-point registration, AppConfig contributor mixins, swappable models, the DocumentId decoupling layer, shared services / GraphQL shared interfaces, and the full query-optimization stack (pre_optimization_hook, field-level optimizer_hook, annotate_queryset, connection-field choice, escape hatches, query-count tests). The plugin-architecture half is for this repo only; the query-optimization half also applies to a consuming template's apps/ code, which inherits the same base ObjectType and the same traps. Skip ONLY for package-authoring questions about a consuming template's apps/ directory, dependency bumps, and doc-only edits.
+description: ALWAYS use this skill when creating, extending, or reviewing a reusable package ("block") inside the baseapp-backend monorepo, and whenever GraphQL query performance is in play anywhere in this repo. Trigger on requests like "add a new baseapp package for X", "scaffold baseapp_foo", "wire up a plugin", "register a shared service", "expose this via a GraphQL shared interface", "make this model swappable", "why is this query doing N+1", "this list endpoint is slow", "add a counter field without a query per row", "add an optimizer hint", "annotate this queryset", "the optimizer isn't picking up my prefetch", or "add a query-count regression test". Covers package scaffolding, plugin.py + PackageSettings, entry-point registration, AppConfig contributor mixins, swappable models and overridable Strawberry types, the DocumentId decoupling layer, shared services / Strawberry shared interfaces, and the full query-optimization stack (strawberry-django optimizer hints on types and fields, annotate_queryset, connection fields, query-count tests). The plugin-architecture half is for this repo only; the query-optimization half also applies to a consuming template's apps/ code, which uses the same `baseapp_core.strawberry` helpers and hits the same traps. Skip ONLY for package-authoring questions about a consuming template's apps/ directory, dependency bumps, and doc-only edits.
 triggers:
   - create a new baseapp package
   - scaffold a block
@@ -34,11 +34,11 @@ The two halves of this skill have different reach.
 them, so plugin registration, swappable models, and the shared registries don't apply there; the
 template ships its own `backend-conventions` and `backend-patterns` skills for that code.
 
-**Sections 7–11 (query optimization) apply to any Graphene code built on
-`baseapp_core.graphql.DjangoObjectType`** — including a consuming template's `apps/`. Those types
-inherit the same `pre_optimization_hook`, hit the same deferred-column and connection-field traps,
-and carry the same inert `gql_optimizer` mixins. Use these sections there, alongside the template's
-own skills rather than instead of them.
+**Sections 7–11 (query optimization) apply to any Strawberry code built on
+`baseapp_core.strawberry`** (`django_type`, `connection`, `Node`) — including a consuming
+template's `apps/`. Those types run under the same `DjangoOptimizerExtension` and hit the same
+deferred-column and virtual-relation traps. Use these sections there, alongside the template's own
+skills rather than instead of them.
 
 Two companion skills still apply to everything here: `run-development-commands` for translating
 intent into Docker Compose commands, and `ensure-test-coverage` for the 75% floor.
@@ -56,18 +56,17 @@ If you are chasing an N+1, start at section 7.
 
 ---
 
-## Before you start: two known-stale sources
+## Before you start
 
 `baseapp_core/plugins/README.md` is the longest description of the architecture and is partly
-wrong. It says entry points live in a root `setup.cfg` (that file does not exist — they are in
-`pyproject.toml`), tells you to add `-e ./baseapp_yourpackage` to a `requirements.txt` (this is one
-distribution managed by `uv`; there is nothing to install per package), and shows
-`register_graphql_shared_interfaces(self)` without the `registry` argument every real `apps.py`
-takes. Read it for the *why*; take the *how* from this skill.
+stale. It says entry points live in a root `setup.cfg` (that file does not exist — they are in
+`pyproject.toml`) and tells you to add `-e ./baseapp_yourpackage` to a `requirements.txt` (this is
+one distribution managed by `uv`; there is nothing to install per package). Read it for the *why*;
+take the *how* from this skill.
 
-The repo also depends on **two** optimizer libraries with confusingly similar names:
-`graphene-django-query-optimizer` (imported as `query_optimizer`) and `graphene-django-optimizer`
-(imported as `gql_optimizer`). Only the first is live. See section 7 before touching either.
+Strawberry patterns are catalogued in `docs/strawberry-porting-guide.md`; native examples are
+`baseapp_blocks/strawberry/` and `baseapp_auth/strawberry/`. The core API lives in
+`baseapp_core/strawberry/`.
 
 ---
 
@@ -76,7 +75,7 @@ The repo also depends on **two** optimizer libraries with confusingly similar na
 ### 1. Package Scaffold
 New packages go in `baseapp/<name>/` (the namespaced layout used by the two newest blocks), not
 `baseapp_<name>/` at the root. `__init__.py` is empty; `apps.py` and `plugin.py` are mandatory;
-`models.py`, `services.py`, `graphql/`, `permissions.py`, `signals.py`, `admin.py`, and `README.md`
+`models.py`, `services.py`, `strawberry/`, `filters.py`, `permissions.py`, `signals.py`, `admin.py`, and `README.md`
 are added as needed. Blocks with swappable models ship **no migrations** — the concrete models and
 their migrations live in `testproject/`.
 
@@ -87,8 +86,8 @@ needs, or checking whether an existing block is missing a conventional file.
 
 ### 2. Plugin Registration
 `plugin.py` defines a `BaseAppPlugin` subclass returning a pydantic `PackageSettings`: installed
-apps, slotted middleware/auth backends, extra Django settings, URL callbacks, GraphQL root
-classes, and declared package dependencies. Registration then touches `pyproject.toml` (entry
+apps, slotted middleware/auth backends, extra Django settings, URL callbacks, Strawberry roots and
+types (`strawberry_queries/mutations/subscriptions/types`), and declared package dependencies. Registration then touches `pyproject.toml` (entry
 point + package-data), `MANIFEST.in`, and `testproject/settings.py`. Miss any one and the block
 loads but contributes nothing.
 
@@ -110,9 +109,11 @@ connecting signals, or debugging a registry that comes back empty at runtime.
 
 ### 4. Swappable Models
 Concrete models in a block must be swappable so consuming projects can substitute their own.
-Declare the model `abstract = True` with `swappable = swapper.swappable_setting(...)`, expose
-`get_graphql_object_type()`, and load it everywhere else with `swapper.load_model(...)` at module
-level. Optional cross-block fields are mixed in at class-definition time behind
+Declare the model `abstract = True` with `swappable = swapper.swappable_setting(...)`, put the
+GraphQL fields on an abstract `@strawberry_django.type(Model, name="AbstractX")` base registered by
+`@django_type` (projects re-register their own; last registration wins), reference the type only
+via `type_for_model(Model)`, and load the model everywhere else with `swapper.load_model(...)` at
+module level. Optional cross-block fields are mixed in at class-definition time behind
 `apps.is_installed(...)`.
 
 Read `references/swappable-models.md` when: adding any concrete model to a block, referencing
@@ -137,35 +138,36 @@ converts a legacy GenericForeignKey to `DocumentId`.
 ### 6. Shared Services and GraphQL Interfaces
 Two runtime registries replace cross-block imports. `SharedServiceProvider` exposes behaviour by
 name (`shared_services.get("commentable_metadata")` — **always handle `None`**).
-`graphql_shared_interfaces` lets a block add fields to another block's ObjectType by name, with
+`strawberry_shared_interfaces` lets a block add fields to another block's type by name, with
 unregistered names silently skipped. `apply_if_installed(...)` guards optional field lists.
 
 Read `references/shared-services.md` when: exposing behaviour from a block, consuming another
-block's data, opting an ObjectType into an interface, or making a block degrade gracefully when
+block's data, opting a type into an interface, or making a block degrade gracefully when
 an optional dependency is absent.
 
 ---
 
-### 7. Query Optimization: `pre_optimization_hook`
-**Read this before any GraphQL performance work.** `baseapp_core.graphql.DjangoObjectType`
-subclasses `query_optimizer.DjangoObjectType` (from `graphene-django-query-optimizer`) — *not*
-`graphene_django_optimizer`, which is present but dead. The base hook recursively injects the
-relay-id subquery; blocks override it to force deferred columns into `only_fields`, add
-`select_related`, or apply annotations. Getting this wrong is silent: the query returns correct
-data and issues one round-trip per row.
+### 7. Query Optimization: Optimizer Hints
+**Read this before any GraphQL performance work.** Every schema built with `build_schema` runs
+strawberry-django's `DjangoOptimizerExtension`, which turns the selection set into `only` /
+`select_related` / `prefetch_related` / `annotate`. `Node.id` adds the relay-id
+(`mapped_public_id`) subquery automatically. What the walker can't see — columns a resolver or
+permission check reads, annotations, virtual relations — you declare as hints on `django_type(...)`
+or on the field. Getting this wrong is silent: the query returns correct data and issues one
+round-trip per row.
 
-Read `references/query-optimization.md` when: adding an ObjectType, adding a resolver that reads a
-model field not exposed through GraphQL, seeing per-row `refresh_from_db` in the SQL log, or
-reviewing any change to an ObjectType on a list path.
+Read `references/query-optimization.md` when: adding a type, adding a resolver that reads a model
+field not exposed through GraphQL, seeing per-row `refresh_from_db` in the SQL log, or reviewing
+any change to a type on a list path.
 
 ---
 
-### 8. Field-Level `optimizer_hook`
-When a field belongs to a shared interface, put the optimization on the *field* rather than in
-every consuming ObjectType's `pre_optimization_hook`. The compiler calls `field.optimizer_hook`
-only when that field is selected, so the cost is never paid by queries that don't ask for it. This
-is also the only way to prefetch a *virtual relation* — one with no direct FK, reached through
-`DocumentId`.
+### 8. Field-Level Hints on Shared Interfaces
+When a field belongs to a shared interface, put the hint on the *field*
+(`strawberry_django.field(annotate=..., prefetch_related=...)`) rather than on every implementing
+type. It applies only when that field is selected, and `model_from_info(info)` gives the
+implementing model. This is also the only way to prefetch a *virtual relation* — one with no direct
+FK, reached through `DocumentId`.
 
 Read `references/optimizer-hooks.md` when: adding a field to a shared GraphQL interface, exposing
 a count or flag that consumers shouldn't have to wire up, or optimizing a relation that routes
@@ -187,15 +189,13 @@ maintaining a count on save/delete.
 ---
 
 ### 10. Connection Fields
-`query_optimizer.DjangoConnectionField` runs the optimizer.
-`graphene_django.filter.DjangoFilterConnectionField` does **not** — under it,
-`pre_optimization_hook` and every `optimizer_hook` become dead code. About half this repo still
-uses the latter, so choosing the wrong one silently discards all the work from sections 7–9. Also
-covers `CountedConnection`, `skip_ast_walker`, and nested same-type connections.
+Lists are `@connection(CountedConnection[XLazy] | None, filterset_class=XFilter)` from
+`baseapp_core.strawberry.connections`: `offset` + FilterSet arguments, `totalCount` / `edgeCount`,
+optimizer always on. Resolvers return unevaluated querysets. Relation connections come from
+`django_type(relations=...)`, not hand-declared fields.
 
-Read `references/connection-fields.md` when: adding any connection field, optimizing a list that
-ignores your hook, returning an empty queryset from a resolver, or building a self-referencing
-connection.
+Read `references/connection-fields.md` when: adding any connection field, filtering or ordering a
+list by an annotation, or returning an empty queryset from a resolver.
 
 ---
 
@@ -205,8 +205,8 @@ for exact counts with a per-query explanation, and `CaptureQueriesContext` for u
 SQL-shape assertions. The strongest form asserts that **doubling the data doesn't change the
 count**. Every assertion carries a ranked "likely cause" message.
 
-Read `references/query-count-tests.md` when: finishing any optimization work, adding an ObjectType
-on a list path, or reviewing a PR that changes a hook, an interface field, or a connection field.
+Read `references/query-count-tests.md` when: finishing any optimization work, adding a type
+on a list path, or reviewing a PR that changes a hint, an interface field, or a connection field.
 
 ---
 

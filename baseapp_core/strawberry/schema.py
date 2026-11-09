@@ -57,3 +57,11 @@ def build_schema(
         extensions=[DjangoOptimizerExtension, OperationContextExtension, *extensions],
         **schema_kwargs,
     )
+
+
+def get_schema(path: str | None = None) -> Schema:
+    """The project schema (`settings.STRAWBERRY_SCHEMA`); importing it registers every type."""
+    from django.conf import settings
+    from django.utils.module_loading import import_string
+
+    return import_string(path or settings.STRAWBERRY_SCHEMA)

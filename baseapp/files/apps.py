@@ -19,11 +19,6 @@ class FilesConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
 
         registry.register(FilesMetadataService())
 
-    def register_graphql_shared_interfaces(self, registry) -> None:
-        from .graphql.interfaces import get_files_interface
-
-        registry.register("FilesInterface", get_files_interface)
-
     def register_strawberry_shared_interfaces(self, registry) -> None:
         from .strawberry import get_files_interface
 

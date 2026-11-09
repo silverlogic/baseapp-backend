@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-15 20:33+0000\n"
+"POT-Creation-Date: 2026-11-09 03:27+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -21,7 +21,7 @@ msgstr ""
 msgid "BaseApp Activity Log"
 msgstr "BaseApp Registro de Atividades"
 
-#: graphql/filters.py
+#: filters.py
 msgid "`created_from` must be earlier than or equal to `created_to`."
 msgstr "`created_from` deve ser anterior ou igual a `created_to`."
 

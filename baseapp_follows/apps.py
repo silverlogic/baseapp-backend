@@ -20,11 +20,6 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
 
         registry.register(FollowableMetadataService())
 
-    def register_graphql_shared_interfaces(self, registry: GraphQLSharedInterfaceRegistry) -> None:
-        from .graphql.interfaces import FollowsInterface
-
-        registry.register("FollowsInterface", FollowsInterface)
-
     def register_strawberry_shared_interfaces(
         self, registry: GraphQLSharedInterfaceRegistry
     ) -> None:

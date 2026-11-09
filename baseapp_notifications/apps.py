@@ -28,11 +28,6 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
 
         registry.register(NotificationService())
 
-    def register_graphql_shared_interfaces(self, registry) -> None:
-        from .graphql.interfaces import get_notifications_interface
-
-        registry.register("NotificationsInterface", get_notifications_interface)
-
     def register_strawberry_shared_interfaces(self, registry) -> None:
         from .strawberry import get_notifications_interface
 

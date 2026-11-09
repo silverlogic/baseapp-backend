@@ -17,12 +17,6 @@ class OrganizationsPlugin(BaseAppPlugin):
                     "baseapp_organizations.permissions.OrganizationsPermissionsBackend",
                 ],
             },
-            graphql_queries=[
-                "baseapp_organizations.graphql.queries.OrganizationsQueries",
-            ],
-            graphql_mutations=[
-                "baseapp_organizations.graphql.mutations.OrganizationsMutations",
-            ],
             strawberry_queries=[
                 "baseapp_organizations.strawberry.queries.OrganizationsQueries",
             ],

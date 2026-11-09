@@ -1,9 +1,8 @@
 """Subscriptions over graphql-transport-ws (the protocol of the frontend's `graphql-ws` client).
 
-Replaces `baseapp_core.graphql.consumers` (channels_graphql_ws). While both schemas exist, every
-Graphene `Subscription.broadcast(group=..., payload=...)` is bridged to the Strawberry group
-`subscription_group(<SubscriptionClass name>, group)`; Strawberry subscriptions `listen` there.
-Payloads cross the channel layer: model instances travel as references and are re-fetched.
+Publishers `broadcast(subscription_group(<name>, group), payload)`; subscriptions `listen` on the
+same groups. Payloads cross the channel layer: model instances travel as references and are
+re-fetched.
 """
 
 import hashlib
@@ -27,7 +26,7 @@ _MODEL_MARKER = "__baseapp_model__"
 
 
 def subscription_group(subscription_name: str, group: Any = None) -> str:
-    """Channel-layer group for `subscription_name` + Graphene group (hashed: any string is valid)."""
+    """Channel-layer group for `subscription_name` + `group` (hashed: any string is valid)."""
     digest = hashlib.sha256(f"{subscription_name}:{group}".encode()).hexdigest()
     return f"baseapp-strawberry-{digest}"
 
@@ -68,7 +67,24 @@ class WebSocketContext:
         self.channels_scope = consumer.scope
         self.connection_params: dict[str, Any] = {}
         self.user = consumer.scope.get("user") or AnonymousUser()
-        self.headers: dict[str, str] = {}
+        self.headers: dict[str, str] = {
+            k.decode("latin1"): v.decode("latin1") for k, v in consumer.scope.get("headers", [])
+        }
+
+    def build_absolute_uri(self, location: str = "/") -> str:
+        """Like `HttpRequest.build_absolute_uri`, from the handshake's host and scheme."""
+        from urllib.parse import urlsplit
+
+        from django.conf import settings
+
+        if urlsplit(location).scheme:
+            return location
+        host = self.headers.get("x-forwarded-host") or self.headers.get("host")
+        if not host:
+            return f"{getattr(settings, 'URL', '').rstrip('/')}{location}"
+        secure = self.channels_scope.get("scheme") in ("wss", "https")
+        scheme = self.headers.get("x-forwarded-proto") or ("https" if secure else "http")
+        return f"{scheme}://{host}{location}"
 
 
 @database_sync_to_async
@@ -140,30 +156,3 @@ async def listen(info: Info, groups: Sequence[str]) -> AsyncGenerator[dict[str, 
     ) as messages:
         async for message in messages:
             yield await deserialize_payload(message["payload"])
-
-
-def install_graphene_bridge() -> None:
-    """Make every Graphene subscription broadcast reach the Strawberry subscribers too."""
-    try:
-        import channels_graphql_ws
-    except ImportError:
-        return
-    subscription = channels_graphql_ws.Subscription
-    if getattr(subscription, "_strawberry_bridged", False):
-        return
-    original_sync = subscription.broadcast_sync.__func__
-    original_async = subscription.broadcast_async.__func__
-
-    def broadcast_sync(cls: Any, *, group: Any = None, payload: Any = None) -> Any:
-        result = original_sync(cls, group=group, payload=payload)
-        broadcast(subscription_group(cls.__name__, group), payload or {})
-        return result
-
-    async def broadcast_async_bridge(cls: Any, *, group: Any = None, payload: Any = None) -> Any:
-        result = await original_async(cls, group=group, payload=payload)
-        await broadcast_async(subscription_group(cls.__name__, group), payload or {})
-        return result
-
-    subscription.broadcast_sync = classmethod(broadcast_sync)
-    subscription.broadcast_async = classmethod(broadcast_async_bridge)
-    subscription._strawberry_bridged = True

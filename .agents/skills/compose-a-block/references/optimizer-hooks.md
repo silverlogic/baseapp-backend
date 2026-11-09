@@ -1,187 +1,126 @@
-# Field-Level `optimizer_hook`
+# Field-Level Optimizer Hints
 
-`pre_optimization_hook` optimizes *a type*. `optimizer_hook` optimizes *a field* — and the
-compiler calls it only when that field is actually selected.
+A hint on `django_type(...)` optimizes *a type*. A hint on a field optimizes *a field* — and the
+optimizer applies it only when that field is actually selected.
 
-Reach for it when a field lives on a **shared GraphQL interface**. An interface is mixed into many
-ObjectTypes across many blocks; requiring each of them to add the right lines to its own
-`pre_optimization_hook` is both a coupling problem and a reliability problem. Attaching the
-optimization to the field means consumers wire up nothing.
+Reach for field hints when a field lives on a **shared GraphQL interface**. An interface is
+implemented by many types across many blocks; requiring each of them to add the right `only=` or
+annotation is both a coupling problem and a reliability problem. Attaching the hint to the field
+means consumers wire up nothing — Strawberry copies interface fields, hints included, into every
+implementing type.
 
 ## When to use which
 
 | Situation | Mechanism |
 |---|---|
-| Column/relation this specific type always needs | `pre_optimization_hook` |
-| Field on a shared interface, consumed by other blocks' types | `optimizer_hook` |
-| Expensive annotation only some queries want | `optimizer_hook` — pay per selection |
-| Relation with no direct FK, reached through `DocumentId` | `optimizer_hook` (only way to register the prefetch path) |
-
-## Wiring
-
-Attach the function to the field object as an attribute after declaring the field.
-`baseapp_mentions/graphql/interfaces.py:28`:
-
-```python
-# The `*_optimizer_hook` functions below are attached to each field's
-# `optimizer_hook` attribute. The query optimizer calls them during AST
-# compilation only when the matching field is selected in the GraphQL
-# query, so the extra annotation or prefetch the resolver needs is added
-# on demand — never paid for on queries that don't touch the field, and
-# without requiring every consuming ObjectType to wire it up in its own
-# `pre_optimization_hook`.
-
-
-def _mentions_count_optimizer_hook(compiler) -> None:
-    """Attach `_mentions_count` on the parent optimizer only when
-    `mentionsCount` is selected.
-    """
-    if service := shared_services.get("mentionable_metadata"):
-        service.annotate_mentions_count_in_optimizer_compiler(compiler)
-
-
-class MentionsInterface(RelayNode):
-    mentions = DjangoConnectionField(get_object_type_for_model(Mention))
-    mentions_count = graphene.Field(graphene.Int)
-    is_mentioning_profile = graphene.Field(graphene.Boolean, profile_id=graphene.ID(required=True))
-
-    mentions.optimizer_hook = _mentions_optimizer_hook
-    mentions_count.optimizer_hook = _mentions_count_optimizer_hook
-    is_mentioning_profile.optimizer_hook = _is_mentioning_profile_optimizer_hook
-```
-
-The hook takes the **compiler**, not a queryset. `compiler.optimizer` is the parent optimizer —
-the one for the type the interface is mixed into.
+| Column this specific type always needs | `django_type(..., only=[...])` |
+| Field on a shared interface, consumed by other blocks' types | field hint |
+| Expensive annotation only some queries want | field `annotate=` — pay per selection |
+| Relation with no direct FK, reached through `DocumentId` | field `prefetch_related=lambda info: Prefetch(...)` |
 
 ## Pattern A — conditional annotation
 
-`baseapp_blocks/services.py:220`:
+`baseapp_blocks/strawberry/types.py`:
 
 ```python
-    def annotate_blockers_count_in_optimizer_compiler(self, compiler: OptimizationCompiler) -> None:
-        """Attach `_blockable_blockers_count` to the parent optimizer's annotations.
+def _metadata_annotation(name: str, builder: str) -> dict[str, Callable[[Info], Any]]:
+    """Optimizer hint: annotate the count subquery on whatever model implements the interface."""
 
-        Wired from `BlocksInterface.blockers_count.optimizer_hook` so the
-        subquery only fires when the GraphQL query actually selects
-        `blockersCount`. Setting the annotation on `optimizer.annotations` also
-        triggers `query_optimizer`'s auto-promotion of `select_related` to
-        `prefetch_related` for nested FK paths (e.g. `block.target`), which is
-        what carries the annotation through to the nested Profile load.
-        """
-        parent = compiler.optimizer
-        if parent is None or parent.model is None:
-            return
-        parent.annotations.setdefault(
-            "_blockable_blockers_count", self._blockers_count_subquery(parent.model)
-        )
+    def annotation(info: Info) -> Any:
+        service = shared_services.get("blockable_metadata")
+        return getattr(service, builder)(model_from_info(info))
+
+    return {name: annotation}
+
+
+@strawberry.interface(name="BlocksInterface")
+class BlocksInterface(Node):
+    @strawberry_django.field(
+        annotate=_metadata_annotation("_blockable_blockers_count", "_blockers_count_subquery")
+    )
+    def blockers_count(self, info: Info) -> int | None:
+        if info.context.user.has_perm("baseapp_blocks.view_block-blockers_count", self):
+            return shared_services.get("blockable_metadata").get_blockers_count(self)
+        return None
 ```
 
 The shape to copy:
 
-1. Guard `compiler.optimizer is None or .model is None` and return quietly.
-2. Build the subquery from `parent.model` — the hook is generic across every consuming type.
-3. `setdefault`, not assignment, so a consumer that already annotated wins.
+1. The hint value is a callable taking `info`; it runs at optimization time.
+2. Build the subquery from `model_from_info(info)` — the field is generic across every implementing
+   type.
+3. The resolver reads the annotation through the service getter, which falls back to a query when
+   the annotation is absent (`annotate-queryset.md`).
 
-Same pattern for `blocking_count` at `baseapp_blocks/services.py:237`, and for mentions at
-`baseapp_mentions/services.py:208` and `:222`.
+Same pattern in `baseapp_comments`, `baseapp_follows`, `baseapp_reactions`, `baseapp_ratings` and
+`baseapp_mentions` interfaces.
 
 ## Pattern B — prefetching a virtual relation
 
-The hardest case. `mentions` is a connection on any commentable/postable object, but there is no
-FK from the consumer to `Mention` — the link runs through `DocumentId`. Without a hint the
-optimizer treats the field as opaque and falls back to a per-parent fetch.
-
-The fix is to register a child `QueryOptimizer` on the `document__<reverse>` path, which promotes
-the field to a real `prefetch_related`. `baseapp_mentions/services.py:238`:
+The hardest case. `mentions` is a connection on any commentable/postable object, but there is no FK
+from the consumer to `Mention` — the link runs through `DocumentId`. A callable `prefetch_related`
+hint registers the `document__<reverse>` path as a real prefetch, paginated per parent
+(`baseapp_mentions/strawberry/interfaces.py`):
 
 ```python
-    def prefetch_mentions_in_optimizer_compiler(self, compiler: OptimizationCompiler) -> None:
-        parent_optimizer = compiler.optimizer
-        if parent_optimizer is None or parent_optimizer.model is None:
-            return
+def _mentions_prefetch(info: Info) -> Prefetch:
+    queryset = optimize(
+        Mention.objects.all(), info, store=OptimizerStore.with_hints(only=["target_document_id"])
+    )
+    page = _connection_slice(info)
+    queryset = apply_window_pagination(
+        queryset,
+        related_field_id="target_document_id",
+        offset=page.start,
+        limit=page.end - page.start,
+    )
+    return Prefetch(
+        Mention.document_prefetch_path(), queryset=mark_optimized_by_prefetching(queryset)
+    )
 
-        Mention = swapper.load_model("baseapp_mentions", "Mention")
 
-        prefetch_path = Mention.document_prefetch_path()
-        if prefetch_path in parent_optimizer.prefetch_related:
-            return
-
-        mentions_opt = QueryOptimizer(
-            model=Mention,
-            info=compiler.info,
-            name=prefetch_path,
-            parent=parent_optimizer,
-        )
-
-        # `recursive_set_annotations` in `BaseAppDjangoObjectType.pre_optimization_hook`
-        # gates annotation attachment on `"id" in only_fields`; without this, the
-        # Profile prefetch below would NOT receive its `mapped_public_id` annotation
-        # and the relay-id resolver would fall back to a per-row `DocumentId` lookup.
-        mentions_opt.only_fields.append("id")
-        mentions_opt.related_fields.extend(["target_document_id", "profile_id"])
-
-        profile_opt = QueryOptimizer(
-            model=Profile,
-            info=compiler.info,
-            name="profile",
-            parent=mentions_opt,
-        )
-        # Same gate: "id" in only_fields ⇒ Profile gets its `mapped_public_id`
-        # subquery annotated, killing the per-row DocumentId lookup on relay-id.
-        profile_opt.only_fields.append("id")
+@strawberry.interface(name="MentionsInterface")
+class MentionsInterface(Node):
+    @connection(CountedConnection[MentionLazyType] | None, prefetch_related=_mentions_prefetch)
+    def mentions(self, info: Info) -> Iterable[Model]:
+        docs = self.document.all() if hasattr(self, "document") else None
+        if docs is not None and (doc := next(iter(docs), None)) is not None:
+            return getattr(doc, Mention.target_document_accessor()).all()
+        ...
 ```
 
-Three non-obvious requirements:
+Non-obvious requirements:
 
-- **Append `"id"` to `only_fields` at every level you construct.** The base hook's annotation
-  walker is gated on it (see `query-optimization.md`). Forget it and that level loses its relay-id
-  annotation — a silent per-row lookup.
-- **Idempotency.** Check `if prefetch_path in parent_optimizer.prefetch_related: return`. Hooks can
-  fire more than once per compile.
+- **`optimize(queryset, info)` the prefetched queryset.** That is what applies the selection under
+  the field, including the relay-id annotation. A raw queryset loses both.
+- **For connections, window-paginate and `mark_optimized_by_prefetching`**, so the resolver's
+  queryset is served from the prefetch cache instead of re-queried per parent.
+- **The resolver must read the prefetched path** (`self.document.all()` …), with a fallback query
+  for non-optimized paths (subscriptions, mutation payloads).
 - **The consuming model must expose `document = GenericRelation(DocumentId)`** so the reverse path
-  is a real Django prefetch path. `DocumentIdMixin` declares it, so any consumer inheriting the
-  mixin gets it free.
+  is a real Django prefetch path. `DocumentIdMixin` declares it.
 
-## The interface `Meta.model` requirement
+## Hints on plain `strawberry.field`
 
-For the AST walker to descend into an inline fragment (`... on BlocksInterface { … }`), the
-interface must declare the model it is mixed into. `baseapp_blocks/graphql/object_types.py:49`
-records why:
-
-```python
-class BlocksInterface(RelayNode):
-    ...
-    class Meta:
-        # `query_optimizer`'s AST walker skips `... on <Interface>` inline
-        # fragments whose declared model doesn't match the queryset's model.
-        # Pinning Profile here lets the top-level `node(id: profile-relay-id)`
-        # optimization pass descend into BlocksInterface's fields when resolving
-        # a Profile. Without this, `block.target.blockersCount` never gets its
-        # annotation attached on the outer pass and falls back to a per-row
-        # `BlockableMetadata` fetch.
-        model = Profile
-```
-
-`baseapp_core/graphql/relay.py:43` copies this onto `_meta.model` specifically so
-`query_optimizer.GraphQLASTWalker` can resolve `fragment_model` from interfaces. Omit it and the
-walker skips the fragment — every field inside it goes unoptimized.
+Fields whose return type is a lazy type can't be `strawberry_django.field(graphql_type=Lazy)` (it
+crashes at class creation). Declare them with `@strawberry.field(graphql_type=Optional[Lazy])` and,
+if they need a hint, set the field's `.store` after the class is defined — see `Node.id`
+(`baseapp_core/strawberry/relay.py`) and `_MetadataOptimizerStore` in
+`baseapp_pages/strawberry/interfaces.py`.
 
 ## Documenting the contract
 
-Interfaces that carry their own optimization should say so, so consumers don't duplicate it.
-`MentionsInterface`'s docstring is the model to follow:
+Interfaces that carry their own optimization should say so, so consumers don't duplicate it:
 
-> All optimizer wiring lives on the fields below — consumers do not need to add anything to their
-> own `pre_optimization_hook`.
+> Mentions fields for any DocumentId-aware model. Optimizer hints live on the fields.
 
 ## Anti-patterns
 
-- Forgetting `only_fields.append("id")` on a hand-built `QueryOptimizer`. The most common cause of
+- Building the subquery from a hardcoded model instead of `model_from_info(info)`. The field runs
+  for every implementing type.
+- A `Prefetch` hint whose queryset isn't passed through `optimize(...)` — the most common cause of
   "I added the prefetch and the count barely moved".
-- Assigning instead of `setdefault` on `parent.annotations` — clobbers a consumer's own annotation.
-- Building the subquery from a hardcoded model instead of `parent.model`. The hook runs for every
-  consuming type.
-- Omitting `Meta.model` on an interface, then wondering why the hook never fires.
-- No `None` guard on `compiler.optimizer` — the hook also runs on non-optimized paths.
-- Putting interface optimization into each consuming block's `pre_optimization_hook`. It reverses
+- A connection prefetch without window pagination / `mark_optimized_by_prefetching` — the resolver
+  ignores the prefetch and queries per parent.
+- Putting interface optimization into each consuming type's `only=` / `get_queryset`. It reverses
   the dependency direction the plugin architecture exists to prevent.

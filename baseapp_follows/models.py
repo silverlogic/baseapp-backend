@@ -1,5 +1,3 @@
-from typing import TYPE_CHECKING
-
 import swapper
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
@@ -11,9 +9,6 @@ from model_utils.models import TimeStampedModel
 
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import DocumentId, DocumentIdMixin, DocumentIdUniqueTargetMixin
-
-if TYPE_CHECKING:
-    from baseapp_core.graphql import DjangoObjectType
 
 
 class AbstractFollowableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
@@ -218,9 +213,3 @@ class AbstractFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
             target__content_type=target_ct,
             target__object_id=target.pk,
         ).exists()
-
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import FollowObjectType
-
-        return FollowObjectType

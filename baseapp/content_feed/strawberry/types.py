@@ -12,7 +12,7 @@ from baseapp_core.strawberry import CountedConnection, Node, django_type, type_f
 from baseapp_core.strawberry.connections import connection
 from baseapp_core.strawberry.fields import thumbnail_field
 
-from ..graphql.filters import ContentPostFilter, ContentPostImageFilter
+from ..filters import ContentPostFilter, ContentPostImageFilter
 
 ContentPost = swapper.load_model("baseapp_content_feed", "ContentPost")
 ContentPostImage = swapper.load_model("baseapp_content_feed", "ContentPostImage")
@@ -24,11 +24,12 @@ class ContentPostImageType(Node):
     image: str | None = thumbnail_field("image")
 
 
-@django_type(
-    ContentPost,
-    filterset_class=ContentPostFilter,
-    relations=("user", "profile") if apps.is_installed("baseapp_profiles") else ("user",),
-)
+def content_post_relations() -> tuple[str, ...]:
+    """`profile` is exposed only when baseapp_profiles is installed."""
+    return ("user", "profile") if apps.is_installed("baseapp_profiles") else ("user",)
+
+
+@django_type(ContentPost, filterset_class=ContentPostFilter, relations=content_post_relations())
 class ContentPostType(
     *strawberry_shared_interfaces.get(
         "MentionsInterface", "ReactionsInterface", "CommentsInterface"

@@ -9,7 +9,7 @@ from baseapp_core.strawberry import CountedConnection
 from baseapp_core.strawberry.connections import connection
 from baseapp_core.strawberry.relay import typed_node_field
 
-from ..graphql.object_types import PageFilter
+from ..filters import PageFilter
 from ..models import URLPath
 from .interfaces import URLPathLazyType
 from .types import PageLazyType

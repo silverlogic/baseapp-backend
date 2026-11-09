@@ -19,12 +19,6 @@ class ReportsPlugin(BaseAppPlugin):
                 ],
             },
             # GraphQL
-            graphql_queries=[
-                "baseapp_reports.graphql.queries.ReportsQueries",
-            ],
-            graphql_mutations=[
-                "baseapp_reports.graphql.mutations.ReportsMutations",
-            ],
             strawberry_queries=[
                 "baseapp_reports.strawberry.queries.ReportsQueries",
             ],

@@ -15,11 +15,6 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
 
         registry.register(ReportableMetadataService())
 
-    def register_graphql_shared_interfaces(self, registry) -> None:
-        from .graphql.interfaces import get_reports_interface
-
-        registry.register("ReportsInterface", get_reports_interface)
-
     def register_strawberry_shared_interfaces(self, registry) -> None:
         from .strawberry import get_reports_interface
 

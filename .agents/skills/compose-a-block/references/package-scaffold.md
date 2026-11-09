@@ -38,14 +38,14 @@ baseapp/foo/
 ├── services.py          # SharedServiceProvider implementations (or services/)
 ├── signals.py           # receivers; connect in ready() with dispatch_uid
 ├── README.md            # how to install / use / customise the model
-├── graphql/
-│   ├── __init__.py      # empty
-│   ├── object_types.py  # Base<X>ObjectType + concrete <X>ObjectType
-│   ├── interfaces.py    # lazy getters returning interface classes
+├── filters.py           # FilterSets, shared by GraphQL and DRF
+├── strawberry/
+│   ├── __init__.py      # lazy interface getters; no strawberry imports at module level
+│   ├── types.py         # AbstractFooType + @django_type FooType
+│   ├── interfaces.py    # shared interfaces (optional)
 │   ├── queries.py       # class FooQueries
-│   ├── mutations.py     # class FooMutations (or mutations/)
-│   ├── subscriptions.py # optional
-│   └── filters.py       # FilterSets, shared with DRF
+│   ├── mutations.py     # inputs, payloads, class FooMutations (or mutations/)
+│   └── subscriptions.py # optional
 ├── rest_framework/      # only if the block has a REST surface
 │   ├── __init__.py
 │   ├── serializers.py
@@ -58,13 +58,12 @@ baseapp/foo/
 ```
 
 Only `__init__.py`, `apps.py`, and `plugin.py` are mandatory. Add the rest when the block needs
-them — `baseapp_api_key` has no `graphql/object_types.py`; `baseapp_ratings` has no `signals.py`.
+them — `baseapp_api_key` has no `strawberry/types.py`; `baseapp_ratings` has no `signals.py`.
 
 Any of these single modules may become a package when it outgrows one file. Split it into a
 directory of the same name with an `__init__.py` re-exporting the public names, so importers don't
-change. `baseapp_profiles` does this twice: `services/` (`base_service.py`, `graphql_service.py`)
-and `graphql/mutations/` (`invitations.py`, `profiles.py`, `roles.py`). Prefer one file until it is
-genuinely unwieldy — most blocks never need the split.
+change. `baseapp_profiles` does this with `services/` (`base_service.py`, `graphql_service.py`).
+Prefer one file until it is genuinely unwieldy — most blocks never need the split.
 
 **Default to GraphQL.** Add `rest_framework/` only when the work is explicitly scoped to REST.
 
@@ -114,29 +113,29 @@ target; `ProfileFactory()` is the usual choice in tests.
 | Plugin class | `<Name>Plugin` — `RatingsPlugin`, `CommentsPlugin` |
 | Service class | `<Name>Service` — `CommentableMetadataService` |
 | Abstract model | `Abstract<Name>` — `AbstractRate` |
-| Base ObjectType | `Base<Name>ObjectType`, concrete `<Name>ObjectType` |
+| GraphQL type | abstract `Abstract<Name>Type` (`name="Abstract<Name>"`), registered `<Name>Type` |
 | Metadata model | `Abstract<Thing>ableMetadata` — `AbstractCommentableMetadata` |
 | Interface | `<Name>sInterface` — `CommentsInterface` |
 | Settings | `BASEAPP_<NAME>_<SETTING>` |
 
-The `Base<X>ObjectType` / `<X>ObjectType` split exists so consuming projects can build their own
-concrete type from the base without inheriting the registration:
+The `Abstract<X>Type` / `<X>Type` split exists so consuming projects can register their own
+type from the base (the registry is keyed by model; the last `django_type` registration wins):
 
 ```python
-class BaseCommentObjectType:
-    class Meta:
-        model = Comment
-        ...
+@strawberry_django.type(Comment, name="AbstractComment")
+class AbstractCommentType:
+    body: strawberry.auto
+    ...
 
-class CommentObjectType(BaseCommentObjectType, DjangoObjectType):
-    class Meta(BaseCommentObjectType.Meta):
-        pass
+@django_type(Comment, filterset_class=CommentFilter, relations=("user", "in_reply_to"))
+class CommentType(AbstractCommentType, *comment_interfaces()):
+    pass
 ```
 
 ## README.md
 
 Every block has one. `baseapp_ratings/README.md` is the template: how to install (what the plugin
-contributes automatically), how to opt an ObjectType into the interface, how to read counts via the
+contributes automatically), how to opt a type into the interface, how to read counts via the
 shared service, and how to customise the swappable model.
 
 ## Anti-patterns

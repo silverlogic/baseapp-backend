@@ -1,0 +1,31 @@
+id: graphql-use-django-type
+valid:
+  - |
+    @django_type(Block, only=["actor_id", "target_id"])
+    class BlockType(Node):
+        created: strawberry.auto
+  - |
+    @strawberry_django.type(Comment, name="AbstractComment")
+    class AbstractCommentType:
+        body: strawberry.auto
+  - |
+    @django_type(Comment, filterset_class=CommentFilter)
+    class CommentType(AbstractCommentType, *comment_interfaces()):
+        pass
+  - |
+    @strawberry.type(name="BlockTogglePayload")
+    class BlockTogglePayload(RelayMutationPayload):
+        block_deleted_id: strawberry.ID | None = None
+invalid:
+  - |
+    @strawberry_django.type(Block)
+    class BlockType(Node):
+        created: strawberry.auto
+  - |
+    @strawberry_django.type(Comment, name="Comment")
+    class CommentType(AbstractCommentType, PermissionsInterface, Node):
+        pass
+  - |
+    @strawberry_django.type(Rate)
+    class RateType(relay.Node):
+        value: strawberry.auto

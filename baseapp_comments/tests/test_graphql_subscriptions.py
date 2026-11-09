@@ -1,207 +1,158 @@
-import textwrap
+"""`onCommentChange` subscriptions, fed by the comment signal publishers."""
+
+import asyncio
+from typing import Any
 
 import pytest
-import swapper
 from channels.db import database_sync_to_async
 from django.contrib.contenttypes.models import ContentType
 from django.test import override_settings
 
 from baseapp_core.models import DocumentId
+from baseapp_core.strawberry.subscriptions import subscription_group
+from baseapp_core.strawberry.testing import next_result, wait_for_group, ws_communicator
+from baseapp_core.tests.factories import UserFactory
+from baseapp_profiles.tests.factories import ProfileFactory
 
 from .factories import CommentFactory
 
-Comment = swapper.load_model("baseapp_comments", "Comment")
-
-pytestmark = pytest.mark.django_db(transaction=True)
-
-SUBSCRIPTION_QUERY = textwrap.dedent("""
-    subscription op_name($targetObjectId: ID) {
-      onCommentChange(targetObjectId: $targetObjectId) {
-        createdComment {
-          node {
-            id
-          }
+SUBSCRIPTION_QUERY = """
+    subscription OnCommentChange($targetObjectId: ID) {
+        onCommentChange(targetObjectId: $targetObjectId) {
+            createdComment {
+                node {
+                    id
+                    body
+                }
+            }
+            updatedComment {
+                id
+                body
+            }
+            deletedCommentId
         }
-
-        updatedComment {
-          id
-          body
-        }
-
-        deletedCommentId
-      }
     }
-    """)
+"""
 
 
+async def _wait_for_subscriber(group: str) -> None:
+    await wait_for_group(subscription_group("OnCommentChange", group), timeout=5)
+
+
+async def _next_update(results: Any, body: str) -> Any:
+    """Skip the update events the factory's own saves publish."""
+    async for result in results:
+        updated = (result.data or {}).get("onCommentChange", {}).get("updatedComment")
+        if result.errors or (updated and updated["body"] == body):
+            return result
+
+
+@database_sync_to_async
+def _relay_id(obj) -> str:
+    return obj.relay_id
+
+
+@database_sync_to_async
+def _update_body(comment, body: str) -> None:
+    comment.body = body
+    comment.save()
+
+
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-async def test_user_recieves_created_comment_subscription_event(graphql_ws_user_client) -> None:
-    # Establish & initialize WebSocket GraphQL connection.
-    client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
-
+async def test_target_subscriber_receives_created_updated_and_deleted_comments() -> None:
     target = await database_sync_to_async(CommentFactory)()
+    target_id = await _relay_id(target)
 
-    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
-    target_relay_id = await database_sync_to_async(lambda: target.relay_id)()
+    async with await ws_communicator() as ws:
+        results = aiter(ws.subscribe(SUBSCRIPTION_QUERY, {"targetObjectId": target_id}))
+        created = asyncio.ensure_future(anext(results))
+        await _wait_for_subscriber(target_id)
 
-    # Subscribe to GraphQL subscription.
-    sub_id = await client.send(
-        msg_type="subscribe",
-        payload={
-            "query": SUBSCRIPTION_QUERY,
-            "operationName": "op_name",
-            "variables": {"targetObjectId": target_relay_id},
-        },
-    )
-    await client.assert_no_messages()
+        comment = await database_sync_to_async(CommentFactory)(target=target, body="first")
+        comment_id = await _relay_id(comment)
+        result = await created
+        assert result.errors is None
+        assert result.data["onCommentChange"] == {
+            "createdComment": {"node": {"id": comment_id, "body": "first"}},
+            "updatedComment": None,
+            "deletedCommentId": None,
+        }
 
-    comment = await database_sync_to_async(CommentFactory)(target=target)
-    comment_relay_id = await database_sync_to_async(lambda: comment.relay_id)()
+        updated = asyncio.ensure_future(_next_update(results, "edited"))
+        await _update_body(comment, "edited")
+        result = await updated
+        assert result.errors is None
+        assert result.data["onCommentChange"]["updatedComment"] == {
+            "id": comment_id,
+            "body": "edited",
+        }
 
-    # Check that subscription message were sent.
-    resp = await client.receive(assert_id=sub_id, assert_type="next")
-    assert resp["data"]["onCommentChange"]["createdComment"]["node"]["id"] == comment_relay_id
+        deleted = asyncio.ensure_future(anext(results))
+        await database_sync_to_async(comment.delete)()
+        result = await deleted
+        assert result.errors is None
+        assert result.data["onCommentChange"]["deletedCommentId"] == comment_id
 
-    # Disconnect and wait the application to finish gracefully.
-    await client.finalize()
 
-
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-async def test_user_recieves_updated_comment_subscription_event(graphql_ws_user_client) -> None:
-    # Establish & initialize WebSocket GraphQL connection.
-    client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
-
+async def test_authenticated_subscriber_receives_created_comment(graphql_ws_user_client) -> None:
     target = await database_sync_to_async(CommentFactory)()
+    target_id = await _relay_id(target)
 
-    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
-    target_relay_id = await database_sync_to_async(lambda: target.relay_id)()
+    async with await graphql_ws_user_client() as ws:
+        created = next_result(ws, SUBSCRIPTION_QUERY, {"targetObjectId": target_id})
+        await _wait_for_subscriber(target_id)
 
-    comment = await database_sync_to_async(CommentFactory)(target=target)
-    comment_relay_id = await database_sync_to_async(lambda: comment.relay_id)()
+        comment = await database_sync_to_async(CommentFactory)(target=target)
+        result = await created
 
-    # Subscribe to GraphQL subscription.
-    sub_id = await client.send(
-        msg_type="subscribe",
-        payload={
-            "query": SUBSCRIPTION_QUERY,
-            "operationName": "op_name",
-            "variables": {"targetObjectId": target_relay_id},
-        },
+    assert result.errors is None
+    assert result.data["onCommentChange"]["createdComment"]["node"]["id"] == await _relay_id(
+        comment
     )
-    await client.assert_no_messages()
-
-    new_body = "updated body"
-    comment.body = new_body
-    await database_sync_to_async(comment.save)()
-
-    # Check that subscription message were sent.
-    resp = await client.receive(assert_id=sub_id, assert_type="next")
-
-    assert resp["data"]["onCommentChange"]["updatedComment"]["id"] == comment_relay_id
-    assert resp["data"]["onCommentChange"]["updatedComment"]["body"] == new_body
-
-    # Disconnect and wait the application to finish gracefully.
-    await client.finalize()
 
 
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-async def test_user_recieves_deleted_comment_subscription_event(graphql_ws_user_client) -> None:
-    # Establish & initialize WebSocket GraphQL connection.
-    client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
+async def test_user_with_view_all_permission_subscribes_to_every_comment() -> None:
+    user = await database_sync_to_async(UserFactory)(is_superuser=True)
+    await database_sync_to_async(ProfileFactory)(owner=user)
 
-    target = await database_sync_to_async(CommentFactory)()
+    async with await ws_communicator(user) as ws:
+        created = next_result(ws, SUBSCRIPTION_QUERY)
+        await _wait_for_subscriber("all")
 
-    comment = await database_sync_to_async(CommentFactory)(target=target)
+        comment = await database_sync_to_async(CommentFactory)(body="anywhere")
+        result = await created
 
-    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
-    target_relay_id = await database_sync_to_async(lambda: target.relay_id)()
-    comment_relay_id = await database_sync_to_async(lambda: comment.relay_id)()
-
-    # Subscribe to GraphQL subscription.
-    sub_id = await client.send(
-        msg_type="subscribe",
-        payload={
-            "query": SUBSCRIPTION_QUERY,
-            "operationName": "op_name",
-            "variables": {"targetObjectId": target_relay_id},
-        },
-    )
-    await client.assert_no_messages()
-
-    await database_sync_to_async(comment.delete)()
-
-    # Check that subscription message were sent.
-    resp = await client.receive(assert_id=sub_id, assert_type="next")
-
-    assert resp["data"]["onCommentChange"]["deletedCommentId"] == comment_relay_id
-
-    # Disconnect and wait the application to finish gracefully.
-    await client.finalize()
+    assert result.errors is None
+    assert result.data["onCommentChange"]["createdComment"]["node"] == {
+        "id": await _relay_id(comment),
+        "body": "anywhere",
+    }
 
 
-@pytest.mark.asyncio
-async def test_anon_recieves_created_comment_subscription_event(graphql_websocket) -> None:
-    # Establish & initialize WebSocket GraphQL connection.
-    client = graphql_websocket(consumer_attrs={"strict_ordering": True})
-
-    target = await database_sync_to_async(CommentFactory)()
-
-    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
-    target_relay_id = await database_sync_to_async(lambda: target.relay_id)()
-
-    # Subscribe to GraphQL subscription.
-    sub_id = await client.send(
-        msg_type="subscribe",
-        payload={
-            "query": SUBSCRIPTION_QUERY,
-            "operationName": "op_name",
-            "variables": {"targetObjectId": target_relay_id},
-        },
-    )
-    await client.assert_no_messages()
-
-    comment = await database_sync_to_async(CommentFactory)(target=target)
-    comment_relay_id = await database_sync_to_async(lambda: comment.relay_id)()
-
-    # Check that subscription message were sent.
-    resp = await client.receive(assert_id=sub_id, assert_type="next")
-    assert resp["data"]["onCommentChange"]["createdComment"]["node"]["id"] == comment_relay_id
-
-    # Disconnect and wait the application to finish gracefully.
-    await client.finalize()
-
-
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 @override_settings(BASEAPP_COMMENTS_CAN_ANONYMOUS_VIEW_COMMENTS=False)
-async def test_anon_cant_recieve_created_comment_subscription_event(graphql_websocket) -> None:
-    # Establish & initialize WebSocket GraphQL connection.
-    client = graphql_websocket(consumer_attrs={"strict_ordering": True})
-
+async def test_anon_cant_receive_created_comment_subscription_event() -> None:
     target = await database_sync_to_async(CommentFactory)()
+    target_id = await _relay_id(target)
 
-    # Since relay_id passes through the hashids strategies, it needs to be retrieved asynchronously.
-    target_relay_id = await database_sync_to_async(lambda: target.relay_id)()
+    async with await ws_communicator() as ws:
+        created = next_result(ws, SUBSCRIPTION_QUERY, {"targetObjectId": target_id})
+        await asyncio.sleep(0.1)
 
-    # Subscribe to GraphQL subscription.
-    await client.send(
-        msg_type="subscribe",
-        payload={
-            "query": SUBSCRIPTION_QUERY,
-            "operationName": "op_name",
-            "variables": {"targetObjectId": target_relay_id},
-        },
-    )
-    await client.assert_no_messages()
+        await database_sync_to_async(CommentFactory)(target=target)
+        done, _ = await asyncio.wait({created}, timeout=0.5)
+        created.cancel()
 
-    await database_sync_to_async(CommentFactory)(target=target)
-
-    # Check that n o subscription message were sent.
-    await client.assert_no_messages()
-
-    # Disconnect and wait the application to finish gracefully.
-    await client.finalize()
+    assert not done
 
 
+@pytest.mark.django_db
 def test_comment_subscription_when_target_is_not_found() -> None:
     comment = CommentFactory()
     missing_target_doc = DocumentId.objects.create(

@@ -25,12 +25,6 @@ class RatingsPlugin(BaseAppPlugin):
                 "BASEAPP_MAX_RATING_VALUE": None,
             },
             # Graphql
-            graphql_queries=[
-                "baseapp_ratings.graphql.queries.RatingsQueries",
-            ],
-            graphql_mutations=[
-                "baseapp_ratings.graphql.mutations.RatingsMutations",
-            ],
             strawberry_queries=[
                 "baseapp_ratings.strawberry.queries.RatingsQueries",
             ],

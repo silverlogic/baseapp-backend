@@ -11,7 +11,7 @@ class CurrentProfileMixin:
     Mixin to set current_profile on request.user for REST framework views.
 
     This replicates the logic from baseapp_profiles.middleware.CurrentProfileMiddleware
-    and baseapp_profiles.graphql.middleware.CurrentProfileMiddleware for DRF views.
+    and baseapp_profiles.strawberry.extensions.CurrentProfileExtension for DRF views.
 
     Usage:
         class MyViewSet(CurrentProfileMixin, viewsets.ModelViewSet):

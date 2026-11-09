@@ -82,8 +82,8 @@ The `See ...` paths in rule messages point at the `backend-conventions` /
 | `drf-validation-in-viewset` | warning | Validate via Serializer, not `request.data` reads in view methods (drf-file-layout.md) |
 | `drf-filters-in-viewset` | warning | Filter via FilterSet, not `request.GET` / `request.query_params` (drf-file-layout.md) |
 | `exception-handling-without-logging` | warning | Broad `except Exception` must `logger.exception(...)` or re-raise (error-shape.md) |
-| `graphql-use-django-object-type` | error | Import `DjangoObjectType` from `baseapp_core.graphql`, not `graphene_django` (graphql-file-layout.md) |
-| `graphql-use-relay-mutation` | warning | Mutations inherit `RelayMutation`, not `graphene.Mutation` (graphql-file-layout.md) |
+| `graphql-use-django-type` | error | Model types (`Node` subclasses) are declared with `baseapp_core.strawberry.django_type`, not bare `@strawberry_django.type` (that is only for `Abstract*` field bases) (graphql-file-layout.md) |
+| `graphql-use-relay-mutation` | warning | Mutations are `@relay_mutation` resolvers, not `strawberry.mutation` / `strawberry_django.mutation` (`baseapp_core/strawberry/**` is exempt: it implements `relay_mutation`) (graphql-file-layout.md) |
 | `graphql-use-relay-model` | hint | Models exposed via GraphQL inherit `RelayModel` (only `models.py` files; ast-grep can't tell which models are exposed, hence hint) (graphql-file-layout.md) |
 
 ### Suppressing a finding
@@ -130,9 +130,9 @@ Some guidelines can't be enforced with AST patterns and stay in code-review terr
   are skipped. Suppress a false positive with an `ast-grep-ignore` comment; the
   `makemessages` freshness gate covers anything that does use the i18n tags.
 - `related_name` **plurality** (plural FK/M2M vs singular O2O) — grammar, not syntax.
-- `get_node` permission checks on ObjectTypes — presence is checkable, correctness isn't.
+- `get_node` permission checks on Strawberry types — presence is checkable, correctness isn't.
 - ISO 8601 serialization, UTC storage at runtime, docstring quality, queryset
-  optimization (`select_related` / N+1), permission granularity, file-placement rules
+  optimization (missing optimizer hints / N+1), permission granularity, file-placement rules
   (`permissions.py` / `filtersets.py` splits).
 
 ## Contributing new rules

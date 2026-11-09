@@ -1,3 +1,4 @@
+from django.utils.translation import gettext_lazy as _
 from graphql import (
     FieldNode,
     FragmentSpreadNode,
@@ -58,7 +59,7 @@ def _complexity(
 def check_max_complexity(info: Info, max_complexity: int) -> None:
     """query_optimizer's `max_complexity`: count related fields selected below the current field.
 
-    Raises before any SQL runs, with Graphene's message.
+    Raises before any SQL runs.
     """
     raw = info._raw_info
     gql_schema = raw.schema
@@ -67,4 +68,6 @@ def check_max_complexity(info: Info, max_complexity: int) -> None:
         _complexity(info, gql_schema, named, node.selection_set) for node in raw.field_nodes
     )
     if complexity > max_complexity:
-        raise GraphQLError(f"Query complexity exceeds the maximum allowed of {max_complexity}")
+        raise GraphQLError(
+            _("Query complexity exceeds the maximum allowed of %(max)s") % {"max": max_complexity}
+        )

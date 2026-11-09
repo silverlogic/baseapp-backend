@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:28+0000\n"
+"POT-Creation-Date: 2026-11-09 03:28+0000\n"
 "PO-Revision-Date: 2024-06-18 22:43+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -22,10 +22,6 @@ msgstr ""
 #: apps.py
 msgid "BaseApp Notifications"
 msgstr "BaseApp Notificaciones"
-
-#: graphql/mutations.py
-msgid "Mark as read or unread"
-msgstr "Marcar como leído o no leído"
 
 #: models.py
 msgid "notification"
@@ -74,6 +70,10 @@ msgstr "verbo"
 #: models.py
 msgid "active"
 msgstr "activo"
+
+#: strawberry/mutations.py
+msgid "Mark as read or unread"
+msgstr "Marcar como leído o no leído"
 
 #: templates/emails/notification-body.html.j2
 msgid "See on App"

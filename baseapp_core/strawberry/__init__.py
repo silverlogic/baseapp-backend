@@ -1,4 +1,4 @@
-"""Strawberry GraphQL layer, served side by side with the Graphene schema."""
+"""BaseApp's GraphQL layer on Strawberry / Strawberry Django."""
 
 from .optimizer import install as _install_optimizer_overrides
 

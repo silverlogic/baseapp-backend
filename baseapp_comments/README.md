@@ -10,7 +10,7 @@ If you want to develop, [install using this other guide](#how-to-develop).
 
 ## How to setup:
 
-1 - **Make sure** to have [GraphQL websocket enabled](../baseapp-core/baseapp_core/graphql/README.md#enable-websockets) in your project
+1 - **Make sure** to have GraphQL websockets enabled in your project (`baseapp_core.strawberry.subscriptions.GraphQLWSConsumer` routed at `/graphql` in your ASGI application)
 
 2 - Add `baseapp_comments` to your project's `INSTALLED_APPS` and run `./manage.py migrate` as any other django model:
 
@@ -47,7 +47,7 @@ CELERY_TASK_ROUTES = {
 }
 ```
 
-5 - Make sure your graphql.py main file is loading queries, mutations and subscriptions from plugin_registry.
+5 - Make sure your Strawberry schema is loading queries, mutations and subscriptions from `plugin_registry` (`get_all_strawberry_queries()`, `get_all_strawberry_mutations()`, `get_all_strawberry_subscriptions()`).
 
 ## How to use
 
@@ -64,7 +64,7 @@ BASEAPP_COMMENTS_NOTIFICATION_CREATED_EMAIL = True  # default True
 BASEAPP_COMMENTS_NOTIFICATION_REPLY_EMAIL = True  # default True
 ```
 
-You need to make sure to add `CommentsInterface` to your ObjectType's interfaces like:
+You need to make sure to add `CommentsInterface` to your Strawberry type's bases like:
 
 ### CommentsInterface
 
@@ -79,22 +79,18 @@ You need to make sure to add `CommentsInterface` to your ObjectType's interfaces
 - `comments` list of comments attached to this object
 
 ```python
-from baseapp_core.graphql import DjangoObjectType, Node as RelayNode
-from baseapp_core.plugins import graphql_shared_interfaces
+from baseapp_core.plugins import strawberry_shared_interfaces
+from baseapp_core.strawberry import Node, django_type
 
 
-class MyModelObjectType(DjangoObjectType):
-    class Meta:
-        model = MyModel
-        interfaces = graphql_shared_interfaces.get(
-            RelayNode, "CommentsInterface"
-        )
-
+@django_type(MyModel)
+class MyModelType(*strawberry_shared_interfaces.get("CommentsInterface"), Node):
+    ...
 ```
 
 ### Signals
 
-There are some signals that handles stuff like updating comments count, notify users when a comment is created and send a GraphQL subscription when a comment is created, updated or deleted. You can find all signals in `baseapp_comments.signals`.
+There are some signals that handles stuff like updating comments count, notify users when a comment is created and broadcast the `onCommentChange` GraphQL subscription (`baseapp_core.strawberry.subscriptions.broadcast`) when a comment is created, updated or deleted. You can find all signals in `baseapp_comments.signals`.
 
 You could disconnect the signals and connect your own handlers if you want to customize the behavior.
 

@@ -1,15 +1,36 @@
 import logging
 from collections.abc import Generator
+from contextlib import contextmanager
 
 import pghistory
 from graphql import GraphQLError
 from strawberry.extensions import SchemaExtension
 
-from baseapp_core.graphql.views import sentry_graphql_span
+try:
+    import sentry_sdk
+    from sentry_sdk.consts import OP
+except ModuleNotFoundError:
+    sentry_sdk = None
+
+
+@contextmanager
+def sentry_graphql_span(
+    operation_name: str | None, operation_type: str
+) -> Generator[None, None, None]:
+    """A Sentry transaction named after the operation (when Sentry is installed)."""
+    if not sentry_sdk:
+        yield
+        return
+    op = {
+        "mutation": OP.GRAPHQL_MUTATION,
+        "subscription": OP.GRAPHQL_SUBSCRIPTION,
+    }.get(operation_type, OP.GRAPHQL_QUERY)
+    with sentry_sdk.start_transaction(op=op, name=operation_name):
+        yield
 
 
 class OperationContextExtension(SchemaExtension):
-    """Sentry transaction + pghistory context per operation, as `baseapp_core.graphql.GraphQLView` does."""
+    """Sentry transaction + pghistory context per operation."""
 
     def on_execute(self) -> Generator[None, None, None]:
         execution_context = self.execution_context

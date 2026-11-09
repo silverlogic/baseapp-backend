@@ -8,7 +8,7 @@ Reusable Django app for secure API key authentication and management. This packa
 
 - **Encrypted API Key Storage**: API keys are encrypted using AES-SIV encryption before being stored in the database
 - **REST Framework Authentication**: Built-in authentication classes for Django REST Framework
-- **GraphQL Authentication**: Middleware and consumer classes for GraphQL WebSocket authentication
+- **GraphQL Authentication**: HTTP requests through the Strawberry view's authentication classes, WebSockets through a consumer
 - **Permission Classes**: Ready-to-use permission classes for API key validation
 - **Admin Interface**: Django admin integration with automatic API key generation
 - **Management Commands**: CLI tools for encryption key generation and rotation
@@ -90,28 +90,26 @@ class MyAPIView(APIView):
 
 #### GraphQL Authentication
 
-For GraphQL WebSocket authentication, use the provided consumer:
+For GraphQL WebSocket authentication, use the provided consumer. It reads the API key from
+`connectionParams[BA_API_KEY_REQUEST_HEADER]` and honors `Current-Profile` like the JWT consumer:
 
 ```python
 # routing.py
-from baseapp_api_key.graphql.consumers import GraphqlWsAPIKeyAuthenticatedConsumer
+from baseapp_api_key.strawberry.consumers import GraphQLWSAPIKeyConsumer
 
 websocket_urlpatterns = [
-    path("graphql/", GraphqlWsAPIKeyAuthenticatedConsumer.as_asgi()),
+    path("graphql", GraphQLWSAPIKeyConsumer.as_asgi(schema=schema)),
 ]
 ```
 
-For GraphQL HTTP requests, use the middleware:
+For GraphQL HTTP requests, add the DRF authentication class to the classes the Strawberry view
+(`baseapp_core.strawberry.views.GraphQLView`) tries:
 
 ```python
-# In your GraphQL schema
-from baseapp_api_key.graphql.middleware import APIKeyAuthentication
-
-schema = graphene.Schema(
-    query=Query,
-    mutation=Mutation,
-    middleware=[APIKeyAuthentication()]
-)
+STRAWBERRY_AUTHENTICATION_CLASSES = [
+    "baseapp_api_key.rest_framework.authentication.APIKeyAuthentication",
+    # ...
+]
 ```
 
 #### Making API Requests
@@ -283,9 +281,9 @@ Custom manager providing encryption and key management functionality.
 - `APIKeyAuthentication`: Concrete implementation for APIKey model
 
 #### GraphQL
-- `APIKeyAuthentication`: Middleware for GraphQL HTTP requests
-- `BaseGraphqlWsAPIKeyAuthenticatedConsumer`: WebSocket consumer base class
-- `GraphqlWsAPIKeyAuthenticatedConsumer`: Concrete WebSocket consumer
+- `APIKeyAuthentication` (REST Framework class): listed in `STRAWBERRY_AUTHENTICATION_CLASSES` for GraphQL HTTP requests
+- `BaseGraphQLWSAPIKeyConsumer`: WebSocket consumer base class (`baseapp_api_key.strawberry.consumers`)
+- `GraphQLWSAPIKeyConsumer`: Concrete WebSocket consumer
 
 ### Permission Classes
 

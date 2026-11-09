@@ -1,5 +1,3 @@
-from typing import TYPE_CHECKING
-
 import swapper
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
@@ -12,9 +10,6 @@ from model_utils.models import TimeStampedModel
 from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import DocumentIdMixin, DocumentIdUniqueTargetMixin
 from baseapp_core.plugins import shared_services
-
-if TYPE_CHECKING:
-    from baseapp_core.graphql import DjangoObjectType
 
 ProfileModel = swapper.get_model_name("baseapp_profiles", "Profile")
 
@@ -72,12 +67,6 @@ class AbstractBlock(DocumentIdMixin, RelayModel, TimeStampedModel):
 
         self.update_blockers_count(target)
         self.update_blocking_count(actor)
-
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import BlockObjectType
-
-        return BlockObjectType
 
     def update_blockers_count(self, target) -> None:
         if not target:

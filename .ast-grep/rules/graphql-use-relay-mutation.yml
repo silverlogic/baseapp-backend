@@ -1,17 +1,14 @@
 id: graphql-use-relay-mutation
 language: Python
 severity: warning
-message: "GraphQL mutations must inherit `RelayMutation` from `baseapp_core.graphql` (Input inner class, structured `errors` field), not `graphene.Mutation`. See .claude/skills/backend-conventions/references/graphql-file-layout.md"
+message: "GraphQL mutations must be `@relay_mutation` resolvers from `baseapp_core.strawberry` (`input: XInput` / `XPayload` with `clientMutationId` and structured `errors`), not bare `strawberry.mutation` / `strawberry_django.mutation`. See .claude/skills/backend-conventions/references/graphql-file-layout.md"
 ignores:
   - "**/migrations/**"
+  - "**/baseapp_core/strawberry/**"
 rule:
   any:
-    - pattern: |
-        class $MUTATION(graphene.Mutation):
-            $$$
-    - pattern: |
-        class $MUTATION(graphene.relay.ClientIDMutation):
-            $$$
-    - pattern: |
-        class $MUTATION(relay.ClientIDMutation):
-            $$$
+    - kind: decorator
+      regex: ^@(strawberry|strawberry_django)\.(mutation|input_mutation)\b
+    - pattern: strawberry.mutation($$$)
+    - pattern: strawberry_django.mutation($$$)
+    - pattern: strawberry_django.input_mutation($$$)

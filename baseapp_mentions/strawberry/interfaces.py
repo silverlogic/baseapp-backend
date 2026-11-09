@@ -6,7 +6,6 @@ import strawberry_django
 import swapper
 from django.db.models import Model, Prefetch
 from graphql.execution.values import get_argument_values
-from graphql_relay import cursor_to_offset, offset_to_cursor
 from strawberry.relay.utils import SliceMetadata
 from strawberry.types import Info
 from strawberry_django.optimizer import (
@@ -20,7 +19,12 @@ from baseapp_core.graphql import get_pk_from_relay_id
 from baseapp_core.models import DocumentId
 from baseapp_core.plugins import shared_services
 from baseapp_core.strawberry import CountedConnection, Node, model_from_info
-from baseapp_core.strawberry.connections import Edge, connection
+from baseapp_core.strawberry.connections import (
+    Edge,
+    connection,
+    cursor_to_offset,
+    offset_to_cursor,
+)
 
 from .types import MentionLazyType
 

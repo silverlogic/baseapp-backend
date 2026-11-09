@@ -12,11 +12,11 @@ Add `baseapp_ratings` to `INSTALLED_APPS`. The package registers itself as a plu
 (see `baseapp_ratings.plugin:RatingsPlugin`), so:
 
 - `RatingsQueries` / `RatingsMutations` are contributed via
-  `plugin_registry.get_all_graphql_queries()` / `get_all_graphql_mutations()`.
+  `plugin_registry.get_all_strawberry_queries()` / `get_all_strawberry_mutations()`.
 - `RatingsPermissionsBackend` is contributed via
   `plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_ratings")`.
 - The `RatingsInterface` GraphQL interface is registered by name; consumers fetch
-  it from `graphql_shared_interfaces` instead of importing it directly.
+  it from `strawberry_shared_interfaces` instead of importing it directly.
 - A `ratable_metadata` shared service exposes
   `get_ratings_count(obj)` / `get_ratings_sum(obj)` / `get_ratings_average(obj)` /
   `is_ratings_enabled(obj)` / `annotate_queryset(qs)` for any object with a
@@ -26,16 +26,16 @@ Add `baseapp_ratings` to `INSTALLED_APPS`. The package registers itself as a plu
 
 ### GraphQL — opt a type into ratings
 
-Request the interface by name in your object type's `Meta.interfaces`:
+Request the interface by name in your Strawberry type's bases:
 
 ```python
-from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.plugins import graphql_shared_interfaces
+from baseapp_core.plugins import strawberry_shared_interfaces
+from baseapp_core.strawberry import Node, django_type
 
 
-class UserNode(DjangoObjectType):
-    class Meta:
-        interfaces = graphql_shared_interfaces.get(RelayNode, "RatingsInterface")
+@django_type(User)
+class UserType(*strawberry_shared_interfaces.get("RatingsInterface"), Node):
+    ...
 ```
 
 When `baseapp_ratings` is installed the registry returns the real
@@ -46,8 +46,8 @@ still works.
 
 Nothing to do. The plugin entry-point in `pyproject.toml` registers
 `RatingsQueries` and `RatingsMutations`, and the project's root `Query` /
-`Mutation` should already spread `*plugin_registry.get_all_graphql_queries()`
-and `*plugin_registry.get_all_graphql_mutations()`. `rateCreate` and the
+`Mutation` should already spread `*plugin_registry.get_all_strawberry_queries()`
+and `*plugin_registry.get_all_strawberry_mutations()`. `rateCreate` and the
 `Rate` node show up automatically.
 
 ### Reading ratings counts on a model

@@ -23,9 +23,6 @@ class ActivityLogPlugin(BaseAppPlugin):
             },
             django_extra_settings={},
             # GraphQL
-            graphql_queries=[
-                "baseapp.activity_log.graphql.queries.ActivityLogQueries",
-            ],
             strawberry_queries=[
                 "baseapp.activity_log.strawberry.queries.ActivityLogQueries",
             ],

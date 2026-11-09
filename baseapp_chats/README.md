@@ -10,7 +10,7 @@ If you want to develop, [install using this other guide](#how-to-develop).
 
 ## How to setup
 
-1. **Enable GraphQL websockets** in your project ([guide](../baseapp-core/baseapp_core/graphql/README.md#enable-websockets)). Chats relies on `channels_graphql_ws` for the message / room / unread-count subscriptions.
+1. **Enable GraphQL websockets** in your project: route your websocket `graphql` path to `baseapp_core.strawberry.subscriptions.GraphQLWSConsumer.as_asgi(schema=schema)` (graphql-transport-ws). Chats relies on it for the message / room / unread-count subscriptions.
 
 2. Add `baseapp_chats` to `INSTALLED_APPS` and run `./manage.py migrate`:
 
@@ -32,7 +32,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 ```
 
-4. Make sure your project's `graphql.py` composes the schema via `plugin_registry.get_all_graphql_*()` so `ChatsQueries / ChatsMutations / ChatsSubscriptions` are picked up automatically.
+4. Make sure your project's Strawberry schema is built from `plugin_registry.get_all_strawberry_*()` (see `testproject/graphql.py`) so `ChatsQueries / ChatsMutations / ChatsSubscriptions` are picked up automatically.
 
 5. Point the swapper settings at your concrete models (see [models](#models)):
 
@@ -87,7 +87,7 @@ Override these in your concrete `Meta.triggers` only when your model needs diffe
 | `chatRoomSendMessage` | Persist a message, fire the subscription, optionally persist mentions and trigger notifications. |
 | `chatRoomEditMessage` | Edit message body and replace mentions. |
 | `chatRoomDeleteMessage` | Soft-delete a message (sets `deleted=True`). |
-| `chatRoomReadMessages` | Mark messages read; broadcasts `ChatRoomOnMessagesCountUpdate`. |
+| `chatRoomReadMessages` | Mark messages read; broadcasts `chatRoomOnMessagesCountUpdate`. |
 | `chatRoomUnread` | Flag a room as unread for a participant. |
 | `chatRoomArchive` | Toggle the participant's archived flag for a room. |
 
@@ -99,19 +99,20 @@ Override these in your concrete `Meta.triggers` only when your model needs diffe
 | `chatRoomOnRoomUpdate` | Room metadata, participant adds / removes. |
 | `chatRoomOnMessagesCountUpdate` | Per-profile unread count changed. |
 
+Publishers live in `baseapp_chats.broadcasts` (`new_message`, `edit_message`, `room_updated`, `send_updated_chat_count`); call them from project code that changes rooms or messages outside the mutations.
+
 ### Shared GraphQL interfaces
 
-Chats publishes one shared interface via the registry — consuming object types opt in by name:
+Chats publishes one shared interface via the registry — consuming Strawberry types opt in by name:
 
 ```python
-from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.plugins import graphql_shared_interfaces
+from baseapp_core.plugins import strawberry_shared_interfaces
+from baseapp_core.strawberry import Node, django_type
 
 
-class ProfileObjectType(DjangoObjectType):
-    class Meta:
-        interfaces = graphql_shared_interfaces.get(RelayNode, "ChatRoomsInterface")
-        model = Profile
+@django_type(Profile)
+class ProfileType(*strawberry_shared_interfaces.get("ChatRoomsInterface"), Node):
+    ...
 ```
 
 The interface exposes:

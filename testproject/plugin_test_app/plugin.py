@@ -31,20 +31,12 @@ class TestPlugin(BaseAppPlugin):
                     "testproject.plugin_test_app.backends.TestBackend",
                 ],
             },
-            GRAPHENE__MIDDLEWARE={
-                "test_plugin": [
-                    "testproject.plugin_test_app.graphql.middleware.TestMiddleware",
-                ],
-            },
             django_extra_settings={
                 "TEST_PLUGIN_SETTING": "test_value",
                 "TEST_PLUGIN_ENABLED": True,
             },
             required_packages=["baseapp_core"],
             optional_packages=[],
-            graphql_queries=["testproject.plugin_test_app.graphql.queries.TestQueries"],
-            graphql_mutations=["testproject.plugin_test_app.graphql.mutations.TestMutations"],
-            graphql_subscriptions=[],
             strawberry_queries=["testproject.plugin_test_app.strawberry.TestQueries"],
             strawberry_mutations=["testproject.plugin_test_app.strawberry.TestMutations"],
         )

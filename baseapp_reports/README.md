@@ -12,11 +12,11 @@ Add `baseapp_reports` to `INSTALLED_APPS`. The package registers itself as a plu
 (see `baseapp_reports.plugin:ReportsPlugin`), so:
 
 - `ReportsQueries` / `ReportsMutations` are contributed via
-  `plugin_registry.get_all_graphql_queries()` / `get_all_graphql_mutations()`.
+  `plugin_registry.get_all_strawberry_queries()` / `get_all_strawberry_mutations()`.
 - `ReportsPermissionsBackend` is contributed via
   `plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_reports")`.
 - The `ReportsInterface` GraphQL interface is registered by name; consumers fetch
-  it from `graphql_shared_interfaces` instead of importing it directly.
+  it from `strawberry_shared_interfaces` instead of importing it directly.
 - A `reportable_metadata` shared service exposes `get_reports_count(obj)` and
   `annotate_queryset(qs)` for any object with a `DocumentId`. Consumers should
   use this service instead of inheriting from a mixin.
@@ -25,28 +25,28 @@ Add `baseapp_reports` to `INSTALLED_APPS`. The package registers itself as a plu
 
 ### GraphQL — opt a type into reports
 
-Request the interface by name in your object type's `Meta.interfaces`:
+Request the interface by name in your Strawberry type's bases:
 
 ```python
-from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.plugins import graphql_shared_interfaces
+from baseapp_core.plugins import strawberry_shared_interfaces
+from baseapp_core.strawberry import Node, django_type
 
 
-class UserNode(DjangoObjectType):
-    class Meta:
-        interfaces = graphql_shared_interfaces.get(RelayNode, "ReportsInterface")
+@django_type(User)
+class UserType(*strawberry_shared_interfaces.get("ReportsInterface"), Node):
+    ...
 ```
 
 When `baseapp_reports` is installed the registry returns the real
-`ReportsInterface`; when it is not, the call falls back to the defaults so the
-type still works.
+`ReportsInterface`; when it isn't, the name is skipped and the type simply
+lacks those fields.
 
 ### GraphQL — exposing the schema
 
 Nothing to do. The plugin entry-point in `pyproject.toml` registers
 `ReportsQueries` and `ReportsMutations`, and the project's root `Query` /
-`Mutation` should already spread `*plugin_registry.get_all_graphql_queries()`
-and `*plugin_registry.get_all_graphql_mutations()`. `reportCreate` and
+`Mutation` should already spread `*plugin_registry.get_all_strawberry_queries()`
+and `*plugin_registry.get_all_strawberry_mutations()`. `reportCreate` and
 `allReportTypes` show up automatically.
 
 ### Reporting counts on a model

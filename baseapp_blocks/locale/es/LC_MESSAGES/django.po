@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-15 20:33+0000\n"
+"POT-Creation-Date: 2026-11-09 03:27+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -21,14 +21,6 @@ msgstr ""
 #: apps.py
 msgid "BaseApp Blocks"
 msgstr "BaseApp Bloqueos"
-
-#: graphql/mutations.py
-msgid "You don't have permission to perform this action"
-msgstr "No tienes permiso para realizar esta acción"
-
-#: graphql/mutations.py
-msgid "You cannot block yourself"
-msgstr "No puedes bloquearte a ti mismo"
 
 #: models.py
 msgid "blocking"
@@ -61,3 +53,11 @@ msgstr "cantidad de bloqueados"
 #: models.py
 msgid "blockable metadata"
 msgstr "metadatos de bloqueo"
+
+#: strawberry/mutations.py
+msgid "You don't have permission to perform this action"
+msgstr "No tienes permiso para realizar esta acción"
+
+#: strawberry/mutations.py
+msgid "You cannot block yourself"
+msgstr "No puedes bloquearte a ti mismo"

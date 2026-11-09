@@ -165,21 +165,10 @@ def test_anon_can_query_users_list_with_optimized_query(graphql_client_with_quer
     response, queries = graphql_client_with_queries(QUERY_USERS_LIST)
     content = response.json()
 
-    assert queries.count == 5
+    assert queries.count == 1
     assert len(content["data"]["users"]["edges"]) == 10
 
-    # With optimizer queries are expected to be 5:
-    # 1. ContentType lookup for users.user (cold-cache; fired by
-    #    AbstractUserObjectType.pre_optimization_hook to embed the User ct_id in
-    #    inline RatableMetadata Subqueries on the user SELECT).
-    # 2. ContentType lookup for profiles.profile (cold-cache; the user SELECT joins
-    #    profiles_profile via profile_id, so the optimizer walks into
-    #    ProfileObjectType.pre_optimization_hook which fires its own annotate_queryset
-    #    calls for the profile half).
-    # 3. SELECT users_user with _ratable_* Subqueries inlined for RatingsInterface +
-    #    LEFT JOIN profiles_profile.
-    # 4. SELECT COUNT(*) for pagination.
-    # 5. Same as #3 with LIMIT 10 for the returned page slice.
+    # One SELECT users_user LEFT JOIN profiles_profile (page slice; totalCount not selected).
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
@@ -191,19 +180,13 @@ def test_anon_can_query_users_list_with_optimized_query_with_public_id(
     response, queries = graphql_client_with_queries(QUERY_USERS_LIST)
     content = response.json()
 
-    assert queries.count == 7
+    assert queries.count == 4
     assert len(content["data"]["users"]["edges"]) == 10
 
-    # With optimizer queries are expected to be 7:
-    # 1. ContentType lookup for users.user (cold-cache; cached after first request in production)
-    # 2. ContentType lookup for profiles.profile (cold-cache; same caching as above)
-    # 3. SELECT users_user with _ratable_* Subqueries inlined by
-    #    AbstractUserObjectType.pre_optimization_hook (RatableMetadataService.annotate_queryset)
-    # 4. SELECT profiles_profile with _commentable_*, _followable_*, mapped_public_id Subqueries
-    #    inlined by ProfileObjectType.pre_optimization_hook
-    # 5. SELECT COUNT(*) for pagination
-    # 6. Same as #3 with LIMIT 10 for the returned page slice
-    # 7. Same as #4 for the page's profiles
+    # 1-2. ContentType lookups for users.user and profiles.profile (cold cache), used by the
+    #      mapped_public_id subqueries.
+    # 3. SELECT users_user with its mapped_public_id subquery (page slice).
+    # 4. SELECT profiles_profile with its mapped_public_id subquery for the page's profiles.
 
 
 def test_anon_can_query_users_list_with_filter_by_email(graphql_client_with_queries) -> None:

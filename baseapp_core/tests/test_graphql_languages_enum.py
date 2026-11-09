@@ -1,6 +1,6 @@
 from graphql import assert_enum_value_name
 
-from baseapp_core.graphql.translation import LanguagesEnum, language_enum_name
+from baseapp_core.strawberry.fields import Languages, language_enum_name
 
 
 def test_language_codes_become_valid_enum_names() -> None:
@@ -10,5 +10,4 @@ def test_language_codes_become_valid_enum_names() -> None:
 
 
 def test_enum_values_are_the_language_codes() -> None:
-    assert LanguagesEnum.get("en").value == "en"
-    assert LanguagesEnum.get("en") == LanguagesEnum.en
+    assert Languages["en"].value == "en"

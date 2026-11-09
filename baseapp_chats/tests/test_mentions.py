@@ -2,7 +2,7 @@
 
 Mentions live in `baseapp_mentions.Mention` — the chat Message model no longer
 carries a `mentioned_profiles` M2M. The GraphQL `mentions` connection on
-`MessageObjectType` is provided by `MentionsInterface` and returns `Mention`
+`MessageType` is provided by `MentionsInterface` and returns `Mention`
 nodes that expose the related `profile`.
 
 The chat mutations follow the same contract as comments:

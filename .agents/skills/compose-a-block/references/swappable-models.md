@@ -21,12 +21,6 @@ class AbstractFoo(DocumentIdTargetMixin, TimeStampedModel, DocumentIdMixin, Rela
     class Meta:
         abstract = True
         swappable = swapper.swappable_setting("baseapp_foo", "Foo")
-
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import FooObjectType
-
-        return FooObjectType
 ```
 
 Three requirements:
@@ -34,8 +28,10 @@ Three requirements:
 - `abstract = True` **and** `swappable = swapper.swappable_setting(<app_label>, <ModelName>)`. The
   app label is the underscore form, matching `AppConfig.label`.
 - Inherit `RelayModel` from `baseapp_core.graphql` — supplies `relay_id`.
-- Implement `get_graphql_object_type()` so consuming projects can swap the ObjectType too. Import
-  inside the method.
+- Make the GraphQL type swappable too: put the fields on an abstract
+  `@strawberry_django.type(Foo, name="AbstractFoo")` base and register the package type with
+  `@django_type(Foo, ...)` subclassing it. Reference it elsewhere only through
+  `type_for_model(Foo)`.
 
 ## Everywhere else — load lazily
 
@@ -107,7 +103,7 @@ class AbstractFoo(*inheritances, TimeStampedModel, RelayModel):
     ...
 ```
 
-Pair this with `apply_if_installed(...)` in the GraphQL `Meta.fields` — see `shared-services.md`.
+Pair this with `apply_if_installed(...)` in `django_type(relations=...)` — see `shared-services.md`.
 Cover it with a test in `tests/integration/` using `with_disabled_apps_context`.
 
 ## Consuming project side
@@ -134,6 +130,20 @@ The setting name is what `swapper.swappable_setting("baseapp_foo", "Foo")` gener
 `BASEAPP_<APP>_<MODEL>_MODEL`. Add `"testproject.foo"` to `INSTALLED_APPS` before
 `load_from_installed_apps(...)`, and generate migrations in `testproject/foo/migrations/`.
 
+If the project adds fields to the swapped model and wants them in GraphQL, it re-registers the type;
+the type registry is keyed by model and the last registration wins:
+
+```python
+# project types module, imported after the package's (e.g. listed in strawberry_types)
+from baseapp.foo.strawberry.types import AbstractFooType
+from baseapp_core.strawberry import Node, django_type
+
+
+@django_type(Foo, relations="__all__")
+class FooType(AbstractFooType, Node):
+    extra_field: strawberry.auto
+```
+
 **The block itself ships no migrations for swappable models.** See `package-scaffold.md`.
 
 ## When not to make a model swappable
@@ -149,7 +159,9 @@ because projects extend them.
 - `apps.get_model(...)` in a migration touching a swappable model. Use `get_apps_model`.
 - A direct `ForeignKey` to another block's concrete model class. Use `swapper.get_model_name`.
 - Shipping migrations for a swappable model.
-- Omitting `get_graphql_object_type()` — the ObjectType then can't be swapped, so the model is only
-  half-overridable.
+- Declaring the fields directly on the `django_type` class with no abstract base — projects then
+  can't re-register the type without copying every field.
+- Importing the package's type class to reference it instead of `type_for_model(Foo)` — the
+  reference ignores a project override.
 - An unconditional FK to an optional block's model. Guard with `apps.is_installed`.
 - App label mismatch between `swappable_setting`, `AppConfig.label`, and `swapper.load_model`.

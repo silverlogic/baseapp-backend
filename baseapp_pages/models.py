@@ -1,5 +1,3 @@
-from typing import TYPE_CHECKING
-
 import pghistory
 import swapper
 from django.conf import settings
@@ -17,9 +15,6 @@ from baseapp_core.graphql.models import RelayModel
 from baseapp_core.models import DocumentIdMixin, random_name_in
 from baseapp_core.pghelpers import pghistory_register_default_track
 from baseapp_core.swapper import init_swapped_models
-
-if TYPE_CHECKING:
-    from baseapp_core.graphql import DjangoObjectType
 
 
 class URLPath(DocumentIdMixin, RelayModel, TimeStampedModel):
@@ -161,12 +156,6 @@ class AbstractPage(PageMixin, DocumentIdMixin, RelayModel, TimeStampedModel):
 
     def __str__(self) -> str:
         return self.title or str(self.pk)
-
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import PageObjectType
-
-        return PageObjectType
 
 
 Page = init_swapped_models(

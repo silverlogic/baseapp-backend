@@ -31,8 +31,9 @@ class FooPlugin(BaseAppPlugin):
                 "BASEAPP_FOO_CAN_ANONYMOUS_VIEW": True,
                 "BASEAPP_FOO_MAX_PER_THREAD": None,
             },
-            graphql_queries=["baseapp.foo.graphql.queries.FooQueries"],
-            graphql_mutations=["baseapp.foo.graphql.mutations.FooMutations"],
+            strawberry_queries=["baseapp.foo.strawberry.queries.FooQueries"],
+            strawberry_mutations=["baseapp.foo.strawberry.mutations.FooMutations"],
+            strawberry_types=["baseapp.foo.strawberry.types.FooType"],
             required_packages=[],
             optional_packages=[
                 {"baseapp_profiles": "If enabled, foos can be tied to a Profile"},
@@ -59,11 +60,11 @@ snake_case fields.
 | List | `installed_apps` (`INSTALLED_APPS`) | `List[str]`, aggregated |
 | Slotted | `middleware` (`MIDDLEWARE`) | `Dict[slot, List[str]]` |
 | Slotted | `authentication_backends` (`AUTHENTICATION_BACKENDS`) | `Dict[slot, List[str]]` |
-| Slotted | `graphene_middleware` (`GRAPHENE__MIDDLEWARE`) | `Dict[slot, List[str]]` |
 | Dict | `django_extra_settings` | merged into Django settings |
 | Dict | `celery_beat_schedules`, `celery_task_routes`, `constance_config` | merged; last plugin wins |
 | List | `urlpatterns`, `v1_urlpatterns` | callbacks, see below |
-| List | `graphql_queries`, `graphql_mutations`, `graphql_subscriptions` | **dotted strings** |
+| List | `strawberry_queries`, `strawberry_mutations`, `strawberry_subscriptions` | root types, **dotted strings** |
+| List | `strawberry_types` | model types, **dotted strings**; every module defining types must be listed or imported by a listed one |
 | Deps | `required_packages`, `optional_packages` | `str` or `{name: why}` |
 
 **Slotted fields are dicts, not lists.** The key is a slot name (conventionally the block's own
@@ -74,8 +75,10 @@ Passing a bare list will not validate.
 if a required app isn't in `INSTALLED_APPS`. `optional_packages` is documentation — guard optional
 behaviour at runtime with `apps.is_installed(...)` or a `shared_services.get(...)` `None` check.
 
-**GraphQL roots are dotted strings, resolved later with `import_string`.** Never import the actual
-class in `plugin.py`; it runs before the app registry is ready.
+**GraphQL roots and types are dotted strings, resolved later with `import_string`** when the
+project builds its schema (`build_schema(queries=plugin_registry.get_all_strawberry_queries(), ...)`).
+Never import the actual class in `plugin.py`; it runs before the app registry is ready. A type that
+nothing imports is never registered, so list it under `strawberry_types`.
 
 ### URLs
 
@@ -190,7 +193,8 @@ for key, value in plugin_settings.items():
 ```python
 from baseapp_core.plugins import plugin_registry
 plugin_registry.get("INSTALLED_APPS")
-plugin_registry.get_all_graphql_queries()
+plugin_registry.get_all_strawberry_queries()
+plugin_registry.get_all_strawberry_types()
 plugin_registry.get_all_django_extra_settings()
 ```
 

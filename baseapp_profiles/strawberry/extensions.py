@@ -10,10 +10,7 @@ profile_app_label = Profile._meta.app_label
 
 
 class CurrentProfileExtension(SchemaExtension):
-    """Once per operation, set `user.current_profile` from the `Current-Profile` header.
-
-    Replaces the per-resolver `baseapp_profiles.graphql.middleware.CurrentProfileMiddleware`.
-    """
+    """Once per operation, set `user.current_profile` from the `Current-Profile` header."""
 
     def on_execute(self) -> Generator[None, None, None]:
         request = self.execution_context.context

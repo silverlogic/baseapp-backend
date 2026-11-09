@@ -1,7 +1,8 @@
-from typing import Any
+from typing import Any, TypeVar
 
-from django.db.models import QuerySet
-from query_optimizer.typing import TModel
+from django.db.models import Model, QuerySet
+
+TModel = TypeVar("TModel", bound=Model)
 
 
 class QuerysetAnnotatorStrategy:

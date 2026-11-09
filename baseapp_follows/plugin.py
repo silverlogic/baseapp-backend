@@ -19,9 +19,6 @@ class FollowsPlugin(BaseAppPlugin):
                 ],
             },
             # GraphQL
-            graphql_mutations=[
-                "baseapp_follows.graphql.mutations.FollowsMutations",
-            ],
             strawberry_mutations=[
                 "baseapp_follows.strawberry.mutations.FollowsMutations",
             ],

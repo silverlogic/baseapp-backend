@@ -1,9 +1,9 @@
-"""Report / ReportType node contract, exercised on whichever endpoint the tests target."""
+"""Report / ReportType node contract."""
 
 import pytest
 import swapper
-from graphql_relay import to_global_id
 
+from baseapp_core.hashids.utils import to_global_id
 from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.tests.factories import ProfileFactory
 

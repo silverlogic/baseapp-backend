@@ -1,8 +1,10 @@
-from django.db.models import QuerySet
+import django_filters
+import swapper
+from django.db.models import Q, QuerySet
 
-from baseapp_core.plugins import shared_services
+from baseapp_core.plugins import apply_if_installed, shared_services
 
-from ..graphql import filters as graphene_filters
+Comment = swapper.load_model("baseapp_comments", "Comment")
 
 # Ordering aliases and the metadata service that annotates each one.
 _ORDERING_ANNOTATIONS = {
@@ -11,11 +13,34 @@ _ORDERING_ANNOTATIONS = {
 }
 
 
-class CommentFilter(graphene_filters.CommentFilter):
-    """Graphene's CommentFilter, annotating an ordering alias only when it is ordered by.
+class CommentFilter(django_filters.FilterSet):
+    """Annotates an ordering alias only when the queryset is ordered by it."""
 
-    Graphene annotates every Comment queryset in `pre_optimization_hook`.
-    """
+    q = django_filters.CharFilter(method="filter_q")
+
+    order_by = django_filters.OrderingFilter(
+        fields=(
+            ("created", "created"),
+            ("is_pinned", "is_pinned"),
+            *apply_if_installed(
+                "baseapp_reactions",
+                [("reactions_count_total", "reactions_count_total")],
+            ),
+            ("replies_count_total", "replies_count_total"),
+        )
+    )
+
+    class Meta:
+        model = Comment
+        fields = ["q", "order_by"]
+
+    def filter_q(self, queryset: QuerySet, name: str, value: str) -> QuerySet:
+        return queryset.filter(
+            Q(body__icontains=value)
+            | Q(user__first_name__icontains=value)
+            | Q(user__last_name__icontains=value)
+            | Q(user__email__icontains=value)
+        )
 
     def filter_queryset(self, queryset: QuerySet) -> QuerySet:
         ordering = self.form.cleaned_data.get("order_by") or []

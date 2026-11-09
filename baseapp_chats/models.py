@@ -1,5 +1,4 @@
 import logging
-from typing import TYPE_CHECKING
 
 import swapper
 from django.conf import settings
@@ -23,9 +22,6 @@ from .triggers import (
     set_last_message_on_insert_trigger,
     update_last_message_on_delete_trigger,
 )
-
-if TYPE_CHECKING:
-    from baseapp_core.graphql import DjangoObjectType
 
 logger = logging.getLogger(__name__)
 
@@ -75,12 +71,6 @@ class AbstractBaseChatRoom(TimeStampedModel, DocumentIdMixin, RelayModel):
 
     def __str__(self) -> str:
         return str(self.pk)
-
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import ChatRoomObjectType
-
-        return ChatRoomObjectType
 
 
 class AbstractBaseMessage(TimeStampedModel, DocumentIdMixin, RelayModel):
@@ -207,12 +197,6 @@ class AbstractBaseMessage(TimeStampedModel, DocumentIdMixin, RelayModel):
             djtimesince(self.created, now).encode("utf8").replace(b"\xc2\xa0", b" ").decode("utf8")
         )
 
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import MessageObjectType
-
-        return MessageObjectType
-
     def save(self, *args, **kwargs) -> None:
         created = self._state.adding
         super().save(*args, **kwargs)
@@ -230,13 +214,11 @@ class AbstractBaseMessage(TimeStampedModel, DocumentIdMixin, RelayModel):
             return
 
         def _broadcast_unread_counts() -> None:
-            from baseapp_chats.graphql.subscriptions import (
-                ChatRoomOnMessagesCountUpdate,
-            )
+            from baseapp_chats.broadcasts import send_updated_chat_count
 
             for participant in participants:
                 try:
-                    ChatRoomOnMessagesCountUpdate.send_updated_chat_count(
+                    send_updated_chat_count(
                         profile=participant.profile,
                         profile_id=participant.profile.relay_id,
                     )
@@ -285,12 +267,6 @@ class AbstractChatRoomParticipant(TimeStampedModel, DocumentIdMixin, RelayModel)
         swappable = swapper.swappable_setting("baseapp_chats", "ChatRoomParticipant")
         verbose_name = _("chat room participant")
         verbose_name_plural = _("chat room participants")
-
-    @classmethod
-    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
-        from .graphql.object_types import ChatRoomParticipantObjectType
-
-        return ChatRoomParticipantObjectType
 
 
 class AbstractUnreadMessageCount(DocumentIdMixin, RelayModel):

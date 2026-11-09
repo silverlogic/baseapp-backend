@@ -188,9 +188,6 @@ class PluginRegistry:
     def get_all_auth_backends(self) -> List[str]:
         return self.get("AUTHENTICATION_BACKENDS")
 
-    def get_all_graphene_middleware(self) -> List[str]:
-        return self.get("GRAPHENE__MIDDLEWARE")
-
     def get_all_django_extra_settings(self) -> Dict[str, Any]:
         return self._merge_dict_attr("django_extra_settings")
 
@@ -226,18 +223,6 @@ class PluginRegistry:
         """
         urlpatterns = self.get("v1_urlpatterns")
         return self._resolve_urlpatterns(urlpatterns)
-
-    def get_all_graphql_queries(self) -> List[Any]:
-        queries_classes_or_strings = self.get("graphql_queries")
-        return self._collect_classes_or_strings(queries_classes_or_strings)
-
-    def get_all_graphql_mutations(self) -> List[Any]:
-        mutations_classes_or_strings = self.get("graphql_mutations")
-        return self._collect_classes_or_strings(mutations_classes_or_strings)
-
-    def get_all_graphql_subscriptions(self) -> List[Any]:
-        subscriptions_classes_or_strings = self.get("graphql_subscriptions")
-        return self._collect_classes_or_strings(subscriptions_classes_or_strings)
 
     def get_all_strawberry_queries(self) -> List[Any]:
         return self._collect_classes_or_strings(self.get("strawberry_queries"))

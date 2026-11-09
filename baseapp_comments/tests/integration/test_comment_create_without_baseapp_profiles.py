@@ -58,11 +58,11 @@ class TestCommentsWithoutBaseappProfiles:
                 wraps=user_class.has_perm,
             ) as has_perm_mock,
             patch(
-                "baseapp_comments.graphql.mutations.get_obj_from_relay_id",
+                "baseapp_comments.strawberry.mutations.get_obj_from_relay_id",
                 return_value=target,
             ),
             patch(
-                "baseapp_comments.graphql.mutations.CommentForm",
+                "baseapp_comments.strawberry.mutations.CommentForm",
                 return_value=fake_form,
             ) as comment_form_cls,
         ):
@@ -90,11 +90,11 @@ class TestCommentsWithoutBaseappProfiles:
 
         with (
             patch(
-                "baseapp_comments.graphql.queries.CommentObjectType._meta.model.objects.all",
+                "baseapp_comments.strawberry.queries.Comment.objects.all",
                 return_value=base_queryset,
             ),
             patch(
-                "baseapp_comments.graphql.object_types.shared_services.get",
+                "baseapp_comments.strawberry.types.shared_services.get",
                 return_value=mock_service,
             ),
         ):

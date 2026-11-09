@@ -1,0 +1,92 @@
+id: graphql-use-django-type
+snapshots:
+  ? |
+    @strawberry_django.type(Block)
+    class BlockType(Node):
+        created: strawberry.auto
+  : labels:
+    - source: |-
+        @strawberry_django.type(Block)
+        class BlockType(Node):
+            created: strawberry.auto
+      style: primary
+      start: 0
+      end: 82
+    - source: '@strawberry_django.type(Block)'
+      style: secondary
+      start: 0
+      end: 30
+    - source: Node
+      style: secondary
+      start: 47
+      end: 51
+    - source: Node
+      style: secondary
+      start: 47
+      end: 51
+    - source: |-
+        class BlockType(Node):
+            created: strawberry.auto
+      style: secondary
+      start: 31
+      end: 82
+  ? |
+    @strawberry_django.type(Comment, name="Comment")
+    class CommentType(AbstractCommentType, PermissionsInterface, Node):
+        pass
+  : labels:
+    - source: |-
+        @strawberry_django.type(Comment, name="Comment")
+        class CommentType(AbstractCommentType, PermissionsInterface, Node):
+            pass
+      style: primary
+      start: 0
+      end: 125
+    - source: '@strawberry_django.type(Comment, name="Comment")'
+      style: secondary
+      start: 0
+      end: 48
+    - source: Node
+      style: secondary
+      start: 110
+      end: 114
+    - source: Node
+      style: secondary
+      start: 110
+      end: 114
+    - source: |-
+        class CommentType(AbstractCommentType, PermissionsInterface, Node):
+            pass
+      style: secondary
+      start: 49
+      end: 125
+  ? |
+    @strawberry_django.type(Rate)
+    class RateType(relay.Node):
+        value: strawberry.auto
+  : labels:
+    - source: |-
+        @strawberry_django.type(Rate)
+        class RateType(relay.Node):
+            value: strawberry.auto
+      style: primary
+      start: 0
+      end: 84
+    - source: '@strawberry_django.type(Rate)'
+      style: secondary
+      start: 0
+      end: 29
+    - source: relay.Node
+      style: secondary
+      start: 45
+      end: 55
+    - source: relay.Node
+      style: secondary
+      start: 45
+      end: 55
+    - source: |-
+        class RateType(relay.Node):
+            value: strawberry.auto
+      style: secondary
+      start: 30
+      end: 84

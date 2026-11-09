@@ -1,17 +1,13 @@
-import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from django.test import override_settings
-from graphql_relay import to_global_id
 
-from baseapp_core.graphql.relay import Node
 from baseapp_core.hashids.strategies import (
     _is_public_id_logic_enabled,
     get_hashids_strategy_from_instance_or_cls,
     get_legacy_strategy,
     get_public_id_strategy,
-    graphql_get_node_from_global_id_using_strategy,
     graphql_to_global_id_using_strategy,
 )
 from baseapp_core.hashids.strategies.bundle import HashidsStrategyBundle
@@ -25,10 +21,10 @@ from baseapp_core.hashids.strategies.public_id import (
     PublicIdQuerysetAnnotatorStrategy,
     PublicIdResolverStrategy,
 )
+from baseapp_core.hashids.utils import to_global_id
 from testproject.testapp.models import DummyLegacyModel, DummyPublicIdModel
 from testproject.testapp.tests.factories import (
     DummyLegacyModelFactory,
-    DummyLegacyWithPkModelFactory,
     DummyPublicIdModelFactory,
 )
 
@@ -189,138 +185,6 @@ class TestGraphQLToGlobalIdUsingStrategy:
 
 
 @pytest.mark.django_db
-class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
-    def test_uses_public_id_strategy_for_uuid4_global_id(self) -> None:
-        dummy_instance = DummyPublicIdModelFactory()
-        test_uuid = dummy_instance.public_id
-        graphene_type_mock = MagicMock()
-        graphene_type_mock._meta.name = "DummyPublicIdModel"
-        graphene_type_mock._meta.interfaces = [Node]
-        graphene_type_mock.get_node = MagicMock(return_value=dummy_instance)
-        mock_info = MagicMock()
-        mock_info.schema.get_type = MagicMock(
-            return_value=MagicMock(graphene_type=graphene_type_mock)
-        )
-
-        result = graphql_get_node_from_global_id_using_strategy(mock_info, str(test_uuid))
-
-        assert result.pk == dummy_instance.pk
-        assert result.public_id == dummy_instance.public_id
-
-    def test_uses_public_id_strategy_for_uuid4_with_only_type(self) -> None:
-        dummy_instance = DummyPublicIdModelFactory()
-        test_uuid = dummy_instance.public_id
-        mock_info = MagicMock()
-        mock_only_type = MagicMock()
-        mock_only_type._meta.name = "DummyPublicIdModel"
-        mock_only_type._meta.interfaces = [Node]
-        mock_only_type.get_node = MagicMock(return_value=dummy_instance)
-        mock_info.schema.get_type = MagicMock(return_value=MagicMock(graphene_type=mock_only_type))
-
-        result = graphql_get_node_from_global_id_using_strategy(
-            mock_info, str(test_uuid), mock_only_type
-        )
-
-        assert result.pk == dummy_instance.pk
-        assert result.public_id == dummy_instance.public_id
-
-    def test_returns_none_when_public_id_strategy_get_node_returns_none(self) -> None:
-        dummy_instance = DummyPublicIdModelFactory()
-        test_uuid = dummy_instance.public_id
-        graphene_type_mock = MagicMock()
-        graphene_type_mock._meta.name = "DummyPublicIdModel"
-        graphene_type_mock._meta.interfaces = [Node]
-        graphene_type_mock.get_node = MagicMock(return_value=None)
-        mock_info = MagicMock()
-        mock_info.schema.get_type = MagicMock(
-            return_value=MagicMock(graphene_type=graphene_type_mock)
-        )
-
-        result = graphql_get_node_from_global_id_using_strategy(mock_info, str(test_uuid))
-
-        assert result is None
-
-    def test_returns_none_for_empty_global_id(self) -> None:
-        """Regression for BASEAPP-BACKEND-TEMPLATE-5F: `node(id: "")` raised a parse error."""
-        mock_info = MagicMock()
-
-        assert graphql_get_node_from_global_id_using_strategy(mock_info, "") is None
-        mock_info.schema.get_type.assert_not_called()
-
-    def test_returns_none_and_falls_back_to_legacy_for_nonexistent_uuid4(self) -> None:
-        test_uuid = str(uuid.uuid4())  # Non-existent UUID4
-        mock_info = MagicMock()
-
-        # If it doesnt find by uuid, it will fallback to legacy strategy. In this case, it will raise a parse Exception.
-        with pytest.raises(Exception) as e:
-            graphql_get_node_from_global_id_using_strategy(mock_info, test_uuid)
-
-        assert "Unable to parse global ID" in str(e.value)
-
-    def test_uses_legacy_strategy_for_non_uuid4_global_id(self) -> None:
-        dummy_instance = DummyLegacyModelFactory()
-        global_id = to_global_id("DummyLegacyModel", dummy_instance.pk)
-        mock_info = MagicMock()
-
-        only_type_mock = MagicMock()
-        only_type_mock._meta.name = "DummyLegacyModel"
-        only_type_mock._meta.interfaces = [Node]
-        only_type_mock.get_node = MagicMock(return_value=dummy_instance)
-        info_schema_mock = MagicMock()
-        info_schema_mock.get_type = MagicMock(return_value=MagicMock(graphene_type=only_type_mock))
-        mock_info.schema = info_schema_mock
-
-        result = graphql_get_node_from_global_id_using_strategy(mock_info, global_id)
-
-        assert result.pk == dummy_instance.pk
-
-    def test_uses_legacy_strategy_for_integer_id_should_fail(self) -> None:
-        dummy_instance = DummyLegacyModelFactory()
-        mock_info = MagicMock()
-        mock_only_type = MagicMock()
-        mock_only_type._meta.name = "DummyLegacyModel"
-        mock_only_type._meta.interfaces = [Node]
-        mock_only_type.get_node = MagicMock(return_value=dummy_instance)
-
-        with pytest.raises(Exception) as e:
-            graphql_get_node_from_global_id_using_strategy(
-                mock_info, str(dummy_instance.pk), mock_only_type
-            )
-        assert f"{dummy_instance.__class__.__name__} is not compatible with the PK strategy" in str(
-            e.value
-        )
-
-    def test_users_legacy_with_pk_model_with_pk_strategy(self) -> None:
-        dummy_instance = DummyLegacyWithPkModelFactory()
-        mock_info = MagicMock()
-        mock_only_type = MagicMock()
-        mock_only_type._meta.name = "DummyLegacyWithPkModel"
-        mock_only_type._meta.interfaces = [Node]
-        mock_only_type.get_node = MagicMock(return_value=dummy_instance)
-        mock_info.schema.get_type = MagicMock(return_value=MagicMock(graphene_type=mock_only_type))
-
-        result = graphql_get_node_from_global_id_using_strategy(
-            mock_info, str(dummy_instance.pk), mock_only_type
-        )
-        assert result.pk == dummy_instance.pk
-
-    def test_returns_none_when_pk_strategy_get_node_returns_none(self) -> None:
-        dummy_instance = DummyLegacyWithPkModelFactory()
-        mock_info = MagicMock()
-        mock_only_type = MagicMock()
-        mock_only_type._meta.name = "DummyLegacyWithPkModel"
-        mock_only_type._meta.interfaces = [Node]
-        mock_only_type.get_node = MagicMock(return_value=None)
-        mock_info.schema.get_type = MagicMock(return_value=MagicMock(graphene_type=mock_only_type))
-
-        result = graphql_get_node_from_global_id_using_strategy(
-            mock_info, str(dummy_instance.pk), mock_only_type
-        )
-
-        assert result is None
-
-
-@pytest.mark.django_db
 class TestHashidsStrategyIntegrationScenarios:
     def test_public_id_model_with_public_id_logic_enabled_uses_public_id_strategy(self) -> None:
         with override_settings(ENABLE_PUBLIC_ID_LOGIC=True):
@@ -363,41 +227,6 @@ class TestHashidsStrategyIntegrationScenarios:
 
                 resolved_id = strategy.id_resolver.get_id_from_instance(dummy_instance)
                 assert resolved_id == dummy_instance.pk
-
-    def test_uuid4_global_id_flow_with_public_id_logic_enabled(self) -> None:
-        with override_settings(ENABLE_PUBLIC_ID_LOGIC=True):
-            dummy_instance = DummyPublicIdModelFactory()
-            test_uuid = str(dummy_instance.public_id)
-            graphene_type_mock = MagicMock()
-            graphene_type_mock._meta.name = "DummyPublicIdModel"
-            graphene_type_mock._meta.interfaces = [Node]
-            graphene_type_mock.get_node = MagicMock(return_value=dummy_instance)
-            mock_info = MagicMock()
-            mock_info.schema.get_type = MagicMock(
-                return_value=MagicMock(graphene_type=graphene_type_mock)
-            )
-
-            result = graphql_get_node_from_global_id_using_strategy(mock_info, test_uuid)
-
-            assert result.pk == dummy_instance.pk
-            assert result.public_id == dummy_instance.public_id
-
-    def test_non_uuid4_global_id_uses_legacy_strategy_directly(self) -> None:
-        dummy_instance = DummyLegacyModelFactory()
-        global_id = to_global_id("DummyLegacyModel", dummy_instance.pk)
-        mock_info = MagicMock()
-
-        only_type_mock = MagicMock()
-        only_type_mock._meta.name = "DummyLegacyModel"
-        only_type_mock._meta.interfaces = [Node]
-        only_type_mock.get_node = MagicMock(return_value=dummy_instance)
-        info_schema_mock = MagicMock()
-        info_schema_mock.get_type = MagicMock(return_value=MagicMock(graphene_type=only_type_mock))
-        mock_info.schema = info_schema_mock
-
-        result = graphql_get_node_from_global_id_using_strategy(mock_info, global_id)
-
-        assert result.pk == dummy_instance.pk
 
     def test_mixed_strategy_usage_in_same_test(self) -> None:
         public_id_instance = DummyPublicIdModelFactory()

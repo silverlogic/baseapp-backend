@@ -19,8 +19,8 @@ class ReportableMetadataService(SharedServiceProvider):
     that has a `DocumentId`. Registered in `apps.py` `ready()`.
 
     Mirrors `baseapp_comments.CommentableMetadataService` and
-    `baseapp_follows.FollowableMetadataService` so resolvers and
-    `pre_optimization_hook` consumers can stay consistent across packages.
+    `baseapp_follows.FollowableMetadataService` so resolvers and optimizer
+    hints can stay consistent across packages.
     """
 
     @property
