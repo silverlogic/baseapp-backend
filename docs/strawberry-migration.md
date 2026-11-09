@@ -41,11 +41,15 @@ Verification:
 Query counts went down wherever a test pins them (comments listing 13 → 7, users list 5 → 1,
 follows list 10 → 6); the assertions are re-pinned to the new counts.
 
+After the removal, Strawberry moved to current releases: `strawberry-graphql` 0.340, Strawberry
+Django 0.94 and `graphql-core` 3.3 (the newest ones past the template's three-day release-age
+rule; the ranges allow up to 0.341 / 0.96). The printed schema did not change. Strawberry now refuses
+cross-origin WebSocket handshakes by default; BaseApp's consumer authenticates from
+`connectionParams` only, so it keeps accepting any origin unless `STRAWBERRY_WS_ALLOWED_ORIGINS`
+says otherwise.
+
 Still open:
 
-- **Unpin Strawberry.** `strawberry-graphql` 0.327.x / `strawberry-graphql-django` 0.91.x are the
-  last releases on `graphql-core 3.2`; moving to current releases and `graphql-core 3.3` is now
-  unblocked and should be its own change.
 - **Client projects** with their own `apps/*/graphql` Graphene code port it with
   `docs/strawberry-porting-guide.md`.
 - `pageCreate`, `profileCreate`, `organizationCreate`, `contentPostCreate` and `commentCreate`
@@ -268,7 +272,7 @@ and is mirrored to Graphene only if the template still serves Graphene; the pari
 - Remove `graphene`, `graphene-django`, both optimizers, `graphene-file-upload`,
   `baseapp-django-channels-graphql-ws`, the Graphene halves of the hashids strategies, and
   `baseapp_core/graphql/optimizer.py`.
-- Unpin Strawberry to current releases and move to `graphql-core 3.3`.
+- Unpin Strawberry to current releases and move to `graphql-core 3.3` (done).
 - Rewrite `compose-a-block` sections 7–11 and the GraphQL rules in `AGENTS.md` / convention skills.
 
 ### Phase 5 — Client projects
@@ -293,7 +297,8 @@ About 9–12 dev-weeks in total. Graphene code today is ~9k lines in 70 non-test
 ## 8. Risks
 
 - **Version pin during coexistence.** Strawberry `0.327.x` and Strawberry Django `0.91.x` are the
-  last releases on `graphql-core 3.2`. We forgo newer fixes until Graphene is removed.
+  last releases on `graphql-core 3.2`. We forgo newer fixes until Graphene is removed. (Resolved:
+  unpinned after the removal.)
 - **Two schemas drifting.** Mitigated by the parity test and the "ported package lands in
   Strawberry" rule.
 - **Optimizer differences.** Strawberry Django also defers unselected columns, so

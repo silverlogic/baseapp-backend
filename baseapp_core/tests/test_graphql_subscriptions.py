@@ -83,3 +83,27 @@ async def test_broadcast_reaches_subscriber_with_current_profile() -> None:
 
     assert result.errors is None
     assert result.data == {"onPing": "hello:Team Profile"}
+
+
+async def _handshake(origin: str, **consumer_kwargs) -> bool:
+    from channels.testing import WebsocketCommunicator
+
+    communicator = WebsocketCommunicator(
+        GraphQLWSConsumer.as_asgi(schema=schema, **consumer_kwargs),
+        "/graphql",
+        headers=[(b"host", b"api.example.com"), (b"origin", origin.encode())],
+        subprotocols=["graphql-transport-ws"],
+    )
+    connected, _ = await communicator.connect()
+    await communicator.disconnect()
+    return connected
+
+
+async def test_cross_origin_websocket_is_accepted_by_default() -> None:
+    assert await _handshake("https://app.example.com")
+
+
+async def test_cross_origin_websocket_respects_allowed_origins_setting(settings) -> None:
+    settings.STRAWBERRY_WS_ALLOWED_ORIGINS = ["https://app.example.com"]
+    assert await _handshake("https://app.example.com")
+    assert not await _handshake("https://evil.example.org")

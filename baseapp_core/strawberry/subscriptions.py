@@ -13,6 +13,7 @@ import swapper
 from asgiref.sync import async_to_sync
 from channels.db import database_sync_to_async
 from channels.layers import get_channel_layer
+from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from strawberry.channels import GraphQLWSConsumer as StrawberryGraphQLWSConsumer
 from strawberry.types import Info
@@ -104,6 +105,12 @@ def _current_profile(user: Any, relay_id: str) -> Any:
 class GraphQLWSConsumer(StrawberryGraphQLWSConsumer):
     """Authenticates from `connectionParams` like `GraphqlWsJWTAuthenticatedConsumer`:
     `Authorization` (access JWT), `Refresh` (refresh JWT) and `Current-Profile` (relay id)."""
+
+    def __init__(self, *args: Any, allowed_origins: Sequence[str] | None = None, **kwargs: Any):
+        if allowed_origins is None:
+            # Auth is token-only (no cookies), so any origin is safe by default.
+            allowed_origins = getattr(settings, "STRAWBERRY_WS_ALLOWED_ORIGINS", ("*",))
+        super().__init__(*args, allowed_origins=allowed_origins, **kwargs)
 
     async def get_context(self, request: Any, response: Any) -> WebSocketContext:
         return WebSocketContext(request)

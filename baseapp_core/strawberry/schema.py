@@ -1,9 +1,11 @@
+import dataclasses
 from collections.abc import Iterable, Sequence
 from typing import Any
 
 import strawberry
 from graphql import GraphQLError
 from strawberry.extensions import SchemaExtension
+from strawberry.schema.config import StrawberryConfig
 from strawberry.tools import merge_types
 from strawberry.types import ExecutionContext
 from strawberry_django.optimizer import DjangoOptimizerExtension
@@ -13,6 +15,7 @@ from .mutations import delete_node_mutation
 from .registry import type_registry
 from .relations import expose_all_relations
 from .relay import node_field
+from .scalars import SCALAR_MAP
 
 
 @strawberry.type
@@ -50,6 +53,10 @@ def build_schema(
     expose_all_relations()
     registered = [entry.strawberry_type for entry in type_registry.entries().values()]
     schema_kwargs["types"] = [*schema_kwargs.get("types", ()), *dict.fromkeys(registered)]
+    config = schema_kwargs.pop("config", None) or StrawberryConfig()
+    schema_kwargs["config"] = dataclasses.replace(
+        config, scalar_map={**SCALAR_MAP, **config.scalar_map}
+    )
     return Schema(
         query=merge_types("Query", (*queries, CoreQueries)),
         mutation=merge_types("Mutation", mutations) if mutations else None,
