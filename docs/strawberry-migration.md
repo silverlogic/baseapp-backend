@@ -48,6 +48,14 @@ cross-origin WebSocket handshakes by default; BaseApp's consumer authenticates f
 `connectionParams` only, so it keeps accepting any origin unless `STRAWBERRY_WS_ALLOWED_ORIGINS`
 says otherwise.
 
+Graphene parity checks against the pre-migration server: `node(id:)` and typed node fields raise
+Graphene's errors again for ids that name no node ("Unable to parse global ID …", "Relay Node … not
+found in schema", "… does not implement the Node interface") instead of returning null; an empty id
+still returns null. The WebSocket consumer keeps a `scope["user"]` set by an ASGI middleware, as
+`GraphqlWsJWTAuthenticatedConsumer` did. Its auth edge cases (inactive user, bad tokens, unusable
+`Current-Profile`, API key without `baseapp_profiles`) have tests again. The one remaining
+difference is graphql-core 3.3's wording of variable errors.
+
 Still open:
 
 - **Client projects** with their own `apps/*/graphql` Graphene code port it with

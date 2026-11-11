@@ -103,12 +103,27 @@ def get_instance_from_global_id(info: Info, global_id: str) -> Model | None:
     return model._default_manager.filter(pk=pk).first()
 
 
+def decode_node_id(info: Info, global_id: str) -> tuple[type, Any]:
+    """`decode_global_id` for node lookups: raises Graphene's errors for ids naming no node."""
+    strawberry_type, pk = decode_global_id(info, global_id)
+    if strawberry_type is None:
+        type_name, _ = from_global_id(global_id)
+        if not type_name:
+            raise Exception(
+                f'Unable to parse global ID "{global_id}". Make sure it is a base64 encoded '
+                'string in the format: "TypeName:id". Exception message: Invalid Global ID'
+            )
+        raise Exception(f'Relay Node "{type_name}" not found in schema')
+    if not issubclass(strawberry_type, Node):
+        name = strawberry_type.__strawberry_definition__.name
+        raise Exception(f'ObjectType "{name}" does not implement the "Node" interface.')
+    return strawberry_type, pk
+
+
 def resolve_node(info: Info, id: strawberry.ID) -> Node | None:
     if not id:
         return None
-    strawberry_type, pk = decode_global_id(info, id)
-    if strawberry_type is None or not issubclass(strawberry_type, Node):
-        return None
+    strawberry_type, pk = decode_node_id(info, id)
     return strawberry_type.get_node(info, pk)
 
 
@@ -126,9 +141,9 @@ def typed_node_field(type_ref: Any, **kwargs: Any) -> Any:
             if not _is_model_pk_compatible(model):
                 raise Exception(f"{model.__name__} is not compatible with the PK strategy")
             return expected.get_node(info, int(id))
-        strawberry_type, pk = decode_global_id(info, id)
-        if strawberry_type is None:
+        if not id:
             return None
+        strawberry_type, pk = decode_node_id(info, id)
         if strawberry_type is not expected:
             name = expected.__strawberry_definition__.name
             raise AssertionError(f"Must receive a {name} id.")

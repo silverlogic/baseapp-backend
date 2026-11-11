@@ -25,6 +25,11 @@ class Query:
         user = info.context.user
         return user.email if user.is_authenticated else None
 
+    @strawberry.field
+    def current_profile(self, info: Info) -> str | None:
+        profile = getattr(info.context.user, "current_profile", None)
+        return profile.name if profile else None
+
 
 @strawberry.type
 class Subscription:
@@ -42,12 +47,21 @@ schema = strawberry.Schema(query=Query, subscription=Subscription)
 application = GraphQLWSConsumer.as_asgi(schema=schema)
 
 
-async def _whoami(connection_params: dict) -> str | None:
+async def _query(connection_params: dict, query: str, app=application) -> dict:
     async with GraphQLWebsocketCommunicator(
-        application, "/graphql", connection_params=connection_params
+        app, "/graphql", connection_params=connection_params
     ) as ws:
-        async for result in ws.subscribe("{ whoami }"):
-            return result.data["whoami"]
+        async for result in ws.subscribe(query):
+            assert result.errors is None
+            return result.data
+
+
+async def _whoami(connection_params: dict) -> str | None:
+    return (await _query(connection_params, "{ whoami }"))["whoami"]
+
+
+async def _current_profile(connection_params: dict) -> str | None:
+    return (await _query(connection_params, "{ currentProfile }"))["currentProfile"]
 
 
 @database_sync_to_async
@@ -64,6 +78,48 @@ async def test_connection_params_authenticate_like_the_frontend_sends_them() -> 
     assert await _whoami({}) is None
     assert await _whoami({"Authorization": "not-a-jwt"}) is None
     assert await _whoami({"Authorization": access, "Refresh": refresh}) == user.email
+
+
+async def test_bad_access_token_falls_back_to_refresh_token() -> None:
+    user, _, _, refresh = await _user_with_profile()
+
+    assert await _whoami({"Authorization": "expired", "Refresh": refresh}) == user.email
+    assert await _whoami({"Authorization": "expired", "Refresh": "bad"}) is None
+
+
+async def test_inactive_user_is_anonymous() -> None:
+    user, _, access, refresh = await _user_with_profile()
+    user.is_active = False
+    await user.asave(update_fields=["is_active"])
+
+    assert await _whoami({"Authorization": access, "Refresh": refresh}) is None
+
+
+async def test_current_profile_is_attached_only_when_usable() -> None:
+    _, own_id, access, refresh = await _user_with_profile()
+    other_id = await database_sync_to_async(lambda: ProfileFactory(name="Other").relay_id)()
+    params = {"Authorization": access, "Refresh": refresh}
+
+    assert await _current_profile({**params, "Current-Profile": own_id}) == "Team Profile"
+    assert await _current_profile({**params, "Current-Profile": other_id}) is None
+    assert await _current_profile({**params, "Current-Profile": "unknown"}) is None
+
+
+async def test_missing_current_profile_defaults_to_the_users_profile() -> None:
+    user, _, access, refresh = await _user_with_profile()
+    name = await database_sync_to_async(lambda: user.profile.name)()
+
+    assert await _current_profile({"Authorization": access, "Refresh": refresh}) == name
+
+
+async def test_user_set_by_middleware_is_kept() -> None:
+    user, _, _, _ = await _user_with_profile()
+
+    async def with_user(scope, receive, send):
+        return await application({**scope, "user": user}, receive, send)
+
+    data = await _query({"Authorization": "not-a-jwt"}, "{ whoami }", app=with_user)
+    assert data["whoami"] == user.email
 
 
 async def test_broadcast_reaches_subscriber_with_current_profile() -> None:

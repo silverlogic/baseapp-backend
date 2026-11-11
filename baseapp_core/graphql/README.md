@@ -52,9 +52,11 @@ application = ProtocolTypeRouter({
 `GraphQLView` makes `info.context` the Django request (resolvers read `info.context.user`),
 authenticates with `STRAWBERRY_AUTHENTICATION_CLASSES` and accepts multipart uploads.
 `GraphQLWSConsumer` authenticates from `connectionParams` (`Authorization`, `Refresh`,
-`Current-Profile`). It never reads cookies, so it accepts WebSocket handshakes from any origin;
-set `STRAWBERRY_WS_ALLOWED_ORIGINS = ["https://app.example.com"]` to restrict them (Strawberry
-refuses cross-origin browser handshakes by default).
+`Current-Profile`), unless an ASGI middleware already set `scope["user"]`. It never reads
+cookies, so it accepts WebSocket handshakes from any origin; set
+`STRAWBERRY_WS_ALLOWED_ORIGINS = ["https://app.example.com"]` to restrict them (Strawberry
+refuses cross-origin browser handshakes by default), and always do so when wrapping the consumer
+in a cookie-based auth middleware.
 
 Custom scalars (`JSONString`, `GenericScalar`, `BigInt` in `baseapp_core.strawberry.scalars`) are
 `NewType`s; `build_schema` adds their definitions to `StrawberryConfig.scalar_map`.

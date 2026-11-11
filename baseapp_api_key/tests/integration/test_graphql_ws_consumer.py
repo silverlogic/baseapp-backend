@@ -86,3 +86,22 @@ async def test_current_profile_header_is_honored() -> None:
         {"HTTP_API_KEY": unencrypted, "Current-Profile": other_id}, "{ currentProfileId }"
     )
     assert data["currentProfileId"] is None
+
+
+@pytest.mark.parametrize("with_disabled_apps", [["baseapp_profiles"]], indirect=True)
+async def test_current_profile_header_is_ignored_without_baseapp_profiles(
+    with_disabled_apps,
+) -> None:
+    from baseapp_profiles.tests.factories import ProfileFactory
+
+    api_key = await database_sync_to_async(f.APIKeyFactory)()
+    unencrypted = await database_sync_to_async(APIKey.objects.decrypt)(
+        encrypted_value=api_key.encrypted_api_key
+    )
+    email, own_id = await database_sync_to_async(
+        lambda: (api_key.user.email, ProfileFactory(owner=api_key.user).relay_id)
+    )()
+    params = {"HTTP_API_KEY": unencrypted, "Current-Profile": own_id}
+
+    data = await _query(params, "{ whoami currentProfileId }")
+    assert data == {"whoami": email, "currentProfileId": None}

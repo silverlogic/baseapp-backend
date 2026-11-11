@@ -123,6 +123,9 @@ class GraphQLWSConsumer(StrawberryGraphQLWSConsumer):
         return user
 
     async def on_ws_connect(self, context: WebSocketContext) -> Any:
+        if "user" in self.scope:
+            # Already set by an ASGI auth middleware.
+            return UNSET
         params = context.connection_params or {}
         user = await self.authenticate_connection(params)
         if user is None or not user.is_active:
