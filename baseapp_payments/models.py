@@ -159,6 +159,29 @@ class CardHoldQuerySet(models.QuerySet):
         released without a Stripe call)."""
         return self.filter(status__in=(*self.model.OPEN_STATUSES, *self.model.UNPLACED_STATUSES))
 
+    def with_payment_totals(self) -> "CardHoldQuerySet":
+        """Annotate ``paid_cents`` (every payment taken: the hold's capture, the
+        difference, the full charge) and ``fees_cents`` (Stripe's fees for them, as far
+        as they are known), so a project's totals and margins count every payment."""
+        from django.db.models import Value
+        from django.db.models.functions import Coalesce
+
+        zero = Value(0)
+        return self.annotate(
+            paid_cents=Coalesce("captured_amount_cents", zero)
+            + models.Case(
+                models.When(difference_charged_at__isnull=False, then="difference_amount_cents"),
+                default=zero,
+            )
+            + models.Case(
+                models.When(charged_at__isnull=False, then=Coalesce("charge_amount_cents", zero)),
+                default=zero,
+            ),
+            fees_cents=Coalesce("capture_fee_cents", zero)
+            + Coalesce("difference_fee_cents", zero)
+            + Coalesce("charge_fee_cents", zero),
+        )
+
     def for_target(self, target: models.Model) -> "CardHoldQuerySet":
         """The holds attached to ``target`` through its ``DocumentId``."""
         return self.filter(
@@ -173,7 +196,10 @@ class AbstractCardHold(RelayModel, TimeStampedModel):
     Created ``pending`` when the PaymentIntent is created, linked to its target (any
     registered model, through ``DocumentId``) and ``authorized`` once the project's own
     record is placed. Later it is ``captured`` for the final amount, or ``released`` (its
-    PaymentIntent cancelled).
+    PaymentIntent cancelled). A final amount above the hold captures all of it and the
+    module charges the difference to the same card (``difference_*``); ``payment_status``
+    says how much of the final amount was taken, and the ``*_fee_cents`` fields Stripe's
+    fee for each payment.
 
     A target whose adapter doesn't use holds (``uses_holds = False``) gets a ``saved``
     row instead: the card saved with a SetupIntent, nothing ever authorized, and the
@@ -222,6 +248,21 @@ class AbstractCardHold(RelayModel, TimeStampedModel):
         DECLINED = "declined", _("The card declined the capture")
         LAPSED = "lapsed", _("The authorization was cancelled outside capture()")
         STALE_CHARGE = "stale_charge", _("A charge that never finished, past Stripe's 24 hours")
+        # On a hold captured in full: the sweep found its target cancelled with the
+        # difference still due, and stops charging it (a capture() may still).
+        TARGET_CANCELLED = "target_cancelled", _(
+            "The target was cancelled with the difference still due"
+        )
+
+    class PaymentStatus(models.TextChoices):
+        """How much of the target's final amount was taken. Projects mirror it onto their
+        own record through the ``payment_status_changed`` signal."""
+
+        UNPAID = "unpaid", _("Unpaid")
+        PAID = "paid", _("Paid")
+        # Only one way in: the hold was captured in full and the difference above it was
+        # declined. The held amount stays taken; the rest is still due.
+        PARTIALLY_PAID = "partially_paid", _("Partially paid")
 
     # Holds that may still have a live authorization in Stripe.
     OPEN_STATUSES = (Status.PENDING, Status.AUTHORIZED)
@@ -332,6 +373,15 @@ class AbstractCardHold(RelayModel, TimeStampedModel):
         _("captured amount (cents)"), null=True, blank=True
     )
     captured_at = models.DateTimeField(_("captured at"), null=True, blank=True)
+    # The final amount the last capture() of this authorization asked for, written with
+    # ``capture_sent_at`` before the capture is sent. Stripe's captured amount is checked
+    # against it (with the difference planned on top): a mismatch is never ``paid``.
+    requested_amount_cents = models.PositiveIntegerField(
+        _("requested amount (cents)"), null=True, blank=True
+    )
+    # A capture of this authorization was first sent to Stripe: its answer may still come
+    # (the webhook), so a later call never drops the difference it planned.
+    capture_sent_at = models.DateTimeField(_("capture sent at"), null=True, blank=True)
     # Set with ``released``: a hold released to be charged afresh is never re-armed.
     release_reason = models.CharField(
         _("release reason"), max_length=16, choices=ReleaseReason.choices, blank=True
@@ -355,6 +405,65 @@ class AbstractCardHold(RelayModel, TimeStampedModel):
     charge_blocked_reason = models.CharField(
         _("charge blocked reason"), max_length=16, choices=ChargeBlock.choices, blank=True
     )
+    # The full charge's PaymentIntent and amount (a hold charged instead, a saved card, a
+    # kept failed hold). The amount is the one capture() was asked for, written before the
+    # charge runs, then Stripe's when the project's ``charge`` returns a PaymentIntent.
+    charge_payment_intent_id = models.CharField(
+        _("charge PaymentIntent id"), max_length=255, null=True, blank=True
+    )
+    charge_amount_cents = models.PositiveIntegerField(
+        _("charged amount (cents)"), null=True, blank=True
+    )
+    # A final amount above the hold: the hold is captured in full, then the rest (the
+    # difference) is charged off-session to the same card, with its own claim. Planned
+    # (``difference_amount_cents``) before the capture, claimed (``difference_key``,
+    # written before the charge is sent) once the capture is recorded.
+    difference_amount_cents = models.PositiveIntegerField(
+        _("difference due (cents)"), null=True, blank=True
+    )
+    difference_key = models.CharField(_("difference idempotency key"), max_length=255, blank=True)
+    difference_claimed_at = models.DateTimeField(_("difference claimed at"), null=True, blank=True)
+    # Bumped by each difference charge Stripe definitely refused: the next one gets a
+    # new key instead of Stripe replaying the refusal.
+    difference_generation = models.PositiveSmallIntegerField(_("difference generation"), default=0)
+    difference_payment_intent_id = models.CharField(
+        _("difference PaymentIntent id"), max_length=255, unique=True, null=True, blank=True
+    )
+    difference_charged_at = models.DateTimeField(_("difference charged at"), null=True, blank=True)
+    # Stripe's code for the last refused difference charge (the bank's decline code when
+    # it sent one).
+    difference_failure_code = models.CharField(
+        _("difference failure code"), max_length=64, blank=True
+    )
+    payment_status = models.CharField(
+        _("payment status"),
+        max_length=16,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.UNPAID,
+    )
+    # Staff recorded the rest of a partially paid target as paid outside the app.
+    paid_outside_at = models.DateTimeField(_("paid outside at"), null=True, blank=True)
+    paid_outside_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="card_holds_paid_outside",
+        verbose_name=_("paid outside by"),
+        null=True,
+        blank=True,
+    )
+    # Stripe's actual fee for each payment, from its charge's balance transaction, in
+    # ``fee_currency`` (the account's settlement currency, not necessarily ``currency``).
+    # Empty until Stripe has the balance transaction; the sweep fills it in later.
+    capture_fee_cents = models.PositiveIntegerField(
+        _("hold capture fee (cents)"), null=True, blank=True
+    )
+    difference_fee_cents = models.PositiveIntegerField(
+        _("difference charge fee (cents)"), null=True, blank=True
+    )
+    charge_fee_cents = models.PositiveIntegerField(
+        _("full charge fee (cents)"), null=True, blank=True
+    )
+    fee_currency = models.CharField(_("fee currency"), max_length=3, blank=True)
 
     objects = CardHoldQuerySet.as_manager()
 

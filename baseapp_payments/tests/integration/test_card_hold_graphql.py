@@ -221,6 +221,25 @@ class TestCardHoldNode:
 
         assert node["status"] == "failed" and node["failureReason"] == "card_declined"
 
+    @pytest.mark.parametrize("payment_status", ["unpaid", "paid", "partially_paid"])
+    def test_the_customer_and_staff_read_the_payment_status(
+        self, holder, staff, payment_status
+    ) -> None:
+        hold = CardHoldFactory(
+            target=HoldableOrderFactory(user=holder),
+            status=CardHold.Status.CAPTURED,
+            payment_status=payment_status,
+        )
+        query = "query($id: ID!) { node(id: $id) { ... on CardHold { paymentStatus } } }"
+
+        assert execute(query, holder, id=get_obj_relay_id(hold))["node"] == {
+            "paymentStatus": payment_status
+        }
+        assert execute(query, staff, id=get_obj_relay_id(hold))["node"] == {
+            "paymentStatus": payment_status
+        }
+        assert execute(query, UserFactory(), id=get_obj_relay_id(hold))["node"] is None
+
     def test_hold_on_is_the_stored_day_the_sweep_uses(self, holder) -> None:
         """Not recomputed from the target: a later change of the window or the date
         shows only once reschedule() moved the hold itself."""
@@ -379,6 +398,22 @@ class TestCardHoldListQueryCount:
         assert rows == 6
         assert six == three == 5, (three, six)
         assert {hold["holdOn"] for hold in self.holds} == {"2030-03-15"}
+
+    def test_payment_status_costs_no_query_per_row(self, holder) -> None:
+        query = """
+            { holdableOrders { edges { node { id cardHold { status paymentStatus } } } } }
+        """
+        for _ in range(3):
+            CardHoldFactory(target=HoldableOrderFactory(user=holder), payment_status="paid")
+        three, rows = self.count_queries(holder, query)
+        for _ in range(3):
+            CardHoldFactory(target=HoldableOrderFactory(user=holder), payment_status="paid")
+
+        six, rows = self.count_queries(holder, query)
+
+        assert rows == 6
+        assert six == three == 5, (three, six)
+        assert {hold["paymentStatus"] for hold in self.holds} == {"paid"}
 
     def test_a_viewer_with_view_cardhold_costs_one_lookup_per_request(self, holder) -> None:
         """N5 on a list: the model-level grant is looked up once, not once per row."""

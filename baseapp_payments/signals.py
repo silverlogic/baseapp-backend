@@ -14,6 +14,15 @@ card_hold_released = Signal()
 # Sent when a deferred hold fails to be placed (final), after the commit. Arguments:
 # ``hold`` (the CardHold, with ``failure_code``) and ``target``.
 card_hold_failed = Signal()
+# Sent when a hold's ``payment_status`` changes (unpaid, paid, partially_paid), once per
+# change, after the commit. Arguments: ``hold``, ``target``, ``previous`` and
+# ``payment_status``. Mirror it onto your own record here.
+payment_status_changed = Signal()
+# Sent when the charge of the difference above a captured hold is refused, once per
+# refusal, after the commit: the held amount stays taken and the rest is still due.
+# Arguments: ``hold``, ``target``, ``amount_due_cents`` and ``error_code`` (Stripe's
+# decline code, or its error code). Notify people and collect the rest from here.
+difference_charge_failed = Signal()
 
 
 def send_on_commit(signal: Signal, **kwargs: Any) -> None:

@@ -91,6 +91,31 @@ CARD_HOLD_EVENTS = (
 )
 
 
+def invoice_client_secret(invoice: Any) -> "str | None":
+    """The client secret that confirms an invoice's payment: ``confirmation_secret``
+    (API 2025-03-31.basil and later; only present when expanded), or, from an invoice
+    rendered at an older version, its expanded ``payment_intent``."""
+    secret = stripe_field(stripe_field(invoice, "confirmation_secret"), "client_secret")
+    if secret:
+        return secret
+    return stripe_field(stripe_field(invoice, "payment_intent"), "client_secret")
+
+
+def subscription_period(subscription: Any, field: str) -> Any:
+    """``current_period_start`` / ``current_period_end`` of a subscription: on its items
+    from API 2025-03-31.basil on (each item has its own; the earliest end is the next
+    renewal), on the subscription itself before."""
+    value = stripe_field(subscription, field)
+    if value:
+        return value
+    items = stripe_field(stripe_field(subscription, "items"), "data") or []
+    values = [stripe_field(item, field) for item in items]
+    values = [value for value in values if value]
+    if not values:
+        return None
+    return min(values) if field == "current_period_end" else max(values)
+
+
 class StripeWebhookHandler:
     def __init__(self) -> None:
         self.EVENT_HANDLERS = {
@@ -283,7 +308,12 @@ class SubscriptionNotFound(Exception):
     pass
 
 
-DEFAULT_STRIPE_API_VERSION = "2025-02-24.acacia"
+# Basil (2025-03-31) moved the subscription's billing period to its items, replaced the
+# invoice's single payment_intent with ``payments`` / ``confirmation_secret``, and lets
+# several PaymentIntents pay one invoice (``Invoice.attach_payment``, which card holds use
+# for a payment above the hold). Set your webhook endpoint to this version too: Stripe
+# renders each event at the endpoint's version, not this one. See the README.
+DEFAULT_STRIPE_API_VERSION = "2025-05-28.basil"
 
 
 def configure_stripe(api_key: str | None = None, api_version: str | None = None) -> None:
@@ -376,25 +406,22 @@ class StripeService:
                 default_payment_method=payment_method_id,
                 payment_behavior="default_incomplete",
                 payment_settings={"save_default_payment_method": "on_subscription"},
-                expand=["latest_invoice.payment_intent"],
+                # Basil removed invoice.payment_intent: the secret the frontend confirms
+                # is the invoice's confirmation_secret (includable, so only when asked).
+                expand=["latest_invoice.confirmation_secret"],
                 metadata={"product_id": product_id} if product_id else None,
             )
-            client_secret = None
             latest_invoice = subscription.get("latest_invoice")
             # The expand above is a request, not a guarantee: Stripe answers with the
-            # bare id at either level often enough that reading it like an object
-            # crashed the whole subscribe call. Re-fetching rather than just skipping,
-            # because a None client_secret leaves the frontend unable to confirm the
-            # card and the subscription stuck as incomplete.
+            # bare id often enough that reading it like an object crashed the whole
+            # subscribe call. Re-fetching rather than just skipping, because a None
+            # client_secret leaves the frontend unable to confirm the card and the
+            # subscription stuck as incomplete.
             if isinstance(latest_invoice, str):
-                latest_invoice = stripe.Invoice.retrieve(latest_invoice, expand=["payment_intent"])
-            if latest_invoice:
-                payment_intent = latest_invoice.get("payment_intent")
-                if isinstance(payment_intent, str):
-                    payment_intent = stripe.PaymentIntent.retrieve(payment_intent)
-                if payment_intent:
-                    client_secret = payment_intent.get("client_secret")
-            subscription["client_secret"] = client_secret
+                latest_invoice = stripe.Invoice.retrieve(
+                    latest_invoice, expand=["confirmation_secret"]
+                )
+            subscription["client_secret"] = invoice_client_secret(latest_invoice)
             return subscription
         except Exception as e:
             logger.exception(e)

@@ -67,3 +67,72 @@ class TestInvoiceClientSecret:
         }
 
         assert StripeInvoiceSerializer(invoice).data["client_secret"] == "pi_123_secret"
+
+
+class TestBasilInvoice:
+    """2025-03-31.basil moved the secret to ``confirmation_secret``, a line's ``type`` to
+    ``parent.type`` and its ``price`` to ``pricing.price_details.price``."""
+
+    def test_the_confirmation_secret_is_the_client_secret(self) -> None:
+        from baseapp_payments.serializers import StripeInvoiceSerializer
+
+        invoice = {
+            "id": "in_1",
+            "confirmation_secret": {"client_secret": "pi_1_secret", "type": "payment_intent"},
+            "lines": {"data": []},
+        }
+
+        assert StripeInvoiceSerializer(invoice).data["client_secret"] == "pi_1_secret"
+
+    def test_lines_read_their_type_and_expanded_price_from_basils_places(self) -> None:
+        from baseapp_payments.serializers import StripeInvoiceSerializer
+
+        price = {"id": "price_1", "currency": "usd", "unit_amount": 1_000, "recurring": {}}
+        invoice = {
+            "id": "in_1",
+            "lines": {
+                "data": [
+                    {
+                        "id": "il_1",
+                        "amount": 1_000,
+                        "description": "Plan",
+                        "quantity": 1,
+                        "parent": {"type": "subscription_item_details"},
+                        "pricing": {"type": "price_details", "price_details": {"price": price}},
+                    },
+                    {
+                        "id": "il_2",
+                        "amount": 500,
+                        "description": "Extra",
+                        "quantity": 1,
+                        "parent": {"type": "invoice_item_details"},
+                        "pricing": {"type": "price_details", "price_details": {"price": "price_2"}},
+                    },
+                ]
+            },
+        }
+
+        first, second = StripeInvoiceSerializer(invoice).data["lines"]
+
+        assert first["type"] == "subscription"
+        assert first["price"]["id"] == "price_1"
+        assert second["type"] == "invoiceitem"
+        # Only an id: not enough to fill the nested price, so it is left out.
+        assert "price" not in second
+
+    def test_lines_from_before_basil_are_untouched(self) -> None:
+        from baseapp_payments.serializers import StripeInvoiceSerializer
+
+        price = {"id": "price_1", "currency": "usd", "unit_amount": 1_000, "recurring": {}}
+        line = {
+            "id": "il_1",
+            "amount": 1,
+            "description": "",
+            "quantity": 1,
+            "type": "subscription",
+            "price": price,
+        }
+
+        (data,) = StripeInvoiceSerializer({"id": "in_1", "lines": {"data": [line]}}).data["lines"]
+
+        assert data["type"] == "subscription" and data["price"]["id"] == "price_1"
