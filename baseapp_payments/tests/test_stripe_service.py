@@ -318,12 +318,22 @@ class TestListingCalls:
 
 
 class TestIncompleteSubscriptionClientSecret:
-    """`expand=["latest_invoice.payment_intent"]` is not a guarantee.
+    """The secret the frontend confirms the first payment with.
 
-    When Stripe answers with the bare id at either level, reading it like an object
+    Basil removed ``invoice.payment_intent``: it is the invoice's ``confirmation_secret``,
+    asked for with ``expand=["latest_invoice.confirmation_secret"]``. The expand is not a
+    guarantee: when Stripe answers with the bare invoice id, reading it like an object
     raised `'str' object has no attribute 'get'`, which the caller only ever saw as
     "Error creating subscription intent in Stripe".
     """
+
+    def test_it_asks_for_the_confirmation_secret(self, service: StripeService) -> None:
+        with patch("baseapp_payments.utils.stripe.Subscription.create") as mock_create:
+            mock_create.return_value = _AttrDict(id="sub_1", latest_invoice=None)
+
+            service.create_incomplete_subscription("cus_1", "price_1")
+
+        assert mock_create.call_args.kwargs["expand"] == ["latest_invoice.confirmation_secret"]
 
     def test_latest_invoice_returned_as_an_id(self, service: StripeService) -> None:
         with (
@@ -332,33 +342,34 @@ class TestIncompleteSubscriptionClientSecret:
         ):
             mock_create.return_value = _AttrDict(id="sub_1", latest_invoice="in_1")
             mock_invoice.return_value = _AttrDict(
-                id="in_1", payment_intent=_AttrDict(id="pi_1", client_secret="pi_1_secret")
+                id="in_1", confirmation_secret=_AttrDict(client_secret="pi_1_secret")
             )
 
             result = service.create_incomplete_subscription("cus_1", "price_1")
 
         assert result["client_secret"] == "pi_1_secret"
-
-    def test_payment_intent_returned_as_an_id(self, service: StripeService) -> None:
-        with (
-            patch("baseapp_payments.utils.stripe.Subscription.create") as mock_create,
-            patch("baseapp_payments.utils.stripe.PaymentIntent.retrieve") as mock_pi,
-        ):
-            mock_create.return_value = _AttrDict(
-                id="sub_1", latest_invoice=_AttrDict(id="in_1", payment_intent="pi_1")
-            )
-            mock_pi.return_value = _AttrDict(id="pi_1", client_secret="pi_1_secret")
-
-            result = service.create_incomplete_subscription("cus_1", "price_1")
-
-        assert result["client_secret"] == "pi_1_secret"
+        mock_invoice.assert_called_once_with("in_1", expand=["confirmation_secret"])
 
     def test_fully_expanded_response_needs_no_extra_call(self, service: StripeService) -> None:
         with (
             patch("baseapp_payments.utils.stripe.Subscription.create") as mock_create,
             patch("baseapp_payments.utils.stripe.Invoice.retrieve") as mock_invoice,
-            patch("baseapp_payments.utils.stripe.PaymentIntent.retrieve") as mock_pi,
         ):
+            mock_create.return_value = _AttrDict(
+                id="sub_1",
+                latest_invoice=_AttrDict(
+                    id="in_1", confirmation_secret=_AttrDict(client_secret="pi_1_secret")
+                ),
+            )
+
+            result = service.create_incomplete_subscription("cus_1", "price_1")
+
+        assert result["client_secret"] == "pi_1_secret"
+        mock_invoice.assert_not_called()
+
+    def test_an_invoice_rendered_before_basil_still_answers(self, service: StripeService) -> None:
+        """A project pinning an older STRIPE_API_VERSION gets the expanded payment_intent."""
+        with patch("baseapp_payments.utils.stripe.Subscription.create") as mock_create:
             mock_create.return_value = _AttrDict(
                 id="sub_1",
                 latest_invoice=_AttrDict(
@@ -369,8 +380,51 @@ class TestIncompleteSubscriptionClientSecret:
             result = service.create_incomplete_subscription("cus_1", "price_1")
 
         assert result["client_secret"] == "pi_1_secret"
-        mock_invoice.assert_not_called()
-        mock_pi.assert_not_called()
+
+    def test_no_invoice_no_secret(self, service: StripeService) -> None:
+        with patch("baseapp_payments.utils.stripe.Subscription.create") as mock_create:
+            mock_create.return_value = _AttrDict(id="sub_1", latest_invoice=None)
+
+            assert (
+                service.create_incomplete_subscription("cus_1", "price_1")["client_secret"] is None
+            )
+
+
+class TestBasilVersion:
+    def test_the_module_defaults_to_basil(self, monkeypatch) -> None:
+        from baseapp_payments.utils import DEFAULT_STRIPE_API_VERSION, configure_stripe
+
+        # Restored after the test: configure_stripe sets the module globals.
+        monkeypatch.setattr(stripe, "api_key", stripe.api_key)
+        monkeypatch.setattr(stripe, "api_version", stripe.api_version)
+        configure_stripe(api_key="sk_test_x")
+
+        assert DEFAULT_STRIPE_API_VERSION == "2025-05-28.basil"
+        assert stripe.api_version == "2025-05-28.basil"
+
+    @pytest.mark.parametrize(
+        "subscription, expected",
+        [
+            ({"current_period_end": 10}, 10),
+            ({"items": {"data": [{"current_period_end": 30}, {"current_period_end": 20}]}}, 20),
+            ({"items": {"data": [{"current_period_start": 5}]}}, None),
+            ({}, None),
+        ],
+        ids=["before_basil", "items", "no_end", "nothing"],
+    )
+    def test_the_period_end_comes_from_the_items(self, subscription, expected) -> None:
+        from baseapp_payments.utils import subscription_period
+
+        assert subscription_period(subscription, "current_period_end") == expected
+
+    def test_the_period_start_is_the_latest_items(self) -> None:
+        from baseapp_payments.utils import subscription_period
+
+        subscription = {
+            "items": {"data": [{"current_period_start": 5}, {"current_period_start": 7}]}
+        }
+
+        assert subscription_period(subscription, "current_period_start") == 7
 
 
 class TestExpandableFieldHelpers:

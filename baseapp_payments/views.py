@@ -93,7 +93,7 @@ class StripeSubscriptionViewset(
         instance = self.get_object()
         subscription = StripeService().retrieve_subscription(
             instance.remote_subscription_id,
-            expand=["latest_invoice.payment_intent", "items.data.price.product"],
+            expand=["latest_invoice.confirmation_secret", "items.data.price.product"],
         )
         serializer = self.get_serializer(subscription)
         return Response(serializer.data, status=200)

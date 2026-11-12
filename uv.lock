@@ -479,7 +479,7 @@ requires-dist = [
     { name = "social-auth-app-django", marker = "extra == 'socialauth'", specifier = ">=6.0.1,<7.0.0" },
     { name = "social-auth-core", marker = "extra == 'socialauth'", specifier = ">=5.0.0,<6.0.0" },
     { name = "stevedore", specifier = ">=5.7.0" },
-    { name = "stripe", marker = "extra == 'payments'", specifier = ">=11.5.0,<15" },
+    { name = "stripe", marker = "extra == 'payments'", specifier = ">=12.2,<15" },
     { name = "swapper", specifier = ">=1.3" },
     { name = "wagtail", marker = "extra == 'wagtail'", specifier = ">=7.0" },
     { name = "wagtail-headless-preview", marker = "extra == 'wagtail'", specifier = "==0.8" },

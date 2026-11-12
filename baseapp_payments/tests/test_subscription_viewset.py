@@ -63,6 +63,47 @@ class TestSubscriptionRetrieveView:
         assert response.data["id"] == "sub_123"
         assert response.data["status"] == "active"
 
+    @patch("baseapp_payments.views.StripeService.retrieve_subscription")
+    def test_basil_subscriptions_read_their_period_and_secret_from_their_new_places(
+        self, mock_retrieve_subscription: MagicMock, user_client: Client
+    ) -> None:
+        """From 2025-03-31.basil the billing period lives on the items, and the secret on
+        the invoice's confirmation_secret (asked for with expand)."""
+        mock_retrieve_subscription.return_value = {
+            "id": "sub_123",
+            "status": "incomplete",
+            "items": {
+                "data": [
+                    {
+                        "id": "si_1",
+                        "current_period_start": 1_900_000_000,
+                        "current_period_end": 1_902_592_000,
+                    }
+                ]
+            },
+            "latest_invoice": {
+                "id": "in_1",
+                "confirmation_secret": {"client_secret": "pi_1_secret", "type": "payment_intent"},
+            },
+        }
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        subscription = SubscriptionFactory(customer=customer)
+
+        response = user_client.get(
+            reverse(
+                self.viewname,
+                kwargs={"remote_subscription_id": subscription.remote_subscription_id},
+            )
+        )
+
+        responseEquals(response, status.HTTP_200_OK)
+        assert response.data["current_period_end"] == "2030-04-16T17:46:40Z"
+        assert response.data["client_secret"] == "pi_1_secret"
+        assert mock_retrieve_subscription.call_args.kwargs["expand"] == [
+            "latest_invoice.confirmation_secret",
+            "items.data.price.product",
+        ]
+
 
 class TestSubscriptionListView:
     viewname = "v1:subscriptions-list"
@@ -139,7 +180,7 @@ class TestSubscriptionCreateView:
         mock_create_incomplete_subscription.return_value = {
             "id": "sub_123",
             "status": "incomplete",
-            "latest_invoice": {"payment_intent": {"client_secret": "client_secret_123"}},
+            "latest_invoice": {"confirmation_secret": {"client_secret": "client_secret_123"}},
         }
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.post(

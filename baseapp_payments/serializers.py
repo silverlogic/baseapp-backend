@@ -16,8 +16,10 @@ from .models import BaseCustomer, BaseSubscription
 from .utils import (
     STRIPE_LIVE_SUBSCRIPTION_STATUSES,
     StripeService,
+    invoice_client_secret,
     stripe_field,
     stripe_id,
+    subscription_period,
 )
 
 # stripe and the models are imported at runtime, not under TYPE_CHECKING: drf-spectacular
@@ -73,6 +75,30 @@ class StripeInvoiceLineSerializer(serializers.Serializer):
     price = StripePriceSerializer(read_only=True)
 
 
+# Basil's invoice line parent types, as the line ``type`` they replaced.
+_LINE_TYPE_OF_PARENT = {
+    "subscription_item_details": "subscription",
+    "invoice_item_details": "invoiceitem",
+}
+
+
+def _basil_line(line: Any) -> Any:
+    """An invoice line with the ``type`` and ``price`` this serializer exposes, read from
+    where API 2025-03-31.basil moved them (``parent.type``, ``pricing.price_details.price``)
+    when the line has no top-level ones. ``price`` is filled only when Stripe expanded it
+    (an id alone can't fill the nested price)."""
+    if not isinstance(line, dict) or ("type" in line and "price" in line):
+        return line
+    line = dict(line)
+    parent_type = stripe_field(stripe_field(line, "parent"), "type")
+    if "type" not in line and parent_type:
+        line["type"] = _LINE_TYPE_OF_PARENT.get(parent_type, parent_type)
+    price = stripe_field(stripe_field(stripe_field(line, "pricing"), "price_details"), "price")
+    if "price" not in line and isinstance(price, dict):
+        line["price"] = price
+    return line
+
+
 class StripeInvoiceSerializer(serializers.Serializer):
     id = serializers.CharField(read_only=True)
     amount_due = serializers.IntegerField(read_only=True)
@@ -87,19 +113,19 @@ class StripeInvoiceSerializer(serializers.Serializer):
     client_secret = serializers.SerializerMethodField()
 
     def get_client_secret(self, instance: "stripe.Invoice") -> "str | None":
-        # list_invoices() requests no expansion, so Stripe sends payment_intent as a bare
-        # id string and calling .get() on it raised AttributeError, 500ing the whole list.
-        # Guarded rather than expanded: no consumer reads this field, so paying for
-        # expand=["data.payment_intent"] on every invoice page would buy nothing.
-        payment_intent = stripe_field(instance, "payment_intent")
-        if not isinstance(payment_intent, dict):
-            return None
-        return payment_intent.get("client_secret")
+        # list_invoices() requests no expansion. From basil on the secret is the
+        # includable confirmation_secret, absent unless expanded; before it, an
+        # unexpanded payment_intent arrived as a bare id string. Both read as None.
+        # Not expanded: no consumer reads this field, so paying for it on every invoice
+        # page would buy nothing.
+        return invoice_client_secret(instance)
 
     def to_representation(self, instance: "stripe.Invoice") -> dict:
         representation = super().to_representation(instance)
         lines = representation.get("lines", {}).get("data", [])
-        representation["lines"] = StripeInvoiceLineSerializer(lines, many=True).data
+        representation["lines"] = StripeInvoiceLineSerializer(
+            [_basil_line(line) for line in lines], many=True
+        ).data
         if "created" in representation and representation["created"] is not None:
             representation["created"] = datetime.fromtimestamp(
                 representation["created"], tz=timezone.utc
@@ -374,10 +400,7 @@ class StripeSubscriptionSerializer(serializers.Serializer):
     def get_client_secret(self, instance: "stripe.Subscription") -> "str | None":
         latest_invoice = instance.get("latest_invoice", {})
         if isinstance(latest_invoice, dict):
-            payment_intent = latest_invoice.get("payment_intent", {})
-            if isinstance(payment_intent, dict):
-                client_secret = payment_intent.get("client_secret")
-                return client_secret
+            return invoice_client_secret(latest_invoice)
         return None
 
     def get_product(self, instance: "stripe.Subscription") -> "str | dict | None":
@@ -407,8 +430,10 @@ class StripeSubscriptionSerializer(serializers.Serializer):
         }
 
     def to_representation(self, instance: "stripe.Subscription") -> dict:
-        instance_period_end = instance.get("current_period_end")
-        if instance_period_end:
+        # Basil moved the billing period to the subscription's items; the earliest item
+        # end is when it renews next.
+        instance_period_end = subscription_period(instance, "current_period_end")
+        if isinstance(instance_period_end, int):
             instance["current_period_end"] = datetime.fromtimestamp(
                 instance_period_end, tz=timezone.utc
             )

@@ -1,6 +1,7 @@
-"""Staff decisions on a failed deferred hold: keep its target, or cancel it.
+"""Staff decisions on a card hold: keep or cancel the target of a failed deferred hold,
+or mark a partially paid target paid outside the app.
 
-Both need ``change_cardhold`` on the hold (a model-level grant: the hold's own customer
+All three need ``change_cardhold`` on the hold (a model-level grant: the hold's own customer
 never has it; see ``permissions.can_decide_card_hold``). Registered by the plugin; without
 a card hold model ``CardHoldMutations`` adds nothing.
 """
@@ -63,17 +64,21 @@ class CardHoldDecisionMixin:
         raise NotImplementedError
 
     @classmethod
+    def refused(cls) -> GraphQLError:
+        return _not_failed()
+
+    @classmethod
     @login_required
     def mutate_and_get_payload(cls, root: Any, info: graphene.ResolveInfo, **input: Any) -> Any:
         hold = _decided_hold(info, input["id"])
         if not cls.decide(hold.pk, info.context.user):
-            raise _not_failed()
+            raise cls.refused()
         hold.refresh_from_db()
         return cls(card_hold=hold)
 
 
 if card_holds_enabled():
-    from ..holds import cancel_failed_hold, keep_failed_hold
+    from ..holds import cancel_failed_hold, keep_failed_hold, mark_paid_outside
 
     CardHoldObjectType = get_object_type_for_model(get_card_hold_model())
 
@@ -103,9 +108,35 @@ if card_holds_enabled():
         def decide(cls, card_hold_id: int, actor: Any) -> bool:
             return cancel_failed_hold(card_hold_id, actor)
 
+    class CardHoldMarkPaid(CardHoldDecisionMixin, RelayMutation):
+        """Record the rest of a partially paid target (its hold captured, the difference
+        above it declined) as paid outside the app: its payment status becomes paid, and
+        the difference is never charged again."""
+
+        card_hold = graphene.Field(CardHoldObjectType)
+
+        class Input:
+            id = graphene.ID(required=True, description="The partially paid card hold.")
+
+        @classmethod
+        def decide(cls, card_hold_id: int, actor: Any) -> bool:
+            return mark_paid_outside(card_hold_id, actor)
+
+        @classmethod
+        def refused(cls) -> GraphQLError:
+            return GraphQLError(
+                str(
+                    _(
+                        "Only a partially paid card hold that isn't being charged can be marked paid."
+                    )
+                ),
+                extensions={"code": "invalid_action"},
+            )
+
     class CardHoldMutations:
         card_hold_keep = CardHoldKeep.Field()
         card_hold_cancel = CardHoldCancel.Field()
+        card_hold_mark_paid = CardHoldMarkPaid.Field()
 
 else:
 

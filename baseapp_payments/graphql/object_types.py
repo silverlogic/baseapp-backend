@@ -41,6 +41,13 @@ class BaseCardHoldObjectType:
     failure_reason = graphene.String(
         description="Staff only: Stripe's code for why a deferred hold failed."
     )
+    payment_status = graphene.String(
+        required=True,
+        description=(
+            "How much of the final amount was taken: unpaid, paid, or partially_paid (the"
+            " hold was captured and the difference above it was declined)."
+        ),
+    )
 
     class Meta:
         # The model is set on the concrete type below, only when card holds are enabled,

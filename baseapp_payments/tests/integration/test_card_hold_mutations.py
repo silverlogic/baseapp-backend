@@ -1,5 +1,6 @@
-"""The staff decision mutations on a failed deferred hold (cardHoldKeep, cardHoldCancel),
-through the test project's schema, where the plugin registers them."""
+"""The staff decision mutations on a card hold (cardHoldKeep, cardHoldCancel on a failed
+deferred hold; cardHoldMarkPaid on a partially paid one), through the test project's
+schema, where the plugin registers them."""
 
 from typing import Any
 
@@ -27,6 +28,12 @@ KEEP = """
 CANCEL = """
     mutation($input: CardHoldCancelInput!) {
         cardHoldCancel(input: $input) { cardHold { id status kept } }
+    }
+"""
+
+MARK_PAID = """
+    mutation($input: CardHoldMarkPaidInput!) {
+        cardHoldMarkPaid(input: $input) { cardHold { id status paymentStatus } }
     }
 """
 
@@ -110,6 +117,63 @@ class TestCancel:
         assert error_code(run(CANCEL, decider, hold)) == "invalid_action"
         hold.refresh_from_db()
         assert hold.status == CardHold.Status.AUTHORIZED
+
+
+@pytest.fixture
+def partially_paid_hold(holder) -> Any:
+    """Captured in full; the difference above it was declined."""
+    return CardHoldFactory(
+        target=HoldableOrderFactory(user=holder),
+        status=CardHold.Status.CAPTURED,
+        captured_amount_cents=11_000,
+        captured_at=timezone.now(),
+        difference_amount_cents=1_000,
+        difference_generation=1,
+        difference_failure_code="card_declined",
+        payment_status=CardHold.PaymentStatus.PARTIALLY_PAID,
+    )
+
+
+class TestMarkPaid:
+    def test_staff_with_change_cardhold_mark_it_paid(self, partially_paid_hold, decider) -> None:
+        result = run(MARK_PAID, decider, partially_paid_hold)
+
+        assert result.errors is None, result.errors
+        assert result.data["cardHoldMarkPaid"]["cardHold"] == {
+            "id": get_obj_relay_id(partially_paid_hold),
+            "status": "captured",
+            "paymentStatus": "paid",
+        }
+        partially_paid_hold.refresh_from_db()
+        assert partially_paid_hold.paid_outside_by == decider
+        assert partially_paid_hold.paid_outside_at is not None
+
+    def test_a_hold_that_isnt_partially_paid_is_an_invalid_action(
+        self, partially_paid_hold, decider
+    ) -> None:
+        run(MARK_PAID, decider, partially_paid_hold)
+
+        assert error_code(run(MARK_PAID, decider, partially_paid_hold)) == "invalid_action"
+        unpaid = CardHoldFactory(target=HoldableOrderFactory(user=partially_paid_hold.customer))
+        assert error_code(run(MARK_PAID, decider, unpaid)) == "invalid_action"
+
+    def test_the_customer_cant_mark_their_own_hold_paid(self, partially_paid_hold, holder) -> None:
+        assert error_code(run(MARK_PAID, holder, partially_paid_hold)) == "permission_required"
+        partially_paid_hold.refresh_from_db()
+        assert partially_paid_hold.payment_status == CardHold.PaymentStatus.PARTIALLY_PAID
+
+    def test_staff_status_or_view_cardhold_alone_isnt_enough(self, partially_paid_hold) -> None:
+        viewer = grant(UserFactory(is_staff=True), "view_cardhold")
+
+        assert error_code(run(MARK_PAID, UserFactory(is_staff=True), partially_paid_hold)) == (
+            "permission_required"
+        )
+        assert error_code(run(MARK_PAID, viewer, partially_paid_hold)) == "permission_required"
+
+    def test_anonymous_is_refused(self, partially_paid_hold) -> None:
+        assert run(MARK_PAID, None, partially_paid_hold).errors
+        partially_paid_hold.refresh_from_db()
+        assert partially_paid_hold.payment_status == CardHold.PaymentStatus.PARTIALLY_PAID
 
 
 class TestPermissions:

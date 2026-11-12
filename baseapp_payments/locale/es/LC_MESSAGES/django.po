@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-11 17:32+0000\n"
+"POT-Creation-Date: 2026-11-12 19:45+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -114,6 +114,13 @@ msgid "Only a failed card hold that wasn't kept can be decided."
 msgstr ""
 "Solo se puede decidir sobre una retención en tarjeta fallida que no se haya "
 "conservado."
+
+#: graphql/mutations.py
+msgid ""
+"Only a partially paid card hold that isn't being charged can be marked paid."
+msgstr ""
+"Solo se puede marcar como pagada una retención en tarjeta pagada "
+"parcialmente que no se esté cobrando."
 
 #: models.py
 msgid "entity type"
@@ -234,6 +241,22 @@ msgstr "La autorización se canceló fuera de capture()"
 #: models.py
 msgid "A charge that never finished, past Stripe's 24 hours"
 msgstr "Un cobro que nunca terminó, pasadas las 24 horas de Stripe"
+
+#: models.py
+msgid "The target was cancelled with the difference still due"
+msgstr "El destino se canceló con la diferencia aún adeudada"
+
+#: models.py
+msgid "Unpaid"
+msgstr "Sin pagar"
+
+#: models.py
+msgid "Paid"
+msgstr "Pagado"
+
+#: models.py
+msgid "Partially paid"
+msgstr "Pagado parcialmente"
 
 #: models.py
 msgid "Stripe customer id"
@@ -376,6 +399,14 @@ msgid "captured at"
 msgstr "capturada el"
 
 #: models.py
+msgid "requested amount (cents)"
+msgstr "monto solicitado (centavos)"
+
+#: models.py
+msgid "capture sent at"
+msgstr "captura enviada el"
+
+#: models.py
 msgid "release reason"
 msgstr "motivo de la liberación"
 
@@ -402,6 +433,70 @@ msgstr "cobrada el"
 #: models.py
 msgid "charge blocked reason"
 msgstr "motivo del bloqueo del cobro"
+
+#: models.py
+msgid "charge PaymentIntent id"
+msgstr "id del PaymentIntent del cobro"
+
+#: models.py
+msgid "charged amount (cents)"
+msgstr "monto cobrado (centavos)"
+
+#: models.py
+msgid "difference due (cents)"
+msgstr "diferencia adeudada (centavos)"
+
+#: models.py
+msgid "difference idempotency key"
+msgstr "clave de idempotencia de la diferencia"
+
+#: models.py
+msgid "difference claimed at"
+msgstr "diferencia reclamada el"
+
+#: models.py
+msgid "difference generation"
+msgstr "generación de la diferencia"
+
+#: models.py
+msgid "difference PaymentIntent id"
+msgstr "id del PaymentIntent de la diferencia"
+
+#: models.py
+msgid "difference charged at"
+msgstr "diferencia cobrada el"
+
+#: models.py
+msgid "difference failure code"
+msgstr "código de fallo de la diferencia"
+
+#: models.py
+msgid "payment status"
+msgstr "estado del pago"
+
+#: models.py
+msgid "paid outside at"
+msgstr "pagado fuera de la app el"
+
+#: models.py
+msgid "paid outside by"
+msgstr "pagado fuera de la app por"
+
+#: models.py
+msgid "hold capture fee (cents)"
+msgstr "comisión de la captura de la retención (centavos)"
+
+#: models.py
+msgid "difference charge fee (cents)"
+msgstr "comisión del cobro de la diferencia (centavos)"
+
+#: models.py
+msgid "full charge fee (cents)"
+msgstr "comisión del cobro completo (centavos)"
+
+#: models.py
+msgid "fee currency"
+msgstr "moneda de la comisión"
 
 #: models.py
 msgid "card hold"

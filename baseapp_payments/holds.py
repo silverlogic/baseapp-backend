@@ -70,6 +70,8 @@ from .signals import (
     card_hold_authorized,
     card_hold_failed,
     card_hold_released,
+    difference_charge_failed,
+    payment_status_changed,
     send_on_commit,
 )
 from .utils import (
@@ -96,6 +98,10 @@ logger = logging.getLogger(__name__)
 
 # Stripe's codes for a capture refused because the authorization is gone.
 LAPSED_AUTHORIZATION_CODES = frozenset({"charge_expired_for_capture"})
+# ``cancellation_reason`` of a PaymentIntent Stripe cancelled itself when its authorization
+# lapsed: ``expired`` from API version 2025-03-31.basil on, ``automatic`` before it (an
+# event or object rendered at an older version still says so).
+LAPSED_CANCELLATION_REASONS = frozenset({"expired", "automatic"})
 # PaymentIntent statuses a second pass can do nothing with: the authorization is over.
 TERMINAL_INTENT_STATUSES = frozenset({"canceled", "requires_payment_method"})
 # A capture claim older than this belongs to a call that died; another call may take it.
@@ -1781,6 +1787,10 @@ def _rearm(
     previous.kept_at = None
     previous.kept_by = None
     previous.charge_blocked_reason = ""
+    # The old authorization's capture: the new one hasn't been asked to capture anything.
+    previous.capture_sent_at = None
+    previous.requested_amount_cents = None
+    previous.difference_amount_cents = None
     previous.save()
     logger.info(
         "Card hold %s re-armed with %s (was %s)",
@@ -1901,10 +1911,22 @@ def mark_captured(
     payment_intent_id: str | None = None,
 ) -> bool:
     """Mark the hold ``captured``, whatever its status: Stripe says it happened. Records
-    the amount captured and when. Whether this call changed it."""
+    the amount captured and when. Whether this call changed it.
+
+    The target is then ``paid`` when the amount captured is the one the last
+    :func:`capture` asked for (``requested_amount_cents``); it stays ``unpaid`` while the
+    difference planned above it (``difference_amount_cents``) is still due, and is paid
+    once that is charged too. Any other amount (a capture sent for one amount, answered
+    after a later call asked for another) stays ``unpaid`` and is logged as an error, for
+    someone to settle by hand. With no amount asked for on record, it is ``paid`` unless
+    a difference is planned; with one asked for, it waits for the amount captured.
+
+    A hold recorded ``captured`` without its amount (Stripe couldn't be read) gets it
+    filled in by the first call that knows it, then is evaluated as above."""
     CardHold = _holds()
-    return bool(
-        CardHold.objects.filter(pk=card_hold_id, **_scoped(payment_intent_id))
+    scoped = _scoped(payment_intent_id)
+    changed = bool(
+        CardHold.objects.filter(pk=card_hold_id, **scoped)
         .exclude(status=CardHold.Status.CAPTURED)
         .update(
             status=CardHold.Status.CAPTURED,
@@ -1914,6 +1936,92 @@ def mark_captured(
             modified=timezone.now(),
         )
     )
+    if not changed and amount_cents is not None:
+        changed = bool(
+            CardHold.objects.filter(
+                pk=card_hold_id,
+                status=CardHold.Status.CAPTURED,
+                captured_amount_cents__isnull=True,
+                **scoped,
+            ).update(captured_amount_cents=amount_cents, modified=timezone.now())
+        )
+    row = (
+        CardHold.objects.filter(pk=card_hold_id, status=CardHold.Status.CAPTURED, **scoped)
+        .values_list("captured_amount_cents", "requested_amount_cents", "difference_amount_cents")
+        .first()
+    )
+    if row is None:
+        return changed
+    captured, requested, planned = row
+    if requested is None:
+        if planned is None:
+            _set_payment_status(
+                card_hold_id,
+                CardHold.PaymentStatus.PAID,
+                (CardHold.PaymentStatus.UNPAID,),
+                q=Q(
+                    difference_amount_cents__isnull=True,
+                    requested_amount_cents__isnull=True,
+                    **scoped,
+                ),
+            )
+        return changed
+    if captured is None:
+        # An amount was asked for: never ``paid`` before the amount taken is known (the
+        # sweep reads it from Stripe, see ``record_card_hold_capture``).
+        return changed
+    if planned is not None and captured + planned == requested:
+        return changed  # paid once the difference is charged
+    if captured == requested:
+        # Captured for what was asked: a difference an earlier call planned isn't due.
+        _set_payment_status(
+            card_hold_id,
+            CardHold.PaymentStatus.PAID,
+            (CardHold.PaymentStatus.UNPAID,),
+            q=Q(captured_amount_cents=captured, requested_amount_cents=requested, **scoped),
+            difference_amount_cents=None,
+        )
+        return changed
+    logger.error(
+        "Card hold %s was captured for %s, but the last capture() asked for %s (%s planned on"
+        " top); not marked paid. Check Stripe and settle it by hand.",
+        card_hold_id,
+        captured,
+        requested,
+        planned,
+    )
+    return changed
+
+
+def _set_payment_status(
+    card_hold_id: int,
+    payment_status: str,
+    previous: tuple[str, ...],
+    *,
+    q: Q | None = None,
+    **changes: Any,
+) -> bool:
+    """Move the hold's ``payment_status`` to ``payment_status`` from one of ``previous``
+    (and matching ``q``), writing ``changes`` in the same conditional UPDATE; whether it
+    changed. Each change sends ``payment_status_changed`` once, after the commit."""
+    CardHold = _holds()
+    rows = CardHold.objects.filter(pk=card_hold_id)
+    if q is not None:
+        rows = rows.filter(q)
+    for before in previous:
+        if rows.filter(payment_status=before).update(
+            payment_status=payment_status, modified=timezone.now(), **changes
+        ):
+            hold = CardHold.objects.select_related("target_document").get(pk=card_hold_id)
+            send_on_commit(
+                payment_status_changed,
+                hold=hold,
+                target=hold.target,
+                previous=before,
+                payment_status=payment_status,
+            )
+            return True
+    return False
 
 
 def mark_release_in_flight(card_hold_id: int) -> None:
@@ -1954,6 +2062,38 @@ def _record_capture_from_stripe(card_hold_id: int, payment_intent_id: str) -> An
         payment_intent_id,
     )
     return intent
+
+
+def record_captured_amount(card_hold_id: int) -> bool:
+    """Fill in the amount of a hold recorded ``captured`` without it (Stripe couldn't be
+    read then): read its PaymentIntent, with no lock held, and record what Stripe
+    received (:func:`mark_captured`, which then settles ``payment_status``). Queued by
+    the sweep. Whether it was filled in; Stripe's errors propagate."""
+    CardHold = _holds()
+    payment_intent_id = (
+        CardHold.objects.filter(
+            pk=card_hold_id,
+            status=CardHold.Status.CAPTURED,
+            captured_amount_cents__isnull=True,
+            stripe_payment_intent_id__isnull=False,
+        )
+        .values_list("stripe_payment_intent_id", flat=True)
+        .first()
+    )
+    if payment_intent_id is None:
+        return False
+    intent = retrieve_payment_intent(payment_intent_id)
+    amount = _amount_received(intent)
+    if stripe_field(intent, "status") != "succeeded" or amount is None:
+        logger.error(
+            "Card hold %s is recorded captured, but Stripe says PaymentIntent %s is %s;"
+            " its amount isn't filled in. Check Stripe.",
+            card_hold_id,
+            payment_intent_id,
+            stripe_field(intent, "status"),
+        )
+        return False
+    return mark_captured(card_hold_id, amount_cents=amount, payment_intent_id=payment_intent_id)
 
 
 class _Cancel(str, enum.Enum):
@@ -2150,21 +2290,24 @@ class _ForCharge(str, enum.Enum):
 
 def _cancelled_by_stripe(error: Exception | None, payment_intent_id: str) -> bool:
     """Whether a PaymentIntent found ``canceled`` was cancelled by Stripe itself when its
-    authorization lapsed (``cancellation_reason`` ``automatic``), rather than by someone
-    who may have charged the card instead. Read from Stripe's error, else from Stripe."""
+    authorization lapsed (``cancellation_reason`` ``expired``, ``automatic`` before basil),
+    rather than by someone who may have charged the card instead. Read from Stripe's
+    error, else from Stripe."""
     intent = stripe_field(getattr(error, "error", None), "payment_intent")
     reason = stripe_field(intent, "cancellation_reason")
     if reason is None:
         reason = stripe_field(retrieve_payment_intent(payment_intent_id), "cancellation_reason")
-    return reason == "automatic"
+    return reason in LAPSED_CANCELLATION_REASONS
 
 
-def _block_charge(card_hold_id: int, block: str) -> None:
+def _block_charge(card_hold_id: int, block: str) -> bool:
     """Record that a capture refused to charge the hold, so no later :func:`capture`
-    charges it on its own (``charge_blocked_reason``)."""
-    _holds().objects.filter(
-        pk=card_hold_id, charged_at__isnull=True, charge_blocked_reason=""
-    ).update(charge_blocked_reason=block, modified=timezone.now())
+    charges it on its own (``charge_blocked_reason``); whether this call recorded it."""
+    return bool(
+        _holds()
+        .objects.filter(pk=card_hold_id, charged_at__isnull=True, charge_blocked_reason="")
+        .update(charge_blocked_reason=block, modified=timezone.now())
+    )
 
 
 def _cancelled_elsewhere(card_hold_id: int, payment_intent_id: str | None) -> None:
@@ -2302,17 +2445,28 @@ class CaptureStatus(str, enum.Enum):
 
     - ``captured``: from the hold, exactly the amount asked (now, or by an earlier call:
       never twice).
-    - ``charged``: ``charge()`` ran once (its result is ``CaptureResult.charge``): the
-      hold couldn't cover the amount and this call released it, or it never authorized
-      anything (a ``scheduled`` hold, a ``saved`` card, a failed hold staff kept). A
-      repeated call answers ``charged`` from the database, with ``charge`` ``None``, and
-      never charges again.
+    - ``paid``: the amount is above a live hold: the hold was captured in full, then the
+      difference was charged to the same card, off-session (two payments, now or by an
+      earlier call: never twice). ``payment_intent`` is the difference's when this call
+      charged it.
+    - ``partially_paid``: as ``paid``, but the card refused the difference (``error``):
+      the held amount stays taken and the rest is due (``difference_charge_failed`` was
+      sent). A later call for the same amount charges the difference again, with a new
+      key; :func:`mark_paid_outside` records it paid instead.
+    - ``charged``: ``charge()`` ran once (its result is ``CaptureResult.charge``), for the
+      full amount: the hold couldn't be captured (expired, lapsed, released to be
+      rescheduled) and this call released it, or it never authorized anything (a
+      ``scheduled`` hold, a ``saved`` card, a failed hold staff kept). A repeated call
+      answers ``charged`` from the database, with ``charge`` ``None``, and never charges
+      again.
     - ``declined``: the card declined. Declining the capture, nothing is charged, then or
       on a retry. Declining ``charge()`` (Stripe refused it for good: a ``CardError`` or a
       non-409 ``InvalidRequestError``, in ``error``), nothing was taken, and the next call
       charges again with a new key (after the customer adds another card, say).
     - ``nothing_due``: asked for 0. The hold is released and nothing is charged (also on
-      a retry).
+      a retry); the target is ``paid``, as nothing is owed. Never while the release is
+      under way (``in_progress``), nor for a charge an earlier call claimed and never
+      finished (``in_progress``, below).
     - ``in_progress``: another capture of this hold is running, or its placement or
       reschedule is under way. Retry later. Also asked for 0 while a charge an earlier
       call claimed never finished (it may have run): it is not re-run, and an error is
@@ -2330,6 +2484,8 @@ class CaptureStatus(str, enum.Enum):
     """
 
     CAPTURED = "captured"
+    PAID = "paid"
+    PARTIALLY_PAID = "partially_paid"
     CHARGED = "charged"
     DECLINED = "declined"
     IN_PROGRESS = "in_progress"
@@ -2392,7 +2548,8 @@ def capture(
     charge: Callable[..., Any],
     idempotency_key: str | None = None,
 ) -> CaptureResult:
-    """Take ``amount_cents`` once: capture the hold when it covers it, else charge.
+    """Take ``amount_cents`` once: capture the hold when it covers it; above a live hold,
+    capture all of it and charge the difference; else charge the full amount.
 
     The entry point at the target's date for every target, with a hold or without one
     (a ``saved`` card: ``charge`` runs, once). One charge, never two:
@@ -2402,6 +2559,14 @@ def capture(
       and touches nothing;
     - a hold already ``captured`` answers ``captured`` again when it was for
       ``amount_cents`` (``not_captured`` otherwise), and ``charge`` never runs;
+    - above an authorized, unexpired hold, the hold is captured in full first (so a
+      refused difference never costs the held amount), then the difference is charged
+      off-session to the hold's card by this module (:func:`_charge_difference`, key
+      ``{prefix}-difference-{hold}-{n}``, claimed before it is sent): ``paid``, or
+      ``partially_paid`` when the card refuses it. ``charge`` never runs on this path. A
+      repeated call for the same amount answers from the database, resumes a difference
+      that got no usable answer with the same key, or charges a refused one again with
+      the next key;
     - ``charge`` runs only from these states: an open hold this call releases (Stripe
       confirms the cancel, or the authorization lapsed by itself); a ``scheduled`` hold
       never placed, a ``saved`` card, or a hold released to be rescheduled; a failed hold
@@ -2483,6 +2648,10 @@ def _capture_claimed(
     """:func:`capture`, under the capture claim, with ``hold`` read after claiming it."""
     CardHold = type(hold)
     if hold.status == CardHold.Status.CAPTURED:
+        if hold.difference_amount_cents:
+            # Captured in full for an amount above the hold: the difference is settled
+            # (or still due) on its own claim.
+            return _settle_difference(hold, amount_cents)
         # The amount recorded answers it; Stripe is read only when none was.
         intent = None
         if hold.captured_amount_cents is None and hold.stripe_payment_intent_id:
@@ -2500,7 +2669,7 @@ def _capture_claimed(
             )
             return CaptureResult(CaptureStatus.IN_PROGRESS)
         # Charged instead before (answered from the database), or a charge to resume.
-        return _charge_once(hold.pk, charge)
+        return _charge_once(hold.pk, charge, amount_cents)
     if hold.charge_blocked_reason:
         logger.warning(
             "Card hold %s: an earlier capture refused to charge it (%s); not charging",
@@ -2511,15 +2680,97 @@ def _capture_claimed(
     if amount_cents == 0:
         return _nothing_due(hold)
     if hold.charge_generation:
-        return _charge_again(hold, charge)
+        return _charge_again(hold, charge, amount_cents)
     if hold.status == CardHold.Status.RELEASED:
-        return _charge_released(hold, charge)
+        return _charge_released(hold, charge, amount_cents)
     if hold.status == CardHold.Status.FAILED and hold.kept_at is None:
         logger.warning("Card hold %s failed and staff haven't kept it; not charging", hold.pk)
         return CaptureResult(CaptureStatus.NOT_CAPTURED)
+    if _above_live_hold(hold, amount_cents):
+        return _capture_above_hold(
+            hold, amount_cents, charge=charge, idempotency_key=idempotency_key
+        )
     if not _capturable(hold, amount_cents):
         return _charge_instead(hold, amount_cents, charge)
+    if not _ask_capture(hold, amount_cents):
+        return CaptureResult(CaptureStatus.IN_PROGRESS)
     return _capture_from_hold(hold, amount_cents, charge=charge, idempotency_key=idempotency_key)
+
+
+def _ask_capture(
+    hold: "AbstractCardHold", amount_cents: int, *, difference: int | None = None
+) -> bool:
+    """Before a capture of ``hold`` is sent (a conditional UPDATE, committed first): record
+    the final amount asked (``requested_amount_cents``), that a capture was sent
+    (``capture_sent_at``, the first time), and the ``difference`` planned above the hold.
+
+    Within the hold (no ``difference``), a plan an earlier call made is dropped only when
+    no capture was ever sent: one sent for the whole hold may still have run, and its
+    answer (the webhook) must still find it, so a capture for this other amount is never
+    taken as ``paid`` (:func:`mark_captured`). ``False`` when the row moved on (no longer
+    this authorization, or captured meanwhile)."""
+    CardHold = type(hold)
+    now = timezone.now()
+    changes: dict[str, Any] = {
+        "requested_amount_cents": amount_cents,
+        "capture_sent_at": hold.capture_sent_at or now,
+        "modified": now,
+    }
+    if difference is not None:
+        changes["difference_amount_cents"] = difference
+    elif hold.capture_sent_at is None:
+        changes["difference_amount_cents"] = None
+    if not CardHold.objects.filter(
+        pk=hold.pk,
+        status=CardHold.Status.AUTHORIZED,
+        stripe_payment_intent_id=hold.stripe_payment_intent_id,
+        capture_sent_at=hold.capture_sent_at,
+    ).update(**changes):
+        return False
+    hold.requested_amount_cents = amount_cents
+    hold.capture_sent_at = changes["capture_sent_at"]
+    hold.difference_amount_cents = changes.get(
+        "difference_amount_cents", hold.difference_amount_cents
+    )
+    return True
+
+
+def _above_live_hold(hold: "AbstractCardHold", amount_cents: int) -> bool:
+    """Whether ``amount_cents`` is above an authorization that can still be captured: the
+    hold is captured in full and the rest charged on top (:func:`_capture_above_hold`).
+    An expired (or never-expiring, unknown) one is charged afresh instead."""
+    return (
+        hold.status == type(hold).Status.AUTHORIZED
+        and hold.expires_at is not None
+        and not _expired(hold)
+        and amount_cents > hold.amount_cents
+    )
+
+
+def _capture_above_hold(
+    hold: "AbstractCardHold",
+    amount_cents: int,
+    *,
+    charge: Callable[..., Any],
+    idempotency_key: str | None,
+) -> CaptureResult:
+    """``amount_cents`` is above a live hold: plan the difference on the row, capture the
+    whole hold, then charge the difference (:func:`_settle_difference`).
+
+    The plan is written before the capture is sent, so whatever records the capture
+    later (this call, a retry, the webhook) knows a difference is still due and doesn't
+    call the target ``paid`` yet. A capture that doesn't go through answers as
+    :func:`_capture_from_hold` does: a decline is never followed by any charge, and a
+    lapsed authorization is charged the full amount through ``charge``."""
+    if not _ask_capture(hold, amount_cents, difference=amount_cents - hold.amount_cents):
+        return CaptureResult(CaptureStatus.IN_PROGRESS)
+    captured = _capture_from_hold(
+        hold, hold.amount_cents, charge=charge, idempotency_key=idempotency_key
+    )
+    if captured.status != CaptureStatus.CAPTURED:
+        return captured
+    hold.refresh_from_db()
+    return _settle_difference(hold, amount_cents)
 
 
 def _capture_from_hold(
@@ -2530,13 +2781,17 @@ def _capture_from_hold(
     idempotency_key: str | None,
 ) -> CaptureResult:
     """Capture ``amount_cents`` from a hold that covers it (:func:`_capturable`), under
-    the capture claim; a lapsed authorization is charged instead."""
+    the capture claim; a lapsed authorization is charged instead. Stripe's fee for the
+    capture is recorded when its balance transaction is ready (else the sweep fills it)."""
     CardHold = type(hold)
     payment_intent_id = hold.stripe_payment_intent_id
     key = idempotency_key or capture_idempotency_key(hold)
     try:
         intent = utils.get_stripe().PaymentIntent.capture(
-            payment_intent_id, amount_to_capture=amount_cents, idempotency_key=key
+            payment_intent_id,
+            amount_to_capture=amount_cents,
+            expand=FEE_EXPAND,
+            idempotency_key=key,
         )
     except stripe.CardError as error:
         # Blocked first: a retry after a release that didn't go through (an expired hold,
@@ -2570,7 +2825,9 @@ def _capture_from_hold(
             ):
                 logger.warning("Card hold %s was released by another call meanwhile", hold.pk)
                 return CaptureResult(CaptureStatus.NOT_CAPTURED, error=error)
-            return _charge_once(hold.pk, charge)
+            # Nothing was captured: the full amount is charged, so no difference is due.
+            CardHold.objects.filter(pk=hold.pk).update(difference_amount_cents=None)
+            return _charge_once(hold.pk, charge, hold.requested_amount_cents or amount_cents)
         elif status == "canceled":
             # Cancelled in Stripe by someone else, who may have charged the card instead:
             # charging on top could take the money twice, so never, nor on a retry.
@@ -2585,10 +2842,13 @@ def _capture_from_hold(
         amount_cents=stripe_field(intent, "amount_received") or amount_cents,
         payment_intent_id=payment_intent_id,
     )
+    _store_fee(hold.pk, "capture_fee_cents", intent)
     return _captured(intent, amount_cents)
 
 
-def _charge_released(hold: "AbstractCardHold", charge: Callable[..., Any]) -> CaptureResult:
+def _charge_released(
+    hold: "AbstractCardHold", charge: Callable[..., Any], amount_cents: int
+) -> CaptureResult:
     """A ``released`` hold with no charge claim. Only one released to go back to
     ``scheduled`` (``rescheduled``, ``not_holdable``), its cancel confirmed, is charged
     (nothing of ours is held, and nobody else charged); while the cancel is unconfirmed
@@ -2614,7 +2874,7 @@ def _charge_released(hold: "AbstractCardHold", charge: Callable[..., Any]) -> Ca
         )
         if not claimed:
             return CaptureResult(CaptureStatus.IN_PROGRESS)
-        return _charge_once(hold.pk, charge)
+        return _charge_once(hold.pk, charge, amount_cents)
     if hold.release_reason == Reason.FOR_CHARGE:
         logger.warning(
             "Card hold %s was released for a charge made outside capture(); not charging",
@@ -2649,13 +2909,13 @@ def _charge_instead(
             pk=hold.pk, status=CardHold.Status.FAILED, kept_at__isnull=False, charge_key=""
         ).update(charge_key=charge_key, charge_claimed_at=now, modified=now):
             return CaptureResult(CaptureStatus.NOT_CAPTURED)
-        return _charge_once(hold.pk, charge)
+        return _charge_once(hold.pk, charge, amount_cents)
     if hold.status in CardHold.UNPLACED_STATUSES:
         if not _release_scheduled(
             hold.pk, CardHold.ReleaseReason.FOR_CHARGE, charge_key=charge_key
         ):
             return CaptureResult(CaptureStatus.IN_PROGRESS)
-        return _charge_once(hold.pk, charge)
+        return _charge_once(hold.pk, charge, amount_cents)
     outcome, detail = _release_for_charge(
         hold, CardHold.ReleaseReason.FOR_CHARGE, charge_key=charge_key
     )
@@ -2665,11 +2925,18 @@ def _charge_instead(
         return CaptureResult(CaptureStatus.NOT_CAPTURED, error=detail)
     if outcome == _ForCharge.ELSEWHERE:
         return CaptureResult(CaptureStatus.NOT_CAPTURED, error=detail)
-    return _charge_once(hold.pk, charge)
+    return _charge_once(hold.pk, charge, amount_cents)
 
 
-def _charge_once(card_hold_id: int, charge: Callable[..., Any]) -> CaptureResult:
+def _charge_once(
+    card_hold_id: int, charge: Callable[..., Any], amount_cents: int | None = None
+) -> CaptureResult:
     """Run the project's ``charge`` at most once per hold, under the capture claim.
+
+    ``amount_cents`` (what :func:`capture` was asked for) is recorded as
+    ``charge_amount_cents`` before the charge first runs with its key, so the payment
+    totals count it even when ``charge`` returns something other than a PaymentIntent; a
+    resumed charge keeps the amount its key was first sent for.
 
     Only for a hold whose charge claim (``charge_key``, with ``charge_claimed_at``) the
     caller wrote in the statement that allowed the charge; without one nothing is
@@ -2705,6 +2972,10 @@ def _charge_once(card_hold_id: int, charge: Callable[..., Any]) -> CaptureResult
             claimed_at or "at an unknown time",
         )
         return CaptureResult(CaptureStatus.NOT_CAPTURED)
+    if amount_cents is not None:
+        CardHold.objects.filter(
+            pk=card_hold_id, charge_key=key, charged_at__isnull=True, charge_amount_cents=None
+        ).update(charge_amount_cents=amount_cents)
     try:
         result = charge(idempotency_key=key)
     except (stripe.CardError, stripe.InvalidRequestError) as error:
@@ -2721,10 +2992,32 @@ def _charge_once(card_hold_id: int, charge: Callable[..., Any]) -> CaptureResult
             key,
         )
         raise
-    CardHold.objects.filter(pk=card_hold_id, charged_at__isnull=True).update(
-        charged_at=timezone.now()
-    )
+    _record_charge(card_hold_id, result)
     return CaptureResult(CaptureStatus.CHARGED, charge=result)
+
+
+def _record_charge(card_hold_id: int, result: Any) -> None:
+    """The project's ``charge`` returned: record ``charged_at`` and, when it returned the
+    PaymentIntent, its id, amount (else the amount asked stays, recorded at claim time)
+    and (when its balance transaction was expanded) Stripe's fee; the target is ``paid``.
+    Without a fee, the sweep reads it later."""
+    CardHold = _holds()
+    changes: dict[str, Any] = {"charged_at": timezone.now()}
+    payment_intent_id = stripe_id(result) if isinstance(result, dict) else None
+    if payment_intent_id and str(payment_intent_id).startswith("pi_"):
+        changes["charge_payment_intent_id"] = payment_intent_id
+        amount = stripe_field(result, "amount_received") or stripe_field(result, "amount")
+        if amount is not None:
+            changes["charge_amount_cents"] = amount
+    CardHold.objects.filter(pk=card_hold_id, charged_at__isnull=True).update(**changes)
+    if "charge_payment_intent_id" in changes:
+        _store_fee(card_hold_id, "charge_fee_cents", result)
+    _set_payment_status(
+        card_hold_id,
+        CardHold.PaymentStatus.PAID,
+        (CardHold.PaymentStatus.UNPAID,),
+        q=Q(charged_at__isnull=False),
+    )
 
 
 def _drop_refused_charge(card_hold_id: int, key: str, error: Exception) -> None:
@@ -2735,6 +3028,7 @@ def _drop_refused_charge(card_hold_id: int, key: str, error: Exception) -> None:
     _holds().objects.filter(pk=card_hold_id, charge_key=key, charged_at__isnull=True).update(
         charge_key="",
         charge_claimed_at=None,
+        charge_amount_cents=None,
         charge_generation=F("charge_generation") + 1,
         modified=timezone.now(),
     )
@@ -2747,7 +3041,9 @@ def _drop_refused_charge(card_hold_id: int, key: str, error: Exception) -> None:
     )
 
 
-def _charge_again(hold: "AbstractCardHold", charge: Callable[..., Any]) -> CaptureResult:
+def _charge_again(
+    hold: "AbstractCardHold", charge: Callable[..., Any], amount_cents: int
+) -> CaptureResult:
     """A hold whose last charge Stripe refused (``charge_generation``): it was settled for
     that charge then, so nothing of ours is held. The charge is claimed again, with the
     next key, in a conditional UPDATE (``in_progress`` when the row moved on).
@@ -2780,10 +3076,29 @@ def _charge_again(hold: "AbstractCardHold", charge: Callable[..., Any]) -> Captu
             charge_blocked_reason="",
         ).update(charge_key=_charge_key(hold), charge_claimed_at=now, modified=now):
             return CaptureResult(CaptureStatus.IN_PROGRESS)
-    return _charge_once(hold.pk, charge)
+    return _charge_once(hold.pk, charge, amount_cents)
 
 
 def _nothing_due(hold: "AbstractCardHold") -> CaptureResult:
+    """:func:`capture` of 0: release the hold (:func:`_release_nothing_due`) and, once it
+    answers ``nothing_due``, mark the target ``paid``: nothing is owed. One conditional
+    UPDATE, only from ``unpaid``, only on a ``released`` row with no charge claimed or
+    taken; ``payment_status_changed`` is sent after the commit. Any other answer
+    (``in_progress``, ``not_captured``) leaves it as it is. ``partially_paid`` never
+    reaches here: it is only on a hold captured in full, which answers before."""
+    result = _release_nothing_due(hold)
+    if result.status == CaptureStatus.NOTHING_DUE:
+        CardHold = type(hold)
+        _set_payment_status(
+            hold.pk,
+            CardHold.PaymentStatus.PAID,
+            (CardHold.PaymentStatus.UNPAID,),
+            q=Q(status=CardHold.Status.RELEASED, charge_key="", charged_at__isnull=True),
+        )
+    return result
+
+
+def _release_nothing_due(hold: "AbstractCardHold") -> CaptureResult:
     """:func:`capture` of 0: release the hold (``card_released``) and charge nothing.
 
     ``nothing_due`` once nothing of ours is held: an open hold cancelled in Stripe, a
@@ -2831,6 +3146,611 @@ def _nothing_due(hold: "AbstractCardHold") -> CaptureResult:
         ).update(release_reason=Reason.CARD_RELEASED, modified=now):
             return CaptureResult(CaptureStatus.IN_PROGRESS)
     return CaptureResult(CaptureStatus.NOTHING_DUE)
+
+
+# --- Above the hold: the difference, payment status, fees and invoices ----------------
+
+# Every payment's balance transaction, for Stripe's actual fee.
+FEE_EXPAND = ["latest_charge.balance_transaction"]
+# ``metadata['kind']`` of the difference PaymentIntent this module creates above a hold:
+# reconciliation records it as the difference, never as a stray authorization.
+DIFFERENCE_KIND = "difference"
+
+
+def difference_idempotency_key(card_hold_id: int, generation: int = 0) -> str:
+    """The key of the charge of the difference above a captured hold: one per hold and
+    ``generation`` (``difference_generation``), bumped by each charge Stripe definitely
+    refused, so a retry after a decline isn't Stripe replaying that decline."""
+    return f"{key_prefix()}-difference-{card_hold_id}-{generation}"
+
+
+def _fee_of(payment_intent: Any) -> tuple[int | None, str]:
+    """Stripe's fee for a PaymentIntent's charge and its currency, from the expanded
+    ``latest_charge.balance_transaction``; ``(None, "")`` when it isn't there (not
+    expanded, or Stripe hasn't made the balance transaction yet)."""
+    transaction_ = stripe_field(
+        stripe_field(payment_intent, "latest_charge"), "balance_transaction"
+    )
+    fee = stripe_field(transaction_, "fee")
+    if fee is None:
+        return None, ""
+    return int(fee), str(stripe_field(transaction_, "currency") or "")
+
+
+def _store_fee(card_hold_id: int, field: str, payment_intent: Any) -> bool:
+    """Record the fee of ``payment_intent`` in ``field`` if it is known and not recorded
+    yet; whether it was."""
+    fee, currency = _fee_of(payment_intent)
+    if fee is None:
+        return False
+    changes: dict[str, Any] = {field: fee}
+    if currency:
+        changes["fee_currency"] = currency
+    return bool(
+        _holds().objects.filter(pk=card_hold_id, **{f"{field}__isnull": True}).update(**changes)
+    )
+
+
+def _is_difference(payment_intent: Any) -> bool:
+    return stripe_field(stripe_field(payment_intent, "metadata"), "kind") == DIFFERENCE_KIND
+
+
+def _difference_key_of(payment_intent: Any) -> str:
+    return str(stripe_field(stripe_field(payment_intent, "metadata"), "difference_key") or "")
+
+
+def _difference_params(hold: "AbstractCardHold") -> dict[str, Any]:
+    """The difference's PaymentIntent: automatic capture, off-session, on the hold's card
+    and customer, naming the hold (``card_hold_id``), the kind and the key it was sent
+    with, so the webhook and the lookup recognise it."""
+    return {
+        "amount": hold.difference_amount_cents,
+        "currency": hold.currency,
+        "customer": hold.stripe_customer_id,
+        "payment_method": hold.stripe_payment_method_id,
+        "payment_method_types": ["card"],
+        "confirm": True,
+        "off_session": True,
+        "metadata": {
+            "card_hold_id": str(hold.pk),
+            "kind": DIFFERENCE_KIND,
+            "difference_key": hold.difference_key,
+        },
+        "expand": FEE_EXPAND,
+    }
+
+
+def _settle_difference(
+    hold: "AbstractCardHold", amount_cents: int, *, check_target: bool = False
+) -> CaptureResult:
+    """A hold captured in full for an amount above it, under the capture claim: answer
+    from the database, or charge the difference (claimed first, in a conditional UPDATE
+    committed before Stripe is called).
+
+    Asked for another amount than the one planned: the new ask is recorded and the
+    difference isn't charged (:func:`_difference_not_asked`). Paid already (the
+    difference charged, or staff marked it paid outside): ``paid``. A claim whose charge
+    got no usable answer is resumed with its key. After a refusal (or with
+    ``check_target``, the sweep's path), the claim is taken in the same transaction that
+    re-checks the target under its lock and then the hold's: a cancelled (or deleted)
+    target charges nothing (``partially_paid`` after a refusal; the sweep's path blocks
+    it, :func:`_difference_target_cancelled`)."""
+    CardHold = type(hold)
+    captured = (
+        hold.captured_amount_cents if hold.captured_amount_cents is not None else hold.amount_cents
+    )
+    if amount_cents != captured + hold.difference_amount_cents:
+        return _difference_not_asked(hold, amount_cents)
+    if hold.payment_status == CardHold.PaymentStatus.PAID:
+        return CaptureResult(CaptureStatus.PAID)
+    if hold.requested_amount_cents != amount_cents:
+        # Asked for the planned amount again after another ask: it is the last one now.
+        _open_plan(hold).update(requested_amount_cents=amount_cents, modified=timezone.now())
+    if hold.difference_key:
+        return _charge_difference(hold.pk)
+    if check_target or hold.difference_generation:
+        claimed = _claim_difference_if_target_alive(hold)
+        if claimed is None:
+            if check_target:
+                return _difference_target_cancelled(hold)
+            logger.warning(
+                "Card hold %s: its target was cancelled after the difference was refused;"
+                " not charging it",
+                hold.pk,
+            )
+            return CaptureResult(CaptureStatus.PARTIALLY_PAID)
+    else:
+        claimed = _claim_difference(hold)
+    if not claimed:
+        return CaptureResult(CaptureStatus.IN_PROGRESS)
+    return _charge_difference(hold.pk)
+
+
+def _open_plan(hold: "AbstractCardHold") -> Any:
+    """The hold's row while its planned difference is neither claimed nor charged, nor
+    the target paid: what a new ask may still change."""
+    CardHold = type(hold)
+    return CardHold.objects.filter(
+        pk=hold.pk,
+        status=CardHold.Status.CAPTURED,
+        difference_key="",
+        difference_charged_at__isnull=True,
+    ).exclude(payment_status=CardHold.PaymentStatus.PAID)
+
+
+def _difference_not_asked(hold: "AbstractCardHold", amount_cents: int) -> CaptureResult:
+    """Under the capture claim: the hold was captured in full for a difference planned on
+    top, and now ``amount_cents``, another amount, is asked for. Nothing is charged.
+
+    The new ask is recorded (``requested_amount_cents``, a conditional UPDATE, only while
+    the difference is neither claimed nor charged), so neither a retry nor the sweep
+    charges the old plan. Asked for exactly the amount captured, nothing more is due: the
+    plan is dropped and the target is ``paid`` (``captured``). Asked for less, the
+    customer was charged more than asked: ``not_captured``, logged as an error for a
+    person (refunds are out of scope); any other amount likewise."""
+    CardHold = type(hold)
+    captured = hold.captured_amount_cents
+    if captured is not None and amount_cents == captured:
+        if _set_payment_status(
+            hold.pk,
+            CardHold.PaymentStatus.PAID,
+            (CardHold.PaymentStatus.UNPAID, CardHold.PaymentStatus.PARTIALLY_PAID),
+            q=Q(
+                status=CardHold.Status.CAPTURED,
+                difference_key="",
+                difference_charged_at__isnull=True,
+                captured_amount_cents=captured,
+            ),
+            requested_amount_cents=amount_cents,
+            difference_amount_cents=None,
+        ):
+            logger.warning(
+                "Card hold %s: asked for the %s captured, not %s; the difference of %s is"
+                " no longer due",
+                hold.pk,
+                captured,
+                captured + hold.difference_amount_cents,
+                hold.difference_amount_cents,
+            )
+            return CaptureResult(CaptureStatus.CAPTURED)
+    else:
+        _open_plan(hold).update(requested_amount_cents=amount_cents, modified=timezone.now())
+    logger.error(
+        "Card hold %s was captured for %s with %s due on top, not the %s asked; the"
+        " difference isn't charged and it isn't marked paid. Settle it by hand.",
+        hold.pk,
+        captured,
+        hold.difference_amount_cents,
+        amount_cents,
+    )
+    return CaptureResult(CaptureStatus.NOT_CAPTURED)
+
+
+def _claim_difference(hold: "AbstractCardHold") -> bool:
+    """Claim the difference's charge with the next key (a conditional UPDATE): only a
+    captured, unpaid hold with no claim, still at the generation read."""
+    CardHold = type(hold)
+    now = timezone.now()
+    return bool(
+        CardHold.objects.filter(
+            pk=hold.pk,
+            status=CardHold.Status.CAPTURED,
+            difference_key="",
+            difference_generation=hold.difference_generation,
+            difference_charged_at__isnull=True,
+        )
+        .exclude(payment_status=CardHold.PaymentStatus.PAID)
+        .update(
+            difference_key=difference_idempotency_key(hold.pk, hold.difference_generation),
+            difference_claimed_at=now,
+            modified=now,
+        )
+    )
+
+
+def _claim_difference_if_target_alive(hold: "AbstractCardHold") -> bool | None:
+    """Claim the difference (:func:`_claim_difference`) in the transaction that re-checks
+    the target, so a cancellation can't commit between the check and the claim. ``None``
+    for a cancelled (or deleted) target, else whether it was claimed. The claim commits
+    when this returns, before any Stripe call."""
+    return _under_live_target(hold, lambda: _claim_difference(hold))
+
+
+def _difference_target_alive(hold: "AbstractCardHold") -> bool:
+    """Whether the hold's target is still there and not cancelled (under its lock, then
+    the hold's). No Stripe call."""
+    return _under_live_target(hold, lambda: True) is not None
+
+
+def _under_live_target(hold: "AbstractCardHold", then: Callable[[], bool]) -> bool | None:
+    """In one transaction, lock the hold's target, then the hold (that order, as
+    everywhere): ``None`` when the target is gone or cancelled, else what ``then``
+    returns, run under both locks. No Stripe call."""
+    adapter = registered[1] if (registered := _registered(hold)) is not None else None
+    if adapter is None:
+        return None
+    with transaction.atomic():
+        target = adapter.lock(hold.target_document.object_id)
+        type(hold).objects.select_for_update().filter(pk=hold.pk).first()
+        if _why_not_holdable(adapter, target) == type(hold).ReleaseReason.CANCELLED:
+            return None
+        return then()
+
+
+def _difference_target_cancelled(hold: "AbstractCardHold") -> CaptureResult:
+    """The sweep found the target of a hold with its difference still due cancelled (or
+    deleted): nothing is charged, and the row is marked (``charge_blocked_reason``
+    ``target_cancelled``) so the sweep stops queuing it; logged once, for a person to
+    decide. A ``capture()`` still charges it if the project asks."""
+    CardHold = type(hold)
+    if _block_charge(hold.pk, CardHold.ChargeBlock.TARGET_CANCELLED):
+        logger.error(
+            "Card hold %s: its target was cancelled (or deleted) with the difference of %s"
+            " still due; not charging it. Decide by hand.",
+            hold.pk,
+            hold.difference_amount_cents,
+        )
+    return CaptureResult(CaptureStatus.NOT_CAPTURED)
+
+
+def _charge_difference(card_hold_id: int) -> CaptureResult:
+    """Charge the claimed difference (``difference_key``) off-session, once.
+
+    Stripe's answer decides: ``succeeded`` is ``paid`` (recorded with the PaymentIntent
+    and its fee); a definite refusal (a ``CardError``, a non-409 ``InvalidRequestError``,
+    or a PaymentIntent left needing a payment method) is ``partially_paid``: the claim is
+    dropped and the generation bumped, so the next call sends a new key. No usable answer
+    (a connection error, a 5xx, a 429, a 409, a bad key, ``IdempotencyError``) propagates
+    and keeps the claim: the next call replays it with the same key. A claim older than
+    :data:`CHARGE_KEY_TTL` is never replayed (Stripe may have forgotten the key): it is
+    reconciled from Stripe instead (:func:`_reconcile_difference`). One Stripe answered
+    ``processing`` (its PaymentIntent recorded) is read back from Stripe, not replayed.
+    With no claim, a refusal recorded meanwhile answers ``partially_paid``."""
+    CardHold = _holds()
+    hold = CardHold.objects.get(pk=card_hold_id)
+    if hold.difference_charged_at is not None or hold.payment_status == CardHold.PaymentStatus.PAID:
+        return CaptureResult(CaptureStatus.PAID)
+    key = hold.difference_key
+    if not key:
+        if hold.payment_status == CardHold.PaymentStatus.PARTIALLY_PAID:
+            return CaptureResult(CaptureStatus.PARTIALLY_PAID)
+        return CaptureResult(CaptureStatus.NOT_CAPTURED)
+    if hold.difference_payment_intent_id:
+        intent = utils.get_stripe().PaymentIntent.retrieve(
+            hold.difference_payment_intent_id, expand=FEE_EXPAND
+        )
+        return _difference_outcome(hold.pk, key, intent)
+    if hold.difference_claimed_at is None or hold.difference_claimed_at < (
+        timezone.now() - CHARGE_KEY_TTL
+    ):
+        return _reconcile_difference(hold)
+    try:
+        intent = utils.get_stripe().PaymentIntent.create(
+            **_difference_params(hold), idempotency_key=key
+        )
+    except stripe.IdempotencyError:
+        logger.error(
+            "Card hold %s: Stripe refused the difference key %s as reused with other"
+            " parameters; the first charge with it may have run. Check Stripe.",
+            hold.pk,
+            key,
+        )
+        raise
+    except (stripe.CardError, stripe.InvalidRequestError) as error:
+        if getattr(error, "http_status", None) == 409:
+            raise
+        _difference_refused(hold.pk, key, _placement_failure(None, error) or "card_declined")
+        return CaptureResult(CaptureStatus.PARTIALLY_PAID, error=error)
+    return _difference_outcome(hold.pk, key, intent)
+
+
+def _difference_outcome(card_hold_id: int, key: str, intent: Any) -> CaptureResult:
+    """Record what the difference's PaymentIntent ended in."""
+    status = stripe_field(intent, "status")
+    if status == "succeeded":
+        _record_difference(card_hold_id, key, intent)
+        return CaptureResult(CaptureStatus.PAID, payment_intent=intent)
+    if status == "processing":
+        # Not decided yet: the claim stays, and the webhook records the outcome. Its id is
+        # kept, so the next call reads it back instead of replaying the create.
+        _holds().objects.filter(
+            pk=card_hold_id, difference_key=key, difference_charged_at__isnull=True
+        ).update(difference_payment_intent_id=stripe_id(intent))
+        return CaptureResult(CaptureStatus.IN_PROGRESS, payment_intent=intent)
+    _difference_refused(card_hold_id, key, _placement_failure(intent, None) or str(status))
+    return CaptureResult(CaptureStatus.PARTIALLY_PAID, payment_intent=intent)
+
+
+def _record_difference(card_hold_id: int, key: str, intent: Any) -> bool:
+    """The difference claimed with ``key`` was charged: record its PaymentIntent, when,
+    and its fee (when known), and the target is ``paid``. Whether this call recorded it
+    (a webhook and the call itself may both try; one does)."""
+    CardHold = _holds()
+    now = timezone.now()
+    changes: dict[str, Any] = {
+        "difference_payment_intent_id": stripe_id(intent),
+        "difference_charged_at": now,
+        "difference_failure_code": "",
+        "modified": now,
+    }
+    fee, currency = _fee_of(intent)
+    if fee is not None:
+        changes["difference_fee_cents"] = fee
+        if currency:
+            changes["fee_currency"] = currency
+    if not CardHold.objects.filter(
+        pk=card_hold_id, difference_key=key, difference_charged_at__isnull=True
+    ).update(**changes):
+        return False
+    _set_payment_status(
+        card_hold_id,
+        CardHold.PaymentStatus.PAID,
+        (CardHold.PaymentStatus.UNPAID, CardHold.PaymentStatus.PARTIALLY_PAID),
+    )
+    return True
+
+
+def _difference_refused(card_hold_id: int, key: str, code: str) -> bool:
+    """Stripe definitely refused the difference claimed with ``key``: nothing was taken
+    for it. The claim is dropped and ``difference_generation`` bumped in one statement;
+    the target is ``partially_paid`` (the hold's capture stays), and
+    ``difference_charge_failed`` is sent once for this refusal. Whether this call
+    recorded it."""
+    CardHold = _holds()
+    if not CardHold.objects.filter(
+        pk=card_hold_id, difference_key=key, difference_charged_at__isnull=True
+    ).update(
+        difference_key="",
+        difference_claimed_at=None,
+        difference_payment_intent_id=None,
+        difference_generation=F("difference_generation") + 1,
+        difference_failure_code=code[:64],
+        modified=timezone.now(),
+    ):
+        return False
+    logger.warning(
+        "Card hold %s: the difference charged with key %s was refused (%s)",
+        card_hold_id,
+        key,
+        code,
+    )
+    _set_payment_status(
+        card_hold_id, CardHold.PaymentStatus.PARTIALLY_PAID, (CardHold.PaymentStatus.UNPAID,)
+    )
+    hold = CardHold.objects.select_related("target_document").get(pk=card_hold_id)
+    send_on_commit(
+        difference_charge_failed,
+        hold=hold,
+        target=hold.target,
+        amount_due_cents=hold.difference_amount_cents,
+        error_code=code,
+    )
+    return True
+
+
+def _reconcile_difference(hold: "AbstractCardHold") -> CaptureResult:
+    """A difference claimed more than :data:`CHARGE_KEY_TTL` ago with no recorded answer:
+    never replayed blind. Its PaymentIntents (``kind`` difference, the claim's key) are
+    looked up in Stripe (:func:`find_difference_payment_intents`, never the project's
+    ``BASEAPP_PAYMENTS_CARD_HOLD_LOOKUP``, written for authorizations) and the outcome
+    recorded; with none found the request never ran, so the key is rotated and the
+    difference charged afresh with the next one."""
+    key = hold.difference_key
+    try:
+        found = find_difference_payment_intents(hold)
+    except stripe.StripeError:
+        logger.warning("Could not look up card hold %s's difference", hold.pk, exc_info=True)
+        return CaptureResult(CaptureStatus.IN_PROGRESS)
+    statuses = [stripe_field(pi, "status") for pi in found]
+    if "succeeded" in statuses:
+        intent = found[statuses.index("succeeded")]
+        _record_difference(hold.pk, key, intent)
+        return CaptureResult(CaptureStatus.PAID, payment_intent=intent)
+    if "processing" in statuses:
+        return CaptureResult(CaptureStatus.IN_PROGRESS)
+    if found:
+        return _difference_outcome(hold.pk, key, found[0])
+    logger.warning(
+        "Card hold %s: nothing in Stripe answers difference %s; charging it afresh", hold.pk, key
+    )
+    CardHold = type(hold)
+    if not CardHold.objects.filter(
+        pk=hold.pk, difference_key=key, difference_charged_at__isnull=True
+    ).update(
+        difference_key="",
+        difference_claimed_at=None,
+        difference_generation=F("difference_generation") + 1,
+        modified=timezone.now(),
+    ):
+        return CaptureResult(CaptureStatus.IN_PROGRESS)
+    hold.refresh_from_db()
+    if not _claim_difference(hold):
+        return CaptureResult(CaptureStatus.IN_PROGRESS)
+    return _charge_difference(hold.pk)
+
+
+def _apply_difference(hold: "AbstractCardHold", payment_intent: Any) -> str:
+    """Under the hold's lock (:func:`_apply_payment_intent`): record what Stripe says of
+    a difference PaymentIntent naming this hold. Only the outstanding claim's own
+    (``difference_key``) is recorded: ``recorded`` when it succeeded, ``declined`` when it
+    was refused; ``current`` for the one already recorded. It is a payment, not an
+    authorization, so it is never cancelled as a stray."""
+    payment_intent_id = stripe_id(payment_intent)
+    status = stripe_field(payment_intent, "status")
+    if hold.difference_charged_at is not None:
+        if hold.difference_payment_intent_id == payment_intent_id:
+            return "current"
+        if status == "succeeded":
+            logger.error(
+                "Card hold %s: difference PaymentIntent %s succeeded but %s was recorded;"
+                " check Stripe",
+                hold.pk,
+                payment_intent_id,
+                hold.difference_payment_intent_id,
+            )
+        return "ignored"
+    key = _difference_key_of(payment_intent)
+    if not key or key != hold.difference_key:
+        return "ignored"
+    if status == "succeeded":
+        _record_difference(hold.pk, key, payment_intent)
+        return "recorded"
+    if status in ("requires_payment_method", "canceled"):
+        _difference_refused(hold.pk, key, _placement_failure(payment_intent, None) or status)
+        return "declined"
+    return "ignored"
+
+
+def _difference_due(hold: "AbstractCardHold") -> int | None:
+    """The final amount of a captured hold whose difference is still due and was never
+    refused: the amount captured plus the difference, when that is what the last
+    :func:`capture` asked for (or nothing was recorded); else ``None``."""
+    CardHold = type(hold)
+    if (
+        hold.status != CardHold.Status.CAPTURED
+        or hold.difference_amount_cents is None
+        or hold.difference_charged_at is not None
+        or hold.payment_status != CardHold.PaymentStatus.UNPAID
+        or hold.captured_amount_cents is None
+        or hold.charge_blocked_reason
+    ):
+        return None
+    amount = hold.captured_amount_cents + hold.difference_amount_cents
+    if hold.requested_amount_cents is not None and hold.requested_amount_cents != amount:
+        return None
+    return amount
+
+
+def charge_due_difference(card_hold_id: int) -> CaptureResult:
+    """Re-drive the difference of a hold captured in full whose :func:`capture` never came
+    back for it (the caller stopped retrying): queued by the sweep. Under the capture
+    claim, through the same claimed, keyed path as :func:`capture` (a claim whose charge
+    got no answer is resumed with its key, or reconciled past :data:`CHARGE_KEY_TTL`).
+
+    Only a difference still due and never refused (``unpaid``: a refused one waits for
+    the project), for the amount the last :func:`capture` asked. The target is checked
+    under its lock and then the hold's, in the transaction that claims the difference: a
+    cancelled (or deleted) one is not charged, and the row is marked
+    (``charge_blocked_reason`` ``target_cancelled``) and logged once, for someone to
+    decide; the sweep then leaves it. ``in_progress`` while a capture holds the claim,
+    ``not_captured`` when nothing is due. Stripe's errors propagate. Raises
+    :class:`CardHoldInTransaction` inside a transaction."""
+    _ensure_outside_transaction()
+    claimed_at = _claim_capture(card_hold_id)
+    if claimed_at is None:
+        return CaptureResult(CaptureStatus.IN_PROGRESS)
+    try:
+        hold = _seen(card_hold_id)
+        amount_cents = _difference_due(hold) if hold is not None else None
+        if amount_cents is None:
+            return CaptureResult(CaptureStatus.NOT_CAPTURED)
+        if hold.difference_key and not _difference_target_alive(hold):
+            return _difference_target_cancelled(hold)
+        return _settle_difference(hold, amount_cents, check_target=True)
+    finally:
+        _release_capture_claim(card_hold_id, claimed_at)
+
+
+def mark_paid_outside(card_hold_id: int, actor: "AbstractBaseUser | None" = None) -> bool:
+    """Staff record the rest of a ``partially_paid`` target as paid outside the app: it
+    moves to ``paid`` (``paid_outside_at`` / ``paid_outside_by``), and no later
+    :func:`capture` charges the difference. One conditional UPDATE, refused while a
+    capture holds the claim (or a difference charge is claimed); no Stripe call. Whether
+    it was marked."""
+    CardHold = _holds()
+    now = timezone.now()
+    return _set_payment_status(
+        card_hold_id,
+        CardHold.PaymentStatus.PAID,
+        (CardHold.PaymentStatus.PARTIALLY_PAID,),
+        q=Q(difference_key="", difference_charged_at__isnull=True)
+        & (
+            Q(capture_claimed_at__isnull=True)
+            | Q(capture_claimed_at__lt=now - CAPTURE_CLAIM_TIMEOUT)
+        ),
+        paid_outside_at=now,
+        paid_outside_by=actor if getattr(actor, "is_authenticated", False) else None,
+    )
+
+
+def hold_payment_intent_ids(hold: "AbstractCardHold") -> list[str]:
+    """Every PaymentIntent that took money for ``hold``'s target, oldest first: the
+    hold's capture, the difference above it, or the single full charge (when the
+    project's ``charge`` returned it). From the row; no query."""
+    CardHold = type(hold)
+    found = []
+    if hold.status == CardHold.Status.CAPTURED and hold.stripe_payment_intent_id:
+        found.append(hold.stripe_payment_intent_id)
+    if hold.difference_charged_at is not None and hold.difference_payment_intent_id:
+        found.append(hold.difference_payment_intent_id)
+    if hold.charged_at is not None and hold.charge_payment_intent_id:
+        found.append(hold.charge_payment_intent_id)
+    return found
+
+
+def attach_payments_to_invoice(card_hold_id: int, invoice_id: str) -> list[str]:
+    """Record every payment of a hold's target on the project's Stripe invoice for it:
+    each PaymentIntent (:func:`hold_payment_intent_ids`) not attached yet is attached
+    with ``Invoice.attach_payment`` (API 2025-03-31.basil and later; a succeeded one is
+    credited at once). Returns the PaymentIntent ids now on the invoice from this hold.
+
+    The invoice must be finalized (``open``), for the hold's customer and currency, and
+    its ``amount_remaining`` must cover them: create it with ``collection_method=
+    "send_invoice"`` and ``auto_advance=False``, so Stripe doesn't also try to collect it.
+    Each attach has its own idempotency key, and PaymentIntents already on the invoice
+    (every page of ``InvoicePayment.list(invoice=...)``) are skipped, so calling it again
+    is safe. Stripe's errors
+    propagate. Raises :class:`CardHoldInTransaction` inside a transaction."""
+    _ensure_outside_transaction()
+    hold = _holds().objects.get(pk=card_hold_id)
+    payment_intent_ids = hold_payment_intent_ids(hold)
+    if not payment_intent_ids:
+        return []
+    stripe_api = utils.get_stripe()
+    # Every page: the invoice's own ``payments`` holds only the first handful.
+    listed = stripe_api.InvoicePayment.list(invoice=invoice_id, limit=100)
+    attached = {
+        stripe_id(stripe_field(stripe_field(payment, "payment"), "payment_intent"))
+        for payment in listed.auto_paging_iter()
+    }
+    for payment_intent_id in payment_intent_ids:
+        if payment_intent_id in attached:
+            continue
+        stripe_api.Invoice.attach_payment(
+            invoice_id,
+            payment_intent=payment_intent_id,
+            idempotency_key=f"{key_prefix()}-invoice-{invoice_id}-{payment_intent_id}",
+        )
+    return payment_intent_ids
+
+
+def record_fees(card_hold_id: int) -> int:
+    """Read Stripe's fee for each payment of the hold whose fee isn't recorded yet (its
+    balance transaction wasn't ready when it was taken), from the PaymentIntent's
+    ``latest_charge.balance_transaction``. No lock held; Stripe's transient errors
+    propagate. Returns how many fees it recorded (the sweep queues it again for the
+    rest)."""
+    hold = _holds().objects.filter(pk=card_hold_id).first()
+    if hold is None:
+        return 0
+    due = []
+    if hold.status == type(hold).Status.CAPTURED and hold.capture_fee_cents is None:
+        due.append(("capture_fee_cents", hold.stripe_payment_intent_id))
+    if hold.difference_charged_at is not None and hold.difference_fee_cents is None:
+        due.append(("difference_fee_cents", hold.difference_payment_intent_id))
+    if hold.charged_at is not None and hold.charge_fee_cents is None:
+        due.append(("charge_fee_cents", hold.charge_payment_intent_id))
+    recorded = 0
+    for field, payment_intent_id in due:
+        if not payment_intent_id:
+            continue
+        try:
+            intent = utils.get_stripe().PaymentIntent.retrieve(payment_intent_id, expand=FEE_EXPAND)
+        except stripe.InvalidRequestError:
+            logger.warning("Could not read PaymentIntent %s", payment_intent_id, exc_info=True)
+            continue
+        recorded += _store_fee(hold.pk, field, intent)
+    return recorded
 
 
 # --- Deferred placement -----------------------------------------------------------------
@@ -3285,10 +4205,38 @@ def find_hold_payment_intents(hold: "AbstractCardHold") -> list[Any]:
     are listed and filtered by the metadata. Stripe's transient errors propagate. Swap it
     with ``BASEAPP_PAYMENTS_CARD_HOLD_LOOKUP`` (a dotted path to a function of the hold).
     """
+    return _search_metadata(
+        hold, "card_hold_id", str(hold.pk), hold.placement_sent_at or hold.created
+    )
+
+
+def find_difference_payment_intents(hold: "AbstractCardHold") -> list[Any]:
+    """The difference PaymentIntents in Stripe sent with ``hold``'s outstanding
+    ``difference_key``: Search on ``metadata['difference_key']``, else the customer's
+    PaymentIntents since the claim, as :func:`find_hold_payment_intents` does. Always this
+    module's own lookup, never ``BASEAPP_PAYMENTS_CARD_HOLD_LOOKUP``: a project's lookup
+    written for authorizations could miss a succeeded payment, and the difference would
+    then be charged twice."""
+    found = _search_metadata(
+        hold, "difference_key", hold.difference_key, hold.difference_claimed_at or hold.created
+    )
+    return [
+        payment_intent
+        for payment_intent in found
+        if _is_difference(payment_intent) and _metadata_hold_id(payment_intent) == str(hold.pk)
+    ]
+
+
+def _search_metadata(
+    hold: "AbstractCardHold", field: str, value: str, since: datetime.datetime
+) -> list[Any]:
+    """The PaymentIntents whose ``metadata[field]`` is ``value``: Stripe's Search, or,
+    when Search refuses (anything but a transient error), the hold's customer's
+    PaymentIntents created since ``since`` (less :data:`LOOKUP_MARGIN`), filtered."""
     stripe_api = utils.get_stripe()
     try:
         found = stripe_api.PaymentIntent.search(
-            query=f"metadata['card_hold_id']:'{hold.pk}'", expand=LOOKUP_EXPAND, limit=100
+            query=f"metadata['{field}']:'{value}'", expand=LOOKUP_EXPAND, limit=100
         )
         return list(found.auto_paging_iter())
     except RETRYABLE_STRIPE_ERRORS:
@@ -3299,24 +4247,25 @@ def find_hold_payment_intents(hold: "AbstractCardHold") -> list[Any]:
         )
     if not hold.stripe_customer_id:
         return []
-    since = (hold.placement_sent_at or hold.created) - LOOKUP_MARGIN
     listed = stripe_api.PaymentIntent.list(
         customer=hold.stripe_customer_id,
-        created={"gte": int(since.timestamp())},
+        created={"gte": int((since - LOOKUP_MARGIN).timestamp())},
         expand=LOOKUP_EXPAND,
         limit=100,
     )
     return [
         payment_intent
         for payment_intent in listed.auto_paging_iter()
-        if _metadata_hold_id(payment_intent) == str(hold.pk)
+        if str(stripe_field(stripe_field(payment_intent, "metadata"), field) or "") == value
     ]
 
 
 def _lookup(hold: "AbstractCardHold") -> list[Any]:
     """The project's lookup (``BASEAPP_PAYMENTS_CARD_HOLD_LOOKUP``), else
     :func:`find_hold_payment_intents`; only the PaymentIntents naming ``hold``, the ones
-    that may hold money first, then oldest first."""
+    that may hold money first, then oldest first. An override must return every
+    PaymentIntent carrying the hold's ``card_hold_id``, in any status and of any kind. The
+    difference is never looked up through it (:func:`find_difference_payment_intents`)."""
     from django.utils.module_loading import import_string
 
     configured = getattr(settings, "BASEAPP_PAYMENTS_CARD_HOLD_LOOKUP", None)
@@ -3398,6 +4347,9 @@ def _apply_payment_intent(
     - ``recorded``: the answer of an on-session create in flight, recorded on its row as
       :func:`record_pending_hold` does (the client's retry carries on with it);
       ``declined`` for a decline;
+    - ``recorded`` / ``declined`` / ``current``: the difference charged above a captured
+      hold (``metadata['kind']`` ``difference``), recorded by :func:`_apply_difference`;
+      a payment, never a stray;
     - ``stray``: any other authorization: cancelled and tracked until confirmed;
     - ``ignored``: nothing to do (another customer's, a decline that isn't the
       outstanding one, a stray already gone).
@@ -3412,6 +4364,8 @@ def _apply_payment_intent(
             hold.pk,
         )
         return "ignored"
+    if _is_difference(payment_intent):
+        return _apply_difference(hold, payment_intent)
     if payment_intent_id == hold.stripe_payment_intent_id:
         if status == "succeeded":
             mark_captured(
@@ -3966,6 +4920,12 @@ def card_in_use(user: "AbstractBaseUser", payment_method_id: str) -> bool:
 
 __all__ = [
     "CHARGE_KEY_TTL",
+    "DIFFERENCE_KIND",
+    "attach_payments_to_invoice",
+    "difference_idempotency_key",
+    "hold_payment_intent_ids",
+    "mark_paid_outside",
+    "record_fees",
     "CaptureResult",
     "CaptureStatus",
     "CardHoldInTransaction",

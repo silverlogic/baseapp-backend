@@ -24,6 +24,15 @@ Stripe saves for the key); :meth:`FakeStripe.prune_keys` forgets idempotency key
 Stripe does after 24 hours, so a replay runs as a fresh request. ``PaymentIntent.search``
 and ``PaymentIntent.list`` find PaymentIntents by metadata and by customer;
 :func:`deliver_event` posts a signed webhook event to the real endpoint.
+
+Basil (API 2025-03-31.basil and later): an automatic-capture PaymentIntent confirmed at
+create (the difference above a hold, a project's charge) ends ``succeeded``; every
+captured payment's ``latest_charge`` carries a balance transaction with Stripe's fee
+(expanded only when ``latest_charge.balance_transaction`` is asked for; ``None`` while
+``balance_ready`` is off, as when Stripe hasn't made it yet); a PaymentIntent Stripe
+cancels when its authorization lapses says ``cancellation_reason="expired"``; and
+invoices take several payments (``Invoice.attach_payment``, ``invoice.payments``,
+``InvoicePayment.list`` paged by ``invoice_page_size``).
 """
 
 import copy
@@ -234,7 +243,7 @@ class _PaymentIntentApi(_Api):
                     raise idempotency_error()
                 if isinstance(reply, Exception):
                     raise reply
-                return self._construct(reply, replayed=True)
+                return self._construct(reply, replayed=True, expand=params.get("expand"))
             if key is not None and key in self.fake.in_flight:
                 raise concurrent_request()
             if key is not None:
@@ -252,7 +261,10 @@ class _PaymentIntentApi(_Api):
             self.fake.raise_queued("PaymentIntent.create")
             payment_intent_id = f"pi_{next(self.fake.ids)}"
             outcome = self.fake.next_outcome.pop(0) if self.fake.next_outcome else None
-            status = outcome or "requires_capture"
+            automatic = params.get("capture_method", "automatic") != "manual"
+            status = outcome or (
+                "succeeded" if automatic and params.get("confirm") else "requires_capture"
+            )
             if status in CARD_ERRORS:
                 with self.fake.lock:
                     self.fake.intents[payment_intent_id] = self._data(
@@ -277,13 +289,14 @@ class _PaymentIntentApi(_Api):
             self.fake.intents[payment_intent_id] = self._data(payment_intent_id, params, status)
             if key:
                 self.fake.replies[key] = (params, payment_intent_id)
-        return self._construct(payment_intent_id)
+        return self._construct(payment_intent_id, expand=params.get("expand"))
 
     def _data(self, payment_intent_id: str, params: dict[str, Any], status: str) -> dict:
         return {
             "id": payment_intent_id,
             "object": "payment_intent",
             "status": status,
+            "capture_method": params.get("capture_method", "automatic"),
             "amount": params["amount"],
             "currency": params.get("currency", "usd"),
             "customer": params.get("customer"),
@@ -291,11 +304,17 @@ class _PaymentIntentApi(_Api):
             "payment_method": params.get("payment_method"),
             "client_secret": f"{payment_intent_id}_secret",
             "capture_before": self.fake.capture_before,
-            "amount_received": 0,
+            "amount_received": params["amount"] if status == "succeeded" else 0,
             "created": int(time.time()),
         }
 
-    def _construct(self, payment_intent_id: str, *, replayed: bool = False) -> Any:
+    def _construct(
+        self,
+        payment_intent_id: str,
+        *,
+        replayed: bool = False,
+        expand: list[str] | None = None,
+    ) -> Any:
         with self.fake.lock:
             data = copy.deepcopy(self.fake.intents[payment_intent_id])
         payment_method_id = data.pop("payment_method")
@@ -310,6 +329,9 @@ class _PaymentIntentApi(_Api):
             "payment_method_details": {
                 "card": {"capture_before": capture_before} if capture_before else {}
             },
+            "balance_transaction": self.fake.balance_transaction(
+                data, expanded="latest_charge.balance_transaction" in (expand or [])
+            ),
         }
         data["amount_capturable"] = data["amount"] if data["status"] == "requires_capture" else 0
         return stripe.PaymentIntent.construct_from(
@@ -372,7 +394,7 @@ class _PaymentIntentApi(_Api):
         self.fake.raise_queued("PaymentIntent.retrieve")
         if payment_intent_id not in self.fake.intents:
             raise resource_missing("payment_intent", payment_intent_id)
-        return self._construct(payment_intent_id)
+        return self._construct(payment_intent_id, expand=params.get("expand"))
 
     def cancel(self, payment_intent_id: str, **params: Any) -> stripe.PaymentIntent:
         self.fake.record("PaymentIntent.cancel", payment_intent_id, **params)
@@ -400,7 +422,7 @@ class _PaymentIntentApi(_Api):
                     raise idempotency_error()
                 if isinstance(reply, Exception):
                     raise reply
-                return self._construct(reply, replayed=True)
+                return self._construct(reply, replayed=True, expand=params.get("expand"))
         try:
             self.fake.raise_queued("PaymentIntent.capture")
             data = self.fake.intents.get(payment_intent_id)
@@ -427,7 +449,7 @@ class _PaymentIntentApi(_Api):
             self.fake.captures.append((payment_intent_id, amount))
             if key:
                 self.fake.replies[key] = (request, payment_intent_id)
-        return self._construct(payment_intent_id)
+        return self._construct(payment_intent_id, expand=params.get("expand"))
 
 
 class _SetupIntentApi(_Api):
@@ -497,6 +519,123 @@ class _SetupIntentApi(_Api):
         return self._construct(setup_intent_id)
 
 
+class _InvoiceApi(_Api):
+    """Invoices that take several payments (basil): ``retrieve`` (``payments`` listed)
+    and ``attach_payment``, which credits a succeeded PaymentIntent at once."""
+
+    def retrieve(self, invoice_id: str, **params: Any) -> stripe.Invoice:
+        self.fake.record("Invoice.retrieve", invoice_id, **params)
+        self.fake.raise_queued("Invoice.retrieve")
+        if invoice_id not in self.fake.invoices:
+            raise resource_missing("invoice", invoice_id)
+        return self._construct(invoice_id)
+
+    def attach_payment(self, invoice_id: str, **params: Any) -> stripe.Invoice:
+        """Stripe's rules, as far as card holds meet them: the invoice must be open, the
+        PaymentIntent the invoice's customer's and currency's, not on it already, and no
+        larger than what remains due."""
+        self.fake.record("Invoice.attach_payment", invoice_id, **params)
+        key = params.get("idempotency_key")
+        with self.fake.lock:
+            if key is not None and key in self.fake.replies:
+                first_params, reply = self.fake.replies[key]
+                if _comparable(first_params) != _comparable(params):
+                    raise idempotency_error()
+                return self._construct(reply)
+        self.fake.raise_queued("Invoice.attach_payment")
+        payment_intent_id = params["payment_intent"]
+        with self.fake.lock:
+            invoice = self.fake.invoices.get(invoice_id)
+            intent = self.fake.intents.get(payment_intent_id)
+            if invoice is None:
+                raise resource_missing("invoice", invoice_id)
+            if intent is None:
+                raise resource_missing("payment_intent", payment_intent_id)
+            if invoice["status"] != "open":
+                raise stripe.InvalidRequestError("This invoice isn't open.", None)
+            if payment_intent_id in invoice["attached"]:
+                raise stripe.InvalidRequestError("Already attached to this invoice.", None)
+            if (
+                intent.get("customer") != invoice["customer"]
+                or intent.get("currency", "usd") != invoice["currency"]
+            ):
+                raise stripe.InvalidRequestError("Customer or currency mismatch.", None)
+            amount = intent["amount_received"] or intent["amount"]
+            if amount > invoice["amount_remaining"]:
+                raise stripe.InvalidRequestError("More than the amount remaining.", None)
+            invoice["attached"].append(payment_intent_id)
+            if intent["status"] == "succeeded":
+                invoice["amount_paid"] += amount
+                invoice["amount_remaining"] -= amount
+                if invoice["amount_remaining"] == 0:
+                    invoice["status"] = "paid"
+            if key is not None:
+                self.fake.replies[key] = (params, invoice_id)
+        return self._construct(invoice_id)
+
+    def _construct(self, invoice_id: str) -> stripe.Invoice:
+        with self.fake.lock:
+            data = copy.deepcopy(self.fake.invoices[invoice_id])
+        attached = data.pop("attached")
+        data["payments"] = {
+            "object": "list",
+            "data": [
+                {
+                    "object": "invoice_payment",
+                    "invoice": invoice_id,
+                    "payment": {"type": "payment_intent", "payment_intent": pid},
+                    "status": "paid" if self.fake.status_of(pid) == "succeeded" else "open",
+                }
+                for pid in attached
+            ],
+            "has_more": False,
+        }
+        return stripe.Invoice.construct_from(data, TEST_KEY)
+
+
+class _Pages:
+    """A Stripe list read page by page: ``data`` is the first page, and
+    ``auto_paging_iter`` fetches the rest (each page recorded as a call)."""
+
+    def __init__(self, fake: "FakeStripe", name: str, items: list[Any], size: int) -> None:
+        self.fake = fake
+        self.name = name
+        self.items = items
+        self.size = size
+        self.data = items[:size]
+
+    def auto_paging_iter(self) -> Any:
+        yield from self.data
+        for start in range(self.size, len(self.items), self.size):
+            self.fake.record(self.name, starting_after=self.items[start - 1]["id"])
+            yield from self.items[start : start + self.size]
+
+
+class _InvoicePaymentApi(_Api):
+    """``InvoicePayment.list(invoice=...)``: the payments on an invoice, every page."""
+
+    def list(self, **params: Any) -> _Pages:
+        self.fake.record("InvoicePayment.list", **params)
+        self.fake.raise_queued("InvoicePayment.list")
+        invoice_id = params.get("invoice")
+        with self.fake.lock:
+            if invoice_id not in self.fake.invoices:
+                raise resource_missing("invoice", invoice_id)
+            attached = list(self.fake.invoices[invoice_id]["attached"])
+        items = [
+            {
+                "id": f"inpay_{invoice_id}_{pid}",
+                "object": "invoice_payment",
+                "invoice": invoice_id,
+                "payment": {"type": "payment_intent", "payment_intent": pid},
+                "status": "paid" if self.fake.status_of(pid) == "succeeded" else "open",
+            }
+            for pid in attached
+        ]
+        size = min(params.get("limit", 10), self.fake.invoice_page_size)
+        return _Pages(self.fake, "InvoicePayment.list", items, size)
+
+
 def project_charge(
     fake: "FakeStripe", *, payment_method: str = "pm_visa", amount: int = 10_000
 ) -> Callable[..., Any]:
@@ -557,9 +696,66 @@ class FakeStripe:
         self.before_retrieve: Callable[[str], None] | None = None
         # Errors the next PaymentIntent creations answer with after creating it anyway.
         self.behind_errors: list[Exception] = []
+        # Whether Stripe has made a captured payment's balance transaction (its fee) yet.
+        self.balance_ready = True
+        self.invoices: dict[str, dict[str, Any]] = {}
+        # Payments per page of ``InvoicePayment.list`` (Stripe's own limit is 100).
+        self.invoice_page_size = 100
         self.PaymentMethod = _PaymentMethodApi(self)
         self.PaymentIntent = _PaymentIntentApi(self)
         self.SetupIntent = _SetupIntentApi(self)
+        self.Invoice = _InvoiceApi(self)
+        self.InvoicePayment = _InvoicePaymentApi(self)
+
+    @staticmethod
+    def fee_for(amount_cents: int) -> int:
+        """Stripe's standard US card fee: 2.9% + 30¢."""
+        return round(amount_cents * 0.029) + 30
+
+    def balance_transaction(self, intent: dict[str, Any], *, expanded: bool) -> Any:
+        """A captured payment's balance transaction: the object when ``expanded``, else
+        its id; ``None`` before the money moved, or while ``balance_ready`` is off."""
+        received = intent.get("amount_received") or 0
+        if intent.get("status") != "succeeded" or not received or not self.balance_ready:
+            return None
+        transaction_id = f"txn_{intent['id']}"
+        if not expanded:
+            return transaction_id
+        return {
+            "id": transaction_id,
+            "object": "balance_transaction",
+            "amount": received,
+            "currency": "usd",
+            "fee": self.fee_for(received),
+            "net": received - self.fee_for(received),
+            "balance_type": "payments",
+        }
+
+    def add_invoice(
+        self,
+        invoice_id: str = "in_order",
+        *,
+        amount_due: int = 12_000,
+        customer: str = STRIPE_CUSTOMER_ID,
+        currency: str = "usd",
+        status: str = "open",
+    ) -> dict[str, Any]:
+        """A finalized invoice the project raised for the target (``send_invoice``)."""
+        data = {
+            "id": invoice_id,
+            "object": "invoice",
+            "status": status,
+            "customer": customer,
+            "currency": currency,
+            "amount_due": amount_due,
+            "amount_paid": 0,
+            "amount_remaining": amount_due,
+            "collection_method": "send_invoice",
+            "attached": [],
+        }
+        with self.lock:
+            self.invoices[invoice_id] = data
+        return data
 
     def add_card(self, pm_id: str = "pm_visa", **fields: Any) -> dict[str, Any]:
         data = payment_method_data(pm_id, **fields)
@@ -579,17 +775,20 @@ class FakeStripe:
         with self.lock:
             self.intents[payment_intent_id]["status"] = status
 
-    def lapse(self, payment_intent_id: str, *, canceled: bool = True) -> None:
+    def lapse(
+        self, payment_intent_id: str, *, canceled: bool = True, reason: str = "expired"
+    ) -> None:
         """The authorization expired. Stripe then cancels the PaymentIntent itself
-        (``canceled``, ``cancellation_reason="automatic"``); before it gets to that, the
-        PaymentIntent still reads ``requires_capture`` but a capture is refused with
-        ``charge_expired_for_capture``, and a cancel still works."""
+        (``canceled``, ``cancellation_reason="expired"`` from basil on; ``"automatic"``
+        before it); before it gets to that, the PaymentIntent still reads
+        ``requires_capture`` but a capture is refused with ``charge_expired_for_capture``,
+        and a cancel still works."""
         with self.lock:
             data = self.intents[payment_intent_id]
             data["lapsed"] = True
             if canceled:
                 data["status"] = "canceled"
-                data["cancellation_reason"] = "automatic"
+                data["cancellation_reason"] = reason
 
     def fail_behind_next(self, error: Exception | None = None) -> None:
         """The next PaymentIntent creation creates its PaymentIntent but answers with
