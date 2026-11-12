@@ -41,6 +41,11 @@ needs.
 
 What you must do when you upgrade:
 
+- **Check your own `STRIPE_API_VERSION` setting.** A project setting overrides the module's
+  default. The BaseApp backend template pins `STRIPE_API_VERSION = "2025-02-24.acacia"`;
+  change it to `"2025-05-28.basil"` (or remove it). Left on acacia, paying above the hold
+  and `attach_payments_to_invoice` don't work.
+
 - **stripe-python 12.2 or later.** The `payments` extra now requires `stripe>=12.2,<15`:
   `Invoice.attach_payment`, which the [invoice helper](#one-invoice-for-every-payment)
   uses, first shipped in 12.2.0 (the release pinned to `2025-05-28.basil`);
