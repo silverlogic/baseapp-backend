@@ -5,9 +5,8 @@ from django.contrib.contenttypes.prefetch import GenericPrefetch
 from django.db.models import Prefetch, QuerySet
 from query_optimizer.compiler import OptimizationCompiler
 
-from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import DjangoObjectType, resolve_document_content_object
 from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.graphql import resolve_document_content_object
 from baseapp_core.models import DocumentId
 from baseapp_core.plugins import shared_services
 

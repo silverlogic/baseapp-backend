@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("social_mentions", "0002_alter_mention_unique_together_and_more"),
     ]

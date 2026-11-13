@@ -10,13 +10,11 @@ from baseapp_core.graphql import (
     ConnectionFieldNodeExtractor,
     DjangoObjectType,
     NestedConnectionInfoProxy,
-)
-from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.graphql import (
     get_object_type_for_model,
     resolve_document_content_object,
     skip_ast_walker,
 )
+from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.graphql.optimizer import NESTED_INFO_PROXY_HINT
 from baseapp_core.plugins import (
     apply_if_installed,

@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("content_feed", "0002_remove_reactions_legacy_columns"),
     ]

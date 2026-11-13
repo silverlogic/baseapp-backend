@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("baseapp_pages", "0009_metadata_insert_document_id_and_more"),
     ]

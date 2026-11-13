@@ -10,9 +10,8 @@ from graphene.types.generic import GenericScalar
 from graphene_django.filter import DjangoFilterConnectionField
 from pghistory.models import MiddlewareEvents
 
-from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
 from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.graphql import get_object_type_for_model
 
 from ..models import ActivityLog, VisibilityTypes
 from .filters import ActivityLogFilter, MiddlewareEventFilter

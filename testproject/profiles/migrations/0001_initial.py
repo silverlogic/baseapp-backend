@@ -30,7 +30,6 @@ else:
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [

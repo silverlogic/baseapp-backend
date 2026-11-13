@@ -10,7 +10,6 @@ import baseapp_follows.migration_helpers.seed_followable_metadata_from_follows_h
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("baseapp_core", "0001_initial"),
         ("follows", "0002_alter_follow_actor_alter_follow_target"),

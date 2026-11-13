@@ -5,9 +5,8 @@ import graphene_django_optimizer as gql_optimizer
 import swapper
 from query_optimizer import DjangoConnectionField
 
-from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model, get_pk_from_relay_id
 from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.graphql import get_object_type_for_model, get_pk_from_relay_id
 from baseapp_core.plugins import shared_services
 
 if TYPE_CHECKING:

@@ -29,7 +29,6 @@ def reverse_migrate_contentpost_reactable_fields(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("content_feed", "0001_initial"),
         ("reactions", "0002_plugin_arch_squashed"),

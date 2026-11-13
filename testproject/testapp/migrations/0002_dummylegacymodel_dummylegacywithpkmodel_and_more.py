@@ -9,7 +9,6 @@ import baseapp_core.models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("baseapp_core", "0001_initial"),
         ("testapp", "0001_initial"),

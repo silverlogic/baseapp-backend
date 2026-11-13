@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("users", "0001_initial"),
         migrations.swappable_dependency(settings.BASEAPP_PROFILES_PROFILE_MODEL),

@@ -255,7 +255,6 @@ def test_user_can_filter_by_user_name(django_user_client, graphql_user_client) -
     # created another  activity
 
     with pghistory.context(user=another_user.pk, visibility=VisibilityTypes.PUBLIC, verb=verb):
-
         CommentFactory()
 
     assert ActivityLog.objects.count() == 2
@@ -303,7 +302,6 @@ def test_filter_by_user_name_is_case_insensitive(django_user_client, graphql_use
     # created another activity
 
     with pghistory.context(user=another_user.pk, visibility=VisibilityTypes.PUBLIC, verb=verb):
-
         CommentFactory()
 
     assert ActivityLog.objects.count() == 2
@@ -353,7 +351,6 @@ def test_filter_by_partial_match(django_user_client, graphql_user_client) -> Non
     # created another  activity
 
     with pghistory.context(user=another_user.pk, visibility=VisibilityTypes.PUBLIC, verb=verb):
-
         CommentFactory()
 
     assert ActivityLog.objects.count() == 2

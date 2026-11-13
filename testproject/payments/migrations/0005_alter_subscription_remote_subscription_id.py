@@ -41,7 +41,6 @@ def assert_no_duplicate_subscription_ids(apps, schema_editor) -> None:
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("payments", "0004_alter_customer_unique_together"),
     ]

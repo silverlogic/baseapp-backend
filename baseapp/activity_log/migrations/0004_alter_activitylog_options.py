@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("baseapp_activity_log", "0003_delete_activitylog_activitylog"),
     ]

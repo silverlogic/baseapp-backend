@@ -75,9 +75,8 @@ docker compose <run> web python manage.py showmigrations
 ### Lint & Format
 
 ```bash
-docker compose <run> web black .          # line-length=100
-docker compose <run> web isort .
-docker compose <run> web flake8 .
+docker compose <run> web ruff check --fix .   # lint + import order
+docker compose <run> web ruff format .        # line-length=100
 docker compose <run> web uv run ast-grep scan --globs '!baseapp-backend'   # code-guideline rules (shared from baseapp-backend/.ast-grep/); the submodule is linted in its own CI
 docker compose <run> web uv run ast-grep test    # test the ast-grep rules themselves
 docker compose <run> web pre-commit run --all-files
@@ -111,7 +110,7 @@ docker compose <run> web python manage.py <command> [args]
 
 ## Rules
 
-1. **Never run on the host.** All Python, pytest, Black, Flake8, manage.py, and uv commands run inside the container.
+1. **Never run on the host.** All Python, pytest, Ruff, manage.py, and uv commands run inside the container.
 2. **Use `uv` for all dependency changes.** Never use `pip install` — always `uv add` inside Docker.
 3. **Always detect container state first.** Never hardcode `exec` or `run --rm`.
 4. **Destructive commands need confirmation.** Before `migrate` on a non-local environment, `flush`, `reset`, or any data-modifying command, confirm with the user.

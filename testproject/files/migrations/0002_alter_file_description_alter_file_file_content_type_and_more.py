@@ -15,7 +15,6 @@ def fill_null_strings(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("files", "0001_initial"),
     ]

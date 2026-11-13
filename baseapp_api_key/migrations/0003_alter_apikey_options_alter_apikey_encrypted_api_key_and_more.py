@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("baseapp_api_key", "0002_alter_apikey_expiry_date"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),

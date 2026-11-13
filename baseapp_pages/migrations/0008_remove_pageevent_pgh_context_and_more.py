@@ -5,7 +5,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("baseapp_pages", "0007_alter_metadataevent_pgh_context_and_more"),
     ]

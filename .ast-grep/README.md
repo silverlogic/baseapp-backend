@@ -17,8 +17,7 @@ They run on **both CI surfaces**:
 ## Installation
 
 Nothing to install on the host. `ast-grep-cli` is a uv dev dependency in both repos,
-so it is available inside the `web` Docker service — the same way flake8/black/isort
-run.
+so it is available inside the `web` Docker service — the same way ruff runs.
 
 ## Usage
 
