@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("cache", "0003_alter_socialauthaccesstokencache_id"),
     ]

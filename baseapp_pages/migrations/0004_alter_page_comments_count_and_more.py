@@ -21,7 +21,6 @@ else:
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("baseapp_pages", "0003_remove_page_snapshot_insert_and_more"),
     ]

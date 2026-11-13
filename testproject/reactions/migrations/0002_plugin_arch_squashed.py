@@ -10,7 +10,6 @@ import baseapp_reactions.models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("baseapp_core", "0001_initial"),
         ("contenttypes", "0002_remove_content_type_name"),

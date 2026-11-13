@@ -21,7 +21,6 @@ DROP_SQL = "drop view if exists v_activity_log"
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("baseapp_activity_log", "0001_initial"),
     ]

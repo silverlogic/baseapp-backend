@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("pghistory", "0006_delete_aggregateevent"),
         ("baseapp_pages", "0005_remove_metadata_snapshot_insert_and_more"),

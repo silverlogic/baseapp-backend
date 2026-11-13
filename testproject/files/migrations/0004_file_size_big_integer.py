@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("files", "0003_alter_file_options_alter_filetarget_options_and_more"),
     ]

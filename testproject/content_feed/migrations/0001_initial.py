@@ -13,7 +13,6 @@ import baseapp_reactions.models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [

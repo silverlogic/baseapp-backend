@@ -7,7 +7,6 @@ import baseapp_core.models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("baseapp_pages", "0011_alter_urlpath_options"),
         ("contenttypes", "0002_remove_content_type_name"),

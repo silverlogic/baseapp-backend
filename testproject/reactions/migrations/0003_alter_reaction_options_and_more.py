@@ -8,7 +8,6 @@ import baseapp_reactions.models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("reactions", "0002_plugin_arch_squashed"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),

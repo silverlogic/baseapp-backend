@@ -9,7 +9,6 @@ import baseapp_wagtail.base.stream_fields.page_body_stream_field
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
