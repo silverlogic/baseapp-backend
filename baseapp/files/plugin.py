@@ -45,6 +45,12 @@ class FilesPlugin(BaseAppPlugin):
                 "BASEAPP_FILES_UNCLAIMED_ANONYMOUS_MAX_AGE": 24 * 60 * 60,
                 # Parts directory for storages without a local path (None: system temp).
                 "BASEAPP_FILES_UPLOAD_TEMP_DIR": None,
+                # Protected downloads (baseapp.files.downloads): lifetime of a download
+                # link, an optional callable(user, request) -> bool vetoing its use, and
+                # where baseapp.files.downloads.urls is mounted.
+                "BASEAPP_FILES_DOWNLOAD_TICKET_MAX_AGE": 300,
+                "BASEAPP_FILES_DOWNLOAD_TICKET_USER_CHECK": None,
+                "BASEAPP_FILES_PROTECTED_DOWNLOADS_URL": "/v1/files/protected/",
             },
             celery_beat_schedules={
                 "baseapp_files_cleanup_expired_uploads": {
@@ -80,5 +86,7 @@ class FilesPlugin(BaseAppPlugin):
         from baseapp.files.rest_framework.routers import files_router
 
         return [
+            # Before the router: its `files/{pk}` routes would otherwise see "protected".
+            re_path(r"^files/protected/", include("baseapp.files.downloads.urls")),
             re_path(r"", include(files_router.urls)),
         ]
