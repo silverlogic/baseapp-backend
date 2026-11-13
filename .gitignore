@@ -1,5 +1,6 @@
 __pycache__/
 .cache/
+.ruff_cache/
 /apidocs/build/
 **/venv
 .DS_Store

@@ -1,18 +1,10 @@
 repos:
--   repo: https://github.com/pycqa/isort
-    rev: 4.3.21
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.5  # keep in step with the ruff pin in pyproject.toml
     hooks:
-      - id: isort
-        name: isort (python)
--   repo: https://github.com/psf/black
-    rev: 22.8.0
-    hooks:
-    - id: black
-      language_version: python3
--   repo: https://github.com/pycqa/flake8
-    rev: 5.0.4
-    hooks:
-    - id: flake8
+    - id: ruff-check
+      args: [--fix]
+    - id: ruff-format
 -   repo: local
     hooks:
     - id: compile-translations

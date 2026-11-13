@@ -21,23 +21,15 @@ jobs:
       - name: docker compose up
         run: docker compose up -d --wait
 
-      - name: flake8
-        id: flake8
-        run: docker compose exec -T web uv run --python ${{ matrix.python-version }} flake8 ./ --show-source --statistics --count
-
-      - name: isort
-        id: isort
-        if: steps.flake8.outcome == 'success'
-        run: docker compose exec -T web uv run --python ${{ matrix.python-version }} isort --check ./
-
-      - name: black
-        id: black
-        if: steps.isort.outcome == 'success'
-        run: docker compose exec -T web uv run --python ${{ matrix.python-version }} black --check ./
+      - name: ruff
+        id: ruff
+        run: |
+          docker compose exec -T web uv run --python ${{ matrix.python-version }} ruff check ./ --statistics
+          docker compose exec -T web uv run --python ${{ matrix.python-version }} ruff format --check ./
 
       - name: ast-grep
         id: ast_grep
-        if: steps.black.outcome == 'success'
+        if: steps.ruff.outcome == 'success'
         run: |
           docker compose exec -T web uv run --python ${{ matrix.python-version }} ast-grep test
           docker compose exec -T web uv run --python ${{ matrix.python-version }} ast-grep scan

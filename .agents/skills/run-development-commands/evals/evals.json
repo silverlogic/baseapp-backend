@@ -28,11 +28,11 @@
     {
       "id": 3,
       "prompt": "format the code and check for lint errors",
-      "expected_output": "Docker compose commands to run black, isort, and flake8 inside the web service.",
+      "expected_output": "Docker compose commands to run ruff check and ruff format inside the web service.",
       "files": [],
       "assertions": [
-        "All commands use 'docker compose' (not bare black/isort/flake8 on the host)",
-        "The commands include black, isort, and flake8",
+        "All commands use 'docker compose' (not bare ruff on the host)",
+        "The commands include ruff check and ruff format",
         "All commands target the 'web' service",
         "The commands check container state and use 'exec' if running or 'run --rm' if stopped"
       ]

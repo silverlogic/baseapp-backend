@@ -117,9 +117,7 @@ dev = [
     "freezegun==1.5.5",
     "responses==0.25.8",
     "factory-boy==3.3.3",
-    "black==26.3.1",
-    "flake8==7.3.0",
-    "isort==6.0.1",
+    "ruff==0.17.5",
     "channels-redis==4.3.0",
     "djangorestframework==3.17.2",
     "djangorestframework-simplejwt[crypto]==5.5.1",
@@ -139,7 +137,6 @@ dev = [
 
 testproject = [
     "baseapp-backend[auth,graphql,messagetemplates,notifications,pages,payments,pdf,referrals,socialauth,urlshortening,wagtail]",
-    "black==26.3.1",
     "channels==4.3.1",
     "channels-redis==4.3.0",
     "django-notifications-community",
@@ -149,9 +146,7 @@ testproject = [
     "drf-nested-routers==0.93.5",
     "easy-thumbnails==2.10.1",
     "factory-boy==3.3.3",
-    "flake8==7.3.0",
     "freezegun==1.5.5",
-    "isort==6.0.1",
     "pytest==9.0.3",
     "pytest-asyncio==1.3.0",
     "pytest-celery==1.2.1",
@@ -159,6 +154,7 @@ testproject = [
     "pytest-django==4.11.1",
     "responses==0.25.8",
     "rest-social-auth==10.0.0",
+    "ruff==0.17.5",
     "twisted==26.10.0",
     "urllib3==2.8.0",
     "testproject",
@@ -232,9 +228,16 @@ baseapp_content_feed = "baseapp.content_feed.plugin:ContentFeedPlugin"
 baseapp_files = "baseapp.files.plugin:FilesPlugin"
 baseapp_chats = "baseapp_chats.plugin:ChatsPlugin"
 
-[tool.black]
+[tool.ruff]
 line-length = 100
-target-version = ['py311']
+target-version = "py311"
+# Python sources only
+extend-exclude = ["*.md"]
 
-[tool.isort]
-profile = "black"
+[tool.ruff.lint]
+# pycodestyle, pyflakes, mccabe, isort
+select = ["E", "F", "W", "C90", "I"]
+ignore = ["E402", "E501", "F405"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 18

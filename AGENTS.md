@@ -43,7 +43,7 @@ BaseApp Backend is a monorepo of reusable Django packages (auth, profiles, comme
 - Use `DjangoFilterConnectionField` + `FilterSet` for filterable list queries. `filters.py` can be shared with  DRF as well.
 - Document queries and mutations with docstrings and `description=` / `deprecated_reason=` fields.
 
-**Formatting:** Black with `line-length=100`, isort with Black profile.
+**Formatting:** Ruff (`line-length=100`) for linting, import order and formatting; configured in `pyproject.toml`.
 
 ## Test Structure
 
@@ -86,9 +86,8 @@ docker compose run --rm web uv run --python 3.12 pytest baseapp_profiles/tests/ 
 docker compose run --rm web uv run --python 3.12 pytest --cov --cov-report=term-missing
 
 # Code quality
-docker compose run --rm web black .
-docker compose run --rm web isort .
-docker compose run --rm web flake8
+docker compose run --rm web ruff check --fix .   # lint + import order
+docker compose run --rm web ruff format .
 docker compose run --rm web uv run ast-grep scan    # code-guideline rules (.ast-grep/rules/)
 docker compose run --rm web uv run ast-grep test    # test the ast-grep rules themselves (CI runs both)
 docker compose run --rm web pre-commit run --all-files
