@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 16:10+0000\n"
+"POT-Creation-Date: 2026-11-11 17:32+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -17,9 +17,102 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
+#: admin.py
+msgid "No card hold"
+msgstr "Sem retenção no cartão"
+
+#: admin.py
+#, python-format
+msgid "%(amount)s estimated"
+msgstr "%(amount)s estimados"
+
+#: admin.py
+#, python-format
+msgid "%(amount)s held"
+msgstr "%(amount)s retidos"
+
+#: admin.py
+msgid "Card"
+msgstr "Cartão"
+
+#: admin.py
+#, python-format
+msgid "expires %(when)s"
+msgstr "expira %(when)s"
+
+#: admin.py
+#, python-format
+msgid "hold on %(day)s"
+msgstr "retenção em %(day)s"
+
+#: admin.py
+#, python-format
+msgid "failure: %(code)s"
+msgstr "falha: %(code)s"
+
+#: admin.py
+msgid "kept"
+msgstr "mantida"
+
 #: apps.py
 msgid "BaseApp Payments"
 msgstr "BaseApp Pagamentos"
+
+#: emails.py
+msgid "no date"
+msgstr "sem data"
+
+#: emails.py
+msgid "unknown"
+msgstr "desconhecido"
+
+#: emails.py
+#, python-format
+msgid "Card hold failed for %(target)s"
+msgstr "Falha na retenção no cartão de %(target)s"
+
+#: emails.py
+#, python-format
+msgid "The card hold for %(target)s could not be placed."
+msgstr "Não foi possível fazer a retenção no cartão de %(target)s."
+
+#: emails.py
+#, python-format
+msgid "Customer: %(customer)s"
+msgstr "Cliente: %(customer)s"
+
+#: emails.py
+#, python-format
+msgid "Date: %(date)s"
+msgstr "Data: %(date)s"
+
+#: emails.py
+#, python-format
+msgid "Reason: %(reason)s"
+msgstr "Motivo: %(reason)s"
+
+#: emails.py
+#, python-format
+msgid "Card hold: #%(hold)s"
+msgstr "Retenção no cartão: #%(hold)s"
+
+#: emails.py
+msgid ""
+"The customer was not told. Keep it (the card is charged afresh when it "
+"closes) or cancel it."
+msgstr ""
+"O cliente não foi avisado. Mantenha (o cartão será cobrado novamente ao "
+"fechar) ou cancele."
+
+#: graphql/mutations.py
+msgid "You don't have permission to perform this action"
+msgstr "Você não tem permissão para realizar esta ação"
+
+#: graphql/mutations.py
+msgid "Only a failed card hold that wasn't kept can be decided."
+msgstr ""
+"Só é possível decidir sobre uma retenção no cartão com falha que não foi "
+"mantida."
 
 #: models.py
 msgid "entity type"
@@ -52,6 +145,270 @@ msgstr "assinatura"
 #: models.py
 msgid "subscriptions"
 msgstr "assinaturas"
+
+#: models.py
+msgid "Pending"
+msgstr "Pendente"
+
+#: models.py
+msgid "Authorized"
+msgstr "Autorizada"
+
+#: models.py
+msgid "Released"
+msgstr "Liberada"
+
+#: models.py
+msgid "Captured"
+msgstr "Capturada"
+
+#: models.py
+msgid "Scheduled"
+msgstr "Agendada"
+
+#: models.py
+msgid "Failed"
+msgstr "Falhou"
+
+#: models.py
+msgid "Card saved, charged on the date"
+msgstr "Cartão salvo, cobrado na data"
+
+#: models.py
+msgid "Credit"
+msgstr "Crédito"
+
+#: models.py
+msgid "Debit"
+msgstr "Débito"
+
+#: models.py
+msgid "Prepaid"
+msgstr "Pré-pago"
+
+#: models.py
+msgid "Unknown"
+msgstr "Desconhecido"
+
+#: models.py
+msgid "Never placed"
+msgstr "Nunca colocada"
+
+#: models.py
+msgid "Target cancelled"
+msgstr "Destino cancelado"
+
+#: models.py
+msgid "Target done with the card"
+msgstr "Destino concluído com o cartão"
+
+#: models.py
+msgid "Capture declined"
+msgstr "Captura recusada"
+
+#: models.py
+msgid "Released to charge afresh"
+msgstr "Liberada para cobrar novamente"
+
+#: models.py
+msgid "Authorization ended in Stripe"
+msgstr "Autorização encerrada no Stripe"
+
+#: models.py
+msgid "Target moved out of the window"
+msgstr "Destino movido para fora da janela"
+
+#: models.py
+msgid "Target can't take a hold now"
+msgstr "O destino não pode ter uma retenção agora"
+
+#: models.py
+msgid "The card declined the capture"
+msgstr "O cartão recusou a captura"
+
+#: models.py
+msgid "The authorization was cancelled outside capture()"
+msgstr "A autorização foi cancelada fora de capture()"
+
+#: models.py
+msgid "A charge that never finished, past Stripe's 24 hours"
+msgstr "Uma cobrança que nunca terminou, passadas as 24 horas da Stripe"
+
+#: models.py
+msgid "Stripe customer id"
+msgstr "id do cliente no Stripe"
+
+#: models.py
+msgid "target document"
+msgstr "documento de destino"
+
+#: models.py
+msgid "attempt id"
+msgstr "id da tentativa"
+
+#: models.py
+msgid "Stripe PaymentIntent id"
+msgstr "id do PaymentIntent no Stripe"
+
+#: models.py
+msgid "Stripe SetupIntent id"
+msgstr "id do SetupIntent no Stripe"
+
+#: models.py
+msgid "Stripe PaymentMethod id"
+msgstr "id do PaymentMethod no Stripe"
+
+#: models.py
+msgid "card brand"
+msgstr "bandeira do cartão"
+
+#: models.py
+msgid "card last four"
+msgstr "últimos quatro dígitos do cartão"
+
+#: models.py
+msgid "card expiry month"
+msgstr "mês de validade do cartão"
+
+#: models.py
+msgid "card expiry year"
+msgstr "ano de validade do cartão"
+
+#: models.py
+msgid "card funding"
+msgstr "tipo de cartão"
+
+#: models.py
+msgid "card fingerprint"
+msgstr "impressão digital do cartão"
+
+#: models.py
+msgid "currency"
+msgstr "moeda"
+
+#: models.py
+msgid "estimated amount (cents)"
+msgstr "valor estimado (centavos)"
+
+#: models.py
+msgid "buffer (%)"
+msgstr "margem (%)"
+
+#: models.py
+msgid "amount held (cents)"
+msgstr "valor retido (centavos)"
+
+#: models.py
+msgid "status"
+msgstr "status"
+
+#: models.py
+msgid "expires at"
+msgstr "expira em"
+
+#: models.py
+msgid "hold on"
+msgstr "reter em"
+
+#: models.py
+msgid "failed at"
+msgstr "falhou em"
+
+#: models.py
+msgid "failure code"
+msgstr "código de falha"
+
+#: models.py
+msgid "kept at"
+msgstr "mantida em"
+
+#: models.py
+msgid "kept by"
+msgstr "mantida por"
+
+#: models.py
+msgid "placement key"
+msgstr "chave de colocação"
+
+#: models.py
+msgid "placement amount (cents)"
+msgstr "valor de colocação (centavos)"
+
+#: models.py
+msgid "placement claimed at"
+msgstr "colocação reivindicada em"
+
+#: models.py
+msgid "placement first sent at"
+msgstr "colocação enviada pela primeira vez em"
+
+#: models.py
+msgid "placement generation"
+msgstr "geração da colocação"
+
+#: models.py
+msgid "stray PaymentIntent ids"
+msgstr "ids de PaymentIntent órfãos"
+
+#: models.py
+msgid "previous PaymentIntent ids"
+msgstr "ids de PaymentIntent anteriores"
+
+#: models.py
+msgid "previous attempt ids"
+msgstr "ids de tentativa anteriores"
+
+#: models.py
+msgid "release confirmed at"
+msgstr "liberação confirmada em"
+
+#: models.py
+msgid "release requested at"
+msgstr "liberação solicitada em"
+
+#: models.py
+msgid "captured amount (cents)"
+msgstr "valor capturado (centavos)"
+
+#: models.py
+msgid "captured at"
+msgstr "capturada em"
+
+#: models.py
+msgid "release reason"
+msgstr "motivo da liberação"
+
+#: models.py
+msgid "capture claimed at"
+msgstr "captura reivindicada em"
+
+#: models.py
+msgid "charge idempotency key"
+msgstr "chave de idempotência da cobrança"
+
+#: models.py
+msgid "charge claimed at"
+msgstr "cobrança reivindicada em"
+
+#: models.py
+msgid "charge generation"
+msgstr "geração da cobrança"
+
+#: models.py
+msgid "charged at"
+msgstr "cobrada em"
+
+#: models.py
+msgid "charge blocked reason"
+msgstr "motivo do bloqueio da cobrança"
+
+#: models.py
+msgid "card hold"
+msgstr "retenção no cartão"
+
+#: models.py
+msgid "card holds"
+msgstr "retenções no cartão"
 
 #: serializers.py
 msgid "Stripe price ID"

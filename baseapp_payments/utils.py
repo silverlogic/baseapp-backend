@@ -1,4 +1,7 @@
+import datetime
 import logging
+from dataclasses import dataclass
+from types import ModuleType
 from typing import TYPE_CHECKING, Any
 
 import stripe
@@ -8,6 +11,7 @@ from django.apps import apps
 from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.http import HttpRequest, JsonResponse
+from django.utils import timezone
 
 if TYPE_CHECKING:
     from django.contrib.auth.base_user import AbstractBaseUser
@@ -78,6 +82,15 @@ def _empty_list_object(url: str) -> "stripe.ListObject":
     )
 
 
+# The PaymentIntent events card holds reconcile from (see "Card holds" in the README).
+CARD_HOLD_EVENTS = (
+    "payment_intent.amount_capturable_updated",
+    "payment_intent.canceled",
+    "payment_intent.succeeded",
+    "payment_intent.payment_failed",
+)
+
+
 class StripeWebhookHandler:
     def __init__(self) -> None:
         self.EVENT_HANDLERS = {
@@ -85,7 +98,36 @@ class StripeWebhookHandler:
             "customer.deleted": self.customer_deleted,
             "customer.subscription.created": self.subscription_created,
             "customer.subscription.deleted": self.subscription_deleted,
+            **{event_type: self.card_hold_payment_intent for event_type in CARD_HOLD_EVENTS},
         }
+
+    @staticmethod
+    def card_hold_payment_intent(event: "stripe.Event") -> JsonResponse:
+        """A PaymentIntent event for a card hold (``metadata['card_hold_id']``): queue
+        ``reconcile_card_hold``, which reads the PaymentIntent live and records it, so the
+        event's order and repeats don't matter. Nothing is read or written here, and
+        without card holds (or without the metadata) the event is just acknowledged. A
+        broker error answers 500, so Stripe delivers the event again."""
+        from .models import card_holds_enabled
+
+        if not card_holds_enabled():
+            return JsonResponse({"status": "success"}, status=200)
+        payment_intent = event["data"]["object"]
+        card_hold_id = str(
+            stripe_field(stripe_field(payment_intent, "metadata"), "card_hold_id") or ""
+        )
+        if not card_hold_id.isdigit():
+            return JsonResponse({"status": "success"}, status=200)
+        from .tasks import reconcile_card_hold
+
+        try:
+            reconcile_card_hold.delay(
+                int(card_hold_id), payment_intent_id=stripe_id(payment_intent)
+            )
+        except Exception:
+            logger.exception("Could not queue the reconcile of card hold %s", card_hold_id)
+            return JsonResponse({"error": "Error"}, status=500)
+        return JsonResponse({"status": "success"}, status=200)
 
     @staticmethod
     def customer_created(event: "stripe.Event") -> JsonResponse:
@@ -241,14 +283,25 @@ class SubscriptionNotFound(Exception):
     pass
 
 
+DEFAULT_STRIPE_API_VERSION = "2025-02-24.acacia"
+
+
+def configure_stripe(api_key: str | None = None, api_version: str | None = None) -> None:
+    """Set the ``stripe`` module's key and API version, from settings unless given.
+
+    Read at call time, not import time, so a changed setting (or a test override) applies.
+    """
+    stripe.api_key = settings.STRIPE_SECRET_KEY if api_key is None else api_key
+    stripe.api_version = (
+        getattr(settings, "STRIPE_API_VERSION", DEFAULT_STRIPE_API_VERSION)
+        if api_version is None
+        else api_version
+    )
+
+
 class StripeService:
-    def __init__(
-        self,
-        api_key: str = settings.STRIPE_SECRET_KEY,
-        api_version: str = getattr(settings, "STRIPE_API_VERSION", "2025-02-24.acacia"),
-    ) -> None:
-        stripe.api_key = api_key
-        stripe.api_version = api_version
+    def __init__(self, api_key: str | None = None, api_version: str | None = None) -> None:
+        configure_stripe(api_key, api_version)
 
     def create_customer(self, **kwargs: Any) -> "stripe.Customer":
         try:
@@ -614,3 +667,131 @@ class StripeService:
         except Exception as e:
             logger.exception(e)
             raise InvoiceNotFound("Error retrieving invoices in Stripe")
+
+
+# --- Card holds: the Stripe seam and readers -------------------------------------------
+# Every card hold Stripe call goes through get_stripe(), so tests swap Stripe for a fake by
+# patching that one function. Never log a card or billing object; ids only.
+
+# Used only when Stripe reports no capture_before on the charge: a customer-initiated
+# online authorization, and one placed off-session (Stripe's merchant-initiated window).
+HOLD_EXPIRY_FALLBACK = datetime.timedelta(days=7)
+OFF_SESSION_HOLD_EXPIRY_FALLBACK = datetime.timedelta(days=4, hours=18)
+PAYMENT_INTENT_EXPAND = ["latest_charge", "payment_method"]
+# No usable answer about the request, so it is retried with the same key: a connection
+# error and a 429 (nothing cached for the key), and a 5xx (``APIError``), which Stripe
+# does cache for the key and replays for 24 hours, so a retry may get the same 5xx.
+RETRYABLE_STRIPE_ERRORS = (stripe.APIConnectionError, stripe.APIError, stripe.RateLimitError)
+# A bad or revoked API key (401, 403): no answer about the card at all. Never a decline or
+# a failed hold; the same request works once the key is fixed.
+CONFIGURATION_STRIPE_ERRORS = (stripe.AuthenticationError, stripe.PermissionError)
+
+
+def stripe_configured() -> bool:
+    """Whether a Stripe secret key is set. Without one, card holds never call Stripe."""
+    return bool(getattr(settings, "STRIPE_SECRET_KEY", ""))
+
+
+def get_stripe() -> ModuleType:
+    """The ``stripe`` module, configured the same way ``StripeService`` configures it."""
+    configure_stripe()
+    return stripe
+
+
+@dataclass(frozen=True)
+class Card:
+    """The card fields recorded on a hold, read from a Stripe PaymentMethod."""
+
+    payment_method_id: str
+    brand: str = ""
+    last4: str = ""
+    exp_month: int = 0
+    exp_year: int = 0
+    funding: str = "unknown"
+    fingerprint: str = ""
+
+
+FUNDING_TYPES = ("credit", "debit", "prepaid", "unknown")
+
+
+def normalize_funding(value: Any) -> str:
+    """A Stripe card funding type, or ``unknown``."""
+    return value if value in FUNDING_TYPES else "unknown"
+
+
+def card_of(payment_method: Any) -> Card:
+    """The card on an (expanded) PaymentMethod; an id string gives an empty card."""
+    card = stripe_field(payment_method, "card")
+    return Card(
+        payment_method_id=stripe_id(payment_method) or "",
+        brand=stripe_field(card, "brand", "") or "",
+        last4=stripe_field(card, "last4", "") or "",
+        exp_month=stripe_field(card, "exp_month", 0) or 0,
+        exp_year=stripe_field(card, "exp_year", 0) or 0,
+        funding=normalize_funding(stripe_field(card, "funding")),
+        fingerprint=stripe_field(card, "fingerprint", "") or "",
+    )
+
+
+def is_idempotent_replay(stripe_object: Any) -> bool:
+    """Whether Stripe answered with a cached response (``Idempotent-Replayed: true``).
+
+    A replay reports the object as it was when first created, not as it is now.
+    """
+    response = getattr(stripe_object, "last_response", None)
+    headers = getattr(response, "headers", None) or {}
+    return any(
+        name.lower() == "idempotent-replayed" and str(value).lower() == "true"
+        for name, value in headers.items()
+    )
+
+
+def capture_before(payment_intent: Any) -> datetime.datetime | None:
+    """When Stripe stops honouring the authorization, from the charge's ``capture_before``."""
+    charge = stripe_field(payment_intent, "latest_charge")
+    details = stripe_field(stripe_field(charge, "payment_method_details"), "card")
+    epoch = stripe_field(details, "capture_before")
+    if not epoch:
+        return None
+    return datetime.datetime.fromtimestamp(int(epoch), tz=datetime.timezone.utc)
+
+
+def hold_expiry(
+    payment_intent: Any, fallback: datetime.timedelta = HOLD_EXPIRY_FALLBACK
+) -> datetime.datetime:
+    """``capture_before``, or now + ``fallback`` (7 days by default; an off-session
+    placement passes :data:`OFF_SESSION_HOLD_EXPIRY_FALLBACK`) with a warning when Stripe
+    didn't send it."""
+    expires_at = capture_before(payment_intent)
+    if expires_at is None:
+        logger.warning(
+            "PaymentIntent %s has no capture_before; assuming a hold of %s",
+            stripe_id(payment_intent),
+            fallback,
+        )
+        return timezone.now() + fallback
+    return expires_at
+
+
+def payment_intent_status_of(
+    error: stripe.InvalidRequestError, payment_intent_id: str
+) -> str | None:
+    """The PaymentIntent's status when Stripe refused a call only because of that status
+    (``payment_intent_unexpected_state``), read from the error or else from Stripe;
+    ``None`` for any other refusal."""
+    if getattr(error, "code", None) != "payment_intent_unexpected_state":
+        return None
+    payment_intent = stripe_field(getattr(error, "error", None), "payment_intent")
+    status = stripe_field(payment_intent, "status")
+    if status is None:
+        status = stripe_field(get_stripe().PaymentIntent.retrieve(payment_intent_id), "status")
+    return status
+
+
+def cancel_payment_intent_quietly(payment_intent_id: str) -> None:
+    """Cancel a PaymentIntent once, logging instead of raising. Only for a PaymentIntent
+    with no hold row; nothing retries it."""
+    try:
+        get_stripe().PaymentIntent.cancel(payment_intent_id)
+    except stripe.StripeError:
+        logger.warning("Could not cancel PaymentIntent %s", payment_intent_id, exc_info=True)
