@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-15 20:34+0000\n"
+"POT-Creation-Date: 2026-10-30 15:00+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -28,6 +28,98 @@ msgstr ""
 #: apps.py
 msgid "BaseApp Message Templates"
 msgstr "BaseApp Modelos de Mensagem"
+
+#: graphql/mutations.py
+msgid "Email template not found."
+msgstr "Modelo de e-mail não encontrado."
+
+#: graphql/mutations.py
+msgid "You don't have permission to perform this action"
+msgstr "Você não tem permissão para realizar esta ação"
+
+#: graphql/mutations.py
+msgid "This part of the email cannot be edited."
+msgstr "Esta parte do e-mail não pode ser editada."
+
+#: graphql/mutations.py
+#, python-format
+msgid "Use at most %(max)d characters."
+msgstr "Use no máximo %(max)d caracteres."
+
+#: graphql/mutations.py
+msgid "The address the test was sent to."
+msgstr "O endereço para o qual o teste foi enviado."
+
+#: graphql/mutations.py
+msgid "Your account has no email address to send the test to."
+msgstr "Sua conta não tem um endereço de e-mail para enviar o teste."
+
+#: graphql/mutations.py
+msgid "Too many test emails. Try again later."
+msgstr "Muitos e-mails de teste. Tente novamente mais tarde."
+
+#: graphql/mutations.py graphql/object_types.py
+msgid "This email needs real data to preview."
+msgstr "Este e-mail precisa de dados reais para a pré-visualização."
+
+#: graphql/object_types.py
+msgid "Dotted name, e.g. order.number."
+msgstr "Nome com pontos, por exemplo order.number."
+
+#: graphql/object_types.py
+msgid "Value used by previews."
+msgstr "Valor usado nas pré-visualizações."
+
+#: graphql/object_types.py
+msgid "Registered label, or the name."
+msgstr "Rótulo registrado, ou o nome."
+
+#: graphql/object_types.py
+msgid "Whether code registered this template."
+msgstr "Se o código registrou este modelo."
+
+#: graphql/object_types.py
+msgid ""
+"Parts staff may override: subject, plainTextContent and/or htmlContent. "
+"Empty for templates that are not registered."
+msgstr ""
+"Partes que a equipe pode sobrescrever: subject, plainTextContent e/ou "
+"htmlContent. Vazio para modelos não registrados."
+
+#: graphql/object_types.py
+msgid "Raw source of the default subject file."
+msgstr "Código-fonte do arquivo de assunto padrão."
+
+#: graphql/object_types.py
+msgid "Raw source of the default plain-text file."
+msgstr "Código-fonte do arquivo de texto simples padrão."
+
+#: graphql/object_types.py
+msgid "Whether an editable part is overridden."
+msgstr "Se alguma parte editável está sobrescrita."
+
+#: graphql/object_types.py
+msgid "The subject rendered with sample values; null when it cannot render."
+msgstr ""
+"O assunto renderizado com valores de exemplo; null quando não é possível "
+"renderizar."
+
+#: graphql/object_types.py
+msgid ""
+"Render with sample values. Arguments preview unsaved text for editable "
+"parts; omitted ones use the saved text, blank ones the default."
+msgstr ""
+"Renderiza com valores de exemplo. Os argumentos pré-visualizam texto não "
+"salvo das partes editáveis; os omitidos usam o texto salvo e os vazios, o "
+"padrão."
+
+#: graphql/queries.py
+msgid ""
+"Email templates ordered by name. Empty without the view_emailtemplate "
+"permission."
+msgstr ""
+"Modelos de e-mail ordenados por nome. Vazio sem a permissão "
+"view_emailtemplate."
 
 #: models.py
 msgid "Case insensitive character"
@@ -78,6 +170,10 @@ msgid "email templates"
 msgstr "modelos de e-mail"
 
 #: models.py
+msgid "Can send test emails of an email template"
+msgstr "Pode enviar e-mails de teste de um modelo de e-mail"
+
+#: models.py
 msgid "template"
 msgstr "modelo"
 
@@ -112,3 +208,22 @@ msgstr "modelo de SMS"
 #: models.py
 msgid "SMS templates"
 msgstr "modelos de SMS"
+
+#: registry.py
+#, python-format
+msgid "Template syntax error: %(error)s"
+msgstr "Erro de sintaxe no modelo: %(error)s"
+
+#: registry.py
+#, python-format
+msgid "The “%(tag)s” tag is not allowed here."
+msgstr "A tag “%(tag)s” não é permitida aqui."
+
+#: registry.py
+#, python-format
+msgid "Unknown placeholder “%(name)s”."
+msgstr "Marcador desconhecido “%(name)s”."
+
+#: services.py
+msgid "[Test]"
+msgstr "[Teste]"
