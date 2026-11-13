@@ -51,7 +51,7 @@ erDiagram
 To connect your models to the DocumentId model, you simply need to extend the `baseapp_core.models.DocumentIdMixin` class in your model. This will automatically populate the corresponding DocumentId records via pgtriggers and will also provide a set of helper methods for internal use.
 
 * `public_id`: Retrieves the public ID from the associated DocumentId record.
-* `get_by_public_id`: Retrieves the corresponding model instance from a given public ID.
+* `get_by_public_id`: Retrieves the corresponding model instance from a given public ID, or `None` when the public ID is unknown or belongs to another model.
 
 
 ## HashIds
@@ -60,4 +60,6 @@ This feature introduces abstractions that allow projects to avoid exposing inter
 
 To make use of the HashIds feature, models, DRF endpoints, or Graphene operations must be made compatible by extending the required abstractions or by using the available helper functions.
 
-For more details, see [Baseapp Core - HashIds](./hashids/README.md).
+For DRF, `baseapp_core` provides `PublicIdLookupMixin` (ViewSet lookups), `PublicIdField` and `PublicIdRelatedField` (serializers), `PublicIdFilter` and `PublicIdMultipleFilter` (django-filter), and `annotate_public_ids` (no query per row). Two settings control the transition from integer ids: `BASEAPP_PUBLIC_ID_ALLOW_PK_LOOKUP` (default `True`) and `BASEAPP_REST_PUBLIC_ID_RELATED_FIELDS` (default `False`).
+
+For more details, see [Baseapp Core - HashIds](./hashids/README.md#making-drf-endpoints-compatible-with-hashids).

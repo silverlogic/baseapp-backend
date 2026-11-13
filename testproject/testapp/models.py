@@ -39,3 +39,22 @@ class DummyUniqueDocumentTarget(DocumentIdUniqueTargetMixin, models.Model):
 # Used for testing baseapp_core.models.DocumentIdTargetMixin.
 class DummyDocumentTarget(DocumentIdTargetMixin, models.Model):
     label = models.CharField(max_length=100, blank=True)
+
+
+# Used for testing the public id REST helpers (fields, filters, queryset annotations).
+class DummyPublicIdChildModel(DocumentIdMixin, models.Model):
+    name = models.CharField(max_length=100)
+    parent = models.ForeignKey(
+        DummyPublicIdModel, on_delete=models.CASCADE, related_name="children"
+    )
+    previous = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="next_children"
+    )
+    legacy = models.ForeignKey(
+        DummyLegacyModel,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="public_id_children",
+    )
+    tags = models.ManyToManyField(DummyPublicIdModel, blank=True, related_name="tagged_children")
