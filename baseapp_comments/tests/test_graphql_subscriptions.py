@@ -3,6 +3,7 @@ import textwrap
 import pytest
 import swapper
 from channels.db import database_sync_to_async
+from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.test import override_settings
 
@@ -199,6 +200,48 @@ async def test_anon_cant_recieve_created_comment_subscription_event(graphql_webs
     await client.assert_no_messages()
 
     # Disconnect and wait the application to finish gracefully.
+    await client.finalize()
+
+
+async def _subscribe_and_create_comment(client) -> tuple[str, str]:
+    sub_id = await client.send(
+        msg_type="subscribe",
+        payload={"query": SUBSCRIPTION_QUERY, "operationName": "op_name", "variables": {}},
+    )
+    await client.assert_no_messages()
+
+    comment = await database_sync_to_async(CommentFactory)()
+    comment_relay_id = await database_sync_to_async(lambda: comment.relay_id)()
+    return sub_id, comment_relay_id
+
+
+@pytest.mark.asyncio
+async def test_user_with_view_all_comments_receives_every_comment(
+    graphql_ws_user_client, django_user_client
+) -> None:
+    perm = await Permission.objects.aget(
+        content_type__app_label=Comment._meta.app_label, codename="view_all_comments"
+    )
+    await database_sync_to_async(django_user_client.user.user_permissions.add)(perm)
+    client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
+
+    sub_id, comment_relay_id = await _subscribe_and_create_comment(client)
+
+    resp = await client.receive(assert_id=sub_id, assert_type="next")
+    assert resp["data"]["onCommentChange"]["createdComment"]["node"]["id"] == comment_relay_id
+
+    await client.finalize()
+
+
+@pytest.mark.asyncio
+async def test_user_without_view_all_comments_cant_subscribe_to_every_comment(
+    graphql_ws_user_client,
+) -> None:
+    client = await graphql_ws_user_client(consumer_attrs={"strict_ordering": True})
+
+    await _subscribe_and_create_comment(client)
+
+    await client.assert_no_messages()
     await client.finalize()
 
 

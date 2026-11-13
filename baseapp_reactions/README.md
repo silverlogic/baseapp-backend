@@ -51,6 +51,10 @@ Nothing to do. The plugin entry-point in `pyproject.toml` registers
 and `*plugin_registry.get_all_graphql_mutations()`. `reactionToggle` and the
 `Reaction` node show up automatically.
 
+`reactionToggle` loads its target through the target type's `get_node`, the same check as
+`node(id)`, and refuses a target that returns `null` for the user (a private profile, a comment
+the user may not view), so a hidden object can't be reacted to or read back from the payload.
+
 Example query:
 
 ```graphql
