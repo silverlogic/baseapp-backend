@@ -103,6 +103,20 @@ application = ProtocolTypeRouter(
 [daphne.server] [INFO] Listening on TCP address 0.0.0.0:8000
 ```
 
+### Extending WebSocket authentication and middleware
+
+WebSocket operations never run `GRAPHENE["MIDDLEWARE"]`, and the JWT consumer authenticates
+outside DRF. Two optional [shared services](../plugins/README.md) let an app take part without
+project wiring:
+
+| Service name | Provider method | Used by |
+|---|---|---|
+| `auth.jwt_token_check` | `check_token(token, user) -> bool` | `baseapp_core.authentication` (`GraphqlWsJWTAuthenticatedConsumer`, `JWTAuthMiddleware`). Called for every valid access token (with its user) and refresh token (`user=None`); `False` refuses it. It may annotate `user`. |
+| `graphql_ws.middleware` | `get_middleware() -> list` | `GraphqlWsAuthenticatedConsumer` and `GraphqlWsJWTAuthenticatedConsumer` (through `SharedMiddlewareMixin`). The middleware runs on every WebSocket operation, before the consumer's own, so it must be async. |
+
+Without a provider nothing changes. `baseapp_auth.impersonation` provides both, so sessions are
+checked, kept read-only and audited over WebSockets.
+
 ## Usage
 
 ### Object Types

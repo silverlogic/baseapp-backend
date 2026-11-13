@@ -10,6 +10,20 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# An optional shared service that may refuse a JWT the token itself accepts, e.g. one tied
+# to a server-side session that has since ended. Its provider implements
+# `check_token(token, user) -> bool`, where `user` is None for a refresh token, and may
+# annotate `user`. Without a provider every valid token is accepted.
+JWT_TOKEN_CHECK_SERVICE = "auth.jwt_token_check"
+
+
+def check_jwt_token(token, user: AbstractBaseUser | None = None) -> bool:
+    """Whether the `auth.jwt_token_check` shared service, if any, accepts a valid token."""
+    from baseapp_core.plugins import shared_services
+
+    provider = shared_services.get(JWT_TOKEN_CHECK_SERVICE)
+    return provider is None or bool(provider.check_token(token, user))
+
 
 def get_user_from_access_token(access_token: str | None) -> AbstractBaseUser | None:
     """Return the user for a valid JWT access token, or ``None``.
@@ -31,10 +45,15 @@ def get_user_from_access_token(access_token: str | None) -> AbstractBaseUser | N
     auth = JWTAuthentication()
     try:
         validated_token = auth.get_validated_token(access_token)
-        return auth.get_user(validated_token)
+        user = auth.get_user(validated_token)
     except (AuthenticationFailed, InvalidToken, TokenError) as e:
         logger.debug("JWT access token rejected: %s", e)
         return None
+
+    if not check_jwt_token(validated_token, user):
+        logger.debug("JWT access token refused by %s", JWT_TOKEN_CHECK_SERVICE)
+        return None
+    return user
 
 
 def refresh_access_token(refresh_token: str | None) -> str | None:
@@ -46,10 +65,15 @@ def refresh_access_token(refresh_token: str | None) -> str | None:
         return None
 
     try:
-        return str(RefreshToken(refresh_token).access_token)
+        refresh = RefreshToken(refresh_token)
     except TokenError as e:
         logger.debug("JWT refresh token rejected: %s", e)
         return None
+
+    if not check_jwt_token(refresh):
+        logger.debug("JWT refresh token refused by %s", JWT_TOKEN_CHECK_SERVICE)
+        return None
+    return str(refresh.access_token)
 
 
 def authenticate_jwt(

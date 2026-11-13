@@ -99,6 +99,11 @@ Override these in your concrete `Meta.triggers` only when your model needs diffe
 | `chatRoomOnRoomUpdate` | Room metadata, participant adds / removes. |
 | `chatRoomOnMessagesCountUpdate` | Per-profile unread count changed. |
 
+`chatRoomOnRoomUpdate` and `chatRoomOnMessagesCountUpdate` require `use_profile` and
+`baseapp_chats.list_chatrooms` on the profile, like `Profile.chatRooms`; `chatRoomOnMessage`
+requires `baseapp_chats.view_chatroom` on the room. Refusing these permissions (e.g. with a
+permissions backend) hides a profile's conversations everywhere.
+
 ### Shared GraphQL interfaces
 
 Chats publishes one shared interface via the registry — consuming object types opt in by name:

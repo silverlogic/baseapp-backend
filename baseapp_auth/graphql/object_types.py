@@ -75,6 +75,7 @@ class AbstractUserObjectType(object):
             "ProfileInterface",
             "ProfilesInterface",
             "PageInterface",
+            "ImpersonationInterface",
         )
         filterset_class = UsersFilter
 
