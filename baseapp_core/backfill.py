@@ -85,7 +85,10 @@ class DocumentIdBackfiller:
             )
             return 0
 
-        ct = ContentType.objects.get_for_model(model)
+        # The content type model DocumentId points at: the historical one when a migration
+        # passes historical models, which the global ContentType cannot be queried with.
+        ContentTypeModel = DocumentId._meta.get_field("content_type").related_model
+        ct = ContentTypeModel.objects.get_for_model(model)
         qs = model.objects.order_by(pk_field.name).values_list(pk_field.name, flat=True)
 
         created_count = 0
