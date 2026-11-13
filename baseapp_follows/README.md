@@ -42,10 +42,10 @@ You need to add `FollowsInterface` to any GraphQL `ObjectType` you want to be fo
 
 `FollowsInterface` is a GraphQL interface that exposes follow data for the implementing object. Fields:
 
-- `followersCount` — `Int`, served from `FollowableMetadata` (kept up to date by `Follow.save()` / `Follow.delete()`).
-- `followingCount` — `Int`, same source.
-- `followers` — `Connection<Follow>` over rows whose `target` is this object.
-- `following` — `Connection<Follow>` over rows whose `actor` is this object.
+- `followersCount` — `Int`, served from `FollowableMetadata` (kept up to date by `Follow.save()` / `Follow.delete()`). `null` when the viewer lacks `view_followers` (see [Private followers / following](#private-followers--following)).
+- `followingCount` — `Int`, same source. `null` when the viewer lacks `view_following`.
+- `followers` — `Connection<Follow>` over rows whose `target` is this object. Empty when the viewer lacks `view_followers`.
+- `following` — `Connection<Follow>` over rows whose `actor` is this object. Empty when the viewer lacks `view_following`.
 - `isFollowedByMe(profileId: ID)` — `Boolean`, true when the current user (or the explicitly passed profile) follows this object.
 
 Each `Follow` node exposes:
@@ -242,6 +242,66 @@ Then point swapper at the subclass via `BASEAPP_FOLLOWS_FOLLOW_MODEL` (or overri
 `Follow.save()` and `Follow.delete()` recompute `followers_count` / `following_count` on the affected `FollowableMetadata` rows under a row lock so concurrent follows / unfollows don't race. There are no extra signals for projects to override.
 
 ## Permissions
+
+`FollowsPermissionsBackend` answers these permissions:
+
+| Permission | `obj` | Default | Used by |
+|---|---|---|---|
+| `baseapp_follows.add_follow` | the target | any authenticated user | `followToggle`, only when it **creates** a follow |
+| `baseapp_follows.add_follow_with_profile` | the actor | `use_profile` on the actor | `followToggle` |
+| `baseapp_follows.delete_follow` | the `Follow` | `use_profile` on the actor | `followToggle`, when it removes a follow |
+| `baseapp_follows.is_following` | the target | the current profile follows it | — |
+| `baseapp_follows.view_followers` | the followed object | `True` (public) | `followers`, `followersCount`, `node(id:)` on a `Follow` |
+| `baseapp_follows.view_following` | the actor | `True` (public) | `following`, `followingCount`, `node(id:)` on a `Follow` |
+
+Because `add_follow` is checked only when creating, a user can always remove an existing
+follow, even after the target stops being followable (for example a profile that was
+deactivated, or one a project-level rule no longer allows following). `followToggle` also
+loads the target without a `view_profile` check, so a user can unfollow a profile they can
+no longer see, such as one switched to private. Keep it that way if you override the
+mutation: resolving the target through `get_node` would leave such follows stuck.
+
+### Private followers / following
+
+Follows are public by default. To make them private, override `view_followers` and/or
+`view_following` in a subclass of `FollowsPermissionsBackend`, and **replace** the plugin's
+entry in `AUTHENTICATION_BACKENDS` with the subclass (see [Customizing](#customizing)).
+Django grants a permission as soon as any backend returns `True`, and the stock backend
+returns `True` for both, so a separate backend added next to it cannot make follows
+private: they stay public and nothing reports an error. When a check fails:
+
+- `followers` / `following` resolve to an empty connection;
+- `followersCount` / `followingCount` resolve to `null` (not `0`), so clients can tell
+  "hidden" apart from "none";
+- `node(id:)` on a `Follow` resolves to `null` unless the viewer may see the actor's
+  `following` **or** the target's `followers`.
+
+Rows inside a visible connection are not re-checked one by one, so each `Follow` there
+still exposes its `user` and `targetIsFollowingBack`. Ordering is not gated either:
+`allProfiles(orderBy: "followers_count_total")` (or `following_count_total`) still ranks
+profiles by the hidden counts. If the ranking must stay private too, remove those choices
+from your `ProfileFilter`.
+
+```python
+import swapper
+from baseapp_follows.permissions import FollowsPermissionsBackend
+
+Profile = swapper.load_model("baseapp_profiles", "Profile")
+
+
+# Replaces "baseapp_follows.permissions.FollowsPermissionsBackend" in AUTHENTICATION_BACKENDS.
+class PrivateFollowsPermissionsBackend(FollowsPermissionsBackend):
+    def has_perm(self, user_obj, perm, obj=None):
+        if perm in ("baseapp_follows.view_followers", "baseapp_follows.view_following"):
+            # Only the profile's own members (and staff) see who it follows / who follows it.
+            return user_obj.is_staff or (
+                isinstance(obj, Profile)
+                and user_obj.has_perm(f"{Profile._meta.app_label}.use_profile", obj)
+            )
+        return super().has_perm(user_obj, perm, obj)
+```
+
+### Customizing
 
 You can inherit `baseapp_follows.permissions.FollowsPermissionsBackend` to customize permissions:
 
