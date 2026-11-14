@@ -1,15 +1,24 @@
 {% extends 'emails/base.html.j2' %}
 
 {% block content %}
+{% if invitee_name %}
+<p class="t-h5">{{ _("%(name)s, you've been invited!", name=invitee_name) }}</p>
+{% else %}
 <p class="t-h5">{{ _("You've been invited!") }}</p>
+{% endif %}
 <p class="t-body2 gap-top-3">
     <!-- ast-grep-ignore: django-template-untranslated-text -->
     {{ _("%(inviter)s has invited you to join <strong>%(profile)s</strong> as a <strong>%(role)s</strong>.", inviter=inviter_name, profile=profile_name, role=role) }}
 </p>
+{% if message %}
+<p class="t-body2 gap-top-3" style="white-space: pre-line">{{ message|e }}</p>
+{% endif %}
 <a href="{{ accept_url }}" class="button t-button gap-top-3 margin-center">{{ _("Accept Invitation") }}</a>
+{% if expiration_date %}
 <p class="t-caption gap-top-3 text-center">
     {{ _("This invitation will expire on %(expiration)s.", expiration=expiration_date) }}
 </p>
+{% endif %}
 <p class="t-caption gap-top-3 text-center">
     {{ _("Didn't expect this invitation?<br />") }}
     {{ _("No worries, you can safely ignore this email.") }}

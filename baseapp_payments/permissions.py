@@ -74,7 +74,7 @@ def profile_entity_owner(entity: "Model", user_obj: "AbstractBaseUser") -> bool:
     ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
     own_profile_id = getattr(user_obj, "profile_id", None)
     return (
-        entity.owner_id == user_obj.id
+        entity.is_owned_by(user_obj)
         # A user's own profile is billable by them even where `owner` was left unset,
         # which `profile_owner_sql = None` allows. The None check is belt-and-braces:
         # `entity` reaches here from a saved `customer.entity`, but a bare `==` between
