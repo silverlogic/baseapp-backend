@@ -1,0 +1,5 @@
+{% extends "emails/notification-body.txt.j2" %}
+
+{% block notification_message %}
+custom template txt for {{ invoice_owner.email }}
+{% endblock %}
