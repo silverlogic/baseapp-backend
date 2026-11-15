@@ -8,7 +8,9 @@ from django.http.response import HttpResponseBadRequest
 from graphene_django.views import GraphQLView as GrapheneGraphQLView
 from graphene_django.views import HttpError
 from graphql import GraphQLError, get_operation_ast, parse
-from graphql.execution import ExecutionResult
+from graphql.execution import ExecutionResult, MiddlewareManager
+
+from .middlewares import QuerySetToListMiddleware
 
 try:
     import sentry_sdk
@@ -67,6 +69,13 @@ class GraphQLView(GrapheneGraphQLView):
                 return super().execute_graphql_request(
                     request, data, query, variables, operation_name, show_graphiql
                 )
+
+    def get_middleware(self, request):
+        # Outermost (last), so it sees the final value after the configured middleware.
+        middleware = super().get_middleware(request)
+        if isinstance(middleware, MiddlewareManager):
+            return MiddlewareManager(*middleware.middlewares, QuerySetToListMiddleware())
+        return [*(middleware or []), QuerySetToListMiddleware()]
 
     def parse_body(self, request):
         """Handle multipart request spec for multipart/form-data"""
