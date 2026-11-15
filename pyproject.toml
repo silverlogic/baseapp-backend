@@ -71,6 +71,12 @@ graphql = [
     "django-graphql-geojson>=0.1.4",
     "graphene-django-query-optimizer>=0.10.16",
     "graphene-file-upload==1.3.0",
+    "graphql-relay>=3.2",
+    # graphene, graphql-relay and channels-graphql-ws (our forks, see [tool.uv.sources]) support
+    # graphql-core 3.3, but graphene-django-query-optimizer and graphene-django-optimizer still
+    # import graphql.execution.execute.get_field_def, which 3.3 removed. Lift the cap once both
+    # are fixed.
+    "graphql-core>=3.2.13,<3.3",
     "baseapp-django-channels-graphql-ws==1.0.0rc10",
 ]
 pages = [
@@ -162,7 +168,13 @@ testproject = [
 
 [tool.uv.sources]
 baseapp-backend = { workspace = true }
-baseapp-django-channels-graphql-ws = { git = "https://github.com/silverlogic/DjangoChannelsGraphqlWs", rev = "282dd4dc216877d452c639bc26797a7d04fb0975" }
+# Our maintained forks, which support graphql-core 3.3. uv applies these sources to this
+# workspace (and to workspaces that include baseapp-backend as a member, like the backend
+# template). A pip install of the published package ignores them and resolves PyPI, where
+# baseapp-django-channels-graphql-ws 1.0.0rc10 is not published yet.
+baseapp-django-channels-graphql-ws = { git = "https://github.com/silverlogic/DjangoChannelsGraphqlWs", rev = "a4a3cfd8e665fb86139b48469c731e81729cd6e9" }
+graphene = { git = "https://github.com/silverlogic/graphene", rev = "88e5a7dd6a85c6241a06d2bf208ca187607eff37" }
+graphql-relay = { git = "https://github.com/silverlogic/graphql-relay-py", rev = "12f067ab63c28e2a60208fe739cca730d88a1e62" }
 testproject = { path = "testproject", editable = true }
 
 [tool.setuptools_scm]

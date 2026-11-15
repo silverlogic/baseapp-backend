@@ -371,6 +371,8 @@ graphql = [
     { name = "graphene-django-optimizer" },
     { name = "graphene-django-query-optimizer" },
     { name = "graphene-file-upload" },
+    { name = "graphql-core" },
+    { name = "graphql-relay" },
 ]
 messagetemplates = [
     { name = "beautifulsoup4" },
@@ -468,7 +470,7 @@ testproject = [
 
 [package.metadata]
 requires-dist = [
-    { name = "baseapp-django-channels-graphql-ws", marker = "extra == 'graphql'", git = "https://github.com/silverlogic/DjangoChannelsGraphqlWs?rev=282dd4dc216877d452c639bc26797a7d04fb0975" },
+    { name = "baseapp-django-channels-graphql-ws", marker = "extra == 'graphql'", git = "https://github.com/silverlogic/DjangoChannelsGraphqlWs?rev=a4a3cfd8e665fb86139b48469c731e81729cd6e9" },
     { name = "baseapp-django-trench", marker = "extra == 'auth'", specifier = ">=0.4.4" },
     { name = "beautifulsoup4", marker = "extra == 'messagetemplates'", specifier = ">=4.6" },
     { name = "celery", specifier = ">=5.2.7" },
@@ -501,11 +503,13 @@ requires-dist = [
     { name = "drf-spectacular", specifier = "==0.29.0" },
     { name = "easy-thumbnails", specifier = ">=2.10.1" },
     { name = "firebase-admin", marker = "extra == 'notifications'", specifier = ">=6.5.0" },
-    { name = "graphene", marker = "extra == 'graphql'", specifier = ">=3.2" },
+    { name = "graphene", marker = "extra == 'graphql'", git = "https://github.com/silverlogic/graphene?rev=88e5a7dd6a85c6241a06d2bf208ca187607eff37" },
     { name = "graphene-django", marker = "extra == 'graphql'", specifier = ">=3.2.0" },
     { name = "graphene-django-optimizer", marker = "extra == 'graphql'", specifier = ">=0.10" },
     { name = "graphene-django-query-optimizer", marker = "extra == 'graphql'", specifier = ">=0.10.16" },
     { name = "graphene-file-upload", marker = "extra == 'graphql'", specifier = "==1.3.0" },
+    { name = "graphql-core", marker = "extra == 'graphql'", specifier = ">=3.2.13,<3.3" },
+    { name = "graphql-relay", marker = "extra == 'graphql'", git = "https://github.com/silverlogic/graphql-relay-py?rev=12f067ab63c28e2a60208fe739cca730d88a1e62" },
     { name = "hashids", marker = "extra == 'referrals'", specifier = "==1.3.1" },
     { name = "hashids", marker = "extra == 'socialauth'", specifier = "==1.3.1" },
     { name = "json-log-formatter", specifier = ">=1.1.1" },
@@ -585,7 +589,7 @@ testproject = [
 [[package]]
 name = "baseapp-django-channels-graphql-ws"
 version = "1.0.0rc10"
-source = { git = "https://github.com/silverlogic/DjangoChannelsGraphqlWs?rev=282dd4dc216877d452c639bc26797a7d04fb0975#282dd4dc216877d452c639bc26797a7d04fb0975" }
+source = { git = "https://github.com/silverlogic/DjangoChannelsGraphqlWs?rev=a4a3cfd8e665fb86139b48469c731e81729cd6e9#a4a3cfd8e665fb86139b48469c731e81729cd6e9" }
 dependencies = [
     { name = "aiohttp" },
     { name = "asgiref" },
@@ -2074,16 +2078,12 @@ wheels = [
 [[package]]
 name = "graphene"
 version = "3.4.3"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/silverlogic/graphene.git?rev=88e5a7dd6a85c6241a06d2bf208ca187607eff37#88e5a7dd6a85c6241a06d2bf208ca187607eff37" }
 dependencies = [
     { name = "graphql-core" },
     { name = "graphql-relay" },
     { name = "python-dateutil" },
     { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/cc/f6/bf62ff950c317ed03e77f3f6ddd7e34aaa98fe89d79ebd660c55343d8054/graphene-3.4.3.tar.gz", hash = "sha256:2a3786948ce75fe7e078443d37f609cbe5bb36ad8d6b828740ad3b95ed1a0aaa", size = 44739, upload-time = "2024-11-09T20:44:25.757Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/66/e0/61d8e98007182e6b2aca7cf65904721fb2e4bce0192272ab9cb6f69d8812/graphene-3.4.3-py2.py3-none-any.whl", hash = "sha256:820db6289754c181007a150db1f7fff544b94142b556d12e3ebc777a7bf36c71", size = 114894, upload-time = "2024-11-09T20:44:23.851Z" },
 ]
 
 [[package]]
@@ -2140,23 +2140,19 @@ wheels = [
 
 [[package]]
 name = "graphql-core"
-version = "3.2.13"
+version = "3.2.14"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/4e/5e/aa0d4e701b50db0bab71b125dd19ddb0f98c638d008d6f7e3d8ce9cbc92e/graphql_core-3.2.13.tar.gz", hash = "sha256:bb81dd266d4ab7b591bd976f1b23639d97776cb9ac1a896b4a93c271e11ed618", size = 577471, upload-time = "2026-09-27T12:22:57.136Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9f/55/3f86cc857125e0a9d4ddf7a85a54c69d8c6436cd3c4e360ab6c4686140b8/graphql_core-3.2.14.tar.gz", hash = "sha256:efec124d951f2997e8f28bb9f056d0a3b4b11dce720e2225723ec20fac570af5", size = 610310, upload-time = "2026-11-06T21:41:59.878Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1f/b4/b52a324b0b297ddc49b8ea31a51d39fae63132f694a267b9381d94e2e0af/graphql_core-3.2.13-py3-none-any.whl", hash = "sha256:b0eb04f2c31556b2310a77c8fb53c74e8b56570f8fea594d89c6ef7827dbb497", size = 268191, upload-time = "2026-09-27T12:22:55.661Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/b8/c45a999940326178a32cc3ba7c88f7c661d0cff9399e78cb3898f9e96387/graphql_core-3.2.14-py3-none-any.whl", hash = "sha256:fb0eaaad81c558325f037a79dab7c6dd568cd17196030fb5c46fc4996948cc42", size = 279946, upload-time = "2026-11-06T21:41:58.085Z" },
 ]
 
 [[package]]
 name = "graphql-relay"
 version = "3.2.0"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/silverlogic/graphql-relay-py.git?rev=12f067ab63c28e2a60208fe739cca730d88a1e62#12f067ab63c28e2a60208fe739cca730d88a1e62" }
 dependencies = [
     { name = "graphql-core" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/d1/13/98fbf8d67552f102488ffc16c6f559ce71ea15f6294728d33928ab5ff14d/graphql-relay-3.2.0.tar.gz", hash = "sha256:1ff1c51298356e481a0be009ccdff249832ce53f30559c1338f22a0e0d17250c", size = 50027, upload-time = "2022-04-16T11:03:45.447Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/74/16/a4cf06adbc711bd364a73ce043b0b08d8fa5aae3df11b6ee4248bcdad2e0/graphql_relay-3.2.0-py3-none-any.whl", hash = "sha256:c9b22bd28b170ba1fe674c74384a8ff30a76c8e26f88ac3aa1584dd3179953e5", size = 16940, upload-time = "2022-04-16T11:03:43.895Z" },
 ]
 
 [[package]]
