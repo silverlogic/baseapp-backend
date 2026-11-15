@@ -191,9 +191,9 @@ def test_anon_followers_list_query_count_does_not_grow_with_followers(
     response_small, queries_small = graphql_client_with_queries(
         FOLLOWERS_LIST_QUERY, variables={"id": target_profile.relay_id}
     )
-    assert (
-        len(response_small.json()["data"]["node"]["followers"]["edges"]) == 3
-    ), response_small.json()
+    assert len(response_small.json()["data"]["node"]["followers"]["edges"]) == 3, (
+        response_small.json()
+    )
     small_count = queries_small.count
 
     # Now create a second target with many more followers and run the same query.
