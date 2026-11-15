@@ -505,10 +505,10 @@ requires-dist = [
     { name = "firebase-admin", marker = "extra == 'notifications'", specifier = ">=6.5.0" },
     { name = "graphene", marker = "extra == 'graphql'", git = "https://github.com/silverlogic/graphene?rev=88e5a7dd6a85c6241a06d2bf208ca187607eff37" },
     { name = "graphene-django", marker = "extra == 'graphql'", specifier = ">=3.2.0" },
-    { name = "graphene-django-optimizer", marker = "extra == 'graphql'", specifier = ">=0.10" },
-    { name = "graphene-django-query-optimizer", marker = "extra == 'graphql'", specifier = ">=0.10.16" },
+    { name = "graphene-django-optimizer", marker = "extra == 'graphql'", git = "https://github.com/silverlogic/graphene-django-optimizer?rev=d9620b74785ad0604796d02b77b9961825323cd1" },
+    { name = "graphene-django-query-optimizer", marker = "extra == 'graphql'", git = "https://github.com/silverlogic/graphene-django-query-optimizer?rev=a60548ab07d61d0539312f43e8bf53f351565984" },
     { name = "graphene-file-upload", marker = "extra == 'graphql'", specifier = "==1.3.0" },
-    { name = "graphql-core", marker = "extra == 'graphql'", specifier = ">=3.2.13,<3.3" },
+    { name = "graphql-core", marker = "extra == 'graphql'", specifier = ">=3.3.2" },
     { name = "graphql-relay", marker = "extra == 'graphql'", git = "https://github.com/silverlogic/graphql-relay-py?rev=12f067ab63c28e2a60208fe739cca730d88a1e62" },
     { name = "hashids", marker = "extra == 'referrals'", specifier = "==1.3.1" },
     { name = "hashids", marker = "extra == 'socialauth'", specifier = "==1.3.1" },
@@ -1310,16 +1310,16 @@ wheels = [
 
 [[package]]
 name = "django"
-version = "5.2.17"
+version = "5.2.19"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "asgiref" },
     { name = "sqlparse" },
     { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d5/d8/43e9d000519adceb189620b6869ff88031e046df91c2e9da72f8f6918399/django-5.2.17.tar.gz", hash = "sha256:9d4d93be539a18ab80d058eb515900e10951e04c537c5a6b394fc49528d3251f", size = 10889740, upload-time = "2026-08-04T15:04:03.173Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/02/29/a487a108caa76430c8b616aa90a6d09cf431306112c14093e6f0a7454e17/django-5.2.19.tar.gz", hash = "sha256:ad03d8abc51dbff95ebf34b27123cf0c26a3b62db7ba0cd520783686362533d1", size = 10969285, upload-time = "2026-11-03T15:22:09.468Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/f8/ce120525ca78f12b07daf65786679c5d0b54a75285a8958d3ae55e39da35/django-5.2.17-py3-none-any.whl", hash = "sha256:f04fb3b36ee119e1af4fa1d397d5fd6cf12700f49321e84d4f4c642c5b1973db", size = 8315563, upload-time = "2026-08-04T15:03:59.1Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/fb/65b4e897d1268288a46457493d9aec6541be8be08e0093a93cc101c03ab2/django-5.2.19-py3-none-any.whl", hash = "sha256:5965d974a5218a2b68a11dd1276434707f23886525c23f0598eccedaf4f4ca00", size = 8319631, upload-time = "2026-11-03T15:22:03.67Z" },
 ]
 
 [[package]]
@@ -1572,14 +1572,14 @@ wheels = [
 
 [[package]]
 name = "django-settings-holder"
-version = "0.3.0"
+version = "0.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5f/1d/810c15a408987262bf70fc1892d4d5c3b2c1ae62e8715b73592c8f46ed37/django_settings_holder-0.3.0.tar.gz", hash = "sha256:d41eb6d6023d61c08e395f2406fd6f047d1edff2f0346d04323f3681f12372ef", size = 8580, upload-time = "2025-04-27T13:15:42.069Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a0/51/f988128111c1c53c2a89a1537007e7428169eed276d1d4c4d91e84882cf2/django_settings_holder-0.3.1.tar.gz", hash = "sha256:a0dfbc6adf8c1de70d026bd65358eebc016d6e3585c5934bf4216f30997b99bf", size = 6096, upload-time = "2026-10-09T11:49:39.44Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f5/e3/0759620f917f7f7585375c1edb2875ed6c95597cf6645c3f5a21e0d44046/django_settings_holder-0.3.0-py3-none-any.whl", hash = "sha256:97c69c47129fcd8be5fc351f80cf31c8f3f7ecaec418bc2c20200382a0be52c0", size = 8085, upload-time = "2025-04-27T13:15:40.817Z" },
+    { url = "https://files.pythonhosted.org/packages/a8/92/01d9c981d39318858eb7e078bcce06c26217e8adac1694cc266a5f6b0847/django_settings_holder-0.3.1-py3-none-any.whl", hash = "sha256:3fdbf72ada0b181dc43bf15578ec08905a50869d31a45a884e69242c0577b1a0", size = 7511, upload-time = "2026-10-09T11:49:38.602Z" },
 ]
 
 [[package]]
@@ -2106,24 +2106,20 @@ wheels = [
 [[package]]
 name = "graphene-django-optimizer"
 version = "0.10.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/fa/6c/cd89093083debac1c8eba62f2f1daa55caeb3a27f0f908761a7e68e3ed2e/graphene-django-optimizer-0.10.0.tar.gz", hash = "sha256:5a5d9d1e1abda3571bdff77a71af5e71b994e5e9d97d17a576df89181284075d", size = 14681, upload-time = "2023-08-05T17:53:27.486Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1b/e3/2f0d01168d9c781d17c8f49a8ffe3d52a370382b9a5f4f4a756d86a46a01/graphene_django_optimizer-0.10.0-py2.py3-none-any.whl", hash = "sha256:5b81aaa114514c9a89d064aaaf09c8e00c27d1cf6f734993f0ea5afe776041b9", size = 10442, upload-time = "2023-08-05T17:53:25.936Z" },
-]
+source = { git = "https://github.com/silverlogic/graphene-django-optimizer?rev=d9620b74785ad0604796d02b77b9961825323cd1#d9620b74785ad0604796d02b77b9961825323cd1" }
 
 [[package]]
 name = "graphene-django-query-optimizer"
-version = "0.10.16"
-source = { registry = "https://pypi.org/simple" }
+version = "0.11.1"
+source = { git = "https://github.com/silverlogic/graphene-django-query-optimizer?rev=a60548ab07d61d0539312f43e8bf53f351565984#a60548ab07d61d0539312f43e8bf53f351565984" }
 dependencies = [
     { name = "django" },
     { name = "django-settings-holder" },
+    { name = "graphene" },
     { name = "graphene-django" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c8/9b/0df41b0146e78c62f6f8775cc700fc33d8cc1781984771ae6366efd13365/graphene_django_query_optimizer-0.10.16.tar.gz", hash = "sha256:fc9c81d94627fa7f0e26de632276583de47b1e46510892ec7f3d45e35c862e92", size = 27204, upload-time = "2026-08-28T15:34:17.325Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b8/84/4882d3dc6e962c41ec409bc9be2e188484025e031522418822a72378e99f/graphene_django_query_optimizer-0.10.16-py3-none-any.whl", hash = "sha256:f89ee9b02a5c8ceeb4baed82b3f5fac605c6c0d0cb22138afa08712016f36711", size = 32563, upload-time = "2026-08-28T15:34:18.207Z" },
+    { name = "graphql-core" },
+    { name = "graphql-relay" },
+    { name = "typing-extensions" },
 ]
 
 [[package]]
@@ -2140,11 +2136,11 @@ wheels = [
 
 [[package]]
 name = "graphql-core"
-version = "3.2.14"
+version = "3.3.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/9f/55/3f86cc857125e0a9d4ddf7a85a54c69d8c6436cd3c4e360ab6c4686140b8/graphql_core-3.2.14.tar.gz", hash = "sha256:efec124d951f2997e8f28bb9f056d0a3b4b11dce720e2225723ec20fac570af5", size = 610310, upload-time = "2026-11-06T21:41:59.878Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0d/11/511b9487dd338a9cd98a8040a1f20feaa99b2f2e4921c049cb9cbbff2870/graphql_core-3.3.2.tar.gz", hash = "sha256:15d6eee7d4364fbc202833bc6bd0d504004d8ae7c0aaf620fa884d8e437622f2", size = 794346, upload-time = "2026-11-06T21:41:54.017Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5d/b8/c45a999940326178a32cc3ba7c88f7c661d0cff9399e78cb3898f9e96387/graphql_core-3.2.14-py3-none-any.whl", hash = "sha256:fb0eaaad81c558325f037a79dab7c6dd568cd17196030fb5c46fc4996948cc42", size = 279946, upload-time = "2026-11-06T21:41:58.085Z" },
+    { url = "https://files.pythonhosted.org/packages/9b/c0/dec5c3a96d9e47c7aaaa6a062e065e6c738d67d11a9cda15705592f45409/graphql_core-3.3.2-py3-none-any.whl", hash = "sha256:d83f49ee18d2db89fb575dab6ffefa8aa1bf5f60dff8a6781db6f63420041348", size = 366135, upload-time = "2026-11-06T21:41:52.327Z" },
 ]
 
 [[package]]
