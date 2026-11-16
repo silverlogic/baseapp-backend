@@ -1275,29 +1275,6 @@ admin's `get_queryset` (`.prefetch_related(CARD_HOLD_PREFETCH_PATH)`, from
 
 General development instructions can be found in the [main README](../README.md#how-to-develop).
 
-### Stripe test-mode QA
-
-`testproject/testapp/management/commands/card_holds_stripe_qa.py` runs the payments flows
-end to end against Stripe **test mode** and prints a pass/fail table: saving a card; a
-subscription created and renewed on a test clock (reading basil's item-level period); a
-hold captured within it; a capture above the hold (`paid`, two payments, one invoice,
-fees stored); a declined difference (`partially_paid`, `difference_charge_failed`); marking
-it paid outside (`paid`); and an expired hold closed by one full charge. It refuses to run
-unless `STRIPE_SECRET_KEY` starts with `sk_test_` or `rk_test_`, and never prints the key.
-
-```bash
-# STRIPE_SECRET_KEY=sk_test_... in .env, then:
-docker compose exec -T web uv run --python 3.12 python manage.py card_holds_stripe_qa
-```
-
-Stripe has no test card that authorizes once and declines later, so the declined
-difference attaches `pm_card_chargeCustomerFail` ("attach succeeds, charges fail",
-4000 0000 0000 0341) and points the placed hold at it before capturing. The run creates
-test customers, a product, a price and a test clock in your Stripe test account and rows
-in your database; it cleans nothing up, so use a scratch database. Its unit test
-(`testproject/testapp/tests/test_card_holds_stripe_qa.py`) only checks the guard and the
-table; it never calls Stripe.
-
 ### Prerequisites when activating `baseapp_payments`
 
 Because the models are abstract + swappable with no concrete models shipped, create a local app (we suggest `apps/payments/`) implementing the concrete models — note the required `FieldTracker` on `Customer`:
