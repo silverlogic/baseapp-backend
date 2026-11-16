@@ -1222,7 +1222,10 @@ class TestDifferenceNeverRetried:
         assert caplog.text.count("Decide by hand") == 1
 
     def test_a_cancelled_target_stops_a_resumed_claim_too(self, order, fake_stripe, caplog) -> None:
-        from baseapp_payments.holds import _difference_target_cancelled, charge_due_difference
+        from baseapp_payments.holds import (
+            _difference_target_cancelled,
+            charge_due_difference,
+        )
 
         old = timezone.now() - datetime.timedelta(hours=1)
         hold = self.abandoned(order, fake_stripe, difference_key="k", difference_claimed_at=old)
