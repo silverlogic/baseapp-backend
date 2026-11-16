@@ -8,7 +8,7 @@ from rest_framework import status
 from baseapp_core.tests.fixtures import Client
 from baseapp_core.tests.helpers import responseEquals
 from baseapp_payments.tests.factories import CustomerFactory
-from baseapp_payments.tests.helpers import stripe_list
+from baseapp_payments.tests.helpers import stripe_list, stripe_object
 from baseapp_profiles.tests.factories import ProfileFactory
 
 pytestmark = pytest.mark.django_db
@@ -80,7 +80,7 @@ class TestPaymentMethodUpdateView:
         mock_list_payment_methods: MagicMock,
         user_client: Client,
     ) -> None:
-        mock_update_customer.return_value = {"id": "pm_123"}
+        mock_update_customer.return_value = stripe_object({"id": "cus_123"})
         # pm_456 has to be in the customer's own list: setting it as the invoice default
         # is now checked for ownership, which is what stops a foreign card being used.
         mock_list_payment_methods.return_value = stripe_list([{"id": "pm_123"}, {"id": "pm_456"}])
@@ -163,7 +163,9 @@ class TestPaymentMethodFailures:
     def test_creating_a_setup_intent(
         self, mock_create_setup_intent: MagicMock, user_client: Client
     ) -> None:
-        mock_create_setup_intent.return_value = {"id": "seti_1", "client_secret": "cs_1"}
+        mock_create_setup_intent.return_value = stripe_object(
+            {"id": "seti_1", "client_secret": "cs_1"}
+        )
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.post(
             reverse(self.viewname, kwargs={"entity_id": customer.entity_id})
@@ -232,7 +234,7 @@ class TestPaymentMethodUpdateAuthorization:
         # A return_value is required, not decoration: the branch now answers with what
         # Stripe returned, and rendering a bare MagicMock walks it until the process is
         # OOM-killed.
-        mock_update_payment_method.return_value = {"id": "pm_mine"}
+        mock_update_payment_method.return_value = stripe_object({"id": "pm_mine"})
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.patch(
             reverse(
@@ -284,7 +286,7 @@ class TestPaymentMethodBillingUpdate:
         mocked the service and asserted only the status, which hid both halves.
         """
         mock_list_payment_methods.return_value = stripe_list([{"id": "pm_123"}])
-        mock_update_payment_method.return_value = {"id": "pm_123"}
+        mock_update_payment_method.return_value = stripe_object({"id": "pm_123"})
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
 
         response = user_client.put(

@@ -475,7 +475,7 @@ requires-dist = [
     { name = "social-auth-app-django", marker = "extra == 'socialauth'", specifier = ">=6.0.1,<7.0.0" },
     { name = "social-auth-core", marker = "extra == 'socialauth'", specifier = ">=5.0.0,<6.0.0" },
     { name = "stevedore", specifier = ">=5.7.0" },
-    { name = "stripe", marker = "extra == 'payments'", specifier = ">=11.5.0,<15" },
+    { name = "stripe", marker = "extra == 'payments'", specifier = ">=17.0.0,<18" },
     { name = "swapper", specifier = ">=1.3" },
     { name = "wagtail", marker = "extra == 'wagtail'", specifier = ">=7.0" },
     { name = "wagtail-headless-preview", marker = "extra == 'wagtail'", specifier = "==0.8" },
@@ -3815,15 +3815,15 @@ wheels = [
 
 [[package]]
 name = "stripe"
-version = "14.4.1"
+version = "17.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/63/01/59d92650146c6340e333c22b8a238561b022e8641ba255298dfe46b4137d/stripe-14.4.1.tar.gz", hash = "sha256:e3eecfb336819326cd2ab9a93f98eb01b49c4d4d93c9d167a52a68ab99c19a88", size = 1473321, upload-time = "2026-03-06T22:59:45.822Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b7/35/d0e4eb5140e0e8a6cdce1777b54bcadd6366a2c2109db1b2b139c1c7d597/stripe-17.0.0.tar.gz", hash = "sha256:5e1bdde6eac0311f6c3dea60457e3e49091789785db9c90d28d75a0398835589", size = 1632141, upload-time = "2026-11-11T19:56:14.529Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/35/0f/547eab75052384a72771b396a484556e5636629c031e5eafa8dc27af89ed/stripe-14.4.1-py3-none-any.whl", hash = "sha256:d6722b985dc3b4d6da01ff4fa95a975d3694a89bba96895bf17aa858073ff2b8", size = 2116642, upload-time = "2026-03-06T22:59:43.72Z" },
+    { url = "https://files.pythonhosted.org/packages/28/48/9f6f4f96ba79c5844180e206ad3e7e8decb09f897a570d5f67f3b5f8b361/stripe-17.0.0-py3-none-any.whl", hash = "sha256:955bd99082dadcaf41b0d2d5075c0da8e6e848df1dccbbfcf7c856d9ac003420", size = 2648192, upload-time = "2026-11-11T19:56:12.419Z" },
 ]
 
 [[package]]

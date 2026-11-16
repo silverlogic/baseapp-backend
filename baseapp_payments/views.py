@@ -35,6 +35,7 @@ from .utils import (
     STRIPE_SUBSCRIPTION_LIST_STATUSES,
     StripeService,
     StripeWebhookHandler,
+    stripe_dict,
 )
 
 if TYPE_CHECKING:
@@ -93,7 +94,7 @@ class StripeSubscriptionViewset(
         instance = self.get_object()
         subscription = StripeService().retrieve_subscription(
             instance.remote_subscription_id,
-            expand=["latest_invoice.payment_intent", "items.data.price.product"],
+            expand=["latest_invoice.confirmation_secret", "items.data.price.product"],
         )
         serializer = self.get_serializer(subscription)
         return Response(serializer.data, status=200)
@@ -396,7 +397,9 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
             customer = getattr(request._request, "customer", None)
             serializer.context["customer"] = customer
             result = serializer.update(serializer.validated_data)
-            return Response(result, status=200)
+            # A StripeObject is not a dict since stripe-python 15, and the JSON renderer
+            # cannot encode it.
+            return Response(stripe_dict(result), status=200)
         except Exception as e:
             logger.exception("Failed to update payment method: %s", e)
             return Response({"error": "An internal error has occurred"}, status=500)

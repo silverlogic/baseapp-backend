@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 import stripe
@@ -16,6 +17,13 @@ logger = logging.getLogger(__name__)
 
 Customer = swapper.load_model("baseapp_payments", "Customer")
 Subscription = swapper.load_model("baseapp_payments", "Subscription")
+
+
+# The Stripe API version every request is made with. Kept equal to the version the pinned
+# stripe library ships with (``stripe.api_version`` at import), and the version a project's
+# webhook endpoint should be set to in the Stripe dashboard, so request and webhook
+# payloads have the same shape. Overridable with the STRIPE_API_VERSION setting.
+STRIPE_API_VERSION = "2026-10-28.endive"
 
 
 # The statuses that mean the customer still has a billing relationship. Stripe's list
@@ -57,7 +65,24 @@ def stripe_field(
         return default
     if isinstance(obj, dict):
         return obj.get(field, default)
+    # Since stripe-python 15 a StripeObject is no longer a dict, so .get() is gone;
+    # item access is what reads a field, and `in` is what tells a missing one apart.
+    if isinstance(obj, stripe.StripeObject):
+        return obj[field] if field in obj else default
     return getattr(obj, field, default)
+
+
+def stripe_dict(obj: Any) -> Any:
+    """``obj`` as plain dicts and lists, all the way down.
+
+    Since stripe-python 15 a StripeObject is no longer a dict: DRF fields such as
+    ``DictField`` and the JSON renderer cannot read it, and ``isinstance(x, dict)``
+    checks stop matching. Converting once at the boundary keeps every reader working.
+    Anything that is not a StripeObject is returned unchanged.
+    """
+    if isinstance(obj, stripe.StripeObject):
+        return obj.to_dict()
+    return obj
 
 
 def stripe_id(value: "stripe.StripeObject | dict[str, Any] | str | None") -> "str | None":
@@ -65,6 +90,69 @@ def stripe_id(value: "stripe.StripeObject | dict[str, Any] | str | None") -> "st
     if value is None or isinstance(value, str):
         return value
     return stripe_field(value, "id")
+
+
+def invoice_client_secret(invoice: "stripe.Invoice | dict[str, Any] | str | None") -> "str | None":
+    """The client secret that confirms ``invoice``'s payment, when it was expanded.
+
+    Since API 2025-03-31.basil this is ``invoice.confirmation_secret.client_secret``;
+    the invoice no longer links a payment intent. None when the invoice arrived as a
+    bare id or without ``confirmation_secret`` expanded.
+    """
+    return stripe_field(stripe_field(invoice, "confirmation_secret"), "client_secret")
+
+
+# Line-item parent types since API 2025-03-31.basil, mapped back to the `type` values the
+# line's own field used to carry.
+INVOICE_LINE_PARENT_TYPES = {
+    "subscription_item_details": "subscription",
+    "invoice_item_details": "invoiceitem",
+}
+
+
+def invoice_line_legacy_fields(line: "dict[str, Any]") -> "dict[str, Any]":
+    """``type`` and ``price`` for an invoice line, read from where API basil moved them.
+
+    Basil replaced the line's top-level ``type`` with ``parent.type`` and its ``price``
+    with ``pricing.price_details.price`` - an id, since a line list cannot expand that
+    deep. Without this both fields silently dropped out of the invoices response. The
+    price is rebuilt from the line's own currency and unit amount; ``recurring`` is not
+    on the line, so it is None. A line still in the old shape is returned as is.
+    """
+    parent_type = stripe_field(stripe_field(line, "parent"), "type")
+    line_type = INVOICE_LINE_PARENT_TYPES.get(parent_type, parent_type) or line.get("type")
+    price = line.get("price")
+    pricing = stripe_field(line, "pricing")
+    details_price = stripe_field(stripe_field(pricing, "price_details"), "price")
+    if price is None and isinstance(details_price, dict):
+        price = details_price
+    elif price is None and details_price:
+        unit_amount_decimal = stripe_field(pricing, "unit_amount_decimal")
+        amount = Decimal(str(unit_amount_decimal)) if unit_amount_decimal is not None else None
+        price = {
+            "id": details_price,
+            "currency": line.get("currency"),
+            # unit_amount is a whole number of the currency's minor unit; a sub-cent decimal
+            # price has no integer form, so it is None rather than truncated.
+            "unit_amount": (
+                int(amount) if amount is not None and amount == amount.to_integral_value() else None
+            ),
+            "recurring": None,
+        }
+    return {"type": line_type, "price": price}
+
+
+def subscription_period_end(subscription: "stripe.Subscription | dict[str, Any]") -> "int | None":
+    """When the subscription's current billing period ends, as a Unix timestamp.
+
+    Since API 2025-03-31.basil the period is set per subscription item, not on the
+    subscription. With one price per subscription, as this module creates them, the
+    first item's period is the subscription's.
+    """
+    items = stripe_field(stripe_field(subscription, "items"), "data") or []
+    if not items:
+        return None
+    return stripe_field(items[0], "current_period_end")
 
 
 def _empty_list_object(url: str) -> "stripe.ListObject":
@@ -96,7 +184,7 @@ class StripeWebhookHandler:
             ).first()
             if existing_customer:
                 return JsonResponse({"status": "success"}, status=200)
-            entity_id = customer_data["metadata"].get("entity_id")
+            entity_id = stripe_field(customer_data["metadata"], "entity_id")
             entity_model = apps.get_model(config.STRIPE_CUSTOMER_ENTITY_MODEL)
             entity = entity_model.objects.get(id=entity_id)
             try:
@@ -245,7 +333,7 @@ class StripeService:
     def __init__(
         self,
         api_key: str = settings.STRIPE_SECRET_KEY,
-        api_version: str = getattr(settings, "STRIPE_API_VERSION", "2025-02-24.acacia"),
+        api_version: str = getattr(settings, "STRIPE_API_VERSION", STRIPE_API_VERSION),
     ) -> None:
         stripe.api_key = api_key
         stripe.api_version = api_version
@@ -323,25 +411,23 @@ class StripeService:
                 default_payment_method=payment_method_id,
                 payment_behavior="default_incomplete",
                 payment_settings={"save_default_payment_method": "on_subscription"},
-                expand=["latest_invoice.payment_intent"],
+                # Since API 2025-03-31.basil an invoice no longer links its payment
+                # intent; the secret the frontend confirms the first payment with is
+                # the invoice's confirmation_secret, which is only sent when expanded.
+                expand=["latest_invoice.confirmation_secret"],
                 metadata={"product_id": product_id} if product_id else None,
             )
-            client_secret = None
-            latest_invoice = subscription.get("latest_invoice")
+            latest_invoice = stripe_field(subscription, "latest_invoice")
             # The expand above is a request, not a guarantee: Stripe answers with the
-            # bare id at either level often enough that reading it like an object
-            # crashed the whole subscribe call. Re-fetching rather than just skipping,
-            # because a None client_secret leaves the frontend unable to confirm the
-            # card and the subscription stuck as incomplete.
+            # bare id often enough that reading it like an object crashed the whole
+            # subscribe call. Re-fetching rather than just skipping, because a None
+            # client_secret leaves the frontend unable to confirm the card and the
+            # subscription stuck as incomplete.
             if isinstance(latest_invoice, str):
-                latest_invoice = stripe.Invoice.retrieve(latest_invoice, expand=["payment_intent"])
-            if latest_invoice:
-                payment_intent = latest_invoice.get("payment_intent")
-                if isinstance(payment_intent, str):
-                    payment_intent = stripe.PaymentIntent.retrieve(payment_intent)
-                if payment_intent:
-                    client_secret = payment_intent.get("client_secret")
-            subscription["client_secret"] = client_secret
+                latest_invoice = stripe.Invoice.retrieve(
+                    latest_invoice, expand=["confirmation_secret"]
+                )
+            subscription["client_secret"] = invoice_client_secret(latest_invoice)
             return subscription
         except Exception as e:
             logger.exception(e)
@@ -359,7 +445,7 @@ class StripeService:
             raise SubscriptionNotFound("Error retrieving subscription in Stripe")
         # Expanded on some responses, so pass the id rather than the object to the
         # preview call below.
-        customer = stripe_id(subscription.get("customer"))
+        customer = stripe_id(stripe_field(subscription, "customer"))
         try:
             upcoming_invoice = self.get_upcoming_invoice(customer, subscription_id)
             subscription["upcoming_invoice"] = {
@@ -534,7 +620,9 @@ class StripeService:
         try:
             setup_intent = stripe.SetupIntent.create(
                 customer=customer_id,
-                payment_method_types=["card"],
+                # payment_method_types is rejected with a 400 since API 2026-09-30.endive;
+                # this is its replacement and keeps saving to cards only.
+                allowed_payment_method_types=["card"],
             )
             return setup_intent
         except Exception as e:
@@ -595,8 +683,7 @@ class StripeService:
         self, customer_id: "str | None", subscription_id: "str | None" = None
     ) -> "stripe.Invoice":
         """Preview the customer's next invoice, optionally scoped to one subscription."""
-        # stripe.Invoice.upcoming, which this used before, was dropped from the SDK;
-        # create_preview is its replacement and the payments extra pins >=11.5,<15.
+        # create_preview replaced the Upcoming Invoice API, removed in API 2025-03-31.basil.
         params = {"customer": customer_id}
         if subscription_id:
             params["subscription"] = subscription_id
