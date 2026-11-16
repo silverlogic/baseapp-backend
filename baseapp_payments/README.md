@@ -156,6 +156,43 @@ wrong card, and once the column is gone there is nothing left to reconcile again
 The migration is forward-only. Reversing re-adds `remote_customer_id` as a non-null
 column with no default, which the database rejects on any table that still has rows.
 
+## Upgrading: stripe 17 and API version 2026-10-28.endive
+
+The `payments` extra now requires `stripe>=17,<18`, and every request is made with Stripe
+API version `2026-10-28.endive` (was `2025-02-24.acacia`). The version is the
+`STRIPE_API_VERSION` constant in `baseapp_payments.utils`. You can still override it with
+the `STRIPE_API_VERSION` setting, but the code only supports this version.
+
+**What you have to do when you update:**
+
+1. **Webhook endpoint version.** Your Stripe webhook endpoint must send events in
+   `2026-10-28.endive`, the same version as the API calls. If your endpoint was created
+   on an older version, create a new endpoint on this version in the Stripe Dashboard
+   (Developers → Webhooks), or set the version through the API. Then move
+   `STRIPE_WEBHOOK_SECRET` to the new endpoint's signing secret and delete the old one.
+   If you skip this, the handlers read payloads in a shape they no longer expect.
+2. **Frontend.** Stripe.js has to be on the same API release. Update the BaseApp frontend
+   payment packages with this version.
+3. **Your own Stripe code.** Code in your project that calls `stripe` directly is affected
+   by the changes below.
+
+**What changed, and why:**
+
+| Change | Cause | What the module does now |
+|---|---|---|
+| A `StripeObject` is no longer a `dict`: `.get()`, `.items()`, `dict(obj)` and `isinstance(obj, dict)` stop working | stripe-python 15 | Reads fields with `stripe_field()`, and converts objects with `stripe_dict()` before serializing or rendering them. Both live in `baseapp_payments.utils` |
+| `invoice.payment_intent` was removed | API 2025-03-31.basil | Reads the first-payment secret from `invoice.confirmation_secret.client_secret`, expanded as `latest_invoice.confirmation_secret` |
+| `subscription.current_period_end` moved to the subscription item | API 2025-03-31.basil | The serializer reads it from `items.data[0].current_period_end` (`subscription_period_end()`). The response field is unchanged |
+| `Invoice.upcoming` was removed | API 2025-03-31.basil | Already replaced with `Invoice.create_preview` |
+| An invoice line's top-level `type` and `price` were removed; they now live under `parent.type` and `pricing.price_details.price` (an id) | API 2025-03-31.basil | `invoice_line_legacy_fields()` rebuilds both, so the invoices response keeps `lines[].type` (`subscription` / `invoiceitem`) and `lines[].price` (`id`, `currency`, `unit_amount`). `price.recurring` is now always null, since a line no longer carries it |
+| `payment_method_types` on SetupIntent create returns a 400 | API 2026-09-30.endive | Uses `allowed_payment_method_types=["card"]` |
+| Pickled Stripe objects lose their API key | stripe-python 17 | The module does not pickle them. If you cache Stripe objects, call `reattach_api_key()` after loading them |
+
+The REST responses keep their shape, so API consumers need no change, with one exception: an
+invoice line's `price.recurring` is now always null. If you subclass
+the serializers or call `StripeService` and read `latest_invoice.payment_intent`, read
+`confirmation_secret` instead.
+
 ## API Endpoints
 
 All routes are mounted under `v1/payments/`. **The router is `DefaultRouter(trailing_slash=True)`, so every path ends in `/`** - an unslashed request does not resolve and only survives via Django's `APPEND_SLASH` redirect, which drops the body on writes.
@@ -193,7 +230,7 @@ Payment-method and invoice routes are nested under the customer, so the entity i
 
 ### Stripe dashboard configuration
 
-**Production:** In your [Stripe Dashboard](https://dashboard.stripe.com) → **Developers → Webhooks → Add endpoint**, point the endpoint at `https://yourdomain.com/v1/payments/stripe/webhooks/`, subscribe to at least the four events above, then copy the **Signing secret** into `STRIPE_WEBHOOK_SECRET`.
+**Production:** In your [Stripe Dashboard](https://dashboard.stripe.com) → **Developers → Webhooks → Add endpoint**, point the endpoint at `https://yourdomain.com/v1/payments/stripe/webhooks/`, subscribe to at least the four events above, set the endpoint's API version to `2026-10-28.endive` (the module's `STRIPE_API_VERSION`), then copy the **Signing secret** into `STRIPE_WEBHOOK_SECRET`.
 
 **Local development:** Use the [Stripe CLI](https://stripe.com/docs/stripe-cli):
 

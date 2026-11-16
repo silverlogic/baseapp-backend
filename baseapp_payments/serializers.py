@@ -10,14 +10,17 @@ from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from baseapp_core.graphql import get_pk_from_relay_id
-
 from .models import BaseCustomer, BaseSubscription
 from .utils import (
     STRIPE_LIVE_SUBSCRIPTION_STATUSES,
     StripeService,
+    entity_pk_from_id,
+    invoice_client_secret,
+    invoice_line_legacy_fields,
+    stripe_dict,
     stripe_field,
     stripe_id,
+    subscription_period_end,
 )
 
 # stripe and the models are imported at runtime, not under TYPE_CHECKING: drf-spectacular
@@ -33,14 +36,26 @@ Customer = swapper.load_model("baseapp_payments", "Customer")
 Subscription = swapper.load_model("baseapp_payments", "Subscription")
 
 
-class StripePriceSerializer(serializers.Serializer):
+class StripeObjectSerializer(serializers.Serializer):
+    """A read serializer for Stripe objects.
+
+    Converts the object to plain dicts before DRF reads it: since stripe-python 15 a
+    StripeObject is no longer a dict, so ``DictField``, ``.get()`` and
+    ``isinstance(x, dict)`` would all fail on it.
+    """
+
+    def to_representation(self, instance: Any) -> dict:
+        return super().to_representation(stripe_dict(instance))
+
+
+class StripePriceSerializer(StripeObjectSerializer):
     id = serializers.CharField()
     currency = serializers.CharField()
     unit_amount = serializers.IntegerField()
     recurring = serializers.DictField()
 
 
-class StripeProductSerializer(serializers.Serializer):
+class StripeProductSerializer(StripeObjectSerializer):
     id = serializers.CharField()
     name = serializers.CharField()
     description = serializers.CharField(allow_null=True, required=False)
@@ -64,7 +79,7 @@ class StripeProductSerializer(serializers.Serializer):
         return None
 
 
-class StripeInvoiceLineSerializer(serializers.Serializer):
+class StripeInvoiceLineSerializer(StripeObjectSerializer):
     id = serializers.CharField(read_only=True)
     amount = serializers.IntegerField(read_only=True)
     description = serializers.CharField(read_only=True)
@@ -72,8 +87,12 @@ class StripeInvoiceLineSerializer(serializers.Serializer):
     type = serializers.CharField(read_only=True)
     price = StripePriceSerializer(read_only=True)
 
+    def to_representation(self, instance: Any) -> dict:
+        line = stripe_dict(instance)
+        return super().to_representation({**line, **invoice_line_legacy_fields(line)})
 
-class StripeInvoiceSerializer(serializers.Serializer):
+
+class StripeInvoiceSerializer(StripeObjectSerializer):
     id = serializers.CharField(read_only=True)
     amount_due = serializers.IntegerField(read_only=True)
     amount_paid = serializers.IntegerField(read_only=True)
@@ -87,14 +106,10 @@ class StripeInvoiceSerializer(serializers.Serializer):
     client_secret = serializers.SerializerMethodField()
 
     def get_client_secret(self, instance: "stripe.Invoice") -> "str | None":
-        # list_invoices() requests no expansion, so Stripe sends payment_intent as a bare
-        # id string and calling .get() on it raised AttributeError, 500ing the whole list.
-        # Guarded rather than expanded: no consumer reads this field, so paying for
-        # expand=["data.payment_intent"] on every invoice page would buy nothing.
-        payment_intent = stripe_field(instance, "payment_intent")
-        if not isinstance(payment_intent, dict):
-            return None
-        return payment_intent.get("client_secret")
+        # None unless confirmation_secret was expanded. list_invoices() does not expand
+        # it: no consumer reads this field, so paying for the expansion on every invoice
+        # page would buy nothing.
+        return invoice_client_secret(instance)
 
     def to_representation(self, instance: "stripe.Invoice") -> dict:
         representation = super().to_representation(instance)
@@ -114,7 +129,7 @@ class StripeInvoiceSerializer(serializers.Serializer):
         return representation
 
 
-class StripeSubscriptionSerializer(serializers.Serializer):
+class StripeSubscriptionSerializer(StripeObjectSerializer):
     entity_id = serializers.CharField(required=False)
     price_id = serializers.CharField(
         help_text=_("Stripe price ID"), required=False, write_only=True
@@ -135,10 +150,10 @@ class StripeSubscriptionSerializer(serializers.Serializer):
         entity_id = data["entity_id"]
         if not entity_id:
             raise serializers.ValidationError({"entity_id": [_("This field is required.")]})
-        if isinstance(entity_id, str):
-            # "" is what get_pk_from_relay_id answers for a non-relay id; querying on
-            # it raises ValueError from the pk field rather than returning nothing.
-            entity_id = get_pk_from_relay_id(entity_id) or None
+        # Resolved the way the view authorized it: decoding every string as a relay id
+        # turned a raw pk such as "58" into None, so the view found the customer and this
+        # answered "Customer not found." for the same request.
+        entity_id = entity_pk_from_id(entity_id)
         customer = (
             Customer.objects.filter(entity_id=entity_id).first() if entity_id is not None else None
         )
@@ -291,7 +306,7 @@ class StripeSubscriptionSerializer(serializers.Serializer):
                 subscription = stripe_service.create_subscription(**kwargs)
             Subscription.objects.create(
                 customer=customer,
-                remote_subscription_id=subscription.get("id"),
+                remote_subscription_id=stripe_id(subscription),
             )
             return subscription
         except Exception as e:
@@ -329,9 +344,10 @@ class StripeSubscriptionSerializer(serializers.Serializer):
                 if price_id:
                     # Swap in one call so the customer is never briefly on both plans
                     # or on none.
-                    current_item_id = (
-                        current_subscription.get("items", {}).get("data", [{}])[0].get("id")
+                    current_items = (
+                        stripe_field(stripe_field(current_subscription, "items"), "data") or []
                     )
+                    current_item_id = stripe_id(current_items[0]) if current_items else None
                     fields["items"] = [
                         {"id": current_item_id, "deleted": True},
                         {"price": price_id},
@@ -371,14 +387,12 @@ class StripeSubscriptionSerializer(serializers.Serializer):
             return latest_invoice
         return StripeInvoiceSerializer(latest_invoice).data
 
-    def get_client_secret(self, instance: "stripe.Subscription") -> "str | None":
-        latest_invoice = instance.get("latest_invoice", {})
-        if isinstance(latest_invoice, dict):
-            payment_intent = latest_invoice.get("payment_intent", {})
-            if isinstance(payment_intent, dict):
-                client_secret = payment_intent.get("client_secret")
-                return client_secret
-        return None
+    def get_client_secret(self, instance: dict) -> "str | None":
+        # create_incomplete_subscription() resolves the secret itself, re-fetching the
+        # invoice when Stripe ignored the expansion; otherwise read the expanded invoice.
+        return instance.get("client_secret") or invoice_client_secret(
+            instance.get("latest_invoice")
+        )
 
     def get_product(self, instance: "stripe.Subscription") -> "str | dict | None":
         items = instance.get("items", {}).get("data", [])
@@ -407,16 +421,17 @@ class StripeSubscriptionSerializer(serializers.Serializer):
         }
 
     def to_representation(self, instance: "stripe.Subscription") -> dict:
-        instance_period_end = instance.get("current_period_end")
-        if instance_period_end:
-            instance["current_period_end"] = datetime.fromtimestamp(
-                instance_period_end, tz=timezone.utc
-            )
-        representation = super().to_representation(instance)
-        return representation
+        # A converted copy: the timestamp below is written into it, not into the caller's
+        # Stripe object.
+        instance = stripe_dict(instance)
+        period_end = subscription_period_end(instance)
+        instance["current_period_end"] = (
+            datetime.fromtimestamp(period_end, tz=timezone.utc) if period_end else None
+        )
+        return super().to_representation(instance)
 
 
-class StripeSubscriptionCustomerListSerializer(serializers.Serializer):
+class StripeSubscriptionCustomerListSerializer(StripeObjectSerializer):
     id = serializers.CharField(read_only=True)
     status = serializers.CharField(read_only=True)
     products_ids = serializers.SerializerMethodField()
@@ -443,11 +458,14 @@ class StripeCustomerSerializer(serializers.Serializer):
     def validate(self, data: dict[str, Any]) -> dict:
         entity_id = data.get("entity_id")
         if entity_id:
-            if isinstance(entity_id, str):
-                entity_id = get_pk_from_relay_id(entity_id)
+            # A raw pk is not a relay id: decoding "58" as one gave "", and querying the pk
+            # with it raised ValueError, a 500 for an id the view had already accepted.
+            entity_id = entity_pk_from_id(entity_id)
             entity_model_name = config.STRIPE_CUSTOMER_ENTITY_MODEL
             customer_model = apps.get_model(entity_model_name)
-            entity = customer_model.objects.get(id=entity_id)
+            entity = customer_model.objects.filter(pk=entity_id).first() if entity_id else None
+            if entity is None:
+                raise serializers.ValidationError({"entity_id": [_("Entity not found")]})
             if entity_model_name == "profiles.Profile":
                 if not entity.target.email:
                     raise serializers.ValidationError(
@@ -481,7 +499,7 @@ class StripeCustomerSerializer(serializers.Serializer):
             )
         customer = Customer.objects.create(
             entity=entity,
-            remote_customer_id=stripe_customer.get("id"),
+            remote_customer_id=stripe_id(stripe_customer),
         )
         return customer
 
@@ -518,7 +536,7 @@ class StripeWebhookSerializer(serializers.Serializer):
     object = serializers.CharField()
 
 
-class StripeCardSerializer(serializers.Serializer):
+class StripeCardSerializer(StripeObjectSerializer):
     brand = serializers.CharField(read_only=True)
     exp_month = serializers.IntegerField(read_only=True)
     exp_year = serializers.IntegerField(read_only=True)
@@ -526,14 +544,14 @@ class StripeCardSerializer(serializers.Serializer):
     funding = serializers.CharField(read_only=True)
 
 
-class StripeBillingDetailsSerializer(serializers.Serializer):
+class StripeBillingDetailsSerializer(StripeObjectSerializer):
     name = serializers.CharField(read_only=True)
     address = serializers.DictField(read_only=True)
     email = serializers.EmailField(read_only=True, allow_null=True)
     phone = serializers.CharField(read_only=True, allow_null=True)
 
 
-class StripePaymentMethodSerializer(serializers.Serializer):
+class StripePaymentMethodSerializer(StripeObjectSerializer):
     id = serializers.CharField(read_only=True)
     type = serializers.CharField(read_only=True)
     billing_details = StripeBillingDetailsSerializer(read_only=True)

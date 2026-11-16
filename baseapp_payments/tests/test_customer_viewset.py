@@ -11,7 +11,7 @@ from baseapp_core.graphql.utils import get_obj_relay_id
 from baseapp_core.tests.fixtures import Client
 from baseapp_core.tests.helpers import responseEquals
 from baseapp_payments.tests.factories import CustomerFactory, SubscriptionFactory
-from baseapp_payments.tests.helpers import stripe_list
+from baseapp_payments.tests.helpers import stripe_list, stripe_object
 from baseapp_profiles.tests.factories import ProfileFactory
 
 pytestmark = pytest.mark.django_db
@@ -76,6 +76,38 @@ class TestCustomerCreateView:
             entity_id=user_client.user.profile.id,
             entity_type=ContentType.objects.get_for_model(Profile),
         ).exists()
+
+
+class TestCustomerCreateWithARawPk:
+    viewname = "v1:customers-list"
+
+    @patch("baseapp_payments.serializers.StripeService.list_subscriptions")
+    @patch("baseapp_payments.views.StripeService.create_customer")
+    def test_raw_pk_entity_id_creates_the_customer(
+        self,
+        mock_create_customer: MagicMock,
+        mock_list_subscriptions: MagicMock,
+        user_client: Client,
+    ) -> None:
+        """The view accepts a raw pk; the serializer decoded it as a relay id and 500'd."""
+        mock_list_subscriptions.return_value.auto_paging_iter.return_value = []
+        mock_create_customer.return_value = stripe_object({"id": "cus_raw"})
+        response = user_client.post(
+            reverse(self.viewname),
+            data={"entity_id": str(user_client.user.profile.id)},
+        )
+        responseEquals(response, status.HTTP_201_CREATED)
+        assert Customer.objects.filter(
+            entity_id=user_client.user.profile.id, remote_customer_id="cus_raw"
+        ).exists()
+
+    def test_serializer_rejects_an_unknown_entity_instead_of_raising(self) -> None:
+        from baseapp_payments.serializers import StripeCustomerSerializer
+
+        serializer = StripeCustomerSerializer(data={"entity_id": "999999999"})
+
+        assert not serializer.is_valid()
+        assert "entity_id" in serializer.errors
 
 
 class TestCustomerMeWithoutACustomer:
