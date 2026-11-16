@@ -1,8 +1,10 @@
 from baseapp_core.rest_framework.routers import DefaultRouter
 
+from .purchases import purchases_enabled
 from .views import (
     StripeCustomerViewset,
     StripeProductViewset,
+    StripePurchaseViewset,
     StripeSubscriptionViewset,
     StripeWebhookViewset,
 )
@@ -20,3 +22,7 @@ payments_router.register(
 payments_router.register(r"stripe/customers", StripeCustomerViewset, basename="customers")
 payments_router.register(r"stripe/products", StripeProductViewset, basename="products")
 payments_router.register(r"stripe/webhooks", StripeWebhookViewset, basename="webhooks-stripe")
+# One-time purchases are optional: the route exists only when the project configured the
+# Purchase and PurchaseLine models.
+if purchases_enabled():
+    payments_router.register(r"stripe/purchases", StripePurchaseViewset, basename="purchases")
