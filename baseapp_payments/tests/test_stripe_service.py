@@ -110,6 +110,14 @@ class TestSubscriptionCalls:
             with pytest.raises(SubscriptionCreationError):
                 service.create_subscription("cus_1", "price_1")
 
+    def test_create_subscription_charges_the_chosen_card(self, service: StripeService) -> None:
+        with patch("baseapp_payments.utils.stripe.Subscription.create") as mock_create:
+            service.create_subscription("cus_1", "price_1", payment_method_id="pm_1")
+            assert mock_create.call_args.kwargs["default_payment_method"] == "pm_1"
+
+            service.create_subscription("cus_1", "price_1")
+            assert "default_payment_method" not in mock_create.call_args.kwargs
+
     def test_retrieve_unknown_subscription_is_none(self, service: StripeService) -> None:
         with patch("baseapp_payments.utils.stripe.Subscription.retrieve") as mock_retrieve:
             mock_retrieve.side_effect = Exception("No such subscription: sub_x")

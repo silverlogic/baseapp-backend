@@ -146,6 +146,38 @@ class TestSubscriptionListView:
 class TestSubscriptionCreateView:
     viewname = "v1:subscriptions-list"
 
+    @patch("baseapp_payments.views.StripeService.list_subscriptions")
+    @patch("baseapp_payments.views.StripeService.retrieve_price")
+    @patch("baseapp_payments.utils.stripe.Subscription.create")
+    def test_raw_pk_and_a_chosen_card_create_and_charge_that_card(
+        self,
+        mock_stripe_create: MagicMock,
+        mock_retrieve_price: MagicMock,
+        mock_list_subscriptions: MagicMock,
+        user_client: Client,
+    ) -> None:
+        """Two bugs on one request, both 4xx before.
+
+        A raw-pk entity_id passed the view but the serializer decoded it as a relay id and
+        answered "Customer not found."; and a payment_method_id without allow_incomplete
+        reached create_subscription(), which did not accept it.
+        """
+        mock_retrieve_price.return_value = {"id": "price_123", "product": {"id": "prod_123"}}
+        mock_list_subscriptions.return_value = stripe_list([])
+        mock_stripe_create.return_value = stripe_object({"id": "sub_raw", "status": "active"})
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        response = user_client.post(
+            reverse(self.viewname),
+            data={
+                "entity_id": str(customer.entity_id),
+                "price_id": "price_123",
+                "payment_method_id": "pm_123",
+            },
+        )
+        responseEquals(response, status.HTTP_201_CREATED)
+        assert mock_stripe_create.call_args.kwargs["default_payment_method"] == "pm_123"
+        assert Subscription.objects.filter(remote_subscription_id="sub_raw").exists()
+
     def test_anon_user_cannot_create_subscription(self, client: Client) -> None:
         response = client.post(reverse(self.viewname))
         responseEquals(response, status.HTTP_401_UNAUTHORIZED)

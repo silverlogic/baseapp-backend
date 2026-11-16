@@ -13,7 +13,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from baseapp_core.graphql import get_pk_from_relay_id
 from baseapp_core.rest_framework.decorators import action
 from baseapp_core.rest_framework.mixins import DestroyModelMixin
 
@@ -35,6 +34,7 @@ from .utils import (
     STRIPE_SUBSCRIPTION_LIST_STATUSES,
     StripeService,
     StripeWebhookHandler,
+    entity_pk_from_id,
     stripe_dict,
 )
 
@@ -57,24 +57,6 @@ def _query_flag(request: Request, name: str) -> bool:
 
 Customer = swapper.load_model("baseapp_payments", "Customer")
 Subscription = swapper.load_model("baseapp_payments", "Subscription")
-
-
-def entity_pk_from_id(value: "str | int | None") -> "str | int | None":
-    """The pk an ``entity_id`` names: a raw pk as is, a relay id decoded, else None.
-
-    A purely numeric string is a raw pk and is never decoded. Some of them are also valid
-    base64 (``"1400"``), and decoding one as a relay id yields a garbage pk instead of
-    ``""``, which used to skip the raw-pk path and 404 a real customer. A relay id is base64
-    of ``"Type:pk"`` and so is never all digits.
-    """
-    if value is None or value == "":
-        return None
-    if isinstance(value, int) or (isinstance(value, str) and value.isdigit()):
-        return value
-    try:
-        return get_pk_from_relay_id(value) or None
-    except (ValueError, TypeError):
-        return None
 
 
 class StripeSubscriptionViewset(

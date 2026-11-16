@@ -10,6 +10,8 @@ from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.http import HttpRequest, JsonResponse
 
+from baseapp_core.graphql import get_pk_from_relay_id
+
 if TYPE_CHECKING:
     from django.contrib.auth.base_user import AbstractBaseUser
 
@@ -50,6 +52,24 @@ STRIPE_SUBSCRIPTION_LIST_STATUSES = frozenset(
         "unpaid",
     }
 )
+
+
+def entity_pk_from_id(value: "str | int | None") -> "str | int | None":
+    """The pk an ``entity_id`` names: a raw pk as is, a relay id decoded, else None.
+
+    A purely numeric string is a raw pk and is never decoded. Some of them are also valid
+    base64 (``"1400"``), and decoding one as a relay id yields a garbage pk instead of
+    ``""``, which used to skip the raw-pk path and 404 a real customer. A relay id is base64
+    of ``"Type:pk"`` and so is never all digits.
+    """
+    if value is None or value == "":
+        return None
+    if isinstance(value, int) or (isinstance(value, str) and value.isdigit()):
+        return value
+    try:
+        return get_pk_from_relay_id(value) or None
+    except (ValueError, TypeError):
+        return None
 
 
 def stripe_field(
@@ -386,12 +406,20 @@ class StripeService:
             logger.exception(e)
             raise CustomerNotFound("Error deleting customer in Stripe")
 
-    def create_subscription(self, customer_id: str, price_id: str) -> "stripe.Subscription":
+    def create_subscription(
+        self, customer_id: str, price_id: str, payment_method_id: "str | None" = None
+    ) -> "stripe.Subscription":
+        """Create and charge a subscription right away.
+
+        ``payment_method_id`` becomes the subscription's default card; without it Stripe
+        charges the customer's default. The serializer passes it whenever the caller chose
+        a card, and this signature not accepting it made every such request a 400.
+        """
+        params: dict[str, Any] = {"customer": customer_id, "items": [{"price": price_id}]}
+        if payment_method_id:
+            params["default_payment_method"] = payment_method_id
         try:
-            subscription = stripe.Subscription.create(
-                customer=customer_id,
-                items=[{"price": price_id}],
-            )
+            subscription = stripe.Subscription.create(**params)
             return subscription
         except Exception as e:
             logger.exception(e)
