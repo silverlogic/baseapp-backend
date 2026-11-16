@@ -417,6 +417,7 @@ your project what deleting such an account means (anonymize it, or keep it inact
 | `CARD_HOLDS_BUFFER_PERCENT` | `10` | For `hold_amount_mode = "value_plus_buffer"` only: `held = ceil(value × (1 + buffer/100))`. |
 | `CARD_HOLDS_WINDOW_DAYS` | `4` | Days before the target's date to place a deferred hold; clamped to 1–4. |
 | `CARD_HOLDS_DEFERRAL_ENABLED` | `False` | Whether far-off targets get their hold later, off-session. Only for adapters with `uses_holds = True`. |
+| `CARD_HOLDS_MAX_RETRIES` | `3` | How many times staff may retry a failed off-session hold; `0` keeps every failed hold final. See [Retrying a failed hold](#retrying-a-failed-hold). |
 
 An adapter's `buffer_percent()` / `window_days()`, or a `buffer_percent` returned with the
 amount, override the Constance values for that target. With `hold_amount_mode = "value"` no
@@ -487,7 +488,8 @@ target). Only the target object that was locked is re-armed: a `link` that retur
 other existing target is refused. A hold that is still open (`pending`, `authorized`) or
 `captured` refuses (`refused`), and so do `failed` and `scheduled`: a failed deferred hold is
 final, and nothing (the sweep, a date or window change) re-arms it, not even once staff
-cancelled it. A hold released `rescheduled` is moved back to `scheduled` by `reschedule`
+cancelled it. Only a staff retry places it again, on the same row (see
+[Retrying a failed hold](#retrying-a-failed-hold)). A hold released `rescheduled` is moved back to `scheduled` by `reschedule`
 only. With deferral on, a far-off target's hold is re-armed `scheduled` (and a `saved` card
 `saved` again, for an adapter without holds). A release still queued for the old
 authorization only ever cancels that old PaymentIntent. A `released` hold whose cancel Stripe
@@ -980,8 +982,8 @@ made: it is replayed with its key for 23 hours after it was first sent, then rec
 | `scheduled` | The card is saved; nothing is authorized until `hold_on`. The card is in use. |
 | `saved` | `uses_holds = False`: the card is saved and nothing is ever authorized; `capture()` charges it on the date. |
 | `authorized` | Placed (on-session, or off-session by the sweep). |
-| `failed` | The off-session placement was refused. Final: never retried, never re-armed. |
-| `failed` + `kept_at` | Staff kept the target: it closes by a fresh charge. Final. |
+| `failed` | The off-session placement was refused. Final unless staff retry it (up to `CARD_HOLDS_MAX_RETRIES`); never retried on its own, never re-armed. |
+| `failed` + `kept_at` | Staff kept the target: it closes by a fresh charge. Final, never retried. |
 | `released` (`cancelled`, with `failed_at`) | Staff cancelled the target of a failed hold. |
 | `released` (`rescheduled`) | Briefly, while a placed hold moves back to `scheduled`. |
 | `released` (`not_holdable`) | Briefly, while an authorization placed for a target outside `filter_holdable` is cancelled; then back to `scheduled`. |
@@ -1007,13 +1009,15 @@ amount, with the key `{prefix}-hold-scheduled-{hold}-{attempt}-{n}` (`n`: how ma
 authorizations the row held before). Success: `authorized`, expiry from `capture_before`,
 `card_hold_authorized`.
 
-**A failed hold is final.** A decline (the bank's `decline_code` when it sends one),
+**A failed hold is final, unless staff retry it.** A decline (the bank's `decline_code` when it sends one),
 `authentication_required`, or any non-retryable Stripe error marks the hold `failed` with
 `failure_code` (GraphQL `failureReason`), sends `card_hold_failed` (`hold`, `target`) and
 calls your adapter's `notify_hold_failed(target, hold)`, after the commit. The default
 emails `staff_recipients(target)` with Django mail, one email per language: the customer,
 the target, its date and the reason. Override it to notify some other way. The customer
-isn't told (their GraphQL reads `failed` as `scheduled`), and it is never retried. No
+isn't told (their GraphQL reads `failed` as `scheduled`), and nothing retries it on its
+own: only staff do, up to `CARD_HOLDS_MAX_RETRIES` times (see
+[Retrying a failed hold](#retrying-a-failed-hold)). No
 usable answer isn't a failure: a connection error, a 5xx, a 429, a 409, and a bad or revoked
 API key (`AuthenticationError`, `PermissionError`, logged as an error so someone fixes it).
 The hold stays `scheduled` with its key and amount, no one is emailed, and the next sweep
@@ -1030,7 +1034,8 @@ to `scheduled`, deferral on or off. One whose target was deleted while its place
 the sweep with the same key and amount (reconciled past 23 hours), and whatever comes back
 is cancelled.
 
-**Staff decide a failed hold.** `keep_failed_hold(hold_id, actor)` sets `kept_at` /
+**Staff decide a failed hold.** Retry it (below), keep it or cancel it.
+`keep_failed_hold(hold_id, actor)` sets `kept_at` /
 `kept_by`: when the target closes, `capture()` charges afresh through your `charge`, once.
 Until staff decide, `capture()` of a failed hold answers `not_captured` and charges
 nothing. `cancel_failed_hold(hold_id, actor)` calls your adapter's `cancel(target, actor)`
@@ -1059,6 +1064,72 @@ deleting the target, the sweep, `release_for_charge`, or `capture()` charging in
 makes no Stripe call: it is marked released and confirmed, nothing is charged, and its
 card is no longer in use once the target is cancelled. A scheduled hold whose placement is
 under way is left to the placement, which settles it.
+
+### Retrying a failed hold
+
+Staff may place a failed deferred hold again instead of keeping or cancelling it:
+`retry_failed_hold(hold_id, actor)`, or GraphQL `cardHoldRetry(input: {id})`. It is the
+only path out of `failed` back to a placement. It places now, unless the target's window
+hasn't opened (below).
+
+- **Which holds.** Only a `failed` hold staff haven't kept or cancelled, with retries left,
+  whose target is still holdable (not cancelled, not done with the card, in
+  `filter_holdable`) and dated after today. Anything else is refused before any Stripe
+  call, with a reason (`RetryRefusal`): `not_failed`, `no_retries_left`, `date_passed`,
+  `not_holdable`, or `unavailable` (no Stripe key). Kept and cancelled holds are final.
+- **Now, or on its day.** A target whose date has moved out past the window since the
+  failure (`hold_on` = date − window still after today, with `CARD_HOLDS_DEFERRAL_ENABLED`
+  on) isn't placed now: an off-session authorization lasts under 5 days, so it would lapse
+  before the date. The retry is counted and the hold goes back to `scheduled` for its new
+  `hold_on`, with no key, and `failed_at` / `failure_code` cleared: a scheduled hold like any
+  other, which the sweep places on the day, the date changes reschedule and a cancel
+  releases (then re-armable). The answer is `scheduled`, with no Stripe call. If that
+  placement fails, it is `failed` again as any failure is: `card_hold_failed`, staff emailed,
+  and one retry fewer left. Within the window it is placed at once.
+- **The same card, a new attempt.** It is placed off-session on the hold's saved
+  PaymentMethod, for the target's price now (plus the buffer), with a new idempotency key:
+  `placement_generation` is bumped, and the failed PaymentIntent joins
+  `previous_payment_intent_ids`. Stripe never replays the failed answer, and a late
+  webhook for the old PaymentIntent never settles the new attempt.
+- **How it runs.** Like the sweep's placement: under the target's lock, then the hold's,
+  the hold is re-checked and claimed in one conditional UPDATE (back to `scheduled`, with
+  its key and amount, or with none and its new `hold_on` outside the window;
+  `retry_count` + 1, `last_retried_at`, `last_retried_by`), which commits before Stripe
+  is called. Two staff retrying at once place one attempt: the other
+  answers `in_progress`. A retry racing a cancel, keep, reschedule, the sweep or a webhook
+  leaves at most one live authorization: whichever takes the locks first wins, and the
+  others see a hold that is no longer `failed`, or one whose placement is under way. Call it
+  outside a transaction (`CardHoldInTransaction` otherwise), and keep `cardHoldRetry` out of
+  `ATOMIC_MUTATIONS` / `ATOMIC_REQUESTS`.
+- **The outcome.** `placed`: `authorized`, with `failed_at` and `failure_code` cleared;
+  from then on it is captured, released and re-armed like any authorized hold. `declined`:
+  `failed` again with the new `failure_code`, `card_hold_failed` is sent and
+  `notify_hold_failed` emails staff exactly as for the first failure. `in_progress` (no
+  usable answer): the hold stays `scheduled` with its key, and the sweep, the webhook or the
+  23-hour lookup settle it like any placement. Until then staff read its `status` as
+  `pending`; the customer reads `scheduled` throughout.
+- **The limit.** `CARD_HOLDS_MAX_RETRIES` (Constance, default `3`) caps the retries per
+  attempt chain; past it only keep and cancel remain. A placement that succeeds keeps its
+  count, but re-arming the hold (a released hold taking a new authorization on the same
+  row) starts a new chain: `retry_count`, `last_retried_at` and `last_retried_by` reset. **Set it to `0` to keep failed holds final**,
+  as before this existed (a project whose policy is that a failed hold is final must do
+  this: the default allows retries). It isn't per adapter.
+- **Deferral off.** A retry is staff's explicit decision, so it runs with
+  `CARD_HOLDS_DEFERRAL_ENABLED` off too; the limit is what turns it off. With deferral off
+  nothing waits for a window, so a retry always places now (as checkout does).
+- **Signals.** `card_hold_retried` (`hold`, `target`, `actor`) once the claim commits
+  (a scheduled retry too); then `card_hold_authorized` or `card_hold_failed`, as for any
+  placement.
+
+GraphQL: `cardHoldRetry(input: {id: ID!})` returns `{ cardHold { ... }, errors }`, gated by
+`change_cardhold` like `cardHoldKeep` / `cardHoldCancel`. A refusal is a GraphQL error
+with `extensions.code` `invalid_action` and `extensions.reason` the `RetryRefusal`. The
+outcome is the returned `cardHold.status`: `authorized`, `failed`, `pending`, or
+`scheduled` (placed on `holdOn`; a second click then is refused `not_failed`).
+`CardHold.retriesLeft` is how many retries remain: null for a hold that isn't `failed`
+(and for anyone who can't read `failureReason`), `0` once kept or out of retries. It reads
+the hold's columns and `CARD_HOLDS_MAX_RETRIES` once per request, so it costs no query
+per row.
 
 ### Background work
 
@@ -1156,7 +1227,8 @@ through it: past 23 hours it is found with the module's own Search on
 `metadata['difference_key']`, so an override can never get it charged twice.)
 
 Signals `card_hold_authorized` (`hold`, `target`), `card_hold_released` (`hold_id`),
-`card_hold_failed` (`hold`, `target`), `payment_status_changed` and
+`card_hold_failed` (`hold`, `target`), `card_hold_retried` (`hold`, `target`, `actor`;
+see [Retrying a failed hold](#retrying-a-failed-hold)), `payment_status_changed` and
 `difference_charge_failed` (see [Payment status and signals](#payment-status-and-signals))
 are sent from `baseapp_payments.signals` after the change commits.
 
@@ -1166,17 +1238,23 @@ GraphQL is optional (the `graphql` extra). With it installed and card holds enab
 
 - `CardHold` (`CardHoldObjectType`, swappable through `CardHold.get_graphql_object_type()`):
   `status`, `amountCents`, `estimatedAmountCents`, `expiresAt`, `brand`, `last4`, `holdOn`,
-  `kept`, `failureReason`, `paymentStatus`. Only the hold's customer (while active), and users granted the
+  `kept`, `failureReason`, `retriesLeft`, `canDecide`, `paymentStatus`. Only the hold's customer (while active), and users granted the
   model's `view_cardhold` permission (staff status alone is not enough), can read it, including
   through `node(id:)` and `cardHold`. Anyone without `view_cardhold` on the model (the
   customer, even a staff one) sees a `failed` hold as `scheduled`, `kept` as false and
-  `failureReason` as null. `status` reads `saved` for a card saved without a hold.
+  `failureReason` and `retriesLeft` as null; those with it see a failed hold whose retry is
+  under way as `pending`. `status` reads `saved` for a card saved without a hold.
+- `CardHold.canDecide` is whether the viewer may act on holds as staff (`cardHoldRetry`,
+  `cardHoldKeep`, `cardHoldCancel`, `cardHoldMarkPaid`): the model-level `change_cardhold`
+  grant, or a superuser. False for the customer and for `view_cardhold` alone. Hide the
+  staff panels on it. It is asked once per request, so it costs no query per row.
 - `CardHoldsInterface` adds `cardHold` to your target's ObjectType:
   `interfaces = graphql_shared_interfaces.get(RelayNode, "CardHoldsInterface")`. The field
   carries its own optimizer hook (it prefetches `document__card_hold`), so a page of
   targets costs the same queries however many rows it has, `holdOn` included (the hold's
   own stored `hold_on`, the day the sweep uses); consumers wire up nothing.
-- `cardHoldKeep` / `cardHoldCancel`: staff decisions on a failed deferred hold (above).
+- `cardHoldRetry` / `cardHoldKeep` / `cardHoldCancel`: staff decisions on a failed
+  deferred hold (above).
 - `cardHoldMarkPaid`: staff record a `partially_paid` target as paid outside the app
   (above); `change_cardhold` too, and `invalid_action` for any other hold.
 - `CardHoldPaymentInputMixin` (`paymentMethodId`, `attemptId`, `paymentIntentId`,
@@ -1186,7 +1264,7 @@ GraphQL is optional (the `graphql` extra). With it installed and card holds enab
 ### Admin
 
 `CardHoldAdmin` is registered read-only; it lists `hold_on`, whether staff kept a failed
-hold, and the failure code, and filters by status and release reason. For your target's admin,
+hold, the failure code and how many times staff retried it (`retry_count`), and filters by status and release reason. For your target's admin,
 `card_hold_admin_summary(target)` returns a line such as
 `Visa 4242 · 110.00 USD held · Authorized · expires 2030-03-17 12:00 UTC` (in the hold's own
 currency). It costs one query per call; in a `list_display` column, prefetch the holds in your

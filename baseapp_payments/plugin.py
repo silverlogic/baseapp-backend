@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING, Any
 
+from django.utils.translation import gettext_lazy as _
+
 from baseapp_core.plugins.base import BaseAppPlugin, PackageSettings
 
 if TYPE_CHECKING:
@@ -44,7 +46,8 @@ class PaymentsPlugin(BaseAppPlugin):
                 # project sharing a Stripe account its own.
                 "BASEAPP_PAYMENTS_CARD_HOLD_KEY_PREFIX": DEFAULT_CARD_HOLD_KEY_PREFIX,
             },
-            # Staff decisions on a failed deferred hold (cardHoldKeep / cardHoldCancel).
+            # Staff decisions on a failed deferred hold (cardHoldRetry / cardHoldKeep /
+            # cardHoldCancel).
             # The class is empty without a card hold model.
             graphql_mutations=[
                 "baseapp_payments.graphql.mutations.CardHoldMutations",
@@ -68,6 +71,14 @@ class PaymentsPlugin(BaseAppPlugin):
                     False,
                     "Card holds: place holds for far-off targets later, without the customer.",
                     bool,
+                ),
+                "CARD_HOLDS_MAX_RETRIES": (
+                    3,
+                    _(
+                        "Card holds: how many times staff may retry a failed off-session hold"
+                        " on the same card. 0 turns retrying off: a failed hold is final."
+                    ),
+                    int,
                 ),
             },
             # Registered for every project: these settings are built while the project's

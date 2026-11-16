@@ -27,8 +27,8 @@ A target dated further out than the window (``CARD_HOLDS_DEFERRAL_ENABLED``) get
 ``scheduled`` hold instead: the first pass saves the card with an off-session SetupIntent
 (:func:`complete_setup_on_session` is its second pass) and authorizes nothing. The sweep
 places it on its ``hold_on`` day (:func:`place_scheduled`), off-session; a refusal is
-final (``failed``) and staff decide it (:func:`keep_failed_hold`,
-:func:`cancel_failed_hold`). :func:`reschedule` follows a change of the target's date.
+final (``failed``) and staff decide it (:func:`retry_failed_hold`, up to
+``CARD_HOLDS_MAX_RETRIES`` times; :func:`keep_failed_hold`; :func:`cancel_failed_hold`). :func:`reschedule` follows a change of the target's date.
 
 Lock order, everywhere: the target's adapter ``lock()`` first, then the hold. Stripe is
 never called while a row lock is held. See "Card holds" in the package README.
@@ -60,6 +60,7 @@ from .hold_targets import (
     get_targets,
     is_cancelled,
     is_card_released,
+    max_retries,
     target_for_content_type_id,
     target_for_model,
     window_days_of,
@@ -70,6 +71,7 @@ from .signals import (
     card_hold_authorized,
     card_hold_failed,
     card_hold_released,
+    card_hold_retried,
     difference_charge_failed,
     payment_status_changed,
     send_on_commit,
@@ -1639,9 +1641,10 @@ def _holdable(adapter: HoldTarget, target: Model) -> bool:
 def _rearmable(hold: "AbstractCardHold") -> bool:
     """A ``released`` hold that may take a new authorization: not one released so the
     amount could be charged afresh (``for_charge``), nor one charged instead, nor a
-    failed deferred hold staff cancelled (``failed_at``: a failure is final), nor one
-    released only to be scheduled again (``rescheduled``, ``not_holdable``:
-    :func:`reschedule_hold` owns it).
+    failed deferred hold staff cancelled (``failed_at``: a failure is final; only
+    :func:`retry_failed_hold` takes a hold out of it, and clears it once the retry is
+    placed or scheduled for its day), nor one released only to be scheduled again
+    (``rescheduled``, ``not_holdable``: :func:`reschedule_hold` owns it).
 
     One whose cancel Stripe hasn't confirmed yet is rearmable, but not yet
     (:func:`_release_unconfirmed`): re-arming it would drop the only record of an
@@ -1738,8 +1741,8 @@ def _rearm(
     id moves over; ids stay unique). The replaced PaymentIntent and attempt ids are
     appended to ``previous_payment_intent_ids`` / ``previous_attempt_ids``, so the old
     attempt still finds its target. The placement fields are reset: card, amounts,
-    expiry, status, attempt, and the failure, release and deferred-placement claim
-    fields.
+    expiry, status, attempt, the failure, release and deferred-placement claim fields,
+    and staff's retries (``retry_count`` starts again from 0).
 
     Only ``released`` holds are re-armed, and not one released to be charged afresh
     (:func:`_rearmable`). An open hold (``pending``, ``authorized``) or a ``captured`` one
@@ -1786,6 +1789,10 @@ def _rearm(
     previous.release_reason = ""
     previous.kept_at = None
     previous.kept_by = None
+    # A new attempt chain: staff's retries of the old one don't count against it.
+    previous.retry_count = 0
+    previous.last_retried_at = None
+    previous.last_retried_by = None
     previous.charge_blocked_reason = ""
     # The old authorization's capture: the new one hasn't been asked to capture anything.
     previous.capture_sent_at = None
@@ -3988,7 +3995,8 @@ def _fail(
     code: str,
     payment_intent_id: str | None = None,
 ) -> None:
-    """Mark a locked scheduled hold ``failed`` (final), and once that commits send
+    """Mark a locked scheduled hold ``failed`` (final, unless staff retry it:
+    :func:`retry_failed_hold`), and once that commits send
     ``card_hold_failed`` and let the adapter tell staff. The customer isn't told."""
     CardHold = type(hold)
     hold.status = CardHold.Status.FAILED
@@ -4091,6 +4099,9 @@ def _settle_locked(
         hold.status = CardHold.Status.AUTHORIZED
         hold.amount_cents = stripe_field(payment_intent, "amount") or hold.amount_cents
         hold.expires_at = hold_expiry(payment_intent, OFF_SESSION_HOLD_EXPIRY_FALLBACK)
+        # A retried failed hold that is now placed is an authorized hold like any other.
+        hold.failed_at = None
+        hold.failure_code = ""
         hold.placement_claimed_at = None
         for field, value in _CLEARED_PLACEMENT.items():
             setattr(hold, field, value)
@@ -4158,7 +4169,8 @@ def place_scheduled(card_hold_id: int) -> PlacementResult | None:
     - ``declined``: refused for good (a decline, ``authentication_required``, any
       non-retryable Stripe error). The hold is ``failed`` with its ``failure_code``,
       ``card_hold_failed`` is sent and the adapter's ``notify_hold_failed`` tells staff.
-      Never retried, and the customer isn't told;
+      Never retried on its own (staff may: :func:`retry_failed_hold`), and the
+      customer isn't told;
     - ``in_progress``: no usable answer (a connection error, 5xx, 429, 409); the hold
       stays scheduled with its key, and the next sweep retries it, so Stripe replays any
       authorization it made. Only for :data:`PLACEMENT_KEY_TTL` after the key was first
@@ -4309,10 +4321,13 @@ def _track_stray(hold: "AbstractCardHold", payment_intent_id: str) -> None:
 
 def _placement_outstanding(hold: "AbstractCardHold", payment_intent: Any) -> bool:
     """Whether ``payment_intent`` can be the answer to the scheduled hold's placement in
-    flight: its key unsettled, and the amount and currency it was sent with."""
+    flight: its key unsettled, and the amount and currency it was sent with. Never one
+    the row held before (a retried hold's failed placement, say): an old answer must not
+    settle the new attempt."""
     return (
         hold.status == type(hold).Status.SCHEDULED
         and bool(hold.placement_key)
+        and stripe_id(payment_intent) not in (hold.previous_payment_intent_ids or [])
         and stripe_field(payment_intent, "amount") == hold.placement_amount_cents
         and stripe_field(payment_intent, "currency") == hold.currency
     )
@@ -4657,6 +4672,237 @@ def cancel_failed_hold(card_hold_id: int, actor: "AbstractBaseUser | None" = Non
         send_on_commit(card_hold_released, hold_id=hold.pk)
 
     return _decide_failed(card_hold_id, cancel, needs_adapter=True)
+
+
+# --- Retrying a failed hold -------------------------------------------------------------
+
+
+class RetryRefusal(str, enum.Enum):
+    """Why :func:`retry_failed_hold` placed nothing (no Stripe call was made).
+
+    - ``not_failed``: the hold isn't ``failed``, or staff kept or cancelled it;
+    - ``no_retries_left``: ``CARD_HOLDS_MAX_RETRIES`` reached (or set to 0);
+    - ``date_passed``: the target has no date after today: charge it directly;
+    - ``not_holdable``: the target is gone, cancelled, done with the card, outside
+      ``filter_holdable``, of a model no longer registered, or priced at nothing;
+    - ``unavailable``: no Stripe key is configured.
+    """
+
+    NOT_FAILED = "not_failed"
+    NO_RETRIES_LEFT = "no_retries_left"
+    DATE_PASSED = "date_passed"
+    NOT_HOLDABLE = "not_holdable"
+    UNAVAILABLE = "unavailable"
+
+
+@dataclass
+class RetryResult(PlacementResult):
+    """A :class:`PlacementResult` with why a retry was refused (``refusal``, with status
+    ``refused``); ``None`` when the retry was placed, failed again, is in progress or
+    was scheduled for later."""
+
+    refusal: RetryRefusal | None = None
+
+
+def retries_left(hold: "AbstractCardHold", limit: int | None = None) -> int | None:
+    """How many more times staff may retry ``hold``: ``None`` for a hold that isn't
+    ``failed``, 0 for one staff kept. From its columns and ``limit`` (default
+    ``CARD_HOLDS_MAX_RETRIES``); no query."""
+    if hold.status != type(hold).Status.FAILED:
+        return None
+    if hold.kept_at is not None:
+        return 0
+    if limit is None:
+        limit = max_retries()
+    return max(limit - hold.retry_count, 0)
+
+
+def _refused(refusal: RetryRefusal, **kwargs: Any) -> RetryResult:
+    return RetryResult(PlacementStatus.REFUSED, refusal=refusal, **kwargs)
+
+
+def _retry_not_failed(card_hold_id: int) -> RetryResult:
+    """The answer for a hold that was no longer an undecided failed one when a retry
+    looked: ``in_progress`` while a retry of it is being placed (another staff member's
+    click won), ``refused`` otherwise."""
+    CardHold = _holds()
+    hold = CardHold.objects.filter(pk=card_hold_id).first()
+    if (
+        hold is not None
+        and hold.status == CardHold.Status.SCHEDULED
+        and hold.failed_at is not None
+        and hold.placement_key
+    ):
+        return RetryResult(PlacementStatus.IN_PROGRESS, hold=hold)
+    return _refused(RetryRefusal.NOT_FAILED, hold=hold)
+
+
+def _claim_retry(
+    card_hold_id: int, actor: "AbstractBaseUser | None"
+) -> "_PlacementClaim | RetryResult":
+    """Under the target's lock, then the hold's: re-check a failed hold may be retried,
+    price its target now, and claim the retry in one conditional UPDATE, committed
+    before Stripe is called.
+
+    The claim counts the retry and records who asked, bumps ``placement_generation``
+    and moves the failed PaymentIntent into ``previous_payment_intent_ids``, so any later
+    placement has a new key and the old answer never settles it. Then:
+
+    - a target whose window hasn't opened (:func:`deferred_hold_on`) goes back to
+      ``scheduled`` for its new ``hold_on``, with no key, ``failed_at`` and
+      ``failure_code`` cleared: a scheduled hold like any other, which the sweep places
+      on the day (``scheduled``, answered here; Stripe isn't called);
+    - otherwise it goes back to ``scheduled`` with a new key and amount, its placement
+      in flight, so the sweep, the webhook and the lookup settle it as they settle any.
+      Its ``failed_at`` and ``failure_code`` stay until it is authorized."""
+    CardHold = _holds()
+    undecided = {"status": CardHold.Status.FAILED, "kept_at__isnull": True}
+    seen = _seen(card_hold_id, **undecided)
+    if seen is None:
+        return _retry_not_failed(card_hold_id)
+    registered = _registered(seen)
+    if registered is None:
+        return _refused(RetryRefusal.NOT_HOLDABLE, hold=seen)
+    adapter = registered[1]
+    limit = max_retries()
+    now = timezone.now()
+    hold_on = None
+    with transaction.atomic():
+        target, hold = _lock_target_and_hold(seen, adapter, **undecided)
+        if hold is None:
+            claimed = None
+        elif hold.retry_count >= limit:
+            return _refused(RetryRefusal.NO_RETRIES_LEFT, target=target, hold=hold)
+        elif _why_not_holdable(adapter, target) is not None:
+            return _refused(RetryRefusal.NOT_HOLDABLE, target=target, hold=hold)
+        elif not charged_later(adapter, target):
+            return _refused(RetryRefusal.DATE_PASSED, target=target, hold=hold)
+        else:
+            hold_on = deferred_hold_on(adapter, target)
+            claimed = _write_retry_claim(hold, adapter, target, actor, now, hold_on)
+            if claimed is not None and not isinstance(claimed, RetryResult):
+                send_on_commit(card_hold_retried, hold=claimed, target=target, actor=actor)
+    if claimed is None:
+        return _retry_not_failed(card_hold_id)
+    if isinstance(claimed, RetryResult):
+        return claimed
+    if hold_on is not None:
+        return RetryResult(PlacementStatus.SCHEDULED, target=target, hold=claimed)
+    return _PlacementClaim(hold=claimed, adapter=adapter, claimed_at=now)
+
+
+def _write_retry_claim(
+    hold: "AbstractCardHold",
+    adapter: HoldTarget,
+    target: Model,
+    actor: "AbstractBaseUser | None",
+    now: datetime.datetime,
+    hold_on: datetime.date | None,
+) -> "AbstractCardHold | RetryResult | None":
+    """Inside :func:`_claim_retry`'s locks: the retry's conditional UPDATE. With a
+    ``hold_on`` (the window hasn't opened) the hold is scheduled for that day with no
+    placement; without one, its placement is claimed now. The claimed hold, a refusal
+    (nothing to hold), or ``None`` when the row changed meanwhile."""
+    CardHold = type(hold)
+    estimated, buffer, amount = price(adapter, target, _card_of_hold(hold))
+    if amount <= 0:
+        return _refused(RetryRefusal.NOT_HOLDABLE, target=target, hold=hold)
+    history = list(hold.previous_payment_intent_ids or [])
+    if hold.stripe_payment_intent_id:
+        history.append(hold.stripe_payment_intent_id)
+    retry_count = hold.retry_count
+    hold.previous_payment_intent_ids = history
+    hold.placement_generation += 1
+    if hold_on is not None:
+        # Placed later by the sweep, which then keys it from the bumped generation.
+        placement: dict[str, Any] = {
+            "hold_on": hold_on,
+            "failed_at": None,
+            "failure_code": "",
+            "placement_claimed_at": None,
+            **_CLEARED_PLACEMENT,
+        }
+    else:
+        placement = {
+            "placement_key": scheduled_idempotency_key(hold),
+            "placement_amount_cents": amount,
+            "placement_sent_at": now,
+            "placement_claimed_at": now,
+        }
+    claimed = CardHold.objects.filter(
+        pk=hold.pk,
+        status=CardHold.Status.FAILED,
+        kept_at__isnull=True,
+        retry_count=retry_count,
+    ).update(
+        status=CardHold.Status.SCHEDULED,
+        retry_count=F("retry_count") + 1,
+        last_retried_at=now,
+        last_retried_by=actor if getattr(actor, "is_authenticated", False) else None,
+        previous_payment_intent_ids=history,
+        stripe_payment_intent_id=None,
+        placement_generation=hold.placement_generation,
+        estimated_amount_cents=estimated,
+        buffer_percent=buffer,
+        amount_cents=amount,
+        modified=now,
+        **placement,
+    )
+    if not claimed:
+        return None
+    hold.refresh_from_db()
+    if hold_on is not None:
+        logger.info(
+            "Card hold %s: retry %s of its failed placement scheduled for %s",
+            hold.pk,
+            hold.retry_count,
+            hold_on,
+        )
+    else:
+        logger.info("Card hold %s: retry %s of its failed placement", hold.pk, hold.retry_count)
+    return hold
+
+
+def retry_failed_hold(card_hold_id: int, actor: "AbstractBaseUser | None" = None) -> RetryResult:
+    """Staff retry a failed off-session hold on the same saved card, as a new attempt
+    with a new idempotency key (Stripe never replays the failed answer).
+
+    Only a ``failed`` hold staff haven't kept or cancelled, with retries left
+    (``CARD_HOLDS_MAX_RETRIES``, default 3; 0 keeps failed holds final), whose target is
+    still holdable and dated after today. Each is re-checked under the target's lock,
+    then the hold's, and the claim (:func:`_claim_retry`) commits before Stripe is
+    called, so two staff retrying at once place one attempt: the other answers
+    ``in_progress`` (or ``refused`` once the first was scheduled).
+
+    A target whose window hasn't opened yet (its date moved out since the failure, with
+    ``CARD_HOLDS_DEFERRAL_ENABLED`` on) isn't placed now, as its authorization would
+    lapse before the date: the hold is ``scheduled`` again for its new ``hold_on``
+    (``scheduled``; no Stripe call), the retry counted, and the sweep places it on the
+    day like any scheduled hold. A failure then is ``failed`` again, staff are told,
+    and one retry fewer is left. Otherwise it is placed now, as the sweep places a
+    scheduled hold:
+
+    - ``placed``: ``authorized``, ``failed_at`` and ``failure_code`` cleared; from here it
+      is captured, released and re-armed like any authorized hold;
+    - ``declined``: ``failed`` again, with the new ``failure_code``;
+      ``card_hold_failed`` is sent and the adapter's ``notify_hold_failed`` tells staff;
+    - ``in_progress``: no usable answer; the hold stays ``scheduled`` with its key, and
+      the sweep, the webhook or the lookup settle it like any placement;
+    - ``refused``: the target can't take it any more (its authorization released);
+      or nothing was claimed and Stripe wasn't called (``refusal`` says why).
+
+    ``card_hold_retried`` is sent once the claim commits. Raises
+    :class:`CardHoldInTransaction` inside a transaction.
+    """
+    _ensure_outside_transaction()
+    if not utils.stripe_configured():
+        return _refused(RetryRefusal.UNAVAILABLE)
+    claim = _claim_retry(card_hold_id, actor)
+    if isinstance(claim, RetryResult):
+        return claim
+    payment_intent, error = _create_off_session(claim.hold)
+    settled = _settle_placement(claim, payment_intent, error)
+    return RetryResult(settled.status, target=settled.target, hold=settled.hold)
 
 
 # --- A change of date -------------------------------------------------------------------

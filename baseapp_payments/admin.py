@@ -98,6 +98,7 @@ class CardHoldAdmin(admin.ModelAdmin):
         "hold_on",
         "kept",
         "failure_code",
+        "retry_count",
         "expires_at",
         "created",
     )

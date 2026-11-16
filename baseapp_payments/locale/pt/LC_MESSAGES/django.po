@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-12 19:45+0000\n"
+"POT-Creation-Date: 2026-11-16 15:15+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -112,6 +112,30 @@ msgstr "Você não tem permissão para realizar esta ação"
 msgid "Only a failed card hold that wasn't kept can be decided."
 msgstr ""
 "Só é possível decidir sobre uma retenção no cartão com falha que não foi "
+"mantida."
+
+#: graphql/mutations.py
+msgid "This card hold has no retries left. Keep it or cancel it."
+msgstr ""
+"Esta retenção no cartão não tem mais novas tentativas. Mantenha-a ou cancele-"
+"a."
+
+#: graphql/mutations.py
+msgid "The target's date has come, so it can't take a hold any more."
+msgstr "A data do destino já chegou, então ele não pode mais ter uma retenção."
+
+#: graphql/mutations.py
+msgid "The target can't take a hold any more."
+msgstr "O destino não pode mais ter uma retenção."
+
+#: graphql/mutations.py
+msgid "Card holds can't be placed right now."
+msgstr "As retenções no cartão não podem ser feitas agora."
+
+#: graphql/mutations.py
+msgid "Only a failed card hold that wasn't kept can be retried."
+msgstr ""
+"Só é possível tentar novamente uma retenção no cartão com falha que não foi "
 "mantida."
 
 #: graphql/mutations.py
@@ -350,6 +374,18 @@ msgid "kept by"
 msgstr "mantida por"
 
 #: models.py
+msgid "retry count"
+msgstr "número de novas tentativas"
+
+#: models.py
+msgid "last retried at"
+msgstr "última nova tentativa em"
+
+#: models.py
+msgid "last retried by"
+msgstr "última nova tentativa por"
+
+#: models.py
 msgid "placement key"
 msgstr "chave de colocação"
 
@@ -504,6 +540,15 @@ msgstr "retenção no cartão"
 #: models.py
 msgid "card holds"
 msgstr "retenções no cartão"
+
+#: plugin.py
+msgid ""
+"Card holds: how many times staff may retry a failed off-session hold on the "
+"same card. 0 turns retrying off: a failed hold is final."
+msgstr ""
+"Retenções no cartão: quantas vezes a equipe pode tentar novamente uma "
+"retenção fora de sessão com falha, no mesmo cartão. 0 desativa as novas "
+"tentativas: uma retenção com falha é definitiva."
 
 #: serializers.py
 msgid "Stripe price ID"

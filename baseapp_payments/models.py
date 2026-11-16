@@ -209,9 +209,11 @@ class AbstractCardHold(RelayModel, TimeStampedModel):
     Holds placed later, without the customer present (``CARD_HOLDS_DEFERRAL_ENABLED``):
     a target dated further out than the window gets a ``scheduled`` hold, with the card
     saved (a SetupIntent) and nothing authorized until ``hold_on``. The sweep then places
-    it off-session: ``authorized``, or ``failed`` when Stripe refuses, which is final.
-    Staff decide a failed hold: kept (``kept_at``; the target closes by a fresh charge)
-    or cancelled (``released``, the target cancelled through its adapter).
+    it off-session: ``authorized``, or ``failed`` when Stripe refuses, which is final
+    unless staff retry it (``retry_count``, up to ``CARD_HOLDS_MAX_RETRIES``). Staff
+    decide a failed hold: retried (a new off-session placement on the same card), kept
+    (``kept_at``; the target closes by a fresh charge) or cancelled (``released``, the
+    target cancelled through its adapter).
     """
 
     class Status(models.TextChoices):
@@ -335,6 +337,18 @@ class AbstractCardHold(RelayModel, TimeStampedModel):
         on_delete=models.SET_NULL,
         related_name="kept_card_holds",
         verbose_name=_("kept by"),
+        null=True,
+        blank=True,
+    )
+    # Staff retried the failed off-session placement (``retry_failed_hold``): how many
+    # times, the last time and who. Capped by ``CARD_HOLDS_MAX_RETRIES``.
+    retry_count = models.PositiveSmallIntegerField(_("retry count"), default=0)
+    last_retried_at = models.DateTimeField(_("last retried at"), null=True, blank=True)
+    last_retried_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="retried_card_holds",
+        verbose_name=_("last retried by"),
         null=True,
         blank=True,
     )

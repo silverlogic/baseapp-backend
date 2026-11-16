@@ -1,7 +1,7 @@
-"""Staff decisions on a card hold: keep or cancel the target of a failed deferred hold,
-or mark a partially paid target paid outside the app.
+"""Staff decisions on a card hold: retry a failed deferred hold, keep or cancel its
+target, or mark a partially paid target paid outside the app.
 
-All three need ``change_cardhold`` on the hold (a model-level grant: the hold's own customer
+All four need ``change_cardhold`` on the hold (a model-level grant: the hold's own customer
 never has it; see ``permissions.can_decide_card_hold``). Registered by the plugin; without
 a card hold model ``CardHoldMutations`` adds nothing.
 """
@@ -77,10 +77,55 @@ class CardHoldDecisionMixin:
         return cls(card_hold=hold)
 
 
+def _retry_refused(refusal: Any) -> GraphQLError:
+    """The error for a retry that placed nothing; ``extensions.reason`` says why."""
+    messages = {
+        "no_retries_left": _("This card hold has no retries left. Keep it or cancel it."),
+        "date_passed": _("The target's date has come, so it can't take a hold any more."),
+        "not_holdable": _("The target can't take a hold any more."),
+        "unavailable": _("Card holds can't be placed right now."),
+    }
+    reason = getattr(refusal, "value", refusal)
+    message = messages.get(reason, _("Only a failed card hold that wasn't kept can be retried."))
+    return GraphQLError(str(message), extensions={"code": "invalid_action", "reason": reason})
+
+
 if card_holds_enabled():
-    from ..holds import cancel_failed_hold, keep_failed_hold, mark_paid_outside
+    from ..holds import (
+        cancel_failed_hold,
+        keep_failed_hold,
+        mark_paid_outside,
+        retry_failed_hold,
+    )
 
     CardHoldObjectType = get_object_type_for_model(get_card_hold_model())
+
+    class CardHoldRetry(RelayMutation):
+        """Retry a failed deferred hold on the same saved card, as a new off-session
+        attempt. The returned cardHold.status is the outcome: authorized; failed (staff
+        are told again, one retry fewer is left); pending (no answer from Stripe yet,
+        settled later); or scheduled (the target's date moved past the hold window, so it
+        is placed on holdOn, like any scheduled hold). Refused with an invalid_action
+        error whose extensions.reason says why (not_failed, no_retries_left, date_passed,
+        not_holdable or unavailable): a hold that isn't failed, was kept or cancelled,
+        has no retries left, or whose target can't take a hold. Needs change_cardhold."""
+
+        card_hold = graphene.Field(CardHoldObjectType)
+
+        class Input:
+            id = graphene.ID(required=True, description="The failed card hold.")
+
+        @classmethod
+        @login_required
+        def mutate_and_get_payload(
+            cls, root: Any, info: graphene.ResolveInfo, **input: Any
+        ) -> "CardHoldRetry":
+            hold = _decided_hold(info, input["id"])
+            result = retry_failed_hold(hold.pk, info.context.user)
+            if result.refusal is not None:
+                raise _retry_refused(result.refusal)
+            hold.refresh_from_db()
+            return cls(card_hold=hold)
 
     class CardHoldKeep(CardHoldDecisionMixin, RelayMutation):
         """Keep the target of a failed deferred hold: it closes later by a fresh charge
@@ -134,6 +179,7 @@ if card_holds_enabled():
             )
 
     class CardHoldMutations:
+        card_hold_retry = CardHoldRetry.Field()
         card_hold_keep = CardHoldKeep.Field()
         card_hold_cancel = CardHoldCancel.Field()
         card_hold_mark_paid = CardHoldMarkPaid.Field()

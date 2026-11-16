@@ -42,6 +42,8 @@ DEFAULT_BUFFER_PERCENT = Decimal("10")
 MIN_WINDOW_DAYS = 1
 MAX_WINDOW_DAYS = 4
 DEFAULT_WINDOW_DAYS = MAX_WINDOW_DAYS
+# How many times staff may retry a failed off-session hold (CARD_HOLDS_MAX_RETRIES).
+DEFAULT_MAX_RETRIES = 3
 
 
 class HoldAmountMode(str, enum.Enum):
@@ -74,6 +76,12 @@ def default_window_days() -> int:
     """``CARD_HOLDS_WINDOW_DAYS``, clamped to 1–4 days."""
     value = int(_constance("CARD_HOLDS_WINDOW_DAYS", DEFAULT_WINDOW_DAYS))
     return min(max(value, MIN_WINDOW_DAYS), MAX_WINDOW_DAYS)
+
+
+def max_retries() -> int:
+    """``CARD_HOLDS_MAX_RETRIES``, never negative: how many times staff may retry a failed
+    off-session hold. 0 keeps every failed hold final."""
+    return max(int(_constance("CARD_HOLDS_MAX_RETRIES", DEFAULT_MAX_RETRIES)), 0)
 
 
 def deferral_enabled() -> bool:

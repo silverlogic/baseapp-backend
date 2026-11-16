@@ -14,6 +14,10 @@ card_hold_released = Signal()
 # Sent when a deferred hold fails to be placed (final), after the commit. Arguments:
 # ``hold`` (the CardHold, with ``failure_code``) and ``target``.
 card_hold_failed = Signal()
+# Sent when staff retry a failed hold, once the retry's claim commits and before Stripe is
+# called. Arguments: ``hold``, ``target`` and ``actor``. Its outcome follows as
+# ``card_hold_authorized`` or ``card_hold_failed``, like any off-session placement.
+card_hold_retried = Signal()
 # Sent when a hold's ``payment_status`` changes (unpaid, paid, partially_paid), once per
 # change, after the commit. Arguments: ``hold``, ``target``, ``previous`` and
 # ``payment_status``. Mirror it onto your own record here.
