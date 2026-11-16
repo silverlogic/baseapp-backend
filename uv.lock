@@ -505,8 +505,8 @@ requires-dist = [
     { name = "firebase-admin", marker = "extra == 'notifications'", specifier = ">=6.5.0" },
     { name = "graphene", marker = "extra == 'graphql'", git = "https://github.com/silverlogic/graphene?rev=88e5a7dd6a85c6241a06d2bf208ca187607eff37" },
     { name = "graphene-django", marker = "extra == 'graphql'", specifier = ">=3.2.0" },
-    { name = "graphene-django-optimizer", marker = "extra == 'graphql'", git = "https://github.com/silverlogic/graphene-django-optimizer?rev=d9620b74785ad0604796d02b77b9961825323cd1" },
-    { name = "graphene-django-query-optimizer", marker = "extra == 'graphql'", git = "https://github.com/silverlogic/graphene-django-query-optimizer?rev=a60548ab07d61d0539312f43e8bf53f351565984" },
+    { name = "graphene-django-optimizer", marker = "extra == 'graphql'", git = "https://github.com/silverlogic/graphene-django-optimizer?rev=018d60079a373e17bbbde69068c2bba6bd348087" },
+    { name = "graphene-django-query-optimizer", marker = "extra == 'graphql'", git = "https://github.com/silverlogic/graphene-django-query-optimizer?rev=6568299d63acad89800e6b90f1c328edb856b6fb" },
     { name = "graphene-file-upload", marker = "extra == 'graphql'", specifier = "==1.3.0" },
     { name = "graphql-core", marker = "extra == 'graphql'", specifier = ">=3.3.2" },
     { name = "graphql-relay", marker = "extra == 'graphql'", git = "https://github.com/silverlogic/graphql-relay-py?rev=12f067ab63c28e2a60208fe739cca730d88a1e62" },
@@ -2106,12 +2106,12 @@ wheels = [
 [[package]]
 name = "graphene-django-optimizer"
 version = "0.10.0"
-source = { git = "https://github.com/silverlogic/graphene-django-optimizer?rev=d9620b74785ad0604796d02b77b9961825323cd1#d9620b74785ad0604796d02b77b9961825323cd1" }
+source = { git = "https://github.com/silverlogic/graphene-django-optimizer?rev=018d60079a373e17bbbde69068c2bba6bd348087#018d60079a373e17bbbde69068c2bba6bd348087" }
 
 [[package]]
 name = "graphene-django-query-optimizer"
 version = "0.11.1"
-source = { git = "https://github.com/silverlogic/graphene-django-query-optimizer?rev=a60548ab07d61d0539312f43e8bf53f351565984#a60548ab07d61d0539312f43e8bf53f351565984" }
+source = { git = "https://github.com/silverlogic/graphene-django-query-optimizer?rev=6568299d63acad89800e6b90f1c328edb856b6fb#6568299d63acad89800e6b90f1c328edb856b6fb" }
 dependencies = [
     { name = "django" },
     { name = "django-settings-holder" },
