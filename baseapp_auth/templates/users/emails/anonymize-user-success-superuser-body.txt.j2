@@ -1,9 +1,9 @@
 {% extends 'emails/base.txt.j2' %}
 
 {% block content %}
-{% trans %}Hello Superusers,{% endtrans %}
+{{ _("Hello Superusers,") }}
 
-{% trans %}Please be notified that the account for {{ user_email }} has been successfully anonymized.{% endtrans %}
+{{ _("Please be notified that the account for %(user_email)s has been successfully anonymized.", user_email=user_email) }}
 
-{% trans %}If this was unexpected, please contact our support team.{% endtrans %}
+{{ _("If this was unexpected, please contact our support team.") }}
 {% endblock %}

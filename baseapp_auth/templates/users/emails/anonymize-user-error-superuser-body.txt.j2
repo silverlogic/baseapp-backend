@@ -1,9 +1,9 @@
 {% extends 'emails/base.txt.j2' %}
 
 {% block content %}
-{% trans %}Hello,{% endtrans %}
+{{ _("Hello,") }}
 
-{% trans %}We were unable to fully anonymize your account due to an unexpected error. Some personal information may remain in our system.{% endtrans %}
+{{ _("We were unable to fully anonymize your account due to an unexpected error. Some personal information may remain in our system.") }}
 
-{% trans %}Please contact our support team for assistance or more information.{% endtrans %}
+{{ _("Please contact our support team for assistance or more information.") }}
 {% endblock %}

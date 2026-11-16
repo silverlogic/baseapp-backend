@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 import swapper
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline, GenericTabularInline
+from django.utils.translation import gettext_lazy as _
 from translated_fields import TranslatedFieldAdmin
 
 from baseapp_core.admin_helpers import ModelAdmin, StackedInline, TabularInline
@@ -27,7 +28,7 @@ class URLPathAdmin(ModelAdmin):
     list_display = ("id", "path", "language", "is_active", "view_target", "created")
     list_filter = ("target_content_type", "language", "is_active")
 
-    @admin.display(description="target")
+    @admin.display(description=_("target"))
     def view_target(self, obj) -> "Model | str":
         try:
             return obj.target if obj.target else "-"

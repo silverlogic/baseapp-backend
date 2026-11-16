@@ -1,0 +1,33 @@
+id: django-translation-no-fstring-in-gettext
+valid:
+  - |
+    message = _("Welcome %(name)s!") % {"name": user.name}
+  - |
+    message = _("Welcome {name}!").format(name=user.name)
+  - |
+    message = gettext("Hello")
+  - |
+    message = ngettext("%d item", "%d items", count) % count
+  - |
+    label = _("Status")
+  - |
+    message = _("a very long sentence that is " "split across two literals")
+  - |
+    title = f"Group #{group}"
+invalid:
+  - |
+    message = _(f"Welcome {user.name}!")
+  - |
+    message = gettext(f"Welcome {user.name}!")
+  - |
+    message = gettext_lazy(f"Hello {name}")
+  - |
+    message = _("Welcome %(name)s!" % {"name": user.name})
+  - |
+    message = _("Welcome {name}!".format(name=user.name))
+  - |
+    message = _("Welcome " + user.name)
+  - |
+    message = ngettext(f"{count} item", f"{count} items", count)
+  - |
+    message = _("prefix " f"{value}")

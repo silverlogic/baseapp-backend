@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 
 
 class AbstractFollowableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
-    followers_count = models.PositiveIntegerField(default=0, editable=False)
-    following_count = models.PositiveIntegerField(default=0, editable=False)
+    followers_count = models.PositiveIntegerField(_("followers count"), default=0, editable=False)
+    following_count = models.PositiveIntegerField(_("following count"), default=0, editable=False)
 
     class Meta:
         abstract = True
@@ -73,7 +73,7 @@ class AbstractFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
         on_delete=models.CASCADE,
     )
 
-    target_is_following_back = models.BooleanField(default=False)
+    target_is_following_back = models.BooleanField(_("target is following back"), default=False)
 
     target = models.ForeignKey(
         DocumentId,
@@ -86,6 +86,8 @@ class AbstractFollow(DocumentIdMixin, RelayModel, TimeStampedModel):
         abstract = True
         swappable = swapper.swappable_setting("baseapp_follows", "Follow")
         unique_together = [("actor", "target")]
+        verbose_name = _("follow")
+        verbose_name_plural = _("follows")
 
     def __str__(self) -> str:
         return "{} followed {}".format(self.actor, self.target)

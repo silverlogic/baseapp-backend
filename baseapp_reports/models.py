@@ -36,15 +36,17 @@ def default_reports_count_full() -> dict[str, int]:
 
 
 class AbstractReportType(DocumentIdMixin, RelayModel, TimeStampedModel):
-    key = models.CharField(max_length=255, unique=True)
-    label = models.CharField(max_length=255)
+    key = models.CharField(_("key"), max_length=255, unique=True)
+    label = models.CharField(_("label"), max_length=255)
     content_types = models.ManyToManyField(
         ContentType,
+        verbose_name=_("content types"),
         blank=True,
         related_name="report_types",
     )
     parent_type = models.ForeignKey(
         swapper.get_model_name("baseapp_reports", "ReportType"),
+        verbose_name=_("parent type"),
         blank=True,
         null=True,
         on_delete=models.SET_NULL,
@@ -54,6 +56,8 @@ class AbstractReportType(DocumentIdMixin, RelayModel, TimeStampedModel):
     class Meta:
         abstract = True
         swappable = swapper.swappable_setting("baseapp_reports", "ReportType")
+        verbose_name = _("report type")
+        verbose_name_plural = _("report types")
 
     def __str__(self) -> str:
         return self.label
@@ -68,22 +72,26 @@ class AbstractReportType(DocumentIdMixin, RelayModel, TimeStampedModel):
 class AbstractReport(DocumentIdTargetMixin, DocumentIdMixin, RelayModel, TimeStampedModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
+        verbose_name=_("user"),
         related_name="reports",
         on_delete=models.CASCADE,
     )
     report_type = models.ForeignKey(
         swapper.get_model_name("baseapp_reports", "ReportType"),
+        verbose_name=_("report type"),
         related_name="reports",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
     )
-    report_subject = models.TextField(blank=True, null=True)
+    report_subject = models.TextField(_("report subject"), blank=True, null=True)
 
     class Meta:
         abstract = True
         swappable = swapper.swappable_setting("baseapp_reports", "Report")
         unique_together = [["user", "target_document"]]
+        verbose_name = _("report")
+        verbose_name_plural = _("reports")
 
     def __str__(self) -> str:
         return "Report (%s) #%s by %s" % (

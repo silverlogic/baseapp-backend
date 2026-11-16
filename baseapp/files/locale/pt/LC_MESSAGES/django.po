@@ -1,0 +1,384 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-29 20:43+0000\n"
+"PO-Revision-Date: 2026-10-12 15:10+0000\n"
+"Last-Translator: BaseApp i18n <dev@tsl.io>\n"
+"Language-Team: Portuguese (Brazil)\n"
+"Language: pt\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: apps.py
+msgid "BaseApp Files"
+msgstr "BaseApp Arquivos"
+
+#: graphql/mutations.py
+msgid "At least one file must be provided"
+msgstr "Pelo menos um arquivo deve ser fornecido"
+
+#: graphql/mutations.py
+msgid "Target object not found"
+msgstr "Objeto alvo não encontrado"
+
+#: graphql/mutations.py
+msgid "This object does not support file attachments"
+msgstr "Este objeto não suporta anexos de arquivo"
+
+#: graphql/mutations.py
+msgid "Files are not enabled for this target"
+msgstr "Arquivos não estão habilitados para este alvo"
+
+#: graphql/mutations.py
+msgid "You don't have permission to attach files to this object"
+msgstr "Você não tem permissão para anexar arquivos a este objeto"
+
+#: graphql/mutations.py
+#, python-brace-format
+msgid "File not found: {file_id}"
+msgstr "Arquivo não encontrado: {file_id}"
+
+#: graphql/mutations.py
+msgid "You don't have permission to attach this file"
+msgstr "Você não tem permissão para anexar este arquivo"
+
+#: graphql/mutations.py
+#, python-brace-format
+msgid "File {file_name} is already attached to another object"
+msgstr "O arquivo {file_name} já está anexado a outro objeto"
+
+#: graphql/mutations.py graphql/utils.py
+msgid "You don't have permission to perform this action"
+msgstr "Você não tem permissão para realizar esta ação"
+
+#: graphql/utils.py
+msgid "One or more files could not be found"
+msgstr "Um ou mais arquivos não foram encontrados"
+
+#: models.py
+msgid "target"
+msgstr "alvo"
+
+#: models.py
+msgid "The document this file target belongs to"
+msgstr "O documento ao qual este alvo de arquivo pertence"
+
+#: models.py
+msgid "files count"
+msgstr "quantidade de arquivos"
+
+#: models.py
+msgid "Per-content-type file counts for the target"
+msgstr "Quantidade de arquivos por tipo de conteúdo para o alvo"
+
+#: models.py
+msgid "is files enabled"
+msgstr "arquivos habilitados"
+
+#: models.py
+msgid "Whether files can be attached to the target"
+msgstr "Se arquivos podem ser anexados ao alvo"
+
+#: models.py
+msgid "file target"
+msgstr "alvo de arquivo"
+
+#: models.py
+msgid "file targets"
+msgstr "alvos de arquivo"
+
+#: models.py
+msgid "profile"
+msgstr "perfil"
+
+#: models.py
+msgid "parent"
+msgstr "pai"
+
+#: models.py
+msgid "The parent document this file belongs to"
+msgstr "O documento pai ao qual este arquivo pertence"
+
+#: models.py
+msgid "content type"
+msgstr "tipo de conteúdo"
+
+#: models.py
+msgid "MIME type of the uploaded file"
+msgstr "Tipo MIME do arquivo enviado"
+
+#: models.py
+msgid "file name"
+msgstr "nome do arquivo"
+
+#: models.py
+msgid "Original name of the uploaded file"
+msgstr "Nome original do arquivo enviado"
+
+#: models.py
+msgid "file size"
+msgstr "tamanho do arquivo"
+
+#: models.py
+msgid "File size in bytes"
+msgstr "Tamanho do arquivo em bytes"
+
+#: models.py
+msgid "file"
+msgstr "arquivo"
+
+#: models.py
+msgid "The stored file"
+msgstr "O arquivo armazenado"
+
+#: models.py
+msgid "name"
+msgstr "nome"
+
+#: models.py
+msgid "Display name for the file"
+msgstr "Nome de exibição do arquivo"
+
+#: models.py
+msgid "description"
+msgstr "descrição"
+
+#: models.py
+msgid "Optional description of the file"
+msgstr "Descrição opcional do arquivo"
+
+#: models.py
+msgid "created by"
+msgstr "criado por"
+
+#: models.py
+msgid "The user who uploaded the file"
+msgstr "O usuário que enviou o arquivo"
+
+#: models.py
+msgid "Pending Upload"
+msgstr "Upload pendente"
+
+#: models.py
+msgid "Upload in Progress"
+msgstr "Upload em andamento"
+
+#: models.py
+msgid "Upload Completed"
+msgstr "Upload concluído"
+
+#: models.py
+msgid "Upload Failed"
+msgstr "Falha no upload"
+
+#: models.py
+msgid "Upload Aborted"
+msgstr "Upload cancelado"
+
+#: models.py
+msgid "upload status"
+msgstr "status do upload"
+
+#: models.py
+msgid "Status of the file upload"
+msgstr "Status do upload do arquivo"
+
+#: models.py
+msgid "upload ID"
+msgstr "ID do upload"
+
+#: models.py
+msgid "S3 multipart upload ID for in-progress uploads"
+msgstr "ID do upload multipart do S3 para uploads em andamento"
+
+#: models.py
+msgid "upload storage name"
+msgstr "nome do armazenamento do upload"
+
+#: models.py
+msgid "Storage name the upload is written to, fixed when the upload starts"
+msgstr ""
+"Nome do armazenamento em que o upload é gravado, definido quando o upload "
+"começa"
+
+#: models.py
+msgid "total parts"
+msgstr "total de partes"
+
+#: models.py
+msgid "Total number of parts for multipart upload"
+msgstr "Número total de partes do upload multipart"
+
+#: models.py
+msgid "uploaded parts"
+msgstr "partes enviadas"
+
+#: models.py
+msgid "Tracking uploaded parts with ETags"
+msgstr "Controle das partes enviadas com ETags"
+
+#: models.py
+msgid "upload expires at"
+msgstr "upload expira em"
+
+#: models.py
+msgid "Expiration time for pending uploads"
+msgstr "Horário de expiração de uploads pendentes"
+
+#: models.py
+msgid "Files are not enabled for this object."
+msgstr "Arquivos não estão habilitados para este objeto."
+
+#: models.py
+msgid "files"
+msgstr "arquivos"
+
+#: rest_framework/files/download_views.py
+msgid "This download link has expired."
+msgstr "Este link de download expirou."
+
+#: rest_framework/files/download_views.py
+msgid "Invalid download link."
+msgstr "Link de download inválido."
+
+#: rest_framework/files/download_views.py rest_framework/files/views.py
+#: rest_framework/uploads/presigned_views.py rest_framework/uploads/views.py
+msgid "File not found"
+msgstr "Arquivo não encontrado"
+
+#: rest_framework/uploads/presigned_views.py
+#, python-format
+msgid "Cannot upload parts in status: %(status)s"
+msgstr "Não é possível enviar partes no status: %(status)s"
+
+#: rest_framework/uploads/presigned_views.py
+msgid "The active storage backend does not support presigned part uploads"
+msgstr ""
+"O backend de armazenamento ativo não suporta upload de partes com URL pré-"
+"assinada"
+
+#: rest_framework/uploads/presigned_views.py
+#, python-format
+msgid "Invalid part number. Must be between 1 and %(total)s"
+msgstr "Número de parte inválido. Deve estar entre 1 e %(total)s"
+
+#: rest_framework/uploads/presigned_views.py
+msgid "Invalid upload part request."
+msgstr "Requisição de upload de parte inválida."
+
+#: rest_framework/uploads/presigned_views.py
+msgid "Failed to upload part."
+msgstr "Falha ao enviar a parte."
+
+#: rest_framework/uploads/serializers.py
+#, python-format
+msgid "Files of type %(extension)s are not allowed."
+msgstr "Arquivos do tipo %(extension)s não são permitidos."
+
+#: rest_framework/uploads/serializers.py
+msgid "This file type is not allowed."
+msgstr "Este tipo de arquivo não é permitido."
+
+#: rest_framework/uploads/serializers.py
+#, python-format
+msgid "File is too large. The maximum size is %(max)s."
+msgstr "O arquivo é muito grande. O tamanho máximo é %(max)s."
+
+#: rest_framework/uploads/serializers.py
+msgid "Invalid parent_id: DocumentId not found"
+msgstr "parent_id inválido: DocumentId não encontrado"
+
+#: rest_framework/uploads/serializers.py
+#, python-format
+msgid "File size %(size)s doesn't match %(parts)s parts of %(part_size)s bytes"
+msgstr ""
+"O tamanho do arquivo %(size)s não corresponde a %(parts)s partes de "
+"%(part_size)s bytes"
+
+#: rest_framework/uploads/serializers.py
+msgid "Each part must have 'part_number' and 'etag'"
+msgstr "Cada parte deve ter 'part_number' e 'etag'"
+
+#: rest_framework/uploads/serializers.py
+msgid "part_number must be a positive integer"
+msgstr "part_number deve ser um inteiro positivo"
+
+#: rest_framework/uploads/serializers.py
+msgid "etag must be a non-empty string"
+msgstr "etag deve ser uma string não vazia"
+
+#: rest_framework/uploads/views.py
+msgid "You don't have permission to upload files."
+msgstr "Você não tem permissão para enviar arquivos."
+
+#: rest_framework/uploads/views.py
+msgid "Invalid upload parameters."
+msgstr "Parâmetros de upload inválidos."
+
+#: rest_framework/uploads/views.py
+msgid "Failed to initiate upload."
+msgstr "Falha ao iniciar o upload."
+
+#: rest_framework/uploads/views.py
+msgid "You don't have permission to complete this upload"
+msgstr "Você não tem permissão para concluir este upload"
+
+#: rest_framework/uploads/views.py
+msgid "Invalid or incomplete upload parts."
+msgstr "Partes do upload inválidas ou incompletas."
+
+#: rest_framework/uploads/views.py
+msgid "Failed to complete upload."
+msgstr "Falha ao concluir o upload."
+
+#: rest_framework/uploads/views.py
+msgid "You don't have permission to abort this upload"
+msgstr "Você não tem permissão para cancelar este upload"
+
+#: rest_framework/uploads/views.py
+msgid "Only an upload that hasn't completed can be aborted."
+msgstr "Só é possível cancelar um upload que ainda não foi concluído."
+
+#: rest_framework/uploads/views.py
+msgid "Failed to abort upload."
+msgstr "Falha ao cancelar o upload."
+
+#: rest_framework/utils.py
+msgid "Invalid parent: target not found."
+msgstr "Pai inválido: alvo não encontrado."
+
+#: rest_framework/utils.py
+msgid "This object does not support file attachments."
+msgstr "Este objeto não suporta anexos de arquivo."
+
+#: rest_framework/utils.py
+msgid "You don't have permission to attach files to this object."
+msgstr "Você não tem permissão para anexar arquivos a este objeto."
+
+#: tokens.py
+msgid "Missing token parameter"
+msgstr "Parâmetro token ausente"
+
+#: tokens.py
+msgid "Token has expired"
+msgstr "O token expirou"
+
+#: tokens.py
+msgid "Invalid token signature"
+msgstr "Assinatura do token inválida"
+
+#: tokens.py
+msgid "Invalid token for this file/part"
+msgstr "Token inválido para este arquivo/parte"
+
+#: tokens.py
+msgid "Token does not match the current upload session"
+msgstr "O token não corresponde à sessão de upload atual"

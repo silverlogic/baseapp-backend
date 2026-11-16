@@ -1,10 +1,11 @@
+{% load i18n %}
 <div class="space-y-6">
   <div class="mb-4">
     <input
       type="text"
       class="permission-filter w-full rounded-lg px-3 py-2 text-sm"
-      placeholder="Filter permissions…"
-      aria-label="Filter permissions"
+      placeholder="{% translate 'Filter permissions…' %}"
+      aria-label="{% translate 'Filter permissions' %}"
     >
   </div>
   <div class="grouped-permissions space-y-6">
@@ -15,7 +16,7 @@
           <input
             type="checkbox"
             class="select-all-app"
-            aria-label="Select all {{ app_label }} permissions"
+            aria-label="{% blocktranslate %}Select all {{ app_label }} permissions{% endblocktranslate %}"
             onclick="event.stopPropagation()"
             onkeydown="event.stopPropagation()"
           >
@@ -43,7 +44,7 @@
                 <input
                   type="checkbox"
                   class="select-all-model"
-                  aria-label="Select all {{ model_name }} permissions"
+                  aria-label="{% blocktranslate %}Select all {{ model_name }} permissions{% endblocktranslate %}"
                   onclick="event.stopPropagation()"
                   onkeypress="event.stopPropagation()"
                 >

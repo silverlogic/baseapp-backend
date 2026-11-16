@@ -1,4 +1,4 @@
-{% load tz %}
+{% load i18n tz %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -154,7 +154,7 @@
         <tr>
           <th>
             <div class="logo-container">
-              <img alt="logo" src="{{ LOGO_IMAGE }}" />
+              <img alt="{% translate 'Logo' %}" src="{{ LOGO_IMAGE }}" />
             </div>
           </th>
         </tr>
@@ -188,7 +188,7 @@
         <tr>
           <td>
             <div class="flex-v">
-              <span style="text-align: center">No Data</span>
+              <span style="text-align: center">{% translate "No Data" %}</span>
             </div>
           </td>
         </tr>

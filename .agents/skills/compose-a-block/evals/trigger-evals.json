@@ -18,7 +18,7 @@
   { "query": "fix the typo in the readme", "should_trigger": false },
   { "query": "add a new viewset in apps/social for the project", "should_trigger": false },
   { "query": "whats the difference between celery and rq", "should_trigger": false },
-  { "query": "reformat this file with black", "should_trigger": false },
+  { "query": "reformat this file with ruff", "should_trigger": false },
   { "query": "update the changelog for the release", "should_trigger": false },
   { "query": "add a react component for the comment list", "should_trigger": false },
   { "query": "what port is the backend running on in this worktree", "should_trigger": false }

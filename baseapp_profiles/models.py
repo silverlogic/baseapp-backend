@@ -55,7 +55,9 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
         _("banner image"), upload_to=random_name_in("profile_banner_images"), blank=True, null=True
     )
     biography = models.TextField(_("biography"), blank=True, null=True)
-    status = models.IntegerField(choices=ProfileStatus.choices, default=ProfileStatus.PUBLIC)
+    status = models.IntegerField(
+        _("status"), choices=ProfileStatus.choices, default=ProfileStatus.PUBLIC
+    )
 
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -87,6 +89,8 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
             ("use_profile", _("can use profile")),
         ]
         swappable = swapper.swappable_setting("baseapp_profiles", "Profile")
+        verbose_name = _("profile")
+        verbose_name_plural = _("profiles")
 
     def __str__(self) -> str:
         return self.name or str(self.pk)
@@ -509,9 +513,11 @@ class AbstractProfileUserRole(DocumentIdMixin, RelayModel, models.Model):
         on_delete=models.CASCADE,
         verbose_name=_("profile"),
     )
-    role = models.IntegerField(choices=ProfileRoles.choices, default=ProfileRoles.MANAGER)
+    role = models.IntegerField(
+        _("role"), choices=ProfileRoles.choices, default=ProfileRoles.MANAGER
+    )
     status = models.IntegerField(
-        choices=ProfileRoleStatus.choices, default=ProfileRoleStatus.INACTIVE
+        _("status"), choices=ProfileRoleStatus.choices, default=ProfileRoleStatus.INACTIVE
     )
 
     invited_email = models.EmailField(
@@ -551,6 +557,8 @@ class AbstractProfileUserRole(DocumentIdMixin, RelayModel, models.Model):
         abstract = True
         unique_together = [("user", "profile")]
         swappable = swapper.swappable_setting("baseapp_profiles", "ProfileUserRole")
+        verbose_name = _("profile user role")
+        verbose_name_plural = _("profile user roles")
         constraints = [
             models.UniqueConstraint(
                 fields=["profile", "invited_email"],

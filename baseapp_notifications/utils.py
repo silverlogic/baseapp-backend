@@ -7,6 +7,8 @@ from django.template.exceptions import TemplateDoesNotExist
 from django.template.loader import render_to_string
 from django.utils.text import slugify
 
+from baseapp_core.i18n import user_language
+
 
 def render_verb_template_or_default(verb, context, template_type, extension) -> str:
     try:
@@ -27,11 +29,12 @@ def render_verb_template_or_default(verb, context, template_type, extension) -> 
 def send_email_notification(to, context) -> None:
     verb = slugify(context["verb"])
 
-    subject = render_verb_template_or_default(verb, context, "subject", "txt")
-    subject = " ".join(subject.strip().split())
+    with user_language(context.get("recipient")):
+        subject = render_verb_template_or_default(verb, context, "subject", "txt")
+        subject = " ".join(subject.strip().split())
 
-    text_message = render_verb_template_or_default(verb, context, "body", "txt")
-    html_message = render_verb_template_or_default(verb, context, "body", "html")
+        text_message = render_verb_template_or_default(verb, context, "body", "txt")
+        html_message = render_verb_template_or_default(verb, context, "body", "html")
 
     send_mail(
         subject, text_message, html_message=html_message, from_email=None, recipient_list=[to]

@@ -2,3 +2,7 @@ ruleDirs:
   - .ast-grep/rules
 testConfigs:
   - testDir: .ast-grep/rule-tests
+# Jinja email templates (*.j2) are HTML for the template i18n rule.
+languageGlobs:
+  html:
+    - "*.j2"

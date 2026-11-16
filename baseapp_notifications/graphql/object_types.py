@@ -7,9 +7,8 @@ from graphene.types.generic import GenericScalar
 from graphene_django import DjangoConnectionField
 from graphene_django.filter import DjangoFilterConnectionField
 
-from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import DjangoObjectType, get_object_type_for_model
 from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.graphql import get_object_type_for_model
 
 from ..utils import can_user_receive_notification
 from .filters import NotificationFilter

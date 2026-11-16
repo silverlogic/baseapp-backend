@@ -1,5 +1,6 @@
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 
@@ -18,7 +19,7 @@ def get_content_type_by_natural_key(value) -> ContentType:
         raise serializers.ValidationError(
             {
                 "target_content_type": [
-                    "Wrong natural key, please use the format app_label.ModelName"
+                    _("Wrong natural key, please use the format app_label.ModelName")
                 ]
             }
         )
@@ -26,4 +27,4 @@ def get_content_type_by_natural_key(value) -> ContentType:
     try:
         return ContentType.objects.get_by_natural_key(app_label, model_name)
     except ContentType.DoesNotExist:
-        raise serializers.ValidationError({"target_content_type": ["Content type not found"]})
+        raise serializers.ValidationError({"target_content_type": [_("Content type not found")]})

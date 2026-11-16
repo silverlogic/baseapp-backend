@@ -8,10 +8,15 @@ from .managers import BaseAPIKeyManager
 
 class BaseAPIKey(TimeStampedModel):
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, related_name="%(class)s", on_delete=models.CASCADE
+        settings.AUTH_USER_MODEL,
+        verbose_name=_("user"),
+        related_name="%(class)s",
+        on_delete=models.CASCADE,
     )
-    name = models.CharField(max_length=256, null=False, blank=False)
-    encrypted_api_key = models.BinaryField(null=False, blank=False, default=None)
+    name = models.CharField(_("name"), max_length=256, null=False, blank=False)
+    encrypted_api_key = models.BinaryField(
+        _("encrypted API key"), null=False, blank=False, default=None
+    )
     expiry_date = models.DateTimeField(
         blank=True,
         null=True,
@@ -23,6 +28,8 @@ class BaseAPIKey(TimeStampedModel):
 
     class Meta:
         abstract = True
+        verbose_name = _("API key")
+        verbose_name_plural = _("API keys")
 
 
 class APIKey(BaseAPIKey):

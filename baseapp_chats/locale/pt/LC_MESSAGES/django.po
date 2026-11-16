@@ -1,0 +1,347 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-12 15:27+0000\n"
+"PO-Revision-Date: 2026-10-12 15:10+0000\n"
+"Last-Translator: BaseApp i18n <dev@tsl.io>\n"
+"Language-Team: Portuguese (Brazil)\n"
+"Language: pt\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: apps.py
+msgid "BaseApp Chats"
+msgstr "BaseApp Chats"
+
+#: graphql/mutations.py
+msgid "You don't have permission to send a message as this profile"
+msgstr "Você não tem permissão para enviar uma mensagem como este perfil"
+
+#: graphql/mutations.py
+msgid "You can't create a chatroom with those participants"
+msgstr "Você não pode criar uma sala de chat com esses participantes"
+
+#: graphql/mutations.py
+msgid "You need add at least one participant"
+msgstr "Você precisa adicionar pelo menos um participante"
+
+#: graphql/mutations.py
+msgid "Title is required for group chats"
+msgstr "O título é obrigatório para chats em grupo"
+
+#: graphql/mutations.py
+msgid "You don't have permission to create a room"
+msgstr "Você não tem permissão para criar uma sala"
+
+#: graphql/mutations.py
+msgid "Some participants are not valid"
+msgstr "Alguns participantes não são válidos"
+
+#: graphql/mutations.py
+msgid "This room cannot be updated"
+msgstr "Esta sala não pode ser atualizada"
+
+#: graphql/mutations.py
+msgid "You don't have permission to act as this profile"
+msgstr "Você não tem permissão para agir como este perfil"
+
+#: graphql/mutations.py
+msgid "You can't add those participants to a chatroom"
+msgstr "Você não pode adicionar esses participantes a uma sala de chat"
+
+#: graphql/mutations.py
+msgid "You don't have permission to update this room"
+msgstr "Você não tem permissão para atualizar esta sala"
+
+#: graphql/mutations.py
+msgid "Some rooms are not valid"
+msgstr "Algumas salas não são válidas"
+
+#: graphql/mutations.py
+msgid ""
+"You don't have permission to add participants to one or more of the selected "
+"rooms"
+msgstr ""
+"Você não tem permissão para adicionar participantes a uma ou mais das salas "
+"selecionadas"
+
+#: graphql/mutations.py
+msgid "This profile is not valid"
+msgstr "Este perfil não é válido"
+
+#: graphql/mutations.py
+msgid "You can't add this participant to a chatroom"
+msgstr "Você não pode adicionar este participante a uma sala de chat"
+
+#: graphql/mutations.py
+msgid "You need to select at least one room"
+msgstr "Você precisa selecionar pelo menos uma sala"
+
+#: graphql/mutations.py
+msgid "You don't have permission to use this profile"
+msgstr "Você não tem permissão para usar este perfil"
+
+#: graphql/mutations.py
+msgid "The target participant is not part of the room"
+msgstr "O participante alvo não faz parte da sala"
+
+#: graphql/mutations.py
+msgid "The room must have at least one admin"
+msgstr "A sala deve ter pelo menos um administrador"
+
+#: graphql/mutations.py
+msgid "You don't have permission to send a message in this room"
+msgstr "Você não tem permissão para enviar mensagens nesta sala"
+
+#: graphql/mutations.py
+msgid "You need to write something"
+msgstr "Você precisa escrever algo"
+
+#: graphql/mutations.py
+msgid "You can't write more than 1000 characters"
+msgstr "Você não pode escrever mais de 1000 caracteres"
+
+#: graphql/mutations.py
+msgid "Message does not exist"
+msgstr "A mensagem não existe"
+
+#: graphql/mutations.py
+msgid "You don't have permission to update this message"
+msgstr "Você não tem permissão para atualizar esta mensagem"
+
+#: graphql/mutations.py
+msgid "You cannot edit an empty message"
+msgstr "Você não pode editar uma mensagem vazia"
+
+#: graphql/mutations.py
+msgid "Message must be no longer than 1000 characters"
+msgstr "A mensagem não pode ter mais de 1000 caracteres"
+
+#: graphql/mutations.py
+msgid "This message has already been deleted"
+msgstr "Esta mensagem já foi excluída"
+
+#: graphql/mutations.py
+msgid "Participant is not part of the room."
+msgstr "O participante não faz parte da sala."
+
+#: graphql/mutations.py
+msgid "You don't have permission to archive this chatroom as this profile"
+msgstr ""
+"Você não tem permissão para arquivar esta sala de chat como este perfil"
+
+#: graphql/object_types.py
+msgid "Profile Not Found"
+msgstr "Perfil não encontrado"
+
+#: models.py
+msgid "title"
+msgstr "título"
+
+#: models.py
+msgid "image"
+msgstr "imagem"
+
+#: models.py
+msgid "created by"
+msgstr "criado por"
+
+#: models.py
+msgid "created by profile"
+msgstr "criado pelo perfil"
+
+#: models.py
+msgid "last message"
+msgstr "última mensagem"
+
+#: models.py
+msgid "last message time"
+msgstr "horário da última mensagem"
+
+#: models.py
+msgid "participants count"
+msgstr "quantidade de participantes"
+
+#: models.py
+msgid "messages count"
+msgstr "quantidade de mensagens"
+
+#: models.py
+msgid "group"
+msgstr "grupo"
+
+#: models.py
+msgid "chat room"
+msgstr "sala de chat"
+
+#: models.py
+msgid "chat rooms"
+msgstr "salas de chat"
+
+#: models.py
+msgid "sent a message"
+msgstr "enviou uma mensagem"
+
+#: models.py
+msgid "User message"
+msgstr "Mensagem de usuário"
+
+#: models.py
+msgid "System message"
+msgstr "Mensagem do sistema"
+
+#: models.py
+msgid "content"
+msgstr "conteúdo"
+
+#: models.py
+msgid "content linked profile actor"
+msgstr "perfil ator vinculado ao conteúdo"
+
+#: models.py
+msgid "content linked profile target"
+msgstr "perfil alvo vinculado ao conteúdo"
+
+#: models.py
+msgid "user"
+msgstr "usuário"
+
+#: models.py
+msgid "profile"
+msgstr "perfil"
+
+#: models.py
+msgid "message type"
+msgstr "tipo de mensagem"
+
+#: models.py
+msgid "verb"
+msgstr "verbo"
+
+#: models.py
+msgid "room"
+msgstr "sala"
+
+#: models.py
+msgid "in reply to"
+msgstr "em resposta a"
+
+#: models.py
+msgid "action object content type"
+msgstr "tipo de conteúdo do objeto da ação"
+
+#: models.py
+msgid "action object id"
+msgstr "id do objeto da ação"
+
+#: models.py
+msgid "deleted"
+msgstr "excluída"
+
+#: models.py
+msgid "extra data"
+msgstr "dados extras"
+
+#: models.py
+msgid "message"
+msgstr "mensagem"
+
+#: models.py
+msgid "messages"
+msgstr "mensagens"
+
+#: models.py
+#, python-format
+msgid "%(actor)s %(verb)s %(action_object)s on %(target)s %(timesince)s ago"
+msgstr "%(actor)s %(verb)s %(action_object)s em %(target)s há %(timesince)s"
+
+#: models.py
+#, python-format
+msgid "%(actor)s %(verb)s on %(target)s %(timesince)s ago"
+msgstr "%(actor)s %(verb)s em %(target)s há %(timesince)s"
+
+#: models.py
+#, python-format
+msgid "%(actor)s %(verb)s %(action_object)s %(timesince)s ago"
+msgstr "%(actor)s %(verb)s %(action_object)s há %(timesince)s"
+
+#: models.py
+#, python-format
+msgid "%(actor)s %(verb)s %(timesince)s ago"
+msgstr "%(actor)s %(verb)s há %(timesince)s"
+
+#: models.py
+msgid "member"
+msgstr "membro"
+
+#: models.py
+msgid "admin"
+msgstr "administrador"
+
+#: models.py
+msgid "role"
+msgstr "função"
+
+#: models.py
+msgid "accepted at"
+msgstr "aceito em"
+
+#: models.py
+msgid "has archived room"
+msgstr "arquivou a sala"
+
+#: models.py
+msgid "chat room participant"
+msgstr "participante da sala de chat"
+
+#: models.py
+msgid "chat room participants"
+msgstr "participantes da sala de chat"
+
+#: models.py
+msgid "marked unread"
+msgstr "marcada como não lida"
+
+#: models.py
+msgid "count"
+msgstr "quantidade"
+
+#: models.py
+msgid "unread message count"
+msgstr "quantidade de mensagens não lidas"
+
+#: models.py
+msgid "unread message counts"
+msgstr "quantidades de mensagens não lidas"
+
+#: models.py
+msgid "read"
+msgstr "lida"
+
+#: models.py
+msgid "read at"
+msgstr "lida em"
+
+#: models.py
+msgid "message status"
+msgstr "status da mensagem"
+
+#: models.py
+msgid "message statuses"
+msgstr "status das mensagens"
+
+#: utils.py
+msgid "You got a new message"
+msgstr "Você recebeu uma nova mensagem"
+
+#: utils.py
+msgid "New message"
+msgstr "Nova mensagem"

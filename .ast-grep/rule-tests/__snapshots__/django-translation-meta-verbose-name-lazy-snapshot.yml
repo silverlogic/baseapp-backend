@@ -1,0 +1,268 @@
+id: django-translation-meta-verbose-name-lazy
+snapshots:
+  ? |
+    class Order(AbstractOrder):
+        class Meta(AbstractOrder.Meta):
+            verbose_name = "Order"
+  : labels:
+    - source: verbose_name = "Order"
+      style: primary
+      start: 72
+      end: 94
+    - source: verbose_name
+      style: secondary
+      start: 72
+      end: 84
+    - source: '"Order"'
+      style: secondary
+      start: 87
+      end: 94
+    - source: Meta
+      style: secondary
+      start: 38
+      end: 42
+    - source: |-
+        class Meta(AbstractOrder.Meta):
+                verbose_name = "Order"
+      style: secondary
+      start: 32
+      end: 94
+    - source: verbose_name = "Order"
+      style: secondary
+      start: 72
+      end: 94
+    - source: verbose_name = "Order"
+      style: secondary
+      start: 72
+      end: 94
+  ? |
+    class Order(models.Model):
+        class Meta:
+            verbose_name = "Order"
+  : labels:
+    - source: verbose_name = "Order"
+      style: primary
+      start: 51
+      end: 73
+    - source: verbose_name
+      style: secondary
+      start: 51
+      end: 63
+    - source: '"Order"'
+      style: secondary
+      start: 66
+      end: 73
+    - source: Meta
+      style: secondary
+      start: 37
+      end: 41
+    - source: |-
+        class Meta:
+                verbose_name = "Order"
+      style: secondary
+      start: 31
+      end: 73
+    - source: verbose_name = "Order"
+      style: secondary
+      start: 51
+      end: 73
+    - source: verbose_name = "Order"
+      style: secondary
+      start: 51
+      end: 73
+  ? |
+    class Order(models.Model):
+        class Meta:
+            verbose_name = _("Order")
+            verbose_name_plural = "Orders"
+  : labels:
+    - source: verbose_name_plural = "Orders"
+      style: primary
+      start: 85
+      end: 115
+    - source: verbose_name_plural
+      style: secondary
+      start: 85
+      end: 104
+    - source: '"Orders"'
+      style: secondary
+      start: 107
+      end: 115
+    - source: Meta
+      style: secondary
+      start: 37
+      end: 41
+    - source: |-
+        class Meta:
+                verbose_name = _("Order")
+                verbose_name_plural = "Orders"
+      style: secondary
+      start: 31
+      end: 115
+    - source: |-
+        verbose_name = _("Order")
+                verbose_name_plural = "Orders"
+      style: secondary
+      start: 51
+      end: 115
+    - source: verbose_name_plural = "Orders"
+      style: secondary
+      start: 85
+      end: 115
+  ? |
+    class Order(models.Model):
+        class Meta:
+            verbose_name = f"Order {suffix}"
+  : labels:
+    - source: verbose_name = f"Order {suffix}"
+      style: primary
+      start: 51
+      end: 83
+    - source: verbose_name
+      style: secondary
+      start: 51
+      end: 63
+    - source: f"Order {suffix}"
+      style: secondary
+      start: 66
+      end: 83
+    - source: Meta
+      style: secondary
+      start: 37
+      end: 41
+    - source: |-
+        class Meta:
+                verbose_name = f"Order {suffix}"
+      style: secondary
+      start: 31
+      end: 83
+    - source: verbose_name = f"Order {suffix}"
+      style: secondary
+      start: 51
+      end: 83
+    - source: verbose_name = f"Order {suffix}"
+      style: secondary
+      start: 51
+      end: 83
+  ? |
+    class OrdersConfig(AppConfig):
+        name = "apps.orders"
+        verbose_name = "Orders"
+  : labels:
+    - source: verbose_name = "Orders"
+      style: primary
+      start: 60
+      end: 83
+    - source: verbose_name
+      style: secondary
+      start: 60
+      end: 72
+    - source: '"Orders"'
+      style: secondary
+      start: 75
+      end: 83
+    - source: AppConfig
+      style: secondary
+      start: 19
+      end: 28
+    - source: AppConfig
+      style: secondary
+      start: 19
+      end: 28
+    - source: |-
+        class OrdersConfig(AppConfig):
+            name = "apps.orders"
+            verbose_name = "Orders"
+      style: secondary
+      start: 0
+      end: 83
+    - source: |-
+        name = "apps.orders"
+            verbose_name = "Orders"
+      style: secondary
+      start: 35
+      end: 83
+    - source: verbose_name = "Orders"
+      style: secondary
+      start: 60
+      end: 83
+  ? |
+    class OrdersConfig(BaseAppConfig, SerializersContributor):
+        name = "apps.orders"
+        verbose_name = "Orders"
+  : labels:
+    - source: verbose_name = "Orders"
+      style: primary
+      start: 88
+      end: 111
+    - source: verbose_name
+      style: secondary
+      start: 88
+      end: 100
+    - source: '"Orders"'
+      style: secondary
+      start: 103
+      end: 111
+    - source: BaseAppConfig
+      style: secondary
+      start: 19
+      end: 32
+    - source: BaseAppConfig
+      style: secondary
+      start: 19
+      end: 32
+    - source: |-
+        class OrdersConfig(BaseAppConfig, SerializersContributor):
+            name = "apps.orders"
+            verbose_name = "Orders"
+      style: secondary
+      start: 0
+      end: 111
+    - source: |-
+        name = "apps.orders"
+            verbose_name = "Orders"
+      style: secondary
+      start: 63
+      end: 111
+    - source: verbose_name = "Orders"
+      style: secondary
+      start: 88
+      end: 111
+  ? |
+    class OrdersConfig(apps.AppConfig):
+        verbose_name = "Orders"
+  : labels:
+    - source: verbose_name = "Orders"
+      style: primary
+      start: 40
+      end: 63
+    - source: verbose_name
+      style: secondary
+      start: 40
+      end: 52
+    - source: '"Orders"'
+      style: secondary
+      start: 55
+      end: 63
+    - source: apps.AppConfig
+      style: secondary
+      start: 19
+      end: 33
+    - source: apps.AppConfig
+      style: secondary
+      start: 19
+      end: 33
+    - source: |-
+        class OrdersConfig(apps.AppConfig):
+            verbose_name = "Orders"
+      style: secondary
+      start: 0
+      end: 63
+    - source: verbose_name = "Orders"
+      style: secondary
+      start: 40
+      end: 63
+    - source: verbose_name = "Orders"
+      style: secondary
+      start: 40
+      end: 63

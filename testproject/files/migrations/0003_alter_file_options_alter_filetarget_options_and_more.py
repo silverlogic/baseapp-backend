@@ -9,7 +9,6 @@ import baseapp_core.models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("baseapp_core", "0001_initial"),
         ("files", "0002_alter_file_description_alter_file_file_content_type_and_more"),

@@ -1,0 +1,260 @@
+id: django-translation-validation-error-literal
+snapshots:
+  ? |
+    raise AuthenticationFailed(detail="Invalid credentials.")
+  : labels:
+    - source: '"Invalid credentials."'
+      style: primary
+      start: 34
+      end: 56
+    - source: AuthenticationFailed
+      style: secondary
+      start: 6
+      end: 26
+    - source: AuthenticationFailed(detail="Invalid credentials.")
+      style: secondary
+      start: 6
+      end: 57
+    - source: (detail="Invalid credentials.")
+      style: secondary
+      start: 26
+      end: 57
+  ? |
+    raise GraphQLError(
+        "authentication required",
+        extensions={"code": "authentication_required"},
+    )
+  : labels:
+    - source: '"authentication required"'
+      style: primary
+      start: 24
+      end: 49
+    - source: GraphQLError
+      style: secondary
+      start: 6
+      end: 18
+    - source: |-
+        GraphQLError(
+            "authentication required",
+            extensions={"code": "authentication_required"},
+        )
+      style: secondary
+      start: 6
+      end: 104
+    - source: |-
+        (
+            "authentication required",
+            extensions={"code": "authentication_required"},
+        )
+      style: secondary
+      start: 18
+      end: 104
+  ? |
+    raise PermissionDenied("You do not have permission to perform this action.")
+  : labels:
+    - source: '"You do not have permission to perform this action."'
+      style: primary
+      start: 23
+      end: 75
+    - source: PermissionDenied
+      style: secondary
+      start: 6
+      end: 22
+    - source: PermissionDenied("You do not have permission to perform this action.")
+      style: secondary
+      start: 6
+      end: 76
+    - source: ("You do not have permission to perform this action.")
+      style: secondary
+      start: 22
+      end: 76
+  ? |
+    raise ValidationError("Must be at least %(min)s." % {"min": 1})
+  : labels:
+    - source: '"Must be at least %(min)s."'
+      style: primary
+      start: 22
+      end: 49
+    - source: ValidationError
+      style: secondary
+      start: 6
+      end: 21
+    - source: 'ValidationError("Must be at least %(min)s." % {"min": 1})'
+      style: secondary
+      start: 6
+      end: 63
+    - source: '("Must be at least %(min)s." % {"min": 1})'
+      style: secondary
+      start: 21
+      end: 63
+  ? |
+    raise ValidationError("`created_from` must be earlier than or equal to `created_to`.")
+  : labels:
+    - source: '"`created_from` must be earlier than or equal to `created_to`."'
+      style: primary
+      start: 22
+      end: 85
+    - source: ValidationError
+      style: secondary
+      start: 6
+      end: 21
+    - source: ValidationError("`created_from` must be earlier than or equal to `created_to`.")
+      style: secondary
+      start: 6
+      end: 86
+    - source: ("`created_from` must be earlier than or equal to `created_to`.")
+      style: secondary
+      start: 21
+      end: 86
+  ? |
+    raise ValidationError(detail="Invalid.")
+  : labels:
+    - source: '"Invalid."'
+      style: primary
+      start: 29
+      end: 39
+    - source: ValidationError
+      style: secondary
+      start: 6
+      end: 21
+    - source: ValidationError(detail="Invalid.")
+      style: secondary
+      start: 6
+      end: 40
+    - source: (detail="Invalid.")
+      style: secondary
+      start: 21
+      end: 40
+  ? |
+    raise ValidationError(f"Unknown field {name}")
+  : labels:
+    - source: f"Unknown field {name}"
+      style: primary
+      start: 22
+      end: 45
+    - source: ValidationError
+      style: secondary
+      start: 6
+      end: 21
+    - source: ValidationError(f"Unknown field {name}")
+      style: secondary
+      start: 6
+      end: 46
+    - source: (f"Unknown field {name}")
+      style: secondary
+      start: 21
+      end: 46
+  ? |
+    raise ValidationError({"email": "Already in use."})
+  : labels:
+    - source: '"Already in use."'
+      style: primary
+      start: 32
+      end: 49
+    - source: ValidationError
+      style: secondary
+      start: 6
+      end: 21
+    - source: 'ValidationError({"email": "Already in use."})'
+      style: secondary
+      start: 6
+      end: 51
+    - source: '({"email": "Already in use."})'
+      style: secondary
+      start: 21
+      end: 51
+  ? |
+    raise ValidationError({"email": ["Already in use."]})
+  : labels:
+    - source: '"Already in use."'
+      style: primary
+      start: 33
+      end: 50
+    - source: ValidationError
+      style: secondary
+      start: 6
+      end: 21
+    - source: 'ValidationError({"email": ["Already in use."]})'
+      style: secondary
+      start: 6
+      end: 53
+    - source: '({"email": ["Already in use."]})'
+      style: secondary
+      start: 21
+      end: 53
+  ? |
+    raise ValidationError({"non_field_errors": [_("Translated."), "Not translated."]})
+  : labels:
+    - source: '"Not translated."'
+      style: primary
+      start: 62
+      end: 79
+    - source: ValidationError
+      style: secondary
+      start: 6
+      end: 21
+    - source: 'ValidationError({"non_field_errors": [_("Translated."), "Not translated."]})'
+      style: secondary
+      start: 6
+      end: 82
+    - source: '({"non_field_errors": [_("Translated."), "Not translated."]})'
+      style: secondary
+      start: 21
+      end: 82
+  ? |
+    raise exceptions.NotFound("Profile not found.")
+  : labels:
+    - source: '"Profile not found."'
+      style: primary
+      start: 26
+      end: 46
+    - source: exceptions.NotFound
+      style: secondary
+      start: 6
+      end: 25
+    - source: exceptions.NotFound("Profile not found.")
+      style: secondary
+      start: 6
+      end: 47
+    - source: ("Profile not found.")
+      style: secondary
+      start: 25
+      end: 47
+  ? |
+    raise exceptions.ValidationError("Invalid token.", code="invalid")
+  : labels:
+    - source: '"Invalid token."'
+      style: primary
+      start: 33
+      end: 49
+    - source: exceptions.ValidationError
+      style: secondary
+      start: 6
+      end: 32
+    - source: exceptions.ValidationError("Invalid token.", code="invalid")
+      style: secondary
+      start: 6
+      end: 66
+    - source: ("Invalid token.", code="invalid")
+      style: secondary
+      start: 32
+      end: 66
+  ? |
+    raise serializers.ValidationError("This email is already in use.")
+  : labels:
+    - source: '"This email is already in use."'
+      style: primary
+      start: 34
+      end: 65
+    - source: serializers.ValidationError
+      style: secondary
+      start: 6
+      end: 33
+    - source: serializers.ValidationError("This email is already in use.")
+      style: secondary
+      start: 6
+      end: 66
+    - source: ("This email is already in use.")
+      style: secondary
+      start: 33
+      end: 66

@@ -6,7 +6,6 @@ import baseapp_cloudflare_stream_field.field
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = []

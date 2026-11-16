@@ -4,18 +4,30 @@ from django.contrib.auth.models import Group, Permission
 from django.db import models
 from django.db.models import Q
 from django.utils.functional import cached_property
+from django.utils.translation import gettext_lazy as _
 
 logger = logging.getLogger(__name__)
 
 
 class Role(models.Model):
-    name = models.CharField(unique=True, max_length=255)
-    slug = models.CharField(unique=True, max_length=255)
-    groups = models.ManyToManyField(Group, related_name="roles", blank=True)
-    permissions = models.ManyToManyField(Permission, related_name="roles", blank=True)
-    exclude_permissions = models.ManyToManyField(
-        Permission, related_name="excluded_permission_roles", blank=True
+    name = models.CharField(_("name"), unique=True, max_length=255)
+    slug = models.CharField(_("slug"), unique=True, max_length=255)
+    groups = models.ManyToManyField(
+        Group, verbose_name=_("groups"), related_name="roles", blank=True
     )
+    permissions = models.ManyToManyField(
+        Permission, verbose_name=_("permissions"), related_name="roles", blank=True
+    )
+    exclude_permissions = models.ManyToManyField(
+        Permission,
+        verbose_name=_("exclude permissions"),
+        related_name="excluded_permission_roles",
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = _("role")
+        verbose_name_plural = _("roles")
 
     def __str__(self) -> str:
         return self.name
@@ -59,15 +71,20 @@ class Role(models.Model):
 
 
 class IpRestriction(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True)
-    modified_at = models.DateTimeField(auto_now=True)
-    ip_address = models.GenericIPAddressField(unique=True)
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
+    modified_at = models.DateTimeField(_("modified at"), auto_now=True)
+    ip_address = models.GenericIPAddressField(_("IP address"), unique=True)
     is_whitelisted = models.BooleanField(
-        default=False, help_text="If checked, this IP will be whitelisted"
+        _("is whitelisted"), default=False, help_text=_("If checked, this IP will be whitelisted")
     )
     unrestricted_roles = models.ManyToManyField(
         Role,
+        verbose_name=_("unrestricted roles"),
         related_name="ips",
         blank=True,
-        help_text="List of roles that will be unrestricted for this IP",
+        help_text=_("List of roles that will be unrestricted for this IP"),
     )
+
+    class Meta:
+        verbose_name = _("IP restriction")
+        verbose_name_plural = _("IP restrictions")

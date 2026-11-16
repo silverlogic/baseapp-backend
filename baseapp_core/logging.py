@@ -26,6 +26,16 @@ class BaseJSONFormatter(JSONFormatter):
         if celery_data:
             extra["trace.id"] = celery_data["id"]
 
+        # Overriding json_record drops JSONFormatter's exc_info handling, so
+        # tracebacks (e.g. django.request 5xx) are added back as ECS error.* keys.
+        # json.dumps escapes their newlines, keeping each record on one line.
+        if record.exc_info:
+            extra["error.stack_trace"] = self.formatException(record.exc_info)
+        elif record.exc_text:
+            extra["error.stack_trace"] = record.exc_text
+        if record.stack_info:
+            extra["error.stack_info"] = self.formatStack(record.stack_info)
+
         return extra
 
     def to_json(self, record) -> str:

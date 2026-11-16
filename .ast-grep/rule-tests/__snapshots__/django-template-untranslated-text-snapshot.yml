@@ -1,0 +1,80 @@
+id: django-template-untranslated-text
+snapshots:
+  ? |
+    <a href="#" title="Events">history</a>
+  : labels:
+    - source: Events
+      style: primary
+      start: 19
+      end: 25
+    - source: title
+      style: secondary
+      start: 12
+      end: 17
+    - source: title="Events"
+      style: secondary
+      start: 12
+      end: 26
+    - source: '"Events"'
+      style: secondary
+      start: 18
+      end: 26
+  ? |
+    <img src="{{ static('emails/logo.png') }}" alt="Logo" />
+  : labels:
+    - source: Logo
+      style: primary
+      start: 48
+      end: 52
+    - source: alt
+      style: secondary
+      start: 43
+      end: 46
+    - source: alt="Logo"
+      style: secondary
+      start: 43
+      end: 53
+    - source: '"Logo"'
+      style: secondary
+      start: 47
+      end: 53
+  ? |
+    <input type="text" placeholder="Search users">
+  : labels:
+    - source: Search users
+      style: primary
+      start: 32
+      end: 44
+    - source: placeholder
+      style: secondary
+      start: 19
+      end: 30
+    - source: placeholder="Search users"
+      style: secondary
+      start: 19
+      end: 45
+    - source: '"Search users"'
+      style: secondary
+      start: 31
+      end: 45
+  ? |
+    <p>Check your email for instructions.</p>
+  : labels:
+    - source: Check your email for instructions.
+      style: primary
+      start: 3
+      end: 37
+  ? |
+    <p>Please login to see this page.</p>
+  : labels:
+    - source: Please login to see this page.
+      style: primary
+      start: 3
+      end: 33
+  ? |
+    <span class="footer-caption">123 Sample Street, Floor 1</span>
+  : labels:
+    - source: 123 Sample Street, Floor 1
+      style: primary
+      start: 29
+      end: 55

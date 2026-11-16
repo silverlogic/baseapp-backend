@@ -60,8 +60,10 @@ class AbstractCommentFactory(factory.django.DjangoModelFactory):
         exclude = ("target", "_default_thread_target")
 
     target_document = factory.LazyAttribute(
-        lambda o: get_document_id("target")(o)
-        or DocumentId.get_or_create_for_object(o._default_thread_target)
+        lambda o: (
+            get_document_id("target")(o)
+            or DocumentId.get_or_create_for_object(o._default_thread_target)
+        )
     )
 
 

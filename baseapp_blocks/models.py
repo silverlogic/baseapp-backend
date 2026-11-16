@@ -40,6 +40,7 @@ class AbstractBlock(DocumentIdMixin, RelayModel, TimeStampedModel):
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
+        verbose_name=_("user"),
         on_delete=models.SET_NULL,
         related_name="blocking",
         null=True,
@@ -50,6 +51,8 @@ class AbstractBlock(DocumentIdMixin, RelayModel, TimeStampedModel):
         swappable = swapper.swappable_setting("baseapp_blocks", "Block")
         indexes = [models.Index(fields=["target", "actor"])]
         unique_together = [("actor", "target")]
+        verbose_name = _("block")
+        verbose_name_plural = _("blocks")
 
     def __str__(self) -> str:
         return "{} blocked {}".format(self.actor, self.target)
@@ -100,8 +103,8 @@ class AbstractBlockableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
     the plugin architecture, allowing us to easily extend blocks to other models.
     """
 
-    blockers_count = models.PositiveIntegerField(default=0, editable=False)
-    blocking_count = models.PositiveIntegerField(default=0, editable=False)
+    blockers_count = models.PositiveIntegerField(_("blockers count"), default=0, editable=False)
+    blocking_count = models.PositiveIntegerField(_("blocking count"), default=0, editable=False)
 
     class Meta:
         abstract = True

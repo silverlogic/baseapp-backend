@@ -1,6 +1,7 @@
 from typing import Any
 
 from django.utils.safestring import mark_safe
+from django.utils.translation import gettext_lazy as _
 from wagtail.blocks import CharBlock, ChoiceBlock, StaticBlock, StructBlock
 
 from baseapp_wagtail.base.blocks.basic_blocks.custom_image_chooser_block import (
@@ -24,20 +25,22 @@ class BannerBlock(StructBlock):
 
     hr = StaticBlock(
         admin_text=mark_safe("<hr />"),
+        # ast-grep-ignore: django-translation-model-fields-lazy
         label=" ",
     )
 
+    # ast-grep-ignore: django-translation-model-fields-lazy
     featured_image = CustomImageChooserBlock(label=" ", required=False)
     image_position = ChoiceBlock(
         choices=[
-            ("left", "Left"),
-            ("right", "Right"),
+            ("left", _("Left")),
+            ("right", _("Right")),
         ],
         blank=True,
         required=True,
         default="left",
-        label="Image Position",
-        help_text="This indicates the position of the image in the desktop view.",
+        label=_("Image Position"),
+        help_text=_("This indicates the position of the image in the desktop view."),
     )
 
     def get_api_representation(self, value, context=None) -> dict[str, Any]:

@@ -240,6 +240,13 @@ class TestGraphQLGetNodeFromGlobalIdUsingStrategy:
 
         assert result is None
 
+    def test_returns_none_for_empty_global_id(self) -> None:
+        """Regression for BASEAPP-BACKEND-TEMPLATE-5F: `node(id: "")` raised a parse error."""
+        mock_info = MagicMock()
+
+        assert graphql_get_node_from_global_id_using_strategy(mock_info, "") is None
+        mock_info.schema.get_type.assert_not_called()
+
     def test_returns_none_and_falls_back_to_legacy_for_nonexistent_uuid4(self) -> None:
         test_uuid = str(uuid.uuid4())  # Non-existent UUID4
         mock_info = MagicMock()

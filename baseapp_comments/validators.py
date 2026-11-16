@@ -1,5 +1,6 @@
 from constance import config
 from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
 
 
 def blocked_words_validator(value) -> None:
@@ -15,5 +16,6 @@ def blocked_words_validator(value) -> None:
     for word in blocked_words_set:
         if word in lower_value:
             raise ValidationError(
-                "Please be advised that the use of inappropriate language is not permitted."
+                _("Please be advised that the use of inappropriate language is not permitted."),
+                code="blocked_words",
             )

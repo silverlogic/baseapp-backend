@@ -4,6 +4,7 @@ import django_filters
 from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.db.models import Q
+from django.utils.translation import gettext_lazy as _
 
 from baseapp_core.plugins import apply_if_installed
 
@@ -34,7 +35,9 @@ class ActivityLogFilter(django_filters.FilterSet):
         created_to = self.data.get("created_to")
 
         if created_from and created_to and created_from > created_to:
-            raise ValidationError("`created_from` must be earlier than or equal to `created_to`.")
+            raise ValidationError(
+                _("`created_from` must be earlier than or equal to `created_to`.")
+            )
         return super().filter_queryset(queryset)
 
     class Meta:

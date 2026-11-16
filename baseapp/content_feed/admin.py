@@ -1,5 +1,6 @@
 import swapper
 from django.contrib import admin
+from django.utils.translation import gettext_lazy as _
 
 from baseapp_core.admin_helpers import ModelAdmin, TabularInline
 from baseapp_core.plugins import apply_if_installed, shared_services
@@ -26,7 +27,7 @@ class ContentPostAdmin(ModelAdmin):
     search_fields = ["id", *apply_if_installed("baseapp_profiles", ["profile"]), "user", "content"]
     inlines = [ContentPostImagesInline]
 
-    @admin.display(boolean=True, description="Reactions enabled")
+    @admin.display(boolean=True, description=_("Reactions enabled"))
     def is_reactions_enabled(self, obj) -> bool:
         # Pulled from `ReactableMetadata` via the shared service
         if service := shared_services.get("reactable_metadata"):

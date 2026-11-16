@@ -71,15 +71,20 @@ class AbstractReaction(
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
+        verbose_name=_("user"),
         related_name="reactions",
         on_delete=models.CASCADE,
     )
 
-    reaction_type = models.IntegerField(choices=ReactionTypes.choices, default=ReactionTypes.LIKE)
+    reaction_type = models.IntegerField(
+        _("reaction type"), choices=ReactionTypes.choices, default=ReactionTypes.LIKE
+    )
 
     class Meta:
         abstract = True
         swappable = swapper.swappable_setting("baseapp_reactions", "Reaction")
+        verbose_name = _("reaction")
+        verbose_name_plural = _("reactions")
         unique_together = [
             apply_if_installed(
                 "baseapp_profiles",
@@ -147,8 +152,10 @@ class AbstractReactableMetadata(DocumentIdUniqueTargetMixin, TimeStampedModel):
     each reactable model, following the plugin architecture pattern.
     """
 
-    reactions_count = models.JSONField(default=default_reactions_count, editable=False)
-    is_reactions_enabled = models.BooleanField(default=True)
+    reactions_count = models.JSONField(
+        _("reactions count"), default=default_reactions_count, editable=False
+    )
+    is_reactions_enabled = models.BooleanField(_("is reactions enabled"), default=True)
 
     class Meta:
         abstract = True

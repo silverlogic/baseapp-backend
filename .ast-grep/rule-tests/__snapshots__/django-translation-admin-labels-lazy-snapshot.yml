@@ -1,0 +1,134 @@
+id: django-translation-admin-labels-lazy
+snapshots:
+  ? |
+    @admin.action(description="Expire selected passwords")
+    def force_expire_password(self, request, queryset):
+        pass
+  : labels:
+    - source: description="Expire selected passwords"
+      style: primary
+      start: 14
+      end: 53
+    - source: description
+      style: secondary
+      start: 14
+      end: 25
+    - source: '"Expire selected passwords"'
+      style: secondary
+      start: 26
+      end: 53
+    - source: admin.action
+      style: secondary
+      start: 1
+      end: 13
+    - source: admin.action(description="Expire selected passwords")
+      style: secondary
+      start: 1
+      end: 54
+    - source: (description="Expire selected passwords")
+      style: secondary
+      start: 13
+      end: 54
+  ? |
+    @admin.display(description="Actor")
+    def get_actor_object(self, obj):
+        return str(obj.actor)
+  : labels:
+    - source: description="Actor"
+      style: primary
+      start: 15
+      end: 34
+    - source: description
+      style: secondary
+      start: 15
+      end: 26
+    - source: '"Actor"'
+      style: secondary
+      start: 27
+      end: 34
+    - source: admin.display
+      style: secondary
+      start: 1
+      end: 14
+    - source: admin.display(description="Actor")
+      style: secondary
+      start: 1
+      end: 35
+    - source: (description="Actor")
+      style: secondary
+      start: 14
+      end: 35
+  ? |
+    @display(description="Actor", ordering="actor")
+    def get_actor_object(self, obj):
+        return str(obj.actor)
+  : labels:
+    - source: description="Actor"
+      style: primary
+      start: 9
+      end: 28
+    - source: description
+      style: secondary
+      start: 9
+      end: 20
+    - source: '"Actor"'
+      style: secondary
+      start: 21
+      end: 28
+    - source: display
+      style: secondary
+      start: 1
+      end: 8
+    - source: display(description="Actor", ordering="actor")
+      style: secondary
+      start: 1
+      end: 47
+    - source: (description="Actor", ordering="actor")
+      style: secondary
+      start: 8
+      end: 47
+  ? |
+    created_by_display.short_description = f"Created By {suffix}"
+  : labels:
+    - source: created_by_display.short_description = f"Created By {suffix}"
+      style: primary
+      start: 0
+      end: 61
+    - source: created_by_display.short_description
+      style: secondary
+      start: 0
+      end: 36
+    - source: f"Created By {suffix}"
+      style: secondary
+      start: 39
+      end: 61
+  ? |
+    force_expire_password.short_description = "Expire password"
+  : labels:
+    - source: force_expire_password.short_description = "Expire password"
+      style: primary
+      start: 0
+      end: 59
+    - source: force_expire_password.short_description
+      style: secondary
+      start: 0
+      end: 39
+    - source: '"Expire password"'
+      style: secondary
+      start: 42
+      end: 59
+  ? |
+    short_description = "Body html"
+  : labels:
+    - source: short_description = "Body html"
+      style: primary
+      start: 0
+      end: 31
+    - source: short_description
+      style: secondary
+      start: 0
+      end: 17
+    - source: '"Body html"'
+      style: secondary
+      start: 20
+      end: 31

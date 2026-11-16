@@ -1,0 +1,106 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-17 01:11+0000\n"
+"PO-Revision-Date: 2026-10-12 15:10+0000\n"
+"Last-Translator: BaseApp i18n <dev@tsl.io>\n"
+"Language-Team: Portuguese (Brazil)\n"
+"Language: pt\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: apps.py
+msgid "BaseApp Core"
+msgstr "BaseApp Core"
+
+#: graphql/decorators.py
+msgid "authentication required"
+msgstr "autenticação necessária"
+
+#: graphql/errors.py
+msgid "May contain more than one error for same field."
+msgstr "Pode conter mais de um erro para o mesmo campo."
+
+#: graphql/mutations.py
+msgid "You don't have permission to delete this."
+msgstr "Você não tem permissão para excluir isto."
+
+#: graphql/translation.py
+msgid "Languages available"
+msgstr "Idiomas disponíveis"
+
+#: models.py
+msgid "Case insensitive character"
+msgstr "Caractere sem distinção de maiúsculas e minúsculas"
+
+#: models.py
+msgid "Case insensitive text"
+msgstr "Texto sem distinção de maiúsculas e minúsculas"
+
+#: models.py
+msgid "Case insensitive email address"
+msgstr "Endereço de e-mail sem distinção de maiúsculas e minúsculas"
+
+#: models.py
+msgid "public id"
+msgstr "id público"
+
+#: models.py
+msgid "Public-facing UUID identifier"
+msgstr "Identificador UUID público"
+
+#: models.py
+msgid "content type"
+msgstr "tipo de conteúdo"
+
+#: models.py
+msgid "The model type this UUID maps to"
+msgstr "O tipo de modelo ao qual este UUID corresponde"
+
+#: models.py
+msgid "object id"
+msgstr "id do objeto"
+
+#: models.py
+msgid "The primary key of the mapped object"
+msgstr "A chave primária do objeto mapeado"
+
+#: models.py
+msgid "document ID"
+msgstr "ID de documento"
+
+#: models.py
+msgid "document IDs"
+msgstr "IDs de documento"
+
+#: models.py
+msgid "target document"
+msgstr "documento alvo"
+
+#: models.py
+msgid "target"
+msgstr "alvo"
+
+#: templates/admin/base_site.html
+msgid "BaseApp staging logo"
+msgstr "Logo de staging do BaseApp"
+
+#: templates/admin/base_site.html
+msgid "BaseApp production logo"
+msgstr "Logo de produção do BaseApp"
+
+#: utils.py
+msgid "Wrong natural key, please use the format app_label.ModelName"
+msgstr "Chave natural incorreta, use o formato app_label.ModelName"
+
+#: utils.py
+msgid "Content type not found"
+msgstr "Tipo de conteúdo não encontrado"

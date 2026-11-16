@@ -1,13 +1,13 @@
 {% extends 'emails/base.txt.j2' %}
 
 {% block content %}
-{% trans %}Hello,{% endtrans %}
+{{ _("Hello,") }}
 
-{% trans %}Great to have you on board! Let's make sure your email is all set. Please confirm your email address by clicking the button below:{% endtrans %}
+{{ _("Great to have you on board! Let's make sure your email is all set. Please confirm your email address by clicking the button below:") }}
 
 {{ confirm_url }}
 
-{% trans %}Didn't sign up?{% endtrans %}
+{{ _("Didn't sign up?") }}
 
-{% trans %}No worries, you can safely ignore this email.{% endtrans %}
+{{ _("No worries, you can safely ignore this email.") }}
 {% endblock content %}

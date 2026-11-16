@@ -1,0 +1,35 @@
+id: django-translation-no-fstring-in-gettext
+language: Python
+severity: error
+message: "The argument of `_()` / `gettext*()` must be a literal: f-strings, `%` / `.format()` / `+` expressions produce a different msgid per call, so `makemessages` never extracts them and nothing is translated. Interpolate after translating: `_(\"Welcome %(name)s\") % {\"name\": name}`. See .claude/skills/backend-conventions/references/translations.md"
+ignores:
+  - "**/migrations/**"
+  - "**/tests/**"
+rule:
+  kind: call
+  all:
+    - has:
+        field: function
+        regex: ^(_|gettext|gettext_lazy|ngettext|ngettext_lazy|pgettext|pgettext_lazy|npgettext|npgettext_lazy|gettext_noop)$
+    - has:
+        field: arguments
+        has:
+          any:
+            - kind: string
+              has:
+                kind: interpolation
+            - kind: concatenated_string
+              has:
+                stopBy: end
+                kind: interpolation
+            - kind: binary_operator
+              has:
+                field: left
+                any:
+                  - kind: string
+                  - kind: concatenated_string
+            - kind: call
+              has:
+                field: function
+                kind: attribute
+                regex: \.format$

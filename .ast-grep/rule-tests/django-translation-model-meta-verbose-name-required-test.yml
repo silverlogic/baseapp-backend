@@ -1,0 +1,68 @@
+id: django-translation-model-meta-verbose-name-required
+valid:
+  - |
+    class Order(models.Model):
+        class Meta:
+            verbose_name = _("Order")
+            verbose_name_plural = _("Orders")
+  - |
+    class Order(AbstractOrder):
+        class Meta(AbstractOrder.Meta):
+            verbose_name = _("Order")
+            verbose_name_plural = _("Orders")
+  - |
+    class User(AbstractUser, RelayModel):
+        tracker = FieldTracker(fields=["password"])
+
+        class Meta(AbstractUser.Meta):
+            verbose_name = _("User")
+            verbose_name_plural = _("Users")
+  - |
+    class AbstractThing(models.Model):
+        class Meta:
+            abstract = True
+  - |
+    class OrderQuerySet(models.QuerySet):
+        pass
+  - |
+    class OrderManager(models.Manager):
+        pass
+  - |
+    class Status(models.TextChoices):
+        DRAFT = "draft", _("Draft")
+  - |
+    class OrderError(Exception):
+        pass
+  - |
+    class Order(models.Model):
+        class Status(models.IntegerChoices):
+            NEW = 1, _("New")
+
+        class Meta:
+            verbose_name = _("Order")
+  - |
+    class Order(AbstractOrder):
+        class Meta(AbstractOrder.Meta):
+            pass
+  - |
+    class User(AbstractUser, RelayModel):
+        class Meta(AbstractUser.Meta):
+            permissions = [*AbstractUser.Meta.permissions]
+  - |
+    class Customer(BaseCustomer):
+        tracker = FieldTracker(["entity"])
+invalid:
+  - |
+    class Order(models.Model):
+        name = models.CharField(max_length=255)
+  - |
+    class Order(models.Model):
+        class Meta:
+            ordering = ["-id"]
+  - |
+    class Order(AbstractOrder):
+        class Meta:
+            ordering = ["-id"]
+  - |
+    class Order(RelayModel):
+        name = models.CharField(max_length=255)
