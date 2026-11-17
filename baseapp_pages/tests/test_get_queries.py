@@ -316,3 +316,30 @@ def test_another_user_cant_change_page(graphql_user_client) -> None:
     assert not content["data"]["page"]["canDelete"]
     assert not content["data"]["page"]["canChangeFull"]
     assert not content["data"]["page"]["canDeleteFull"]
+
+
+GET_PAGE_URL_PATHS = """
+    query Page($path: String!) {
+        urlPath(path: $path) {
+            target {
+                urlPaths {
+                    path
+                    language
+                }
+            }
+        }
+    }
+"""
+
+
+def test_returns_all_url_paths(django_user_client, graphql_user_client) -> None:
+    page = PageFactory(user=django_user_client.user)
+    url_path = URLPathFactory(target=page, language="en", path="/about/", is_active=True)
+    URLPathFactory(target=page, language="pt", path="/sobre/", is_active=True)
+
+    response = graphql_user_client(GET_PAGE_URL_PATHS, variables={"path": url_path.path})
+
+    content = response.json()
+    assert "errors" not in content
+    url_paths = content["data"]["urlPath"]["target"]["urlPaths"]
+    assert sorted(item["path"] for item in url_paths) == ["/about/", "/sobre/"]

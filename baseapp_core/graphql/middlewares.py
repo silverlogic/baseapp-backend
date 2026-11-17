@@ -2,6 +2,8 @@ import logging
 import traceback
 from typing import Any
 
+from django.db.models import QuerySet
+from graphql import get_nullable_type, is_list_type
 from rest_framework.authentication import TokenAuthentication as RestTokenAuthentication
 from rest_framework_simplejwt.authentication import (
     JWTAuthentication as RestJWTAuthentication,
@@ -29,6 +31,22 @@ class LogExceptionMiddleware(object):
         elif hasattr(response, "catch"):
             return response.catch(self.on_error)
 
+        return response
+
+
+class QuerySetToListMiddleware:
+    """
+    Evaluates a QuerySet returned for a list field into a list.
+
+    graphql-core 3.3 completes any list value that has __aiter__ asynchronously, and QuerySet has
+    it, so the sync GraphQLView would get an un-awaited coroutine instead of a result. A list keeps
+    the synchronous completion graphql-core 3.2 used for QuerySets.
+    """
+
+    def resolve(self, next, root, info, **args) -> Any:
+        response = next(root, info, **args)
+        if isinstance(response, QuerySet) and is_list_type(get_nullable_type(info.return_type)):
+            return list(response)
         return response
 
 

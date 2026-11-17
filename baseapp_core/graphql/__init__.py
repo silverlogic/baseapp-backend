@@ -5,6 +5,7 @@ from .fields import FileInterface, ThumbnailField, get_file_object_type  # noqa
 from .middlewares import (  # noqa
     JWTAuthentication,
     LogExceptionMiddleware,
+    QuerySetToListMiddleware,
     TokenAuthentication,
 )
 from .models import RelayModel  # noqa

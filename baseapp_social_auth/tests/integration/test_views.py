@@ -194,7 +194,7 @@ class TestTwitterSocialAuth(SocialAuthViewSetMock):
         self.responses_mock.add(
             responses.POST,
             "https://api.twitter.com/oauth/request_token",
-            body="",
+            body="oauth_token=1234&oauth_token_secret=1234xyz&oauth_callback_confirmed=true",
             status=200,
         )
         return data
@@ -447,10 +447,11 @@ class TestGoogleSocialAuthViewSet(SocialAuthViewSetMock):
             responses.GET,
             re.compile(r"https://www\.googleapis\.com/oauth2/v3/userinfo"),
             json={
-                "id": "1387123",
+                "sub": "1387123",
                 "given_name": "John",
                 "family_name": "Doe",
                 "email": "johndoe@example.com",
+                "email_verified": True,
             },
             status=200,
         )
@@ -477,3 +478,25 @@ class TestGoogleSocialAuthViewSet(SocialAuthViewSetMock):
         assert user.first_name == "John"
         assert user.last_name == "Doe"
         assert user.email == "johndoe@example.com"
+
+    def test_google_rejects_unverified_email(self) -> None:
+        self.responses_mock.add(
+            responses.POST,
+            re.compile(r"https://accounts\.google\.com/o/oauth2/token"),
+            json={"access_token": "1234", "token_type": "type", "expires_in": 6000},
+            status=200,
+        )
+        self.responses_mock.add(
+            responses.GET,
+            re.compile(r"https://www\.googleapis\.com/oauth2/v3/userinfo"),
+            json={
+                "sub": "1387123",
+                "email": "johndoe@example.com",
+                "email_verified": False,
+            },
+            status=200,
+        )
+        r = self.client.post(self.reverse(), self.base_data())
+        h.responseBadRequest(r)
+        assert r.data["non_field_errors"] == "invalid_credentials"
+        assert not get_user_model().objects.exists()

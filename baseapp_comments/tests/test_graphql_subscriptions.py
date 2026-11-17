@@ -143,6 +143,7 @@ async def test_user_recieves_deleted_comment_subscription_event(graphql_ws_user_
 async def test_anon_recieves_created_comment_subscription_event(graphql_websocket) -> None:
     # Establish & initialize WebSocket GraphQL connection.
     client = graphql_websocket(consumer_attrs={"strict_ordering": True})
+    await client.connect_and_init()
 
     target = await database_sync_to_async(CommentFactory)()
 
@@ -176,6 +177,7 @@ async def test_anon_recieves_created_comment_subscription_event(graphql_websocke
 async def test_anon_cant_recieve_created_comment_subscription_event(graphql_websocket) -> None:
     # Establish & initialize WebSocket GraphQL connection.
     client = graphql_websocket(consumer_attrs={"strict_ordering": True})
+    await client.connect_and_init()
 
     target = await database_sync_to_async(CommentFactory)()
 
