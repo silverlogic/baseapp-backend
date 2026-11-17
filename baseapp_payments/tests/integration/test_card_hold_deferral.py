@@ -199,6 +199,7 @@ class TestFirstPass:
         assert creates(fake_stripe) == []
         ((_args, params),) = fake_stripe.calls_to("SetupIntent.create")
         assert params["usage"] == "off_session"
+        assert params["allowed_payment_method_types"] == ["card"]
         assert params["customer"] == STRIPE_CUSTOMER_ID
         assert params["payment_method"] == "pm_new"
         assert params["idempotency_key"] == f"testproject-setup-{holder.pk}-{attempt_id}"
@@ -404,6 +405,7 @@ class TestSetupSecondPass:
         assert result.target == order
         (params,) = creates(fake_stripe)
         assert params["off_session"] is True
+        assert params["allowed_payment_method_types"] == ["card"]
         assert CardHold.objects.get().status == CardHold.Status.AUTHORIZED
 
     def test_one_that_fails_at_once_reads_scheduled(

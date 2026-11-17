@@ -8,7 +8,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("testapp", "0003_plugin_arch_squashed"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),

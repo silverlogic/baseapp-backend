@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-16 15:15+0000\n"
+"POT-Creation-Date: 2026-11-17 15:09+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -600,6 +600,10 @@ msgstr "Nada para atualizar."
 msgid "Failed to update subscription in Stripe"
 msgstr "Falha ao atualizar assinatura no Stripe"
 
+#: serializers.py views.py
+msgid "Entity not found"
+msgstr "Entidade não encontrada"
+
 #: serializers.py
 msgid "Entity does not have a target with an email field."
 msgstr "A entidade não possui um alvo com campo de e-mail."
@@ -623,7 +627,3 @@ msgstr "Falha ao atualizar método de pagamento"
 #: views.py
 msgid "Customer not found"
 msgstr "Cliente não encontrado"
-
-#: views.py
-msgid "Entity not found"
-msgstr "Entidade não encontrada"

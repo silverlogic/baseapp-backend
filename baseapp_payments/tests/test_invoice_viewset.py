@@ -7,7 +7,7 @@ from rest_framework import status
 from baseapp_core.tests.fixtures import Client
 from baseapp_core.tests.helpers import responseEquals
 from baseapp_payments.tests.factories import CustomerFactory
-from baseapp_payments.tests.helpers import stripe_list
+from baseapp_payments.tests.helpers import stripe_list, stripe_object
 from baseapp_profiles.tests.factories import ProfileFactory
 
 pytestmark = pytest.mark.django_db
@@ -46,93 +46,79 @@ class TestInvoiceListView:
 
 
 class TestInvoiceClientSecret:
-    """`list_invoices` requests no expansion, so `payment_intent` arrives as an id string."""
+    """The secret lives on `confirmation_secret`, which `list_invoices` does not expand."""
 
-    def test_unexpanded_payment_intent_serializes_instead_of_raising(
-        self, user_client: Client
-    ) -> None:
+    def test_unexpanded_confirmation_secret_serializes_as_none(self, user_client: Client) -> None:
         from baseapp_payments.serializers import StripeInvoiceSerializer
 
-        invoice = {"id": "in_1", "payment_intent": "pi_123", "lines": {"data": []}}
+        invoice = stripe_object({"id": "in_1", "lines": {"data": []}})
 
         assert StripeInvoiceSerializer(invoice).data["client_secret"] is None
 
-    def test_expanded_payment_intent_still_yields_the_secret(self, user_client: Client) -> None:
+    def test_expanded_confirmation_secret_yields_the_secret(self, user_client: Client) -> None:
         from baseapp_payments.serializers import StripeInvoiceSerializer
 
-        invoice = {
-            "id": "in_1",
-            "payment_intent": {"client_secret": "pi_123_secret"},
-            "lines": {"data": []},
+        invoice = stripe_object(
+            {
+                "id": "in_1",
+                "confirmation_secret": {"client_secret": "pi_123_secret", "type": "payment_intent"},
+                "lines": {
+                    "data": [
+                        {
+                            "id": "il_1",
+                            "amount": 500,
+                            "description": "Pro",
+                            "quantity": 1,
+                            "currency": "usd",
+                            # Endive shape: `type` and `price` moved under parent/pricing.
+                            "parent": {"type": "subscription_item_details"},
+                            "pricing": {
+                                "type": "price_details",
+                                "price_details": {"price": "price_1", "product": "prod_1"},
+                                "unit_amount_decimal": "500",
+                            },
+                        }
+                    ]
+                },
+                "metadata": {"order": "42"},
+            }
+        )
+
+        data = StripeInvoiceSerializer(invoice).data
+        assert data["client_secret"] == "pi_123_secret"
+        line = data["lines"][0]
+        assert line["id"] == "il_1"
+        assert line["type"] == "subscription"
+        assert line["price"]["id"] == "price_1"
+        assert line["price"]["currency"] == "usd"
+        assert line["price"]["unit_amount"] == 500
+        assert data["metadata"] == {"order": "42"}
+
+    def test_sub_cent_unit_amount_is_none_not_truncated(self, user_client: Client) -> None:
+        """unit_amount is an integer field; "12.5" has no integer form."""
+        from baseapp_payments.utils import invoice_line_legacy_fields
+
+        line = {
+            "currency": "usd",
+            "pricing": {"price_details": {"price": "price_1"}, "unit_amount_decimal": "12.5"},
         }
+        assert invoice_line_legacy_fields(line)["price"]["unit_amount"] is None
+        line["pricing"]["unit_amount_decimal"] = "1200.000000000"
+        assert invoice_line_legacy_fields(line)["price"]["unit_amount"] == 1200
 
-        assert StripeInvoiceSerializer(invoice).data["client_secret"] == "pi_123_secret"
+    def test_legacy_line_shape_is_kept(self, user_client: Client) -> None:
+        """A line that still carries top-level type and price serializes as before."""
+        from baseapp_payments.serializers import StripeInvoiceLineSerializer
 
-
-class TestBasilInvoice:
-    """2025-03-31.basil moved the secret to ``confirmation_secret``, a line's ``type`` to
-    ``parent.type`` and its ``price`` to ``pricing.price_details.price``."""
-
-    def test_the_confirmation_secret_is_the_client_secret(self) -> None:
-        from baseapp_payments.serializers import StripeInvoiceSerializer
-
-        invoice = {
-            "id": "in_1",
-            "confirmation_secret": {"client_secret": "pi_1_secret", "type": "payment_intent"},
-            "lines": {"data": []},
-        }
-
-        assert StripeInvoiceSerializer(invoice).data["client_secret"] == "pi_1_secret"
-
-    def test_lines_read_their_type_and_expanded_price_from_basils_places(self) -> None:
-        from baseapp_payments.serializers import StripeInvoiceSerializer
-
-        price = {"id": "price_1", "currency": "usd", "unit_amount": 1_000, "recurring": {}}
-        invoice = {
-            "id": "in_1",
-            "lines": {
-                "data": [
-                    {
-                        "id": "il_1",
-                        "amount": 1_000,
-                        "description": "Plan",
-                        "quantity": 1,
-                        "parent": {"type": "subscription_item_details"},
-                        "pricing": {"type": "price_details", "price_details": {"price": price}},
-                    },
-                    {
-                        "id": "il_2",
-                        "amount": 500,
-                        "description": "Extra",
-                        "quantity": 1,
-                        "parent": {"type": "invoice_item_details"},
-                        "pricing": {"type": "price_details", "price_details": {"price": "price_2"}},
-                    },
-                ]
-            },
-        }
-
-        first, second = StripeInvoiceSerializer(invoice).data["lines"]
-
-        assert first["type"] == "subscription"
-        assert first["price"]["id"] == "price_1"
-        assert second["type"] == "invoiceitem"
-        # Only an id: not enough to fill the nested price, so it is left out.
-        assert "price" not in second
-
-    def test_lines_from_before_basil_are_untouched(self) -> None:
-        from baseapp_payments.serializers import StripeInvoiceSerializer
-
-        price = {"id": "price_1", "currency": "usd", "unit_amount": 1_000, "recurring": {}}
         line = {
             "id": "il_1",
-            "amount": 1,
-            "description": "",
+            "amount": 500,
+            "description": "Pro",
             "quantity": 1,
-            "type": "subscription",
-            "price": price,
+            "type": "invoiceitem",
+            "price": {"id": "price_1", "currency": "usd", "unit_amount": 500, "recurring": None},
         }
 
-        (data,) = StripeInvoiceSerializer({"id": "in_1", "lines": {"data": [line]}}).data["lines"]
-
-        assert data["type"] == "subscription" and data["price"]["id"] == "price_1"
+        data = StripeInvoiceLineSerializer(line).data
+        assert data["type"] == "invoiceitem"
+        assert data["price"]["id"] == "price_1"

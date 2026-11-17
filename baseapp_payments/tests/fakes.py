@@ -133,6 +133,23 @@ def charge_expired() -> stripe.InvalidRequestError:
     )
 
 
+def payment_method_types_removed() -> stripe.InvalidRequestError:
+    """API 2026-09-30.endive refuses ``payment_method_types`` on PaymentIntent and
+    SetupIntent creates; ``allowed_payment_method_types`` replaces it."""
+    error = {
+        "type": "invalid_request_error",
+        "code": "payment_method_types_no_longer_supported",
+        "param": "payment_method_types",
+    }
+    return stripe.InvalidRequestError(
+        "payment_method_types is no longer supported; use allowed_payment_method_types.",
+        "payment_method_types",
+        code="payment_method_types_no_longer_supported",
+        http_status=400,
+        json_body={"error": error},
+    )
+
+
 def _cached_by_stripe(error: Exception) -> bool:
     """Whether Stripe saves this answer for the idempotency key: not when no response
     came, nor for a 409, a 429, or a key it refuses (401, 403), all rejected before the
@@ -235,6 +252,8 @@ class _PaymentIntentApi(_Api):
 
     def create(self, **params: Any) -> stripe.PaymentIntent:
         self.fake.record("PaymentIntent.create", **params)
+        if "payment_method_types" in params:
+            raise payment_method_types_removed()
         key = params.get("idempotency_key")
         with self.fake.lock:
             if key is not None and key in self.fake.replies:
@@ -457,6 +476,8 @@ class _SetupIntentApi(_Api):
 
     def create(self, **params: Any) -> stripe.SetupIntent:
         self.fake.record("SetupIntent.create", **params)
+        if "payment_method_types" in params:
+            raise payment_method_types_removed()
         key = params.get("idempotency_key")
         with self.fake.lock:
             if key is not None and key in self.fake.replies:
@@ -622,14 +643,18 @@ class _InvoicePaymentApi(_Api):
             if invoice_id not in self.fake.invoices:
                 raise resource_missing("invoice", invoice_id)
             attached = list(self.fake.invoices[invoice_id]["attached"])
+        # Real InvoicePayments, as stripe-python returns them: not dicts since 15.
         items = [
-            {
-                "id": f"inpay_{invoice_id}_{pid}",
-                "object": "invoice_payment",
-                "invoice": invoice_id,
-                "payment": {"type": "payment_intent", "payment_intent": pid},
-                "status": "paid" if self.fake.status_of(pid) == "succeeded" else "open",
-            }
+            stripe.InvoicePayment.construct_from(
+                {
+                    "id": f"inpay_{invoice_id}_{pid}",
+                    "object": "invoice_payment",
+                    "invoice": invoice_id,
+                    "payment": {"type": "payment_intent", "payment_intent": pid},
+                    "status": "paid" if self.fake.status_of(pid) == "succeeded" else "open",
+                },
+                TEST_KEY,
+            )
             for pid in attached
         ]
         size = min(params.get("limit", 10), self.fake.invoice_page_size)

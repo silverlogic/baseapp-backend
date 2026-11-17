@@ -113,7 +113,8 @@ class TestFirstPass:
         )
         ((_args, params),) = fake_stripe.calls_to("PaymentIntent.create")
         assert params["amount"] == 11_000
-        assert params["payment_method_types"] == ["card"]
+        assert params["allowed_payment_method_types"] == ["card"]
+        assert "payment_method_types" not in params
         assert params["capture_method"] == "manual"
         assert params["confirm"] is True
         assert params["idempotency_key"] == f"testproject-hold-{holder.pk}-{attempt_id}"

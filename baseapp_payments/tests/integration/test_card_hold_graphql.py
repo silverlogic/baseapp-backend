@@ -17,9 +17,8 @@ from django.test import RequestFactory
 from django.test.utils import CaptureQueriesContext
 from query_optimizer import DjangoConnectionField
 
-from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import DjangoObjectType, get_obj_relay_id
 from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.graphql import get_obj_relay_id
 from baseapp_core.models import DocumentId
 from baseapp_core.plugins import graphql_shared_interfaces
 from baseapp_payments.graphql import object_types as object_types_module

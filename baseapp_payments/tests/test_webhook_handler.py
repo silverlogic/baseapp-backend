@@ -3,6 +3,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+import stripe
 import swapper
 from django.http import HttpRequest
 from django.test import RequestFactory
@@ -15,6 +16,7 @@ from baseapp_payments.tests.factories import (
     SubscriptionFactory,
     UserFactory,
 )
+from baseapp_payments.tests.helpers import stripe_object
 from baseapp_payments.utils import StripeWebhookHandler
 
 pytestmark = pytest.mark.django_db
@@ -23,8 +25,9 @@ Customer = swapper.load_model("baseapp_payments", "Customer")
 Subscription = swapper.load_model("baseapp_payments", "Subscription")
 
 
-def _event(event_type: str, obj: dict[str, Any]) -> dict[str, Any]:
-    return {"type": event_type, "data": {"object": obj}}
+def _event(event_type: str, obj: dict[str, Any]) -> "stripe.StripeObject":
+    """What `construct_event` hands back: a Stripe object, not a dict."""
+    return stripe_object({"type": event_type, "data": {"object": obj}})
 
 
 def _post(body: bytes = b"{}", **headers: str) -> HttpRequest:

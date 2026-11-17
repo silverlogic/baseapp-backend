@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("baseapp_activity_log", "0002_auto_20241216_1804"),
     ]

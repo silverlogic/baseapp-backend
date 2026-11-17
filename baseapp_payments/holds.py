@@ -361,7 +361,8 @@ def create_hold_payment_intent(
         "currency": currency,
         "customer": stripe_customer_id,
         "payment_method": stripe_id(payment_method),
-        "payment_method_types": ["card"],
+        # payment_method_types is a 400 since API 2026-09-30.endive; this replaces it.
+        "allowed_payment_method_types": ["card"],
         "capture_method": "manual",
         "confirm": True,
         "use_stripe_sdk": True,
@@ -398,7 +399,7 @@ def create_hold_setup_intent(
     return utils.get_stripe().SetupIntent.create(
         customer=stripe_customer_id,
         payment_method=stripe_id(payment_method),
-        payment_method_types=["card"],
+        allowed_payment_method_types=["card"],
         usage="off_session",
         confirm=True,
         use_stripe_sdk=True,
@@ -3010,7 +3011,11 @@ def _record_charge(card_hold_id: int, result: Any) -> None:
     Without a fee, the sweep reads it later."""
     CardHold = _holds()
     changes: dict[str, Any] = {"charged_at": timezone.now()}
-    payment_intent_id = stripe_id(result) if isinstance(result, dict) else None
+    # A StripeObject is no longer a dict since stripe-python 15: checking for dict alone
+    # skipped every real PaymentIntent the project's charge returned.
+    payment_intent_id = (
+        stripe_id(result) if isinstance(result, (dict, stripe.StripeObject)) else None
+    )
     if payment_intent_id and str(payment_intent_id).startswith("pi_"):
         changes["charge_payment_intent_id"] = payment_intent_id
         amount = stripe_field(result, "amount_received") or stripe_field(result, "amount")
@@ -3215,7 +3220,7 @@ def _difference_params(hold: "AbstractCardHold") -> dict[str, Any]:
         "currency": hold.currency,
         "customer": hold.stripe_customer_id,
         "payment_method": hold.stripe_payment_method_id,
-        "payment_method_types": ["card"],
+        "allowed_payment_method_types": ["card"],
         "confirm": True,
         "off_session": True,
         "metadata": {
@@ -3932,7 +3937,7 @@ def _create_off_session(hold: "AbstractCardHold") -> tuple[Any, Exception | None
             currency=hold.currency,
             customer=hold.stripe_customer_id,
             payment_method=hold.stripe_payment_method_id,
-            payment_method_types=["card"],
+            allowed_payment_method_types=["card"],
             capture_method="manual",
             confirm=True,
             off_session=True,

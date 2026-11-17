@@ -252,8 +252,9 @@ class AbstractCardHold(RelayModel, TimeStampedModel):
         STALE_CHARGE = "stale_charge", _("A charge that never finished, past Stripe's 24 hours")
         # On a hold captured in full: the sweep found its target cancelled with the
         # difference still due, and stops charging it (a capture() may still).
-        TARGET_CANCELLED = "target_cancelled", _(
-            "The target was cancelled with the difference still due"
+        TARGET_CANCELLED = (
+            "target_cancelled",
+            _("The target was cancelled with the difference still due"),
         )
 
     class PaymentStatus(models.TextChoices):

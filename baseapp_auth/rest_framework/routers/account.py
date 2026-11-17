@@ -21,11 +21,12 @@ account_router.register(r"forgot-password", ForgotPasswordViewSet, basename="for
 account_router.register(r"forgot-password/reset", ResetPasswordViewSet, basename="reset-password")
 
 # Change Email
+from rest_framework_nested.routers import NestedSimpleRouter  # noqa
+
 from baseapp_auth.rest_framework.change_email.views import (
     ChangeEmailViewSet,
 )  # noqa
 from baseapp_auth.rest_framework.users.views import PermissionsViewSet, UsersViewSet  # noqa
-from rest_framework_nested.routers import NestedSimpleRouter  # noqa
 
 account_router.register(r"change-email", ChangeEmailViewSet, basename="change-email")
 

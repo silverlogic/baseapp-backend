@@ -151,7 +151,7 @@ class TestFinalAmounts:
             "currency": "usd",
             "customer": STRIPE_CUSTOMER_ID,
             "payment_method": "pm_visa",
-            "payment_method_types": ["card"],
+            "allowed_payment_method_types": ["card"],
             "confirm": True,
             "off_session": True,
             "metadata": {
@@ -952,8 +952,9 @@ class TestEdges:
             if step == "claim"
             else patch(
                 "baseapp_payments.holds.find_difference_payment_intents",
-                side_effect=lambda h: CardHold.objects.filter(pk=h.pk).update(difference_key="")
-                and [],
+                side_effect=lambda h: (
+                    CardHold.objects.filter(pk=h.pk).update(difference_key="") and []
+                ),
             )
         ):
             result = capture(hold.pk, 12_000, charge=Mock())

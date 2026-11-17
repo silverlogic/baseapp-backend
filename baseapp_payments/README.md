@@ -31,57 +31,6 @@ STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET")
 ```
 
-## Stripe API version: 2025-05-28.basil
-
-The module sends every Stripe call at API version **`2025-05-28.basil`**
-(`DEFAULT_STRIPE_API_VERSION` in `utils.py`; override it with a `STRIPE_API_VERSION`
-setting only if you must). It moved from `2025-02-24.acacia` with BA-3483: basil lets
-several PaymentIntents pay one invoice, which [paying above the hold](#above-the-hold)
-needs.
-
-What you must do when you upgrade:
-
-- **Check your own `STRIPE_API_VERSION` setting.** A project setting overrides the module's
-  default. The BaseApp backend template pins `STRIPE_API_VERSION = "2025-02-24.acacia"`;
-  change it to `"2025-05-28.basil"` (or remove it). Left on acacia, paying above the hold
-  and `attach_payments_to_invoice` don't work.
-
-- **stripe-python 12.2 or later.** The `payments` extra now requires `stripe>=12.2,<15`:
-  `Invoice.attach_payment`, which the [invoice helper](#one-invoice-for-every-payment)
-  uses, first shipped in 12.2.0 (the release pinned to `2025-05-28.basil`);
-  `InvoicePayment.list` shipped in 12.0.0.
-
-- **Set your webhook endpoint to the same version.** Stripe renders each event at the
-  *endpoint's* API version, not the one this module requests. In the Dashboard
-  (Developers → Webhooks → your endpoint → *Update API version*) pick `2025-05-28.basil`,
-  or create a new endpoint at that version and swap `STRIPE_WEBHOOK_SECRET`. The Stripe
-  CLI (`stripe listen`) forwards events at your account's default API version (and
-  `--latest` at Stripe's newest, past basil), so locally upgrade the test account's
-  default to basil in Workbench.
-- **Subscribe the endpoint to the card hold events** (below) if you use holds: the
-  difference above a hold is reconciled from `payment_intent.succeeded` /
-  `payment_intent.payment_failed`.
-- **Check your own Stripe code** for what basil removed (the module's own reads are
-  handled): `subscription.current_period_start/end` moved to `subscription.items.data[]`;
-  `invoice.payment_intent`, `invoice.charge` and `invoice.paid` are gone (use
-  `invoice.payments`, `invoice.confirmation_secret`, `invoice.status`);
-  `invoice.subscription` is `invoice.parent.subscription_details.subscription`; invoice
-  lines lost `price`, `plan` and `type` (`pricing.price_details.price`, `parent.type`);
-  `PaymentIntent.invoice` / `Charge.invoice` are gone; a lapsed authorization is cancelled
-  with `cancellation_reason="expired"` (was `automatic`); and a partial capture or a
-  cancel no longer creates a Refund or a second balance transaction.
-- **Frontend:** a subscription's `client_secret` now comes from the latest invoice's
-  `confirmation_secret`; the REST payload keeps the same `client_secret` and
-  `current_period_end` fields, so nothing changes for API clients.
-- **Card holds:** run `makemigrations` for your concrete `CardHold` (new columns, below),
-  and backfill `payment_status` for holds captured or charged before the upgrade:
-
-  ```python
-  CardHold.objects.filter(
-      Q(status="captured") | Q(charged_at__isnull=False)
-  ).update(payment_status="paid")
-  ```
-
 ## Customer Integration
 
 A Customer represents any entity (such as a User, Organization, or any model with an email attribute) that will be billed through Stripe.
@@ -207,6 +156,69 @@ wrong card, and once the column is gone there is nothing left to reconcile again
 The migration is forward-only. Reversing re-adds `remote_customer_id` as a non-null
 column with no default, which the database rejects on any table that still has rows.
 
+## Upgrading: stripe 17 and API version 2026-10-28.endive
+
+The `payments` extra now requires `stripe>=17,<18`, and every request is made with Stripe
+API version `2026-10-28.endive` (was `2025-02-24.acacia`). The version is the
+`STRIPE_API_VERSION` constant in `baseapp_payments.utils`. You can still override it with
+the `STRIPE_API_VERSION` setting, but the code only supports this version.
+
+**What you have to do when you update:**
+
+1. **Webhook endpoint version.** Your Stripe webhook endpoint must send events in
+   `2026-10-28.endive`, the same version as the API calls. If your endpoint was created
+   on an older version, create a new endpoint on this version in the Stripe Dashboard
+   (Developers → Webhooks), or set the version through the API. Then move
+   `STRIPE_WEBHOOK_SECRET` to the new endpoint's signing secret and delete the old one.
+   If you skip this, the handlers read payloads in a shape they no longer expect.
+2. **Frontend.** Stripe.js has to be on the same API release. Update the BaseApp frontend
+   payment packages with this version.
+3. **Your own Stripe code.** Code in your project that calls `stripe` directly is affected
+   by the changes below.
+
+**What changed, and why:**
+
+| Change | Cause | What the module does now |
+|---|---|---|
+| A `StripeObject` is no longer a `dict`: `.get()`, `.items()`, `dict(obj)` and `isinstance(obj, dict)` stop working | stripe-python 15 | Reads fields with `stripe_field()`, and converts objects with `stripe_dict()` before serializing or rendering them. Both live in `baseapp_payments.utils` |
+| `invoice.payment_intent` was removed | API 2025-03-31.basil | Reads the first-payment secret from `invoice.confirmation_secret.client_secret`, expanded as `latest_invoice.confirmation_secret` |
+| `subscription.current_period_end` moved to the subscription item | API 2025-03-31.basil | The serializer reads it from `items.data[0].current_period_end` (`subscription_period_end()`). The response field is unchanged |
+| `Invoice.upcoming` was removed | API 2025-03-31.basil | Already replaced with `Invoice.create_preview` |
+| An invoice line's top-level `type` and `price` were removed; they now live under `parent.type` and `pricing.price_details.price` (an id) | API 2025-03-31.basil | `invoice_line_legacy_fields()` rebuilds both, so the invoices response keeps `lines[].type` (`subscription` / `invoiceitem`) and `lines[].price` (`id`, `currency`, `unit_amount`). `price.recurring` is now always null, since a line no longer carries it |
+| `payment_method_types` on SetupIntent create returns a 400 | API 2026-09-30.endive | Uses `allowed_payment_method_types=["card"]` |
+| Pickled Stripe objects lose their API key | stripe-python 17 | The module does not pickle them. If you cache Stripe objects, call `reattach_api_key()` after loading them |
+
+The REST responses keep their shape, so API consumers need no change, with one exception: an
+invoice line's `price.recurring` is now always null. If you subclass
+the serializers or call `StripeService` and read `latest_invoice.payment_intent`, read
+`confirmation_secret` instead.
+
+## Upgrading: paying above the hold
+
+Charging above a hold and the invoice helper rely on API behaviour from
+`2025-03-31.basil` on (several PaymentIntents paying one invoice, `Invoice.attach_payment`,
+`InvoicePayment.list`). The module already sends every call at `2026-10-28.endive`, so the
+stripe and API version steps are the ones in
+[Upgrading: stripe 17 and API version 2026-10-28.endive](#upgrading-stripe-17-and-api-version-2026-10-28endive).
+On top of them:
+
+- **Check your own `STRIPE_API_VERSION` setting.** A project setting overrides the
+  module's `STRIPE_API_VERSION`. The BaseApp backend template pins
+  `STRIPE_API_VERSION = "2025-02-24.acacia"`; change it to `"2026-10-28.endive"` (or
+  remove it). Left on an older version, paying above the hold and
+  `attach_payments_to_invoice` don't work, and the module's reads expect endive's shapes.
+- **Subscribe the endpoint to the card hold events** (see
+  [Stripe webhooks](#stripe-webhooks)) if you use holds: the difference above a hold is
+  reconciled from `payment_intent.succeeded` / `payment_intent.payment_failed`.
+- **Card holds:** run `makemigrations` for your concrete `CardHold` (new columns, below),
+  and backfill `payment_status` for holds captured or charged before the upgrade:
+
+  ```python
+  CardHold.objects.filter(
+      Q(status="captured") | Q(charged_at__isnull=False)
+  ).update(payment_status="paid")
+  ```
+
 ## API Endpoints
 
 All routes are mounted under `v1/payments/`. **The router is `DefaultRouter(trailing_slash=True)`, so every path ends in `/`** - an unslashed request does not resolve and only survives via Django's `APPEND_SLASH` redirect, which drops the body on writes.
@@ -250,7 +262,7 @@ Payment-method and invoice routes are nested under the customer, so the entity i
 ### Stripe dashboard configuration
 
 **Production:** In your [Stripe Dashboard](https://dashboard.stripe.com) → **Developers → Webhooks → Add endpoint**, point the endpoint at `https://yourdomain.com/v1/payments/stripe/webhooks/`, subscribe to the events above (the four `payment_intent.*` ones only if you use card
-holds), then copy the **Signing secret** into `STRIPE_WEBHOOK_SECRET`.
+holds), set the endpoint's API version to `2026-10-28.endive` (the module's `STRIPE_API_VERSION`), then copy the **Signing secret** into `STRIPE_WEBHOOK_SECRET`.
 
 **Local development:** Use the [Stripe CLI](https://stripe.com/docs/stripe-cli):
 
@@ -283,7 +295,7 @@ Both swapped models (and, when enabled, the card hold) are registered in the Dja
 >   - They depend on your merchant category: Visa outside hotels, lodging, car rental and cruise lines costs an extra 0.08%; Amex and Discover cover only a few travel categories.
 >   - The networks mean them for cases where the final amount isn't known yet ([Extended authorization](https://docs.stripe.com/payments/extended-authorization)).
 >   - This module doesn't request them.
-> - **One capture per hold.** A partial capture releases the rest. Capturing more than was held (overcapture) is only available for some card payments. When the final amount is higher, the module captures the whole hold and charges the difference to the same card, off-session (your terms must cover that second charge too); an expired hold is released and the card charged again for the full amount.
+> - **One capture per hold.** A partial capture releases the rest. Capturing more than was held (overcapture) is only available for some card payments. When the final amount is higher, the module captures the whole hold and charges the difference to the same card, off-session (your terms must cover that second charge too); an expired hold is released and the card charged again for the full amount. Since API 2025-03-31.basil a partial capture or a cancel creates no Refund and no second balance transaction: each charge's balance transaction is for the amount captured only.
 > - **Customer consent for saved cards and off-session holds.**
 >   - To charge or hold a card later without the customer present, your terms must say when it will happen and how the amount is set. The customer must accept them, and you must keep a record ([Save and reuse](https://docs.stripe.com/payments/save-and-reuse)).
 >   - With deferral on, a far-off target's hold is placed off-session, `window_days` before its date, for the price at that moment plus the buffer. Your terms must cover exactly that: the hold, its timing, and that the amount may differ from the one shown at checkout.
@@ -310,7 +322,7 @@ What it does today:
 - **Placing, with the customer present.** Your own create mutation calls
   `authorize_on_session(...)`. It reads the card from Stripe (never from the client), prices
   the target through your adapter, refuses if the price differs from what the page showed,
-  and creates a manual-capture PaymentIntent (`payment_method_types=["card"]`). If Stripe asks
+  and creates a manual-capture PaymentIntent (`allowed_payment_method_types=["card"]`). If Stripe asks
   for 3D Secure, the result is `requires_action` with a client secret; after the customer
   authenticates, your mutation calls `complete_on_session(...)`.
 - **One target per attempt.** The client generates an `attemptId` once per checkout and
@@ -692,7 +704,7 @@ On the target's date, with or without a hold, call
   states:
   - an open hold this call releases (Stripe confirms the cancel, or reports that it lapsed by
     itself: `charge_expired_for_capture`, or `canceled` with `cancellation_reason`
-    `automatic`);
+    `expired`, or `automatic` on an object rendered before API 2025-03-31.basil);
   - a `scheduled` hold never placed, a `saved` card (`uses_holds = False`), or a hold
     released to go back to `scheduled` (`rescheduled`, `not_holdable`) whose cancel Stripe
     confirmed (until then `in_progress`: the authorization may still be live);
@@ -876,7 +888,7 @@ When you raise a Stripe invoice for the target, record its payments on it with
 `attach_payments_to_invoice(hold_id, invoice_id)`. It attaches every PaymentIntent that
 took money for the target (`hold_payment_intent_ids(hold)`: the hold's capture, the
 difference, or the single full charge) with `stripe.Invoice.attach_payment(invoice,
-payment_intent=...)` (basil, stripe-python 12.2+), skipping any already on the invoice
+payment_intent=...)` (API 2025-03-31.basil and later), skipping any already on the invoice
 (every page of `stripe.InvoicePayment.list(invoice=...)`; the invoice's own `payments`
 holds only the first few), each with its own idempotency key. Stripe credits a succeeded
 PaymentIntent at once; the invoice turns `paid` when `amount_remaining` reaches 0.
