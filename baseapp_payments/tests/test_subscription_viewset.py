@@ -8,7 +8,7 @@ from rest_framework import status
 from baseapp_core.tests.fixtures import Client
 from baseapp_core.tests.helpers import responseEquals
 from baseapp_payments.tests.factories import CustomerFactory, SubscriptionFactory
-from baseapp_payments.tests.helpers import stripe_list
+from baseapp_payments.tests.helpers import stripe_list, stripe_object
 from baseapp_profiles.tests.factories import ProfileFactory
 
 pytestmark = pytest.mark.django_db
@@ -63,6 +63,58 @@ class TestSubscriptionRetrieveView:
         assert response.data["id"] == "sub_123"
         assert response.data["status"] == "active"
 
+    @patch("baseapp_payments.views.StripeService.retrieve_subscription")
+    def test_subscription_in_the_current_api_shape(
+        self, mock_retrieve_subscription: MagicMock, user_client: Client
+    ) -> None:
+        """What `retrieve` gets back on API 2026-10-28.endive.
+
+        The billing period lives on the subscription item and the payment secret on the
+        invoice's `confirmation_secret`, and the response is a Stripe object, not a dict.
+        """
+        mock_retrieve_subscription.return_value = stripe_object(
+            {
+                "id": "sub_123",
+                "status": "incomplete",
+                "items": {
+                    "data": [
+                        {
+                            "id": "si_1",
+                            "current_period_end": 1767225600,
+                            "price": {
+                                "id": "price_1",
+                                "product": {"id": "prod_1", "name": "Pro", "active": True},
+                            },
+                        }
+                    ]
+                },
+                "latest_invoice": {
+                    "id": "in_1",
+                    "confirmation_secret": {"client_secret": "pi_1_secret"},
+                    "lines": {"data": []},
+                },
+                "upcoming_invoice": {"amount_due": 1000, "next_payment_attempt": None},
+            }
+        )
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        subscription = SubscriptionFactory(customer=customer)
+        response = user_client.get(
+            reverse(
+                self.viewname,
+                kwargs={"remote_subscription_id": subscription.remote_subscription_id},
+            )
+        )
+        responseEquals(response, status.HTTP_200_OK)
+        assert mock_retrieve_subscription.call_args.kwargs["expand"] == [
+            "latest_invoice.confirmation_secret",
+            "items.data.price.product",
+        ]
+        assert response.data["current_period_end"] == "2026-01-01T00:00:00Z"
+        assert response.data["client_secret"] == "pi_1_secret"
+        assert response.data["product"]["id"] == "prod_1"
+        assert response.data["latest_invoice"]["id"] == "in_1"
+        assert response.data["upcoming_invoice"]["amount_due"] == 1000
+
 
 class TestSubscriptionListView:
     viewname = "v1:subscriptions-list"
@@ -93,6 +145,38 @@ class TestSubscriptionListView:
 
 class TestSubscriptionCreateView:
     viewname = "v1:subscriptions-list"
+
+    @patch("baseapp_payments.views.StripeService.list_subscriptions")
+    @patch("baseapp_payments.views.StripeService.retrieve_price")
+    @patch("baseapp_payments.utils.stripe.Subscription.create")
+    def test_raw_pk_and_a_chosen_card_create_and_charge_that_card(
+        self,
+        mock_stripe_create: MagicMock,
+        mock_retrieve_price: MagicMock,
+        mock_list_subscriptions: MagicMock,
+        user_client: Client,
+    ) -> None:
+        """Two bugs on one request, both 4xx before.
+
+        A raw-pk entity_id passed the view but the serializer decoded it as a relay id and
+        answered "Customer not found."; and a payment_method_id without allow_incomplete
+        reached create_subscription(), which did not accept it.
+        """
+        mock_retrieve_price.return_value = {"id": "price_123", "product": {"id": "prod_123"}}
+        mock_list_subscriptions.return_value = stripe_list([])
+        mock_stripe_create.return_value = stripe_object({"id": "sub_raw", "status": "active"})
+        customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
+        response = user_client.post(
+            reverse(self.viewname),
+            data={
+                "entity_id": str(customer.entity_id),
+                "price_id": "price_123",
+                "payment_method_id": "pm_123",
+            },
+        )
+        responseEquals(response, status.HTTP_201_CREATED)
+        assert mock_stripe_create.call_args.kwargs["default_payment_method"] == "pm_123"
+        assert Subscription.objects.filter(remote_subscription_id="sub_raw").exists()
 
     def test_anon_user_cannot_create_subscription(self, client: Client) -> None:
         response = client.post(reverse(self.viewname))
@@ -136,11 +220,15 @@ class TestSubscriptionCreateView:
     ) -> None:
         mock_retrieve_price.return_value = {"id": "price_123", "product": {"id": "prod_123"}}
         mock_list_subscriptions.return_value = stripe_list([])
-        mock_create_incomplete_subscription.return_value = {
-            "id": "sub_123",
-            "status": "incomplete",
-            "latest_invoice": {"payment_intent": {"client_secret": "client_secret_123"}},
-        }
+        # create_incomplete_subscription resolves the secret and sets it on the object.
+        mock_create_incomplete_subscription.return_value = stripe_object(
+            {
+                "id": "sub_123",
+                "status": "incomplete",
+                "latest_invoice": "in_1",
+                "client_secret": "client_secret_123",
+            }
+        )
         customer = CustomerFactory(entity=user_client.user.profile, remote_customer_id="cus_123")
         response = user_client.post(
             reverse(self.viewname),

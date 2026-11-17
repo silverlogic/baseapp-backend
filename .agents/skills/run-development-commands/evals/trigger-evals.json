@@ -20,7 +20,7 @@
     "should_trigger": true
   },
   {
-    "query": "Format the codebase with black and isort.",
+    "query": "Format the codebase with ruff.",
     "should_trigger": true
   },
   {

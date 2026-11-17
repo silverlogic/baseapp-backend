@@ -13,9 +13,8 @@ if TYPE_CHECKING:
 
     from baseapp_pages.graphql.object_types import MetadataObjectType
 
-from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import DjangoObjectType, ThumbnailField
 from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.graphql import ThumbnailField
 from baseapp_core.plugins import graphql_shared_interfaces, shared_services
 
 from .filters import UsersFilter

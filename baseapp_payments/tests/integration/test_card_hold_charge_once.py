@@ -107,13 +107,15 @@ class TestRetriesNeverUndoARefusal:
         charge.assert_not_called()
         assert fake_stripe.calls_to("PaymentIntent.cancel")[1:] == []
 
+    @pytest.mark.parametrize("reason", ["expired", "automatic"], ids=["basil", "acacia"])
     def test_an_authorization_stripe_cancelled_when_it_lapsed_is_charged_instead(
-        self, order, fake_stripe
+        self, order, fake_stripe, reason
     ) -> None:
-        """``canceled`` with ``cancellation_reason: automatic``: it expired by itself, nobody
-        charged, so the amount is charged afresh (once)."""
+        """``canceled`` with ``cancellation_reason: expired`` (``automatic`` before
+        2025-03-31.basil): it expired by itself, nobody charged, so the amount is charged
+        afresh (once)."""
         hold = live_hold(fake_stripe, target=order)
-        fake_stripe.lapse(hold.stripe_payment_intent_id)
+        fake_stripe.lapse(hold.stripe_payment_intent_id, reason=reason)
         charge = Mock(return_value="ch_new")
 
         result = capture(hold.pk, 10_000, charge=charge)

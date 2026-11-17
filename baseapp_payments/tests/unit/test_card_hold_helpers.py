@@ -309,13 +309,13 @@ def _module_level_imports(nodes: list, guarded: bool = False) -> list[tuple[str,
         "plugin.py",
         "signals.py",
         "tasks.py",
-        "utils.py",
     ],
 )
 def test_rest_only_modules_import_no_graphql_at_import_time(module) -> None:
     """Card holds add no import-time GraphQL dependency to the modules they touch: GraphQL
-    is imported lazily, or guarded by ``except ImportError``. (``serializers.py`` and
-    ``views.py`` already imported ``baseapp_core.graphql`` before card holds.)"""
+    is imported lazily, or guarded by ``except ImportError``. (``serializers.py``,
+    ``views.py`` and, since the stripe 17 upgrade moved ``entity_pk_from_id`` there,
+    ``utils.py`` import ``baseapp_core.graphql`` regardless of card holds.)"""
     tree = ast.parse((PACKAGE / module).read_text())
     graphql = [
         (name, guarded)

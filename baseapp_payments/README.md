@@ -156,6 +156,43 @@ wrong card, and once the column is gone there is nothing left to reconcile again
 The migration is forward-only. Reversing re-adds `remote_customer_id` as a non-null
 column with no default, which the database rejects on any table that still has rows.
 
+## Upgrading: stripe 17 and API version 2026-10-28.endive
+
+The `payments` extra now requires `stripe>=17,<18`, and every request is made with Stripe
+API version `2026-10-28.endive` (was `2025-02-24.acacia`). The version is the
+`STRIPE_API_VERSION` constant in `baseapp_payments.utils`. You can still override it with
+the `STRIPE_API_VERSION` setting, but the code only supports this version.
+
+**What you have to do when you update:**
+
+1. **Webhook endpoint version.** Your Stripe webhook endpoint must send events in
+   `2026-10-28.endive`, the same version as the API calls. If your endpoint was created
+   on an older version, create a new endpoint on this version in the Stripe Dashboard
+   (Developers → Webhooks), or set the version through the API. Then move
+   `STRIPE_WEBHOOK_SECRET` to the new endpoint's signing secret and delete the old one.
+   If you skip this, the handlers read payloads in a shape they no longer expect.
+2. **Frontend.** Stripe.js has to be on the same API release. Update the BaseApp frontend
+   payment packages with this version.
+3. **Your own Stripe code.** Code in your project that calls `stripe` directly is affected
+   by the changes below.
+
+**What changed, and why:**
+
+| Change | Cause | What the module does now |
+|---|---|---|
+| A `StripeObject` is no longer a `dict`: `.get()`, `.items()`, `dict(obj)` and `isinstance(obj, dict)` stop working | stripe-python 15 | Reads fields with `stripe_field()`, and converts objects with `stripe_dict()` before serializing or rendering them. Both live in `baseapp_payments.utils` |
+| `invoice.payment_intent` was removed | API 2025-03-31.basil | Reads the first-payment secret from `invoice.confirmation_secret.client_secret`, expanded as `latest_invoice.confirmation_secret` |
+| `subscription.current_period_end` moved to the subscription item | API 2025-03-31.basil | The serializer reads it from `items.data[0].current_period_end` (`subscription_period_end()`). The response field is unchanged |
+| `Invoice.upcoming` was removed | API 2025-03-31.basil | Already replaced with `Invoice.create_preview` |
+| An invoice line's top-level `type` and `price` were removed; they now live under `parent.type` and `pricing.price_details.price` (an id) | API 2025-03-31.basil | `invoice_line_legacy_fields()` rebuilds both, so the invoices response keeps `lines[].type` (`subscription` / `invoiceitem`) and `lines[].price` (`id`, `currency`, `unit_amount`). `price.recurring` is now always null, since a line no longer carries it |
+| `payment_method_types` on SetupIntent create returns a 400 | API 2026-09-30.endive | Uses `allowed_payment_method_types=["card"]` |
+| Pickled Stripe objects lose their API key | stripe-python 17 | The module does not pickle them. If you cache Stripe objects, call `reattach_api_key()` after loading them |
+
+The REST responses keep their shape, so API consumers need no change, with one exception: an
+invoice line's `price.recurring` is now always null. If you subclass
+the serializers or call `StripeService` and read `latest_invoice.payment_intent`, read
+`confirmation_secret` instead.
+
 ## API Endpoints
 
 All routes are mounted under `v1/payments/`. **The router is `DefaultRouter(trailing_slash=True)`, so every path ends in `/`** - an unslashed request does not resolve and only survives via Django's `APPEND_SLASH` redirect, which drops the body on writes.
@@ -199,7 +236,7 @@ Payment-method and invoice routes are nested under the customer, so the entity i
 ### Stripe dashboard configuration
 
 **Production:** In your [Stripe Dashboard](https://dashboard.stripe.com) → **Developers → Webhooks → Add endpoint**, point the endpoint at `https://yourdomain.com/v1/payments/stripe/webhooks/`, subscribe to the events above (the four `payment_intent.*` ones only if you use card
-holds), then copy the **Signing secret** into `STRIPE_WEBHOOK_SECRET`.
+holds), set the endpoint's API version to `2026-10-28.endive` (the module's `STRIPE_API_VERSION`), then copy the **Signing secret** into `STRIPE_WEBHOOK_SECRET`.
 
 **Local development:** Use the [Stripe CLI](https://stripe.com/docs/stripe-cli):
 
@@ -232,7 +269,7 @@ Both swapped models (and, when enabled, the card hold) are registered in the Dja
 >   - They depend on your merchant category: Visa outside hotels, lodging, car rental and cruise lines costs an extra 0.08%; Amex and Discover cover only a few travel categories.
 >   - The networks mean them for cases where the final amount isn't known yet ([Extended authorization](https://docs.stripe.com/payments/extended-authorization)).
 >   - This module doesn't request them.
-> - **One capture per hold.** A partial capture releases the rest. Capturing more than was held (overcapture) is only available for some card payments. When the final amount is higher, the module releases the hold and charges the card again.
+> - **One capture per hold.** A partial capture releases the rest. Capturing more than was held (overcapture) is only available for some card payments. When the final amount is higher, the module releases the hold and charges the card again. Since API 2025-03-31.basil a partial capture or a cancel creates no Refund and no second balance transaction: the charge's balance transaction is for the captured amount only.
 > - **Customer consent for saved cards and off-session holds.**
 >   - To charge or hold a card later without the customer present, your terms must say when it will happen and how the amount is set. The customer must accept them, and you must keep a record ([Save and reuse](https://docs.stripe.com/payments/save-and-reuse)).
 >   - With deferral on, a far-off target's hold is placed off-session, `window_days` before its date, for the price at that moment plus the buffer. Your terms must cover exactly that: the hold, its timing, and that the amount may differ from the one shown at checkout.
@@ -259,7 +296,7 @@ What it does today:
 - **Placing, with the customer present.** Your own create mutation calls
   `authorize_on_session(...)`. It reads the card from Stripe (never from the client), prices
   the target through your adapter, refuses if the price differs from what the page showed,
-  and creates a manual-capture PaymentIntent (`payment_method_types=["card"]`). If Stripe asks
+  and creates a manual-capture PaymentIntent (`allowed_payment_method_types=["card"]`). If Stripe asks
   for 3D Secure, the result is `requires_action` with a client secret; after the customer
   authenticates, your mutation calls `complete_on_session(...)`.
 - **One target per attempt.** The client generates an `attemptId` once per checkout and
@@ -627,7 +664,7 @@ On the target's date, with or without a hold, call
   else may have charged:
   - an open hold this call releases (Stripe confirms the cancel, or reports that it lapsed by
     itself: `charge_expired_for_capture`, or `canceled` with `cancellation_reason`
-    `automatic`);
+    `expired`, or `automatic` on an object rendered before API 2025-03-31.basil);
   - a `scheduled` hold never placed, a `saved` card (`uses_holds = False`), or a hold
     released to go back to `scheduled` (`rescheduled`, `not_holdable`) whose cancel Stripe
     confirmed (until then `in_progress`: the authorization may still be live);

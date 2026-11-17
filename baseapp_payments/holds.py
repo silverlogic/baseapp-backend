@@ -96,6 +96,10 @@ logger = logging.getLogger(__name__)
 
 # Stripe's codes for a capture refused because the authorization is gone.
 LAPSED_AUTHORIZATION_CODES = frozenset({"charge_expired_for_capture"})
+# ``cancellation_reason`` of a PaymentIntent Stripe cancelled itself when its authorization
+# lapsed: ``expired`` from API version 2025-03-31.basil on, ``automatic`` before it (an
+# event or object rendered at an older version still says so).
+LAPSED_CANCELLATION_REASONS = frozenset({"expired", "automatic"})
 # PaymentIntent statuses a second pass can do nothing with: the authorization is over.
 TERMINAL_INTENT_STATUSES = frozenset({"canceled", "requires_payment_method"})
 # A capture claim older than this belongs to a call that died; another call may take it.
@@ -353,7 +357,8 @@ def create_hold_payment_intent(
         "currency": currency,
         "customer": stripe_customer_id,
         "payment_method": stripe_id(payment_method),
-        "payment_method_types": ["card"],
+        # payment_method_types is a 400 since API 2026-09-30.endive; this replaces it.
+        "allowed_payment_method_types": ["card"],
         "capture_method": "manual",
         "confirm": True,
         "use_stripe_sdk": True,
@@ -390,7 +395,7 @@ def create_hold_setup_intent(
     return utils.get_stripe().SetupIntent.create(
         customer=stripe_customer_id,
         payment_method=stripe_id(payment_method),
-        payment_method_types=["card"],
+        allowed_payment_method_types=["card"],
         usage="off_session",
         confirm=True,
         use_stripe_sdk=True,
@@ -2150,13 +2155,14 @@ class _ForCharge(str, enum.Enum):
 
 def _cancelled_by_stripe(error: Exception | None, payment_intent_id: str) -> bool:
     """Whether a PaymentIntent found ``canceled`` was cancelled by Stripe itself when its
-    authorization lapsed (``cancellation_reason`` ``automatic``), rather than by someone
-    who may have charged the card instead. Read from Stripe's error, else from Stripe."""
+    authorization lapsed (``cancellation_reason`` ``expired``, ``automatic`` before basil),
+    rather than by someone who may have charged the card instead. Read from Stripe's
+    error, else from Stripe."""
     intent = stripe_field(getattr(error, "error", None), "payment_intent")
     reason = stripe_field(intent, "cancellation_reason")
     if reason is None:
         reason = stripe_field(retrieve_payment_intent(payment_intent_id), "cancellation_reason")
-    return reason == "automatic"
+    return reason in LAPSED_CANCELLATION_REASONS
 
 
 def _block_charge(card_hold_id: int, block: str) -> None:
@@ -3005,7 +3011,7 @@ def _create_off_session(hold: "AbstractCardHold") -> tuple[Any, Exception | None
             currency=hold.currency,
             customer=hold.stripe_customer_id,
             payment_method=hold.stripe_payment_method_id,
-            payment_method_types=["card"],
+            allowed_payment_method_types=["card"],
             capture_method="manual",
             confirm=True,
             off_session=True,

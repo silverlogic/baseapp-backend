@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("baseapp_url_shortening", "0002_alter_shorturl_full_url"),
     ]

@@ -124,6 +124,23 @@ def charge_expired() -> stripe.InvalidRequestError:
     )
 
 
+def payment_method_types_removed() -> stripe.InvalidRequestError:
+    """API 2026-09-30.endive refuses ``payment_method_types`` on PaymentIntent and
+    SetupIntent creates; ``allowed_payment_method_types`` replaces it."""
+    error = {
+        "type": "invalid_request_error",
+        "code": "payment_method_types_no_longer_supported",
+        "param": "payment_method_types",
+    }
+    return stripe.InvalidRequestError(
+        "payment_method_types is no longer supported; use allowed_payment_method_types.",
+        "payment_method_types",
+        code="payment_method_types_no_longer_supported",
+        http_status=400,
+        json_body={"error": error},
+    )
+
+
 def _cached_by_stripe(error: Exception) -> bool:
     """Whether Stripe saves this answer for the idempotency key: not when no response
     came, nor for a 409, a 429, or a key it refuses (401, 403), all rejected before the
@@ -226,6 +243,8 @@ class _PaymentIntentApi(_Api):
 
     def create(self, **params: Any) -> stripe.PaymentIntent:
         self.fake.record("PaymentIntent.create", **params)
+        if "payment_method_types" in params:
+            raise payment_method_types_removed()
         key = params.get("idempotency_key")
         with self.fake.lock:
             if key is not None and key in self.fake.replies:
@@ -435,6 +454,8 @@ class _SetupIntentApi(_Api):
 
     def create(self, **params: Any) -> stripe.SetupIntent:
         self.fake.record("SetupIntent.create", **params)
+        if "payment_method_types" in params:
+            raise payment_method_types_removed()
         key = params.get("idempotency_key")
         with self.fake.lock:
             if key is not None and key in self.fake.replies:
@@ -579,17 +600,20 @@ class FakeStripe:
         with self.lock:
             self.intents[payment_intent_id]["status"] = status
 
-    def lapse(self, payment_intent_id: str, *, canceled: bool = True) -> None:
+    def lapse(
+        self, payment_intent_id: str, *, canceled: bool = True, reason: str = "expired"
+    ) -> None:
         """The authorization expired. Stripe then cancels the PaymentIntent itself
-        (``canceled``, ``cancellation_reason="automatic"``); before it gets to that, the
-        PaymentIntent still reads ``requires_capture`` but a capture is refused with
-        ``charge_expired_for_capture``, and a cancel still works."""
+        (``canceled``, ``cancellation_reason="expired"`` from basil on; ``"automatic"``
+        before it); before it gets to that, the PaymentIntent still reads
+        ``requires_capture`` but a capture is refused with ``charge_expired_for_capture``,
+        and a cancel still works."""
         with self.lock:
             data = self.intents[payment_intent_id]
             data["lapsed"] = True
             if canceled:
                 data["status"] = "canceled"
-                data["cancellation_reason"] = "automatic"
+                data["cancellation_reason"] = reason
 
     def fail_behind_next(self, error: Exception | None = None) -> None:
         """The next PaymentIntent creation creates its PaymentIntent but answers with
