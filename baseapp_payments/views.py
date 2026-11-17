@@ -18,11 +18,14 @@ from baseapp_core.rest_framework.mixins import DestroyModelMixin
 
 from .permissions import (
     DRFCustomerPermissions,
+    DRFPurchasePermissions,
     DRFSubscriptionPermissions,
     is_entity_owner,
 )
 from .serializers import (
     EntityIdSerializer,
+    PurchaseCreateSerializer,
+    PurchaseSerializer,
     StripeCustomerSerializer,
     StripeInvoiceSerializer,
     StripePaymentMethodSerializer,
@@ -407,3 +410,56 @@ class StripePaymentMethodViewset(viewsets.GenericViewSet):
         except Exception as e:
             logger.exception("Failed to delete payment method: %s", e)
             return Response({"error": "An internal error has occurred"}, status=500)
+
+
+class StripePurchaseViewset(viewsets.GenericViewSet, viewsets.mixins.RetrieveModelMixin):
+    """One-time purchases: charge a customer once for products by quantity.
+
+    Registered only when the project configures the purchase models. ``create`` returns
+    the purchase as ``pending`` with the ``client_secret`` the browser confirms the
+    payment with; the status turns ``paid`` or ``failed`` only by webhook, so the screen
+    polls ``retrieve`` (or waits for the project's own notification) for the outcome.
+    """
+
+    serializer_class = PurchaseSerializer
+    permission_classes = [IsAuthenticated, DRFPurchasePermissions]
+
+    def get_queryset(self) -> "QuerySet":
+        from .purchases import get_purchase_model
+
+        return (
+            get_purchase_model().objects.select_related("customer").prefetch_related("lines").all()
+        )
+
+    def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        from .purchases import PurchaseCreationError, PurchaseValidationError, create_purchase
+
+        params = PurchaseCreateSerializer(data=request.data)
+        params.is_valid(raise_exception=True)
+        data = params.validated_data
+        customer = self._customer_from_entity_id(data["entity_id"])
+        # No purchase exists yet, so DRF never runs object permissions on its own: the
+        # Customer being billed is what has to be authorized.
+        self.check_object_permissions(request, customer)
+        try:
+            purchase, client_secret = create_purchase(
+                customer, data["items"], payment_method_id=data.get("payment_method_id")
+            )
+        except PurchaseValidationError as e:
+            raise ValidationError({e.field: [e.message]})
+        except PurchaseCreationError:
+            # Logged where it happened; the caller gets a generic message.
+            return Response(
+                {"non_field_errors": [_("The purchase could not be created. Please try again.")]},
+                status=502,
+            )
+        body = dict(PurchaseSerializer(purchase).data)
+        body["client_secret"] = client_secret
+        return Response(body, status=201)
+
+    def _customer_from_entity_id(self, entity_id: "str | int | None") -> "BaseCustomer":
+        entity_pk = entity_pk_from_id(entity_id)
+        customer = Customer.objects.filter(entity_id=entity_pk).first() if entity_pk else None
+        if not customer:
+            raise NotFound(_("Customer not found"))
+        return customer
