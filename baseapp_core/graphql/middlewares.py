@@ -8,7 +8,6 @@ from rest_framework_simplejwt.authentication import (
     JWTAuthentication as RestJWTAuthentication,
 )
 
-
 # `GraphQLError` codes that answer an expected client condition (e.g. `login_required` on an
 # anonymous request), not a server fault: returned to the client, but not logged as errors.
 UNLOGGED_ERROR_CODES = frozenset({"authentication_required"})
