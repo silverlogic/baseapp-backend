@@ -525,6 +525,31 @@ def test_cant_list_messages_from_non_participating_room(graphql_user_client) -> 
     assert content["data"]["chatRoom"] is None
 
 
+ROOM_NODE_GRAPHQL = """
+    query RoomNode($id: ID!) {
+        node(id: $id) {
+            ... on ChatRoom {
+                id
+            }
+        }
+    }
+"""
+
+
+def test_anonymous_user_cant_fetch_room_node(graphql_client) -> None:
+    # Regression: the view_chatroom permission check raised TypeError for an anonymous user
+    # (Sentry BASEAPP-BACKEND-TEMPLATE-GD) instead of hiding the room.
+    user = UserFactory()
+    room = ChatRoomFactory(created_by=user)
+    ChatRoomParticipantFactory(profile=user.profile, room=room)
+
+    response = graphql_client(ROOM_NODE_GRAPHQL, variables={"id": room.relay_id})
+
+    content = response.json()
+    assert "errors" not in content
+    assert content["data"]["node"] is None
+
+
 def test_user_cant_list_rooms_if_blocked(graphql_user_client, django_user_client) -> None:
     band = ProfileFactory()
     room = ChatRoomFactory(created_by=django_user_client.user)

@@ -223,3 +223,16 @@ class TestAssignableRoles:
         with patch.object(ProfileUserRole, "assignable_roles", classmethod(lambda cls: allowed)):
             assert reserved not in ProfileUserRole.assignable_roles()
             assert ProfileUserRole.ProfileRoles.ADMIN in ProfileUserRole.assignable_roles()
+
+
+def test_anonymous_user_has_no_user_profiles() -> None:
+    # Regression: `owner=AnonymousUser()` raised TypeError (Sentry BASEAPP-BACKEND-TEMPLATE-GD).
+    ProfileFactory()
+
+    assert Profile.objects.filter_user_profiles(AnonymousUser()).exists() is False
+
+
+def test_anonymous_user_is_not_member_of_any_profile() -> None:
+    profile = ProfileFactory()
+
+    assert Profile.objects.get_if_member(AnonymousUser(), pk=profile.pk) is None
