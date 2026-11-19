@@ -232,6 +232,12 @@ class Migration(migrations.Migration):
                     models.DateTimeField(blank=True, null=True, verbose_name="capture claimed at"),
                 ),
                 (
+                    "cancel_sent_payment_intent_id",
+                    models.CharField(
+                        blank=True, max_length=255, verbose_name="cancel sent for PaymentIntent"
+                    ),
+                ),
+                (
                     "charge_key",
                     models.CharField(
                         blank=True, max_length=255, verbose_name="charge idempotency key"

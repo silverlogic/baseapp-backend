@@ -258,6 +258,55 @@ class TestReleaseForChargeTakesTheClaim:
         assert fake_stripe.calls == []
 
 
+class TestALostCancelAnswer:
+    """Stripe cancelled the PaymentIntent for a charge, but the answer never arrived: the
+    retry finds it ``canceled`` and must still know the cancel was ours."""
+
+    def expired_hold(self, order, fake_stripe) -> Any:
+        return live_hold(
+            fake_stripe, target=order, expires_at=timezone.now() - datetime.timedelta(minutes=1)
+        )
+
+    def test_a_capture_retry_still_charges_instead(self, order, fake_stripe) -> None:
+        """Reviewer's repro: cancel applied, APIConnectionError, capture() retried."""
+        hold = self.expired_hold(order, fake_stripe)
+        fake_stripe.lose_next_cancel_answer()
+        charge = Mock(return_value="ch_new")
+        with pytest.raises(stripe.APIConnectionError):
+            capture(hold.pk, 10_000, charge=charge)
+        assert fake_stripe.status_of(hold.stripe_payment_intent_id) == "canceled"
+
+        result = capture(hold.pk, 10_000, charge=charge)
+
+        assert result.status == CaptureStatus.CHARGED
+        charge.assert_called_once_with(idempotency_key=charge_idempotency_key(hold.pk))
+        hold = reload(hold)
+        assert hold.release_reason == CardHold.ReleaseReason.FOR_CHARGE
+        assert hold.charge_blocked_reason == ""
+
+    def test_a_release_for_charge_retry_answers_true(self, order, fake_stripe) -> None:
+        hold = live_hold(fake_stripe, target=order)
+        fake_stripe.lose_next_cancel_answer()
+        with pytest.raises(stripe.APIConnectionError):
+            release_for_charge(hold.pk)
+
+        assert release_for_charge(hold.pk) is True
+        (_, first), _second = fake_stripe.calls_to("PaymentIntent.cancel")
+        assert first == {"cancellation_reason": "abandoned"}
+        hold = reload(hold)
+        assert hold.release_reason == CardHold.ReleaseReason.FOR_CHARGE
+        assert hold.charge_blocked_reason == ""
+
+    def test_one_we_never_asked_to_cancel_is_still_someone_elses(self, order, fake_stripe) -> None:
+        """Our reason alone proves nothing: without the row's record it's someone else's."""
+        hold = live_hold(fake_stripe, target=order)
+        fake_stripe.set_status(hold.stripe_payment_intent_id, "canceled")
+        fake_stripe.intents[hold.stripe_payment_intent_id]["cancellation_reason"] = "abandoned"
+
+        assert release_for_charge(hold.pk) is False
+        assert reload(hold).charge_blocked_reason == CardHold.ChargeBlock.LAPSED
+
+
 class TestChargeKeyLifetime:
     def test_a_charge_retried_within_the_day_reuses_its_key(self, order, fake_stripe) -> None:
         hold = expired_hold(fake_stripe, target=order)
