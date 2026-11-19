@@ -100,6 +100,9 @@ LAPSED_AUTHORIZATION_CODES = frozenset({"charge_expired_for_capture"})
 # lapsed: ``expired`` from API version 2025-03-31.basil on, ``automatic`` before it (an
 # event or object rendered at an older version still says so).
 LAPSED_CANCELLATION_REASONS = frozenset({"expired", "automatic"})
+# The ``cancellation_reason`` every cancel of ours sends: no money will be taken from the
+# authorization. A PaymentIntent found ``canceled`` counts as cancelled by us only with it.
+OUR_CANCELLATION_REASON = "abandoned"
 # PaymentIntent statuses a second pass can do nothing with: the authorization is over.
 TERMINAL_INTENT_STATUSES = frozenset({"canceled", "requires_payment_method"})
 # A capture claim older than this belongs to a call that died; another call may take it.
@@ -1982,11 +1985,17 @@ def _cancel_payment_intent(
     live authorization (``requires_capture``, even past its expiry) is cancelled, one
     missing counts as cancelled, one already ``canceled`` (by us, by Stripe when it
     lapsed, or by anyone else) is ``was_canceled``, and a ``succeeded`` one was captured.
+
+    No idempotency key: Stripe would replay a 5xx for it for 24 hours, so every retry,
+    the sweep's included, would fail that long. A retry after a lost answer finds the
+    PaymentIntent ``canceled`` instead, with our reason (:func:`_release_for_charge`).
     """
     if not payment_intent_id:
         return _Cancel.CANCELED, None
     try:
-        utils.get_stripe().PaymentIntent.cancel(payment_intent_id)
+        utils.get_stripe().PaymentIntent.cancel(
+            payment_intent_id, cancellation_reason=OUR_CANCELLATION_REASON
+        )
     except stripe.InvalidRequestError as error:
         if getattr(error, "code", None) == "resource_missing":
             return _Cancel.CANCELED, None
@@ -2153,16 +2162,41 @@ class _ForCharge(str, enum.Enum):
     ELSEWHERE = "elsewhere"  # cancelled or released outside this call: never charge on top
 
 
-def _cancelled_by_stripe(error: Exception | None, payment_intent_id: str) -> bool:
+def _cancelled_by_stripe_or_us(
+    error: Exception | None, payment_intent_id: str, *, sent_before: bool
+) -> bool:
     """Whether a PaymentIntent found ``canceled`` was cancelled by Stripe itself when its
     authorization lapsed (``cancellation_reason`` ``expired``, ``automatic`` before basil),
-    rather than by someone who may have charged the card instead. Read from Stripe's
-    error, else from Stripe."""
+    or by an earlier cancel of ours whose answer was lost (``sent_before``, with our
+    reason), rather than by someone who may have charged the card instead. Read from
+    Stripe's error, else from Stripe."""
     intent = stripe_field(getattr(error, "error", None), "payment_intent")
     reason = stripe_field(intent, "cancellation_reason")
     if reason is None:
         reason = stripe_field(retrieve_payment_intent(payment_intent_id), "cancellation_reason")
-    return reason in LAPSED_CANCELLATION_REASONS
+    if reason in LAPSED_CANCELLATION_REASONS:
+        return True
+    return sent_before and reason == OUR_CANCELLATION_REASON
+
+
+def _cancel_was_sent(card_hold_id: int, payment_intent_id: str) -> bool:
+    """Whether a release for a charge already asked Stripe to cancel ``payment_intent_id``."""
+    return (
+        _holds()
+        .objects.filter(pk=card_hold_id, cancel_sent_payment_intent_id=payment_intent_id)
+        .exists()
+    )
+
+
+def _record_cancel_sent(card_hold_id: int, payment_intent_id: str) -> bool:
+    """Record, before calling Stripe, that we are cancelling ``payment_intent_id`` for a
+    charge. Returns whether an earlier call had already recorded it."""
+    if _cancel_was_sent(card_hold_id, payment_intent_id):
+        return True
+    _holds().objects.filter(pk=card_hold_id).update(
+        cancel_sent_payment_intent_id=payment_intent_id, modified=timezone.now()
+    )
+    return False
 
 
 def _block_charge(card_hold_id: int, block: str) -> None:
@@ -2200,17 +2234,25 @@ def _release_for_charge(
     charged. ``charge_key`` claims the charge in the same UPDATE that releases the hold.
 
     ``released`` only when this call's UPDATE released the row, and the PaymentIntent
-    was cancelled now, was missing, or was cancelled by Stripe when it lapsed. One found
-    cancelled by anyone else, or a row another call released meanwhile, is
+    was cancelled now, was missing, was cancelled by Stripe when it lapsed, or by an
+    earlier call of ours whose answer was lost (``cancel_sent_payment_intent_id``). One
+    found cancelled by anyone else, or a row another call released meanwhile, is
     ``elsewhere``: never charge on top of it.
     """
     payment_intent_id = hold.stripe_payment_intent_id
+    sent_before = bool(payment_intent_id) and _record_cancel_sent(hold.pk, payment_intent_id)
     outcome, error = _cancel_payment_intent(payment_intent_id, hold.pk)
     if outcome == _Cancel.SUCCEEDED:
         return _ForCharge.CAPTURED, _record_capture_from_stripe(hold.pk, payment_intent_id)
     if outcome == _Cancel.REFUSED:
+        # Stripe answered and cancelled nothing: no cancel of ours is pending.
+        _holds().objects.filter(pk=hold.pk, cancel_sent_payment_intent_id=payment_intent_id).update(
+            cancel_sent_payment_intent_id="", modified=timezone.now()
+        )
         return _ForCharge.REFUSED, error
-    if outcome == _Cancel.WAS_CANCELED and not _cancelled_by_stripe(error, payment_intent_id):
+    if outcome == _Cancel.WAS_CANCELED and not _cancelled_by_stripe_or_us(
+        error, payment_intent_id, sent_before=sent_before
+    ):
         _cancelled_elsewhere(hold.pk, payment_intent_id)
         return _ForCharge.ELSEWHERE, error
     if not mark_released(
@@ -2564,9 +2606,13 @@ def _capture_from_hold(
             # Captured already (this attempt, answered earlier).
             intent = retrieve_payment_intent(payment_intent_id)
         elif getattr(error, "code", None) in LAPSED_AUTHORIZATION_CODES or (
-            status == "canceled" and _cancelled_by_stripe(error, payment_intent_id)
+            status == "canceled"
+            and _cancelled_by_stripe_or_us(
+                error, payment_intent_id, sent_before=_cancel_was_sent(hold.pk, payment_intent_id)
+            )
         ):
-            # The authorization lapsed: no money moved, and none can be taken from it.
+            # The authorization lapsed, or an earlier call of ours cancelled it to charge
+            # instead: no money moved, and none can be taken from it.
             if not mark_released(
                 hold.pk,
                 payment_intent_id,

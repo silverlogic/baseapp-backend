@@ -394,6 +394,8 @@ class _PaymentIntentApi(_Api):
         return self._construct(payment_intent_id)
 
     def cancel(self, payment_intent_id: str, **params: Any) -> stripe.PaymentIntent:
+        """Cancels once, keeping ``cancellation_reason``
+        (:meth:`FakeStripe.lose_next_cancel_answer` loses the answer)."""
         self.fake.record("PaymentIntent.cancel", payment_intent_id, **params)
         self.fake.raise_queued("PaymentIntent.cancel")
         with self.fake.lock:
@@ -403,6 +405,11 @@ class _PaymentIntentApi(_Api):
             if data["status"] in ("canceled", "succeeded"):
                 raise unexpected_state(payment_intent_id, data["status"], "cancel")
             data["status"] = "canceled"
+            data["cancellation_reason"] = params.get("cancellation_reason")
+            if self.fake.lost_cancel_answers:
+                self.fake.lost_cancel_answers.pop(0)
+                # Cancelled in Stripe, but the answer never arrived.
+                raise connection_error()
         return self._construct(payment_intent_id)
 
     def capture(self, payment_intent_id: str, **params: Any) -> stripe.PaymentIntent:
@@ -578,6 +585,7 @@ class FakeStripe:
         self.before_retrieve: Callable[[str], None] | None = None
         # Errors the next PaymentIntent creations answer with after creating it anyway.
         self.behind_errors: list[Exception] = []
+        self.lost_cancel_answers: list[bool] = []
         self.PaymentMethod = _PaymentMethodApi(self)
         self.PaymentIntent = _PaymentIntentApi(self)
         self.SetupIntent = _SetupIntentApi(self)
@@ -620,6 +628,12 @@ class FakeStripe:
         ``error`` (a 5xx by default), which Stripe saves for its key like any 5xx."""
         with self.lock:
             self.behind_errors.append(error or api_error())
+
+    def lose_next_cancel_answer(self) -> None:
+        """The next PaymentIntent cancel goes through in Stripe, but the caller gets a
+        connection error instead."""
+        with self.lock:
+            self.lost_cancel_answers.append(True)
 
     def prune_keys(self, *keys: str) -> None:
         """Stripe forgot these idempotency keys (all, without any): pruned after at least

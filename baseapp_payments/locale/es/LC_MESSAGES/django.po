@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-17 14:29+0000\n"
+"POT-Creation-Date: 2026-11-19 14:40+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -382,6 +382,10 @@ msgstr "motivo de la liberación"
 #: models.py
 msgid "capture claimed at"
 msgstr "captura reclamada el"
+
+#: models.py
+msgid "cancel sent for PaymentIntent"
+msgstr "cancelación enviada para el PaymentIntent"
 
 #: models.py
 msgid "charge idempotency key"

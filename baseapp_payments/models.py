@@ -339,6 +339,12 @@ class AbstractCardHold(RelayModel, TimeStampedModel):
     # A capture call is working on this hold (a conditional UPDATE claims it): a
     # concurrent capture answers ``in_progress`` instead of calling Stripe too.
     capture_claimed_at = models.DateTimeField(_("capture claimed at"), null=True, blank=True)
+    # The PaymentIntent a release for a charge asked Stripe to cancel, written before the
+    # call. If the answer is lost, a retry finds it already ``canceled`` with no reason;
+    # this record shows the cancel was ours, so the charge instead still runs.
+    cancel_sent_payment_intent_id = models.CharField(
+        _("cancel sent for PaymentIntent"), max_length=255, blank=True
+    )
     # The charge-instead claim: the idempotency key handed to the project's ``charge``,
     # written before it runs, and when it returned. Once ``charged_at`` is set, a repeated
     # capture answers from these and never charges again.
