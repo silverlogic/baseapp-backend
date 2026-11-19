@@ -36,6 +36,7 @@ from baseapp_payments.holds import (
     reschedule_on_commit,
     scheduled_idempotency_key,
 )
+from baseapp_payments.notifications import CARD_HOLD_FAILED_VERB
 from baseapp_payments.signals import card_hold_authorized, card_hold_failed
 from baseapp_payments.tasks import reschedule_card_hold, sweep_card_holds
 from testproject.testapp.card_holds import HoldableOrderHoldTarget
@@ -946,6 +947,75 @@ class TestAFailedHoldIsFinal:
             place_scheduled(hold.pk)
 
         assert mailoutbox == []
+
+    def test_staff_get_an_in_app_notification_targeting_the_hold(
+        self,
+        holder,
+        fake_stripe,
+        deferral,
+        mailoutbox,
+        staff_member,
+        django_capture_on_commit_callbacks,
+    ) -> None:
+        hold = due(holder)
+        fake_stripe.next_outcome = ["card_declined"]
+
+        with django_capture_on_commit_callbacks(execute=True):
+            place_scheduled(hold.pk)
+
+        hold = reload(hold)
+        [notification] = staff_member.notifications.all()
+        assert notification.verb == CARD_HOLD_FAILED_VERB
+        assert notification.target == hold
+        assert notification.level == "warning"
+        assert notification.description == f"The card hold for {hold.target} failed."
+        # The email still goes out, once, and the notification doesn't add another.
+        assert [mail.to for mail in mailoutbox] == [["ops@example.com"]]
+        assert not holder.notifications.exists()
+
+    def test_each_staff_member_reads_it_in_their_language(
+        self, holder, fake_stripe, deferral, django_capture_on_commit_callbacks
+    ) -> None:
+        hold = due(holder)
+        fake_stripe.next_outcome = ["card_declined"]
+        spanish = UserFactory(email="es@example.com", preferred_language="es")
+        english = UserFactory(email="en@example.com", preferred_language="en")
+
+        with (
+            patch.object(
+                HoldableOrderHoldTarget,
+                "staff_recipients",
+                lambda self, target: [spanish, english],
+            ),
+            django_capture_on_commit_callbacks(execute=True),
+        ):
+            place_scheduled(hold.pk)
+
+        english_text = english.notifications.get().description
+        spanish_text = spanish.notifications.get().description
+        assert english_text.startswith("The card hold for")
+        assert spanish_text and spanish_text != english_text
+
+    def test_without_the_notifications_package_only_the_email_goes(
+        self,
+        holder,
+        fake_stripe,
+        deferral,
+        mailoutbox,
+        staff_member,
+        django_capture_on_commit_callbacks,
+    ) -> None:
+        hold = due(holder)
+        fake_stripe.next_outcome = ["card_declined"]
+
+        with (
+            patch("baseapp_payments.notifications.shared_services.get", return_value=None),
+            django_capture_on_commit_callbacks(execute=True),
+        ):
+            place_scheduled(hold.pk)
+
+        assert not staff_member.notifications.exists()
+        assert [mail.to for mail in mailoutbox] == [["ops@example.com"]]
 
 
 # --- 4. Staff decisions ---------------------------------------------------------------

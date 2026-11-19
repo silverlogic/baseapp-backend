@@ -530,7 +530,7 @@ class OrderHoldTarget(BaseHoldTarget):
 | `filter_holdable(qs)` | all | Placing; a scheduled hold is placed only while its target is in it. |
 | `cancel(target, actor)` | required for deferral | Staff cancelling a failed deferred hold. |
 | `staff_recipients(target)` | active users with `change_cardhold` (and superusers) | Who hears about a failed deferred hold. |
-| `notify_hold_failed(target, hold)` | emails `staff_recipients` | How they hear about it. |
+| `notify_hold_failed(target, hold)` | emails `staff_recipients`, and sends each an in-app notification | How they hear about it. |
 | `window_days()` / `buffer_percent()` | Constance | Per-model defaults. |
 
 ### Placing from your mutation
@@ -802,7 +802,9 @@ authorizations the row held before). Success: `authorized`, expiry from `capture
 `failure_code` (GraphQL `failureReason`), sends `card_hold_failed` (`hold`, `target`) and
 calls your adapter's `notify_hold_failed(target, hold)`, after the commit. The default
 emails `staff_recipients(target)` with Django mail, one email per language: the customer,
-the target, its date and the reason. Override it to notify some other way. The customer
+the target, its date and the reason. With `baseapp_notifications` installed it also sends
+each of them an in-app notification (see [Staff notifications](#staff-notifications)).
+Override it to notify some other way. The customer
 isn't told (their GraphQL reads `failed` as `scheduled`), and it is never retried. No
 usable answer isn't a failure: a connection error, a 5xx, a 429, a 409, and a bad or revoked
 API key (`AuthenticationError`, `PermissionError`, logged as an error so someone fixes it).
@@ -849,6 +851,23 @@ deleting the target, the sweep, `release_for_charge`, or `capture()` charging in
 makes no Stripe call: it is marked released and confirmed, nothing is charged, and its
 card is no longer in use once the target is cancelled. A scheduled hold whose placement is
 under way is left to the placement, which settles it.
+
+### Staff notifications
+
+With `baseapp_notifications` installed, staff get an in-app notification, through the
+`notifications` shared service, when a card hold needs them. It targets the hold itself, so a
+client renders the hold's staff notice, and its actions, inside the notification (the
+frontend's `CardHoldStaffNotice`). The customer is never notified.
+
+| Verb | Sent when | By |
+| --- | --- | --- |
+| `PAYMENTS.CARD_HOLD_FAILED` | A deferred hold fails. | `notify_hold_failed` |
+
+It goes to `staff_recipients(target)`, worded in each recipient's language, with
+`level="warning"` and the customer (their profile when they have one) as the actor. It is
+in-app only: the failed hold's email is sent separately. A recipient can mute the verb through
+`NotificationSetting`. Without `baseapp_notifications` nothing is sent and the email still
+goes. The verb is a constant in `baseapp_payments.notifications` (`CARD_HOLD_FAILED_VERB`).
 
 ### Background work
 

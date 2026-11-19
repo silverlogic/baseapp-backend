@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-19 14:40+0000\n"
+"POT-Creation-Date: 2026-11-19 22:42+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -414,6 +414,11 @@ msgstr "retención en tarjeta"
 #: models.py
 msgid "card holds"
 msgstr "retenciones en tarjeta"
+
+#: notifications.py
+#, python-format
+msgid "The card hold for %(target)s failed."
+msgstr "Falló la retención en tarjeta de %(target)s."
 
 #: serializers.py
 msgid "Stripe price ID"

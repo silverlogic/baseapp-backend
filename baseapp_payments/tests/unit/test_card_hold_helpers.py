@@ -439,19 +439,26 @@ class TestDeferredHelpers:
     def test_which_statuses_are_final(self, status, code) -> None:
         assert holds._placement_failure({"status": status}, None) == code
 
-    def test_the_base_adapter_emails_staff_recipients(self) -> None:
+    def test_the_base_adapter_emails_and_notifies_staff_recipients(self) -> None:
         sent = []
+        notified = []
         adapter = BaseHoldTarget()
         with (
-            patch.object(BaseHoldTarget, "staff_recipients", return_value=["staff"]),
+            patch.object(BaseHoldTarget, "staff_recipients", return_value=iter(["staff"])),
             patch(
                 "baseapp_payments.emails.send_hold_failed_email",
                 side_effect=lambda *args: sent.append(args),
             ),
+            patch(
+                "baseapp_payments.notifications.notify_hold_failed_in_app",
+                side_effect=lambda *args: notified.append(args),
+            ),
         ):
             adapter.notify_hold_failed("target", "hold")
 
+        # A one-shot iterable of recipients reaches both channels whole.
         assert sent == [("hold", "target", ["staff"])]
+        assert notified == [("hold", "target", ["staff"])]
 
     def test_a_customer_is_named_by_name_and_email_or_whatever_there_is(self) -> None:
         from types import SimpleNamespace
