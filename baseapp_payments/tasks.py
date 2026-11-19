@@ -9,9 +9,10 @@ import datetime
 import logging
 from typing import Any
 
+import stripe
 from celery import shared_task
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Q, Subquery
+from django.db.models import F, Q, Subquery
 from django.utils import timezone
 
 from .models import card_holds_enabled, get_card_hold_model
@@ -32,6 +33,9 @@ RELEASE_GRACE = datetime.timedelta(minutes=15)
 # An unconfirmed release with no known expiry (never authorized) is re-driven this long,
 # Stripe's longest online authorization.
 UNCONFIRMED_WITHOUT_EXPIRY = datetime.timedelta(days=7)
+# How long after a payment the sweep keeps asking Stripe for its fee (its balance
+# transaction is usually there at once, rarely minutes later).
+FEE_LOOKUP_WINDOW = datetime.timedelta(days=3)
 
 
 def backoff_countdown(retries: int) -> int:
@@ -198,6 +202,60 @@ def reconcile_card_hold(self, card_hold_id: int, payment_intent_id: str | None =
 
 
 @shared_task
+def record_card_hold_fees(card_hold_id: int) -> None:
+    """Fill in Stripe's fee for the payments of one hold whose balance transaction wasn't
+    ready when they were taken (``holds.record_fees``; queued by the sweep). Not retried
+    here: the sweep queues it again while a fee is missing."""
+    if not _active():
+        return
+    from .holds import record_fees
+
+    try:
+        record_fees(card_hold_id)
+    except RETRYABLE_STRIPE_ERRORS:
+        logger.warning("Could not read card hold %s's fees; the sweep retries", card_hold_id)
+
+
+@shared_task
+def charge_card_hold_difference(card_hold_id: int) -> None:
+    """Charge the difference still due above a hold captured in full, once its
+    ``capture()`` stopped coming back (``holds.charge_due_difference``; queued by the
+    sweep). Not retried here: Stripe's errors keep the claim and its key, and the sweep
+    queues it again."""
+    if not _active():
+        return
+    from .holds import charge_due_difference
+
+    try:
+        charge_due_difference(card_hold_id)
+    except stripe.StripeError:
+        logger.warning(
+            "Could not charge card hold %s's difference; the sweep retries",
+            card_hold_id,
+            exc_info=True,
+        )
+
+
+@shared_task
+def record_card_hold_capture(card_hold_id: int) -> None:
+    """Fill in the amount of a hold recorded ``captured`` without it, from Stripe
+    (``holds.record_captured_amount``; queued by the sweep), so its payment status can be
+    settled. Not retried here: the sweep queues it again while the amount is missing."""
+    if not _active():
+        return
+    from .holds import record_captured_amount
+
+    try:
+        record_captured_amount(card_hold_id)
+    except stripe.StripeError:
+        logger.warning(
+            "Could not read card hold %s's captured amount; the sweep retries",
+            card_hold_id,
+            exc_info=True,
+        )
+
+
+@shared_task
 def sweep_card_holds() -> None:
     """Release what nothing else will (Celery beat, every 15 minutes):
 
@@ -210,6 +268,15 @@ def sweep_card_holds() -> None:
       (re-checked under the lock by the release task);
     - stray authorizations (a lost answer's, found by a webhook or a lookup) whose
       cancel Stripe hasn't confirmed.
+
+    It also queues ``record_card_hold_fees`` for a payment taken in the last 3 days whose
+    fee isn't recorded yet (Stripe hadn't made its balance transaction), and
+    ``charge_card_hold_difference`` for a hold captured in full whose difference is still
+    due and was never refused, when no capture or difference claim is live on it (its
+    ``capture()`` stopped coming back), its amount is the one the last ``capture()``
+    asked, and its target wasn't found cancelled (``charge_blocked_reason``). A hold
+    recorded ``captured`` without its amount (Stripe couldn't be read then) gets
+    ``record_card_hold_capture``, which reads it from Stripe.
 
     An on-session create whose answer was lost (a ``pending`` row with a
     ``placement_key`` and no PaymentIntent) isn't an orphan: once its key is 23 hours
@@ -234,7 +301,12 @@ def sweep_card_holds() -> None:
     if not _active():
         return
     from .hold_targets import deferral_enabled, get_targets
-    from .holds import PLACEMENT_CLAIM_TIMEOUT, PLACEMENT_KEY_TTL, claim_orphan
+    from .holds import (
+        CAPTURE_CLAIM_TIMEOUT,
+        PLACEMENT_CLAIM_TIMEOUT,
+        PLACEMENT_KEY_TTL,
+        claim_orphan,
+    )
 
     now = timezone.now()
     CardHold = get_card_hold_model()
@@ -299,6 +371,59 @@ def sweep_card_holds() -> None:
     )
     for hold_id in list(stale_sends):
         _enqueue(reconcile_card_hold, hold_id)
+
+    since = now - FEE_LOOKUP_WINDOW
+    fees_due = (
+        CardHold.objects.filter(modified__lt=now - RELEASE_GRACE)
+        .filter(
+            Q(status=CardHold.Status.CAPTURED, captured_at__gt=since, capture_fee_cents=None)
+            | Q(difference_charged_at__gt=since, difference_fee_cents=None)
+            | Q(
+                charged_at__gt=since,
+                charge_payment_intent_id__isnull=False,
+                charge_fee_cents=None,
+            )
+        )
+        .values_list("pk", flat=True)
+    )
+    for hold_id in list(fees_due):
+        _enqueue(record_card_hold_fees, hold_id)
+
+    unclaimed_since = now - CAPTURE_CLAIM_TIMEOUT
+    # A capture recorded without its amount: read from Stripe, so it can be settled.
+    amounts_missing = (
+        CardHold.objects.filter(
+            status=CardHold.Status.CAPTURED,
+            captured_amount_cents__isnull=True,
+            stripe_payment_intent_id__isnull=False,
+            captured_at__lt=unclaimed_since,
+        )
+        .filter(Q(capture_claimed_at__isnull=True) | Q(capture_claimed_at__lt=unclaimed_since))
+        .values_list("pk", flat=True)
+    )
+    for hold_id in list(amounts_missing):
+        _enqueue(record_card_hold_capture, hold_id)
+
+    differences_due = (
+        CardHold.objects.filter(
+            status=CardHold.Status.CAPTURED,
+            difference_amount_cents__isnull=False,
+            difference_charged_at__isnull=True,
+            payment_status=CardHold.PaymentStatus.UNPAID,
+            captured_at__lt=unclaimed_since,
+            captured_amount_cents__isnull=False,
+            charge_blocked_reason="",
+        )
+        .filter(Q(capture_claimed_at__isnull=True) | Q(capture_claimed_at__lt=unclaimed_since))
+        .filter(Q(difference_key="") | Q(difference_claimed_at__lt=unclaimed_since))
+        .filter(
+            Q(requested_amount_cents__isnull=True)
+            | Q(requested_amount_cents=F("captured_amount_cents") + F("difference_amount_cents"))
+        )
+        .values_list("pk", flat=True)
+    )
+    for hold_id in list(differences_due):
+        _enqueue(charge_card_hold_difference, hold_id)
 
     for model, adapter in get_targets().items():
         everything = model._default_manager.all()

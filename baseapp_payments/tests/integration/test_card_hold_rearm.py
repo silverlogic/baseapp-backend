@@ -20,7 +20,7 @@ from baseapp_payments.holds import (
 )
 from testproject.testapp.models import HoldableOrder
 
-from ..factories import CardHoldFactory
+from ..factories import CardHoldFactory, UserFactory
 from ..fakes import STRIPE_CUSTOMER_ID
 
 CardHold = swapper.load_model("baseapp_payments", "CardHold")
@@ -86,6 +86,21 @@ class TestRearm:
         assert hold.placement_key == "" and hold.placement_amount_cents is None
         assert hold.placement_claimed_at is None
         assert find_placed(order.user, attempt_id) == order
+
+    def test_a_re_armed_hold_starts_with_a_fresh_retry_budget(self, order, fake_stripe) -> None:
+        """Staff's retries count per attempt chain: re-arming starts a new one."""
+        released_hold(
+            order,
+            retry_count=3,
+            last_retried_at=timezone.now(),
+            last_retried_by=UserFactory(is_staff=True),
+        )
+
+        assert hold_again(order, uuid.uuid4()).status == PlacementStatus.PLACED
+
+        hold = CardHold.objects.get()
+        assert hold.retry_count == 0
+        assert hold.last_retried_at is None and hold.last_retried_by is None
 
     def test_the_audit_list_grows_with_each_re_arm(self, order, fake_stripe) -> None:
         released_hold(order)

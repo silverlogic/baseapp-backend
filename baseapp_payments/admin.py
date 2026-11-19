@@ -91,19 +91,23 @@ class CardHoldAdmin(admin.ModelAdmin):
         "id",
         "customer",
         "status",
+        "payment_status",
         "amount_cents",
         "card_brand",
         "card_last4",
         "hold_on",
         "kept",
         "failure_code",
+        "retry_count",
         "expires_at",
         "created",
     )
-    list_filter = ("status", "release_reason", "card_funding")
+    list_filter = ("status", "payment_status", "release_reason", "card_funding")
     search_fields = (
         "stripe_payment_intent_id",
         "stripe_setup_intent_id",
+        "difference_payment_intent_id",
+        "charge_payment_intent_id",
         "stripe_customer_id",
         "customer__email",
     )

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-19 22:42+0000\n"
+"POT-Creation-Date: 2026-11-19 22:13+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -114,6 +114,37 @@ msgid "Only a failed card hold that wasn't kept can be decided."
 msgstr ""
 "Solo se puede decidir sobre una retención en tarjeta fallida que no se haya "
 "conservado."
+
+#: graphql/mutations.py
+msgid "This card hold has no retries left. Keep it or cancel it."
+msgstr ""
+"Esta retención en tarjeta no tiene más reintentos. Consérvala o cancélala."
+
+#: graphql/mutations.py
+msgid "The target's date has come, so it can't take a hold any more."
+msgstr ""
+"La fecha del destino ya llegó, así que ya no puede tener una retención."
+
+#: graphql/mutations.py
+msgid "The target can't take a hold any more."
+msgstr "El destino ya no puede tener una retención."
+
+#: graphql/mutations.py
+msgid "Card holds can't be placed right now."
+msgstr "Las retenciones en tarjeta no se pueden colocar ahora."
+
+#: graphql/mutations.py
+msgid "Only a failed card hold that wasn't kept can be retried."
+msgstr ""
+"Solo se puede reintentar una retención en tarjeta fallida que no se haya "
+"conservado."
+
+#: graphql/mutations.py
+msgid ""
+"Only a partially paid card hold that isn't being charged can be marked paid."
+msgstr ""
+"Solo se puede marcar como pagada una retención en tarjeta pagada "
+"parcialmente que no se esté cobrando."
 
 #: models.py
 msgid "entity type"
@@ -236,6 +267,22 @@ msgid "A charge that never finished, past Stripe's 24 hours"
 msgstr "Un cobro que nunca terminó, pasadas las 24 horas de Stripe"
 
 #: models.py
+msgid "The target was cancelled with the difference still due"
+msgstr "El destino se canceló con la diferencia aún adeudada"
+
+#: models.py
+msgid "Unpaid"
+msgstr "Sin pagar"
+
+#: models.py
+msgid "Paid"
+msgstr "Pagado"
+
+#: models.py
+msgid "Partially paid"
+msgstr "Pagado parcialmente"
+
+#: models.py
 msgid "Stripe customer id"
 msgstr "id de cliente de Stripe"
 
@@ -328,6 +375,18 @@ msgid "kept by"
 msgstr "mantenida por"
 
 #: models.py
+msgid "retry count"
+msgstr "número de reintentos"
+
+#: models.py
+msgid "last retried at"
+msgstr "último reintento el"
+
+#: models.py
+msgid "last retried by"
+msgstr "último reintento por"
+
+#: models.py
 msgid "placement key"
 msgstr "clave de colocación"
 
@@ -376,6 +435,14 @@ msgid "captured at"
 msgstr "capturada el"
 
 #: models.py
+msgid "requested amount (cents)"
+msgstr "monto solicitado (centavos)"
+
+#: models.py
+msgid "capture sent at"
+msgstr "captura enviada el"
+
+#: models.py
 msgid "release reason"
 msgstr "motivo de la liberación"
 
@@ -408,6 +475,70 @@ msgid "charge blocked reason"
 msgstr "motivo del bloqueo del cobro"
 
 #: models.py
+msgid "charge PaymentIntent id"
+msgstr "id del PaymentIntent del cobro"
+
+#: models.py
+msgid "charged amount (cents)"
+msgstr "monto cobrado (centavos)"
+
+#: models.py
+msgid "difference due (cents)"
+msgstr "diferencia adeudada (centavos)"
+
+#: models.py
+msgid "difference idempotency key"
+msgstr "clave de idempotencia de la diferencia"
+
+#: models.py
+msgid "difference claimed at"
+msgstr "diferencia reclamada el"
+
+#: models.py
+msgid "difference generation"
+msgstr "generación de la diferencia"
+
+#: models.py
+msgid "difference PaymentIntent id"
+msgstr "id del PaymentIntent de la diferencia"
+
+#: models.py
+msgid "difference charged at"
+msgstr "diferencia cobrada el"
+
+#: models.py
+msgid "difference failure code"
+msgstr "código de fallo de la diferencia"
+
+#: models.py
+msgid "payment status"
+msgstr "estado del pago"
+
+#: models.py
+msgid "paid outside at"
+msgstr "pagado fuera de la app el"
+
+#: models.py
+msgid "paid outside by"
+msgstr "pagado fuera de la app por"
+
+#: models.py
+msgid "hold capture fee (cents)"
+msgstr "comisión de la captura de la retención (centavos)"
+
+#: models.py
+msgid "difference charge fee (cents)"
+msgstr "comisión del cobro de la diferencia (centavos)"
+
+#: models.py
+msgid "full charge fee (cents)"
+msgstr "comisión del cobro completo (centavos)"
+
+#: models.py
+msgid "fee currency"
+msgstr "moneda de la comisión"
+
+#: models.py
 msgid "card hold"
 msgstr "retención en tarjeta"
 
@@ -419,6 +550,23 @@ msgstr "retenciones en tarjeta"
 #, python-format
 msgid "The card hold for %(target)s failed."
 msgstr "Falló la retención en tarjeta de %(target)s."
+
+#: notifications.py
+#, python-format
+msgid ""
+"%(target)s was only partly paid: the charge above the hold was declined."
+msgstr ""
+"%(target)s se pagó solo en parte: se rechazó el cobro por encima de la "
+"retención."
+
+#: plugin.py
+msgid ""
+"Card holds: how many times staff may retry a failed off-session hold on the "
+"same card. 0 turns retrying off: a failed hold is final."
+msgstr ""
+"Retenciones en tarjeta: cuántas veces el personal puede reintentar una "
+"retención fuera de sesión fallida con la misma tarjeta. 0 desactiva los "
+"reintentos: una retención fallida es definitiva."
 
 #: serializers.py
 msgid "Stripe price ID"

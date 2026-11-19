@@ -460,6 +460,20 @@ class TestDeferredHelpers:
         assert sent == [("hold", "target", ["staff"])]
         assert notified == [("hold", "target", ["staff"])]
 
+    def test_the_base_adapter_notifies_staff_of_a_partly_paid_hold(self) -> None:
+        notified = []
+        adapter = BaseHoldTarget()
+        with (
+            patch.object(BaseHoldTarget, "staff_recipients", return_value=["staff"]),
+            patch(
+                "baseapp_payments.notifications.notify_partially_paid_in_app",
+                side_effect=lambda *args: notified.append(args),
+            ),
+        ):
+            adapter.notify_partially_paid("target", "hold")
+
+        assert notified == [("hold", "target", ["staff"])]
+
     def test_a_customer_is_named_by_name_and_email_or_whatever_there_is(self) -> None:
         from types import SimpleNamespace
 

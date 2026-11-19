@@ -239,8 +239,14 @@ def test_a_concurrent_re_arm_places_once_and_cancels_the_loser(fake_stripe) -> N
     assert not CardHold.objects.filter(status=CardHold.Status.PENDING).exists()
 
 
-def live_authorized_hold(fake_stripe) -> Any:
-    hold = CardHoldFactory(target=HoldableOrderFactory(user=UserFactory()))
+def expired_at() -> datetime.datetime:
+    """Past the capture deadline: an amount above the hold is charged afresh (the charge
+    path), not captured in full plus the difference."""
+    return timezone.now() - datetime.timedelta(minutes=1)
+
+
+def live_authorized_hold(fake_stripe, **fields) -> Any:
+    hold = CardHoldFactory(target=HoldableOrderFactory(user=UserFactory()), **fields)
     fake_stripe.intents[hold.stripe_payment_intent_id] = {
         "id": hold.stripe_payment_intent_id,
         "object": "payment_intent",
@@ -257,7 +263,7 @@ def test_a_capture_racing_a_charge_path_capture_takes_the_money_once(fake_stripe
     """M3: the charge path holds the capture claim while it releases and charges; a
     concurrent capture that the hold would cover answers in_progress, calls no Stripe,
     and never charges. Retried after, it answers charged from the database."""
-    hold = live_authorized_hold(fake_stripe)
+    hold = live_authorized_hold(fake_stripe, expires_at=expired_at())
     charging = threading.Event()
     proceed = threading.Event()
     charges = []
@@ -290,7 +296,7 @@ def test_a_capture_racing_a_charge_path_capture_takes_the_money_once(fake_stripe
 
 
 def test_racing_captures_on_the_charge_path_charge_once(fake_stripe) -> None:
-    hold = live_authorized_hold(fake_stripe)
+    hold = live_authorized_hold(fake_stripe, expires_at=expired_at())
     both = threading.Barrier(2, timeout=10)
     charges = []
 
@@ -330,3 +336,83 @@ def test_capture_runs_no_stripe_call_inside_a_transaction(fake_stripe) -> None:
 
     assert capture(hold.pk, 10_000, charge=lambda **_: None).status == CaptureStatus.CAPTURED
     assert in_transaction == [False]
+
+
+def test_above_the_hold_runs_no_stripe_call_inside_a_transaction(fake_stripe) -> None:
+    """The capture, the difference, and the retry after a refused difference (its target
+    re-checked under the locks) all call Stripe with no transaction open."""
+    hold = live_authorized_hold(fake_stripe)
+    in_transaction = []
+    record = fake_stripe.record
+
+    def record_and_check(name, *args, **kwargs) -> None:
+        in_transaction.append(connection.in_atomic_block)
+        record(name, *args, **kwargs)
+
+    fake_stripe.record = record_and_check
+    fake_stripe.next_outcome.append("card_declined")
+
+    first = capture(hold.pk, 12_000, charge=lambda **_: None)
+    retried = capture(hold.pk, 12_000, charge=lambda **_: None)
+
+    assert (first.status, retried.status) == (CaptureStatus.PARTIALLY_PAID, CaptureStatus.PAID)
+    assert in_transaction == [False, False, False]
+
+
+def test_racing_captures_above_the_hold_take_each_payment_once(fake_stripe) -> None:
+    hold = live_authorized_hold(fake_stripe)
+    both = threading.Barrier(2, timeout=10)
+
+    def racer() -> Any:
+        both.wait()
+        return capture(hold.pk, 12_000, charge=lambda **_: None)
+
+    results: list = []
+    threads = [in_thread(racer, results) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(10)
+
+    assert len(fake_stripe.captures) == 1
+    differences = [
+        params
+        for _args, params in fake_stripe.calls_to("PaymentIntent.create")
+        if params["metadata"].get("kind") == "difference"
+    ]
+    assert len(differences) == 1
+    assert sorted(result.status for result in results) in (
+        sorted([CaptureStatus.PAID, CaptureStatus.IN_PROGRESS]),
+        [CaptureStatus.PAID, CaptureStatus.PAID],
+    )
+
+
+def test_a_refused_difference_signals_once_after_the_commit(fake_stripe) -> None:
+    from baseapp_payments.signals import (
+        difference_charge_failed,
+        payment_status_changed,
+    )
+
+    hold = live_authorized_hold(fake_stripe)
+    heard: list = []
+
+    def failed(sender, **kwargs) -> None:
+        heard.append(("failed", kwargs["error_code"], kwargs["amount_due_cents"]))
+
+    def changed(sender, **kwargs) -> None:
+        heard.append(("status", kwargs["previous"], kwargs["payment_status"]))
+
+    difference_charge_failed.connect(failed, weak=False)
+    payment_status_changed.connect(changed, weak=False)
+    fake_stripe.next_outcome.append("insufficient_funds")
+    try:
+        capture(hold.pk, 12_000, charge=lambda **_: None)
+        capture(hold.pk, 13_000, charge=lambda **_: None)  # another amount: nothing
+    finally:
+        difference_charge_failed.disconnect(failed)
+        payment_status_changed.disconnect(changed)
+
+    assert heard == [
+        ("status", "unpaid", "partially_paid"),
+        ("failed", "insufficient_funds", 1_000),
+    ]
