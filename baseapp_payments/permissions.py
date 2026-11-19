@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING
+from functools import lru_cache
+from typing import TYPE_CHECKING, Any
 
 import swapper
 from django.apps import apps
@@ -9,6 +10,8 @@ from django.utils.module_loading import import_string
 from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
 from rest_framework.views import APIView
+
+from .models import card_holds_enabled, get_card_hold_model
 
 if TYPE_CHECKING:
     from django.contrib.auth.base_user import AbstractBaseUser
@@ -115,6 +118,95 @@ def _customer_owner(
     return customer is not None and is_entity_owner(customer.entity, user_obj)
 
 
+# --- Card holds -------------------------------------------------------------------------
+
+VIEW_CARD_HOLD = "view_cardhold"
+# Keeping or cancelling a failed deferred hold: a model-level grant (a group or user
+# permission, or a superuser), never the hold's own customer.
+CHANGE_CARD_HOLD = "change_cardhold"
+
+
+@lru_cache(maxsize=None)
+def _card_hold_perm(codename: str, model_label: str) -> str:
+    return f"{model_label.split('.')[0]}.{codename}"
+
+
+def card_hold_perm(codename: str) -> str:
+    """``<app label of the concrete model>.<codename>``, built once per model."""
+    return _card_hold_perm(codename, get_card_hold_model()._meta.label)
+
+
+def sees_card_hold_details(user: "AbstractBaseUser | AnonymousUser") -> bool:
+    """Who sees failed holds, failure reasons and kept flags as they are: users granted
+    ``view_cardhold`` on the model (:func:`oversees_card_holds`). Staff status alone isn't
+    enough, so a staff customer without the grant sees their own hold as a customer."""
+    return oversees_card_holds(user)
+
+
+# Memoized on the user object, as Django's ModelBackend caches perms: it lasts as long as
+# that object (normally one request). A user object kept across a permission change (a
+# long-running worker, a test reusing it) keeps the old answer; reload the user.
+_OVERSEES_CACHE = "_baseapp_payments_oversees_card_holds"
+
+
+def oversees_card_holds(user: "AbstractBaseUser | AnonymousUser") -> bool:
+    """Whether ``user`` may see every customer's holds: the model-level ``view_cardhold``
+    permission (a group or user grant, or a superuser), not ``is_staff`` alone. Asked of
+    the backends once per user object."""
+    if not getattr(user, "is_authenticated", False):
+        return False
+    cached = getattr(user, _OVERSEES_CACHE, None)
+    if cached is None:
+        cached = bool(user.has_perm(card_hold_perm(VIEW_CARD_HOLD)))
+        setattr(user, _OVERSEES_CACHE, cached)
+    return cached
+
+
+def owns_or_oversees_card_hold(user: "AbstractBaseUser | AnonymousUser", hold: Any) -> bool:
+    """The rule behind ``view_cardhold`` on a hold: its own customer, or a user granted
+    ``view_cardhold`` on the model (:func:`oversees_card_holds`). An inactive user gets
+    nothing, as from Django's ``ModelBackend``. An owner costs no query; anyone else, one
+    permission lookup per request, for list paths that check every row."""
+    if not getattr(user, "is_authenticated", False) or not getattr(user, "is_active", False):
+        return False
+    return hold.customer_id == user.pk or oversees_card_holds(user)
+
+
+def can_view_card_hold(user: "AbstractBaseUser | AnonymousUser", hold: Any) -> bool:
+    """``view_cardhold`` through Django's permission system (projects may add backends)."""
+    return bool(user.has_perm(card_hold_perm(VIEW_CARD_HOLD), hold))
+
+
+def can_decide_card_hold(user: "AbstractBaseUser | AnonymousUser", hold: Any) -> bool:
+    """``change_cardhold`` on a hold, through Django's permission system: who may keep or
+    cancel a failed deferred hold (the ``cardHoldKeep`` / ``cardHoldCancel`` mutations)."""
+    return bool(user.has_perm(card_hold_perm(CHANGE_CARD_HOLD), hold))
+
+
+def has_card_hold_perm(
+    user_obj: "AbstractBaseUser | AnonymousUser", perm: str, obj: Any
+) -> bool | None:
+    """The backend's answer for a card hold permission, or ``None`` when ``perm`` isn't one.
+
+    ``view_cardhold`` on a hold: its customer, or a model-level grantee.
+    ``change_cardhold`` on a hold: the model-level grant only (Django's ``ModelBackend``
+    answers nothing for an object), so a customer never decides their own failed hold.
+    """
+    if not perm.endswith((f".{VIEW_CARD_HOLD}", f".{CHANGE_CARD_HOLD}")):
+        return None
+    if not card_holds_enabled():
+        return None
+    if perm == card_hold_perm(VIEW_CARD_HOLD):
+        if not isinstance(obj, get_card_hold_model()):
+            return False
+        return owns_or_oversees_card_hold(user_obj, obj)
+    if perm == card_hold_perm(CHANGE_CARD_HOLD) and obj is not None:
+        if not isinstance(obj, get_card_hold_model()):
+            return False
+        return bool(getattr(user_obj, "is_authenticated", False) and user_obj.has_perm(perm))
+    return None
+
+
 class PaymentsPermissionsBackend(BaseBackend):
     def has_perm(
         self,
@@ -122,6 +214,9 @@ class PaymentsPermissionsBackend(BaseBackend):
         perm: str,
         obj: "Model | None" = None,
     ) -> bool:
+        card_hold_answer = has_card_hold_perm(user_obj, perm, obj)
+        if card_hold_answer is not None:
+            return card_hold_answer
         if perm in [payments_perm(codename) for codename in CUSTOMER_PERMS]:
             if not isinstance(obj, Customer):
                 return False
