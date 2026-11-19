@@ -22,10 +22,12 @@ from baseapp_payments.holds import (
     reconcile_payment_intent,
     record_fees,
 )
+from baseapp_payments.notifications import CARD_HOLD_PARTIALLY_PAID_VERB
 from baseapp_payments.signals import difference_charge_failed, payment_status_changed
+from testproject.testapp.card_holds import HoldableOrderHoldTarget
 from testproject.testapp.models import HoldableOrder
 
-from ..factories import CardHoldFactory, HoldableOrderFactory
+from ..factories import CardHoldFactory, HoldableOrderFactory, UserFactory
 from ..fakes import (
     STRIPE_CUSTOMER_ID,
     FakeStripe,
@@ -35,6 +37,7 @@ from ..fakes import (
     idempotency_error,
     project_charge,
 )
+from ..helpers import grant_card_hold_perm
 
 CardHold = swapper.load_model("baseapp_payments", "CardHold")
 
@@ -226,6 +229,60 @@ def test_signals_wait_for_the_commit(
 
     assert heard == [CardHold]
     assert len(callbacks) >= 2  # payment_status_changed, difference_charge_failed
+
+
+class TestStaffNotifiedOfADeclinedDifference:
+    @pytest.fixture
+    def staff(self, db) -> Any:
+        return grant_card_hold_perm(UserFactory(is_staff=True, email="ops@example.com"))
+
+    def test_staff_get_an_in_app_notification_targeting_the_hold(
+        self, order, fake_stripe, staff, django_capture_on_commit_callbacks
+    ) -> None:
+        hold = live_hold(fake_stripe, target=order)
+        fake_stripe.next_outcome.append("card_declined")
+
+        with django_capture_on_commit_callbacks(execute=True):
+            capture(hold.pk, 12_000, charge=Mock())
+
+        [notification] = staff.notifications.all()
+        assert notification.verb == CARD_HOLD_PARTIALLY_PAID_VERB
+        assert notification.target == reloaded(hold)
+        assert notification.description == (
+            f"{order} was only partly paid: the charge above the hold was declined."
+        )
+        assert not hold.customer.notifications.exists()
+
+    def test_nobody_is_notified_when_the_difference_is_paid(
+        self, order, fake_stripe, staff, django_capture_on_commit_callbacks
+    ) -> None:
+        hold = live_hold(fake_stripe, target=order)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            capture(hold.pk, 12_000, charge=Mock())
+
+        assert reloaded(hold).payment_status == CardHold.PaymentStatus.PAID
+        assert not staff.notifications.exists()
+
+    def test_the_adapter_decides_how_staff_hear(
+        self, order, fake_stripe, staff, django_capture_on_commit_callbacks
+    ) -> None:
+        hold = live_hold(fake_stripe, target=order)
+        fake_stripe.next_outcome.append("card_declined")
+        told = []
+
+        with (
+            patch.object(
+                HoldableOrderHoldTarget,
+                "notify_partially_paid",
+                lambda self, target, declined: told.append((target, declined.pk)),
+            ),
+            django_capture_on_commit_callbacks(execute=True),
+        ):
+            capture(hold.pk, 12_000, charge=Mock())
+
+        assert told == [(order, hold.pk)]
+        assert not staff.notifications.exists()
 
 
 class TestExpiredOrNoHold:

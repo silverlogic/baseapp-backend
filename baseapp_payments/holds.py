@@ -3576,13 +3576,17 @@ def _difference_refused(card_hold_id: int, key: str, code: str) -> bool:
         card_hold_id, CardHold.PaymentStatus.PARTIALLY_PAID, (CardHold.PaymentStatus.UNPAID,)
     )
     hold = CardHold.objects.select_related("target_document").get(pk=card_hold_id)
+    target = hold.target
     send_on_commit(
         difference_charge_failed,
         hold=hold,
-        target=hold.target,
+        target=target,
         amount_due_cents=hold.difference_amount_cents,
         error_code=code,
     )
+    adapter = _registered_adapter(target)
+    if adapter is not None:
+        transaction.on_commit(lambda: adapter.notify_partially_paid(target, hold), robust=True)
     return True
 
 
@@ -4037,6 +4041,14 @@ def _placement_failure(payment_intent: Any, error: Exception | None) -> str | No
         declined = stripe_field(payment_intent, "last_payment_error")
         return stripe_field(declined, "decline_code") or stripe_field(declined, "code") or status
     return status or "unknown"
+
+
+def _registered_adapter(target: Model | None) -> HoldTarget | None:
+    """The adapter of ``target``'s model, or ``None`` when there is no target or its model
+    isn't registered."""
+    if target is None:
+        return None
+    return get_targets().get(type(target)) or get_targets().get(type(target)._meta.concrete_model)
 
 
 def _fail(

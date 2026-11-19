@@ -560,8 +560,9 @@ class OrderHoldTarget(BaseHoldTarget):
 | `charge_may_be_in_flight(target)` | `False` | Keeps a hold while your charge may still run. |
 | `filter_holdable(qs)` | all | Placing; a scheduled hold is placed only while its target is in it. |
 | `cancel(target, actor)` | required for deferral | Staff cancelling a failed deferred hold. |
-| `staff_recipients(target)` | active users with `change_cardhold` (and superusers) | Who hears about a failed deferred hold. |
-| `notify_hold_failed(target, hold)` | emails `staff_recipients` | How they hear about it. |
+| `staff_recipients(target)` | active users with `change_cardhold` (and superusers) | Who hears about a failed deferred hold, or a declined difference. |
+| `notify_hold_failed(target, hold)` | emails `staff_recipients`, and sends each an in-app notification | How they hear about a failed hold. |
+| `notify_partially_paid(target, hold)` | sends `staff_recipients` an in-app notification | How they hear that the charge above a hold was declined. |
 | `window_days()` / `buffer_percent()` | Constance | Per-model defaults. |
 
 ### Placing from your mutation
@@ -863,8 +864,29 @@ Signals, from `baseapp_payments.signals`, each sent once per change, after the c
 - `payment_status_changed` (`hold`, `target`, `previous`, `payment_status`): mirror the
   status onto your own record here.
 - `difference_charge_failed` (`hold`, `target`, `amount_due_cents`, `error_code`): the
-  difference was refused; notify the customer and staff, and collect the rest (a payment
-  link, another card, by hand). Out of scope for the module.
+  difference was refused; notify the customer, and collect the rest (a payment link,
+  another card, by hand). Out of scope for the module. Staff already hear about it through
+  the adapter's `notify_partially_paid(target, hold)` (see
+  [Staff notifications](#staff-notifications)).
+
+### Staff notifications
+
+With `baseapp_notifications` installed, staff get an in-app notification, through the
+`notifications` shared service, whenever a card hold needs them. Each one targets the hold
+itself, so a client renders the hold's staff notice, and its actions, inside the notification
+(the frontend's `CardHoldStaffNotice`). The customer is never notified.
+
+| Verb | Sent when | By |
+| --- | --- | --- |
+| `PAYMENTS.CARD_HOLD_FAILED` | A deferred hold, or a staff retry of one, fails. | `notify_hold_failed` |
+| `PAYMENTS.CARD_HOLD_PARTIALLY_PAID` | The charge above a captured hold is declined. | `notify_partially_paid` |
+
+Both go to `staff_recipients(target)`, worded in each recipient's language, with
+`level="warning"` and the customer (their profile when they have one) as the actor. They are
+in-app only: the failed hold's email is sent separately, and no email goes out for a
+declined difference. A recipient can mute either verb through `NotificationSetting`. Without
+`baseapp_notifications` nothing is sent and the email still goes. The verbs are constants in
+`baseapp_payments.notifications` (`CARD_HOLD_FAILED_VERB`, `CARD_HOLD_PARTIALLY_PAID_VERB`).
 
 ```python
 from django.dispatch import receiver
@@ -1026,7 +1048,9 @@ authorizations the row held before). Success: `authorized`, expiry from `capture
 `failure_code` (GraphQL `failureReason`), sends `card_hold_failed` (`hold`, `target`) and
 calls your adapter's `notify_hold_failed(target, hold)`, after the commit. The default
 emails `staff_recipients(target)` with Django mail, one email per language: the customer,
-the target, its date and the reason. Override it to notify some other way. The customer
+the target, its date and the reason. With `baseapp_notifications` installed it also sends
+each of them an in-app notification (see [Staff notifications](#staff-notifications)).
+Override it to notify some other way. The customer
 isn't told (their GraphQL reads `failed` as `scheduled`), and nothing retries it on its
 own: only staff do, up to `CARD_HOLDS_MAX_RETRIES` times (see
 [Retrying a failed hold](#retrying-a-failed-hold)). No

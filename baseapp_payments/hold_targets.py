@@ -145,7 +145,11 @@ class HoldTarget(Protocol):
     - ``cancel(target, actor)``: cancel a target whose hold failed and wasn't kept.
     - ``staff_recipients(target)``: who hears about a failed hold.
     - ``notify_hold_failed(target, hold)``: tell them; the default emails
-      ``staff_recipients(target)``. Runs after the failure commits.
+      ``staff_recipients(target)`` and, with ``baseapp_notifications``, sends each an in-app
+      notification. Runs after the failure commits.
+    - ``notify_partially_paid(target, hold)``: tell staff the charge above a hold was
+      declined; the default sends ``staff_recipients(target)`` an in-app notification. Runs
+      after the refusal commits.
     - ``window_days()`` / ``buffer_percent()``: per-model defaults, Constance otherwise.
     """
 
@@ -185,6 +189,9 @@ class HoldTarget(Protocol):
 
     def notify_hold_failed(self, target: Model, hold: Any) -> None:
         """Tell staff a deferred hold failed (after the failure commits)."""
+
+    def notify_partially_paid(self, target: Model, hold: Any) -> None:
+        """Tell staff the charge above a hold was declined (after the refusal commits)."""
 
     def window_days(self) -> int:
         """Days before ``target_date`` to place the hold."""
@@ -252,8 +259,16 @@ class BaseHoldTarget:
 
     def notify_hold_failed(self, target: Model, hold: Any) -> None:
         from .emails import send_hold_failed_email
+        from .notifications import notify_hold_failed_in_app
 
-        send_hold_failed_email(hold, target, self.staff_recipients(target))
+        recipients = list(self.staff_recipients(target))
+        send_hold_failed_email(hold, target, recipients)
+        notify_hold_failed_in_app(hold, target, recipients)
+
+    def notify_partially_paid(self, target: Model, hold: Any) -> None:
+        from .notifications import notify_partially_paid_in_app
+
+        notify_partially_paid_in_app(hold, target, self.staff_recipients(target))
 
     def window_days(self) -> int:
         return default_window_days()
