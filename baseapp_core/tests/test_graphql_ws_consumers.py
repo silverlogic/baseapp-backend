@@ -4,7 +4,11 @@ import channels_graphql_ws
 import pytest
 from django.contrib.auth.models import AnonymousUser
 
-from baseapp_core.graphql.consumers import GraphqlWsJWTAuthenticatedConsumer
+from baseapp_core.graphql.consumers import (
+    GraphqlWsJWTAuthenticatedConsumer,
+    threadpool_for_sync_resolvers,
+)
+from baseapp_core.plugins import shared_services
 
 # on_connect delegates auth to the shared helper; patch it where the consumer looks it up.
 CONSUMER_AUTH = "baseapp_core.graphql.consumers.authenticate_jwt_async"
@@ -126,3 +130,28 @@ class TestGraphqlWsJWTAuthenticatedConsumerOnConnect:
 
         assert consumer.scope["user"] is user
         assert user.current_profile is not profile
+
+
+class TestSharedMiddleware:
+    """A `graphql_ws.middleware` provider adds middleware after the consumer's own."""
+
+    def test_appends_the_provider_middleware(self) -> None:
+        extra = MagicMock()
+        provider = MagicMock()
+        provider.get_middleware.return_value = [extra]
+        with (
+            patch.object(shared_services, "get", return_value=provider),
+            patch.object(channels_graphql_ws.GraphqlWsConsumer, "__init__", return_value=None),
+        ):
+            consumer = GraphqlWsJWTAuthenticatedConsumer()
+        assert consumer.middleware == [threadpool_for_sync_resolvers, extra]
+        # The class attribute is untouched.
+        assert GraphqlWsJWTAuthenticatedConsumer.middleware == [threadpool_for_sync_resolvers]
+
+    def test_keeps_the_middleware_without_a_provider(self) -> None:
+        with (
+            patch.object(shared_services, "get", return_value=None),
+            patch.object(channels_graphql_ws.GraphqlWsConsumer, "__init__", return_value=None),
+        ):
+            consumer = GraphqlWsJWTAuthenticatedConsumer()
+        assert consumer.middleware == [threadpool_for_sync_resolvers]

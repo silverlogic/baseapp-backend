@@ -1,0 +1,43 @@
+from typing import Any
+
+from channels.db import database_sync_to_async
+from channels.middleware import BaseMiddleware
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import AccessToken
+
+from baseapp_core.channels import JWTAuthMiddleware
+
+from .exceptions import ImpersonationSessionInvalid
+from .services import check_impersonation
+
+
+def _check_scope_token(scope: dict, raw_token: str) -> None:
+    try:
+        token = AccessToken(raw_token)
+    except TokenError:
+        # Not ours to reject: the JWT middleware answers for a bad token.
+        return
+    check_impersonation(scope, token)
+
+
+class ImpersonationWebsocketMiddleware(BaseMiddleware):
+    """
+    Refuses a WebSocket connection whose JWT `Authorization` subprotocol belongs to an ended
+    session, and sets `scope["impersonation"]`.
+
+    Optional: BaseApp's WebSocket authentication (`baseapp_core.authentication`, used by
+    `JWTAuthMiddleware` and `GraphqlWsJWTAuthenticatedConsumer`) already refuses such tokens,
+    leaving the connection anonymous. Use this to close it instead. Wrap it inside
+    `JWTAuthMiddleware`, so it sees the access token after any refresh:
+    `JWTAuthMiddleware(ImpersonationWebsocketMiddleware(app))`.
+    """
+
+    async def __call__(self, scope, receive, send) -> Any:
+        subprotocols = scope.get("subprotocols") or []
+        raw_token = JWTAuthMiddleware._subprotocol_value(subprotocols, "Authorization")
+        if raw_token:
+            try:
+                await database_sync_to_async(_check_scope_token)(scope, raw_token)
+            except ImpersonationSessionInvalid:
+                raise ValueError("Impersonation session ended")
+        return await super().__call__(scope, receive, send)
