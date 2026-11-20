@@ -189,10 +189,33 @@ class TestS3MultipartUploadHandler:
         assert kwargs["CacheControl"] == "max-age=86400"
         assert kwargs["ContentType"] == "video/mp4"
         assert kwargs["Metadata"]["source"] == "storage"
-        assert kwargs["Metadata"]["original_filename"] == "test.mp4"
+        assert kwargs["Metadata"]["original-filename"] == "test.mp4"
         mock_storage.get_object_parameters.assert_called_once_with(
             f"media/{handler._get_file_name(file_obj)}"
         )
+
+    def test_s3_initiate_upload_metadata_survives_proxies(
+        self, s3_handler: S3MultipartUploadHandler, user: User, mock_s3_client: MagicMock
+    ) -> None:
+        """
+        Metadata keys have no underscores and values are ASCII.
+
+        Each key becomes an `x-amz-meta-<key>` header that is part of the signature, and nginx
+        drops headers with underscores by default; botocore refuses non-ASCII values.
+        """
+        file_obj = File.objects.create(
+            file_name="Árvore 1.jpg", file_content_type="image/jpeg", created_by=user
+        )
+
+        s3_handler.initiate_upload(file_obj, num_parts=1, part_size=1024)
+
+        metadata = mock_s3_client.create_multipart_upload.call_args.kwargs["Metadata"]
+        assert metadata == {
+            "original-filename": "%C3%81rvore%201.jpg",
+            "created-by": str(user.pk),
+        }
+        assert all("_" not in key for key in metadata)
+        assert all(value.isascii() for value in metadata.values())
 
     @pytest.mark.parametrize(
         "content_type, disposition",

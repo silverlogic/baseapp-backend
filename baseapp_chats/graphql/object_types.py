@@ -10,14 +10,12 @@ from query_optimizer.typing import TModel
 
 from baseapp_core.graphql import (
     DjangoObjectType,
-)
-from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.graphql import (
     ThumbnailField,
     get_obj_relay_id,
     get_object_type_for_model,
     get_pk_from_relay_id,
 )
+from baseapp_core.graphql import Node as RelayNode
 from baseapp_core.plugins import graphql_shared_interfaces
 
 from .filters import ChatRoomFilter, ChatRoomParticipantFilter

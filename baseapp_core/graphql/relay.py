@@ -31,9 +31,9 @@ class AbstractBaseappNode(GrapheneRelayNode):
 
     @classmethod
     def __init_subclass_with_meta__(cls, global_id_type=DefaultGlobalIDType, **options) -> None:
-        assert issubclass(
-            global_id_type, BaseGlobalIDType
-        ), "Custom ID type need to be implemented as a subclass of BaseGlobalIDType."
+        assert issubclass(global_id_type, BaseGlobalIDType), (
+            "Custom ID type need to be implemented as a subclass of BaseGlobalIDType."
+        )
         _meta = InterfaceOptions(cls)
         _meta.global_id_type = global_id_type
         _meta.fields = {
