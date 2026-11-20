@@ -59,6 +59,24 @@ def create_comment(request, body):
         service.set_public_activity(verb="baseapp_comments.add_comment")
 ```
 
+An activity is one entry per request, shared by everything the request changes. When part of a
+request must stay private, call `service.set_private_activity()`: it undoes an earlier
+`set_public_activity` in the request and makes later ones do nothing, so the whole entry stays
+private.
+
+### Hiding event diffs
+
+The `diff` of an event (`NodeLogEvent.diff`) holds the values that changed, for example the body of
+a comment. By default anyone who can see a public activity can read its diffs. Set
+`BASEAPP_ACTIVITY_LOG_PUBLIC_NODE_DIFF = False` to return the diff to superusers only, like `data`:
+
+```python
+BASEAPP_ACTIVITY_LOG_PUBLIC_NODE_DIFF = True  # default True
+```
+
+To grant it to more users, subclass `ActivityLogPermissionsBackend` and handle
+`activity_log.view_nodelogevent-diff` (`obj` is the event).
+
 ### GraphQL
 
 This packages provides the following interfaces that can be used to expose the activity logs for user, profile and specific models:

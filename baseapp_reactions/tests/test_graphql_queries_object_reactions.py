@@ -23,9 +23,11 @@ pytestmark = pytest.mark.django_db
 
 # Baseline for `reactionsCount` + `isReactionsEnabled` on one Comment node: 1× relay
 # `node()` (documentid + content_type JOIN) + 1× `comments_comment` load with
-# `ReactableMetadata` inlined as a Subquery via `pre_optimization_hook`.
+# `ReactableMetadata` inlined as a Subquery via `pre_optimization_hook`, plus 2 for the
+# comment's target (documentid + target row), which `view_comment` checks with
+# `view_target_comments` in `get_node`.
 # Update this number deliberately if you change the resolver / annotation path.
-EXPECTED_REACTIONS_INTERFACE_QUERY_COUNT = 2
+EXPECTED_REACTIONS_INTERFACE_QUERY_COUNT = 4
 
 
 COUNTS_ONLY_QUERY = """
