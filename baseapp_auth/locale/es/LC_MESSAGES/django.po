@@ -543,6 +543,18 @@ msgstr "Acción no admitida para JWTAuthViewSet"
 msgid "Unable to login with provided credentials."
 msgstr "No se puede iniciar sesión con las credenciales proporcionadas."
 
+#: rest_framework/mfa/policy.py
+msgid ""
+"Multi-factor authentication is required for your account. Add another method "
+"before removing this one."
+msgstr ""
+"Tu cuenta requiere autenticación multifactor. Agrega otro método antes de "
+"eliminar este."
+
+#: rest_framework/mfa/views.py
+msgid "This change is not allowed."
+msgstr "Este cambio no está permitido."
+
 #: rest_framework/register/serializers.py
 msgid "That email is already in use.  Choose another."
 msgstr "Ese correo electrónico ya está en uso. Elige otro."

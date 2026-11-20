@@ -7,7 +7,6 @@ import baseapp_core.models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("files", "0004_file_size_big_integer"),
     ]

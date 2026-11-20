@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-29 20:43+0000\n"
+"POT-Creation-Date: 2026-11-16 20:54+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -17,6 +17,26 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
 "1 : 2;\n"
+
+#: admin.py
+msgid "attached file"
+msgstr "archivo adjunto"
+
+#: admin.py
+msgid "attached files"
+msgstr "archivos adjuntos"
+
+#: admin.py models.py
+msgid "file"
+msgstr "archivo"
+
+#: admin.py
+msgid "Open"
+msgstr "Abrir"
+
+#: admin.py
+msgid "size"
+msgstr "tamaño"
 
 #: apps.py
 msgid "BaseApp Files"
@@ -131,10 +151,6 @@ msgstr "tamaño del archivo"
 #: models.py
 msgid "File size in bytes"
 msgstr "Tamaño del archivo en bytes"
-
-#: models.py
-msgid "file"
-msgstr "archivo"
 
 #: models.py
 msgid "The stored file"

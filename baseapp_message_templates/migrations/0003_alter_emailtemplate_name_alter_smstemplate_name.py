@@ -7,7 +7,6 @@ import baseapp_message_templates.models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("baseapp_message_templates", "0002_auto_20240108_1503"),
     ]
