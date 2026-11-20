@@ -10,5 +10,7 @@ class LegacyQuerysetAnnotatorStrategy(QuerysetAnnotatorStrategy):
     def annotate(self, model_cls: TModel, queryset: QuerySet[TModel]) -> QuerySet[TModel]:
         return queryset
 
-    def get_annotations(self, model_cls: TModel) -> dict[str, Any]:
+    def get_annotations(
+        self, model_cls: TModel, field: str = "pk", alias: str = "mapped_public_id"
+    ) -> dict[str, Any]:
         return {}
