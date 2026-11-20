@@ -96,6 +96,10 @@ Reusable app to handle activity logs.
 
 Reusable app to handle content feeds.
 
+## [baseapp.email_log](baseapp/email_log)
+
+Extends djmail with an email log: cc/bcc, template and context, attachments, related object, idempotent sends, resend, retry and retention.
+
 ## [baseapp-pdf](baseapp_pdf)
 
 Functionality for pdf files

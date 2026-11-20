@@ -1,0 +1,223 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-30 15:09+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
+"1 : 2;\n"
+
+#: admin.py
+msgid "status"
+msgstr "estado"
+
+#: admin.py
+msgid "Message"
+msgstr "Mensaje"
+
+#: admin.py
+msgid "Metadata"
+msgstr "Metadatos"
+
+#: admin.py
+msgid "djmail message"
+msgstr "mensaje de djmail"
+
+#: admin.py
+msgid "body text"
+msgstr "texto del cuerpo"
+
+#: admin.py
+msgid "body HTML"
+msgstr "HTML del cuerpo"
+
+#: admin.py
+msgid "error"
+msgstr "error"
+
+#: admin.py
+msgid "failed attempts"
+msgstr "intentos fallidos"
+
+#: admin.py
+msgid "Resend the selected emails"
+msgstr "Reenviar los correos seleccionados"
+
+#: admin.py
+#, python-format
+msgid "Resent %d email."
+msgid_plural "Resent %d emails."
+msgstr[0] "Se reenvió %d correo."
+msgstr[1] "Se reenviaron %d correos."
+
+#: apps.py
+msgid "BaseApp Email Log"
+msgstr "Registro de correos de BaseApp"
+
+#: models.py
+msgid "Email"
+msgstr "Correo electrónico"
+
+#: models.py
+msgid "SMS"
+msgstr "SMS"
+
+#: models.py
+msgid "Other"
+msgstr "Otro"
+
+#: models.py
+msgid "message"
+msgstr "mensaje"
+
+#: models.py
+msgid "channel"
+msgstr "canal"
+
+#: models.py
+msgid "recipients"
+msgstr "destinatarios"
+
+#: models.py
+msgid "cc"
+msgstr "cc"
+
+#: models.py
+msgid "bcc"
+msgstr "cco"
+
+#: models.py
+msgid "reply to"
+msgstr "responder a"
+
+#: models.py
+msgid "template"
+msgstr "plantilla"
+
+#: models.py
+msgid "context"
+msgstr "contexto"
+
+#: models.py
+msgid "Render context, kept to re-render the message on resend."
+msgstr ""
+"Contexto de renderizado, guardado para volver a renderizar el mensaje al "
+"reenviarlo."
+
+#: models.py
+msgid "attachments"
+msgstr "adjuntos"
+
+#: models.py
+msgid "Name, content type and size of each attachment, and its storage path."
+msgstr ""
+"Nombre, tipo de contenido y tamaño de cada adjunto, y su ruta de "
+"almacenamiento."
+
+#: models.py
+msgid "related content type"
+msgstr "tipo de contenido relacionado"
+
+#: models.py
+msgid "related object id"
+msgstr "id del objeto relacionado"
+
+#: models.py
+msgid "related label"
+msgstr "etiqueta relacionada"
+
+#: models.py
+msgid "category"
+msgstr "categoría"
+
+#: models.py
+msgid "sent by"
+msgstr "enviado por"
+
+#: models.py
+msgid "resend of"
+msgstr "reenvío de"
+
+#: models.py
+msgid "idempotency key"
+msgstr "clave de idempotencia"
+
+#: models.py
+msgid "delivery to"
+msgstr "entrega a"
+
+#: models.py
+msgid "delivery subject"
+msgstr "asunto de la entrega"
+
+#: models.py
+msgid "delivery from"
+msgstr "remitente de la entrega"
+
+#: models.py
+msgid "delivery body text"
+msgstr "texto del cuerpo de la entrega"
+
+#: models.py
+msgid "delivery status"
+msgstr "estado de la entrega"
+
+#: models.py
+msgid "delivered at"
+msgstr "entregado el"
+
+#: models.py
+msgid "delivery error"
+msgstr "error de entrega"
+
+#: models.py
+msgid "scrubbed at"
+msgstr "depurado el"
+
+#: models.py
+msgid ""
+"When the purge removed the content and kept the row for its idempotency key. "
+"A scrubbed row cannot be resent."
+msgstr ""
+"Cuándo la purga eliminó el contenido y conservó la fila por su clave de "
+"idempotencia. Una fila depurada no se puede reenviar."
+
+#: models.py
+msgid "email log"
+msgstr "registro de correo"
+
+#: models.py
+msgid "email logs"
+msgstr "registros de correo"
+
+#: status.py
+msgid "Queued"
+msgstr "En cola"
+
+#: status.py
+msgid "Sending"
+msgstr "Enviando"
+
+#: status.py
+msgid "Sent"
+msgstr "Enviado"
+
+#: status.py
+msgid "Failed"
+msgstr "Fallido"
+
+#: status.py
+msgid "Discarded"
+msgstr "Descartado"

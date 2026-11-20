@@ -2,6 +2,8 @@ from unittest.mock import patch
 
 import pytest
 from django.contrib.contenttypes.models import ContentType
+from django.db import connection
+from django.db.migrations.loader import MigrationLoader
 
 from baseapp_core.backfill import (
     backfill_all_models,
@@ -80,6 +82,22 @@ class TestBackfillModelDocumentIds:
             assert DocumentId.objects.filter(
                 object_id=instance.pk,
                 content_type__model="dummypublicidmodel",
+            ).exists()
+
+    def test_creates_document_ids_with_historical_models(self, dummy_instances) -> None:
+        """A data migration passes historical models, whose ContentType is historical too."""
+        state_apps = MigrationLoader(connection).project_state().apps
+
+        created_count = backfill_model_document_ids(
+            model=state_apps.get_model("testapp", "DummyPublicIdModel"),
+            DocumentId=state_apps.get_model("baseapp_core", "DocumentId"),
+        )
+
+        assert created_count == len(dummy_instances)
+        for instance in dummy_instances:
+            assert DocumentId.objects.filter(
+                object_id=instance.pk,
+                content_type=ContentType.objects.get_for_model(DummyPublicIdModel),
             ).exists()
 
     def test_dry_run_does_not_create_mappings(self, dummy_instances) -> None:
