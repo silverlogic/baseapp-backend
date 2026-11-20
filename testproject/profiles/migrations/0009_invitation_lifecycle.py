@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("profiles", "0008_profile_owner_nullable"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
