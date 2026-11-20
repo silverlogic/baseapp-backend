@@ -7,7 +7,7 @@ import pghistory
 from django.http.response import HttpResponseBadRequest
 from graphene_django.views import GraphQLView as GrapheneGraphQLView
 from graphene_django.views import HttpError
-from graphql import get_operation_ast, parse
+from graphql import GraphQLError, get_operation_ast, parse
 from graphql.execution import ExecutionResult
 
 try:
@@ -43,6 +43,11 @@ class GraphQLView(GrapheneGraphQLView):
 
         try:
             document = parse(query)
+        except GraphQLError as e:
+            # A query that fails to parse is a client mistake (a typo, a hand-written probe),
+            # not a server fault: answer with the syntax error, as upstream graphene-django
+            # does, without logging it at ERROR level and turning it into a Sentry event.
+            return ExecutionResult(errors=[e])
         except Exception as e:
             logging.exception(e)
             return ExecutionResult(errors=[e])

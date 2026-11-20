@@ -1,9 +1,8 @@
 from typing import Any, Optional
 
 import graphene
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
-from django.core.exceptions import ValidationError
 from django.http import Http404
 from django.utils.translation import gettext_lazy as _
 from graphql.error import GraphQLError

@@ -15,6 +15,7 @@ REST API endpoints for S3 direct multipart uploads, allowing clients to upload l
 - [Client Implementation](#client-implementation)
 - [Private Files and Anonymous Uploads](#private-files-and-anonymous-uploads)
 - [Protected Downloads](#protected-downloads)
+- [Admin: an Object's Files](#admin-an-objects-files)
 - [Background Tasks](#background-tasks)
 - [Troubleshooting](#troubleshooting)
 - [Advanced Topics](#advanced-topics)
@@ -853,6 +854,42 @@ backend, and `override_settings(STORAGES=...)` takes effect in tests.
 ```python
 pdf = models.FileField(storage=AliasStorage("private"), upload_to="invoices/")
 ```
+## Admin: an Object's Files
+
+`FilesInline` lists the files attached to an object on that object's admin change page. Add it
+to the `inlines` of any model's admin:
+
+```python
+from baseapp.files.admin import FilesInline
+from baseapp_core.admin_helpers import ModelAdmin
+
+
+@admin.register(Article)
+class ArticleAdmin(ModelAdmin):
+    inlines = (FilesInline,)
+```
+
+Each row shows the file's type, size, upload status, who uploaded it and when, with an **Open**
+link to the stored file (signed and expiring under private storage) and the row title linking to
+the file's own admin page. Files in every upload state are listed, so a stuck or abandoned upload
+is visible too.
+
+A file reaches its object through its `parent` `DocumentId` rather than a foreign key, which
+Django's inlines are built on, so the model needs no foreign key to `File`. The inline finds the
+files the way `FileableModel.files` does and sets aside the admin's foreign-key checks, as
+Django's generic inlines do.
+
+The inline is read-only: files arrive through the upload API and are attached there. To show
+fields a project added to its own `File` model, subclass it:
+
+```python
+class ArticleFilesInline(FilesInline):
+    fields = (*FilesInline.fields[:1], "kind", *FilesInline.fields[1:])
+    readonly_fields = fields
+```
+
+`file_link(file_obj, label=None)` renders the same signed link, for use in a model admin's own
+read-only fields. A file is named in the admin by its `name`, then its `file_name`.
 
 ## Background Tasks
 

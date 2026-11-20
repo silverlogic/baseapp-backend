@@ -29,7 +29,6 @@ def reverse_migrate_page_commentable_fields(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("comments", "0002_plugin_arch_squashed"),
         ("pages", "0001_initial"),

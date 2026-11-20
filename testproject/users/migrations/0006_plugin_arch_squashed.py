@@ -31,7 +31,6 @@ def reverse_migrate_user_ratings(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("profiles", "0005_plugin_arch_squashed"),
         ("ratings", "0002_plugin_arch_squashed"),
