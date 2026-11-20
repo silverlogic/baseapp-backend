@@ -4,6 +4,13 @@ from django.utils import timezone
 
 from .emails import send_password_expired_email
 
+# Celery's ``autodiscover_tasks()`` imports only ``<app>.tasks``, so the worker never sees
+# modules like ``rest_framework.users.tasks`` on its own. Re-export the tasks defined there
+# so the worker registers them; the task names are unchanged.
+from .rest_framework.users.tasks import anonymize_and_delete_user_task
+
+__all__ = ["anonymize_and_delete_user_task", "notify_users_is_password_expired"]
+
 User = get_user_model()
 
 

@@ -1,6 +1,9 @@
+from unittest import mock
+
 import pytest
 import swapper
 
+from baseapp_chats.utils import get_chat_room_url, send_new_chat_message_notification
 from baseapp_profiles.tests.factories import ProfileFactory
 
 from .factories import ChatRoomFactory, ChatRoomParticipantFactory, MessageFactory
@@ -169,3 +172,33 @@ def test_unread_message_count_decrements_one_at_a_time() -> None:
 
     unread_count.refresh_from_db()
     assert unread_count.count == 1
+
+
+def _sent_notification_urls(room, message) -> list[str]:
+    service = mock.Mock()
+    with mock.patch("baseapp_chats.utils.shared_services") as services:
+        services.get.return_value = service
+        send_new_chat_message_notification(room, message, info=None)
+    return [c.kwargs["notification_url"] for c in service.send_notification.call_args_list]
+
+
+def test_new_message_notification_links_to_default_room_url(settings) -> None:
+    room = ChatRoomFactory()
+    ChatRoomParticipantFactory(room=room, profile=ProfileFactory())
+    message = MessageFactory(room=room, profile=ProfileFactory())
+
+    urls = _sent_notification_urls(room, message)
+
+    assert urls and set(urls) == {f"{settings.FRONT_URL}/chat?roomId={room.relay_id}"}
+
+
+def test_new_message_notification_uses_room_url_template(settings) -> None:
+    settings.BASEAPP_CHATS_ROOM_URL_TEMPLATE = "{front_url}/messages/{room_id}"
+    room = ChatRoomFactory()
+    ChatRoomParticipantFactory(room=room, profile=ProfileFactory())
+    message = MessageFactory(room=room, profile=ProfileFactory())
+
+    expected = f"{settings.FRONT_URL}/messages/{room.relay_id}"
+    assert get_chat_room_url(room) == expected
+    urls = _sent_notification_urls(room, message)
+    assert urls and set(urls) == {expected}

@@ -219,4 +219,4 @@ on a list path, or reviewing a PR that changes a hook, an interface field, or a 
 4. Every list path guarded by a query-count test.
 5. `docker compose run --rm web uv run --python 3.12 pytest baseapp/<name>/` green, coverage ≥ 75%.
    Bare `pytest` is a trap — see `references/query-count-tests.md`.
-6. `black .`, `isort .`, `flake8`, and `uv run ast-grep scan` clean.
+6. `ruff check .`, `ruff format --check .`, and `uv run ast-grep scan` clean.
