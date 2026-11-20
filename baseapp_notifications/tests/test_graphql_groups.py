@@ -14,7 +14,8 @@ GROUP_FIELDS = "key label description isLocked channels { channel isActive }"
 
 GROUPS_QUERY = "query { me { notificationSettingGroups { %s } } }" % GROUP_FIELDS
 
-UPDATE_MUTATION = """
+UPDATE_MUTATION = (
+    """
     mutation NotificationSettingsUpdate($input: NotificationSettingsUpdateInput!) {
         notificationSettingsUpdate(input: $input) {
             groups { %s }
@@ -22,7 +23,9 @@ UPDATE_MUTATION = """
             errors { field messages }
         }
     }
-""" % GROUP_FIELDS
+"""
+    % GROUP_FIELDS
+)
 
 
 @pytest.fixture
