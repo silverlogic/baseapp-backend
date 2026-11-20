@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("baseapp_message_templates", "0004_alter_emailtemplate_html_content_and_more"),
     ]

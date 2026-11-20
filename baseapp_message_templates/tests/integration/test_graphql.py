@@ -294,8 +294,8 @@ class TestSendTest:
 
     def test_custom_sender(self, welcome, staff_client, staff_user, outbox, settings) -> None:
         sent = []
-        settings.BASEAPP_MESSAGE_TEMPLATES_TEST_SENDER = (
-            lambda email, *, template, user: sent.append((email.subject, template, user.pk))
+        settings.BASEAPP_MESSAGE_TEMPLATES_TEST_SENDER = lambda email, *, template, user: (
+            sent.append((email.subject, template, user.pk))
         )
         run(staff_client, SEND_TEST_MUTATION, input={"id": welcome.relay_id})
         assert sent == [("[Test] Welcome, Ada to Example", "tests/welcome", staff_user.pk)]
