@@ -6,7 +6,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("users", "0004_user_insert_document_id_user_delete_document_id"),
     ]

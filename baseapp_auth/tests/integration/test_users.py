@@ -70,6 +70,8 @@ class TestUsersRetrieve(ApiMixin):
             "preferred_language",
             "timezone",
             "is_superuser",
+            "first_name",
+            "last_name",
         }
         actual = set(r.data.keys())
         assert expected == actual
@@ -151,6 +153,39 @@ class TestUsersUpdate(ApiMixin):
         h.responseOk(r)
         user_client.user.refresh_from_db()
         assert user_client.user.timezone == "America/Sao_Paulo"
+
+    def test_can_update_name(self, user_client) -> None:
+        data = {"first_name": "Ada", "last_name": "Lovelace"}
+        r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.pk}), data)
+        h.responseOk(r)
+        assert r.data["first_name"] == "Ada"
+        assert r.data["last_name"] == "Lovelace"
+        user_client.user.refresh_from_db()
+        assert user_client.user.first_name == "Ada"
+        assert user_client.user.last_name == "Lovelace"
+
+    def test_update_name_returns_the_synced_profile_name(self, user_client) -> None:
+        data = {"first_name": "Ada", "last_name": "Lovelace"}
+        r = user_client.patch(self.reverse(kwargs={"pk": user_client.user.pk}), data)
+        h.responseOk(r)
+        assert r.data["profile"]["name"] == "Ada Lovelace"
+
+    def test_can_update_only_last_name(self, user_client) -> None:
+        first_name = user_client.user.first_name
+        r = user_client.patch(
+            self.reverse(kwargs={"pk": user_client.user.pk}), {"last_name": "Hopper"}
+        )
+        h.responseOk(r)
+        user_client.user.refresh_from_db()
+        assert user_client.user.first_name == first_name
+        assert user_client.user.last_name == "Hopper"
+
+    def test_cant_update_name_longer_than_the_column(self, user_client) -> None:
+        r = user_client.patch(
+            self.reverse(kwargs={"pk": user_client.user.pk}), {"first_name": "a" * 101}
+        )
+        h.responseBadRequest(r)
+        assert "first_name" in r.data
 
     def test_cant_update_timezone_with_invalid_value(self, user_client) -> None:
         previous_timezone = user_client.user.timezone
