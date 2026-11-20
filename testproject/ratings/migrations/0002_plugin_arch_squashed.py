@@ -11,7 +11,6 @@ import baseapp_ratings.migration_helpers.convert_rates_gfk_into_document_id_help
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("baseapp_core", "0001_initial"),
         ("contenttypes", "0002_remove_content_type_name"),

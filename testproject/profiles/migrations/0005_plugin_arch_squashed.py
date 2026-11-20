@@ -106,7 +106,6 @@ def _dependencies():
 
 
 class Migration(migrations.Migration):
-
     dependencies = _dependencies()
 
     operations = [

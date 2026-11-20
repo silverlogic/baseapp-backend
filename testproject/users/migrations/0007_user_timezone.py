@@ -6,7 +6,6 @@ import baseapp_auth.models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("users", "0006_plugin_arch_squashed"),
     ]

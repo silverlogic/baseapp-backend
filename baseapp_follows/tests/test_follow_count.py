@@ -129,9 +129,9 @@ def test_save_does_not_count_or_lock_followable_metadata_after_first_follow() ->
     )
     # And the F-expression update must actually have fired against
     # follows_followablemetadata.
-    assert any(
-        "follows_followablemetadata" in q and "followers_count" in q.lower() for q in sql
-    ), f"Expected a followable_metadata UPDATE; captured: {sql}"
+    assert any("follows_followablemetadata" in q and "followers_count" in q.lower() for q in sql), (
+        f"Expected a followable_metadata UPDATE; captured: {sql}"
+    )
 
 
 def test_delete_does_not_count_or_lock_followable_metadata() -> None:
@@ -149,9 +149,9 @@ def test_delete_does_not_count_or_lock_followable_metadata() -> None:
 
     sql = _captured_sql(ctx)
     follow_count_queries = [q for q in sql if "COUNT(*)" in q.upper() and "follows_follow" in q]
-    assert (
-        follow_count_queries == []
-    ), "Delete path is doing a COUNT(*) on follows_follow — should be F-1 instead."
+    assert follow_count_queries == [], (
+        "Delete path is doing a COUNT(*) on follows_follow — should be F-1 instead."
+    )
     assert not any("FOR UPDATE" in q.upper() for q in sql)
 
 
