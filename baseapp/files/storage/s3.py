@@ -1,5 +1,6 @@
 import posixpath
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from urllib.parse import quote
 
 from botocore.exceptions import ClientError
 from django.conf import settings
@@ -157,10 +158,14 @@ class S3MultipartUploadHandler(BaseUploadHandler):
         if "ACL" not in params and default_acl:
             params["ACL"] = default_acl
 
+        # Hyphens, not underscores: metadata travels as `x-amz-meta-<key>` headers, and proxies
+        # such as nginx drop headers with underscores by default, which breaks the signature.
+        # Values must be ASCII (botocore refuses anything else), so the filename is
+        # percent-encoded.
         params["Metadata"] = {
             **params.get("Metadata", {}),
-            "original_filename": file_obj.file_name or "",
-            "created_by": str(file_obj.created_by_id) if file_obj.created_by_id else "",
+            "original-filename": quote(file_obj.file_name or ""),
+            "created-by": str(file_obj.created_by_id) if file_obj.created_by_id else "",
         }
         return params
 

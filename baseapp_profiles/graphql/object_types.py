@@ -8,9 +8,8 @@ from django.db.models import Q
 from graphene_django.filter import DjangoFilterConnectionField
 
 from baseapp_auth.graphql import PermissionsInterface
-from baseapp_core.graphql import DjangoObjectType
+from baseapp_core.graphql import DjangoObjectType, ThumbnailField, get_object_type_for_model
 from baseapp_core.graphql import Node as RelayNode
-from baseapp_core.graphql import ThumbnailField, get_object_type_for_model
 from baseapp_core.plugins import graphql_shared_interfaces, shared_services
 from baseapp_profiles.conf import keep_invitation_history
 from baseapp_profiles.permissions import active_membership_subquery

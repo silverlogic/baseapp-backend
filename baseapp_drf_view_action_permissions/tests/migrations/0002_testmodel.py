@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("baseapp_drf_view_action_permissions_tests", "0001_initial"),
     ]
