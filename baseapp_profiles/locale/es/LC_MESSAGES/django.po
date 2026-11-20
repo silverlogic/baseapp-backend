@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-12 15:28+0000\n"
+"POT-Creation-Date: 2026-10-30 14:59+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -22,66 +22,19 @@ msgstr ""
 msgid "BaseApp Profiles"
 msgstr "BaseApp Perfiles"
 
-#: graphql/mutations/invitations.py
-msgid "Invalid invitation token"
-msgstr "Token de invitación inválido"
-
-#: graphql/mutations/invitations.py
-msgid "Invitation not found"
-msgstr "Invitación no encontrada"
-
-#: graphql/mutations/invitations.py
-msgid "This invitation has expired"
-msgstr "Esta invitación ha expirado"
-
-#: graphql/mutations/invitations.py
-msgid "This invitation has already been responded to"
-msgstr "Esta invitación ya ha sido respondida"
-
-#: graphql/mutations/invitations.py
-msgid "This invitation was sent to a different user"
-msgstr "Esta invitación fue enviada a otro usuario"
-
-#: graphql/mutations/invitations.py
-#, python-format
-msgid "%(email)s is already a member of this profile"
-msgstr "%(email)s ya es miembro de este perfil"
-
-#: graphql/mutations/invitations.py
-#, python-format
-msgid "An invitation has already been sent to %(email)s"
-msgstr "Ya se ha enviado una invitación a %(email)s"
-
-#: graphql/mutations/invitations.py
-msgid "Cannot send invitation in current state"
-msgstr "No se puede enviar la invitación en el estado actual"
-
-#: graphql/mutations/invitations.py graphql/mutations/profiles.py
-#: graphql/mutations/roles.py
-msgid "Profile not found"
-msgstr "Perfil no encontrado"
-
 #: graphql/mutations/invitations.py graphql/mutations/profiles.py
 #: graphql/mutations/roles.py
 msgid "You don't have permission to perform this action"
 msgstr "No tienes permiso para realizar esta acción"
 
 #: graphql/mutations/invitations.py
-msgid "At least one email is required"
-msgstr "Se requiere al menos un correo electrónico"
+msgid "Invitation not found"
+msgstr "Invitación no encontrada"
 
-#: graphql/mutations/invitations.py
-msgid "The profile owner cannot accept an invitation to their own profile"
-msgstr ""
-"El propietario del perfil no puede aceptar una invitación a su propio perfil"
-
-#: graphql/mutations/invitations.py
-msgid "Can only cancel pending invitations"
-msgstr "Solo se pueden cancelar invitaciones pendientes"
-
-#: graphql/mutations/invitations.py
-msgid "Can only resend expired or pending invitations"
-msgstr "Solo se pueden reenviar invitaciones expiradas o pendientes"
+#: graphql/mutations/invitations.py graphql/mutations/profiles.py
+#: graphql/mutations/roles.py
+msgid "Profile not found"
+msgstr "Perfil no encontrado"
 
 #: graphql/mutations/profiles.py
 msgid "Username must be at least 8 characters long."
@@ -99,20 +52,8 @@ msgstr ""
 "%(suggested_username)s"
 
 #: graphql/mutations/roles.py
-msgid "Invalid role type"
-msgstr "Tipo de rol inválido"
-
-#: graphql/mutations/roles.py
-msgid "The profile owner cannot be added as a member"
-msgstr "El propietario del perfil no puede ser agregado como miembro"
-
-#: graphql/mutations/roles.py
-msgid "One or more of the selected users are already members of this profile"
-msgstr "Uno o más de los usuarios seleccionados ya son miembros de este perfil"
-
-#: graphql/mutations/roles.py
-msgid "Unable to add the selected members"
-msgstr "No se pudieron agregar los miembros seleccionados"
+msgid "User not found"
+msgstr "Usuario no encontrado"
 
 #: graphql/mutations/roles.py
 msgid "Role is required"
@@ -175,6 +116,14 @@ msgid "can use profile"
 msgstr "puede usar el perfil"
 
 #: models.py
+msgid "can view the invitations of any profile"
+msgstr "puede ver las invitaciones de cualquier perfil"
+
+#: models.py
+msgid "can remove or demote the last admin of a profile"
+msgstr "puede quitar o degradar al último administrador de un perfil"
+
+#: models.py
 msgid "profile"
 msgstr "perfil"
 
@@ -209,6 +158,10 @@ msgstr "rechazado"
 #: models.py
 msgid "expired"
 msgstr "expirado"
+
+#: models.py
+msgid "cancelled"
+msgstr "cancelado"
 
 #: models.py
 msgid "user"
@@ -265,12 +218,181 @@ msgid "When the user accepted or declined"
 msgstr "Cuándo el usuario aceptó o rechazó"
 
 #: models.py
+msgid "invited first name"
+msgstr "nombre del invitado"
+
+#: models.py
+msgid "invited last name"
+msgstr "apellido del invitado"
+
+#: models.py
+msgid "message"
+msgstr "mensaje"
+
+#: models.py
+msgid "Personal note from the inviter, included in the invitation email"
+msgstr "Nota personal de quien invita, incluida en el correo de invitación"
+
+#: models.py
+msgid "invited by"
+msgstr "invitado por"
+
+#: models.py
+msgid "sent count"
+msgstr "número de envíos"
+
+#: models.py
+msgid "How many times the invitation email has been sent"
+msgstr "Cuántas veces se ha enviado el correo de invitación"
+
+#: models.py
+msgid "last sent at"
+msgstr "último envío"
+
+#: models.py
+msgid "When the invitation email was last sent"
+msgstr "Cuándo se envió por última vez el correo de invitación"
+
+#: models.py
+msgid "deactivated at"
+msgstr "desactivado el"
+
+#: models.py
+msgid "When the membership was deactivated or the invitation cancelled"
+msgstr "Cuándo se desactivó la membresía o se canceló la invitación"
+
+#: models.py
+msgid "deactivated by"
+msgstr "desactivado por"
+
+#: models.py
 msgid "profile user role"
 msgstr "rol de usuario del perfil"
 
 #: models.py
 msgid "profile user roles"
 msgstr "roles de usuario del perfil"
+
+#: rest_framework/memberships/permissions.py
+msgid "Choose a profile you belong to with the Current-Profile header."
+msgstr "Elige un perfil al que pertenezcas con el encabezado Current-Profile."
+
+#: rest_framework/memberships/serializers.py services/invitations.py
+msgid "At least one email is required"
+msgstr "Se requiere al menos un correo electrónico"
+
+#: rest_framework/memberships/views.py services/invitations.py
+msgid "Invalid invitation token"
+msgstr "Token de invitación inválido"
+
+#: services/invitations.py
+#, python-format
+msgid "%(email)s is already a member of this profile"
+msgstr "%(email)s ya es miembro de este perfil"
+
+#: services/invitations.py
+#, python-format
+msgid "An invitation has already been sent to %(email)s"
+msgstr "Ya se ha enviado una invitación a %(email)s"
+
+#: services/invitations.py
+#, python-format
+msgid "At most %(limit)d invitations can be sent at once"
+msgstr "Se pueden enviar como máximo %(limit)d invitaciones a la vez"
+
+#: services/invitations.py
+msgid "This invitation was sent moments ago. Try again later."
+msgstr ""
+"Esta invitación se envió hace un momento. Inténtalo de nuevo más tarde."
+
+#: services/invitations.py
+msgid "Can only resend expired or pending invitations"
+msgstr "Solo se pueden reenviar invitaciones expiradas o pendientes"
+
+#: services/invitations.py
+msgid "Can only send pending invitations"
+msgstr "Solo se pueden enviar invitaciones pendientes"
+
+#: services/invitations.py
+msgid "Can only cancel pending invitations"
+msgstr "Solo se pueden cancelar invitaciones pendientes"
+
+#: services/invitations.py
+msgid "This invitation has expired"
+msgstr "Esta invitación ha expirado"
+
+#: services/invitations.py
+msgid "This invitation has been cancelled"
+msgstr "Esta invitación ha sido cancelada"
+
+#: services/invitations.py
+msgid "This invitation has already been responded to"
+msgstr "Esta invitación ya ha sido respondida"
+
+#: services/invitations.py
+msgid "This invitation was sent to a different user"
+msgstr "Esta invitación fue enviada a otro usuario"
+
+#: services/invitations.py
+msgid "The profile owner cannot accept an invitation to their own profile"
+msgstr ""
+"El propietario del perfil no puede aceptar una invitación a su propio perfil"
+
+#: services/invitations.py
+msgid "You are already a member of this profile"
+msgstr "Ya eres miembro de este perfil"
+
+#: services/invitations.py
+msgid "Signing up from an invitation is not enabled"
+msgstr "El registro desde una invitación no está habilitado"
+
+#: services/invitations.py
+msgid "This invitation was not sent to an email address"
+msgstr "Esta invitación no se envió a una dirección de correo electrónico"
+
+#: services/invitations.py
+msgid ""
+"An account already exists for this email. Sign in to accept the invitation."
+msgstr ""
+"Ya existe una cuenta con este correo electrónico. Inicia sesión para aceptar "
+"la invitación."
+
+#: services/invitations.py
+msgid "This account has been deactivated. Contact an administrator."
+msgstr "Esta cuenta ha sido desactivada. Contacta con un administrador."
+
+#: services/members.py
+msgid "Invalid role type"
+msgstr "Tipo de rol inválido"
+
+#: services/members.py
+msgid "A profile must keep at least one active admin"
+msgstr "Un perfil debe tener al menos un administrador activo"
+
+#: services/members.py
+msgid "The profile owner cannot be added as a member"
+msgstr "El propietario del perfil no puede ser agregado como miembro"
+
+#: services/members.py
+msgid "One or more of the selected users are already members of this profile"
+msgstr "Uno o más de los usuarios seleccionados ya son miembros de este perfil"
+
+#: services/members.py
+msgid "Unable to add the selected members"
+msgstr "No se pudieron agregar los miembros seleccionados"
+
+#: services/members.py
+msgid "Only active members can be deactivated"
+msgstr "Solo se pueden desactivar miembros activos"
+
+#: services/members.py
+msgid "Only deactivated members can be reactivated"
+msgstr "Solo se pueden reactivar miembros desactivados"
+
+#: templates/profiles/emails/invitation-body.html.j2
+#, python-format
+msgid "%(name)s, you've been invited!"
+msgstr "¡%(name)s, has recibido una invitación!"
 
 #: templates/profiles/emails/invitation-body.html.j2
 msgid "You've been invited!"
@@ -303,6 +425,11 @@ msgstr "¿No esperabas esta invitación?<br />"
 msgid "No worries, you can safely ignore this email."
 msgstr ""
 "No te preocupes, puedes ignorar este correo electrónico de forma segura."
+
+#: templates/profiles/emails/invitation-body.txt.j2
+#, python-format
+msgid "Hi %(name)s,"
+msgstr "Hola, %(name)s:"
 
 #: templates/profiles/emails/invitation-body.txt.j2
 msgid "Hi there,"
