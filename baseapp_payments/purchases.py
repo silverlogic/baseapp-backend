@@ -10,6 +10,7 @@ The feature is optional. It is on when the project sets both
 """
 
 import logging
+import uuid
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -242,9 +243,11 @@ def create_purchase(
         }
         if payment_method_id:
             invoice_params["default_payment_method"] = payment_method_id
-        invoice = stripe.Invoice.create(
-            **invoice_params, idempotency_key=f"baseapp-purchase-{purchase.pk}-invoice"
-        )
+        # Unique per attempt: pks repeat across environments sharing a Stripe account (QA stacks,
+        # dev DB resets), and a reused key within Stripe's 24h window is rejected or replays
+        # another environment's invoice. The Stripe client reuses the key on its own retries.
+        key = f"baseapp-purchase-{purchase.pk}-{uuid.uuid4().hex}"
+        invoice = stripe.Invoice.create(**invoice_params, idempotency_key=f"{key}-invoice")
         invoice_id = stripe_id(invoice)
         for index, line in enumerate(lines):
             stripe.InvoiceItem.create(
@@ -252,7 +255,7 @@ def create_purchase(
                 invoice=invoice_id,
                 pricing={"price": line.price_id},
                 quantity=line.quantity,
-                idempotency_key=f"baseapp-purchase-{purchase.pk}-line-{index}",
+                idempotency_key=f"{key}-line-{index}",
             )
         invoice = stripe.Invoice.finalize_invoice(
             invoice_id, auto_advance=False, expand=["confirmation_secret"]
