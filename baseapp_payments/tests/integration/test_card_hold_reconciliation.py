@@ -35,7 +35,7 @@ from baseapp_payments.utils import StripeWebhookHandler
 from testproject.testapp.card_holds import HoldableOrderHoldTarget
 from testproject.testapp.models import HoldableOrder
 
-from ..factories import CardHoldFactory, HoldableOrderFactory
+from ..card_hold_factories import CardHoldFactory, HoldableOrderFactory
 from ..fakes import (
     STRIPE_CUSTOMER_ID,
     WEBHOOK_SECRET,

@@ -24,7 +24,7 @@ from baseapp_payments.holds import (
 from testproject.testapp.card_holds import HoldableOrderHoldTarget
 from testproject.testapp.models import HoldableOrder
 
-from ..factories import CardHoldFactory, HoldableOrderFactory
+from ..card_hold_factories import CardHoldFactory, HoldableOrderFactory
 from ..fakes import STRIPE_CUSTOMER_ID
 
 CardHold = swapper.load_model("baseapp_payments", "CardHold")

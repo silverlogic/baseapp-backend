@@ -10,7 +10,8 @@ from django.contrib import admin
 from baseapp_payments.admin import CardHoldAdmin, card_hold_admin_summary
 from testproject.testapp.models import HoldableOrder
 
-from ..factories import CardHoldFactory, HoldableOrderFactory, UserFactory
+from ..card_hold_factories import CardHoldFactory, HoldableOrderFactory
+from ..factories import UserFactory
 
 CardHold = swapper.load_model("baseapp_payments", "CardHold")
 

@@ -15,7 +15,7 @@ from baseapp_payments.holds import abandon_hold, release
 from baseapp_payments.tasks import release_card_hold, sweep_card_holds
 from testproject.testapp.models import HoldableOrder
 
-from ..factories import CardHoldFactory
+from ..card_hold_factories import CardHoldFactory
 from ..fakes import connection_error
 
 CardHold = swapper.load_model("baseapp_payments", "CardHold")

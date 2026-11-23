@@ -32,7 +32,8 @@ from baseapp_payments.graphql.object_types import CardHoldObjectType
 from baseapp_payments.holds import PlacementResult, PlacementStatus
 from testproject.testapp.models import HoldableOrder
 
-from ..factories import CardHoldFactory, HoldableOrderFactory, UserFactory
+from ..card_hold_factories import CardHoldFactory, HoldableOrderFactory
+from ..factories import UserFactory
 
 CardHold = swapper.load_model("baseapp_payments", "CardHold")
 
