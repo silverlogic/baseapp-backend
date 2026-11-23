@@ -111,6 +111,81 @@ class BaseSubscription(TimeStampedModel):
         verbose_name_plural = _("subscriptions")
 
 
+class PurchaseStatus(models.TextChoices):
+    PENDING = "pending", _("Pending")
+    PAID = "paid", _("Paid")
+    FAILED = "failed", _("Failed")
+
+
+class BasePurchase(TimeStampedModel):
+    """A one-time charge for one or more products, made as one Stripe invoice.
+
+    Never a subscription: it is charged once and is not renewed. The amounts are the
+    ones Stripe charged at checkout, so a later price change does not rewrite them.
+    Optional: projects that set ``BASEAPP_PAYMENTS_PURCHASE_MODEL`` (and the line model)
+    get the purchase endpoints; without it the feature is off.
+    """
+
+    customer = models.ForeignKey(
+        swapper.get_model_name("baseapp_payments", "Customer"),
+        on_delete=models.PROTECT,
+        related_name="purchases",
+        verbose_name=_("customer"),
+    )
+    status = models.CharField(
+        _("status"),
+        max_length=16,
+        choices=PurchaseStatus.choices,
+        default=PurchaseStatus.PENDING,
+        db_index=True,
+    )
+    currency = models.CharField(_("currency"), max_length=3)
+    # Minor units (cents), as Stripe reports them.
+    subtotal = models.PositiveIntegerField(_("subtotal"))
+    tax = models.PositiveIntegerField(_("tax"), default=0)
+    total = models.PositiveIntegerField(_("total"))
+    remote_invoice_id = models.CharField(
+        _("remote invoice id"), max_length=255, unique=True, null=True, blank=True
+    )
+    paid_at = models.DateTimeField(_("paid at"), null=True, blank=True)
+    failed_at = models.DateTimeField(_("failed at"), null=True, blank=True)
+
+    class Meta:
+        abstract = True
+        swappable = swapper.swappable_setting("baseapp_payments", "Purchase")
+        verbose_name = _("purchase")
+        verbose_name_plural = _("purchases")
+        ordering = ("-created",)
+
+    def __str__(self) -> str:
+        return f"{self.pk} - {self.status} - {self.total} {self.currency}"
+
+
+class BasePurchaseLine(models.Model):
+    purchase = models.ForeignKey(
+        swapper.get_model_name("baseapp_payments", "Purchase"),
+        on_delete=models.CASCADE,
+        related_name="lines",
+        verbose_name=_("purchase"),
+    )
+    remote_product_id = models.CharField(_("remote product id"), max_length=255)
+    remote_price_id = models.CharField(_("remote price id"), max_length=255)
+    description = models.CharField(_("description"), max_length=255, blank=True)
+    unit_amount = models.PositiveIntegerField(_("unit amount"))
+    quantity = models.PositiveIntegerField(_("quantity"))
+    amount = models.PositiveIntegerField(_("amount"))
+
+    class Meta:
+        abstract = True
+        swappable = swapper.swappable_setting("baseapp_payments", "PurchaseLine")
+        verbose_name = _("purchase line")
+        verbose_name_plural = _("purchase lines")
+        ordering = ("pk",)
+
+    def __str__(self) -> str:
+        return f"{self.quantity} x {self.remote_price_id}"
+
+
 # --- Card holds -------------------------------------------------------------------------
 # Opt-in: nothing below runs for a project that sets no BASEAPP_PAYMENTS_CARDHOLD_MODEL.
 

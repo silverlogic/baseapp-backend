@@ -208,6 +208,37 @@ class StripeWebhookHandler:
             "customer.subscription.deleted": self.subscription_deleted,
             **{event_type: self.card_hold_payment_intent for event_type in CARD_HOLD_EVENTS},
         }
+        # One-time purchases are optional; read the settings directly because importing
+        # `purchases` here would be circular.
+        if getattr(settings, "BASEAPP_PAYMENTS_PURCHASE_MODEL", None) and getattr(
+            settings, "BASEAPP_PAYMENTS_PURCHASELINE_MODEL", None
+        ):
+            self.EVENT_HANDLERS["invoice.paid"] = self.invoice_paid
+            self.EVENT_HANDLERS["invoice.payment_failed"] = self.invoice_payment_failed
+
+    @staticmethod
+    def invoice_paid(event: "stripe.Event") -> JsonResponse:
+        """Marks a one-time purchase paid; any other invoice (subscriptions) is ignored."""
+        from .purchases import handle_invoice_paid
+
+        try:
+            handle_invoice_paid(event["data"]["object"])
+            return JsonResponse({"status": "success"}, status=200)
+        except Exception as e:
+            logger.exception(e)
+            return JsonResponse({"error": "Error"}, status=500)
+
+    @staticmethod
+    def invoice_payment_failed(event: "stripe.Event") -> JsonResponse:
+        """Marks a one-time purchase failed; any other invoice (subscriptions) is ignored."""
+        from .purchases import handle_invoice_payment_failed
+
+        try:
+            handle_invoice_payment_failed(event["data"]["object"])
+            return JsonResponse({"status": "success"}, status=200)
+        except Exception as e:
+            logger.exception(e)
+            return JsonResponse({"error": "Error"}, status=500)
 
     @staticmethod
     def card_hold_payment_intent(event: "stripe.Event") -> JsonResponse:

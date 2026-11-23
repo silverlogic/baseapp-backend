@@ -1,4 +1,5 @@
-"""Card hold signals, and the receiver that releases a deleted target's holds."""
+"""Payments signals: one-time purchases, card holds, and the receiver that releases a
+deleted target's holds."""
 
 from typing import Any
 
@@ -14,6 +15,15 @@ card_hold_released = Signal()
 # Sent when a deferred hold fails to be placed (final), after the commit. Arguments:
 # ``hold`` (the CardHold, with ``failure_code``) and ``target``.
 card_hold_failed = Signal()
+
+# Sent once when Stripe confirms a one-time purchase's payment (``invoice.paid``).
+# Receivers get ``sender`` (the concrete Purchase model) and ``purchase``. Projects use it
+# to fulfil the order and notify people.
+purchase_paid = Signal()
+
+# Sent once when a one-time purchase's payment fails (``invoice.payment_failed``); the
+# invoice is voided, so nothing is charged. Same arguments as ``purchase_paid``.
+purchase_failed = Signal()
 
 
 def send_on_commit(signal: Signal, **kwargs: Any) -> None:

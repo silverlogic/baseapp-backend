@@ -260,6 +260,8 @@ BASEAPP_NOTIFICATIONS_NOTIFICATIONSETTING_MODEL = "notifications.NotificationSet
 # Payments
 BASEAPP_PAYMENTS_CUSTOMER_MODEL = "payments.Customer"
 BASEAPP_PAYMENTS_SUBSCRIPTION_MODEL = "payments.Subscription"
+BASEAPP_PAYMENTS_PURCHASE_MODEL = "payments.Purchase"
+BASEAPP_PAYMENTS_PURCHASELINE_MODEL = "payments.PurchaseLine"
 BASEAPP_PAYMENTS_CARDHOLD_MODEL = "payments.CardHold"
 BASEAPP_PAYMENTS_CARD_HOLD_TARGETS = {
     "testapp.HoldableOrder": "testproject.testapp.card_holds.HoldableOrderHoldTarget",

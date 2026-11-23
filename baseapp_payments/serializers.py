@@ -613,3 +613,42 @@ class StripePaymentMethodSerializer(StripeObjectSerializer):
                 raise serializers.ValidationError(
                     {"non_field_errors": [_("Failed to update payment method")]}
                 )
+
+
+class PurchaseItemInputSerializer(serializers.Serializer):
+    product_id = serializers.CharField()
+    quantity = serializers.IntegerField(min_value=1, max_value=9999)
+    # Optional, and only ever compared with the server's own price: a mismatch rejects
+    # the purchase instead of charging the browser's amount.
+    unit_amount = serializers.IntegerField(min_value=0, required=False)
+
+
+class PurchaseCreateSerializer(serializers.Serializer):
+    entity_id = serializers.CharField()
+    items = PurchaseItemInputSerializer(many=True, allow_empty=False, max_length=100)
+    # A saved card of the customer. Omitted, the browser confirms with a card it collects;
+    # a card to keep for later is saved first through the payment-methods route.
+    payment_method_id = serializers.CharField(required=False)
+
+
+class PurchaseLineSerializer(serializers.Serializer):
+    product_id = serializers.CharField(source="remote_product_id", read_only=True)
+    price_id = serializers.CharField(source="remote_price_id", read_only=True)
+    description = serializers.CharField(read_only=True)
+    unit_amount = serializers.IntegerField(read_only=True)
+    quantity = serializers.IntegerField(read_only=True)
+    amount = serializers.IntegerField(read_only=True)
+
+
+class PurchaseSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    status = serializers.CharField(read_only=True)
+    currency = serializers.CharField(read_only=True)
+    subtotal = serializers.IntegerField(read_only=True)
+    tax = serializers.IntegerField(read_only=True)
+    total = serializers.IntegerField(read_only=True)
+    invoice_id = serializers.CharField(source="remote_invoice_id", read_only=True)
+    created = serializers.DateTimeField(read_only=True)
+    paid_at = serializers.DateTimeField(read_only=True)
+    failed_at = serializers.DateTimeField(read_only=True)
+    lines = PurchaseLineSerializer(many=True, read_only=True)

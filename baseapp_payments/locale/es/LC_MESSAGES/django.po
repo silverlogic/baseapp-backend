@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-19 22:42+0000\n"
+"POT-Creation-Date: 2026-11-23 14:25+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -152,6 +152,86 @@ msgid "Pending"
 msgstr "Pendiente"
 
 #: models.py
+msgid "Paid"
+msgstr "Pagada"
+
+#: models.py
+msgid "Failed"
+msgstr "Fallida"
+
+#: models.py
+msgid "status"
+msgstr "estado"
+
+#: models.py
+msgid "currency"
+msgstr "moneda"
+
+#: models.py
+msgid "subtotal"
+msgstr "subtotal"
+
+#: models.py
+msgid "tax"
+msgstr "impuesto"
+
+#: models.py
+msgid "total"
+msgstr "total"
+
+#: models.py
+msgid "remote invoice id"
+msgstr "id de factura remota"
+
+#: models.py
+msgid "paid at"
+msgstr "pagada el"
+
+#: models.py
+msgid "failed at"
+msgstr "fallida el"
+
+#: models.py
+msgid "purchase"
+msgstr "compra"
+
+#: models.py
+msgid "purchases"
+msgstr "compras"
+
+#: models.py
+msgid "remote product id"
+msgstr "id de producto remoto"
+
+#: models.py
+msgid "remote price id"
+msgstr "id de precio remoto"
+
+#: models.py
+msgid "description"
+msgstr "descripción"
+
+#: models.py
+msgid "unit amount"
+msgstr "precio unitario"
+
+#: models.py
+msgid "quantity"
+msgstr "cantidad"
+
+#: models.py
+msgid "amount"
+msgstr "importe"
+
+#: models.py
+msgid "purchase line"
+msgstr "línea de compra"
+
+#: models.py
+msgid "purchase lines"
+msgstr "líneas de compra"
+
+#: models.py
 msgid "Authorized"
 msgstr "Autorizada"
 
@@ -166,10 +246,6 @@ msgstr "Capturada"
 #: models.py
 msgid "Scheduled"
 msgstr "Programada"
-
-#: models.py
-msgid "Failed"
-msgstr "Fallida"
 
 #: models.py
 msgid "Card saved, charged on the date"
@@ -284,10 +360,6 @@ msgid "card fingerprint"
 msgstr "huella de la tarjeta"
 
 #: models.py
-msgid "currency"
-msgstr "moneda"
-
-#: models.py
 msgid "estimated amount (cents)"
 msgstr "monto estimado (centavos)"
 
@@ -300,20 +372,12 @@ msgid "amount held (cents)"
 msgstr "monto retenido (centavos)"
 
 #: models.py
-msgid "status"
-msgstr "estado"
-
-#: models.py
 msgid "expires at"
 msgstr "vence el"
 
 #: models.py
 msgid "hold on"
 msgstr "retener el"
-
-#: models.py
-msgid "failed at"
-msgstr "falló el"
 
 #: models.py
 msgid "failure code"
@@ -420,6 +484,62 @@ msgstr "retenciones en tarjeta"
 msgid "The card hold for %(target)s failed."
 msgstr "Falló la retención en tarjeta de %(target)s."
 
+#: purchases.py
+msgid "At least one item is required."
+msgstr "Se requiere al menos un artículo."
+
+#: purchases.py
+#, python-format
+msgid "A purchase can have at most %(max)s items."
+msgstr "Una compra puede tener como máximo %(max)s artículos."
+
+#: purchases.py
+msgid "Each product can appear only once; set its quantity instead."
+msgstr "Cada producto puede aparecer solo una vez; indique su cantidad."
+
+#: purchases.py
+msgid "Quantity must be a whole number of 1 or more."
+msgstr "La cantidad debe ser un número entero de 1 o más."
+
+#: purchases.py
+#, python-format
+msgid "Quantity can be at most %(max)s."
+msgstr "La cantidad puede ser como máximo %(max)s."
+
+#: purchases.py
+#, python-format
+msgid "Product not available: %(id)s"
+msgstr "Producto no disponible: %(id)s"
+
+#: purchases.py
+#, python-format
+msgid "Product has no price: %(id)s"
+msgstr "El producto no tiene precio: %(id)s"
+
+#: purchases.py
+#, python-format
+msgid "Product is not sold as a one-time purchase: %(id)s"
+msgstr "El producto no se vende como compra única: %(id)s"
+
+#: purchases.py
+#, python-format
+msgid "Product has no fixed price: %(id)s"
+msgstr "El producto no tiene un precio fijo: %(id)s"
+
+#: purchases.py
+#, python-format
+msgid "The price of %(id)s has changed. Review the order and try again."
+msgstr ""
+"El precio de %(id)s ha cambiado. Revise el pedido e inténtelo de nuevo."
+
+#: purchases.py
+msgid "All products in one purchase must use the same currency."
+msgstr "Todos los productos de una compra deben usar la misma moneda."
+
+#: purchases.py
+msgid "The payment method does not belong to the customer."
+msgstr "El método de pago no pertenece al cliente."
+
 #: serializers.py
 msgid "Stripe price ID"
 msgstr "ID de precio de Stripe"
@@ -497,3 +617,7 @@ msgstr "Error al actualizar el método de pago"
 #: views.py
 msgid "Customer not found"
 msgstr "Cliente no encontrado"
+
+#: views.py
+msgid "The purchase could not be created. Please try again."
+msgstr "No se pudo crear la compra. Inténtelo de nuevo."
