@@ -260,6 +260,13 @@ BASEAPP_NOTIFICATIONS_NOTIFICATIONSETTING_MODEL = "notifications.NotificationSet
 # Payments
 BASEAPP_PAYMENTS_CUSTOMER_MODEL = "payments.Customer"
 BASEAPP_PAYMENTS_SUBSCRIPTION_MODEL = "payments.Subscription"
+BASEAPP_PAYMENTS_CARDHOLD_MODEL = "payments.CardHold"
+BASEAPP_PAYMENTS_CARD_HOLD_TARGETS = {
+    "testapp.HoldableOrder": "testproject.testapp.card_holds.HoldableOrderHoldTarget",
+}
+BASEAPP_PAYMENTS_CARD_HOLD_KEY_PREFIX = "testproject"
+# pytest-django's `db` wraps every test in a transaction; the guard is tested with it on.
+BASEAPP_PAYMENTS_CARD_HOLD_REQUIRE_AUTOCOMMIT = False
 
 # Referrals
 BASEAPP_REFERRALS_USERREFERRAL_MODEL = "referrals.UserReferral"
