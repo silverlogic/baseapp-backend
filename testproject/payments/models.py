@@ -1,6 +1,7 @@
 from model_utils import FieldTracker
 
 from baseapp_payments.models import (
+    AbstractCardHold,
     BaseCustomer,
     BasePurchase,
     BasePurchaseLine,
@@ -27,4 +28,9 @@ class Purchase(BasePurchase):
 
 class PurchaseLine(BasePurchaseLine):
     class Meta(BasePurchaseLine.Meta):
+        pass
+
+
+class CardHold(AbstractCardHold):
+    class Meta(AbstractCardHold.Meta):
         pass
