@@ -1,4 +1,5 @@
 import logging
+import subprocess
 import sys
 from collections.abc import Callable
 from functools import partial
@@ -168,6 +169,32 @@ def test_zeal_context_wraps_a_task() -> None:
 
     assert _nplusone_context.get() is outer
     assert "task-1" not in n_plus_one._task_tokens
+
+
+def test_a_replaced_task_restores_the_outer_context() -> None:
+    """Celery runs a task's replacement under the same id; each end closes its own context."""
+    outer = _nplusone_context.get()
+
+    n_plus_one.start_zeal_context(task_id="task-r")
+    task = _nplusone_context.get()
+    n_plus_one.start_zeal_context(task_id="task-r")  # the replacement
+    n_plus_one.end_zeal_context(task_id="task-r")
+    assert _nplusone_context.get() is task
+
+    n_plus_one.end_zeal_context(task_id="task-r")
+    assert _nplusone_context.get() is outer
+    assert "task-r" not in n_plus_one._task_tokens
+
+
+def test_the_plugin_loads_without_zeal_installed() -> None:
+    """A project without the n_plus_one extra can still list the plugin in its conftest.py."""
+    code = (
+        "import sys; sys.modules['zeal'] = None\n"  # None makes any zeal import fail
+        "import baseapp_core.n_plus_one.pytest_plugin\n"
+    )
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+
+    assert result.returncode == 0, result.stderr
 
 
 def test_ending_a_task_without_a_context_does_nothing() -> None:

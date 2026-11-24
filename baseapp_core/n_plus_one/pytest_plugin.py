@@ -41,7 +41,7 @@ def n_plus_one_report(request: pytest.FixtureRequest) -> Iterator[None]:
 
 def pytest_terminal_summary(terminalreporter: pytest.TerminalReporter) -> None:
     """Print the "N+1 report (zeal)" section, when the run collected one."""
-    # Looked up, not imported: importing it imports zeal, which a project may not install.
+    # Looked up, not imported: a run that never enabled the scan has nothing to print.
     n_plus_one = sys.modules.get("baseapp_core.n_plus_one")
     if n_plus_one is not None and n_plus_one.report is not None:
         n_plus_one.write_report(n_plus_one.report, terminalreporter)

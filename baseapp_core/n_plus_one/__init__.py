@@ -27,12 +27,12 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from django.conf import settings
-from zeal import setup, teardown
 
 logger = logging.getLogger("zeal")
 
 _reported: set[str] = set()
-_task_tokens: dict[str, Token] = {}
+# A stack per task id: a task that calls self.replace() runs its replacement under the same id.
+_task_tokens: dict[str, list[Token]] = {}
 
 WARNING_MODULE = "baseapp_core.n_plus_one"
 _PACKAGE_DIR = os.path.dirname(__file__)
@@ -185,13 +185,23 @@ def log_n_plus_one(exception: Exception, **kwargs: Any) -> None:
         report.add(short_location, detection)
 
 
+# zeal is imported in the receivers, not at the top: loading pytest_plugin imports this package,
+# and a project without the n_plus_one extra must still be able to load it.
+
+
 def start_zeal_context(task_id: str, **kwargs: Any) -> None:
     """Open a zeal context per task: the middleware covers requests, not tasks the worker runs."""
-    _task_tokens[task_id] = setup()
+    from zeal import setup
+
+    _task_tokens.setdefault(task_id, []).append(setup())
 
 
 def end_zeal_context(task_id: str, **kwargs: Any) -> None:
-    """Close the task's zeal context; task_postrun fires on failure too."""
-    token = _task_tokens.pop(task_id, None)
-    if token is not None:
-        teardown(token)
+    """Close the task's innermost zeal context; task_postrun fires on failure too."""
+    from zeal import teardown
+
+    tokens = _task_tokens.get(task_id)
+    if tokens:
+        teardown(tokens.pop())
+        if not tokens:
+            del _task_tokens[task_id]
