@@ -334,6 +334,9 @@ messagetemplates = [
     { name = "nh3" },
     { name = "sendgrid" },
 ]
+n-plus-one = [
+    { name = "django-zeal" },
+]
 notifications = [
     { name = "django-notifications-community" },
     { name = "django-push-notifications", extra = ["apns-async", "fcm", "wp"] },
@@ -369,7 +372,7 @@ wagtail = [
 [package.dev-dependencies]
 dev = [
     { name = "ast-grep-cli" },
-    { name = "baseapp-backend", extra = ["auth", "graphql", "messagetemplates", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "urlshortening", "wagtail"] },
+    { name = "baseapp-backend", extra = ["auth", "graphql", "messagetemplates", "n-plus-one", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "urlshortening", "wagtail"] },
     { name = "channels" },
     { name = "channels-redis" },
     { name = "django-notifications-community" },
@@ -394,7 +397,7 @@ dev = [
     { name = "urllib3" },
 ]
 testproject = [
-    { name = "baseapp-backend", extra = ["auth", "graphql", "messagetemplates", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "urlshortening", "wagtail"] },
+    { name = "baseapp-backend", extra = ["auth", "graphql", "messagetemplates", "n-plus-one", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "urlshortening", "wagtail"] },
     { name = "channels" },
     { name = "channels-redis" },
     { name = "django-notifications-community" },
@@ -444,6 +447,7 @@ requires-dist = [
     { name = "django-quill-editor", marker = "extra == 'pages'", specifier = ">=0.1.42" },
     { name = "django-sendgrid-v5", marker = "extra == 'messagetemplates'", specifier = ">=1.2" },
     { name = "django-translated-fields", marker = "extra == 'pages'", specifier = ">=0.13" },
+    { name = "django-zeal", marker = "extra == 'n-plus-one'", specifier = ">=2.3,<3" },
     { name = "djangorestframework", specifier = ">=3.17.2,<3.18" },
     { name = "djangorestframework-expander", specifier = ">=0.2.3" },
     { name = "djangorestframework-simplejwt", extras = ["crypto"], marker = "extra == 'auth'", specifier = ">=5.2,<5.6" },
@@ -480,12 +484,12 @@ requires-dist = [
     { name = "wagtail", marker = "extra == 'wagtail'", specifier = ">=7.0" },
     { name = "wagtail-headless-preview", marker = "extra == 'wagtail'", specifier = "==0.8" },
 ]
-provides-extras = ["auth", "referrals", "graphql", "pages", "payments", "notifications", "urlshortening", "messagetemplates", "wagtail", "socialauth", "pdf", "api-key"]
+provides-extras = ["auth", "referrals", "graphql", "pages", "payments", "notifications", "urlshortening", "messagetemplates", "wagtail", "socialauth", "pdf", "n-plus-one", "api-key"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "ast-grep-cli", specifier = ">=0.42.3" },
-    { name = "baseapp-backend", extras = ["auth", "graphql", "messagetemplates", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "urlshortening", "wagtail"], editable = "." },
+    { name = "baseapp-backend", extras = ["auth", "graphql", "messagetemplates", "n-plus-one", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "urlshortening", "wagtail"], editable = "." },
     { name = "channels", specifier = "==4.3.1" },
     { name = "channels-redis", specifier = "==4.3.0" },
     { name = "django-notifications-community" },
@@ -510,7 +514,7 @@ dev = [
     { name = "urllib3", specifier = "==2.8.0" },
 ]
 testproject = [
-    { name = "baseapp-backend", extras = ["auth", "graphql", "messagetemplates", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "urlshortening", "wagtail"], editable = "." },
+    { name = "baseapp-backend", extras = ["auth", "graphql", "messagetemplates", "n-plus-one", "notifications", "pages", "payments", "pdf", "referrals", "socialauth", "urlshortening", "wagtail"], editable = "." },
     { name = "channels", specifier = "==4.3.1" },
     { name = "channels-redis", specifier = "==4.3.0" },
     { name = "django-notifications-community" },
@@ -1541,6 +1545,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/23/99/40621d8279c89cee6a06f4d3bd3e4850de29f920bfcde24bc98855464bba/django_treebeard-5.3.1.tar.gz", hash = "sha256:9c3828f5c3130c57fb5c34412ba8ac9b6cefffe98757a284feb02e55776d1d25", size = 313309, upload-time = "2026-08-19T04:29:07.672Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fd/1c/456d2ad36c10d7b5d3f5633b795ef6d5273f1084ad0d3ca8163857ace827/django_treebeard-5.3.1-py3-none-any.whl", hash = "sha256:0f93f55fcb8b4acb09b6cfc2e93a9451b33db1ff14a22e2563f5bb555fcb9c4b", size = 82087, upload-time = "2026-08-19T04:29:06.346Z" },
+]
+
+[[package]]
+name = "django-zeal"
+version = "2.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ed/1a/4ef8fd714993b3a6911664e4eb9087e2c8fe8e0ce7f8c872120d225139b1/django_zeal-2.3.0.tar.gz", hash = "sha256:c68d0e673ca672ba718df8f091e30b73fe32cd3aa85df6e7a464b498496505ba", size = 28607, upload-time = "2026-10-14T11:16:44.517Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e1/b8/fe7ec475385586c835ede79f742562fbb95afcb0bde7b4f5a7a3b70a81a1/django_zeal-2.3.0-py3-none-any.whl", hash = "sha256:fdee7ca2056d1ec58be01cee39da6e2cd56664f4e9073cc1ad8d633acd133437", size = 16907, upload-time = "2026-10-14T11:16:42.954Z" },
 ]
 
 [[package]]

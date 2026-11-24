@@ -105,6 +105,8 @@ socialauth = [
     "social-auth-app-django>=6.0.1,<7.0.0",
 ]
 pdf = ["pypdf>=6,<7"]
+# Dev only: the opt-in N+1 detector, baseapp_core.n_plus_one (see baseapp_core/README.md).
+n_plus_one = ["django-zeal>=2.3,<3"]
 api_key = []
 
 [dependency-groups]
@@ -129,14 +131,14 @@ dev = [
     "channels==4.3.1",
     "django-notifications-community",
     "django-push-notifications[apns-async,fcm,wp]==3.3.0",
-    "baseapp-backend[auth,graphql,messagetemplates,notifications,pages,payments,pdf,referrals,socialauth,urlshortening,wagtail]",
+    "baseapp-backend[auth,graphql,messagetemplates,n_plus_one,notifications,pages,payments,pdf,referrals,socialauth,urlshortening,wagtail]",
     "ast-grep-cli>=0.42.3",
     "testproject",
     "django-storages==1.13.2",
 ]
 
 testproject = [
-    "baseapp-backend[auth,graphql,messagetemplates,notifications,pages,payments,pdf,referrals,socialauth,urlshortening,wagtail]",
+    "baseapp-backend[auth,graphql,messagetemplates,n_plus_one,notifications,pages,payments,pdf,referrals,socialauth,urlshortening,wagtail]",
     "channels==4.3.1",
     "channels-redis==4.3.0",
     "django-notifications-community",
