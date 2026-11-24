@@ -65,6 +65,11 @@ SUBSCRIPTION_PERMS = [
     "delete_subscription",
 ]
 
+# One-time purchases (optional). `add_purchase` is checked against the Customer being
+# billed - there is no purchase yet - and `view_purchase` against the purchase.
+PURCHASE_CUSTOMER_PERMS = ["add_purchase"]
+PURCHASE_PERMS = ["view_purchase"]
+
 
 DEFAULT_ENTITY_OWNER_CHECK = "baseapp_payments.permissions.default_entity_owner_check"
 
@@ -235,6 +240,17 @@ class PaymentsPermissionsBackend(BaseBackend):
             if not isinstance(obj, Subscription):
                 return False
             return _customer_owner(obj.customer, user_obj)
+        if perm in [payments_perm(codename) for codename in PURCHASE_CUSTOMER_PERMS]:
+            if not isinstance(obj, Customer):
+                return False
+            return _customer_owner(obj, user_obj)
+        if perm in [payments_perm(codename) for codename in PURCHASE_PERMS]:
+            # Loaded here, not at import time: the Purchase model is optional.
+            from .purchases import get_purchase_model, purchases_enabled
+
+            if not purchases_enabled() or not isinstance(obj, get_purchase_model()):
+                return False
+            return _customer_owner(obj.customer, user_obj)
         return False
 
 
@@ -276,4 +292,15 @@ class DRFSubscriptionPermissions(BasePermission):
             return request.user.has_perm(payments_perm("change_subscription"), obj)
         elif action == "destroy":
             return request.user.has_perm(payments_perm("delete_subscription"), obj)
+        return False
+
+
+class DRFPurchasePermissions(BasePermission):
+    def has_object_permission(self, request: Request, view: APIView, obj: "Model") -> bool:
+        action = getattr(view, "action", None)
+        # `create` has no purchase yet: the view checks the Customer being billed.
+        if action == "create":
+            return request.user.has_perm(payments_perm("add_purchase"), obj)
+        if action == "retrieve":
+            return request.user.has_perm(payments_perm("view_purchase"), obj)
         return False

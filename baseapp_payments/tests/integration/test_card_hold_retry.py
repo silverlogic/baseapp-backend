@@ -39,7 +39,8 @@ from baseapp_payments.tasks import sweep_card_holds
 from testproject.testapp.card_holds import HoldableOrderHoldTarget
 from testproject.testapp.models import HoldableOrder
 
-from ..factories import CardHoldFactory, HoldableOrderFactory, UserFactory
+from ..card_hold_factories import CardHoldFactory, HoldableOrderFactory
+from ..factories import UserFactory
 from ..fakes import api_error, connection_error
 from ..helpers import grant_card_hold_perm
 

@@ -24,7 +24,8 @@ from baseapp_payments.holds import (
 from baseapp_payments.tasks import sweep_card_holds
 from testproject.testapp.models import HoldableOrder
 
-from ..factories import CardHoldFactory, HoldableOrderFactory, UserFactory
+from ..card_hold_factories import CardHoldFactory, HoldableOrderFactory
+from ..factories import UserFactory
 
 CardHold = swapper.load_model("baseapp_payments", "CardHold")
 

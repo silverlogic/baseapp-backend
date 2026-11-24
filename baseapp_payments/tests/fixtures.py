@@ -45,6 +45,6 @@ def holder(db) -> Any:
 @pytest.fixture
 def order(holder) -> Any:
     """A saved, open $100.00 target of ``holder``."""
-    from .factories import HoldableOrderFactory
+    from .card_hold_factories import HoldableOrderFactory
 
     return HoldableOrderFactory(user=holder)

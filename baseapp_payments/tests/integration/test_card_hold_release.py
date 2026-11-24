@@ -28,7 +28,7 @@ from baseapp_payments.tasks import (
 )
 from testproject.testapp.models import HoldableOrder
 
-from ..factories import CardHoldFactory, HoldableOrderFactory
+from ..card_hold_factories import CardHoldFactory, HoldableOrderFactory
 from ..fakes import api_error, connection_error, unexpected_state
 
 CardHold = swapper.load_model("baseapp_payments", "CardHold")

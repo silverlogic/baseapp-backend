@@ -27,7 +27,8 @@ from baseapp_payments.signals import difference_charge_failed, payment_status_ch
 from testproject.testapp.card_holds import HoldableOrderHoldTarget
 from testproject.testapp.models import HoldableOrder
 
-from ..factories import CardHoldFactory, HoldableOrderFactory, UserFactory
+from ..card_hold_factories import CardHoldFactory, HoldableOrderFactory
+from ..factories import UserFactory
 from ..fakes import (
     STRIPE_CUSTOMER_ID,
     FakeStripe,

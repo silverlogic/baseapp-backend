@@ -14,7 +14,8 @@ from django.utils import timezone
 from baseapp_core.graphql import get_obj_relay_id
 from testproject.testapp.models import HoldableOrder
 
-from ..factories import CardHoldFactory, HoldableOrderFactory, UserFactory
+from ..card_hold_factories import CardHoldFactory, HoldableOrderFactory
+from ..factories import UserFactory
 
 CardHold = swapper.load_model("baseapp_payments", "CardHold")
 

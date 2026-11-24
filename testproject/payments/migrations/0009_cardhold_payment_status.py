@@ -7,7 +7,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("payments", "0007_cardhold"),
+        ("payments", "0008_purchase"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

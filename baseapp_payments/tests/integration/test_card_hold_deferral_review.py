@@ -27,7 +27,8 @@ from baseapp_payments.holds import (
 )
 from baseapp_payments.tasks import reschedule_card_hold, sweep_card_holds
 
-from ..factories import CardHoldFactory, HoldableOrderFactory, UserFactory
+from ..card_hold_factories import CardHoldFactory, HoldableOrderFactory
+from ..factories import UserFactory
 from ..fakes import connection_error
 from ..helpers import grant_card_hold_perm
 

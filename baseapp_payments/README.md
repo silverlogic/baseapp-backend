@@ -128,6 +128,8 @@ not installed.
 |---|---|---|
 | `BaseCustomer` | `Customer` | Generic-FK `entity` (the billable model) + `remote_customer_id`. |
 | `BaseSubscription` | `Subscription` | `customer` (FK to the concrete Customer) + `remote_subscription_id`. |
+| `BasePurchase` | `Purchase` | Optional. A one-time purchase: `customer`, `status` (pending/paid/failed), `currency`, `subtotal`/`tax`/`total` in minor units, `remote_invoice_id`. |
+| `BasePurchaseLine` | `PurchaseLine` | Optional. One product line of a purchase: `remote_product_id`, `remote_price_id`, `unit_amount`, `quantity`, `amount`. |
 
 > **Important:** `BaseCustomer.save()` requires the concrete model to declare `tracker = FieldTracker(["entity"])` (from `model_utils`) — it uses the tracker to populate `entity_type` / `entity_id` when the generic `entity` changes, and raises a `RuntimeError` if it's missing.
 
@@ -219,6 +221,102 @@ On top of them:
   ).update(payment_status="paid")
   ```
 
+## One-time purchases
+
+Charge a customer once for one or more products, each at a whole-number quantity, as **one
+payment**. A purchase is one Stripe invoice with an invoice item per product line. It never
+creates, changes or renews a subscription, and never runs the subscription logic.
+
+### Turning it on
+
+The feature is optional and off until the project defines the two concrete models and
+points the settings at them, the same way as `Customer` and `Subscription`:
+
+```python
+# your payments app's models.py
+from baseapp_payments.models import BasePurchase, BasePurchaseLine
+
+
+class Purchase(BasePurchase):
+    class Meta(BasePurchase.Meta):
+        pass
+
+
+class PurchaseLine(BasePurchaseLine):
+    class Meta(BasePurchaseLine.Meta):
+        pass
+```
+
+```python
+# settings
+BASEAPP_PAYMENTS_PURCHASE_MODEL = "payments.Purchase"
+BASEAPP_PAYMENTS_PURCHASELINE_MODEL = "payments.PurchaseLine"
+# Optional: let Stripe Tax add tax. Stripe Tax must be active on the Stripe account, and
+# the customer needs an address. Off by default (no tax).
+BASEAPP_PAYMENTS_AUTOMATIC_TAX = False
+```
+
+Then run `makemigrations` for that app. The reference implementation is the testproject's
+`payments` app (migration `0007_purchase`).
+
+### Products and prices
+
+Products and prices come from Stripe, as for subscriptions. Each product needs an active
+**one-time** default price with a fixed amount. A recurring price is rejected, because it
+belongs to the subscription flow.
+
+### Checkout flow
+
+1. **`POST v1/payments/stripe/purchases/`** with:
+
+   ```json
+   {
+     "entity_id": "<entity relay id or pk>",
+     "items": [{"product_id": "prod_A", "quantity": 3}, {"product_id": "prod_B", "quantity": 2}],
+     "payment_method_id": "pm_..."
+   }
+   ```
+
+   - `payment_method_id` is optional: a saved card of the customer.
+   - Each item may also carry `unit_amount`, the price the screen showed. It is only compared
+     with Stripe's price, and a mismatch rejects the purchase.
+   - The server prices every line from Stripe. It rejects quantities below 1 or above 9999,
+     duplicated products, recurring or inactive prices, mixed currencies, and a card that is
+     not the customer's.
+
+   Nothing is charged at this point. The response is the purchase with `status: "pending"`,
+   its lines, `subtotal`, `tax` and `total` in minor units, and a `client_secret`.
+2. **The browser confirms the payment** with that `client_secret`. Use
+   `stripe.confirmCardPayment(clientSecret, {payment_method})` for a saved card, or a card
+   the user enters. A card to keep for later is saved first through the payment-methods
+   route, as in the subscription checkout. 3D Secure is completed in this step and is not a
+   failure.
+3. **The status changes only by webhook.** `invoice.paid` turns the purchase `paid` and
+   fires `purchase_paid`. `invoice.payment_failed` turns it `failed`, voids the invoice so
+   nothing can be charged on it later, and fires `purchase_failed`. Each signal fires once,
+   even when Stripe repeats the event. The screen reads the outcome from
+   **`GET v1/payments/stripe/purchases/{id}/`**.
+
+The stored amounts are the ones charged at checkout. A later price change does not rewrite
+them. Purchases also appear in the customer's invoices, the Transaction History, next to the
+subscription invoices.
+
+### Events
+
+```python
+from django.dispatch import receiver
+
+from baseapp_payments.signals import purchase_failed, purchase_paid
+
+
+@receiver(purchase_paid)
+def fulfil_order(sender, purchase, **kwargs):
+    ...  # purchase.lines.all(), purchase.total, purchase.customer
+```
+
+Subscribe the Stripe webhook endpoint to `invoice.paid` and `invoice.payment_failed` as
+well. Invoices that are not purchases, such as subscription invoices, are ignored.
+
 ## API Endpoints
 
 All routes are mounted under `v1/payments/`. **The router is `DefaultRouter(trailing_slash=True)`, so every path ends in `/`** - an unslashed request does not resolve and only survives via Django's `APPEND_SLASH` redirect, which drops the body on writes.
@@ -232,6 +330,8 @@ Authenticated endpoints require `IsAuthenticated` plus an object permission; the
 | `GET v1/payments/stripe/subscriptions/{remote_subscription_id}/` | Retrieve subscription details from Stripe. |
 | `PATCH v1/payments/stripe/subscriptions/{remote_subscription_id}/` | Update a subscription. |
 | `DELETE v1/payments/stripe/subscriptions/{remote_subscription_id}/` | Cancel a subscription. |
+| `POST v1/payments/stripe/purchases/` | Create a one-time purchase and return its `client_secret` (only when purchases are on; see [One-time purchases](#one-time-purchases)). |
+| `GET v1/payments/stripe/purchases/{id}/` | Read a purchase and its status. |
 | `POST v1/payments/stripe/customers/` | Create a customer. |
 | `GET v1/payments/stripe/customers/{entity_id}/` | Retrieve a customer by entity relay id, or `me` for the current user. |
 | `GET v1/payments/stripe/customers/{entity_id}/invoices/` | List the customer's invoices (paginated). |
@@ -261,8 +361,7 @@ Payment-method and invoice routes are nested under the customer, so the entity i
 
 ### Stripe dashboard configuration
 
-**Production:** In your [Stripe Dashboard](https://dashboard.stripe.com) → **Developers → Webhooks → Add endpoint**, point the endpoint at `https://yourdomain.com/v1/payments/stripe/webhooks/`, subscribe to the events above (the four `payment_intent.*` ones only if you use card
-holds), set the endpoint's API version to `2026-10-28.endive` (the module's `STRIPE_API_VERSION`), then copy the **Signing secret** into `STRIPE_WEBHOOK_SECRET`.
+**Production:** In your [Stripe Dashboard](https://dashboard.stripe.com) → **Developers → Webhooks → Add endpoint**, point the endpoint at `https://yourdomain.com/v1/payments/stripe/webhooks/`, subscribe to the events above (the four `payment_intent.*` ones only if you use card holds; `invoice.paid` and `invoice.payment_failed` only if you use one-time purchases), set the endpoint's API version to `2026-10-28.endive` (the module's `STRIPE_API_VERSION`), then copy the **Signing secret** into `STRIPE_WEBHOOK_SECRET`.
 
 **Local development:** Use the [Stripe CLI](https://stripe.com/docs/stripe-cli):
 

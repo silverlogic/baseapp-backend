@@ -24,7 +24,7 @@ from baseapp_payments.holds import (
 )
 from testproject.testapp.models import HoldableOrder
 
-from ..factories import CardHoldFactory, HoldableOrderFactory
+from ..card_hold_factories import CardHoldFactory, HoldableOrderFactory
 from ..fakes import (
     STRIPE_CUSTOMER_ID,
     card_declined,
