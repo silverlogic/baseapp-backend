@@ -52,6 +52,16 @@ def live_hold(fake_stripe, **fields) -> Any:
     return hold
 
 
+def expired_hold(fake_stripe, **fields) -> Any:
+    """A hold past its capture deadline, its authorization still live in Stripe: any
+    amount is charged afresh (released first), never captured from it, so these tests
+    pin the charge path. An amount above a live hold is captured in full plus the
+    difference instead (test_card_hold_above_hold)."""
+    return live_hold(
+        fake_stripe, expires_at=timezone.now() - datetime.timedelta(minutes=1), **fields
+    )
+
+
 def reload(hold) -> Any:
     hold.refresh_from_db()
     return hold
@@ -146,7 +156,7 @@ class TestRetriesNeverUndoARefusal:
     def test_a_release_by_another_call_meanwhile_isnt_charged(self, order, fake_stripe) -> None:
         """The UPDATE that releases the hold also claims the charge: when another call
         released the row between the read and the cancel, this one doesn't charge."""
-        hold = live_hold(fake_stripe, target=order)
+        hold = expired_hold(fake_stripe, target=order)
         cancel = holds._cancel_payment_intent
 
         def released_meanwhile(payment_intent_id: str, card_hold_id: int) -> Any:
@@ -299,7 +309,7 @@ class TestALostCancelAnswer:
 
 class TestChargeKeyLifetime:
     def test_a_charge_retried_within_the_day_reuses_its_key(self, order, fake_stripe) -> None:
-        hold = live_hold(fake_stripe, target=order)
+        hold = expired_hold(fake_stripe, target=order)
         charge = Mock(side_effect=[stripe.APIConnectionError("lost"), "ch_new"])
         with pytest.raises(stripe.APIConnectionError):
             capture(hold.pk, 20_000, charge=charge)
@@ -315,7 +325,7 @@ class TestChargeKeyLifetime:
     ) -> None:
         """M5: Stripe forgets an idempotency key after 24 hours, so re-running the charge
         with it could charge twice. Blocked, logged, reconciled by hand."""
-        hold = live_hold(fake_stripe, target=order)
+        hold = expired_hold(fake_stripe, target=order)
         charge = Mock(side_effect=[stripe.APIConnectionError("lost"), "ch_new"])
         with pytest.raises(stripe.APIConnectionError):
             capture(hold.pk, 20_000, charge=charge)
@@ -416,7 +426,7 @@ class TestTheChargeClaimIsConditional:
         CardHold.objects.filter(pk=hold.pk).update(status=CardHold.Status.SCHEDULED)
         charge = Mock()
 
-        assert holds._charge_released(seen, charge).status == CaptureStatus.IN_PROGRESS
+        assert holds._charge_released(seen, charge, 10_000).status == CaptureStatus.IN_PROGRESS
         charge.assert_not_called()
 
     def test_a_kept_failed_hold_changed_meanwhile_isnt_charged(self, order, fake_stripe) -> None:
@@ -441,7 +451,7 @@ class TestARefusedChargeGetsANewKey:
     def test_a_decline_then_a_retry_with_a_new_card_charges_once_with_a_new_key(
         self, order, fake_stripe
     ) -> None:
-        hold = live_hold(fake_stripe, target=order)
+        hold = expired_hold(fake_stripe, target=order)
         fake_stripe.next_outcome = ["card_declined"]
 
         first = capture(hold.pk, 20_000, charge=project_charge(fake_stripe, amount=20_000))
@@ -468,7 +478,7 @@ class TestARefusedChargeGetsANewKey:
         assert hold.charge_key == charge_idempotency_key(hold.pk, 1)
 
     def test_an_invalid_request_is_definite_too(self, order, fake_stripe) -> None:
-        hold = live_hold(fake_stripe, target=order)
+        hold = expired_hold(fake_stripe, target=order)
         refused = stripe.InvalidRequestError("No such PaymentMethod", None, http_status=400)
         charge = Mock(side_effect=[refused, "ch_new"])
 
@@ -493,7 +503,7 @@ class TestARefusedChargeGetsANewKey:
         ids=["connection", "5xx", "429", "409", "401", "403", "idempotency"],
     )
     def test_no_answer_keeps_the_claim_and_its_key(self, order, fake_stripe, error) -> None:
-        hold = live_hold(fake_stripe, target=order)
+        hold = expired_hold(fake_stripe, target=order)
         charge = Mock(side_effect=[error, "ch_new"])
 
         with pytest.raises(type(error)):
@@ -512,7 +522,7 @@ class TestARefusedChargeGetsANewKey:
     ) -> None:
         """A decline a day old is retried with a new key; a no-answer claim as old is
         blocked, with a message that says what happened."""
-        declined = live_hold(fake_stripe, target=order)
+        declined = expired_hold(fake_stripe, target=order)
         charge = Mock(side_effect=[card_declined(), "ch_new"])
         assert capture(declined.pk, 20_000, charge=charge).status == CaptureStatus.DECLINED
         CardHold.objects.filter(pk=declined.pk).update(
@@ -521,7 +531,7 @@ class TestARefusedChargeGetsANewKey:
         assert capture(declined.pk, 20_000, charge=charge).status == CaptureStatus.CHARGED
         assert reload(declined).charge_blocked_reason == ""
 
-        lost = live_hold(fake_stripe, target=HoldableOrderFactory(user=order.user))
+        lost = expired_hold(fake_stripe, target=HoldableOrderFactory(user=order.user))
         lost_charge = Mock(side_effect=[connection_error(), "ch_lost"])
         with pytest.raises(stripe.APIConnectionError):
             capture(lost.pk, 20_000, charge=lost_charge)
@@ -562,7 +572,7 @@ class TestARefusedChargeGetsANewKey:
         CardHold.objects.filter(pk=hold.pk).update(charge_generation=2)
         charge = Mock()
 
-        assert holds._charge_again(seen, charge).status == CaptureStatus.IN_PROGRESS
+        assert holds._charge_again(seen, charge, 10_000).status == CaptureStatus.IN_PROGRESS
         charge.assert_not_called()
 
 
@@ -574,7 +584,7 @@ class TestAfterARefusedCharge:
     def test_a_target_cancelled_after_a_decline_is_never_charged(
         self, order, fake_stripe, django_capture_on_commit_callbacks
     ) -> None:
-        hold = live_hold(fake_stripe, target=order)
+        hold = expired_hold(fake_stripe, target=order)
         charge = Mock(side_effect=[card_declined(), "ch_new"])
         assert capture(hold.pk, 20_000, charge=charge).status == CaptureStatus.DECLINED
         order.status = HoldableOrder.Status.CANCELLED
@@ -607,7 +617,7 @@ class TestAfterARefusedCharge:
     def test_a_target_deleted_after_a_decline_is_never_charged(
         self, order, fake_stripe, django_capture_on_commit_callbacks
     ) -> None:
-        hold = live_hold(fake_stripe, target=order)
+        hold = expired_hold(fake_stripe, target=order)
         charge = Mock(side_effect=[card_declined(), "ch_new"])
         assert capture(hold.pk, 20_000, charge=charge).status == CaptureStatus.DECLINED
         with django_capture_on_commit_callbacks(execute=True):
@@ -619,7 +629,7 @@ class TestAfterARefusedCharge:
     def test_a_target_done_with_the_card_is_charged_again(self, order, fake_stripe) -> None:
         """Only a cancelled target stops the retry: one marked charged is what the retry
         is for."""
-        hold = live_hold(fake_stripe, target=order)
+        hold = expired_hold(fake_stripe, target=order)
         charge = Mock(side_effect=[card_declined(), "ch_new"])
         assert capture(hold.pk, 20_000, charge=charge).status == CaptureStatus.DECLINED
         HoldableOrder.objects.filter(pk=order.pk).update(status=HoldableOrder.Status.CHARGED)
@@ -631,7 +641,7 @@ class TestAfterARefusedCharge:
         ]
 
     def test_release_for_charge_answers_false_and_changes_nothing(self, order, fake_stripe) -> None:
-        hold = live_hold(fake_stripe, target=order)
+        hold = expired_hold(fake_stripe, target=order)
         charge = Mock(side_effect=[card_declined(), "ch_new"])
         assert capture(hold.pk, 20_000, charge=charge).status == CaptureStatus.DECLINED
         before = reload(hold)
@@ -653,7 +663,7 @@ class TestCaptureOfNothingWithAnUnfinishedCharge:
     def test_it_answers_in_progress_and_never_re_runs_the_charge(
         self, order, fake_stripe, caplog
     ) -> None:
-        hold = live_hold(fake_stripe, target=order)
+        hold = expired_hold(fake_stripe, target=order)
         charge = Mock(side_effect=[connection_error(), "ch_new"])
         with pytest.raises(stripe.APIConnectionError):
             capture(hold.pk, 20_000, charge=charge)

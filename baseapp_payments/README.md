@@ -195,6 +195,33 @@ invoice line's `price.recurring` is now always null. If you subclass
 the serializers or call `StripeService` and read `latest_invoice.payment_intent`, read
 `confirmation_secret` instead.
 
+## Upgrading: paying above the hold
+
+Charging above a hold and the invoice helper rely on API behaviour from
+`2025-03-31.basil` on (several PaymentIntents paying one invoice, `Invoice.attach_payment`,
+`InvoicePayment.list`). The module already sends every call at `2026-10-28.endive`, so the
+stripe and API version steps are the ones in
+[Upgrading: stripe 17 and API version 2026-10-28.endive](#upgrading-stripe-17-and-api-version-2026-10-28endive).
+On top of them:
+
+- **Check your own `STRIPE_API_VERSION` setting.** A project setting overrides the
+  module's `STRIPE_API_VERSION`. The BaseApp backend template no longer sets one (BA-3496
+  removed its `"2025-02-24.acacia"` pin), but a project generated before that may still
+  have it: change it to `"2026-10-28.endive"`, or remove it. Left on an older version,
+  placing a hold and paying above it fail (`allowed_payment_method_types` is endive-only),
+  `attach_payments_to_invoice` doesn't work, and the module's reads expect endive's shapes.
+- **Subscribe the endpoint to the card hold events** (see
+  [Stripe webhooks](#stripe-webhooks)) if you use holds: the difference above a hold is
+  reconciled from `payment_intent.succeeded` / `payment_intent.payment_failed`.
+- **Card holds:** run `makemigrations` for your concrete `CardHold` (new columns, below),
+  and backfill `payment_status` for holds captured or charged before the upgrade:
+
+  ```python
+  CardHold.objects.filter(
+      Q(status="captured") | Q(charged_at__isnull=False)
+  ).update(payment_status="paid")
+  ```
+
 ## One-time purchases
 
 Charge a customer once for one or more products, each at a whole-number quantity, as **one
@@ -368,7 +395,7 @@ Both swapped models (and, when enabled, the card hold) are registered in the Dja
 >   - They depend on your merchant category: Visa outside hotels, lodging, car rental and cruise lines costs an extra 0.08%; Amex and Discover cover only a few travel categories.
 >   - The networks mean them for cases where the final amount isn't known yet ([Extended authorization](https://docs.stripe.com/payments/extended-authorization)).
 >   - This module doesn't request them.
-> - **One capture per hold.** A partial capture releases the rest. Capturing more than was held (overcapture) is only available for some card payments. When the final amount is higher, the module releases the hold and charges the card again. Since API 2025-03-31.basil a partial capture or a cancel creates no Refund and no second balance transaction: the charge's balance transaction is for the captured amount only.
+> - **One capture per hold.** A partial capture releases the rest. Capturing more than was held (overcapture) is only available for some card payments. When the final amount is higher, the module captures the whole hold and charges the difference to the same card, off-session (your terms must cover that second charge too); an expired hold is released and the card charged again for the full amount. Since API 2025-03-31.basil a partial capture or a cancel creates no Refund and no second balance transaction: each charge's balance transaction is for the amount captured only.
 > - **Customer consent for saved cards and off-session holds.**
 >   - To charge or hold a card later without the customer present, your terms must say when it will happen and how the amount is set. The customer must accept them, and you must keep a record ([Save and reuse](https://docs.stripe.com/payments/save-and-reuse)).
 >   - With deferral on, a far-off target's hold is placed off-session, `window_days` before its date, for the price at that moment plus the buffer. Your terms must cover exactly that: the hold, its timing, and that the amount may differ from the one shown at checkout.
@@ -431,7 +458,10 @@ What it does today:
   including one a deferred placement made for a target that can no longer take it. A hold
   a live `capture()` claims is skipped and released by a later sweep. Deleting a
   registered target releases its open holds automatically.
-- **Capturing.** See [Capturing on the date](#capturing-on-the-date).
+- **Capturing.** See [Capturing on the date](#capturing-on-the-date). A final amount
+  above a live hold captures the hold in full and charges the difference
+  ([Above the hold](#above-the-hold)); every hold records a
+  [payment status](#payment-status-and-signals) and [Stripe's fees](#fees).
 - **Card removal guard.** `card_in_use(user, payment_method_id)` /
   `in_use_payment_method_ids(user)` tell your card-removal path which cards a hold still needs.
 - **No Stripe key, no Stripe calls.** Without `STRIPE_SECRET_KEY`, every task is a no-op and
@@ -499,6 +529,7 @@ your project what deleting such an account means (anonymize it, or keep it inact
 | `CARD_HOLDS_BUFFER_PERCENT` | `10` | For `hold_amount_mode = "value_plus_buffer"` only: `held = ceil(value × (1 + buffer/100))`. |
 | `CARD_HOLDS_WINDOW_DAYS` | `4` | Days before the target's date to place a deferred hold; clamped to 1–4. |
 | `CARD_HOLDS_DEFERRAL_ENABLED` | `False` | Whether far-off targets get their hold later, off-session. Only for adapters with `uses_holds = True`. |
+| `CARD_HOLDS_MAX_RETRIES` | `3` | How many times staff may retry a failed off-session hold; `0` keeps every failed hold final. See [Retrying a failed hold](#retrying-a-failed-hold). |
 
 An adapter's `buffer_percent()` / `window_days()`, or a `buffer_percent` returned with the
 amount, override the Constance values for that target. With `hold_amount_mode = "value"` no
@@ -569,7 +600,8 @@ target). Only the target object that was locked is re-armed: a `link` that retur
 other existing target is refused. A hold that is still open (`pending`, `authorized`) or
 `captured` refuses (`refused`), and so do `failed` and `scheduled`: a failed deferred hold is
 final, and nothing (the sweep, a date or window change) re-arms it, not even once staff
-cancelled it. A hold released `rescheduled` is moved back to `scheduled` by `reschedule`
+cancelled it. Only a staff retry places it again, on the same row (see
+[Retrying a failed hold](#retrying-a-failed-hold)). A hold released `rescheduled` is moved back to `scheduled` by `reschedule`
 only. With deferral on, a far-off target's hold is re-armed `scheduled` (and a `saved` card
 `saved` again, for an adapter without holds). A release still queued for the old
 authorization only ever cancels that old PaymentIntent. A `released` hold whose cancel Stripe
@@ -628,8 +660,9 @@ class OrderHoldTarget(BaseHoldTarget):
 | `charge_may_be_in_flight(target)` | `False` | Keeps a hold while your charge may still run. |
 | `filter_holdable(qs)` | all | Placing; a scheduled hold is placed only while its target is in it. |
 | `cancel(target, actor)` | required for deferral | Staff cancelling a failed deferred hold. |
-| `staff_recipients(target)` | active users with `change_cardhold` (and superusers) | Who hears about a failed deferred hold. |
-| `notify_hold_failed(target, hold)` | emails `staff_recipients`, and sends each an in-app notification | How they hear about it. |
+| `staff_recipients(target)` | active users with `change_cardhold` (and superusers) | Who hears about a failed deferred hold, or a declined difference. |
+| `notify_hold_failed(target, hold)` | emails `staff_recipients`, and sends each an in-app notification | How they hear about a failed hold. |
+| `notify_partially_paid(target, hold)` | sends `staff_recipients` an in-app notification | How they hear that the charge above a hold was declined. An adapter that implements the Protocol without subclassing `BaseHoldTarget`, and without this hook, gets the default. |
 | `window_days()` / `buffer_percent()` | Constance | Per-model defaults. |
 
 ### Placing from your mutation
@@ -749,18 +782,27 @@ On the target's date, with or without a hold, call
   with the idempotency key `{prefix}-capture-{PaymentIntent}` (one per authorization), and
   records `captured_amount_cents` / `captured_at`. A hold already captured answers `captured`
   again for the same amount (`not_captured` for another) from `captured_amount_cents`, and
-  never charges; Stripe is read only when no amount was recorded. It never does a partial
-  capture plus a second charge. `capturable_hold(hold_id, amount_cents)` tells you, from
-  the database only, whether that amount would be captured from the hold (to show the
-  customer which way it goes, say).
-- An amount of 0 releases the hold (`card_released`) and charges nothing: `nothing_due`
-  (`in_progress` while a placement or an unconfirmed cancel is under way). It never re-runs
+  never charges; Stripe is read only when no amount was recorded. `capturable_hold(hold_id,
+  amount_cents)` tells you, from the database only, whether that amount would be captured
+  from the hold alone (to show the customer which way it goes, say).
+- Above an authorized, unexpired hold, it captures the **whole** hold, then charges the
+  difference to the same card: see [Above the hold](#above-the-hold). Your `charge` is not
+  called on that path.
+- An amount of 0 releases the hold (`card_released`) and charges nothing: `nothing_due`,
+  and the target is `paid`, as nothing is owed (`in_progress` while a placement or an
+  unconfirmed cancel is under way, and the status is left as it is). It never re-runs
   a charge an earlier call claimed and didn't finish (it may have run): it answers
   `in_progress`, leaves the claim as it is and logs an error; check that charge in Stripe and
   settle it by hand. A negative amount raises `ValueError`.
-- Otherwise it calls your `charge(idempotency_key=...)`, with `{prefix}-charge-{hold id}-{n}`
-  (pass that key to Stripe), but only from a state where nothing of ours is held and nobody
-  else may have charged:
+- Otherwise it calls your `charge(idempotency_key=...)` for the **full** amount, with
+  `{prefix}-charge-{hold id}-{n}` (pass that key to Stripe), but only from a state where
+  nothing of ours is held and nobody else may have charged. Return the PaymentIntent from
+  `charge`: its id and amount are recorded (`charge_payment_intent_id`,
+  `charge_amount_cents`) for the [invoice helper](#one-invoice-for-every-payment) and
+  [fees](#fees) (create it with `expand=["latest_charge.balance_transaction"]` and the fee
+  is recorded at once). The amount asked is recorded as `charge_amount_cents` before your
+  `charge` runs, so the totals count the payment even when it returns something else. The
+  states:
   - an open hold this call releases (Stripe confirms the cancel, or reports that it lapsed by
     itself: `charge_expired_for_capture`, or `canceled` with `cancellation_reason`
     `expired`, or `automatic` on an object rendered before API 2025-03-31.basil);
@@ -774,7 +816,8 @@ On the target's date, with or without a hold, call
   target; by staff), an authorization someone else cancelled in Stripe (released `lapsed`), a
   capture the card declined (`declined` first, then `not_captured`), a release Stripe refuses,
   a reused capture key, and an id with no hold row. The refusals that must survive a retry
-  are recorded in `charge_blocked_reason` (`declined`, `lapsed`, `stale_charge`); re-arming
+  are recorded in `charge_blocked_reason` (`declined`, `lapsed`, `stale_charge`; on a hold
+  captured in full, `target_cancelled`, see [Above the hold](#above-the-hold)); re-arming
   the target with a new card clears it. Decide these by hand: charge outside `capture()`, or
   cancel the target.
 - The claim (`charge_key`, `charge_claimed_at`) is written in the same statement that settles
@@ -797,6 +840,212 @@ On the target's date, with or without a hold, call
   would charge again): it answers `not_captured`, logs an error, and is blocked
   (`stale_charge`). Check the charge in Stripe and settle it by hand. Retry a raised
   charge within the day.
+- **Retry `capture()` until it answers a final result.** A call that raised, or answered
+  `in_progress`, has not settled the target: call it again (from a task with backoff,
+  say) until it answers `captured`, `paid`, `partially_paid`, `charged`, `declined`,
+  `nothing_due` or `not_captured`. The sweep only finishes a difference left due above a
+  captured hold (see [Above the hold](#above-the-hold)); nothing else is re-driven for you.
+- **Keep asking for the same amount.** A capture that got no answer may still have run.
+  Each call records the amount it asked for (`requested_amount_cents`) and that a capture
+  was sent (`capture_sent_at`) before Stripe is called, and a capture recorded later (the
+  webhook) is `paid` only when Stripe's amount is that one (or the hold plus the
+  difference planned on top). Another amount stays `unpaid` and is logged as an error:
+  settle it by hand.
+
+| Result | When | Payments | `payment_status` |
+|---|---|---|---|
+| `captured` | The amount is within a live hold (`0 < amount <= held`): captured from it; Stripe releases the rest. | 1 (the hold) | `paid` |
+| `paid` | Above a live hold: the whole hold captured, then the difference charged off-session. | 2 (hold + difference) | `paid` |
+| `partially_paid` | Above a live hold, the hold captured, the card refused the difference. | 1 (the hold) | `partially_paid` |
+| `charged` | No live hold to capture (expired, lapsed, scheduled, a saved card, a kept failed hold): your `charge` ran once, for the full amount. | 1 (your charge) | `paid` |
+| `declined` | The card refused the capture, or your `charge` (a new key next time). | 0 | unchanged |
+| `nothing_due` | Asked for 0: the hold is released. | 0 | `paid` (nothing is owed) |
+| `in_progress` | Another call holds the claim, a placement or cancel is under way, or the difference is `processing`: retry. | – | unchanged |
+| `not_captured` | Nothing taken, and a retry won't take anything either: decide by hand. | 0 | unchanged |
+
+`captured` and `charged` keep their meanings from before; `paid` and `partially_paid` are
+new, and only an amount above a live hold answers them (that used to answer `charged`,
+after releasing the hold).
+
+### Above the hold
+
+A final amount above an authorized, unexpired hold (`expires_at` in the future) is taken
+in two payments, both on the hold's row, so both belong to the same target:
+
+1. **The hold, in full.** The amount above it is planned on the row
+   (`difference_amount_cents`) before Stripe is called, then the whole hold is captured
+   (`amount_to_capture` = the amount held), with the hold's capture key. Capturing first
+   means a refused difference never costs the held amount. A capture the card declines,
+   or a lapsed authorization, ends as on the [capture path](#capturing-on-the-date): a
+   decline charges nothing, a lapsed authorization is charged the full amount through your
+   `charge`.
+2. **The difference.** Claimed in a conditional UPDATE, committed before the call
+   (`difference_key` = `{prefix}-difference-{hold id}-{n}`, `difference_claimed_at`), then
+   charged by the module itself: an automatic-capture PaymentIntent, off-session and
+   confirmed, on the hold's saved card and customer, with
+   `metadata = {card_hold_id, kind: "difference", difference_key}`. Succeeded: recorded
+   (`difference_payment_intent_id`, `difference_charged_at`, its fee), `paid`.
+
+The module charges the difference itself, not through your `charge`, because it already
+has the card and the customer, and because its metadata lets the webhook and the lookup
+recognise it as this hold's payment (never a stray authorization to cancel) and read its
+fee.
+
+Retries never charge twice:
+
+- **Retried after the hold was captured** (the process died, or the difference got no
+  answer): the capture is never sent again (the row reads `captured`); the difference is
+  claimed (or its claim resumed with the same key, so Stripe replays it).
+- **Not retried at all.** The sweep queues `charge_card_hold_difference` for a hold
+  captured in full whose difference is still due and was never refused (`unpaid`), when
+  no capture or difference claim on it is live (10 minutes) and the amount the last call
+  asked is the hold plus the difference. It runs the same claimed, keyed path as
+  `capture()`, and claims the difference in the same transaction that checks the target
+  under its lock: a cancelled (or deleted) target is not charged, the row is marked
+  (`charge_blocked_reason = target_cancelled`) so the sweep stops queuing it, and an
+  error is logged once for someone to decide. A `capture()` for the same amount still
+  charges it, and a refused one can still be marked paid outside.
+- **Captured, but the amount unknown** (Stripe couldn't be read when the capture was
+  recorded): the hold waits, never `paid` while an amount was asked for. The next
+  webhook carrying the amount fills it in, or the sweep queues `record_card_hold_capture`
+  (once no capture claim is live, 10 minutes), which reads it from Stripe; the hold is
+  then settled as usual. The sweep asks for 3 days after the capture, like the fees; one
+  Stripe still can't answer for after that (unreadable, or never `succeeded`) is left
+  `unpaid` for staff to reconcile by hand, rather than retried and logged forever.
+- **Asked for less after a capture got no answer.** A capture of the whole hold that got
+  no answer may have run, so a later call within the hold keeps the planned difference
+  (it is dropped only if no capture was ever sent). Its capture reuses the key, which
+  Stripe refuses for another amount (`not_captured`); when the first capture's answer
+  comes (the webhook), the hold is recorded `captured` but stays `unpaid`, with an
+  error logged: it was captured for more than the last call asked. Settle it by hand.
+- **Asked for less after the webhook recorded the capture.** A later call for another
+  amount than the hold plus the difference records that ask (`requested_amount_cents`,
+  while the difference is neither claimed nor charged), so no retry or sweep charges the
+  old difference. Asked for exactly the amount captured, nothing more is due: the plan
+  is dropped and the target is `paid` (`captured`). Asked for less, the customer was
+  charged more than asked: `not_captured`, `unpaid`, an error logged. Refund it by hand.
+- **No answer** (a connection error, a 5xx, a 429, a 409, a bad key, `IdempotencyError`)
+  propagates and keeps the claim and its key. Past `CHARGE_KEY_TTL` (23 hours) it is never
+  replayed: the difference's PaymentIntents are looked up in Stripe with the module's own
+  Search on `metadata['difference_key']` (the customer's PaymentIntents listed when
+  Search refuses; never `BASEAPP_PAYMENTS_CARD_HOLD_LOOKUP`) and recorded; with none
+  found, the key is rotated and it is charged afresh.
+- **`processing`** (a bank debit still settling): `in_progress`, and the PaymentIntent is
+  kept (`difference_payment_intent_id`); the next call reads it back from Stripe instead
+  of sending the create again, and the webhook records the outcome.
+- **Refused** (a `CardError`, a non-409 `InvalidRequestError`, or a PaymentIntent left
+  needing a payment method): `partially_paid`. The held amount stays taken; the claim is
+  dropped and `difference_generation` bumped, `difference_failure_code` records the
+  bank's code, and `difference_charge_failed` is sent. A later `capture()` for the same
+  amount (once the customer fixed their card, say) charges it again with the next key;
+  its target is re-checked first under its lock, and a cancelled one is not charged. The
+  module never retries a refused difference on its own.
+- **Paid outside the app.** `mark_paid_outside(hold_id, actor)` moves a `partially_paid`
+  hold to `paid` (`paid_outside_at`, `paid_outside_by`) in one conditional UPDATE,
+  refused while a capture holds the claim; no later `capture()` charges the difference.
+  Staff can do it through GraphQL: `cardHoldMarkPaid(input: {id})`, gated by
+  `change_cardhold` like `cardHoldKeep` / `cardHoldCancel`.
+
+A webhook for the difference (`payment_intent.succeeded`, `payment_intent.payment_failed`)
+records it the same way, under the target's lock and then the hold's, only for the
+outstanding key; one for an old key is ignored, and the difference is never cancelled.
+
+### Payment status and signals
+
+Every hold has a `payment_status` (`CardHold.PaymentStatus`), exposed in GraphQL as
+`CardHold.paymentStatus` to whoever can read the hold:
+
+| Value | Meaning |
+|---|---|
+| `unpaid` | Nothing taken yet. |
+| `paid` | The final amount was taken: captured within the hold, the hold plus the difference, a single full charge (with or without a hold), or the rest marked paid outside. Also a `capture()` of 0 once the hold is released (`nothing_due`): nothing is owed. |
+| `partially_paid` | **Only** when the hold was captured in full and the difference above it was refused. |
+
+Signals, from `baseapp_payments.signals`, each sent once per change, after the commit:
+
+- `payment_status_changed` (`hold`, `target`, `previous`, `payment_status`): mirror the
+  status onto your own record here.
+- `difference_charge_failed` (`hold`, `target`, `amount_due_cents`, `error_code`): the
+  difference was refused; notify the customer, and collect the rest (a payment link,
+  another card, by hand). Out of scope for the module. Staff already hear about it through
+  the adapter's `notify_partially_paid(target, hold)` (see
+  [Staff notifications](#staff-notifications)).
+
+### Staff notifications
+
+With `baseapp_notifications` installed, staff get an in-app notification, through the
+`notifications` shared service, whenever a card hold needs them. Each one targets the hold
+itself, so a client renders the hold's staff notice, and its actions, inside the notification
+(the frontend's `CardHoldStaffNotice`). The customer is never notified.
+
+| Verb | Sent when | By |
+| --- | --- | --- |
+| `PAYMENTS.CARD_HOLD_FAILED` | A deferred hold, or a staff retry of one, fails. | `notify_hold_failed` |
+| `PAYMENTS.CARD_HOLD_PARTIALLY_PAID` | The charge above a captured hold is declined. | `notify_partially_paid` |
+
+Both go to `staff_recipients(target)`, worded in each recipient's language, with
+`level="warning"` and the customer (their profile when they have one) as the actor. They are
+in-app only: the failed hold's email is sent separately, and no email goes out for a
+declined difference. A recipient can mute either verb through `NotificationSetting`. Without
+`baseapp_notifications` nothing is sent and the email still goes. The verbs are constants in
+`baseapp_payments.notifications` (`CARD_HOLD_FAILED_VERB`, `CARD_HOLD_PARTIALLY_PAID_VERB`).
+
+```python
+from django.dispatch import receiver
+
+from baseapp_payments.signals import difference_charge_failed, payment_status_changed
+
+
+@receiver(payment_status_changed)
+def mirror_payment_status(sender, hold, target, payment_status, **kwargs):
+    type(target).objects.filter(pk=target.pk).update(payment_status=payment_status)
+
+
+@receiver(difference_charge_failed)
+def ask_for_the_rest(sender, hold, target, amount_due_cents, error_code, **kwargs):
+    notify_difference_due(target, amount_due_cents, error_code)
+```
+
+### One invoice for every payment
+
+When you raise a Stripe invoice for the target, record its payments on it with
+`attach_payments_to_invoice(hold_id, invoice_id)`. It attaches every PaymentIntent that
+took money for the target (`hold_payment_intent_ids(hold)`: the hold's capture, the
+difference, or the single full charge) with `stripe.Invoice.attach_payment(invoice,
+payment_intent=...)` (API 2025-03-31.basil and later), skipping any already on the invoice
+(every page of `stripe.InvoicePayment.list(invoice=...)`; the invoice's own `payments`
+holds only the first few), each with its own idempotency key. Stripe credits a succeeded
+PaymentIntent at once; the invoice turns `paid` when `amount_remaining` reaches 0.
+
+The invoice must be for the hold's customer and currency, finalized (`open`), and its
+total must cover the payments. Create it so Stripe doesn't try to collect it itself:
+
+```python
+invoice = stripe.Invoice.create(
+    customer=hold.stripe_customer_id,
+    collection_method="send_invoice",
+    days_until_due=1,
+    auto_advance=False,
+)
+stripe.InvoiceItem.create(
+    customer=hold.stripe_customer_id, invoice=invoice.id, amount=final_cents, currency="usd"
+)
+stripe.Invoice.finalize_invoice(invoice.id, auto_advance=False)
+attach_payments_to_invoice(hold.pk, invoice.id)
+```
+
+Call it outside a transaction (`CardHoldInTransaction` otherwise); Stripe's errors
+propagate.
+
+### Fees
+
+Stripe's actual fee is stored per payment, from the charge's balance transaction
+(`latest_charge.balance_transaction.fee`, expanded on the capture and the difference):
+`capture_fee_cents`, `difference_fee_cents`, `charge_fee_cents`, in `fee_currency` (your
+account's settlement currency). When Stripe hasn't made the balance transaction yet, the
+fee is left empty and the sweep queues `record_card_hold_fees` for it (payments from the
+last 3 days), which reads it later. `CardHold.objects.with_payment_totals()` annotates
+`paid_cents` (every payment) and `fees_cents` (their fees), for your totals and margins.
 
 `release_for_charge(hold_id)` is for when you charge the final amount yourself: it releases the
 hold under the same claim and returns `True` only when the hold is released for your charge
@@ -869,8 +1118,8 @@ made: it is replayed with its key for 23 hours after it was first sent, then rec
 | `scheduled` | The card is saved; nothing is authorized until `hold_on`. The card is in use. |
 | `saved` | `uses_holds = False`: the card is saved and nothing is ever authorized; `capture()` charges it on the date. |
 | `authorized` | Placed (on-session, or off-session by the sweep). |
-| `failed` | The off-session placement was refused. Final: never retried, never re-armed. |
-| `failed` + `kept_at` | Staff kept the target: it closes by a fresh charge. Final. |
+| `failed` | The off-session placement was refused. Final unless staff retry it (up to `CARD_HOLDS_MAX_RETRIES`); never retried on its own, never re-armed. |
+| `failed` + `kept_at` | Staff kept the target: it closes by a fresh charge. Final, never retried. |
 | `released` (`cancelled`, with `failed_at`) | Staff cancelled the target of a failed hold. |
 | `released` (`rescheduled`) | Briefly, while a placed hold moves back to `scheduled`. |
 | `released` (`not_holdable`) | Briefly, while an authorization placed for a target outside `filter_holdable` is cancelled; then back to `scheduled`. |
@@ -896,7 +1145,7 @@ amount, with the key `{prefix}-hold-scheduled-{hold}-{attempt}-{n}` (`n`: how ma
 authorizations the row held before). Success: `authorized`, expiry from `capture_before`,
 `card_hold_authorized`.
 
-**A failed hold is final.** A decline (the bank's `decline_code` when it sends one),
+**A failed hold is final, unless staff retry it.** A decline (the bank's `decline_code` when it sends one),
 `authentication_required`, or any non-retryable Stripe error marks the hold `failed` with
 `failure_code` (GraphQL `failureReason`), sends `card_hold_failed` (`hold`, `target`) and
 calls your adapter's `notify_hold_failed(target, hold)`, after the commit. The default
@@ -904,7 +1153,9 @@ emails `staff_recipients(target)` with Django mail, one email per language: the 
 the target, its date and the reason. With `baseapp_notifications` installed it also sends
 each of them an in-app notification (see [Staff notifications](#staff-notifications)).
 Override it to notify some other way. The customer
-isn't told (their GraphQL reads `failed` as `scheduled`), and it is never retried. No
+isn't told (their GraphQL reads `failed` as `scheduled`), and nothing retries it on its
+own: only staff do, up to `CARD_HOLDS_MAX_RETRIES` times (see
+[Retrying a failed hold](#retrying-a-failed-hold)). No
 usable answer isn't a failure: a connection error, a 5xx, a 429, a 409, and a bad or revoked
 API key (`AuthenticationError`, `PermissionError`, logged as an error so someone fixes it).
 The hold stays `scheduled` with its key and amount, no one is emailed, and the next sweep
@@ -921,7 +1172,8 @@ to `scheduled`, deferral on or off. One whose target was deleted while its place
 the sweep with the same key and amount (reconciled past 23 hours), and whatever comes back
 is cancelled.
 
-**Staff decide a failed hold.** `keep_failed_hold(hold_id, actor)` sets `kept_at` /
+**Staff decide a failed hold.** Retry it (below), keep it or cancel it.
+`keep_failed_hold(hold_id, actor)` sets `kept_at` /
 `kept_by`: when the target closes, `capture()` charges afresh through your `charge`, once.
 Until staff decide, `capture()` of a failed hold answers `not_captured` and charges
 nothing. `cancel_failed_hold(hold_id, actor)` calls your adapter's `cancel(target, actor)`
@@ -951,22 +1203,71 @@ makes no Stripe call: it is marked released and confirmed, nothing is charged, a
 card is no longer in use once the target is cancelled. A scheduled hold whose placement is
 under way is left to the placement, which settles it.
 
-### Staff notifications
+### Retrying a failed hold
 
-With `baseapp_notifications` installed, staff get an in-app notification, through the
-`notifications` shared service, when a card hold needs them. It targets the hold itself, so a
-client renders the hold's staff notice, and its actions, inside the notification (the
-frontend's `CardHoldStaffNotice`). The customer is never notified.
+Staff may place a failed deferred hold again instead of keeping or cancelling it:
+`retry_failed_hold(hold_id, actor)`, or GraphQL `cardHoldRetry(input: {id})`. It is the
+only path out of `failed` back to a placement. It places now, unless the target's window
+hasn't opened (below).
 
-| Verb | Sent when | By |
-| --- | --- | --- |
-| `PAYMENTS.CARD_HOLD_FAILED` | A deferred hold fails. | `notify_hold_failed` |
+- **Which holds.** Only a `failed` hold staff haven't kept or cancelled, with retries left,
+  whose target is still holdable (not cancelled, not done with the card, in
+  `filter_holdable`) and dated after today. Anything else is refused before any Stripe
+  call, with a reason (`RetryRefusal`): `not_failed`, `no_retries_left`, `date_passed`,
+  `not_holdable`, or `unavailable` (no Stripe key). Kept and cancelled holds are final.
+- **Now, or on its day.** A target whose date has moved out past the window since the
+  failure (`hold_on` = date − window still after today, with `CARD_HOLDS_DEFERRAL_ENABLED`
+  on) isn't placed now: an off-session authorization lasts under 5 days, so it would lapse
+  before the date. The retry is counted and the hold goes back to `scheduled` for its new
+  `hold_on`, with no key, and `failed_at` / `failure_code` cleared: a scheduled hold like any
+  other, which the sweep places on the day, the date changes reschedule and a cancel
+  releases (then re-armable). The answer is `scheduled`, with no Stripe call. If that
+  placement fails, it is `failed` again as any failure is: `card_hold_failed`, staff emailed,
+  and one retry fewer left. Within the window it is placed at once.
+- **The same card, a new attempt.** It is placed off-session on the hold's saved
+  PaymentMethod, for the target's price now (plus the buffer), with a new idempotency key:
+  `placement_generation` is bumped, and the failed PaymentIntent joins
+  `previous_payment_intent_ids`. Stripe never replays the failed answer, and a late
+  webhook for the old PaymentIntent never settles the new attempt.
+- **How it runs.** Like the sweep's placement: under the target's lock, then the hold's,
+  the hold is re-checked and claimed in one conditional UPDATE (back to `scheduled`, with
+  its key and amount, or with none and its new `hold_on` outside the window;
+  `retry_count` + 1, `last_retried_at`, `last_retried_by`), which commits before Stripe
+  is called. Two staff retrying at once place one attempt: the other
+  answers `in_progress`. A retry racing a cancel, keep, reschedule, the sweep or a webhook
+  leaves at most one live authorization: whichever takes the locks first wins, and the
+  others see a hold that is no longer `failed`, or one whose placement is under way. Call it
+  outside a transaction (`CardHoldInTransaction` otherwise), and keep `cardHoldRetry` out of
+  `ATOMIC_MUTATIONS` / `ATOMIC_REQUESTS`.
+- **The outcome.** `placed`: `authorized`, with `failed_at` and `failure_code` cleared;
+  from then on it is captured, released and re-armed like any authorized hold. `declined`:
+  `failed` again with the new `failure_code`, `card_hold_failed` is sent and
+  `notify_hold_failed` emails staff exactly as for the first failure. `in_progress` (no
+  usable answer): the hold stays `scheduled` with its key, and the sweep, the webhook or the
+  23-hour lookup settle it like any placement. Until then staff read its `status` as
+  `pending`; the customer reads `scheduled` throughout.
+- **The limit.** `CARD_HOLDS_MAX_RETRIES` (Constance, default `3`) caps the retries per
+  attempt chain; past it only keep and cancel remain. A placement that succeeds keeps its
+  count, but re-arming the hold (a released hold taking a new authorization on the same
+  row) starts a new chain: `retry_count`, `last_retried_at` and `last_retried_by` reset. **Set it to `0` to keep failed holds final**,
+  as before this existed (a project whose policy is that a failed hold is final must do
+  this: the default allows retries). It isn't per adapter.
+- **Deferral off.** A retry is staff's explicit decision, so it runs with
+  `CARD_HOLDS_DEFERRAL_ENABLED` off too; the limit is what turns it off. With deferral off
+  nothing waits for a window, so a retry always places now (as checkout does).
+- **Signals.** `card_hold_retried` (`hold`, `target`, `actor`) once the claim commits
+  (a scheduled retry too); then `card_hold_authorized` or `card_hold_failed`, as for any
+  placement.
 
-It goes to `staff_recipients(target)`, worded in each recipient's language, with
-`level="warning"` and the customer (their profile when they have one) as the actor. It is
-in-app only: the failed hold's email is sent separately. A recipient can mute the verb through
-`NotificationSetting`. Without `baseapp_notifications` nothing is sent and the email still
-goes. The verb is a constant in `baseapp_payments.notifications` (`CARD_HOLD_FAILED_VERB`).
+GraphQL: `cardHoldRetry(input: {id: ID!})` returns `{ cardHold { ... }, errors }`, gated by
+`change_cardhold` like `cardHoldKeep` / `cardHoldCancel`. A refusal is a GraphQL error
+with `extensions.code` `invalid_action` and `extensions.reason` the `RetryRefusal`. The
+outcome is the returned `cardHold.status`: `authorized`, `failed`, `pending`, or
+`scheduled` (placed on `holdOn`; a second click then is refused `not_failed`).
+`CardHold.retriesLeft` is how many retries remain: null for a hold that isn't `failed`
+(and for anyone who can't read `failureReason`), `0` once kept or out of retries. It reads
+the hold's columns and `CARD_HOLDS_MAX_RETRIES` once per request, so it costs no query
+per row.
 
 ### Background work
 
@@ -993,6 +1294,12 @@ goes. The verb is a constant in `baseapp_payments.notifications` (`CARD_HOLD_FAI
 - `baseapp_payments.tasks.reschedule_card_hold`: follows one hold's change of date (a no-op with
   deferral off), and puts a hold released `rescheduled` or `not_holdable` back to `scheduled`
   (deferral on or off; with it off the row isn't placed then).
+- `baseapp_payments.tasks.charge_card_hold_difference`: charges the difference still due
+  above a hold captured in full whose `capture()` stopped coming back
+  (`holds.charge_due_difference`; queued by the sweep, which queues it again after a
+  Stripe error).
+- `baseapp_payments.tasks.record_card_hold_fees`: reads Stripe's fee for a payment whose
+  balance transaction wasn't ready when it was taken (queued by the sweep).
 - `baseapp_payments.tasks.reconcile_card_hold`: records what one PaymentIntent naming a hold
   is now (queued by the webhook), or closes a stale on-session create (queued by the sweep).
   Retries Stripe's transient errors up to 12 times.
@@ -1017,8 +1324,8 @@ on-session first pass, whose `pending` row is written before the create for this
 |---|---|
 | `payment_intent.amount_capturable_updated` | An authorization. The answer of the hold's placement in flight (its key unsettled, the same amount) is recorded as the placement would record it: `authorized`, or released `not_holdable` / for a cancelled target as usual. An on-session create's is recorded on its row, and the client's retry carries on with it. Any other authorization naming the hold (an old key's orphan, one made after a key was pruned) is a *stray*: cancelled. |
 | `payment_intent.canceled` | Confirms a release that waited for Stripe (`release_confirmed_at`), or a stray's cancel. |
-| `payment_intent.succeeded` | The hold's own PaymentIntent was captured: recorded through `mark_captured`. |
-| `payment_intent.payment_failed` | Only the decline of the outstanding placement: the hold fails as it would have (`failed`, staff told). Any other is ignored. |
+| `payment_intent.succeeded` | The hold's own PaymentIntent was captured: recorded through `mark_captured` (`paid`, unless a difference is still due). The outstanding difference (`kind` `difference`) succeeded: recorded, `paid`. |
+| `payment_intent.payment_failed` | The decline of the outstanding placement: the hold fails as it would have (`failed`, staff told). The decline of the outstanding difference: `partially_paid`, `difference_charge_failed`. Any other is ignored. |
 
 The webhook itself reads and writes nothing: it queues `reconcile_card_hold` (answering 500
 if the broker refuses, so Stripe redelivers) and answers 2xx at once. The task reads the
@@ -1049,11 +1356,19 @@ The lookup is `holds.find_hold_payment_intents(hold)`: Stripe's Search,
 raises anything but a transient error, the customer's PaymentIntents created since an hour
 before the first send are listed (`PaymentIntent.list(customer=..., created={"gte": ...})`)
 and filtered by the metadata. Set `BASEAPP_PAYMENTS_CARD_HOLD_LOOKUP` to a dotted path of
-your own function of the hold (returning PaymentIntents) to replace it.
+your own function of the hold to replace it. **It must return every PaymentIntent whose
+metadata carries the hold's `card_hold_id`, in any status and of any kind**: manual-capture
+authorizations, captured or cancelled ones, and automatic-capture payments such as the
+difference above the hold. One that leaves some out lets a lost authorization slip by
+uncancelled, or a placement be sent again. (The difference itself is never looked up
+through it: past 23 hours it is found with the module's own Search on
+`metadata['difference_key']`, so an override can never get it charged twice.)
 
-Signals `card_hold_authorized` (`hold`, `target`), `card_hold_released` (`hold_id`) and
-`card_hold_failed` (`hold`, `target`) are sent from `baseapp_payments.signals` after the
-change commits.
+Signals `card_hold_authorized` (`hold`, `target`), `card_hold_released` (`hold_id`),
+`card_hold_failed` (`hold`, `target`), `card_hold_retried` (`hold`, `target`, `actor`;
+see [Retrying a failed hold](#retrying-a-failed-hold)), `payment_status_changed` and
+`difference_charge_failed` (see [Payment status and signals](#payment-status-and-signals))
+are sent from `baseapp_payments.signals` after the change commits.
 
 ### GraphQL
 
@@ -1061,17 +1376,25 @@ GraphQL is optional (the `graphql` extra). With it installed and card holds enab
 
 - `CardHold` (`CardHoldObjectType`, swappable through `CardHold.get_graphql_object_type()`):
   `status`, `amountCents`, `estimatedAmountCents`, `expiresAt`, `brand`, `last4`, `holdOn`,
-  `kept`, `failureReason`. Only the hold's customer (while active), and users granted the
+  `kept`, `failureReason`, `retriesLeft`, `canDecide`, `paymentStatus`. Only the hold's customer (while active), and users granted the
   model's `view_cardhold` permission (staff status alone is not enough), can read it, including
   through `node(id:)` and `cardHold`. Anyone without `view_cardhold` on the model (the
   customer, even a staff one) sees a `failed` hold as `scheduled`, `kept` as false and
-  `failureReason` as null. `status` reads `saved` for a card saved without a hold.
+  `failureReason` and `retriesLeft` as null; those with it see a failed hold whose retry is
+  under way as `pending`. `status` reads `saved` for a card saved without a hold.
+- `CardHold.canDecide` is whether the viewer may act on holds as staff (`cardHoldRetry`,
+  `cardHoldKeep`, `cardHoldCancel`, `cardHoldMarkPaid`): the model-level `change_cardhold`
+  grant, or a superuser. False for the customer and for `view_cardhold` alone. Hide the
+  staff panels on it. It is asked once per request, so it costs no query per row.
 - `CardHoldsInterface` adds `cardHold` to your target's ObjectType:
   `interfaces = graphql_shared_interfaces.get(RelayNode, "CardHoldsInterface")`. The field
   carries its own optimizer hook (it prefetches `document__card_hold`), so a page of
   targets costs the same queries however many rows it has, `holdOn` included (the hold's
   own stored `hold_on`, the day the sweep uses); consumers wire up nothing.
-- `cardHoldKeep` / `cardHoldCancel`: staff decisions on a failed deferred hold (above).
+- `cardHoldRetry` / `cardHoldKeep` / `cardHoldCancel`: staff decisions on a failed
+  deferred hold (above).
+- `cardHoldMarkPaid`: staff record a `partially_paid` target as paid outside the app
+  (above); `change_cardhold` too, and `invalid_action` for any other hold.
 - `CardHoldPaymentInputMixin` (`paymentMethodId`, `attemptId`, `paymentIntentId`,
   `setupIntentId`) and `CardHoldPayloadMixin` (`requiresAction`, `clientSecret`, `intentType`,
   `holdStatus`, `holdOn`) for your own create mutation. There is no REST surface for holds.
@@ -1079,7 +1402,7 @@ GraphQL is optional (the `graphql` extra). With it installed and card holds enab
 ### Admin
 
 `CardHoldAdmin` is registered read-only; it lists `hold_on`, whether staff kept a failed
-hold, and the failure code, and filters by status and release reason. For your target's admin,
+hold, the failure code and how many times staff retried it (`retry_count`), and filters by status and release reason. For your target's admin,
 `card_hold_admin_summary(target)` returns a line such as
 `Visa 4242 · 110.00 USD held · Authorized · expires 2030-03-17 12:00 UTC` (in the hold's own
 currency). It costs one query per call; in a `list_display` column, prefetch the holds in your

@@ -114,6 +114,37 @@ msgstr ""
 "Só é possível decidir sobre uma retenção no cartão com falha que não foi "
 "mantida."
 
+#: graphql/mutations.py
+msgid "This card hold has no retries left. Keep it or cancel it."
+msgstr ""
+"Esta retenção no cartão não tem mais novas tentativas. Mantenha-a ou cancele-"
+"a."
+
+#: graphql/mutations.py
+msgid "The target's date has come, so it can't take a hold any more."
+msgstr "A data do destino já chegou, então ele não pode mais ter uma retenção."
+
+#: graphql/mutations.py
+msgid "The target can't take a hold any more."
+msgstr "O destino não pode mais ter uma retenção."
+
+#: graphql/mutations.py
+msgid "Card holds can't be placed right now."
+msgstr "As retenções no cartão não podem ser feitas agora."
+
+#: graphql/mutations.py
+msgid "Only a failed card hold that wasn't kept can be retried."
+msgstr ""
+"Só é possível tentar novamente uma retenção no cartão com falha que não foi "
+"mantida."
+
+#: graphql/mutations.py
+msgid ""
+"Only a partially paid card hold that isn't being charged can be marked paid."
+msgstr ""
+"Só é possível marcar como paga uma retenção no cartão parcialmente paga que "
+"não esteja sendo cobrada."
+
 #: models.py
 msgid "entity type"
 msgstr "tipo de entidade"
@@ -311,6 +342,18 @@ msgid "A charge that never finished, past Stripe's 24 hours"
 msgstr "Uma cobrança que nunca terminou, passadas as 24 horas da Stripe"
 
 #: models.py
+msgid "The target was cancelled with the difference still due"
+msgstr "O destino foi cancelado com a diferença ainda devida"
+
+#: models.py
+msgid "Unpaid"
+msgstr "Não pago"
+
+#: models.py
+msgid "Partially paid"
+msgstr "Parcialmente pago"
+
+#: models.py
 msgid "Stripe customer id"
 msgstr "id do cliente no Stripe"
 
@@ -391,6 +434,18 @@ msgid "kept by"
 msgstr "mantida por"
 
 #: models.py
+msgid "retry count"
+msgstr "número de novas tentativas"
+
+#: models.py
+msgid "last retried at"
+msgstr "última nova tentativa em"
+
+#: models.py
+msgid "last retried by"
+msgstr "última nova tentativa por"
+
+#: models.py
 msgid "placement key"
 msgstr "chave de colocação"
 
@@ -439,6 +494,14 @@ msgid "captured at"
 msgstr "capturada em"
 
 #: models.py
+msgid "requested amount (cents)"
+msgstr "valor solicitado (centavos)"
+
+#: models.py
+msgid "capture sent at"
+msgstr "captura enviada em"
+
+#: models.py
 msgid "release reason"
 msgstr "motivo da liberação"
 
@@ -471,6 +534,70 @@ msgid "charge blocked reason"
 msgstr "motivo do bloqueio da cobrança"
 
 #: models.py
+msgid "charge PaymentIntent id"
+msgstr "id do PaymentIntent da cobrança"
+
+#: models.py
+msgid "charged amount (cents)"
+msgstr "valor cobrado (centavos)"
+
+#: models.py
+msgid "difference due (cents)"
+msgstr "diferença devida (centavos)"
+
+#: models.py
+msgid "difference idempotency key"
+msgstr "chave de idempotência da diferença"
+
+#: models.py
+msgid "difference claimed at"
+msgstr "diferença reivindicada em"
+
+#: models.py
+msgid "difference generation"
+msgstr "geração da diferença"
+
+#: models.py
+msgid "difference PaymentIntent id"
+msgstr "id do PaymentIntent da diferença"
+
+#: models.py
+msgid "difference charged at"
+msgstr "diferença cobrada em"
+
+#: models.py
+msgid "difference failure code"
+msgstr "código de falha da diferença"
+
+#: models.py
+msgid "payment status"
+msgstr "status do pagamento"
+
+#: models.py
+msgid "paid outside at"
+msgstr "pago fora do app em"
+
+#: models.py
+msgid "paid outside by"
+msgstr "pago fora do app por"
+
+#: models.py
+msgid "hold capture fee (cents)"
+msgstr "taxa da captura da retenção (centavos)"
+
+#: models.py
+msgid "difference charge fee (cents)"
+msgstr "taxa da cobrança da diferença (centavos)"
+
+#: models.py
+msgid "full charge fee (cents)"
+msgstr "taxa da cobrança integral (centavos)"
+
+#: models.py
+msgid "fee currency"
+msgstr "moeda da taxa"
+
+#: models.py
 msgid "card hold"
 msgstr "retenção no cartão"
 
@@ -482,6 +609,22 @@ msgstr "retenções no cartão"
 #, python-format
 msgid "The card hold for %(target)s failed."
 msgstr "A retenção no cartão de %(target)s falhou."
+
+#: notifications.py
+#, python-format
+msgid ""
+"%(target)s was only partly paid: the charge above the hold was declined."
+msgstr ""
+"%(target)s foi pago só em parte: a cobrança acima da retenção foi recusada."
+
+#: plugin.py
+msgid ""
+"Card holds: how many times staff may retry a failed off-session hold on the "
+"same card. 0 turns retrying off: a failed hold is final."
+msgstr ""
+"Retenções no cartão: quantas vezes a equipe pode tentar novamente uma "
+"retenção fora de sessão com falha, no mesmo cartão. 0 desativa as novas "
+"tentativas: uma retenção com falha é definitiva."
 
 #: purchases.py
 msgid "At least one item is required."

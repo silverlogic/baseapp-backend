@@ -52,6 +52,16 @@ def live_hold(fake_stripe, *, status="requires_capture", **fields) -> Any:
     return hold
 
 
+def expired_hold(fake_stripe, **fields) -> Any:
+    """A hold past its capture deadline, its authorization still live in Stripe: any
+    amount is charged afresh (released first), never captured from it, so these tests
+    pin the charge path. An amount above a live hold is captured in full plus the
+    difference instead (test_card_hold_above_hold)."""
+    return live_hold(
+        fake_stripe, expires_at=timezone.now() - datetime.timedelta(minutes=1), **fields
+    )
+
+
 def status_of(hold) -> str:
     hold.refresh_from_db()
     return hold.status
@@ -137,8 +147,8 @@ class TestCapture:
         assert len(fake_stripe.calls_to("PaymentIntent.capture")) == 1
         assert fake_stripe.calls_to("PaymentIntent.cancel") == []
 
-    def test_more_than_held_releases_then_charges_once(self, order, fake_stripe) -> None:
-        hold = live_hold(fake_stripe, target=order)
+    def test_an_expired_hold_releases_then_charges_once(self, order, fake_stripe) -> None:
+        hold = expired_hold(fake_stripe, target=order)
         events = []
         charge = Mock(
             side_effect=lambda **_kwargs: events.append(
@@ -223,7 +233,7 @@ class TestCapture:
 
     def test_a_double_capture_on_the_charge_path_charges_once(self, order, fake_stripe) -> None:
         """C1: the second call answers from the database."""
-        hold = live_hold(fake_stripe, target=order)
+        hold = expired_hold(fake_stripe, target=order)
         charge = Mock(return_value="ch_new")
 
         first = capture(hold.pk, 20_000, charge=charge)
@@ -274,7 +284,7 @@ class TestCapture:
         assert hold.charge_key == "" and hold.charged_at is None
 
     def test_a_charge_that_raised_is_retried_with_the_same_key(self, order, fake_stripe) -> None:
-        hold = live_hold(fake_stripe, target=order)
+        hold = expired_hold(fake_stripe, target=order)
         charge = Mock(side_effect=[stripe.APIConnectionError("lost"), "ch_new"])
 
         with pytest.raises(stripe.APIConnectionError):
@@ -393,7 +403,7 @@ class TestCapture:
         assert status_of(hold) == CardHold.Status.AUTHORIZED
 
     def test_a_refused_release_charges_nothing(self, order, fake_stripe) -> None:
-        hold = live_hold(fake_stripe, target=order)
+        hold = expired_hold(fake_stripe, target=order)
         refusal = unexpected_state(hold.stripe_payment_intent_id, "processing", "cancel")
         fake_stripe.fail_next("PaymentIntent.cancel", refusal)
         charge = Mock()
@@ -408,7 +418,7 @@ class TestCapture:
     def test_a_transient_release_error_propagates_before_any_charge(
         self, order, fake_stripe
     ) -> None:
-        hold = live_hold(fake_stripe, target=order)
+        hold = expired_hold(fake_stripe, target=order)
         fake_stripe.fail_next("PaymentIntent.cancel", connection_error())
         charge = Mock()
 
@@ -672,6 +682,102 @@ class TestCaptureEdges:
         assert status_of(captured) == CardHold.Status.CAPTURED
         assert capture(elsewhere.pk, 0, charge=charge).status == CaptureStatus.NOT_CAPTURED
         charge.assert_not_called()
+
+
+class TestZeroIsPaid:
+    """A capture of 0 owes nothing: once the hold is released, the target is ``paid``."""
+
+    @pytest.fixture
+    def heard(self) -> Any:
+        from baseapp_payments.signals import payment_status_changed
+
+        changes: list[tuple[str, str]] = []
+
+        def on_status(sender: Any, **kwargs: Any) -> None:
+            changes.append((kwargs["previous"], kwargs["payment_status"]))
+
+        payment_status_changed.connect(on_status, weak=False)
+        try:
+            with patch(
+                "baseapp_payments.holds.send_on_commit",
+                side_effect=lambda signal, **kwargs: signal.send_robust(sender=CardHold, **kwargs),
+            ):
+                yield changes
+        finally:
+            payment_status_changed.disconnect(on_status)
+
+    def test_an_open_hold_released_is_paid_once(self, order, fake_stripe, heard) -> None:
+        hold = live_hold(fake_stripe, target=order)
+
+        assert capture(hold.pk, 0, charge=Mock()).status == CaptureStatus.NOTHING_DUE
+        assert capture(hold.pk, 0, charge=Mock()).status == CaptureStatus.NOTHING_DUE
+
+        hold.refresh_from_db()
+        assert hold.payment_status == CardHold.PaymentStatus.PAID
+        assert heard == [("unpaid", "paid")]
+
+    def test_an_unplaced_hold_released_is_paid(self, order, fake_stripe, heard) -> None:
+        hold = CardHoldFactory(target=order, status="scheduled", stripe_payment_intent_id=None)
+
+        assert capture(hold.pk, 0, charge=Mock()).status == CaptureStatus.NOTHING_DUE
+
+        hold.refresh_from_db()
+        assert hold.payment_status == CardHold.PaymentStatus.PAID
+        assert heard == [("unpaid", "paid")]
+
+    def test_the_signal_waits_for_the_commit(self, order, fake_stripe) -> None:
+        hold = live_hold(fake_stripe, target=order)
+
+        with patch("baseapp_payments.holds.send_on_commit") as on_commit:
+            capture(hold.pk, 0, charge=Mock())
+
+        sent = [
+            kwargs["payment_status"]
+            for _args, kwargs in on_commit.call_args_list
+            if "payment_status" in kwargs
+        ]
+        assert sent == [CardHold.PaymentStatus.PAID]
+
+    def test_not_while_the_release_is_under_way(self, order, fake_stripe, heard) -> None:
+        placing = CardHoldFactory(
+            target=order, status="scheduled", stripe_payment_intent_id=None, placement_key="k"
+        )
+        unconfirmed = live_hold(fake_stripe, target=HoldableOrderFactory(user=order.user))
+        CardHold.objects.filter(pk=unconfirmed.pk).update(
+            status=CardHold.Status.RELEASED, release_reason="rescheduled"
+        )
+
+        assert capture(placing.pk, 0, charge=Mock()).status == CaptureStatus.IN_PROGRESS
+        assert capture(unconfirmed.pk, 0, charge=Mock()).status == CaptureStatus.IN_PROGRESS
+
+        for hold in (placing, unconfirmed):
+            hold.refresh_from_db()
+            assert hold.payment_status == CardHold.PaymentStatus.UNPAID
+        assert heard == []
+
+    def test_never_for_a_charge_that_never_finished(self, order, fake_stripe, heard) -> None:
+        hold = CardHoldFactory(
+            target=order,
+            status=CardHold.Status.RELEASED,
+            stripe_payment_intent_id=None,
+            charge_key="k",
+            charge_claimed_at=timezone.now(),
+        )
+
+        assert capture(hold.pk, 0, charge=Mock()).status == CaptureStatus.IN_PROGRESS
+
+        hold.refresh_from_db()
+        assert hold.payment_status == CardHold.PaymentStatus.UNPAID
+        assert heard == []
+
+    def test_not_when_nothing_was_released(self, order, fake_stripe, heard) -> None:
+        elsewhere = live_hold(fake_stripe, target=order, status="canceled")
+
+        assert capture(elsewhere.pk, 0, charge=Mock()).status == CaptureStatus.NOT_CAPTURED
+
+        elsewhere.refresh_from_db()
+        assert elsewhere.payment_status == CardHold.PaymentStatus.UNPAID
+        assert heard == []
 
 
 class TestCardInUse:

@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from .models import AbstractCardHold
 
 CARD_HOLD_FAILED_VERB = "PAYMENTS.CARD_HOLD_FAILED"
+CARD_HOLD_PARTIALLY_PAID_VERB = "PAYMENTS.CARD_HOLD_PARTIALLY_PAID"
 
 
 def _actor(hold: "AbstractCardHold") -> Any:
@@ -68,4 +69,19 @@ def notify_hold_failed_in_app(
         hold,
         recipients,
         lambda: _("The card hold for %(target)s failed.") % {"target": str(target)},
+    )
+
+
+def notify_partially_paid_in_app(
+    hold: "AbstractCardHold", target: "Model", recipients: Iterable["AbstractBaseUser"]
+) -> None:
+    """Tell ``recipients`` in the app that the charge above ``hold`` was declined."""
+    _notify_staff(
+        CARD_HOLD_PARTIALLY_PAID_VERB,
+        hold,
+        recipients,
+        lambda: (
+            _("%(target)s was only partly paid: the charge above the hold was declined.")
+            % {"target": str(target)}
+        ),
     )

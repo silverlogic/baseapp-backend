@@ -210,6 +210,69 @@ class TestCardHoldNode:
         assert node["kept"] is False
         assert node["failureReason"] is None
 
+    def test_retries_left_is_for_whoever_sees_the_failure(self, holder, staff) -> None:
+        hold = CardHoldFactory(
+            target=HoldableOrderFactory(user=holder),
+            status=CardHold.Status.FAILED,
+            failure_code="card_declined",
+            retry_count=1,
+        )
+        query = "query($id: ID!) { node(id: $id) { ... on CardHold { retriesLeft } } }"
+
+        assert execute(query, staff, id=get_obj_relay_id(hold))["node"] == {"retriesLeft": 2}
+        assert execute(query, holder, id=get_obj_relay_id(hold))["node"] == {"retriesLeft": None}
+        hold.kept_at = hold.created
+        hold.save()
+        assert execute(query, staff, id=get_obj_relay_id(hold))["node"] == {"retriesLeft": 0}
+        authorized = CardHoldFactory(target=HoldableOrderFactory(user=holder))
+        assert execute(query, staff, id=get_obj_relay_id(authorized))["node"] == {
+            "retriesLeft": None
+        }
+
+    def test_a_retry_in_flight_reads_pending_to_staff_only(self, holder, staff) -> None:
+        hold = CardHoldFactory(
+            target=HoldableOrderFactory(user=holder),
+            status=CardHold.Status.SCHEDULED,
+            failed_at=datetime.datetime(2030, 3, 1, tzinfo=datetime.timezone.utc),
+            placement_key="k-retry",
+            stripe_payment_intent_id=None,
+        )
+
+        assert hold_node(hold, staff)["status"] == "pending"
+        assert hold_node(hold, holder)["status"] == "scheduled"
+        hold.placement_key = ""
+        hold.save()
+        assert hold_node(hold, staff)["status"] == "scheduled"
+
+    def test_can_decide_is_the_model_level_change_cardhold(self, holder, staff) -> None:
+        from ..helpers import grant_card_hold_perm
+
+        hold = CardHoldFactory(target=HoldableOrderFactory(user=holder))
+        query = "query($id: ID!) { node(id: $id) { ... on CardHold { canDecide } } }"
+
+        def can_decide(user: Any) -> bool:
+            return execute(query, user, id=get_obj_relay_id(hold))["node"]["canDecide"]
+
+        assert can_decide(holder) is False
+        assert can_decide(staff) is False  # view_cardhold only
+        assert can_decide(grant_card_hold_perm(staff)) is True
+        assert can_decide(UserFactory(is_staff=True, is_superuser=True)) is True
+
+    def test_can_decide_is_false_without_a_user_on_the_context(self) -> None:
+        from types import SimpleNamespace
+
+        info = SimpleNamespace(context=SimpleNamespace())
+
+        assert object_types_module._decides_of_request(info) is False
+        assert info.context._baseapp_payments_decides_card_holds is False
+
+    def test_the_request_memo_survives_a_context_without_attributes(self) -> None:
+        from types import SimpleNamespace
+
+        info = SimpleNamespace(context=object())
+
+        assert object_types_module._max_retries_of_request(info) == 3
+
     def test_a_grantee_who_isnt_staff_sees_the_failure(self, holder) -> None:
         hold = CardHoldFactory(
             target=HoldableOrderFactory(user=holder),
@@ -220,6 +283,25 @@ class TestCardHoldNode:
         node = hold_node(hold, grant_view_cardhold(UserFactory()))
 
         assert node["status"] == "failed" and node["failureReason"] == "card_declined"
+
+    @pytest.mark.parametrize("payment_status", ["unpaid", "paid", "partially_paid"])
+    def test_the_customer_and_staff_read_the_payment_status(
+        self, holder, staff, payment_status
+    ) -> None:
+        hold = CardHoldFactory(
+            target=HoldableOrderFactory(user=holder),
+            status=CardHold.Status.CAPTURED,
+            payment_status=payment_status,
+        )
+        query = "query($id: ID!) { node(id: $id) { ... on CardHold { paymentStatus } } }"
+
+        assert execute(query, holder, id=get_obj_relay_id(hold))["node"] == {
+            "paymentStatus": payment_status
+        }
+        assert execute(query, staff, id=get_obj_relay_id(hold))["node"] == {
+            "paymentStatus": payment_status
+        }
+        assert execute(query, UserFactory(), id=get_obj_relay_id(hold))["node"] is None
 
     def test_hold_on_is_the_stored_day_the_sweep_uses(self, holder) -> None:
         """Not recomputed from the target: a later change of the window or the date
@@ -380,6 +462,22 @@ class TestCardHoldListQueryCount:
         assert six == three == 5, (three, six)
         assert {hold["holdOn"] for hold in self.holds} == {"2030-03-15"}
 
+    def test_payment_status_costs_no_query_per_row(self, holder) -> None:
+        query = """
+            { holdableOrders { edges { node { id cardHold { status paymentStatus } } } } }
+        """
+        for _ in range(3):
+            CardHoldFactory(target=HoldableOrderFactory(user=holder), payment_status="paid")
+        three, rows = self.count_queries(holder, query)
+        for _ in range(3):
+            CardHoldFactory(target=HoldableOrderFactory(user=holder), payment_status="paid")
+
+        six, rows = self.count_queries(holder, query)
+
+        assert rows == 6
+        assert six == three == 5, (three, six)
+        assert {hold["paymentStatus"] for hold in self.holds} == {"paid"}
+
     def test_a_viewer_with_view_cardhold_costs_one_lookup_per_request(self, holder) -> None:
         """N5 on a list: the model-level grant is looked up once, not once per row."""
         viewer = grant_view_cardhold(UserFactory(is_staff=True))
@@ -395,6 +493,82 @@ class TestCardHoldListQueryCount:
 
         assert rows == 6
         assert six == three
+
+    def test_retries_left_costs_no_query_per_row_and_reads_the_limit_once(self, holder) -> None:
+        """retriesLeft is computed from the hold's columns and CARD_HOLDS_MAX_RETRIES, read
+        once per request: a page of failed holds costs what a page of any holds does."""
+        from unittest.mock import patch
+
+        query = """
+            { holdableOrders { edges { node { id cardHold { status retriesLeft } } } } }
+        """
+        viewer = grant_view_cardhold(UserFactory(is_staff=True))
+
+        def failed_hold(retry_count: int) -> None:
+            CardHoldFactory(
+                target=HoldableOrderFactory(user=holder),
+                status=CardHold.Status.FAILED,
+                retry_count=retry_count,
+            )
+
+        for count in range(3):
+            failed_hold(count)
+        viewer = type(viewer).objects.get(pk=viewer.pk)
+        three, rows = self.count_queries(viewer, query)
+        for count in range(3):
+            failed_hold(count)
+        viewer = type(viewer).objects.get(pk=viewer.pk)
+
+        with patch.object(
+            object_types_module, "max_retries", wraps=object_types_module.max_retries
+        ) as limit:
+            six, rows = self.count_queries(viewer, query)
+
+        assert rows == 6
+        assert six == three, (
+            f"retriesLeft issued {three} queries for 3 rows and {six} for 6. Likely causes:\n"
+            "  - resolve_retries_left reads something other than the hold's columns\n"
+            "  - CARD_HOLDS_MAX_RETRIES is no longer memoized on the request"
+        )
+        assert limit.call_count == 1
+        assert sorted(hold["retriesLeft"] for hold in self.holds) == [1, 1, 2, 2, 3, 3]
+
+    def test_can_decide_costs_no_query_per_row_and_asks_once(self, holder) -> None:
+        """canDecide is the viewer's model-level change_cardhold, asked once per request:
+        a page of holds costs the same queries however many rows it has."""
+        from unittest.mock import patch
+
+        from ..helpers import grant_card_hold_perm
+
+        query = "{ holdableOrders { edges { node { id cardHold { status canDecide } } } } }"
+        viewer = grant_card_hold_perm(grant_view_cardhold(UserFactory(is_staff=True)))
+
+        def holds(count: int) -> None:
+            for _ in range(count):
+                CardHoldFactory(target=HoldableOrderFactory(user=holder))
+
+        holds(3)
+        viewer = type(viewer).objects.get(pk=viewer.pk)
+        three, rows = self.count_queries(viewer, query)
+        assert rows == 3
+        holds(3)
+        viewer = type(viewer).objects.get(pk=viewer.pk)
+
+        with patch.object(
+            object_types_module,
+            "decides_card_holds",
+            wraps=object_types_module.decides_card_holds,
+        ) as asked:
+            six, rows = self.count_queries(viewer, query)
+
+        assert rows == 6
+        assert six == three, (
+            f"canDecide issued {three} queries for 3 rows and {six} for 6. Likely causes:\n"
+            "  - resolve_can_decide asks the permission per row (per hold, not per model)\n"
+            "  - the answer is no longer memoized on the request"
+        )
+        assert asked.call_count == 1
+        assert {hold["canDecide"] for hold in self.holds} == {True}
 
     def test_a_viewer_without_it_sees_no_ones_holds_on_a_list(self, holder, bare_staff) -> None:
         CardHoldFactory(target=HoldableOrderFactory(user=holder))

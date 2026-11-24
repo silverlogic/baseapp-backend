@@ -188,6 +188,16 @@ def can_decide_card_hold(user: "AbstractBaseUser | AnonymousUser", hold: Any) ->
     return bool(user.has_perm(card_hold_perm(CHANGE_CARD_HOLD), hold))
 
 
+def decides_card_holds(user: "AbstractBaseUser | AnonymousUser | None") -> bool:
+    """Whether ``user`` may decide failed holds (keep, cancel, retry) and mark them paid:
+    the model-level ``change_cardhold`` grant (a group or user permission, or a
+    superuser), the same grant :func:`can_decide_card_hold` asks for on a hold. Never the
+    customer by ownership, nor staff status alone."""
+    if not getattr(user, "is_authenticated", False):
+        return False
+    return bool(user.has_perm(card_hold_perm(CHANGE_CARD_HOLD)))
+
+
 def has_card_hold_perm(
     user_obj: "AbstractBaseUser | AnonymousUser", perm: str, obj: Any
 ) -> bool | None:
