@@ -390,13 +390,16 @@ def sweep_card_holds() -> None:
         _enqueue(record_card_hold_fees, hold_id)
 
     unclaimed_since = now - CAPTURE_CLAIM_TIMEOUT
-    # A capture recorded without its amount: read from Stripe, so it can be settled.
+    # A capture recorded without its amount: read from Stripe, so it can be settled. Bounded
+    # like the fees: one Stripe never answers for (unreadable, or never `succeeded`) is left
+    # for staff to reconcile after FEE_LOOKUP_WINDOW instead of being re-queued forever.
     amounts_missing = (
         CardHold.objects.filter(
             status=CardHold.Status.CAPTURED,
             captured_amount_cents__isnull=True,
             stripe_payment_intent_id__isnull=False,
             captured_at__lt=unclaimed_since,
+            captured_at__gt=since,
         )
         .filter(Q(capture_claimed_at__isnull=True) | Q(capture_claimed_at__lt=unclaimed_since))
         .values_list("pk", flat=True)

@@ -41,6 +41,7 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import ROUND_CEILING, Decimal
+from functools import partial
 from typing import TYPE_CHECKING, Any
 
 import stripe
@@ -54,6 +55,7 @@ from baseapp_core.models import DocumentId
 
 from . import utils
 from .hold_targets import (
+    BaseHoldTarget,
     HoldAmountMode,
     HoldTarget,
     deferral_enabled,
@@ -3586,7 +3588,12 @@ def _difference_refused(card_hold_id: int, key: str, code: str) -> bool:
     )
     adapter = _registered_adapter(target)
     if adapter is not None:
-        transaction.on_commit(lambda: adapter.notify_partially_paid(target, hold), robust=True)
+        # An adapter written against the HoldTarget Protocol before this hook existed doesn't
+        # have it: fall back to the default rather than lose the notice in a log line.
+        notify = getattr(adapter, "notify_partially_paid", None) or partial(
+            BaseHoldTarget.notify_partially_paid, adapter
+        )
+        transaction.on_commit(lambda: notify(target, hold), robust=True)
     return True
 
 

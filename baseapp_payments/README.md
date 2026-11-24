@@ -205,10 +205,11 @@ stripe and API version steps are the ones in
 On top of them:
 
 - **Check your own `STRIPE_API_VERSION` setting.** A project setting overrides the
-  module's `STRIPE_API_VERSION`. The BaseApp backend template pins
-  `STRIPE_API_VERSION = "2025-02-24.acacia"`; change it to `"2026-10-28.endive"` (or
-  remove it). Left on an older version, paying above the hold and
-  `attach_payments_to_invoice` don't work, and the module's reads expect endive's shapes.
+  module's `STRIPE_API_VERSION`. The BaseApp backend template no longer sets one (BA-3496
+  removed its `"2025-02-24.acacia"` pin), but a project generated before that may still
+  have it: change it to `"2026-10-28.endive"`, or remove it. Left on an older version,
+  placing a hold and paying above it fail (`allowed_payment_method_types` is endive-only),
+  `attach_payments_to_invoice` doesn't work, and the module's reads expect endive's shapes.
 - **Subscribe the endpoint to the card hold events** (see
   [Stripe webhooks](#stripe-webhooks)) if you use holds: the difference above a hold is
   reconciled from `payment_intent.succeeded` / `payment_intent.payment_failed`.
@@ -661,7 +662,7 @@ class OrderHoldTarget(BaseHoldTarget):
 | `cancel(target, actor)` | required for deferral | Staff cancelling a failed deferred hold. |
 | `staff_recipients(target)` | active users with `change_cardhold` (and superusers) | Who hears about a failed deferred hold, or a declined difference. |
 | `notify_hold_failed(target, hold)` | emails `staff_recipients`, and sends each an in-app notification | How they hear about a failed hold. |
-| `notify_partially_paid(target, hold)` | sends `staff_recipients` an in-app notification | How they hear that the charge above a hold was declined. |
+| `notify_partially_paid(target, hold)` | sends `staff_recipients` an in-app notification | How they hear that the charge above a hold was declined. An adapter that implements the Protocol without subclassing `BaseHoldTarget`, and without this hook, gets the default. |
 | `window_days()` / `buffer_percent()` | Constance | Per-model defaults. |
 
 ### Placing from your mutation
@@ -908,7 +909,9 @@ Retries never charge twice:
   recorded): the hold waits, never `paid` while an amount was asked for. The next
   webhook carrying the amount fills it in, or the sweep queues `record_card_hold_capture`
   (once no capture claim is live, 10 minutes), which reads it from Stripe; the hold is
-  then settled as usual.
+  then settled as usual. The sweep asks for 3 days after the capture, like the fees; one
+  Stripe still can't answer for after that (unreadable, or never `succeeded`) is left
+  `unpaid` for staff to reconcile by hand, rather than retried and logged forever.
 - **Asked for less after a capture got no answer.** A capture of the whole hold that got
   no answer may have run, so a later call within the hold keeps the planned difference
   (it is dropped only if no capture was ever sent). Its capture reuses the key, which

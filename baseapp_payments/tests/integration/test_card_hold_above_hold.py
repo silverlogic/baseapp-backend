@@ -265,6 +265,31 @@ class TestStaffNotifiedOfADeclinedDifference:
         assert reloaded(hold).payment_status == CardHold.PaymentStatus.PAID
         assert not staff.notifications.exists()
 
+    def test_an_adapter_without_the_hook_still_notifies_staff(
+        self, order, fake_stripe, staff, django_capture_on_commit_callbacks
+    ) -> None:
+        """An adapter implementing the HoldTarget Protocol without subclassing
+        BaseHoldTarget, from before notify_partially_paid existed, gets the default."""
+
+        class ProtocolOnlyAdapter:
+            def staff_recipients(self, target: Any) -> list[Any]:
+                return [staff]
+
+        hold = live_hold(fake_stripe, target=order)
+        fake_stripe.next_outcome.append("card_declined")
+
+        with (
+            patch(
+                "baseapp_payments.holds._registered_adapter",
+                return_value=ProtocolOnlyAdapter(),
+            ),
+            django_capture_on_commit_callbacks(execute=True),
+        ):
+            capture(hold.pk, 12_000, charge=Mock())
+
+        [notification] = staff.notifications.all()
+        assert notification.verb == CARD_HOLD_PARTIALLY_PAID_VERB
+
     def test_the_adapter_decides_how_staff_hear(
         self, order, fake_stripe, staff, django_capture_on_commit_callbacks
     ) -> None:
@@ -1717,6 +1742,31 @@ class TestCapturedWithoutAnAmount:
 
         assert "the sweep retries" in caplog.text
         assert reloaded(hold).captured_amount_cents is None
+
+    @pytest.mark.parametrize(
+        ("age", "queued"),
+        [(datetime.timedelta(days=2), True), (datetime.timedelta(days=4), False)],
+        ids=["inside_the_window", "past_the_window"],
+    )
+    def test_the_sweep_stops_asking_stripe_after_the_lookup_window(
+        self, order, fake_stripe, age, queued
+    ) -> None:
+        from baseapp_payments import tasks
+
+        hold = self.recorded_blind(order, fake_stripe, 12_000)
+        CardHold.objects.filter(pk=hold.pk).update(
+            captured_at=timezone.now() - age, capture_claimed_at=None
+        )
+
+        with patch("baseapp_payments.tasks._enqueue") as enqueue:
+            tasks.sweep_card_holds()
+
+        asked = [
+            call.args[1]
+            for call in enqueue.call_args_list
+            if call.args[0] is tasks.record_card_hold_capture
+        ]
+        assert asked == ([hold.pk] if queued else [])
 
     def test_without_stripe_the_task_does_nothing(self, no_stripe_key) -> None:
         from baseapp_payments.tasks import record_card_hold_capture
