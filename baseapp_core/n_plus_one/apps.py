@@ -1,4 +1,5 @@
 from django.apps import AppConfig
+from django.utils.translation import gettext_lazy as _
 
 
 class NPlusOneConfig(AppConfig):
@@ -6,7 +7,7 @@ class NPlusOneConfig(AppConfig):
 
     name = "baseapp_core.n_plus_one"
     label = "baseapp_core_n_plus_one"
-    verbose_name = "N+1 detection"
+    verbose_name = _("N+1 detection")
 
     def ready(self) -> None:
         # Connected here rather than at import, so they exist only where the app is installed. A
