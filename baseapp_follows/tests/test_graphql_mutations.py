@@ -1,9 +1,16 @@
 import pytest
 import swapper
+from django.conf import settings
+from django.test import override_settings
 
+from baseapp_core.tests.factories import UserFactory
+from baseapp_follows.permissions import FollowsPermissionsBackend
 from baseapp_profiles.tests.factories import ProfileFactory
 
+from .factories import FollowFactory
+
 Follow = swapper.load_model("baseapp_follows", "Follow")
+Profile = swapper.load_model("baseapp_profiles", "Profile")
 
 pytestmark = pytest.mark.django_db
 
@@ -160,3 +167,65 @@ def test_user_can_unfollow_profile_from_same_user(django_user_client, graphql_us
 
     assert content["data"]["followToggle"]["target"]["followersCount"] == 0
     assert content["data"]["followToggle"]["actor"]["followingCount"] == 0
+
+
+class ClosedFollowsPermissionsBackend(FollowsPermissionsBackend):
+    """No new follows are allowed; removing existing ones still is."""
+
+    def has_perm(self, user_obj, perm, obj=None) -> bool | None:
+        if perm == "baseapp_follows.add_follow":
+            return False
+        return super().has_perm(user_obj, perm, obj)
+
+
+CLOSED_FOLLOWS_BACKENDS = [
+    (
+        f"{__name__}.ClosedFollowsPermissionsBackend"
+        if b == "baseapp_follows.permissions.FollowsPermissionsBackend"
+        else b
+    )
+    for b in settings.AUTHENTICATION_BACKENDS
+]
+
+
+def test_user_can_unfollow_after_add_follow_is_refused(
+    django_user_client, graphql_user_client
+) -> None:
+    actor = ProfileFactory(owner=django_user_client.user)
+    target = ProfileFactory()
+    follow = FollowFactory(actor_object=actor, target_object=target, user=actor.owner)
+    variables = {"input": {"actorObjectId": actor.relay_id, "targetObjectId": target.relay_id}}
+
+    with override_settings(AUTHENTICATION_BACKENDS=CLOSED_FOLLOWS_BACKENDS):
+        content = graphql_user_client(FOLLOW_TOGGLE_GRAPHQL, variables=variables).json()
+
+        assert "errors" not in content, content
+        assert content["data"]["followToggle"]["actor"]["followingCount"] == 0
+        assert not Follow.objects.filter(pk=follow.pk).exists()
+
+        # Following again is refused.
+        content = graphql_user_client(FOLLOW_TOGGLE_GRAPHQL, variables=variables).json()
+
+    assert content["errors"][0]["extensions"]["code"] == "permission_required"
+    assert Follow.objects.count() == 0
+
+
+def test_user_can_unfollow_profile_they_can_no_longer_view(
+    django_user_client, graphql_user_client
+) -> None:
+    """followToggle loads the target without a view_profile check; a target switched to
+    private must not leave the follow stuck."""
+    actor = ProfileFactory(owner=django_user_client.user)
+    target = ProfileFactory(owner=UserFactory())
+    follow = FollowFactory(actor_object=actor, target_object=target, user=actor.owner)
+    target.status = Profile.ProfileStatus.PRIVATE
+    target.save(update_fields=["status"])
+    profile_app_label = Profile._meta.app_label
+    assert not django_user_client.user.has_perm(f"{profile_app_label}.view_profile", target)
+
+    variables = {"input": {"actorObjectId": actor.relay_id, "targetObjectId": target.relay_id}}
+    content = graphql_user_client(FOLLOW_TOGGLE_GRAPHQL, variables=variables).json()
+
+    assert "errors" not in content, content
+    assert content["data"]["followToggle"]["actor"]["followingCount"] == 0
+    assert not Follow.objects.filter(pk=follow.pk).exists()
