@@ -1,6 +1,7 @@
 import logging
 import subprocess
 import sys
+import threading
 from collections.abc import Callable, Iterator
 from functools import partial
 
@@ -138,6 +139,7 @@ def test_an_n_plus_one_only_in_test_setup_or_libraries_has_no_line(
         (f"{REPO}/baseapp_wagtail/conftest.py", False),
         (f"{PROJECT}/apps/users/tests/test_users.py", False),
         (f"{PROJECT}/apps/users/tests.py", False),
+        (f"{PROJECT}/apps/users/model_tests.py", False),
         (f"{SITE_PACKAGES}/baseapp_core/models.py", True),
         (f"{SITE_PACKAGES}/baseapp/files/graphql/object_types.py", True),
         (f"{SITE_PACKAGES}/django/db/models/fields/related_descriptors.py", False),
@@ -168,7 +170,7 @@ def test_zeal_context_wraps_a_task() -> None:
     n_plus_one.end_zeal_context(task_id="task-1")
 
     assert _nplusone_context.get() is outer
-    assert "task-1" not in n_plus_one._task_tokens
+    assert "task-1" not in n_plus_one._task_tokens.by_task
 
 
 def test_a_replaced_task_restores_the_outer_context() -> None:
@@ -183,7 +185,40 @@ def test_a_replaced_task_restores_the_outer_context() -> None:
 
     n_plus_one.end_zeal_context(task_id="task-r")
     assert _nplusone_context.get() is outer
-    assert "task-r" not in n_plus_one._task_tokens
+    assert "task-r" not in n_plus_one._task_tokens.by_task
+
+
+def test_each_thread_closes_its_own_task_context() -> None:
+    """A threaded worker can run two executions of one task id at once (a retry)."""
+    first_open, second_open, first_done = threading.Event(), threading.Event(), threading.Event()
+    errors: list[BaseException] = []
+
+    def execution(opens: threading.Event, waits_for: threading.Event) -> None:
+        try:
+            outer = _nplusone_context.get()
+            n_plus_one.start_zeal_context(task_id="task-t")
+            opens.set()
+            waits_for.wait(timeout=5)
+            n_plus_one.end_zeal_context(task_id="task-t")
+            assert _nplusone_context.get() is outer
+        except BaseException as error:  # noqa: BLE001 - re-raised below, in the test's thread
+            errors.append(error)
+
+    def first() -> None:
+        execution(first_open, second_open)  # ends while the second is still open
+        first_done.set()
+
+    def second() -> None:
+        first_open.wait(timeout=5)
+        execution(second_open, first_done)
+
+    threads = [threading.Thread(target=first), threading.Thread(target=second)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=5)
+
+    assert errors == []
 
 
 def test_the_plugin_loads_without_zeal_installed() -> None:
@@ -216,6 +251,16 @@ def test_the_plugin_needs_zeal_and_this_app(
     monkeypatch.setattr(apps, "is_installed", lambda name: name in installed)
 
     assert pytest_plugin._enabled() is enabled
+
+
+def test_the_plugin_loads_on_a_pytest_without_terminal_reporter() -> None:
+    """pytest exports TerminalReporter only from 8.4; the plugin must load on older ones too."""
+    code = (
+        "import pytest; del pytest.TerminalReporter\nimport baseapp_core.n_plus_one.pytest_plugin\n"
+    )
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+
+    assert result.returncode == 0, result.stderr
 
 
 def test_ending_a_task_without_a_context_does_nothing() -> None:

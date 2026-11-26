@@ -5,6 +5,10 @@ or with ``-p baseapp_core.n_plus_one.pytest_plugin``. It does nothing unless the
 install "zeal" (and this app); zeal is imported only then.
 """
 
+# Annotations stay unevaluated: pytest exports TerminalReporter only from 8.4, and a project on an
+# older pytest must still be able to load the plugin.
+from __future__ import annotations
+
 import sys
 from collections.abc import Iterator
 

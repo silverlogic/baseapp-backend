@@ -20,6 +20,7 @@ See README.md.
 import logging
 import os
 import sys
+import threading
 import warnings
 from collections import Counter, defaultdict
 from contextvars import Token
@@ -31,8 +32,21 @@ from django.conf import settings
 logger = logging.getLogger("zeal")
 
 _reported: set[str] = set()
-# A stack per task id: a task that calls self.replace() runs its replacement under the same id.
-_task_tokens: dict[str, list[Token]] = {}
+
+
+class _TaskTokens(threading.local):
+    """The zeal contexts open for tasks, per thread, with a stack per task id.
+
+    A stack, because a task that calls self.replace() runs its replacement under the same id. Per
+    thread, because a threaded worker can run two executions of one task id at once (a retry), and
+    a context var token resets only in the thread that set it.
+    """
+
+    def __init__(self) -> None:
+        self.by_task: dict[str, list[Token]] = {}
+
+
+_task_tokens = _TaskTokens()
 
 WARNING_MODULE = "baseapp_core.n_plus_one"
 _PACKAGE_DIR = os.path.dirname(__file__)
@@ -73,6 +87,7 @@ def _is_test_code(filename: str) -> bool:
     return (
         "tests" in directory.split(os.sep)
         or name.startswith("test_")
+        or name.endswith("_tests.py")  # pytest.ini collects these too
         or name in ("tests.py", "conftest.py")
     )
 
@@ -193,15 +208,15 @@ def start_zeal_context(task_id: str, **kwargs: Any) -> None:
     """Open a zeal context per task: the middleware covers requests, not tasks the worker runs."""
     from zeal import setup
 
-    _task_tokens.setdefault(task_id, []).append(setup())
+    _task_tokens.by_task.setdefault(task_id, []).append(setup())
 
 
 def end_zeal_context(task_id: str, **kwargs: Any) -> None:
     """Close the task's innermost zeal context; task_postrun fires on failure too."""
     from zeal import teardown
 
-    tokens = _task_tokens.get(task_id)
+    tokens = _task_tokens.by_task.get(task_id)
     if tokens:
         teardown(tokens.pop())
         if not tokens:
-            del _task_tokens[task_id]
+            del _task_tokens.by_task[task_id]
