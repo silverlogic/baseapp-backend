@@ -191,22 +191,25 @@ def test_a_replaced_task_restores_the_outer_context() -> None:
 def test_each_thread_closes_its_own_task_context() -> None:
     """A threaded worker can run two executions of one task id at once (a retry)."""
     first_open, second_open, first_done = threading.Event(), threading.Event(), threading.Event()
-    errors: list[BaseException] = []
+    errors: list[ValueError] = []
+    restored: list[bool] = []
 
     def execution(opens: threading.Event, waits_for: threading.Event) -> None:
+        outer = _nplusone_context.get()
+        n_plus_one.start_zeal_context(task_id="task-t")
+        opens.set()
+        waits_for.wait(timeout=5)
         try:
-            outer = _nplusone_context.get()
-            n_plus_one.start_zeal_context(task_id="task-t")
-            opens.set()
-            waits_for.wait(timeout=5)
             n_plus_one.end_zeal_context(task_id="task-t")
-            assert _nplusone_context.get() is outer
-        except BaseException as error:  # noqa: BLE001 - re-raised below, in the test's thread
+        except ValueError as error:  # a token reset in a thread other than the one that set it
             errors.append(error)
+        restored.append(_nplusone_context.get() is outer)
 
     def first() -> None:
-        execution(first_open, second_open)  # ends while the second is still open
-        first_done.set()
+        try:
+            execution(first_open, second_open)  # ends while the second is still open
+        finally:
+            first_done.set()
 
     def second() -> None:
         first_open.wait(timeout=5)
@@ -219,6 +222,7 @@ def test_each_thread_closes_its_own_task_context() -> None:
         thread.join(timeout=5)
 
     assert errors == []
+    assert restored == [True, True]
 
 
 def test_the_plugin_loads_without_zeal_installed() -> None:
