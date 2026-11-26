@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-30 14:59+0000\n"
+"POT-Creation-Date: 2026-11-26 18:27+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -277,6 +277,10 @@ msgstr "roles de usuario del perfil"
 msgid "Choose a profile you belong to with the Current-Profile header."
 msgstr "Elige un perfil al que pertenezcas con el encabezado Current-Profile."
 
+#: rest_framework/memberships/serializers.py services/members.py
+msgid "Invalid role type"
+msgstr "Tipo de rol inválido"
+
 #: rest_framework/memberships/serializers.py services/invitations.py
 msgid "At least one email is required"
 msgstr "Se requiere al menos un correo electrónico"
@@ -360,10 +364,6 @@ msgstr ""
 #: services/invitations.py
 msgid "This account has been deactivated. Contact an administrator."
 msgstr "Esta cuenta ha sido desactivada. Contacta con un administrador."
-
-#: services/members.py
-msgid "Invalid role type"
-msgstr "Tipo de rol inválido"
 
 #: services/members.py
 msgid "A profile must keep at least one active admin"

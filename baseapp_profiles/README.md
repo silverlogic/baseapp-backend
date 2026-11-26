@@ -634,7 +634,7 @@ credential.
 | `GET /profile-invitations` | Invitations, all statuses; `?status=`, `?role=`, `?q=` |
 | `POST /profile-invitations` | `{"emails": [...], "invitations": [{"email", "first_name", "last_name"}], "role": 2, "message": ""}` |
 | `GET /profile-invitations/{id}`, `POST .../resend`, `POST .../cancel` | |
-| `GET /profile-invitations/by-token/{token}` | Public summary (no sign-in, rate-limited) |
+| `GET /profile-invitations/by-token/{token}` | Public summary (no sign-in, rate-limited): `profile_name`, `profile_image`, `invited_email`, `invited_first_name`, `invited_last_name`, `inviter_name`, `message`, `role`, `status`, `expires_at`, `requires_sign_in` |
 | `POST /profile-invitations/by-token/{token}/accept`, `/decline` | Signed-in invitee |
 | `POST /profile-invitations/by-token/{token}/accept-with-signup` | `{"password", "first_name", "last_name"}` (no sign-in, rate-limited, opt-in) |
 

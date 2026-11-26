@@ -59,12 +59,29 @@ class ProfileMembershipAPIError(APIException):
         "account_inactive": status.HTTP_403_FORBIDDEN,
     }
 
-    def __init__(self, error: ProfileMembershipError) -> None:
-        self.status_code = self.STATUS_BY_CODE.get(error.code, status.HTTP_400_BAD_REQUEST)
-        super().__init__(detail={"non_field_errors": [error.message], "code": error.code})
+    def __init__(self, message: str, code: str) -> None:
+        self.status_code = self.STATUS_BY_CODE.get(code, status.HTTP_400_BAD_REQUEST)
+        super().__init__(detail={"non_field_errors": [message], "code": code})
+
+
+class ProfileMembershipErrorsMixin:
+    """
+    Answers a refusal from the membership services (`ProfileMembershipError`) with its
+    message and code, in one place instead of in every action.
+
+    Only that refusal is translated: its message is the text the services wrote for the
+    user. Any other exception is left to DRF, which answers with a generic error, so no
+    exception detail or stack trace reaches the client.
+    """
+
+    def handle_exception(self, exc: Exception) -> Response:
+        if isinstance(exc, ProfileMembershipError):
+            exc = ProfileMembershipAPIError(exc.message, exc.code)
+        return super().handle_exception(exc)
 
 
 class ProfileMembersViewSet(
+    ProfileMembershipErrorsMixin,
     CurrentProfileMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
@@ -118,53 +135,42 @@ class ProfileMembersViewSet(
         membership = self.get_object()
         serializer = ProfileMemberRoleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        try:
-            member_service.change_member_role(
-                membership,
-                serializer.validated_data["role"],
-                by=request.user,
-                allow_last_admin=can_override_last_admin(request.user, membership.profile),
-            )
-        except ProfileMembershipError as error:
-            raise ProfileMembershipAPIError(error)
+        member_service.change_member_role(
+            membership,
+            serializer.validated_data["role"],
+            by=request.user,
+            allow_last_admin=can_override_last_admin(request.user, membership.profile),
+        )
         return self._respond(membership)
 
     def destroy(self, request: Request, *args, **kwargs) -> Response:
-        try:
-            membership = self.get_object()
-            member_service.remove_member(
-                membership,
-                by=request.user,
-                allow_last_admin=can_override_last_admin(request.user, membership.profile),
-            )
-        except ProfileMembershipError as error:
-            raise ProfileMembershipAPIError(error)
+        membership = self.get_object()
+        member_service.remove_member(
+            membership,
+            by=request.user,
+            allow_last_admin=can_override_last_admin(request.user, membership.profile),
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["post"])
     def deactivate(self, request: Request, *args, **kwargs) -> Response:
         membership = self.get_object()
-        try:
-            member_service.deactivate_member(
-                membership,
-                by=request.user,
-                allow_last_admin=can_override_last_admin(request.user, membership.profile),
-            )
-        except ProfileMembershipError as error:
-            raise ProfileMembershipAPIError(error)
+        member_service.deactivate_member(
+            membership,
+            by=request.user,
+            allow_last_admin=can_override_last_admin(request.user, membership.profile),
+        )
         return self._respond(membership)
 
     @action(detail=True, methods=["post"])
     def reactivate(self, request: Request, *args, **kwargs) -> Response:
         membership = self.get_object()
-        try:
-            member_service.reactivate_member(membership, by=request.user)
-        except ProfileMembershipError as error:
-            raise ProfileMembershipAPIError(error)
+        member_service.reactivate_member(membership, by=request.user)
         return self._respond(membership)
 
 
 class ProfileInvitationsViewSet(
+    ProfileMembershipErrorsMixin,
     CurrentProfileMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
@@ -245,32 +251,23 @@ class ProfileInvitationsViewSet(
     def create(self, request: Request, *args, **kwargs) -> Response:
         serializer = ProfileInvitationSendSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        try:
-            result = invitation_service.send_invitations(
-                get_current_profile(request),
-                serializer.validated_data["invitees"],
-                role=serializer.validated_data["role"],
-                invited_by=request.user,
-                message=serializer.validated_data["message"],
-            )
-        except ProfileMembershipError as error:
-            raise ProfileMembershipAPIError(error)
+        result = invitation_service.send_invitations(
+            get_current_profile(request),
+            serializer.validated_data["invitees"],
+            role=serializer.validated_data["role"],
+            invited_by=request.user,
+            message=serializer.validated_data["message"],
+        )
         return self._sent_response(result, status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"])
     def resend(self, request: Request, *args, **kwargs) -> Response:
-        try:
-            result = invitation_service.resend_invitation(self.get_object(), by=request.user)
-        except ProfileMembershipError as error:
-            raise ProfileMembershipAPIError(error)
+        result = invitation_service.resend_invitation(self.get_object(), by=request.user)
         return self._sent_response(result, status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"])
     def cancel(self, request: Request, *args, **kwargs) -> Response:
-        try:
-            invitation = invitation_service.cancel_invitation(self.get_object(), by=request.user)
-        except ProfileMembershipError as error:
-            raise ProfileMembershipAPIError(error)
+        invitation = invitation_service.cancel_invitation(self.get_object(), by=request.user)
         if invitation.pk is None:
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(self.get_serializer(invitation).data)
@@ -279,27 +276,21 @@ class ProfileInvitationsViewSet(
     def lookup(self, request: Request, token: str, *args, **kwargs) -> Response:
         invitation = invitation_service.lookup_invitation(token)
         if invitation is None:
-            raise ProfileMembershipAPIError(
-                ProfileMembershipError(_("Invalid invitation token"), "invalid_token")
-            )
-        return Response(PublicInvitationSerializer(invitation).data)
+            raise ProfileMembershipError(_("Invalid invitation token"), "invalid_token")
+        return Response(
+            PublicInvitationSerializer(invitation, context=self.get_serializer_context()).data
+        )
 
     @action(detail=False, methods=["post"], url_path=f"{TOKEN_URL}/accept", url_name="accept")
     def accept(self, request: Request, token: str, *args, **kwargs) -> Response:
-        try:
-            invitation = invitation_service.accept_invitation(token, request.user)
-        except ProfileMembershipError as error:
-            raise ProfileMembershipAPIError(error)
+        invitation = invitation_service.accept_invitation(token, request.user)
         return Response(
             InvitationResponseSerializer(invitation, context=self.get_serializer_context()).data
         )
 
     @action(detail=False, methods=["post"], url_path=f"{TOKEN_URL}/decline", url_name="decline")
     def decline(self, request: Request, token: str, *args, **kwargs) -> Response:
-        try:
-            invitation = invitation_service.decline_invitation(token, request.user)
-        except ProfileMembershipError as error:
-            raise ProfileMembershipAPIError(error)
+        invitation = invitation_service.decline_invitation(token, request.user)
         return Response(
             InvitationResponseSerializer(invitation, context=self.get_serializer_context()).data
         )
@@ -313,15 +304,12 @@ class ProfileInvitationsViewSet(
     def accept_with_signup(self, request: Request, token: str, *args, **kwargs) -> Response:
         serializer = InvitationSignupSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        try:
-            invitation = invitation_service.accept_invitation_with_signup(
-                token,
-                password=serializer.validated_data["password"],
-                first_name=serializer.validated_data.get("first_name"),
-                last_name=serializer.validated_data.get("last_name"),
-            )
-        except ProfileMembershipError as error:
-            raise ProfileMembershipAPIError(error)
+        invitation = invitation_service.accept_invitation_with_signup(
+            token,
+            password=serializer.validated_data["password"],
+            first_name=serializer.validated_data.get("first_name"),
+            last_name=serializer.validated_data.get("last_name"),
+        )
         return Response(
             InvitationResponseSerializer(invitation, context=self.get_serializer_context()).data,
             status=status.HTTP_201_CREATED,

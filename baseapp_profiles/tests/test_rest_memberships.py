@@ -261,19 +261,41 @@ class TestTokenEndpoints:
     def _url(self, invitation, suffix="") -> str:
         return f"{INVITATIONS}/by-token/{invitation.invitation_token}{suffix}"
 
-    def test_lookup_is_public_and_minimal(self, invitation) -> None:
+    def test_lookup_is_public_and_minimal(self, org) -> None:
+        profile, admin, _ = org
+        invitation = service.send_invitations(
+            profile,
+            [{"email": "ann@example.com", "first_name": "Ann", "last_name": "Lee"}],
+            role=ADMIN,
+            invited_by=admin.user,
+            message="Welcome aboard",
+        ).invitations[0]
+
         response = client_for().get(self._url(invitation))
 
         assert response.status_code == 200
-        assert set(response.json()) == {
-            "profile_name",
-            "invited_email",
-            "role",
-            "status",
-            "expires_at",
+        # The same summary the GraphQL `profileInvitationPreview` gives, and nothing else.
+        assert response.json() == {
+            "profile_name": "Acme",
+            "profile_image": None,
+            "invited_email": "ann@example.com",
+            "invited_first_name": "Ann",
+            "invited_last_name": "Lee",
+            "inviter_name": admin.user.get_full_name() or admin.user.email,
+            "message": "Welcome aboard",
+            "role": ADMIN,
+            "status": Status.PENDING,
+            "expires_at": response.json()["expires_at"],
+            "requires_sign_in": False,
         }
-        assert response.json()["profile_name"] == "Acme"
-        assert response.json()["status"] == Status.PENDING
+        assert response.json()["expires_at"] is not None
+
+    def test_lookup_tells_an_invitee_with_an_account_to_sign_in(self, invitation) -> None:
+        UserFactory(email="ann@example.com")
+
+        response = client_for().get(self._url(invitation))
+
+        assert response.json()["requires_sign_in"] is True
 
     def test_lookup_of_an_unknown_token(self) -> None:
         response = client_for().get(f"{INVITATIONS}/by-token/unknown")
@@ -369,3 +391,34 @@ class TestTokenEndpoints:
         statuses = [client.get(self._url(invitation)).status_code for _ in range(3)]
 
         assert statuses == [200, 200, 429]
+
+
+class TestErrors:
+    def test_an_unexpected_error_is_not_described_to_the_client(self, org, monkeypatch) -> None:
+        profile, admin, manager = org
+
+        def explode(*args, **kwargs) -> None:
+            raise RuntimeError("secret detail: db-host-17")
+
+        monkeypatch.setattr(
+            "baseapp_profiles.rest_framework.memberships.views.member_service.deactivate_member",
+            explode,
+        )
+        client = client_for(admin.user, profile)
+        client.raise_request_exception = False
+
+        response = client.post(f"{MEMBERS}/{manager.pk}/deactivate")
+
+        assert response.status_code == 500
+        assert b"secret detail" not in response.content
+
+    def test_a_refusal_carries_only_its_message_and_code(self, org) -> None:
+        profile, admin, _ = org
+
+        response = client_for(admin.user, profile).post(f"{MEMBERS}/{admin.pk}/deactivate")
+
+        assert response.status_code == 400
+        assert response.json() == {
+            "non_field_errors": ["A profile must keep at least one active admin"],
+            "code": "last_admin",
+        }

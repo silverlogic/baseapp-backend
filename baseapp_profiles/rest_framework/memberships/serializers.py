@@ -2,19 +2,14 @@ import swapper
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from baseapp_profiles.exceptions import ProfileMembershipError
-from baseapp_profiles.services.members import validate_role
-
 from ..serializers import JWTProfileSerializer
 
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
 
 def _validate_assignable_role(role: int) -> int:
-    try:
-        validate_role(role)
-    except ProfileMembershipError as error:
-        raise serializers.ValidationError([error.message])
+    if role not in ProfileUserRole.assignable_roles():
+        raise serializers.ValidationError([_("Invalid role type")])
     return role
 
 
@@ -130,6 +125,12 @@ class PublicInvitationSerializer(serializers.Serializer):
     role = serializers.IntegerField()
     status = serializers.IntegerField()
     expires_at = serializers.DateTimeField(allow_null=True)
+    invited_first_name = serializers.CharField(allow_blank=True)
+    invited_last_name = serializers.CharField(allow_blank=True)
+    inviter_name = serializers.CharField(allow_blank=True)
+    message = serializers.CharField(allow_blank=True)
+    profile_image = serializers.ImageField(allow_null=True)
+    requires_sign_in = serializers.BooleanField()
 
 
 class InvitationSignupSerializer(serializers.Serializer):
