@@ -160,7 +160,8 @@ def test_anon_see_comments_and_replies(django_user_client, graphql_client_with_q
     assert content["data"]["node"]["comments"]["edges"][0]["node"]["commentsCount"]["main"] == 2
     assert len(content["data"]["node"]["comments"]["edges"][0]["node"]["comments"]["edges"]) == 2
 
-    assert queries.count == 13
+    # +2 for node(comment): view_comment loads the comment's target (view_target_comments).
+    assert queries.count == 15
 
     ### Optimized queries.
     ### Queries 2 and 3 are ContentType lookups; they are usually cached after
@@ -210,7 +211,8 @@ def test_anon_see_comments_and_replies_with_pagination(
         "hasNextPage"
     ]
 
-    assert queries.count == 13
+    # +2 for node(comment): view_comment loads the comment's target (view_target_comments).
+    assert queries.count == 15
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
@@ -554,7 +556,8 @@ def test_comments_query_is_partially_optimized(
     content = response.json()
 
     assert content["data"]["node"]["commentsCount"]["replies"] == 5
-    assert queries.count == 7
+    # +2 for node(comment): view_comment loads the comment's target (view_target_comments).
+    assert queries.count == 9
 
     # With optimizer queries are expected to be 7:
     # 1. ContentType lookup for comments.comment (cold-cache; cached after first request in production)
@@ -612,7 +615,8 @@ def test_comments_query_is_optimized_with_nested_replies(
     assert any(n["commentsCount"]["main"] >= 1 for n in comment_nodes)
     # Root + nested comments connections (incl. status-filtered duplicate) + metadata subqueries;
     # stays flat (no per-row CommentableMetadata fetch) thanks to annotate_queryset on both optimizers.
-    assert queries.count == 12
+    # +2 for node(comment): view_comment loads the comment's target (view_target_comments).
+    assert queries.count == 14
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
@@ -637,7 +641,8 @@ def test_comments_query_is_partially_optimized_with_public_id(
     content = response.json()
 
     assert content["data"]["node"]["commentsCount"]["replies"] == 5
-    assert queries.count == 12
+    # +2 for node(comment): view_comment loads the comment's target (view_target_comments).
+    assert queries.count == 14
 
     ### Optimized queries.
     # 1) 'SELECT "baseapp_core_documentid"."id", "baseapp_core_documentid"."created", "baseapp_core_documentid"."modified", "baseapp_core_documentid"."public_id", "baseapp_core_documentid"."content_type_id", "baseapp_core_documentid"."object_id", "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "baseapp_core_documentid" INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE "baseapp_core_documentid"."public_id" = 426019ba-e5de-4d20-bef9-7ec0af7c4f4e LIMIT 21',
@@ -682,7 +687,8 @@ def test_comments_query_is_partially_optimized_with_public_id_and_pagination(
     )  # Because the max_limit is 100 by default
     assert content["data"]["node"]["comments"]["pageInfo"]["hasNextPage"]
 
-    assert queries.count == 12
+    # +2 for node(comment): view_comment loads the comment's target (view_target_comments).
+    assert queries.count == 14
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
