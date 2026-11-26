@@ -4,7 +4,71 @@ An optimization nobody asserts on is an optimization that will be removed by acc
 N+1s here are silent — correct data, wrong query count — the test *is* the specification.
 
 **Every list path a block exposes should have one.** This repo uses no
-`django_assert_num_queries` and no `assertNumQueries`; there are two house styles.
+`django_assert_num_queries` and no `assertNumQueries`.
+
+## Start here: the two helpers
+
+`baseapp_core.graphql.testing` ships two assertions that cover styles 1 to 3 below in one call
+each. Reach for them first; write the hand-rolled forms only for SQL-shape checks (style 4) or
+when you need the exact numbered breakdown of style 1.
+
+```python
+from baseapp_core.graphql.testing import assert_max_queries, assert_queries_dont_grow
+```
+
+**Lists: `assert_queries_dont_grow`.** Runs the operation with `small` items (1), then `big`
+(20), and fails when the count grows by more than `per_item` per extra item. This is the check
+that catches an N+1, and it doesn't break when someone adds a field.
+
+```python
+def test_members_dont_grow(graphql_user_client, django_user_client) -> None:
+    profile = django_user_client.user.profile
+
+    assert_queries_dont_grow(
+        run=lambda: graphql_user_client(
+            MEMBERS_QUERY,
+            variables={"id": profile.relay_id},
+            headers={"HTTP_CURRENT_PROFILE": profile.relay_id},
+        ),
+        add_items=lambda n: ProfileUserRoleFactory.create_batch(n, profile=profile),
+        hint="resolve_members started querying per row",
+    )
+```
+
+`per_item=0` (the default) is the strict check. An N+1 you accept gets `per_item=k` and a
+comment saying why and which story removes it: the bound is still enforced, so the list can't
+get worse. `add_items(n)` runs outside the capture.
+
+**Single objects: `assert_max_queries`.** A capture window, not a runner: wrap the request the
+test already makes and keep asserting on its response. No second request.
+
+```python
+def test_profile_page(graphql_user_client, profile) -> None:
+    with assert_max_queries(12, hint="the profile lost one of its metadata annotations"):
+        response = graphql_user_client(PROFILE_PAGE_QUERY, variables={"id": profile.relay_id})
+    assert response.json()["data"]["profile"]["name"] == profile.name
+```
+
+It also works as a decorator (`@assert_max_queries(12)`), which counts the whole test body:
+fixtures run before the window opens, but factories called in the body are counted, so use
+`with` when the body creates data.
+
+Both helpers:
+
+- count with `capture_database_queries()`, so their numbers match `QueryData`'s (transaction
+  statements and constance reads excluded);
+- clear the ContentType cache before each capture, so counts don't depend on test order;
+- print the counts, the `hint` as "Likely cause", and every captured query with its SQL and
+  abridged stack when they fail. Write the hint the way style 2 writes its ranked causes;
+- work with any client fixture and any headers (`Current-Profile` included).
+
+`assert_queries_dont_grow` also fails on a response with GraphQL `errors` or an error status,
+before comparing counts: a request that errors out early runs few queries and would otherwise
+pass. The capture window can't see the response, so assert on the data after it.
+
+`baseapp_profiles/tests/test_graphql_query_counts.py` uses both.
+
+The styles below are what the helpers replace, and what existing tests still use.
 
 ## Style 1 — exact count with a per-query explanation
 
@@ -143,14 +207,15 @@ def _captured_sql(ctx) -> list[str]:
 
 ## Picking a style
 
-| Situation | Style |
+| Situation | Use |
 |---|---|
-| Stable path you can fully enumerate | 1 — exact count + numbered comment |
-| Count churns with optimizer internals | 2 — upper bound + ranked causes |
-| Proving absence of fan-out | 3 — small vs big, plus a named budget |
-| Batching / write-path shape | 4 — filter the captured SQL |
+| A list or connection: proving absence of fan-out | `assert_queries_dont_grow` (style 3) |
+| A single object, or a count that churns with optimizer internals | `assert_max_queries` with a `hint` (style 2) |
+| Stable path where every query should be explained | style 1 — exact count + numbered comment |
+| Batching / write-path shape | style 4 — filter the captured SQL |
 
-Styles 2 and 3 combine well: assert `big == small` *and* `small == BUDGET`.
+Styles 2 and 3 combine well: `small, big = assert_queries_dont_grow(...)` returns both
+`QueryData`, so a test can also pin `small.count` to a named budget.
 
 ## Where these live
 

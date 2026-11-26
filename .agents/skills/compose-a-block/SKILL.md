@@ -200,10 +200,12 @@ connection.
 ---
 
 ### 11. Query-Count Regression Tests
-Optimization that isn't pinned by a test regresses. Two house styles: `graphql_client_with_queries`
-for exact counts with a per-query explanation, and `CaptureQueriesContext` for upper bounds and
-SQL-shape assertions. The strongest form asserts that **doubling the data doesn't change the
-count**. Every assertion carries a ranked "likely cause" message.
+Optimization that isn't pinned by a test regresses. Start with the helpers in
+`baseapp_core.graphql.testing`: `assert_queries_dont_grow` for lists (fails when the count grows
+with the data, the check that catches an N+1) and `assert_max_queries` for single objects (a
+capture window around the request the test already makes). Hand-rolled `QueryData` /
+`CaptureQueriesContext` assertions remain for exact per-query breakdowns and SQL-shape checks.
+Every assertion carries a ranked "likely cause" message (the helpers' `hint`).
 
 Read `references/query-count-tests.md` when: finishing any optimization work, adding an ObjectType
 on a list path, or reviewing a PR that changes a hook, an interface field, or a connection field.
