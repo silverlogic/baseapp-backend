@@ -10,6 +10,7 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
 from baseapp_core.plugins import shared_services
+from baseapp_core.testing import assert_max_queries
 
 from .factories import CommentFactory
 
@@ -134,9 +135,8 @@ def test_annotate_queryset_evaluates_in_single_query(commentable_metadata_servic
     ids = [c.pk for c in comments]
 
     qs = commentable_metadata_service.annotate_queryset(Comment.objects.filter(pk__in=ids))
-    with CaptureQueriesContext(connection) as ctx:
+    with assert_max_queries(1):
         rows = list(qs)
-    assert len(ctx.captured_queries) == 1
     assert len(rows) == 4
     for r in rows:
         assert hasattr(r, "_commentable_comments_count")

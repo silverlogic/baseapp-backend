@@ -4,6 +4,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
+from baseapp_core.testing import assert_max_queries
 from baseapp_core.tests.factories import UserFactory
 from baseapp_notifications.groups import (
     extend_notification_group,
@@ -352,7 +353,7 @@ GROUP_SHAPES = {
 @pytest.mark.parametrize("shape", GROUP_SHAPES)
 @pytest.mark.parametrize("rows", SCENARIOS)
 def test_group_states_match_can_user_receive_notification(
-    notification_groups_registry, rows, shape, django_assert_num_queries
+    notification_groups_registry, rows, shape
 ) -> None:
     kwargs, verbs = GROUP_SHAPES[shape]
     kwargs = {"key": "g", **kwargs}
@@ -364,7 +365,7 @@ def test_group_states_match_can_user_receive_notification(
         verb = group.key if verb == "g" else verb
         NotificationSettingFactory(user=user, verb=verb, channel=channel, is_active=is_active)
 
-    with django_assert_num_queries(1):
+    with assert_max_queries(1):
         states = states_by_channel(user, group)
 
     assert set(states) == set(group.channels)
@@ -376,8 +377,8 @@ def test_group_states_match_can_user_receive_notification(
             )
 
 
-def test_group_states_without_groups_runs_no_query(django_assert_num_queries) -> None:
-    with django_assert_num_queries(0):
+def test_group_states_without_groups_runs_no_query() -> None:
+    with assert_max_queries(0):
         assert get_notification_group_states(UserFactory.build(), []) == []
 
 

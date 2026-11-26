@@ -11,8 +11,9 @@ of how many `Rate` rows exist for the target — locks in the
 """
 
 import pytest
-from django.contrib.contenttypes.models import ContentType
+from django.http import HttpResponse
 
+from baseapp_core.testing import assert_max_queries, assert_queries_dont_grow
 from baseapp_core.tests.factories import UserFactory
 
 from .factories import RateFactory
@@ -23,8 +24,10 @@ pytestmark = pytest.mark.django_db
 # Baseline for `ratingsCount` + `ratingsSum` + `ratingsAverage` on one User node:
 # 1× relay `node()` (documentid + content_type JOIN) + 1× `users_user` load with
 # `RatableMetadata` inlined as a Subquery via `pre_optimization_hook`.
+# The User ContentType lookup counts too: `assert_max_queries` starts from a cold
+# ContentType cache, so the number doesn't depend on which tests ran first.
 # Update this number deliberately if you change the resolver / annotation path.
-EXPECTED_RATINGS_INTERFACE_QUERY_COUNT = 2
+EXPECTED_RATINGS_INTERFACE_QUERY_COUNT = 3
 
 
 COUNTS_ONLY_QUERY = """
@@ -41,65 +44,53 @@ COUNTS_ONLY_QUERY = """
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_anon_ratings_count_is_flat_regardless_of_rate_volume(
-    django_user_client, graphql_client_with_queries
-) -> None:
-    """`ratingsCount` should be a flat query path: regardless of how many `Rate`
-    rows point at the target, the GraphQL query should make the same number of DB
-    round-trips (modulo content-type cache jitter)."""
-    target_small = django_user_client.user
-    for _ in range(3):
-        RateFactory(target=target_small, user=UserFactory(), value=4)
+def test_anon_ratings_count_is_flat_regardless_of_rate_volume(graphql_client) -> None:
+    """`ratingsCount` resolves off an annotation on the target fetch: 20 rates take the same
+    queries as 3."""
+    target = UserFactory()
 
-    ContentType.objects.clear_cache()
-    response_small, queries_small = graphql_client_with_queries(
-        COUNTS_ONLY_QUERY, variables={"id": target_small.relay_id}
+    relay_id = target.relay_id  # resolve outside the capture
+
+    def query() -> HttpResponse:
+        return graphql_client(COUNTS_ONLY_QUERY, variables={"id": relay_id})
+
+    assert_queries_dont_grow(
+        run=query,
+        add_items=lambda n: [
+            RateFactory(target=target, user=UserFactory(), value=4) for _ in range(n)
+        ],
+        small=3,
+        big=20,
+        hint="RatableMetadataService.annotate_queryset is no longer applied to the target",
     )
-    assert response_small.json()["data"]["node"]["ratingsCount"] == 3
-    small_count = queries_small.count
 
-    big_target = UserFactory()
-    for _ in range(20):
-        RateFactory(target=big_target, user=UserFactory(), value=5)
-
-    ContentType.objects.clear_cache()
-    response_big, queries_big = graphql_client_with_queries(
-        COUNTS_ONLY_QUERY, variables={"id": big_target.relay_id}
-    )
-    assert response_big.json()["data"]["node"]["ratingsCount"] == 20
-
-    # 20 rates vs. 3 rates: query count must not grow with row count.
-    assert queries_big.count == small_count
-    # Absolute baseline, catches regressions that bump both sides together
-    assert small_count == EXPECTED_RATINGS_INTERFACE_QUERY_COUNT
+    # Absolute baseline, catches regressions that bump both sides together.
+    with assert_max_queries(EXPECTED_RATINGS_INTERFACE_QUERY_COUNT):
+        response = query()
+    assert response.json()["data"]["node"]["ratingsCount"] == 20
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_anon_ratings_count_zero_when_no_rates_does_not_extra_query(
-    django_user_client, graphql_client_with_queries
-) -> None:
-    """A target with no rates should resolve in the same query budget as one with
-    rates — the metadata row simply doesn't exist yet, and `Coalesce` returns the
-    zero defaults without an extra round trip."""
-    target_with_rates = django_user_client.user
-    for _ in range(3):
-        RateFactory(target=target_with_rates, user=UserFactory(), value=4)
+def test_anon_ratings_count_zero_when_no_rates_does_not_extra_query(graphql_client) -> None:
+    """A target with no rates resolves in the same budget as one with rates: the metadata row
+    doesn't exist yet, and `Coalesce` returns the zero defaults without an extra round trip."""
+    target = UserFactory()
 
-    ContentType.objects.clear_cache()
-    response_with, queries_with = graphql_client_with_queries(
-        COUNTS_ONLY_QUERY, variables={"id": target_with_rates.relay_id}
+    relay_id = target.relay_id  # resolve outside the capture
+
+    def query() -> HttpResponse:
+        return graphql_client(COUNTS_ONLY_QUERY, variables={"id": relay_id})
+
+    with assert_max_queries(EXPECTED_RATINGS_INTERFACE_QUERY_COUNT):
+        response = query()
+    assert response.json()["data"]["node"]["ratingsCount"] == 0
+
+    assert_queries_dont_grow(
+        run=query,
+        add_items=lambda n: [
+            RateFactory(target=target, user=UserFactory(), value=4) for _ in range(n)
+        ],
+        small=0,
+        big=3,
+        hint="a missing RatableMetadata row costs an extra query instead of falling to Coalesce",
     )
-    assert response_with.json()["data"]["node"]["ratingsCount"] == 3
-
-    target_empty = UserFactory()
-
-    ContentType.objects.clear_cache()
-    response_empty, queries_empty = graphql_client_with_queries(
-        COUNTS_ONLY_QUERY, variables={"id": target_empty.relay_id}
-    )
-    assert response_empty.json()["data"]["node"]["ratingsCount"] == 0
-
-    # Empty / populated targets share the same query plan.
-    assert queries_empty.count == queries_with.count
-    # Absolute baseline, same expected count as the populated path.
-    assert queries_empty.count == EXPECTED_RATINGS_INTERFACE_QUERY_COUNT

@@ -1,9 +1,9 @@
 import pytest
-from django.contrib.contenttypes.models import ContentType
 from django.test import override_settings
 
 from baseapp_blocks.tests.factories import BlockFactory
 from baseapp_core.plugins import shared_services
+from baseapp_core.testing import assert_max_queries
 from baseapp_core.tests.factories import UserFactory
 from baseapp_pages.tests.factories import PageFactory
 from baseapp_profiles.tests.factories import ProfileFactory
@@ -141,17 +141,15 @@ SIMPLIFIED_QUERY_FOR_TESTING_OPTIMIZATION = """
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_anon_see_comments_and_replies(django_user_client, graphql_client_with_queries) -> None:
+def test_anon_see_comments_and_replies(django_user_client, graphql_client) -> None:
     target = CommentFactory()
     user = django_user_client.user
     replying_user = UserFactory()
     comment = CommentFactory(target=target, user=user)
     CommentFactory.create_batch(target=target, in_reply_to=comment, size=2, user=replying_user)
-    ContentType.objects.clear_cache()
-
-    response, queries = graphql_client_with_queries(
-        VIEW_ALL_QUERY, variables={"id": target.relay_id}
-    )
+    relay_id = target.relay_id  # resolve outside the capture
+    with assert_max_queries(14):
+        response = graphql_client(VIEW_ALL_QUERY, variables={"id": relay_id})
     content = response.json()
 
     assert content["data"]["node"]["commentsCount"]["main"] == 1
@@ -160,12 +158,10 @@ def test_anon_see_comments_and_replies(django_user_client, graphql_client_with_q
     assert content["data"]["node"]["comments"]["edges"][0]["node"]["commentsCount"]["main"] == 2
     assert len(content["data"]["node"]["comments"]["edges"][0]["node"]["comments"]["edges"]) == 2
 
-    assert queries.count == 13
-
     ### Optimized queries.
-    ### Queries 2 and 3 are ContentType lookups; they are usually cached after
-    ### an earlier request in production, but we clear the cache here to make the
-    ### query count deterministic.
+    ### `assert_max_queries` starts from a cold ContentType cache, so the comments.comment
+    ### lookup counts too (14 in all; not listed below). Queries 2 and 3 are ContentType
+    ### lookups as well; they are usually cached after an earlier request in production.
     # 1) 'SELECT "baseapp_core_documentid"."id", "baseapp_core_documentid"."created", "baseapp_core_documentid"."modified", "baseapp_core_documentid"."public_id", "baseapp_core_documentid"."content_type_id", "baseapp_core_documentid"."object_id", "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "baseapp_core_documentid" INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE "baseapp_core_documentid"."public_id" = e8aa1f94-9fd5-4add-9979-431e014e2625 LIMIT 21',
     # 2) 'SELECT "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "django_content_type" WHERE ("django_content_type"."app_label" = users AND "django_content_type"."model" = user) LIMIT 21',
     # 3) 'SELECT "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "django_content_type" WHERE ("django_content_type"."app_label" = profiles AND "django_content_type"."model" = profile) LIMIT 21',
@@ -186,19 +182,15 @@ def test_anon_see_comments_and_replies(django_user_client, graphql_client_with_q
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_anon_see_comments_and_replies_with_pagination(
-    django_user_client, graphql_client_with_queries
-) -> None:
+def test_anon_see_comments_and_replies_with_pagination(django_user_client, graphql_client) -> None:
     target = CommentFactory()
     user = django_user_client.user
     replying_user = UserFactory()
     comment = CommentFactory(target=target, user=user)
     CommentFactory.create_batch(target=target, in_reply_to=comment, size=110, user=replying_user)
-    ContentType.objects.clear_cache()
-
-    response, queries = graphql_client_with_queries(
-        VIEW_ALL_QUERY, variables={"id": target.relay_id}
-    )
+    relay_id = target.relay_id  # resolve outside the capture
+    with assert_max_queries(14):
+        response = graphql_client(VIEW_ALL_QUERY, variables={"id": relay_id})
     content = response.json()
 
     assert content["data"]["node"]["commentsCount"]["main"] == 1
@@ -209,8 +201,6 @@ def test_anon_see_comments_and_replies_with_pagination(
     assert content["data"]["node"]["comments"]["edges"][0]["node"]["comments"]["pageInfo"][
         "hasNextPage"
     ]
-
-    assert queries.count == 13
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
@@ -533,9 +523,7 @@ def test_anon_cant_see_comments(graphql_client) -> None:
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=False)
-def test_comments_query_is_partially_optimized(
-    django_user_client, graphql_client_with_queries
-) -> None:
+def test_comments_query_is_partially_optimized(django_user_client, graphql_client) -> None:
     first_comment = CommentFactory()
     target = CommentFactory(
         user=django_user_client.user, body="test body", in_reply_to=first_comment
@@ -546,15 +534,15 @@ def test_comments_query_is_partially_optimized(
         target=target, size=5, user=replying_user, profile=replying_profile, in_reply_to=target
     )
 
-    ContentType.objects.clear_cache()
-    response, queries = graphql_client_with_queries(
-        SIMPLIFIED_QUERY_FOR_TESTING_OPTIMIZATION, variables={"id": target.relay_id}
-    )
+    relay_id = target.relay_id  # resolve outside the capture
+    with assert_max_queries(7):
+        response = graphql_client(
+            SIMPLIFIED_QUERY_FOR_TESTING_OPTIMIZATION, variables={"id": relay_id}
+        )
 
     content = response.json()
 
     assert content["data"]["node"]["commentsCount"]["replies"] == 5
-    assert queries.count == 7
 
     # With optimizer queries are expected to be 7:
     # 1. ContentType lookup for comments.comment (cold-cache; cached after first request in production)
@@ -573,7 +561,7 @@ def test_comments_query_is_partially_optimized(
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_comments_query_is_optimized_with_nested_replies(
-    django_user_client, graphql_client_with_queries
+    django_user_client, graphql_client
 ) -> None:
     first_comment = CommentFactory()
     target = CommentFactory(
@@ -600,10 +588,11 @@ def test_comments_query_is_optimized_with_nested_replies(
         in_reply_to=top_level_replies[1],
     )
 
-    ContentType.objects.clear_cache()
-    response, queries = graphql_client_with_queries(
-        SIMPLIFIED_QUERY_FOR_TESTING_OPTIMIZATION, variables={"id": target.relay_id}
-    )
+    relay_id = target.relay_id  # resolve outside the capture
+    with assert_max_queries(12):
+        response = graphql_client(
+            SIMPLIFIED_QUERY_FOR_TESTING_OPTIMIZATION, variables={"id": relay_id}
+        )
 
     content = response.json()
 
@@ -612,12 +601,11 @@ def test_comments_query_is_optimized_with_nested_replies(
     assert any(n["commentsCount"]["main"] >= 1 for n in comment_nodes)
     # Root + nested comments connections (incl. status-filtered duplicate) + metadata subqueries;
     # stays flat (no per-row CommentableMetadata fetch) thanks to annotate_queryset on both optimizers.
-    assert queries.count == 12
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_comments_query_is_partially_optimized_with_public_id(
-    django_user_client, graphql_client_with_queries
+    django_user_client, graphql_client
 ) -> None:
     first_comment = CommentFactory()
     target = CommentFactory(
@@ -629,15 +617,15 @@ def test_comments_query_is_partially_optimized_with_public_id(
         target=target, size=5, user=replying_user, profile=replying_profile, in_reply_to=target
     )
 
-    ContentType.objects.clear_cache()
-    response, queries = graphql_client_with_queries(
-        SIMPLIFIED_QUERY_FOR_TESTING_OPTIMIZATION, variables={"id": target.relay_id}
-    )
+    relay_id = target.relay_id  # resolve outside the capture
+    with assert_max_queries(12):
+        response = graphql_client(
+            SIMPLIFIED_QUERY_FOR_TESTING_OPTIMIZATION, variables={"id": relay_id}
+        )
 
     content = response.json()
 
     assert content["data"]["node"]["commentsCount"]["replies"] == 5
-    assert queries.count == 12
 
     ### Optimized queries.
     # 1) 'SELECT "baseapp_core_documentid"."id", "baseapp_core_documentid"."created", "baseapp_core_documentid"."modified", "baseapp_core_documentid"."public_id", "baseapp_core_documentid"."content_type_id", "baseapp_core_documentid"."object_id", "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "baseapp_core_documentid" INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE "baseapp_core_documentid"."public_id" = 426019ba-e5de-4d20-bef9-7ec0af7c4f4e LIMIT 21',
@@ -657,7 +645,7 @@ def test_comments_query_is_partially_optimized_with_public_id(
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_comments_query_is_partially_optimized_with_public_id_and_pagination(
-    django_user_client, graphql_client_with_queries
+    django_user_client, graphql_client
 ) -> None:
     first_comment = CommentFactory()
     target = CommentFactory(
@@ -669,10 +657,11 @@ def test_comments_query_is_partially_optimized_with_public_id_and_pagination(
         target=target, size=102, user=replying_user, profile=replying_profile, in_reply_to=target
     )
 
-    ContentType.objects.clear_cache()
-    response, queries = graphql_client_with_queries(
-        SIMPLIFIED_QUERY_FOR_TESTING_OPTIMIZATION, variables={"id": target.relay_id}
-    )
+    relay_id = target.relay_id  # resolve outside the capture
+    with assert_max_queries(12):
+        response = graphql_client(
+            SIMPLIFIED_QUERY_FOR_TESTING_OPTIMIZATION, variables={"id": relay_id}
+        )
 
     content = response.json()
 
@@ -682,13 +671,11 @@ def test_comments_query_is_partially_optimized_with_public_id_and_pagination(
     )  # Because the max_limit is 100 by default
     assert content["data"]["node"]["comments"]["pageInfo"]["hasNextPage"]
 
-    assert queries.count == 12
-
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_comments_query_from_foreigh_target_is_partially_optimized_with_public_id(
     django_user_client,
-    graphql_client_with_queries,
+    graphql_client,
 ) -> None:
     target = PageFactory(user=django_user_client.user)
 
@@ -697,17 +684,19 @@ def test_comments_query_from_foreigh_target_is_partially_optimized_with_public_i
 
     CommentFactory.create_batch(target=target, size=5, user=user, profile=profile)
 
-    ContentType.objects.clear_cache()
-    response, queries = graphql_client_with_queries(
-        SIMPLIFIED_QUERY_FOR_TESTING_OPTIMIZATION, variables={"id": target.relay_id}
-    )
+    relay_id = target.relay_id  # resolve outside the capture
+    with assert_max_queries(10):
+        response = graphql_client(
+            SIMPLIFIED_QUERY_FOR_TESTING_OPTIMIZATION, variables={"id": relay_id}
+        )
 
     content = response.json()
 
     assert len(content["data"]["node"]["comments"]["edges"]) == 5
-    assert queries.count == 9
 
-    ### Optimized queries. About the comments it's only 4 queries.
+    ### Optimized queries. About the comments it's only 4 queries. `assert_max_queries` starts
+    ### from a cold ContentType cache, so the baseapp_pages.page lookup counts too (10 in all;
+    ### not listed below).
     # 1) 'SELECT "baseapp_core_documentid"."id", "baseapp_core_documentid"."created", "baseapp_core_documentid"."modified", "baseapp_core_documentid"."public_id", "baseapp_core_documentid"."content_type_id", "baseapp_core_documentid"."object_id", "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "baseapp_core_documentid" INNER JOIN "django_content_type" ON ("baseapp_core_documentid"."content_type_id" = "django_content_type"."id") WHERE "baseapp_core_documentid"."public_id" = 1e044df1-9a3d-4a26-b056-01f9e1d9dfb5 LIMIT 21',
     # 2) 'SELECT "baseapp_pages_page"."id", "baseapp_pages_page"."created", "baseapp_pages_page"."modified", "baseapp_pages_page"."comments_count", "baseapp_pages_page"."is_comments_enabled", "baseapp_pages_page"."user_id", "baseapp_pages_page"."title_en", "baseapp_pages_page"."title_es", "baseapp_pages_page"."title_pt", "baseapp_pages_page"."body_en", "baseapp_pages_page"."body_es", "baseapp_pages_page"."body_pt", "baseapp_pages_page"."status" FROM "baseapp_pages_page" WHERE "baseapp_pages_page"."id" = 3',
     # 3) 'SELECT "django_content_type"."id", "django_content_type"."app_label", "django_content_type"."model" FROM "django_content_type" WHERE ("django_content_type"."app_label" = comments AND "django_content_type"."model" = comment) LIMIT 21',

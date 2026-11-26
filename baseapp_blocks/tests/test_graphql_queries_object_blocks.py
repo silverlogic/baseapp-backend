@@ -7,10 +7,12 @@ many `Block` rows point at the target, both on a direct Profile node and on a
 nested `block.target.blockersCount` list path.
 """
 
-import pytest
-from django.contrib.contenttypes.models import ContentType
+from collections.abc import Callable
 
-from baseapp_core.graphql.utils import capture_database_queries
+import pytest
+from django.http import HttpResponse
+
+from baseapp_core.testing import assert_max_queries, assert_queries_dont_grow
 from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.tests.factories import ProfileFactory
 
@@ -53,7 +55,7 @@ PROFILE_BLOCKING_LIST_QUERY = """
 
 # Absolute query budgets for the COUNTS_ONLY_QUERY path. These guard against
 # regressions where BOTH the small- and big-volume counts bump together (which
-# the per-test `big == small` assertion would miss). Bump these deliberately if
+# the growth check alone would miss). Bump these deliberately if
 # you change the resolver / annotation / middleware path and the new total is
 # the new normal — don't bump them to silence a failure without first
 # understanding which extra query was added.
@@ -62,7 +64,7 @@ PROFILE_BLOCKING_LIST_QUERY = """
 EXPECTED_BLOCKS_INTERFACE_QUERY_COUNT = 6
 
 # Regular user, COUNTS_ONLY_QUERY on a Profile node — perm-denied branch.
-# Upper bound (not equality) because Django's first `has_perm` call loads
+# A ceiling, because Django's first `has_perm` call loads
 # auth_user_user_permissions / auth_group / auth_group_permissions, which can
 # vary slightly with Django version and perm-cache behaviour.
 EXPECTED_BLOCKS_INTERFACE_PERM_DENIED_UPPER_BOUND = 10
@@ -72,143 +74,113 @@ EXPECTED_BLOCKS_INTERFACE_PERM_DENIED_UPPER_BOUND = 10
 EXPECTED_BLOCKS_INTERFACE_NESTED_LIST_QUERY_COUNT = 9
 
 
-@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_block_counts_are_flat_regardless_of_block_volume(
-    django_user_client, graphql_user_client
-) -> None:
-    """`blockersCount` / `blockingCount` on a Profile node take the same number
-    of queries for 3 blocks as for 20."""
+def add_blockers(target) -> Callable[[int], None]:
+    """`add_items` for a target's blockers: each new block comes from a new profile."""
+
+    def add(n: int) -> None:
+        for _ in range(n):
+            actor = ProfileFactory(owner=UserFactory())
+            BlockFactory(actor=actor, target=target, user=actor.owner)
+
+    return add
+
+
+@pytest.fixture
+def superuser_client(django_user_client, graphql_user_client) -> Callable[..., HttpResponse]:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
-
-    target_small = ProfileFactory()
-    for _ in range(3):
-        actor = ProfileFactory(owner=UserFactory())
-        BlockFactory(actor=actor, target=target_small, user=actor.owner)
-    small_relay_id = target_small.relay_id  # resolve outside `capture_database_queries`
-
-    ContentType.objects.clear_cache()
-    with capture_database_queries() as queries_small:
-        response_small = graphql_user_client(COUNTS_ONLY_QUERY, variables={"id": small_relay_id})
-    assert response_small.json()["data"]["node"]["blockersCount"] == 3
-    small_count = queries_small.count
-
-    big_target = ProfileFactory()
-    for _ in range(20):
-        actor = ProfileFactory(owner=UserFactory())
-        BlockFactory(actor=actor, target=big_target, user=actor.owner)
-    big_relay_id = big_target.relay_id
-
-    ContentType.objects.clear_cache()
-    with capture_database_queries() as queries_big:
-        response_big = graphql_user_client(COUNTS_ONLY_QUERY, variables={"id": big_relay_id})
-    assert response_big.json()["data"]["node"]["blockersCount"] == 20
-
-    assert queries_big.count == small_count
-    assert small_count == EXPECTED_BLOCKS_INTERFACE_QUERY_COUNT
+    return graphql_user_client
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_block_counts_zero_when_no_blocks_does_not_extra_query(
-    django_user_client, graphql_user_client
-) -> None:
-    """A Profile with no blocks resolves in the same query budget as one with
-    blocks — the missing metadata row falls through `Coalesce` to zero."""
-    django_user_client.user.is_superuser = True
-    django_user_client.user.save()
+def test_block_counts_are_flat_regardless_of_block_volume(superuser_client) -> None:
+    """`blockersCount` / `blockingCount` on a Profile node take the same number of queries for
+    3 blocks as for 20."""
+    target = ProfileFactory()
+    relay_id = target.relay_id  # resolve outside the capture
 
-    target_with_blocks = ProfileFactory()
-    for _ in range(3):
-        actor = ProfileFactory(owner=UserFactory())
-        BlockFactory(actor=actor, target=target_with_blocks, user=actor.owner)
-    with_blocks_relay_id = target_with_blocks.relay_id
+    def query() -> HttpResponse:
+        return superuser_client(COUNTS_ONLY_QUERY, variables={"id": relay_id})
 
-    ContentType.objects.clear_cache()
-    with capture_database_queries() as queries_with:
-        response_with = graphql_user_client(
-            COUNTS_ONLY_QUERY, variables={"id": with_blocks_relay_id}
-        )
-    assert response_with.json()["data"]["node"]["blockersCount"] == 3
+    assert_queries_dont_grow(
+        run=query,
+        add_items=add_blockers(target),
+        small=3,
+        big=20,
+        hint="BlockableMetadataService.annotate_queryset is no longer applied to the profile",
+    )
 
-    target_empty = ProfileFactory()
-    empty_relay_id = target_empty.relay_id
+    with assert_max_queries(EXPECTED_BLOCKS_INTERFACE_QUERY_COUNT):
+        response = query()
+    assert response.json()["data"]["node"]["blockersCount"] == 20
 
-    ContentType.objects.clear_cache()
-    with capture_database_queries() as queries_empty:
-        response_empty = graphql_user_client(COUNTS_ONLY_QUERY, variables={"id": empty_relay_id})
-    assert response_empty.json()["data"]["node"]["blockersCount"] == 0
 
-    assert queries_empty.count == queries_with.count
-    assert queries_empty.count == EXPECTED_BLOCKS_INTERFACE_QUERY_COUNT
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
+def test_block_counts_zero_when_no_blocks_does_not_extra_query(superuser_client) -> None:
+    """A Profile with no blocks resolves in the same query budget as one with blocks: the
+    missing metadata row falls through `Coalesce` to zero."""
+    target = ProfileFactory()
+    relay_id = target.relay_id
+
+    def query() -> HttpResponse:
+        return superuser_client(COUNTS_ONLY_QUERY, variables={"id": relay_id})
+
+    with assert_max_queries(EXPECTED_BLOCKS_INTERFACE_QUERY_COUNT):
+        response = query()
+    assert response.json()["data"]["node"]["blockersCount"] == 0
+
+    assert_queries_dont_grow(
+        run=query,
+        add_items=add_blockers(target),
+        small=0,
+        big=3,
+        hint="a missing BlockableMetadata row costs an extra query instead of falling to Coalesce",
+    )
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_block_counts_perm_denied_path_is_flat(graphql_user_client) -> None:
-    """A non-superuser sees `null` for both counts and the perm-check path
-    stays flat regardless of block volume."""
-    target_small = ProfileFactory()
-    for _ in range(3):
-        actor = ProfileFactory(owner=UserFactory())
-        BlockFactory(actor=actor, target=target_small, user=actor.owner)
-    small_relay_id = target_small.relay_id
+    """A non-superuser sees `null` for both counts, and the perm-check path stays flat
+    regardless of block volume."""
+    target = ProfileFactory()
+    relay_id = target.relay_id
 
-    ContentType.objects.clear_cache()
-    with capture_database_queries() as queries_small:
-        response_small = graphql_user_client(COUNTS_ONLY_QUERY, variables={"id": small_relay_id})
-    assert response_small.json()["data"]["node"]["blockersCount"] is None
-    assert response_small.json()["data"]["node"]["blockingCount"] is None
+    def query() -> HttpResponse:
+        return graphql_user_client(COUNTS_ONLY_QUERY, variables={"id": relay_id})
 
-    big_target = ProfileFactory()
-    for _ in range(20):
-        actor = ProfileFactory(owner=UserFactory())
-        BlockFactory(actor=actor, target=big_target, user=actor.owner)
-    big_relay_id = big_target.relay_id
+    assert_queries_dont_grow(run=query, add_items=add_blockers(target), small=3, big=20)
 
-    ContentType.objects.clear_cache()
-    with capture_database_queries() as queries_big:
-        response_big = graphql_user_client(COUNTS_ONLY_QUERY, variables={"id": big_relay_id})
-    assert response_big.json()["data"]["node"]["blockersCount"] is None
-
-    assert queries_big.count == queries_small.count
-    assert queries_small.count <= EXPECTED_BLOCKS_INTERFACE_PERM_DENIED_UPPER_BOUND
+    with assert_max_queries(EXPECTED_BLOCKS_INTERFACE_PERM_DENIED_UPPER_BOUND):
+        response = query()
+    assert response.json()["data"]["node"]["blockersCount"] is None
+    assert response.json()["data"]["node"]["blockingCount"] is None
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_block_list_with_target_blockers_count_is_flat(
-    django_user_client, graphql_user_client
+    django_user_client, superuser_client
 ) -> None:
-    """Listing a Profile's `blocking` connection with `target.blockersCount` on
-    each edge takes the same number of queries for 3 blocks as for 20."""
-    django_user_client.user.is_superuser = True
-    django_user_client.user.save()
-
+    """Listing a Profile's `blocking` connection with `target.blockersCount` on each edge takes
+    the same number of queries for 3 blocks as for 20."""
     actor = ProfileFactory(owner=django_user_client.user)
-    for _ in range(3):
-        target = ProfileFactory(owner=UserFactory())
-        BlockFactory(actor=actor, target=target, user=django_user_client.user)
-    actor_relay_id = actor.relay_id
+    relay_id = actor.relay_id
 
-    ContentType.objects.clear_cache()
-    with capture_database_queries() as queries_small:
-        r_small = graphql_user_client(PROFILE_BLOCKING_LIST_QUERY, variables={"id": actor_relay_id})
-    assert "errors" not in r_small.json(), r_small.json()
-    assert len(r_small.json()["data"]["node"]["blocking"]["edges"]) == 3
-    small_count = queries_small.count
+    def block(n: int) -> None:
+        for _ in range(n):
+            target = ProfileFactory(owner=UserFactory())
+            BlockFactory(actor=actor, target=target, user=django_user_client.user)
 
-    for _ in range(17):
-        target = ProfileFactory(owner=UserFactory())
-        BlockFactory(actor=actor, target=target, user=django_user_client.user)
+    def query() -> HttpResponse:
+        return superuser_client(PROFILE_BLOCKING_LIST_QUERY, variables={"id": relay_id})
 
-    ContentType.objects.clear_cache()
-    with capture_database_queries() as queries_big:
-        r_big = graphql_user_client(PROFILE_BLOCKING_LIST_QUERY, variables={"id": actor_relay_id})
-    assert "errors" not in r_big.json(), r_big.json()
-    assert len(r_big.json()["data"]["node"]["blocking"]["edges"]) == 20
-    big_count = queries_big.count
-
-    assert big_count == small_count, (
-        f"N+1: {small_count} queries for 3 blocks vs {big_count} for 20 "
-        f"(delta {big_count - small_count} over 17 extra blocks = "
-        f"{(big_count - small_count) / 17:.1f} per row)"
+    assert_queries_dont_grow(
+        run=query,
+        add_items=block,
+        small=3,
+        big=20,
+        hint="`target.blockersCount` on each edge is no longer annotated in the list's prefetch",
     )
-    assert small_count == EXPECTED_BLOCKS_INTERFACE_NESTED_LIST_QUERY_COUNT
+
+    with assert_max_queries(EXPECTED_BLOCKS_INTERFACE_NESTED_LIST_QUERY_COUNT):
+        response = query()
+    assert len(response.json()["data"]["node"]["blocking"]["edges"]) == 20

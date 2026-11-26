@@ -11,11 +11,9 @@ Two concerns:
 """
 
 import pytest
-from django.contrib.contenttypes.models import ContentType
-from django.db import connection
-from django.test.utils import CaptureQueriesContext
 
 from baseapp_comments.tests.factories import CommentFactory
+from baseapp_core.testing import assert_max_queries
 from baseapp_mentions.tests.helpers import seed_mentions
 from baseapp_profiles.tests.factories import ProfileFactory
 
@@ -99,17 +97,14 @@ def test_paginated_comments_with_mentions_does_not_explode_query_count(
       `mapped_public_id` so the relay-id resolver does not re-query
       DocumentId per row).
 
-    The exact number depends on optimiser internals — we assert an upper
-    bound generous enough to absorb optimiser changes but tight enough to
-    trip if the resolver reverts to per-mention joins (which would scale
-    as `parents * mentions = 15 + overhead`).
+    The ceiling trips if the resolver reverts to per-mention joins (which
+    would scale as `parents * mentions = 15 + overhead`).
 
-    The bound also absorbs the project's `NestedConnectionInfoProxy`
+    The ceiling also includes the project's `NestedConnectionInfoProxy`
     pattern, where the outer `optimize_single` (from `node(id: …)`) and
     the inner `DjangoConnectionField` independently page + prefetch the
     nested `comments` connection. That duplication costs ~5 fixed
-    queries regardless of mentions count and is what the +1 above the
-    minimal 10 absorbs.
+    queries regardless of mentions count.
     """
     target = CommentFactory()
     profiles = [ProfileFactory() for _ in range(3)]
@@ -117,29 +112,25 @@ def test_paginated_comments_with_mentions_does_not_explode_query_count(
     for child in children:
         seed_mentions(child, profiles)
 
-    # Reset the ContentType cache so the count is deterministic regardless of
-    # test ordering. A warm cache drops the per-model `get_for_model` lookups
-    # (Comment, Mention, Profile) and lands at 16; a cold cache (e.g. after
-    # baseapp_follows clears it) adds those 3 and lands at 19. We assert the
-    # cold figure so the bound is stable in any ordering.
-    ContentType.objects.clear_cache()
-    with CaptureQueriesContext(connection) as ctx:
+    target_id = target.relay_id  # resolve outside the capture
+
+    # Cold ContentType cache (the helper clears it), so the count doesn't depend on test order.
+    # Dropping the `mentions` optimizer hook re-introduces a per-comment fan-out of 9 queries
+    # (DocumentId lookup + Mention COUNT + page + 3 Mention node fetches + 3 Profile DocumentId
+    # lookups), 45 for 5 comments. If this trips, read the captured SQL before bumping.
+    with assert_max_queries(
+        17,
+        hint=(
+            "the resolver dropped the optimizer hook, the Profile prefetch lost its "
+            "`mapped_public_id` annotation, or the consumer model removed "
+            "`document = GenericRelation(DocumentId)`"
+        ),
+    ):
         response = graphql_user_client(
-            COMMENTS_LIST_WITH_MENTIONS, variables={"targetId": target.relay_id}
+            COMMENTS_LIST_WITH_MENTIONS, variables={"targetId": target_id}
         )
 
     assert "errors" not in response.json(), response.json()
-    # Tight enough to catch a regression that drops the `mentions`
-    # optimizer hook (which would re-introduce a per-comment fan-out of
-    # 9 queries: DocumentId lookup + Mention COUNT + page + 3 Mention
-    # node fetches + 3 Profile DocumentId lookups → 45 queries for 5
-    # comments). If this trips, inspect the captured SQL before bumping.
-    assert len(ctx.captured_queries) <= 19, (
-        f"Mentions connection issued {len(ctx.captured_queries)} queries. "
-        "Likely cause: resolver dropped the optimizer hook, "
-        "the Profile prefetch lost its `mapped_public_id` annotation, "
-        "or the consumer model removed `document = GenericRelation(DocumentId)`."
-    )
 
 
 def test_is_mentioning_profile_returns_true_when_mention_exists(graphql_user_client) -> None:
