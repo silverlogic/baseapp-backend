@@ -1,8 +1,8 @@
 import pytest
 from django.contrib.auth.models import Permission
-from django.contrib.contenttypes.models import ContentType
 from django.test import override_settings
 
+from baseapp_core.testing import assert_max_queries
 from baseapp_core.tests.factories import UserFactory
 
 pytestmark = pytest.mark.django_db
@@ -149,23 +149,21 @@ def test_user_with_perm_can_view_others_private_field(
     assert content["data"]["user"]["email"] == user.email
 
 
-def test_overcomplex_queries_are_not_executed(graphql_client_with_queries) -> None:
-    response, queries = graphql_client_with_queries(MALICIOUS_QUERY)
+def test_overcomplex_queries_are_not_executed(graphql_client) -> None:
+    with assert_max_queries(0):
+        response = graphql_client(MALICIOUS_QUERY)
     content = response.json()
 
     assert content["errors"][0]["message"] == "Query complexity exceeds the maximum allowed of 3"
-    assert queries.count == 0
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=False)
-def test_anon_can_query_users_list_with_optimized_query(graphql_client_with_queries) -> None:
+def test_anon_can_query_users_list_with_optimized_query(graphql_client) -> None:
     UserFactory.create_batch(10)
-    ContentType.objects.clear_cache()
-
-    response, queries = graphql_client_with_queries(QUERY_USERS_LIST)
+    with assert_max_queries(5):
+        response = graphql_client(QUERY_USERS_LIST)
     content = response.json()
 
-    assert queries.count == 5
     assert len(content["data"]["users"]["edges"]) == 10
 
     # With optimizer queries are expected to be 5:
@@ -184,14 +182,13 @@ def test_anon_can_query_users_list_with_optimized_query(graphql_client_with_quer
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_can_query_users_list_with_optimized_query_with_public_id(
-    graphql_client_with_queries,
+    graphql_client,
 ) -> None:
     UserFactory.create_batch(10)
-    ContentType.objects.clear_cache()
-    response, queries = graphql_client_with_queries(QUERY_USERS_LIST)
+    with assert_max_queries(7):
+        response = graphql_client(QUERY_USERS_LIST)
     content = response.json()
 
-    assert queries.count == 7
     assert len(content["data"]["users"]["edges"]) == 10
 
     # With optimizer queries are expected to be 7:
@@ -206,18 +203,16 @@ def test_anon_can_query_users_list_with_optimized_query_with_public_id(
     # 7. Same as #4 for the page's profiles
 
 
-def test_anon_can_query_users_list_with_filter_by_email(graphql_client_with_queries) -> None:
+def test_anon_can_query_users_list_with_filter_by_email(graphql_client) -> None:
     UserFactory.create_batch(2)
     UserFactory(email="test@test.com")
-    response, queries = graphql_client_with_queries(
-        QUERY_USERS_LIST_WITH_FILTERS, variables={"q": "test@test.com"}
-    )
+    response = graphql_client(QUERY_USERS_LIST_WITH_FILTERS, variables={"q": "test@test.com"})
     content = response.json()
 
     assert len(content["data"]["users"]["edges"]) == 1
 
 
-def test_anon_can_query_users_list_with_filter_by_profile_name(graphql_client_with_queries) -> None:
+def test_anon_can_query_users_list_with_filter_by_profile_name(graphql_client) -> None:
     UserFactory.create_batch(2)
     user_1 = UserFactory()
     user_1.profile.name = "test"
@@ -225,9 +220,7 @@ def test_anon_can_query_users_list_with_filter_by_profile_name(graphql_client_wi
     user_2 = UserFactory()
     user_2.profile.name = "testing"
     user_2.profile.save()
-    response, queries = graphql_client_with_queries(
-        QUERY_USERS_LIST_WITH_FILTERS, variables={"q": "test"}
-    )
+    response = graphql_client(QUERY_USERS_LIST_WITH_FILTERS, variables={"q": "test"})
     content = response.json()
 
     assert len(content["data"]["users"]["edges"]) == 2
