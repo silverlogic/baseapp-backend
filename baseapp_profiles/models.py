@@ -177,7 +177,9 @@ class AbstractProfile(*inheritances, DocumentIdMixin, RelayModel, TimeStampedMod
             return False
         return (
             self.__class__.objects.filter(pk=self.pk)
-            .filter(models.Q(members__user=user) | models.Q(owner=user))
+            # ACTIVE only: an invitee who has not accepted, or a deactivated member, also
+            # has a row. The numeric value mirrors ProfileRoleStatus.ACTIVE, declared below.
+            .filter(models.Q(members__user=user, members__status=1) | models.Q(owner=user))
             .exists()
         )
 

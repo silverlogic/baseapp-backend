@@ -390,8 +390,10 @@ release_invitation(review.invitation, by=reviewer)
 ```
 
 A held invitation stays PENDING without an expiry date, so it cannot lapse while it waits;
-`release_invitation` starts the clock and sends it. A hook that raises holds the
-invitation. Resends ask the hook again.
+`release_invitation` starts the clock and sends it. Only a held invitation can be released
+(`invalid_status` otherwise), so approving one twice sends it once; if the email fails it
+stays held. A hook that raises, or cannot be loaded, holds the invitation. Resends ask the
+hook again.
 
 Overdue invitations are marked EXPIRED lazily when someone responds, and by the
 `baseapp_profiles.tasks.expire_invitations` task. The plugin contributes an hourly beat

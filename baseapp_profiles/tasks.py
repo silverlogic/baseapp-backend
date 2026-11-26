@@ -8,10 +8,16 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task
-def send_invitation_email_task(invitation_id: int, inviter_id: int | None = None) -> bool:
+def send_invitation_email_task(
+    invitation_id: int, inviter_id: int | None = None, token: str | None = None
+) -> bool:
     """
     Send one invitation email; queued on commit when `BASEAPP_PROFILES_INVITATION_ASYNC_SEND`
     is on. An invitation answered, cancelled or deleted in the meantime is skipped.
+
+    `token` is the invitation token the email was queued for. A row that has a different
+    one by now was resent, and that resend queued (or is holding) its own email, so this
+    one is dropped.
     """
     from baseapp_profiles.services.invitations import (
         awaits_answer,
@@ -22,6 +28,9 @@ def send_invitation_email_task(invitation_id: int, inviter_id: int | None = None
     invitation = ProfileUserRole.objects.select_related("profile").filter(pk=invitation_id).first()
     if invitation is None or not awaits_answer(invitation):
         logger.info("Invitation %s is no longer pending; not sending it", invitation_id)
+        return False
+    if token is not None and invitation.invitation_token != token:
+        logger.info("Invitation %s was resent since; not sending the older email", invitation_id)
         return False
 
     inviter = None

@@ -124,6 +124,10 @@ class OrganizationAccountService(SharedServiceProvider):
         """
         Return `True` if `user` is the only active ADMIN of an organization whose profile
         has no owner — deleting the account would leave nobody able to manage it.
+
+        Inside a transaction the organization's admin rows are locked until it ends, so a
+        caller that deactivates the account in the same transaction cannot race another
+        admin doing the same.
         """
         Organization = swapper.load_model("baseapp_organizations", "Organization")
         ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
@@ -140,8 +144,18 @@ class OrganizationAccountService(SharedServiceProvider):
         )
         if not profile_ids:
             return False
+        if transaction.get_connection().in_atomic_block:
+            # Lock the rows the membership services lock (`ensure_not_last_admin`), so two
+            # admins leaving at the same time are checked one after the other.
+            list(
+                admins.select_for_update()
+                .filter(profile_id__in=profile_ids)
+                .order_by("pk")
+                .values_list("pk", flat=True)
+            )
         covered = set(
-            admins.filter(profile_id__in=profile_ids)
+            # An admin whose account is deactivated (say, being deleted) manages nothing.
+            admins.filter(profile_id__in=profile_ids, user__is_active=True)
             .exclude(user_id=user.id)
             .values_list("profile_id", flat=True)
         )

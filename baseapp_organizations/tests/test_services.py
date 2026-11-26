@@ -126,6 +126,15 @@ class TestAccountDeletionVeto:
 
         assert self.service.get_account_deletion_block_reason(admin.user) is None
 
+    def test_an_admin_whose_account_is_deactivated_does_not_count(self) -> None:
+        organization = OrganizationService.create("Acme")
+        admin = ProfileUserRoleFactory(profile=organization.profile, role=ADMIN)
+        leaving = ProfileUserRoleFactory(profile=organization.profile, role=ADMIN)
+        leaving.user.is_active = False
+        leaving.user.save()
+
+        assert "only admin" in str(self.service.get_account_deletion_block_reason(admin.user))
+
     def test_managers_are_not_held_back(self) -> None:
         organization = OrganizationService.create("Acme")
         ProfileUserRoleFactory(profile=organization.profile, role=ADMIN)

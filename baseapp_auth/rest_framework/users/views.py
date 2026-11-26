@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Any
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import (
     filters,
@@ -103,15 +104,18 @@ class UsersViewSet(
         # Other packages can veto account deletion via the shared-service registry,
         # so baseapp_auth stays decoupled from them. baseapp_organizations registers
         # "organizations.account" to block owners of an organization.
-        if service := shared_services.get("organizations.account"):
-            if block_reason := service.get_account_deletion_block_reason(user):
-                return response.Response(
-                    data={"detail": block_reason},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        # The check and the deactivation share a transaction: a service may lock what it
+        # checked (the organization's admins) until the account is deactivated.
+        with transaction.atomic():
+            if service := shared_services.get("organizations.account"):
+                if block_reason := service.get_account_deletion_block_reason(user):
+                    return response.Response(
+                        data={"detail": block_reason},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
-        user.is_active = False
-        user.save()
+            user.is_active = False
+            user.save()
 
         if not user.is_superuser:
             user.anonymize_and_delete()

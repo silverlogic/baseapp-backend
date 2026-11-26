@@ -416,7 +416,7 @@ class TestAsyncSend:
             for callback in callbacks:
                 callback()
 
-        delay.assert_called_once_with(invitation.pk, owner.pk)
+        delay.assert_called_once_with(invitation.pk, owner.pk, invitation.invitation_token)
         assert mailoutbox == []
 
     def test_sends_inline_while_celery_is_eager(self, profile, settings, mailoutbox) -> None:

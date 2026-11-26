@@ -226,6 +226,17 @@ def _open_invitation(
         # The newest row first: with history on there can be several closed ones.
         .order_by("-pk")
     )
+    for row in list(rows):
+        if (
+            row.status == Status.INACTIVE
+            and row.user_id is not None
+            and row.user_id != getattr(invited_user, "pk", None)
+        ):
+            # A deactivated member found through an address their account no longer uses.
+            # The membership stays theirs; the address is released for this invitee.
+            row.invited_email = None
+            row.save(update_fields=["invited_email"])
+            rows.remove(row)
     open_row = next((row for row in rows if row.status in ProfileUserRole.open_statuses()), None)
 
     reuse = None
@@ -276,8 +287,9 @@ def _open_invitation(
 
     if reuse is not None:
         invitation = reuse
-        if invited_user is not None:
-            invitation.user = invited_user
+        # The row is bound to whoever holds the address today (nobody, without an account):
+        # a closed row found through a stale address must not keep its former account.
+        invitation.user = invited_user
         invitation.invited_email = invitee.email
         invitation.invited_first_name = invitee.first_name or invitation.invited_first_name
         invitation.invited_last_name = invitee.last_name or invitation.invited_last_name
@@ -457,12 +469,13 @@ def is_held(invitation: "ProfileUserRole") -> bool:
     """
     Ask `BASEAPP_PROFILES_INVITATION_PRE_SEND_HOOK` whether to hold `invitation` back.
 
-    A hook that raises holds the invitation: a broken review gate must not let it through.
+    A hook that raises, or cannot be loaded, holds the invitation: a broken review gate
+    must not let it through.
     """
-    hook = invitation_pre_send_hook()
-    if hook is None:
-        return False
     try:
+        hook = invitation_pre_send_hook()
+        if hook is None:
+            return False
         return bool(hook(invitation))
     except Exception:
         logger.exception("Invitation pre-send hook failed; holding invitation %s", invitation.pk)
@@ -475,8 +488,12 @@ def _deliver_or_hold(
     if is_held(invitation):
         # A held invitation does not expire while it waits; `release_invitation` starts
         # the clock when it is finally sent.
+        # Only for the token the hook looked at: a resend that committed while the hook
+        # ran has its own token and expiry date, which this hold must not clear.
+        ProfileUserRole.objects.filter(
+            pk=invitation.pk, invitation_token=invitation.invitation_token
+        ).update(invitation_expires_at=None)
         invitation.invitation_expires_at = None
-        invitation.save(update_fields=["invitation_expires_at"])
         result.held.append(invitation)
         return
     if deliver_invitation(invitation, inviter=inviter):
@@ -489,16 +506,35 @@ def release_invitation(
     """
     Send an invitation the pre-send hook held back (the hook is not asked again).
 
-    Returns whether the email went out (or was queued).
+    Returns whether the email went out (or was queued). An invitation that is not held —
+    answered, cancelled or already released — is refused, so approving twice sends once;
+    send a released invitation again with `resend_invitation`. A release whose email
+    fails leaves the invitation held, to be released again.
     """
-    if not awaits_answer(invitation):
-        raise ProfileMembershipError(_("Can only send pending invitations"), "invalid_status")
-    if invitation.invitation_expires_at is None:
+    with transaction.atomic():
+        # Lock and re-read: it may have been cancelled, resent or released since
+        # `invitation` was loaded.
+        current = ProfileUserRole.objects.select_for_update().filter(pk=invitation.pk).first()
+        if (
+            current is None
+            or not awaits_answer(current)
+            or current.invitation_expires_at is not None
+            or current.invitation_token != invitation.invitation_token
+        ):
+            raise ProfileMembershipError(_("Can only send held invitations"), "invalid_status")
+        invitation.refresh_from_db()
         invitation.invitation_expires_at = timezone.now() + timedelta(
             days=invitation_expiration_days()
         )
         invitation.save(update_fields=["invitation_expires_at"])
-    return deliver_invitation(invitation, inviter=by or invitation.invited_by)
+
+    sent = deliver_invitation(invitation, inviter=by or invitation.invited_by)
+    if not sent:
+        ProfileUserRole.objects.filter(
+            pk=invitation.pk, invitation_token=invitation.invitation_token
+        ).update(invitation_expires_at=None)
+        invitation.invitation_expires_at = None
+    return sent
 
 
 def _celery_is_eager() -> bool:
@@ -522,8 +558,23 @@ def deliver_invitation(
 
         invitation_pk = invitation.pk
         inviter_pk = getattr(inviter, "pk", None)
-        transaction.on_commit(lambda: send_invitation_email_task.delay(invitation_pk, inviter_pk))
-        return True
+        # The task only sends the token it was queued for (see the task).
+        token = invitation.invitation_token
+
+        def queue() -> bool:
+            try:
+                send_invitation_email_task.delay(invitation_pk, inviter_pk, token)
+            except Exception:
+                # The invitation is saved; a broker failure must not fail the request or
+                # keep the rest of a batch from being queued. Resend it once the broker is back.
+                logger.exception("Failed to queue the email for invitation %s", invitation_pk)
+                return False
+            return True
+
+        if transaction.get_connection().in_atomic_block:
+            transaction.on_commit(queue)
+            return True
+        return queue()
     return send_invitation_email_now(invitation, inviter=inviter)
 
 
@@ -585,11 +636,31 @@ def cancel_invitation(
     return invitation
 
 
-def expire_invitation(invitation: "ProfileUserRole") -> None:
-    """Mark a PENDING invitation EXPIRED and send `invitation_expired`."""
-    invitation.status = Status.EXPIRED
-    invitation.save(update_fields=["status"])
-    send_on_commit(signals.invitation_expired, invitation)
+def expire_invitation(invitation: "ProfileUserRole") -> bool:
+    """
+    Mark a PENDING invitation EXPIRED and send `invitation_expired`; returns whether it did.
+
+    `invitation` may be a copy read before a lock was taken, so the row is locked and
+    checked first: one that was answered, cancelled or renewed in the meantime is left
+    alone (and `invitation` keeps what the caller read).
+    """
+    with transaction.atomic():
+        unchanged = (
+            ProfileUserRole.objects.select_for_update()
+            .filter(
+                pk=invitation.pk,
+                status=Status.PENDING,
+                invitation_token=invitation.invitation_token,
+                invitation_expires_at=invitation.invitation_expires_at,
+            )
+            .exists()
+        )
+        if not unchanged:
+            return False
+        invitation.status = Status.EXPIRED
+        invitation.save(update_fields=["status"])
+        send_on_commit(signals.invitation_expired, invitation)
+    return True
 
 
 def expire_invitations(now: datetime | None = None) -> int:
@@ -601,9 +672,8 @@ def expire_invitations(now: datetime | None = None) -> int:
     """
     with transaction.atomic():
         overdue = list(ProfileUserRole.objects.overdue(now).select_for_update(skip_locked=True))
-        for invitation in overdue:
-            expire_invitation(invitation)
-    return len(overdue)
+        expired = [invitation for invitation in overdue if expire_invitation(invitation)]
+    return len(expired)
 
 
 # --- Responding --------------------------------------------------------------------------
@@ -732,6 +802,9 @@ def _lock_for_response(invitation: "ProfileUserRole") -> "ProfileUserRole":
     if locked is None:
         # Cancelled (and deleted, with history off) in the meantime.
         raise ProfileMembershipError(_("Invalid invitation token"), "invalid_token")
+    if locked.invitation_token != invitation.invitation_token:
+        # Resent in the meantime: the token this response came with is no longer valid.
+        raise ProfileMembershipError(_("Invalid invitation token"), "invalid_token")
     _ensure_respondable(locked)
     return locked
 
@@ -828,6 +901,10 @@ def accept_invitation_with_signup(
                 _("This invitation was sent to a different user"), "wrong_user"
             )
         user = invitation.user or find_user_by_email(email)
+        if user is not None:
+            # Lock the account: another invitation for the same inactive account may be
+            # signing up right now, and only one of them may activate it.
+            user = User._default_manager.select_for_update().get(pk=user.pk)
         if user is not None and user.is_active:
             raise ProfileMembershipError(
                 _("An account already exists for this email. Sign in to accept the invitation."),

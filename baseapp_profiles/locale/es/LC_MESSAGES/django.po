@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-26 18:27+0000\n"
+"POT-Creation-Date: 2026-11-26 22:53+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -314,8 +314,8 @@ msgid "Can only resend expired or pending invitations"
 msgstr "Solo se pueden reenviar invitaciones expiradas o pendientes"
 
 #: services/invitations.py
-msgid "Can only send pending invitations"
-msgstr "Solo se pueden enviar invitaciones pendientes"
+msgid "Can only send held invitations"
+msgstr "Solo se pueden enviar invitaciones retenidas"
 
 #: services/invitations.py
 msgid "Can only cancel pending invitations"
