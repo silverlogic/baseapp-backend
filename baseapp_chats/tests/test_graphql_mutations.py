@@ -1,3 +1,4 @@
+from datetime import timedelta
 from unittest import mock
 
 import pytest
@@ -213,6 +214,12 @@ TOGGLE_ADMIN_GRAPHQL = """
                 node {
                     id
                     role
+                }
+            }
+            room {
+                node {
+                    id
+                    isSoleAdmin
                 }
             }
             errors {
@@ -1295,6 +1302,86 @@ def test_member_user_can_leave_room(django_user_client, graphql_user_client, dja
     assert friend_3.relay_id not in participants_ids
 
 
+def test_sole_admin_leaving_promotes_oldest_remaining_participant(
+    django_user_client, graphql_user_client
+) -> None:
+    profile = django_user_client.user.profile
+    oldest_friend = ProfileFactory()
+    newest_friend = ProfileFactory()
+    now = timezone.now()
+
+    room = ChatRoomFactory(created_by=django_user_client.user, is_group=True)
+    admin_participant = ChatRoomParticipantFactory(
+        profile=profile,
+        room=room,
+        role=ChatRoomParticipantRoles.ADMIN,
+        accepted_at=now - timedelta(days=3),
+    )
+    newest_participant = ChatRoomParticipantFactory(
+        profile=newest_friend,
+        room=room,
+        role=ChatRoomParticipantRoles.MEMBER,
+        accepted_at=now - timedelta(days=1),
+    )
+    oldest_participant = ChatRoomParticipantFactory(
+        profile=oldest_friend,
+        room=room,
+        role=ChatRoomParticipantRoles.MEMBER,
+        accepted_at=now - timedelta(days=2),
+    )
+    room.participants_count = 3
+    room.save(update_fields=["participants_count"])
+
+    response = graphql_user_client(
+        UPDATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": profile.relay_id,
+                "roomId": room.relay_id,
+                "removeParticipants": [profile.relay_id],
+            }
+        },
+    )
+    content = response.json()
+    assert content["data"]["chatRoomUpdate"]["errors"] is None
+
+    assert not ChatRoomParticipant.objects.filter(pk=admin_participant.pk).exists()
+    oldest_participant.refresh_from_db()
+    newest_participant.refresh_from_db()
+    assert oldest_participant.role == ChatRoomParticipantRoles.ADMIN
+    assert newest_participant.role == ChatRoomParticipantRoles.MEMBER
+
+
+def test_sole_admin_who_is_the_only_member_can_leave(
+    django_user_client, graphql_user_client
+) -> None:
+    profile = django_user_client.user.profile
+
+    room = ChatRoomFactory(created_by=django_user_client.user, is_group=True)
+    ChatRoomParticipantFactory(profile=profile, room=room, role=ChatRoomParticipantRoles.ADMIN)
+    room.participants_count = 1
+    room.save(update_fields=["participants_count"])
+
+    response = graphql_user_client(
+        UPDATE_ROOM_GRAPHQL,
+        variables={
+            "input": {
+                "profileId": profile.relay_id,
+                "roomId": room.relay_id,
+                "removeParticipants": [profile.relay_id],
+            }
+        },
+    )
+    content = response.json()
+    assert content["data"]["chatRoomUpdate"]["errors"] is None
+    assert content["data"]["chatRoomUpdate"]["removedParticipants"][0]["profile"]["id"] == (
+        profile.relay_id
+    )
+    assert not ChatRoomParticipant.objects.filter(room=room).exists()
+    room.refresh_from_db()
+    assert room.participants_count == 0
+
+
 def test_member_user_cannot_remove_other_members(
     django_user_client, graphql_user_client, django_client
 ) -> None:
@@ -1606,6 +1693,44 @@ def test_chat_room_toggle_admin_success(
     )
     content = response.json()
     assert content["data"]["chatRoomToggleAdmin"]["participant"]["node"]["role"] == role_after
+
+
+@pytest.mark.parametrize(
+    "friend_role_before, expected_is_sole_admin",
+    [
+        # Promoting the friend leaves the current user with a co-admin.
+        (ChatRoomParticipantRoles.MEMBER, False),
+        # Demoting the only other admin makes the current user the sole admin.
+        (ChatRoomParticipantRoles.ADMIN, True),
+    ],
+)
+def test_chat_room_toggle_admin_returns_room_with_updated_is_sole_admin(
+    friend_role_before, expected_is_sole_admin, django_user_client, graphql_user_client
+) -> None:
+    friend = ProfileFactory()
+
+    room = ChatRoomFactory(created_by=django_user_client.user, is_group=True)
+    ChatRoomParticipantFactory(
+        profile=django_user_client.user.profile, room=room, role=ChatRoomParticipantRoles.ADMIN
+    )
+    friend_participant = ChatRoomParticipantFactory(
+        profile=friend, room=room, role=friend_role_before
+    )
+
+    response = graphql_user_client(
+        TOGGLE_ADMIN_GRAPHQL,
+        variables={
+            "input": {
+                "targetParticipantId": friend_participant.relay_id,
+                "profileId": django_user_client.user.profile.relay_id,
+                "roomId": room.relay_id,
+            }
+        },
+    )
+    content = response.json()
+    room_data = content["data"]["chatRoomToggleAdmin"]["room"]["node"]
+    assert room_data["id"] == room.relay_id
+    assert room_data["isSoleAdmin"] is expected_is_sole_admin
 
 
 def test_chat_room_toggle_admin_no_permission(django_user_client, graphql_user_client) -> None:
