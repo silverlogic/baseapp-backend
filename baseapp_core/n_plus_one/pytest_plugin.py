@@ -9,11 +9,14 @@ import sys
 from collections.abc import Iterator
 
 import pytest
-from django.conf import settings
+from django.apps import apps
 
 
 def _enabled() -> bool:
-    return "zeal" in settings.INSTALLED_APPS
+    # Both: a project may install zeal for its own use, and without this app nothing connects
+    # log_n_plus_one, so the run would print an empty report. is_installed also matches the app
+    # when INSTALLED_APPS names its AppConfig class.
+    return apps.is_installed("zeal") and apps.is_installed("baseapp_core.n_plus_one")
 
 
 @pytest.fixture(autouse=True)

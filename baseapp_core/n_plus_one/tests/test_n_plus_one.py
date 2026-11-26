@@ -1,7 +1,7 @@
 import logging
 import subprocess
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from functools import partial
 
 import pytest
@@ -15,7 +15,7 @@ from baseapp_core import n_plus_one
 
 
 @pytest.fixture(autouse=True)
-def _clear_reported(monkeypatch: pytest.MonkeyPatch):
+def _clear_reported(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     # The simulated N+1s below must not land in the run's own "N+1 report (zeal)".
     monkeypatch.setattr(n_plus_one, "report", None)
     n_plus_one._reported.clear()
@@ -195,6 +195,27 @@ def test_the_plugin_loads_without_zeal_installed() -> None:
     result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
 
     assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    ("installed", "enabled"),
+    [
+        ({"zeal", "baseapp_core.n_plus_one"}, True),
+        ({"zeal"}, False),  # zeal installed for another use: no receivers, so no report
+        ({"baseapp_core.n_plus_one"}, False),
+        (set(), False),
+    ],
+)
+def test_the_plugin_needs_zeal_and_this_app(
+    monkeypatch: pytest.MonkeyPatch, installed: set[str], enabled: bool
+) -> None:
+    from django.apps import apps
+
+    from baseapp_core.n_plus_one import pytest_plugin
+
+    monkeypatch.setattr(apps, "is_installed", lambda name: name in installed)
+
+    assert pytest_plugin._enabled() is enabled
 
 
 def test_ending_a_task_without_a_context_does_nothing() -> None:
