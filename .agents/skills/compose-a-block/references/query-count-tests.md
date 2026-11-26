@@ -3,14 +3,11 @@
 An optimization nobody asserts on is an optimization that will be removed by accident. Because
 N+1s here are silent — correct data, wrong query count — the test *is* the specification.
 
-**Every list path a block exposes should have one.** This repo uses no
-`django_assert_num_queries` and no `assertNumQueries`.
+**Every list path a block exposes should have one.** Every count in this repo goes through the
+two helpers below: no `queries.count == N`, no `len(ctx.captured_queries)`, no
+`django_assert_num_queries`. One pattern means one way to read a failure.
 
-## Start here: the two helpers
-
-`baseapp_core.graphql.testing` ships two assertions that cover styles 1 to 3 below in one call
-each. Reach for them first; write the hand-rolled forms only for SQL-shape checks (style 4) or
-when you need the exact numbered breakdown of style 1.
+## The two helpers
 
 ```python
 from baseapp_core.graphql.testing import assert_max_queries, assert_queries_dont_grow
@@ -37,10 +34,11 @@ def test_members_dont_grow(graphql_user_client, django_user_client) -> None:
 
 `per_item=0` (the default) is the strict check. An N+1 you accept gets `per_item=k` and a
 comment saying why and which story removes it: the bound is still enforced, so the list can't
-get worse. `add_items(n)` runs outside the capture.
+get worse. `add_items(n)` runs outside the capture. `small=0` covers "no rows costs the same as
+some rows" (a missing metadata row falling through to `Coalesce`).
 
-**Single objects: `assert_max_queries`.** A capture window, not a runner: wrap the request the
-test already makes and keep asserting on its response. No second request.
+**Single objects and absolute budgets: `assert_max_queries`.** A capture window, not a runner:
+wrap the request the test already makes and keep asserting on its response.
 
 ```python
 def test_profile_page(graphql_user_client, profile) -> None:
@@ -51,128 +49,65 @@ def test_profile_page(graphql_user_client, profile) -> None:
 
 It also works as a decorator (`@assert_max_queries(12)`), which counts the whole test body:
 fixtures run before the window opens, but factories called in the body are counted, so use
-`with` when the body creates data.
+`with` when the body creates data. It wraps any code, not just requests: a service method or a
+queryset evaluation (`with assert_max_queries(1): rows = list(qs)`).
 
 Both helpers:
 
-- count with `capture_database_queries()`, so their numbers match `QueryData`'s (transaction
-  statements and constance reads excluded);
-- clear the ContentType cache before each capture, so counts don't depend on test order;
+- count with `capture_database_queries()` (transaction statements and constance reads excluded);
+- clear the ContentType cache before each capture, so counts don't depend on test order. Budgets
+  are therefore cold-cache numbers: they include the ContentType lookups;
 - print the counts, the `hint` as "Likely cause", and every captured query with its SQL and
-  abridged stack when they fail. Write the hint the way style 2 writes its ranked causes;
+  abridged stack when they fail;
 - work with any client fixture and any headers (`Current-Profile` included).
 
 `assert_queries_dont_grow` also fails on a response with GraphQL `errors` or an error status,
 before comparing counts: a request that errors out early runs few queries and would otherwise
 pass. The capture window can't see the response, so assert on the data after it.
 
-`baseapp_profiles/tests/test_graphql_query_counts.py` uses both.
+## The usual shape: growth check, then the budget
 
-The styles below are what the helpers replace, and what existing tests still use.
-
-## Style 1 — exact count with a per-query explanation
-
-Use `graphql_client_with_queries` (from `baseapp_core/graphql/testing/fixtures.py`) when you can
-enumerate every query. It returns `(response, QueryData)`; `QueryData` records interpolated SQL
-plus an abridged stack per query, and `queries.log` pretty-prints them.
-
-`baseapp_auth/tests/graphql/test_queries_user.py:186`:
-
-```python
-def test_anon_can_query_users_list_with_optimized_query_with_public_id(
-    graphql_client_with_queries,
-) -> None:
-    UserFactory.create_batch(10)
-    ContentType.objects.clear_cache()
-    response, queries = graphql_client_with_queries(QUERY_USERS_LIST)
-    content = response.json()
-
-    assert queries.count == 7
-    assert len(content["data"]["users"]["edges"]) == 10
-
-    # With optimizer queries are expected to be 7:
-    # 1. ContentType lookup for users.user (cold-cache; cached after first request in production)
-    # 2. ContentType lookup for profiles.profile (cold-cache; same caching as above)
-    # 3. SELECT users_user with _ratable_* Subqueries inlined by
-    #    AbstractUserObjectType.pre_optimization_hook (RatableMetadataService.annotate_queryset)
-    # 4. SELECT profiles_profile with _commentable_*, _followable_*, mapped_public_id Subqueries
-    #    inlined by ProfileObjectType.pre_optimization_hook
-    # 5. SELECT COUNT(*) for pagination
-    # 6. Same as #3 with LIMIT 10 for the returned page slice
-    # 7. Same as #4 for the page's profiles
-```
-
-The numbered comment is the valuable part. When the count changes, the next person can tell which
-query appeared instead of re-deriving the whole path.
-
-**`ContentType.objects.clear_cache()` before the capture** — otherwise the count depends on test
-ordering, since the ContentType manager caches across tests.
-
-## Style 2 — upper bound with ranked failure causes
-
-Use `CaptureQueriesContext` when the exact count churns with optimizer internals but the *shape*
-must hold. `baseapp_chats/tests/test_graphql_query_counts.py`:
-
-```python
-    with CaptureQueriesContext(connection) as ctx:
-        response = graphql_user_client(
-            ROOM_MESSAGES_WITH_MENTIONS, variables={"roomId": room.relay_id}
-        )
-
-    assert "errors" not in response.json(), response.json()
-    # ~17 queries today, comparable to the comments+mentions baseline.
-    # 20 absorbs minor optimiser-internals shifts; trips immediately
-    # on any of the three regressions named in the docstring.
-    assert len(ctx.captured_queries) <= 20, (
-        f"Messages-with-mentions listing issued {len(ctx.captured_queries)} queries. "
-        "Likely causes (in priority order):\n"
-        "  - `chatRoom.allMessages` reverted to `DjangoFilterConnectionField`\n"
-        "  - `BaseMessageObjectType.pre_optimization_hook` dropped one of "
-        "`room_id` / `deleted` / `message_type` from `only_fields`\n"
-        "  - `MentionsInterface.mentions.optimizer_hook` was lost\n"
-        "  - Message ObjectType lost its `document = GenericRelation(DocumentId)`"
-    )
-```
-
-**Always write the ranked "likely causes" message.** A bare `assert count <= 20` tells the next
-person nothing; this one names the four things that could have broken, in priority order. The test
-docstring goes further and quantifies each: *"missing (1) → ~54; missing (3) → ~32; missing (2) →
-fan-out as messages × mentions."*
-
-## Style 3 — the strongest assertion: doubling the data changes nothing
-
-An absolute count catches drift. Only a volume comparison proves there is no per-row fan-out.
+A list test pairs the two, so an N+1 and a fixed-cost regression both fail.
 `baseapp_blocks/tests/test_graphql_queries_object_blocks.py`:
 
 ```python
-    assert big_count == small_count, (
-        f"N+1: {small_count} queries for 3 blocks vs {big_count} for 20 "
-        f"(delta {big_count - small_count} over 17 extra blocks = "
-        f"{(big_count - small_count) / 17:.1f} per row)"
-    )
-    assert small_count == EXPECTED_BLOCKS_INTERFACE_NESTED_LIST_QUERY_COUNT
+@override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
+def test_block_list_with_target_blockers_count_is_flat(django_user_client, superuser_client):
+    actor = ProfileFactory(owner=django_user_client.user)
+    relay_id = actor.relay_id  # resolve outside the capture
+
+    def block(n: int) -> None:
+        for _ in range(n):
+            target = ProfileFactory(owner=UserFactory())
+            BlockFactory(actor=actor, target=target, user=django_user_client.user)
+
+    def query():
+        return superuser_client(PROFILE_BLOCKING_LIST_QUERY, variables={"id": relay_id})
+
+    assert_queries_dont_grow(run=query, add_items=block, small=3, big=20, hint="...")
+
+    with assert_max_queries(EXPECTED_BLOCKS_INTERFACE_NESTED_LIST_QUERY_COUNT):
+        response = query()
+    assert len(response.json()["data"]["node"]["blocking"]["edges"]) == 20
 ```
 
-Pair it with a named budget constant so both counts rising together can't slip through:
+Keep these habits from the older tests:
 
-```python
-# Absolute query budgets for the COUNTS_ONLY_QUERY path. These guard against
-# regressions where BOTH the small- and big-volume counts bump together (which
-# the per-test `big == small` assertion would miss). Bump these deliberately if
-# you change the resolver / annotation / middleware path and the new total is
-# the new normal — don't bump them to silence a failure without first
-# understanding which extra query was added.
+- **Resolve relay ids outside the window.** `obj.relay_id` may look up or create the
+  `DocumentId`; inside the window that query is counted and the number drifts.
+- **Name the budget.** A module constant with a comment saying what it is made of, and that a
+  failing budget is investigated, not raised.
+- **Explain the number.** When every query can be enumerated, a numbered comment under the
+  assertion (`baseapp_auth/tests/graphql/test_queries_user.py`,
+  `baseapp_comments/tests/test_graphql_queries_object_comments.py`) lets the next person see
+  which query appeared instead of re-deriving the path.
+- **Rank the causes in the hint.** A bare budget tells the next person nothing; name the things
+  that could have broken, most likely first (`baseapp_chats/tests/test_graphql_query_counts.py`).
 
-EXPECTED_BLOCKS_INTERFACE_QUERY_COUNT = 6
-EXPECTED_BLOCKS_INTERFACE_PERM_DENIED_UPPER_BOUND = 10
-EXPECTED_BLOCKS_INTERFACE_NESTED_LIST_QUERY_COUNT = 9
-```
+## SQL-shape assertions
 
-That comment is the policy: **a failing budget is investigated, not raised.**
-
-## Style 4 — SQL-shape assertions
-
-When a count is too coarse, assert on the SQL itself. Batching:
+When a count is too coarse, assert on the SQL itself. These tests read the captured statements
+instead of counting them. Batching:
 
 ```python
     prefetch_queries = [
@@ -184,7 +119,7 @@ When a count is too coarse, assert on the SQL itself. Batching:
     )
 ```
 
-Write-path shape, `baseapp_follows/tests/test_follow_count.py:117`:
+Write-path shape, `baseapp_follows/tests/test_follow_count.py`:
 
 ```python
     follow_count_queries = [q for q in sql if "COUNT(*)" in q.upper() and "follows_follow" in q]
@@ -192,39 +127,28 @@ Write-path shape, `baseapp_follows/tests/test_follow_count.py:117`:
         "Save path is doing a COUNT(*) on follows_follow — should be using F+1 "
         f"instead. Offending queries: {follow_count_queries}"
     )
-    assert not any("FOR UPDATE" in q.upper() for q in sql), (
-        "Save path is acquiring SELECT FOR UPDATE on FollowableMetadata — should "
-        f"be a lock-free F-expression UPDATE. Captured queries: {sql}"
-    )
 ```
 
-Helper used throughout:
+`with assert_max_queries(n) as budget:` exposes the captured SQL as `budget.queries.queries`, so
+a shape check can sit inside the same window as the count.
 
-```python
-def _captured_sql(ctx) -> list[str]:
-    return [q["sql"] for q in ctx.captured_queries]
-```
-
-## Picking a style
+## Picking a helper
 
 | Situation | Use |
 |---|---|
-| A list or connection: proving absence of fan-out | `assert_queries_dont_grow` (style 3) |
-| A single object, or a count that churns with optimizer internals | `assert_max_queries` with a `hint` (style 2) |
-| Stable path where every query should be explained | style 1 — exact count + numbered comment |
-| Batching / write-path shape | style 4 — filter the captured SQL |
-
-Styles 2 and 3 combine well: `small, big = assert_queries_dont_grow(...)` returns both
-`QueryData`, so a test can also pin `small.count` to a named budget.
+| A list or connection | `assert_queries_dont_grow`, then `assert_max_queries` with the budget |
+| A single object, a service call, a queryset evaluation | `assert_max_queries` with a `hint` |
+| An accepted per-row cost | `assert_queries_dont_grow(per_item=k)` + a comment naming the fix |
+| Batching / write-path shape | filter the captured SQL |
 
 ## Where these live
 
-`baseapp_chats/tests/test_graphql_query_counts.py` is the best-documented example and names its own
-lineage in the module docstring. Others:
+`baseapp_profiles/tests/test_graphql_query_counts.py` and
+`baseapp_chats/tests/test_graphql_query_counts.py` are the best-documented examples. Others:
 `baseapp_comments/tests/test_graphql_queries_object_comments.py` (pastes the full expected SQL per
 query), `baseapp_follows/tests/test_graphql_queries_object_follows.py`,
-`baseapp_mentions/tests/test_graphql_queries_object_mentions.py` (asserts delta is exactly zero),
-`baseapp_reactions/`, `baseapp_ratings/`, `baseapp_reports/`, `baseapp_blocks/`.
+`baseapp_mentions/tests/test_graphql_queries_object_mentions.py`, `baseapp_reactions/`,
+`baseapp_ratings/`, `baseapp_reports/`, `baseapp_blocks/`, `baseapp/files/`.
 
 ## Checklist for a new block
 
@@ -277,8 +201,9 @@ Expect ~25. If it prints `1`, the distribution isn't installed — that is the b
 ## Anti-patterns
 
 - Raising a budget constant to make a red test green without identifying the added query.
-- Omitting `ContentType.objects.clear_cache()`, making counts order-dependent.
-- A bare `assert count <= N` with no explanation of what N is made of.
+- Counting by hand (`queries.count == N`, `len(ctx.captured_queries)`) instead of the helpers.
+- Reading `obj.relay_id` inside the capture window, so the count includes a `DocumentId` lookup.
+- A budget with no explanation of what N is made of.
 - Asserting only an absolute count with no volume comparison — an N+1 that is small at 3 rows
   passes.
 - Testing only the happy path when the resolver branches on an optional service being present.
