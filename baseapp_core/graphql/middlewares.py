@@ -2,14 +2,29 @@ import logging
 import traceback
 from typing import Any
 
+from graphql import GraphQLError
 from rest_framework.authentication import TokenAuthentication as RestTokenAuthentication
 from rest_framework_simplejwt.authentication import (
     JWTAuthentication as RestJWTAuthentication,
 )
 
+# `GraphQLError` codes that answer an expected client condition (e.g. `login_required` on an
+# anonymous request), not a server fault: returned to the client, but not logged as errors.
+UNLOGGED_ERROR_CODES = frozenset({"authentication_required"})
+
+
+def is_expected_client_error(error: BaseException) -> bool:
+    """Whether `error` is a deliberate client-facing `GraphQLError` that should not be logged."""
+    if not isinstance(error, GraphQLError):
+        return False
+    return (error.extensions or {}).get("code") in UNLOGGED_ERROR_CODES
+
 
 class LogExceptionMiddleware(object):
     def on_error(self, error) -> None:
+        if is_expected_client_error(error):
+            raise error
+
         # need to raise error again to get access to traceback
         try:
             raise error
