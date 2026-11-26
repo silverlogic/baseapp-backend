@@ -1,3 +1,5 @@
+import os
+
 from celery.schedules import crontab
 from django.utils.translation import gettext_lazy as _
 
@@ -70,6 +72,14 @@ INSTALLED_APPS += [
     "testproject.social.mentions",
     "baseapp_wagtail.tests",
 ]
+
+# N+1 scan (baseapp_core.n_plus_one): off in a normal run and in CI, where the gate is the
+# query-count tests. NPLUSONE_REPORT=1 turns it on: an "N+1 report (zeal)" section at the end of
+# the run lists each N+1 with its hits and tests, and nothing fails. See baseapp_core/README.md.
+if os.environ.get("NPLUSONE_REPORT") == "1":
+    INSTALLED_APPS += ["zeal", "baseapp_core.n_plus_one"]
+    MIDDLEWARE = ["zeal.middleware.zeal_middleware"] + MIDDLEWARE
+    ZEAL_RAISE = False
 
 plugin_registry.load_from_installed_apps(installed_apps=INSTALLED_APPS)
 
