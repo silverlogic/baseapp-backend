@@ -1,20 +1,23 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import graphene
+import swapper
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
 from baseapp_core.graphql import DjangoObjectType
 from baseapp_core.graphql import Node as RelayNode
 
-from ..models import ImpersonationSession
 from ..services import get_impersonation
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
 
+ImpersonationSession = swapper.load_model("baseapp_impersonation", "ImpersonationSession")
 
-VIEW_PERMISSION = f"{ImpersonationSession._meta.app_label}.view_impersonationsession"
+VIEW_PERMISSION = (
+    f"{ImpersonationSession._meta.app_label}.view_{ImpersonationSession._meta.model_name}"
+)
 
 ImpersonationEndReason = graphene.Enum.from_enum(
     ImpersonationSession.EndReason, name="ImpersonationEndReason"
@@ -44,14 +47,16 @@ class BaseImpersonationSessionObjectType:
             "end_reason",
         )
 
-    def resolve_end_reason(self, info) -> str | None:
+    def resolve_end_reason(self, info: graphene.ResolveInfo) -> str | None:
         return self.end_reason or None
 
-    def resolve_is_active(self, info) -> bool:
+    def resolve_is_active(self, info: graphene.ResolveInfo) -> bool:
         return self.is_active
 
     @classmethod
-    def get_queryset(cls, queryset, info) -> "QuerySet[ImpersonationSession]":
+    def get_queryset(
+        cls, queryset: "QuerySet[ImpersonationSession]", info: graphene.ResolveInfo
+    ) -> "QuerySet[ImpersonationSession]":
         """Staff with the view permission see every session; others see the ones they
         started and the one their request belongs to."""
         user = info.context.user
@@ -65,14 +70,9 @@ class BaseImpersonationSessionObjectType:
         return queryset.filter(visible)
 
     @classmethod
-    def get_node(cls, info, id) -> "ImpersonationSession | None":
-        node = super().get_node(info, id)
-        if (
-            node is None
-            or not cls.get_queryset(ImpersonationSession.objects.filter(pk=node.pk), info).exists()
-        ):
-            return None
-        return node
+    def get_node(cls, info: graphene.ResolveInfo, id: Any) -> "ImpersonationSession | None":
+        """The session, only when `get_queryset` lets the viewer see it."""
+        return cls.get_queryset(ImpersonationSession.objects.all(), info).filter(pk=id).first()
 
 
 class ImpersonationSessionObjectType(BaseImpersonationSessionObjectType, DjangoObjectType):

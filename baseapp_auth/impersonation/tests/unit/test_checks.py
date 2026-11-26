@@ -45,6 +45,12 @@ def test_refresh_serializer_without_the_mixin() -> None:
     assert "baseapp_impersonation.W003" in ids(SIMPLE_JWT=simple_jwt)
 
 
+def test_refresh_serializer_left_at_the_simplejwt_default() -> None:
+    # No TOKEN_REFRESH_SERIALIZER: SimpleJWT falls back to its own TokenRefreshSerializer,
+    # which does not check sessions either.
+    assert "baseapp_impersonation.W003" in ids(SIMPLE_JWT={})
+
+
 @pytest.mark.parametrize(
     "backends, warned",
     [

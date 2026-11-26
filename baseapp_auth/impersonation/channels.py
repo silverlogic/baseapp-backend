@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Callable
 
 from channels.db import database_sync_to_async
 from channels.middleware import BaseMiddleware
@@ -32,7 +32,7 @@ class ImpersonationWebsocketMiddleware(BaseMiddleware):
     `JWTAuthMiddleware(ImpersonationWebsocketMiddleware(app))`.
     """
 
-    async def __call__(self, scope, receive, send) -> Any:
+    async def __call__(self, scope: dict, receive: Callable, send: Callable) -> Any:
         subprotocols = scope.get("subprotocols") or []
         raw_token = JWTAuthMiddleware._subprotocol_value(subprotocols, "Authorization")
         if raw_token:

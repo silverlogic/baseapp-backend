@@ -69,6 +69,7 @@ INSTALLED_APPS += [
     "testproject.notifications",
     "testproject.social.chats",
     "testproject.social.mentions",
+    "testproject.impersonation",
     "baseapp_wagtail.tests",
 ]
 
@@ -232,6 +233,10 @@ BASEAPP_CONTENT_FEED_CONTENTPOSTIMAGE_MODEL = "content_feed.ContentPostImage"
 # Follows
 BASEAPP_FOLLOWS_FOLLOW_MODEL = "follows.Follow"
 BASEAPP_FOLLOWS_FOLLOWABLEMETADATA_MODEL = "follows.FollowableMetadata"
+
+# Impersonation
+BASEAPP_IMPERSONATION_IMPERSONATIONSESSION_MODEL = "impersonation.ImpersonationSession"
+BASEAPP_IMPERSONATION_IMPERSONATIONACTION_MODEL = "impersonation.ImpersonationAction"
 
 # Blocks
 BASEAPP_BLOCKS_BLOCK_MODEL = "blocks.Block"

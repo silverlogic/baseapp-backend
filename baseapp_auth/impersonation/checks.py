@@ -4,6 +4,7 @@ from django.apps import apps
 from django.conf import settings
 from django.core.checks import Tags, Warning, register
 from django.utils.module_loading import import_string
+from rest_framework_simplejwt import settings as jwt_settings
 
 from . import conf
 
@@ -41,12 +42,19 @@ def check_impersonation_wiring(app_configs: Any = None, **kwargs: Any) -> list[W
             )
         )
 
-    refresh_serializer = getattr(settings, "SIMPLE_JWT", {}).get("TOKEN_REFRESH_SERIALIZER")
+    # The resolved setting, so SimpleJWT's default serializer (used when the project sets none)
+    # is checked too: it does not apply the session checks either. Read through the module:
+    # SimpleJWT rebinds `api_settings` whenever SIMPLE_JWT changes.
+    refresh_serializer = jwt_settings.api_settings.TOKEN_REFRESH_SERIALIZER
     if refresh_serializer:
         from .serializers import ImpersonationRefreshSerializerMixin
 
         try:
-            serializer_class = import_string(refresh_serializer)
+            serializer_class = (
+                import_string(refresh_serializer)
+                if isinstance(refresh_serializer, str)
+                else refresh_serializer
+            )
         except ImportError:
             serializer_class = None
         if serializer_class is not None and not issubclass(

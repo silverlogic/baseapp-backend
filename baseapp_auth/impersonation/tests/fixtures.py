@@ -1,13 +1,15 @@
 from collections.abc import Callable, Generator
 
 import pytest
+import swapper
 from django.contrib.auth.models import AbstractBaseUser
 from django.core.cache import cache
 
 from baseapp_auth.tests.factories import UserFactory
 
-from ..models import ImpersonationSession
 from ..services import start_impersonation
+
+ImpersonationSession = swapper.load_model("baseapp_impersonation", "ImpersonationSession")
 
 
 @pytest.fixture(autouse=True)

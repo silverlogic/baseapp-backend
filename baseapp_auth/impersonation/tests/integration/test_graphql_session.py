@@ -1,4 +1,5 @@
 import pytest
+import swapper
 from django.test import override_settings
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.utils import datetime_to_epoch
@@ -6,9 +7,10 @@ from rest_framework_simplejwt.utils import datetime_to_epoch
 from baseapp_auth.tests.factories import UserFactory
 from baseapp_core.graphql.testing.fixtures import graphql_query
 
-from ...models import ImpersonationSession
 from ...signals import impersonation_denied, impersonation_ended, impersonation_started
 from ..fixtures import bearer
+
+ImpersonationSession = swapper.load_model("baseapp_impersonation", "ImpersonationSession")
 
 pytestmark = pytest.mark.django_db
 
@@ -268,7 +270,12 @@ def test_staff_with_permission_revokes(django_client, start_session) -> None:
 
     session, _tokens = start_session()
     staff = UserFactory()
-    staff.user_permissions.add(Permission.objects.get(codename="change_impersonationsession"))
+    staff.user_permissions.add(
+        Permission.objects.get(
+            content_type__app_label=ImpersonationSession._meta.app_label,
+            codename=f"change_{ImpersonationSession._meta.model_name}",
+        )
+    )
     django_client.force_login(staff)
     graphql_query(END, input_data={"session": session.relay_id}, client=django_client)
     session.refresh_from_db()

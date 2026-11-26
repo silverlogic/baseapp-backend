@@ -3,10 +3,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import channels_graphql_ws
 import pytest
 from django.contrib.auth.models import AnonymousUser
+from graphql import MiddlewareManager
 
 from baseapp_core.graphql.consumers import (
     GraphqlWsJWTAuthenticatedConsumer,
     threadpool_for_sync_resolvers,
+    with_extra_middleware,
 )
 from baseapp_core.plugins import shared_services
 
@@ -155,3 +157,32 @@ class TestSharedMiddleware:
         ):
             consumer = GraphqlWsJWTAuthenticatedConsumer()
         assert consumer.middleware == [threadpool_for_sync_resolvers]
+
+
+class TestWithExtraMiddleware:
+    """The provider's middleware is added whatever shape the consumer's `middleware` has."""
+
+    def test_none(self) -> None:
+        extra = MagicMock()
+        assert with_extra_middleware(None, [extra]) == [extra]
+
+    def test_tuple_and_generator(self) -> None:
+        first, extra = MagicMock(), MagicMock()
+        assert with_extra_middleware((first,), [extra]) == [first, extra]
+        assert with_extra_middleware(iter([first]), [extra]) == [first, extra]
+
+    def test_middleware_manager(self) -> None:
+        first, extra = MagicMock(), MagicMock()
+        result = with_extra_middleware(MiddlewareManager(first), [extra])
+        assert isinstance(result, MiddlewareManager)
+        assert list(result.middlewares) == [first, extra]
+
+    def test_nothing_to_add_keeps_the_object(self) -> None:
+        middleware = [MagicMock()]
+        assert with_extra_middleware(middleware, []) is middleware
+
+    def test_unsupported_shape_is_kept_with_a_warning(self, caplog) -> None:
+        middleware = object()
+        with caplog.at_level("WARNING", logger="baseapp_core.graphql.consumers"):
+            assert with_extra_middleware(middleware, [MagicMock()]) is middleware
+        assert "graphql_ws.middleware" in caplog.text

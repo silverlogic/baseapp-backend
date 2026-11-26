@@ -1,4 +1,5 @@
 import factory
+import swapper
 from django.utils import timezone
 
 from baseapp_auth.tests.factories import UserFactory
@@ -11,4 +12,4 @@ class ImpersonationSessionFactory(factory.django.DjangoModelFactory):
     expires_at = factory.LazyFunction(lambda: timezone.now() + timezone.timedelta(hours=1))
 
     class Meta:
-        model = "baseapp_impersonation.ImpersonationSession"
+        model = swapper.get_model_name("baseapp_impersonation", "ImpersonationSession")

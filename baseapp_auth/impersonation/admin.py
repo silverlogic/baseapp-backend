@@ -1,10 +1,15 @@
+from typing import Any
+
+import swapper
 from django.contrib import admin
 from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.utils.translation import gettext_lazy as _
 
-from .models import ImpersonationAction, ImpersonationSession
 from .services import end_impersonation
+
+ImpersonationSession = swapper.load_model("baseapp_impersonation", "ImpersonationSession")
+ImpersonationAction = swapper.load_model("baseapp_impersonation", "ImpersonationAction")
 
 
 class ImpersonationActionInline(admin.TabularInline):
@@ -14,7 +19,7 @@ class ImpersonationActionInline(admin.TabularInline):
     fields = ("created", "method", "path", "operation_name", "status_code", "succeeded")
     readonly_fields = fields
 
-    def has_add_permission(self, request: HttpRequest, obj=None) -> bool:
+    def has_add_permission(self, request: HttpRequest, obj: Any = None) -> bool:
         return False
 
 
@@ -53,7 +58,7 @@ class ImpersonationSessionAdmin(admin.ModelAdmin):
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
 
-    def has_delete_permission(self, request: HttpRequest, obj=None) -> bool:
+    def has_delete_permission(self, request: HttpRequest, obj: Any = None) -> bool:
         return False
 
     @admin.action(description=_("Revoke selected sessions"), permissions=["change"])

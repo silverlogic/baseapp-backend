@@ -1,11 +1,11 @@
 import inspect
-from typing import Any
+from typing import Any, Callable
 
+import swapper
 from channels.db import database_sync_to_async
-from graphql import GraphQLError, OperationType
+from graphql import GraphQLError, GraphQLResolveInfo, OperationType
 
 from ..exceptions import ImpersonationSessionInvalid
-from ..models import ImpersonationSession
 from ..services import (
     SESSION_MUTATIONS,
     defer_or_record_action,
@@ -16,8 +16,10 @@ from ..services import (
     record_action,
 )
 
+ImpersonationSession = swapper.load_model("baseapp_impersonation", "ImpersonationSession")
 
-def check_root_mutation(session: ImpersonationSession, info) -> str | None:
+
+def check_root_mutation(session: ImpersonationSession, info: GraphQLResolveInfo) -> str | None:
     """
     The name of the root mutation to record, or None for any other root field. Raises a
     `GraphQLError` for a mutation the session may not run.
@@ -51,7 +53,9 @@ class ImpersonationReadOnlyMiddleware:
     WebSocket are handled by `ImpersonationWebsocketGraphqlMiddleware`.
     """
 
-    def resolve(self, next, root, info, **kwargs) -> Any:
+    def resolve(
+        self, next: Callable[..., Any], root: Any, info: GraphQLResolveInfo, **kwargs: Any
+    ) -> Any:
         if info.path.prev is not None:
             return next(root, info, **kwargs)
 
@@ -87,7 +91,7 @@ WEBSOCKET_METHOD = "WS"
 
 
 def _check_websocket_root_field(
-    scope: dict, session: ImpersonationSession, info
+    scope: dict, session: ImpersonationSession, info: GraphQLResolveInfo
 ) -> tuple[ImpersonationSession, str | None]:
     try:
         session = ensure_session_active(session)
@@ -111,7 +115,9 @@ class ImpersonationWebsocketGraphqlMiddleware:
     `ImpersonationReadOnlyMiddleware` does, with method `WS` and the connection's path.
     """
 
-    async def resolve(self, next, root, info, **kwargs) -> Any:
+    async def resolve(
+        self, next: Callable[..., Any], root: Any, info: GraphQLResolveInfo, **kwargs: Any
+    ) -> Any:
         scope = getattr(info.context, "channels_scope", None)
         session = get_impersonation(scope) if scope and info.path.prev is None else None
         if session is None:

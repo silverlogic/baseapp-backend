@@ -14,7 +14,7 @@ class CodedDetailMixin:
     default_detail: str
     default_code: str
 
-    def __init__(self, detail=None) -> None:
+    def __init__(self, detail: str | None = None) -> None:
         super().__init__({"detail": detail or self.default_detail, "code": self.default_code})
 
     @property

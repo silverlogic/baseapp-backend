@@ -1,6 +1,7 @@
 import asyncio
 import contextvars
 import functools
+import logging
 import sys
 from typing import Any
 
@@ -9,11 +10,14 @@ import swapper
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
 from graphene_django.settings import graphene_settings
+from graphql import MiddlewareManager
 from rest_framework.authtoken.models import Token
 
 from baseapp_core.authentication import authenticate_jwt_async
 from baseapp_core.graphql import get_pk_from_relay_id
 from baseapp_core.plugins import shared_services
+
+logger = logging.getLogger(__name__)
 
 python_version = sys.version_info
 
@@ -43,11 +47,35 @@ GRAPHQL_WS_MIDDLEWARE_SERVICE = "graphql_ws.middleware"
 class SharedMiddlewareMixin:
     """Adds the middleware of the `graphql_ws.middleware` shared service, if any."""
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         provider = shared_services.get(GRAPHQL_WS_MIDDLEWARE_SERVICE)
-        if provider is not None and isinstance(self.middleware, (list, tuple, type(None))):
-            self.middleware = [*(self.middleware or ()), *provider.get_middleware()]
+        if provider is not None:
+            self.middleware = with_extra_middleware(self.middleware, provider.get_middleware())
         super().__init__(*args, **kwargs)
+
+
+def with_extra_middleware(middleware: Any, extra: list) -> Any:
+    """
+    `middleware` followed by `extra`, in the same shape: a list for None or any iterable, a new
+    `MiddlewareManager` for a manager. Anything else is returned unchanged with a warning, since
+    dropping `extra` silently would skip checks a shared service relies on.
+    """
+    if not extra:
+        return middleware
+    if isinstance(middleware, MiddlewareManager):
+        return MiddlewareManager(*middleware.middlewares, *extra)
+    if middleware is None:
+        return list(extra)
+    try:
+        return [*middleware, *extra]
+    except TypeError:
+        logger.warning(
+            "Cannot add the %s middleware to a consumer whose `middleware` is %r; "
+            "WebSocket operations will skip it.",
+            GRAPHQL_WS_MIDDLEWARE_SERVICE,
+            type(middleware).__name__,
+        )
+        return middleware
 
 
 class GraphqlWsAuthenticatedConsumer(SharedMiddlewareMixin, channels_graphql_ws.GraphqlWsConsumer):

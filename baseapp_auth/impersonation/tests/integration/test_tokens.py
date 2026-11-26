@@ -1,15 +1,17 @@
 from datetime import timedelta
 
 import pytest
+import swapper
 from django.test import override_settings
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.utils import datetime_to_epoch
 
-from ...models import ImpersonationSession
 from ...services import end_impersonation, get_session
 from ...signals import impersonation_ended
 from ..fixtures import bearer
+
+ImpersonationSession = swapper.load_model("baseapp_impersonation", "ImpersonationSession")
 
 pytestmark = pytest.mark.django_db
 

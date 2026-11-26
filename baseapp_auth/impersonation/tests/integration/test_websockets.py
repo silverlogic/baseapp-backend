@@ -5,6 +5,7 @@ Sessions over BaseApp's GraphQL WebSocket consumer, which authenticates from the
 """
 
 import textwrap
+from typing import Any, Awaitable, Callable, Iterator
 
 import channels.routing
 import channels_graphql_ws.testing
@@ -12,6 +13,7 @@ import pytest
 import swapper
 from channels.db import database_sync_to_async
 from channels_graphql_ws.client import GraphqlWsResponseError
+from channels_graphql_ws.testing import GraphqlWsClient
 from django.urls import path
 
 from baseapp_chats.tests.factories import ChatRoomFactory, ChatRoomParticipantFactory
@@ -21,8 +23,10 @@ from baseapp_core.graphql.consumers import GraphqlWsJWTAuthenticatedConsumer
 from baseapp_core.tests.factories import UserFactory
 
 from ...graphql.middleware import ImpersonationWebsocketGraphqlMiddleware
-from ...models import ImpersonationAction
 from ...services import end_impersonation
+
+ImpersonationAction = swapper.load_model("baseapp_impersonation", "ImpersonationAction")
+
 
 Message = swapper.load_model("baseapp_chats", "Message")
 
@@ -56,7 +60,7 @@ HIDE_CHATS = [
 
 
 @pytest.fixture
-def ws_connect():
+def ws_connect() -> Iterator[Callable[[dict], Awaitable["GraphqlWsClient"]]]:
     """Connects to `GraphqlWsJWTAuthenticatedConsumer` with a session's tokens."""
     clients = []
 
@@ -208,7 +212,7 @@ class TestMutations:
 
 class TestHiddenChats:
     @pytest.fixture
-    def target_room(self, member):
+    def target_room(self, member: Any) -> tuple[Any, Any]:
         """A room of the target's with another user, who sends the messages."""
         other = UserFactory()
         room = ChatRoomFactory(created_by=other)

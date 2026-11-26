@@ -16,7 +16,7 @@ def get_impersonation_interface() -> type[graphene.Interface]:
             ),
         )
 
-        def resolve_impersonation(self, info) -> object | None:
+        def resolve_impersonation(self, info: graphene.ResolveInfo) -> object | None:
             session = get_impersonation(info.context)
             if session is None or session.target_id != self.pk:
                 return None

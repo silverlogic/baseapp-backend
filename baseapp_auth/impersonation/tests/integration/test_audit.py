@@ -1,13 +1,16 @@
 import pytest
+import swapper
 from django.contrib.admin.sites import site
 from django.contrib.auth.models import Permission
 from django.test import RequestFactory
 
 from baseapp_auth.tests.factories import UserFactory
 
-from ...models import ImpersonationSession
 from ...services import record_action
 from ..fixtures import bearer
+
+ImpersonationSession = swapper.load_model("baseapp_impersonation", "ImpersonationSession")
+
 
 pytestmark = pytest.mark.django_db
 
@@ -35,8 +38,10 @@ def test_revoke_action_needs_the_change_permission(codenames, offered) -> None:
     staff = UserFactory(is_staff=True)
     staff.user_permissions.add(
         *Permission.objects.filter(
-            content_type__app_label="baseapp_impersonation",
-            codename__in=[f"{codename}_impersonationsession" for codename in codenames],
+            content_type__app_label=ImpersonationSession._meta.app_label,
+            codename__in=[
+                f"{codename}_{ImpersonationSession._meta.model_name}" for codename in codenames
+            ],
         )
     )
     request = RequestFactory().get("/admin/")

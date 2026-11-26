@@ -1,4 +1,7 @@
+from typing import Any
+
 import graphene
+import swapper
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.utils.translation import gettext_lazy as _
@@ -12,13 +15,15 @@ from baseapp_core.graphql import (
 )
 
 from ..exceptions import ImpersonationNotAllowed
-from ..models import ImpersonationSession
 from ..services import end_impersonation, get_impersonation, start_impersonation
+
+ImpersonationSession = swapper.load_model("baseapp_impersonation", "ImpersonationSession")
+
 
 User = get_user_model()
 
 
-def _get_object(info, relay_id: str) -> object | None:
+def _get_object(info: graphene.ResolveInfo, relay_id: str) -> object | None:
     try:
         return get_obj_from_relay_id(info, relay_id)
     except ObjectDoesNotExist:
@@ -41,7 +46,9 @@ class ImpersonationStart(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input) -> "ImpersonationStart":
+    def mutate_and_get_payload(
+        cls, root: Any, info: graphene.ResolveInfo, **input: Any
+    ) -> "ImpersonationStart":
         request = info.context
         if get_impersonation(request) is not None:
             raise GraphQLError(
@@ -85,7 +92,9 @@ class ImpersonationEnd(RelayMutation):
 
     @classmethod
     @login_required
-    def mutate_and_get_payload(cls, root, info, **input) -> "ImpersonationEnd":
+    def mutate_and_get_payload(
+        cls, root: Any, info: graphene.ResolveInfo, **input: Any
+    ) -> "ImpersonationEnd":
         request = info.context
         session = get_impersonation(request)
 
@@ -99,7 +108,7 @@ class ImpersonationEnd(RelayMutation):
                 )
             user = request.user
             if session.impersonator_id != user.pk and not user.has_perm(
-                f"{ImpersonationSession._meta.app_label}.change_impersonationsession"
+                f"{ImpersonationSession._meta.app_label}.change_{ImpersonationSession._meta.model_name}"
             ):
                 raise GraphQLError(
                     str(_("You don't have permission to end this session.")),

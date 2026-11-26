@@ -15,12 +15,15 @@ from contextvars import ContextVar
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+import swapper
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
+from rest_framework_simplejwt.exceptions import TokenBackendError
 from rest_framework_simplejwt.settings import api_settings
+from rest_framework_simplejwt.state import token_backend
 from rest_framework_simplejwt.tokens import Token
 from rest_framework_simplejwt.utils import datetime_to_epoch
 
@@ -31,7 +34,6 @@ from .exceptions import (
     ImpersonationReadOnly,
     ImpersonationSessionInvalid,
 )
-from .models import ImpersonationAction, ImpersonationSession
 from .signals import (
     impersonation_action,
     impersonation_denied,
@@ -39,6 +41,9 @@ from .signals import (
     impersonation_started,
 )
 from .tokens import ImpersonationRefreshToken
+
+ImpersonationSession = swapper.load_model("baseapp_impersonation", "ImpersonationSession")
+ImpersonationAction = swapper.load_model("baseapp_impersonation", "ImpersonationAction")
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser
@@ -222,6 +227,20 @@ def _close(
 
 
 # Tokens
+
+
+def has_session_claim(raw_token: str | bytes) -> bool:
+    """
+    Whether a raw JWT carries the session claim, read without verifying it.
+
+    A cheap pre-check only: a token that has the claim must still go through
+    `validate_session_token` after its signature is verified.
+    """
+    try:
+        payload = token_backend.decode(raw_token, verify=False)
+    except TokenBackendError:
+        return False
+    return SESSION_CLAIM in payload
 
 
 def validate_session_token(token: Any) -> "ImpersonationSession | None":

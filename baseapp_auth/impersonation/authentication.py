@@ -1,5 +1,6 @@
 from typing import Any
 
+from rest_framework.request import Request
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .services import check_impersonation
@@ -14,7 +15,7 @@ class ImpersonationJWTAuthenticationMixin:
     refuses unsafe methods. Ordinary tokens pass through untouched.
     """
 
-    def authenticate(self, request) -> "tuple[Any, Any] | None":
+    def authenticate(self, request: Request) -> "tuple[Any, Any] | None":
         result = super().authenticate(request)
         if result is None:
             return None

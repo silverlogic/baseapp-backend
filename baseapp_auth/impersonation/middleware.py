@@ -1,5 +1,6 @@
 from typing import Any, Callable
 
+import swapper
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from rest_framework.exceptions import APIException
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -10,16 +11,18 @@ from .exceptions import (
     ImpersonationReadOnly,
     ImpersonationSessionInvalid,
 )
-from .models import ImpersonationSession
 from .services import (
     SAFE_METHODS,
     _current_session,
     check_impersonation,
     enforce_read_only_request,
+    has_session_claim,
     is_graphql_view,
     is_token_view,
     record_action,
 )
+
+ImpersonationSession = swapper.load_model("baseapp_impersonation", "ImpersonationSession")
 
 
 def _error_response(exc: APIException) -> JsonResponse:
@@ -92,7 +95,9 @@ class ImpersonationMiddleware:
         if header is None:
             return None
         raw_token = auth.get_raw_token(header)
-        if raw_token is None:
+        if raw_token is None or not has_session_claim(raw_token):
+            # Ordinary tokens skip the signature check here: the authentication class
+            # verifies them anyway, so only session tokens pay for a second verification.
             return None
         try:
             token = auth.get_validated_token(raw_token)

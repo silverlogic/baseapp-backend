@@ -1,3 +1,6 @@
+from typing import TYPE_CHECKING
+
+import swapper
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
@@ -6,6 +9,9 @@ from django.utils.translation import gettext_lazy as _
 
 from baseapp_core.graphql.models import RelayModel
 
+if TYPE_CHECKING:
+    from baseapp_core.graphql import DjangoObjectType
+
 
 class ImpersonationSessionQuerySet(models.QuerySet):
     def active(self) -> "ImpersonationSessionQuerySet":
@@ -13,7 +19,7 @@ class ImpersonationSessionQuerySet(models.QuerySet):
         return self.filter(ended_at__isnull=True, expires_at__gt=timezone.now())
 
 
-class ImpersonationSession(RelayModel):
+class AbstractImpersonationSession(RelayModel):
     """
     One period in which `impersonator` acts as `target`, with the reason they gave.
 
@@ -59,6 +65,8 @@ class ImpersonationSession(RelayModel):
     objects = ImpersonationSessionQuerySet.as_manager()
 
     class Meta:
+        abstract = True
+        swappable = swapper.swappable_setting("baseapp_impersonation", "ImpersonationSession")
         ordering = ["-started_at"]
         verbose_name = _("impersonation session")
         verbose_name_plural = _("impersonation sessions")
@@ -77,12 +85,18 @@ class ImpersonationSession(RelayModel):
     def is_active(self) -> bool:
         return self.ended_at is None and self.expires_at > timezone.now()
 
+    @classmethod
+    def get_graphql_object_type(cls) -> type["DjangoObjectType"]:
+        from .graphql.object_types import ImpersonationSessionObjectType
 
-class ImpersonationAction(models.Model):
+        return ImpersonationSessionObjectType
+
+
+class AbstractImpersonationAction(models.Model):
     """A write made during an impersonation session: a REST request or a GraphQL mutation."""
 
     session = models.ForeignKey(
-        ImpersonationSession,
+        swapper.get_model_name("baseapp_impersonation", "ImpersonationSession"),
         related_name="actions",
         on_delete=models.CASCADE,
         verbose_name=_("session"),
@@ -113,6 +127,8 @@ class ImpersonationAction(models.Model):
     )
 
     class Meta:
+        abstract = True
+        swappable = swapper.swappable_setting("baseapp_impersonation", "ImpersonationAction")
         ordering = ["created"]
         verbose_name = _("impersonation action")
         verbose_name_plural = _("impersonation actions")

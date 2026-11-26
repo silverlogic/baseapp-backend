@@ -1,6 +1,12 @@
+from typing import TYPE_CHECKING
+
 from django.utils.translation import gettext_lazy as _
 
 from baseapp_core.plugins import BaseAppConfig, GraphQLContributor, ServicesContributor
+
+if TYPE_CHECKING:
+    from baseapp_core.plugins.shared_graphql_interfaces import GraphQLSharedInterfaceRegistry
+    from baseapp_core.plugins.shared_services import SharedServiceRegistry
 
 
 class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
@@ -14,7 +20,7 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
         super().ready()
         from . import checks  # noqa: F401  (registers the wiring checks)
 
-    def register_shared_services(self, registry) -> None:
+    def register_shared_services(self, registry: "SharedServiceRegistry") -> None:
         from .services import ImpersonationGraphqlWsMiddleware, ImpersonationTokenCheck
 
         # BaseApp's WebSocket authentication and GraphQL consumers consult these, so sessions
@@ -22,7 +28,9 @@ class PackageConfig(BaseAppConfig, ServicesContributor, GraphQLContributor):
         registry.register(ImpersonationTokenCheck())
         registry.register(ImpersonationGraphqlWsMiddleware())
 
-    def register_graphql_shared_interfaces(self, registry) -> None:
+    def register_graphql_shared_interfaces(
+        self, registry: "GraphQLSharedInterfaceRegistry"
+    ) -> None:
         from .graphql.interfaces import get_impersonation_interface
 
         registry.register("ImpersonationInterface", get_impersonation_interface)

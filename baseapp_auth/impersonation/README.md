@@ -28,7 +28,38 @@ INSTALLED_APPS = [
 ]
 ```
 
-Run `migrate` to create the session and action tables.
+The session and action models are swappable, like those of the other BaseApp packages, so the
+package ships no migrations: your project owns the concrete models. Create an app for them (we
+suggest `apps/auth/impersonation/`) and implement, in its `models.py`:
+
+```python
+from baseapp_auth.impersonation.models import (
+    AbstractImpersonationAction,
+    AbstractImpersonationSession,
+)
+
+
+class ImpersonationSession(AbstractImpersonationSession):
+    class Meta(AbstractImpersonationSession.Meta):
+        pass
+
+
+class ImpersonationAction(AbstractImpersonationAction):
+    class Meta(AbstractImpersonationAction.Meta):
+        pass
+```
+
+Add the app to `INSTALLED_APPS`, point swapper at the models, then run `makemigrations` and
+`migrate`:
+
+```python
+BASEAPP_IMPERSONATION_IMPERSONATIONSESSION_MODEL = "impersonation.ImpersonationSession"
+BASEAPP_IMPERSONATION_IMPERSONATIONACTION_MODEL = "impersonation.ImpersonationAction"
+```
+
+Load them with `swapper.load_model("baseapp_impersonation", "ImpersonationSession")` (or
+`"ImpersonationAction"`), never by importing the abstract classes. To change the GraphQL type
+too, override `get_graphql_object_type()` on your session model.
 
 The plugin contributes a Django middleware, a Graphene middleware, a permissions backend, the
 GraphQL mutations and the default settings. Slot them in where your settings assemble those

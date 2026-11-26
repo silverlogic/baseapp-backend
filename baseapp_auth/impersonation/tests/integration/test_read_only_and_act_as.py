@@ -1,11 +1,14 @@
 import pytest
+import swapper
 from django.test import override_settings
 
 from baseapp_core.graphql.testing.fixtures import graphql_query
 
-from ...models import ImpersonationAction
 from ...signals import impersonation_action
 from ..fixtures import bearer
+
+ImpersonationAction = swapper.load_model("baseapp_impersonation", "ImpersonationAction")
+
 
 pytestmark = pytest.mark.django_db
 
