@@ -599,6 +599,13 @@ class ChatRoomsAddParticipant(RelayMutation):
 
 class ChatRoomToggleAdmin(RelayMutation):
     participant = graphene.Field(ChatRoomParticipantObjectType._meta.connection.Edge)
+    room = graphene.Field(
+        ChatRoomObjectType._meta.connection.Edge,
+        description=(
+            "The updated room, so clients can refresh room-level admin state "
+            "such as `isSoleAdmin`."
+        ),
+    )
 
     class Input:
         target_participant_id = graphene.ID(required=True)
@@ -697,6 +704,9 @@ class ChatRoomToggleAdmin(RelayMutation):
         return ChatRoomToggleAdmin(
             participant=ChatRoomParticipantObjectType._meta.connection.Edge(
                 node=target_participant,
+            ),
+            room=ChatRoomObjectType._meta.connection.Edge(
+                node=room,
             ),
         )
 
