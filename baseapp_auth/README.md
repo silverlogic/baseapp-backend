@@ -246,6 +246,9 @@ HEADLESS_JWT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhki...\n-----EN
 URLs: the auth plugin mounts `_allauth/` under `v1/` (through `plugin_registry.get_all_v1_urlpatterns()`)
 when `allauth.headless` is installed, and `accounts/` plus the admin login/logout/password-change
 redirects at the root (through `plugin_registry.get_all_urlpatterns()`) when `allauth` is installed.
+Put `*plugin_registry.get_all_urlpatterns()` at the top of your root `urlpatterns`, before
+`admin/` and any catch-all (e.g. wagtail): otherwise Django's admin login answers `/admin/login/`
+and the catch-all swallows `/accounts/`.
 
 **Using the API:**
 
@@ -259,18 +262,25 @@ When access token expires, exchange refresh token for new tokens via `/v1/_allau
 
 **Configure REST Framework:**
 
-The template includes `JWTTokenAuthentication` in `REST_FRAMEWORK` by default. If setting up from scratch, add it to your `settings/base.py`:
+The template includes `AllAuthJWTTokenAuthentication` in `REST_FRAMEWORK` by default. If setting up from scratch, add it to your `settings/base.py`:
 
 ```python
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "allauth.headless.contrib.rest_framework.authentication.JWTTokenAuthentication",
+        "baseapp_auth.rest_framework.authentication.AllAuthJWTTokenAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
         "rest_framework.authentication.SessionAuthentication",
         # Add other authentication classes as needed
     ),
     # ... other REST_FRAMEWORK settings
 }
 ```
+
+Use `baseapp_auth.rest_framework.authentication.AllAuthJWTTokenAuthentication` rather than allauth's
+`JWTTokenAuthentication` in the defaults: allauth's class rejects any `Bearer` token it didn't issue,
+so SimpleJWT tokens would never reach `JWTAuthentication`. The baseapp class steps aside instead, so
+both strategies work side by side.
 
 **Protect DRF endpoints:**
 

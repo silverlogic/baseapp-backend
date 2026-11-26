@@ -19,10 +19,12 @@ router = DefaultRouter(trailing_slash=False)
 router.register(r"e2e", E2EViewSet, basename="e2e")
 
 urlpatterns = [
+    # Plugin root URLs first: allauth's admin login/logout redirects must win over admin/, and
+    # accounts/ must come before wagtail's catch-all.
+    *plugin_registry.get_all_urlpatterns(),
     path("graphql", GraphQLView.as_view(graphiql=True)),
     path("admin/", admin.site.urls),
     path("v1/", include((v1_urlpatterns, "v1"), namespace="v1")),
     path("", include(baseapp_wagtail_urls)),
     path("", include(router.urls)),
-    *plugin_registry.get_all_urlpatterns(),
 ]

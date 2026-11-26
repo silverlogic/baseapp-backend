@@ -1,10 +1,15 @@
-from allauth.headless.contrib.rest_framework.authentication import (
-    JWTTokenAuthentication,
-)
+from typing import Any
+
+from baseapp_auth.rest_framework.authentication import AllAuthJWTTokenAuthentication
 
 
-class AllauthJWTTokenAuthentication(JWTTokenAuthentication):
-    def resolve(self, next, root, info, **kwargs):
+class AllauthJWTTokenAuthentication(AllAuthJWTTokenAuthentication):
+    """GraphQL middleware that authenticates allauth headless JWT access tokens.
+
+    A token allauth doesn't recognise leaves the request untouched for the next middleware.
+    """
+
+    def resolve(self, next, root, info, **kwargs) -> Any:
         context = info.context
 
         if not getattr(context, "_allauth_jwt_checked", False):

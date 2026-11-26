@@ -60,10 +60,13 @@ class TestAllAuthUserProfileJWTTokenStrategy:
         base_payload = {"foo": "bar"}
         user_data = {"id": 1, "email": "test@example.com"}
 
-        with patch(
-            "baseapp_auth.tokens.AllAuthJWTTokenStrategy.create_access_token_payload",
-            return_value=base_payload.copy(),
-        ), patch("baseapp_auth.tokens.import_string") as mock_import:
+        with (
+            patch(
+                "baseapp_auth.tokens.AllAuthJWTTokenStrategy.create_access_token_payload",
+                return_value=base_payload.copy(),
+            ),
+            patch("baseapp_auth.tokens.import_string") as mock_import,
+        ):
             serializer_cls = MagicMock()
             serializer_instance = MagicMock()
             serializer_instance.data = user_data
@@ -81,12 +84,15 @@ class TestAllAuthUserProfileJWTTokenStrategy:
         request = HttpRequest()
         request.user = MagicMock(is_authenticated=True)
 
-        with patch(
-            "baseapp_auth.tokens.AllAuthJWTTokenStrategy.create_access_token_payload",
-            return_value={"foo": "bar"},
-        ), patch(
-            "baseapp_auth.tokens.import_string",
-            side_effect=Exception("boom"),
+        with (
+            patch(
+                "baseapp_auth.tokens.AllAuthJWTTokenStrategy.create_access_token_payload",
+                return_value={"foo": "bar"},
+            ),
+            patch(
+                "baseapp_auth.tokens.import_string",
+                side_effect=Exception("boom"),
+            ),
         ):
             result = strategy.create_access_token_payload(request)
 

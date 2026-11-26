@@ -1,8 +1,8 @@
 from celery.schedules import crontab
 from django.utils.translation import gettext_lazy as _
 
-from baseapp_core.plugins import plugin_registry
 from baseapp_auth.settings import *  # noqa
+from baseapp_core.plugins import plugin_registry
 from baseapp_core.tests.settings import *  # noqa
 from baseapp_wagtail.settings import *  # noqa
 from baseapp_wagtail.settings import (
@@ -371,20 +371,11 @@ HEADLESS_FRONTEND_URLS = {
     "account_signup": FRONT_URL + "/signup",
 }
 
-# Rest Framework
-REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "allauth.headless.contrib.rest_framework.authentication.JWTTokenAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
-        "baseapp_api_key.rest_framework.authentication.APIKeyAuthentication",
-    ),
-    "DEFAULT_PAGINATION_CLASS": "baseapp_core.rest_framework.pagination.DefaultPageNumberPagination",
-    "PAGE_SIZE": 30,
-    "DEFAULT_VERSIONING_CLASS": "rest_framework.versioning.NamespaceVersioning",
-    "ORDERING_PARAM": "order_by",
-    "SEARCH_PARAM": "q",
-    "TEST_REQUEST_DEFAULT_FORMAT": "json",
-}
+# Rest Framework: allauth headless JWT first; SimpleJWT, authtoken, session and API key keep working.
+REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"] = (
+    "baseapp_auth.rest_framework.authentication.AllAuthJWTTokenAuthentication",
+    *REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"],
+)
 
 # Register the extra settings from the BaseApp apps
 plugin_settings = plugin_registry.get_all_django_extra_settings()

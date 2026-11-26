@@ -23,8 +23,7 @@ class RegisterViewSet(viewsets.GenericViewSet):
 
     def create(self, request, *args, **kwargs) -> Response:
         warnings.warn(
-            "The /v1/register endpoint is deprecated. "
-            "Use /v1/_allauth/app/v1/auth/signup instead.",
+            "The /v1/register endpoint is deprecated. Use /v1/_allauth/app/v1/auth/signup instead.",
             DeprecationWarning,
             stacklevel=2,
         )
