@@ -12,7 +12,7 @@ from django.test import Client
 from graphene_django.settings import graphene_settings
 from rest_framework.authtoken.models import Token
 
-from baseapp_core.graphql.utils import QueryData, capture_database_queries
+from baseapp_core.testing import QueryData, capture_database_queries
 
 from ..consumers import GraphqlWsAuthenticatedConsumer
 

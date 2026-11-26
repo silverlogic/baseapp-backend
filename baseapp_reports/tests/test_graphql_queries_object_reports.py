@@ -13,8 +13,9 @@ mix that briefly leaked through the optimizer.
 """
 
 import pytest
+from django.http import HttpResponse
 
-from baseapp_core.graphql.testing import assert_max_queries, assert_queries_dont_grow
+from baseapp_core.testing import assert_max_queries, assert_queries_dont_grow
 from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.tests.factories import ProfileFactory
 
@@ -54,7 +55,7 @@ def test_anon_reports_count_is_flat_regardless_of_report_volume(graphql_client) 
 
     relay_id = target.relay_id  # resolve outside the capture
 
-    def query():
+    def query() -> HttpResponse:
         return graphql_client(COUNTS_ONLY_QUERY, variables={"id": relay_id})
 
     assert_queries_dont_grow(
@@ -84,7 +85,7 @@ def test_anon_reports_count_zero_when_no_reports_does_not_extra_query(graphql_cl
 
     relay_id = target.relay_id  # resolve outside the capture
 
-    def query():
+    def query() -> HttpResponse:
         return graphql_client(COUNTS_ONLY_QUERY, variables={"id": relay_id})
 
     with assert_max_queries(EXPECTED_REPORTS_INTERFACE_QUERY_COUNT):

@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponse, JsonResponse
 
-from baseapp_core.graphql.testing import (
+from baseapp_core.testing import (
     QueryBudget,
     assert_max_queries,
     assert_queries_dont_grow,
@@ -217,3 +217,13 @@ class TestAssertQueriesDontGrow:
     def test_rejects_bad_arguments(self, kwargs, message) -> None:
         with pytest.raises(ValueError, match=message):
             assert_queries_dont_grow(run=list_users, add_items=add_users, **kwargs)
+
+
+def test_capture_is_still_importable_from_graphql_utils() -> None:
+    """`capture_database_queries` and `QueryData` moved to `baseapp_core.testing`; projects that
+    import them from `baseapp_core.graphql.utils` keep working."""
+    from baseapp_core.graphql import utils
+    from baseapp_core.testing import QueryData, capture_database_queries
+
+    assert utils.capture_database_queries is capture_database_queries
+    assert utils.QueryData is QueryData

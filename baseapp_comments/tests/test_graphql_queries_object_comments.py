@@ -2,8 +2,8 @@ import pytest
 from django.test import override_settings
 
 from baseapp_blocks.tests.factories import BlockFactory
-from baseapp_core.graphql.testing import assert_max_queries
 from baseapp_core.plugins import shared_services
+from baseapp_core.testing import assert_max_queries
 from baseapp_core.tests.factories import UserFactory
 from baseapp_pages.tests.factories import PageFactory
 from baseapp_profiles.tests.factories import ProfileFactory

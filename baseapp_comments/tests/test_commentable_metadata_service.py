@@ -9,8 +9,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
-from baseapp_core.graphql.testing import assert_max_queries
 from baseapp_core.plugins import shared_services
+from baseapp_core.testing import assert_max_queries
 
 from .factories import CommentFactory
 

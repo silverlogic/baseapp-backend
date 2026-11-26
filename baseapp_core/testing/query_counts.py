@@ -22,7 +22,7 @@ from types import TracebackType
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponse
 
-from baseapp_core.graphql.utils import QueryData, capture_database_queries
+from .queries import QueryData, capture_database_queries
 
 
 def _hint_line(hint: str) -> str:

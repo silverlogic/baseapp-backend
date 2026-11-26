@@ -9,7 +9,7 @@ N+1 and lowers the bound to 0. A declared bound still fails if the list gets wor
 
 import pytest
 
-from baseapp_core.graphql.testing import assert_max_queries, assert_queries_dont_grow
+from baseapp_core.testing import assert_max_queries, assert_queries_dont_grow
 from baseapp_core.tests.factories import UserFactory
 
 from .factories import ProfileFactory, ProfileUserRoleFactory

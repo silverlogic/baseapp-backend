@@ -13,7 +13,7 @@ Two concerns:
 import pytest
 
 from baseapp_comments.tests.factories import CommentFactory
-from baseapp_core.graphql.testing import assert_max_queries
+from baseapp_core.testing import assert_max_queries
 from baseapp_mentions.tests.helpers import seed_mentions
 from baseapp_profiles.tests.factories import ProfileFactory
 

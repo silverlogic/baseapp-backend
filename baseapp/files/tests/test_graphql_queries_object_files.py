@@ -11,10 +11,11 @@ regardless of how many `File` rows point at the target — locks in the
 
 import pytest
 import swapper
+from django.http import HttpResponse
 
 from baseapp_comments.tests.factories import CommentFactory
-from baseapp_core.graphql.testing import assert_max_queries, assert_queries_dont_grow
 from baseapp_core.models import DocumentId
+from baseapp_core.testing import assert_max_queries, assert_queries_dont_grow
 
 pytestmark = pytest.mark.django_db
 
@@ -73,12 +74,12 @@ def attach_files(target, amount: int) -> None:
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_files_count_is_flat_regardless_of_file_volume(graphql_client):
+def test_files_count_is_flat_regardless_of_file_volume(graphql_client) -> None:
     """`filesCount` is a flat query path: 20 files on the target take the same queries as 3."""
     target = CommentFactory()
     relay_id = target.relay_id  # resolve outside the capture
 
-    def query():
+    def query() -> HttpResponse:
         return graphql_client(COUNTS_ONLY_QUERY, variables={"id": relay_id})
 
     assert_queries_dont_grow(
@@ -96,14 +97,14 @@ def test_files_count_is_flat_regardless_of_file_volume(graphql_client):
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_files_count_zero_when_no_files_does_not_extra_query(graphql_client):
+def test_files_count_zero_when_no_files_does_not_extra_query(graphql_client) -> None:
     """A target with no files resolves in the same budget as one with files: the FileTarget
     row doesn't exist yet and the annotation falls back to the defaults without an extra
     round trip."""
     target = CommentFactory()
     relay_id = target.relay_id
 
-    def query():
+    def query() -> HttpResponse:
         return graphql_client(COUNTS_ONLY_QUERY, variables={"id": relay_id})
 
     with assert_max_queries(EXPECTED_FILES_INTERFACE_QUERY_COUNT):
@@ -120,7 +121,7 @@ def test_files_count_zero_when_no_files_does_not_extra_query(graphql_client):
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_listing_comments_with_files_is_flat(graphql_client):
+def test_listing_comments_with_files_is_flat(graphql_client) -> None:
     """Listing comments that each have files must not fan out one FileTarget query per
     comment: the files annotations ride along in the comment list SELECT via
     `pre_optimization_hook`."""
@@ -131,7 +132,7 @@ def test_listing_comments_with_files_is_flat(graphql_client):
         for _ in range(n):
             attach_files(CommentFactory(target=target), 3)
 
-    def query():
+    def query() -> HttpResponse:
         return graphql_client(COMMENTS_WITH_FILES_LIST_QUERY, variables={"id": relay_id})
 
     assert_queries_dont_grow(
@@ -147,7 +148,7 @@ def test_listing_comments_with_files_is_flat(graphql_client):
     assert all(edge["node"]["filesCount"]["total"] == 3 for edge in edges)
 
 
-def test_annotate_queryset_evaluates_in_single_query():
+def test_annotate_queryset_evaluates_in_single_query() -> None:
     """`FileTarget.annotate_queryset` inlines the metadata as Subqueries: the annotated
     queryset evaluates in exactly one SELECT."""
     Comment = CommentFactory._meta.model

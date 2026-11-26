@@ -10,7 +10,7 @@ two helpers below: no `queries.count == N`, no `len(ctx.captured_queries)`, no
 ## The two helpers
 
 ```python
-from baseapp_core.graphql.testing import assert_max_queries, assert_queries_dont_grow
+from baseapp_core.testing import assert_max_queries, assert_queries_dont_grow
 ```
 
 **Lists: `assert_queries_dont_grow`.** Runs the operation with `small` items (1), then `big`
@@ -54,7 +54,9 @@ queryset evaluation (`with assert_max_queries(1): rows = list(qs)`).
 
 Both helpers:
 
-- count with `capture_database_queries()` (transaction statements and constance reads excluded);
+- count with `capture_database_queries()` (transaction statements and constance reads excluded),
+  which also lives in `baseapp_core.testing`. None of it needs GraphQL, so REST and service
+  tests use the same helpers;
 - clear the ContentType cache before each capture, so counts don't depend on test order. Budgets
   are therefore cold-cache numbers: they include the ContentType lookups;
 - print the counts, the `hint` as "Likely cause", and every captured query with its SQL and

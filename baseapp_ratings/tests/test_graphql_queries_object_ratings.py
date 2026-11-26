@@ -11,8 +11,9 @@ of how many `Rate` rows exist for the target — locks in the
 """
 
 import pytest
+from django.http import HttpResponse
 
-from baseapp_core.graphql.testing import assert_max_queries, assert_queries_dont_grow
+from baseapp_core.testing import assert_max_queries, assert_queries_dont_grow
 from baseapp_core.tests.factories import UserFactory
 
 from .factories import RateFactory
@@ -50,7 +51,7 @@ def test_anon_ratings_count_is_flat_regardless_of_rate_volume(graphql_client) ->
 
     relay_id = target.relay_id  # resolve outside the capture
 
-    def query():
+    def query() -> HttpResponse:
         return graphql_client(COUNTS_ONLY_QUERY, variables={"id": relay_id})
 
     assert_queries_dont_grow(
@@ -77,7 +78,7 @@ def test_anon_ratings_count_zero_when_no_rates_does_not_extra_query(graphql_clie
 
     relay_id = target.relay_id  # resolve outside the capture
 
-    def query():
+    def query() -> HttpResponse:
         return graphql_client(COUNTS_ONLY_QUERY, variables={"id": relay_id})
 
     with assert_max_queries(EXPECTED_RATINGS_INTERFACE_QUERY_COUNT):

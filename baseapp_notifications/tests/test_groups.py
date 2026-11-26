@@ -4,7 +4,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
-from baseapp_core.graphql.testing import assert_max_queries
+from baseapp_core.testing import assert_max_queries
 from baseapp_core.tests.factories import UserFactory
 from baseapp_notifications.groups import (
     extend_notification_group,

@@ -17,9 +17,10 @@ child; its test declares that bound instead of pretending it's flat.
 from typing import TYPE_CHECKING
 
 import pytest
+from django.http import HttpResponse
 
 from baseapp_comments.tests.factories import CommentFactory
-from baseapp_core.graphql.testing import assert_queries_dont_grow
+from baseapp_core.testing import assert_queries_dont_grow
 from baseapp_mentions.tests.helpers import seed_mentions
 from baseapp_profiles.tests.factories import ProfileFactory
 
@@ -107,7 +108,7 @@ def test_mentions_count_is_flat_across_paginated_parents(graphql_user_client) ->
     parent = CommentFactory()
     relay_id = parent.relay_id  # resolve outside the capture
 
-    def query():
+    def query() -> HttpResponse:
         return graphql_user_client(COUNTS_ONLY_QUERY, variables={"targetId": relay_id})
 
     assert_queries_dont_grow(
@@ -133,7 +134,7 @@ def test_is_mentioning_profile_is_flat_across_paginated_parents(graphql_user_cli
     parent = CommentFactory()
     variables = {"targetId": parent.relay_id, "profileId": needle.relay_id}
 
-    def query():
+    def query() -> HttpResponse:
         return graphql_user_client(IS_MENTIONING_QUERY, variables=variables)
 
     assert_queries_dont_grow(

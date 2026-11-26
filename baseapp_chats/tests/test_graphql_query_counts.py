@@ -6,7 +6,7 @@ optimizer hook — the bounds are tight enough to catch a fan-out
 regression but loose enough to absorb optimizer-internal churn.
 
 Counts use `assert_queries_dont_grow` / `assert_max_queries` from
-`baseapp_core.graphql.testing`. Where the count alone is too coarse, a test
+`baseapp_core.testing`. Where the count alone is too coarse, a test
 asserts on the SQL shape instead (as baseapp_follows/tests/test_follow_count.py
 does).
 """
@@ -15,9 +15,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 from django.db import connection
+from django.http import HttpResponse
 from django.test.utils import CaptureQueriesContext
 
-from baseapp_core.graphql.testing import assert_max_queries, assert_queries_dont_grow
+from baseapp_core.testing import assert_max_queries, assert_queries_dont_grow
 from baseapp_mentions.tests.helpers import seed_mentions
 from baseapp_profiles.tests.factories import ProfileFactory
 
@@ -121,7 +122,7 @@ def test_paginated_chat_rooms_does_not_explode_query_count(
         "block-exclusion subqueries became per-row"
     )
 
-    def query():
+    def query() -> HttpResponse:
         return graphql_user_client(USER_CHAT_ROOMS_LISTING)
 
     assert_queries_dont_grow(
@@ -225,7 +226,7 @@ def test_mentions_interface_on_messages_rides_optimizer_prefetch(
         for _ in range(n):
             seed_mentions(MessageFactory(room=room, profile=my_profile), mention_targets)
 
-    def query():
+    def query() -> HttpResponse:
         return graphql_user_client(ROOM_MESSAGES_WITH_MENTIONS, variables={"roomId": room_id})
 
     assert_queries_dont_grow(run=query, add_items=add_messages, small=1, big=5, hint=hint)
@@ -317,7 +318,7 @@ MANAGEABLE_ROOMS_WITH_IS_PARTICIPANT_LISTING = """
 
 def test_manageable_listing_with_is_participant_stays_linear(
     graphql_user_client, django_user_client
-):
+) -> None:
     """Bound guard for the add-contact-to-group listing.
 
     `isParticipant(profileId:)` resolves one indexed EXISTS per row —

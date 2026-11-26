@@ -7,9 +7,12 @@ many `Block` rows point at the target, both on a direct Profile node and on a
 nested `block.target.blockersCount` list path.
 """
 
-import pytest
+from collections.abc import Callable
 
-from baseapp_core.graphql.testing import assert_max_queries, assert_queries_dont_grow
+import pytest
+from django.http import HttpResponse
+
+from baseapp_core.testing import assert_max_queries, assert_queries_dont_grow
 from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.tests.factories import ProfileFactory
 
@@ -71,7 +74,7 @@ EXPECTED_BLOCKS_INTERFACE_PERM_DENIED_UPPER_BOUND = 10
 EXPECTED_BLOCKS_INTERFACE_NESTED_LIST_QUERY_COUNT = 9
 
 
-def add_blockers(target):
+def add_blockers(target) -> Callable[[int], None]:
     """`add_items` for a target's blockers: each new block comes from a new profile."""
 
     def add(n: int) -> None:
@@ -83,7 +86,7 @@ def add_blockers(target):
 
 
 @pytest.fixture
-def superuser_client(django_user_client, graphql_user_client):
+def superuser_client(django_user_client, graphql_user_client) -> Callable[..., HttpResponse]:
     django_user_client.user.is_superuser = True
     django_user_client.user.save()
     return graphql_user_client
@@ -96,7 +99,7 @@ def test_block_counts_are_flat_regardless_of_block_volume(superuser_client) -> N
     target = ProfileFactory()
     relay_id = target.relay_id  # resolve outside the capture
 
-    def query():
+    def query() -> HttpResponse:
         return superuser_client(COUNTS_ONLY_QUERY, variables={"id": relay_id})
 
     assert_queries_dont_grow(
@@ -119,7 +122,7 @@ def test_block_counts_zero_when_no_blocks_does_not_extra_query(superuser_client)
     target = ProfileFactory()
     relay_id = target.relay_id
 
-    def query():
+    def query() -> HttpResponse:
         return superuser_client(COUNTS_ONLY_QUERY, variables={"id": relay_id})
 
     with assert_max_queries(EXPECTED_BLOCKS_INTERFACE_QUERY_COUNT):
@@ -142,7 +145,7 @@ def test_block_counts_perm_denied_path_is_flat(graphql_user_client) -> None:
     target = ProfileFactory()
     relay_id = target.relay_id
 
-    def query():
+    def query() -> HttpResponse:
         return graphql_user_client(COUNTS_ONLY_QUERY, variables={"id": relay_id})
 
     assert_queries_dont_grow(run=query, add_items=add_blockers(target), small=3, big=20)
@@ -167,7 +170,7 @@ def test_block_list_with_target_blockers_count_is_flat(
             target = ProfileFactory(owner=UserFactory())
             BlockFactory(actor=actor, target=target, user=django_user_client.user)
 
-    def query():
+    def query() -> HttpResponse:
         return superuser_client(PROFILE_BLOCKING_LIST_QUERY, variables={"id": relay_id})
 
     assert_queries_dont_grow(

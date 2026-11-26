@@ -2,7 +2,7 @@ import pytest
 from django.contrib.auth.models import Permission
 from django.test import override_settings
 
-from baseapp_core.graphql.testing import assert_max_queries
+from baseapp_core.testing import assert_max_queries
 from baseapp_core.tests.factories import UserFactory
 
 pytestmark = pytest.mark.django_db

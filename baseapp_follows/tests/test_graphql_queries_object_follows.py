@@ -15,9 +15,12 @@ shape, not the present-state shape, and the optimizer/resolver work to reach tho
 is intentionally not done yet.
 """
 
-import pytest
+from collections.abc import Callable
 
-from baseapp_core.graphql.testing import assert_max_queries, assert_queries_dont_grow
+import pytest
+from django.http import HttpResponse
+
+from baseapp_core.testing import assert_max_queries, assert_queries_dont_grow
 from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.tests.factories import ProfileFactory
 
@@ -147,7 +150,7 @@ NESTED_FOLLOWERS_QUERY = """
 """
 
 
-def add_followers(target, *, with_own_follower: bool = False):
+def add_followers(target, *, with_own_follower: bool = False) -> Callable[[int], None]:
     """`add_items` for a target's followers. `with_own_follower` gives each new follower a
     follower of its own, so a nested `followersCount` is non-zero."""
 
@@ -195,7 +198,7 @@ def test_anon_followers_list_query_count_does_not_grow_with_followers(
     target_profile = ProfileFactory(owner=django_user_client.user)
     relay_id = target_profile.relay_id
 
-    def query():
+    def query() -> HttpResponse:
         return graphql_client(FOLLOWERS_LIST_QUERY, variables={"id": relay_id})
 
     assert_queries_dont_grow(
@@ -234,7 +237,7 @@ def test_anon_following_list_query_count_is_flat(django_user_client, graphql_cli
                 actor_object=actor_profile, target_object=target, user=actor_profile.owner
             )
 
-    def query():
+    def query() -> HttpResponse:
         return graphql_client(FOLLOWING_LIST_QUERY, variables={"id": relay_id})
 
     assert_queries_dont_grow(
@@ -287,7 +290,7 @@ def test_anon_nested_followers_count_does_not_explode(django_user_client, graphq
     target_profile = ProfileFactory(owner=django_user_client.user)
     relay_id = target_profile.relay_id
 
-    def query():
+    def query() -> HttpResponse:
         return graphql_client(NESTED_FOLLOWERS_QUERY, variables={"id": relay_id})
 
     assert_queries_dont_grow(
