@@ -61,3 +61,55 @@ This feature introduces abstractions that allow projects to avoid exposing inter
 To make use of the HashIds feature, models, DRF endpoints, or Graphene operations must be made compatible by extending the required abstractions or by using the available helper functions.
 
 For more details, see [Baseapp Core - HashIds](./hashids/README.md).
+
+## N+1 detection (`baseapp_core.n_plus_one`)
+
+An opt-in, dev-only app built on [django-zeal](https://github.com/taobojlen/django-zeal). It logs each lazy load that repeats per row, with the model, the field and the line that did it:
+
+```
+[zeal] [WARNING] N+1 detected on profiles.Profile.owner at /usr/src/app/apps/foo/graphql/object_types.py:42 in resolve_owner_email
+```
+
+The line points at project code or a BaseApp package, never at Django, zeal, pytest or a test. An N+1 with no such line, in test setup or inside a library such as wagtail, is reported at `<tests or third-party>`. Each distinct N+1 logs once per process, in the web and the Celery worker logs alike.
+
+### Enabling it in dev
+
+Install the `n_plus_one` extra (`baseapp-backend[n_plus_one]`), then in the dev settings only:
+
+```python
+import warnings
+
+INSTALLED_APPS += ["zeal", "baseapp_core.n_plus_one"]
+MIDDLEWARE = ["zeal.middleware.zeal_middleware"] + MIDDLEWARE
+ZEAL_RAISE = False
+# zeal's own warning is lost under Daphne; the app logs on the "zeal" logger instead.
+warnings.filterwarnings("ignore", message=r"N\+1 detected", category=UserWarning)
+```
+
+Production settings never list it, so production never imports it or zeal.
+
+### The test-suite scan
+
+Load the pytest plugin from the project's root `conftest.py`:
+
+```python
+pytest_plugins = ["baseapp_core.n_plus_one.pytest_plugin"]
+```
+
+and silence the warnings in the pytest config (`filterwarnings = ignore:N\+1 detected:UserWarning`). When the test settings install the app (gate it behind an env var, as `testproject/settings.py` does with `NPLUSONE_REPORT=1`), every test runs inside a zeal context and the run ends with a report:
+
+```
+==================== N+1 report (zeal): 2 distinct ====================
+[zeal] baseapp_core/models.py:142 in get_or_create_for_object  baseapp_core.DocumentId.get()  2469 hits, 149 tests
+[zeal] baseapp_comments/signals.py:67 in _recompute_and_save_comments_count  comments.CommentableMetadata.get()  1667 hits, 107 tests
+```
+
+Nothing fails by default. To fail the tests that hit an N+1, add `-W "error:N+1 detected::baseapp_core.n_plus_one"`.
+
+In this repository:
+
+```bash
+docker compose run --rm -e NPLUSONE_REPORT=1 web pytest baseapp_comments
+```
+
+zeal sees lazy loads and a `.get()` repeated from one line. It does not see other explicit per-row queries (`.filter().first()`, `.exists()`, `.count()` in a resolver) or N+1s in Channels consumers; query-count tests cover those.
