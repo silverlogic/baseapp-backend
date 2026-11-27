@@ -23,7 +23,8 @@ def invitation() -> "ProfileUserRole":
 
 def sent_ago(invitation, seconds: int) -> None:
     invitation.last_sent_at = timezone.now() - timedelta(seconds=seconds)
-    invitation.save(update_fields=["last_sent_at"])
+    invitation.invited_at = invitation.last_sent_at
+    invitation.save(update_fields=["last_sent_at", "invited_at"])
 
 
 def test_resends_are_not_limited_by_default(invitation, mailoutbox) -> None:

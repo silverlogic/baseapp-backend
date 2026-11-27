@@ -470,3 +470,152 @@ class TestReleaseOfQueuedEmails:
         assert ProfileUserRole.objects.get(pk=held.pk).invitation_expires_at == (
             current.invitation_expires_at
         )
+
+
+class TestThirdRound:
+    def test_declining_a_claim_on_a_row_without_an_account_does_not_bind_the_decliner(
+        self, profile, settings
+    ) -> None:
+        settings.BASEAPP_PROFILES_INVITATION_CAN_INVITE_MEMBER = lambda membership: True
+        placeholder = ProfileUserRoleFactory(
+            profile=profile,
+            user=None,
+            role=MANAGER,
+            status=Status.ACTIVE,
+            invited_email="bob@example.com",
+        )
+        claim = invite(profile, "bob@example.com")
+        assert claim.pk == placeholder.pk
+        decliner = UserFactory(email="bob@example.com")
+
+        service.decline_invitation(claim.invitation_token, decliner)
+
+        placeholder.refresh_from_db()
+        assert placeholder.status == Status.ACTIVE
+        assert placeholder.user is None
+        assert not profile.check_if_member(decliner)
+
+    def test_extra_fields_cannot_change_a_field_the_services_guard(self) -> None:
+        admin = ProfileUserRoleFactory(profile=ProfileFactory(owner=None), role=ADMIN)
+
+        for name in ("role", "status", "user", "user_id", "profile"):
+            with pytest.raises(ValueError):
+                member_service.update_member(admin, extra_fields={name: MANAGER})
+
+        admin.refresh_from_db()
+        assert admin.role == ADMIN
+
+    def test_an_invitee_name_the_column_cannot_hold_is_refused(self, profile) -> None:
+        limit = ProfileUserRole._meta.get_field("invited_first_name").max_length
+
+        with pytest.raises(ProfileMembershipError) as error:
+            service.send_invitations(
+                profile, [{"email": "ann@example.com", "first_name": "a" * (limit + 1)}]
+            )
+
+        assert error.value.code == "invalid_input"
+        assert not ProfileUserRole.objects.filter(profile=profile).exists()
+
+    def test_a_row_reused_for_someone_else_drops_the_previous_names(self, profile) -> None:
+        former = UserFactory(email="old@example.com")
+        ProfileUserRoleFactory(
+            profile=profile,
+            user=former,
+            role=MANAGER,
+            status=Status.DECLINED,
+            invited_email="old@example.com",
+            invited_first_name="Former",
+            invited_last_name="Holder",
+        )
+        former.email = "new@example.com"
+        former.save()
+
+        invitation = invite(profile, "old@example.com")
+
+        assert invitation.invited_first_name == ""
+        assert invitation.invited_last_name == ""
+
+    def test_a_reinvite_of_the_same_person_keeps_their_names(self, profile) -> None:
+        declined = ProfileUserRoleFactory(
+            profile=profile,
+            user=None,
+            role=MANAGER,
+            status=Status.DECLINED,
+            invited_email="ann@example.com",
+            invited_first_name="Ann",
+        )
+
+        invitation = invite(profile)
+
+        assert invitation.pk == declined.pk
+        assert invitation.invited_first_name == "Ann"
+
+    def test_a_batch_keeps_the_callers_order(self, profile) -> None:
+        result = service.send_invitations(profile, ["zoe@example.com", "ann@example.com"])
+
+        assert [row.invited_email for row in result.invitations] == [
+            "zoe@example.com",
+            "ann@example.com",
+        ]
+
+    def test_a_resend_waits_for_the_interval_after_the_latest_attempt(
+        self, profile, settings
+    ) -> None:
+        invitation = invite(profile)
+        ProfileUserRole.objects.filter(pk=invitation.pk).update(
+            last_sent_at=timezone.now() - timedelta(days=1)
+        )
+        settings.BASEAPP_PROFILES_INVITATION_RESEND_MIN_INTERVAL = 300
+
+        with pytest.raises(ProfileMembershipError) as error:
+            service.resend_invitation(invitation)
+
+        assert error.value.code == "resend_too_soon"
+
+    def test_an_in_place_resend_rebinds_whoever_holds_the_address_now(self, profile) -> None:
+        account = UserFactory(email="old@example.com")
+        invitation = invite(profile, "old@example.com")
+        assert invitation.user == account
+        account.email = "new@example.com"
+        account.save()
+
+        resent = service.resend_invitation(invitation).invitations[0]
+
+        assert resent.pk == invitation.pk
+        assert resent.user is None
+
+    def test_an_email_that_left_for_a_replaced_token_is_not_counted(self, profile) -> None:
+        invitation = invite(profile)
+        stale = stale_copy(invitation)
+        service.resend_invitation(invitation)
+        counted = ProfileUserRole.objects.get(pk=invitation.pk)
+
+        assert service.send_invitation_email_now(stale) is True
+
+        after = ProfileUserRole.objects.get(pk=invitation.pk)
+        assert after.sent_count == counted.sent_count
+        assert after.last_sent_at == counted.last_sent_at
+
+    def test_member_search_matches_email_and_profile_name(self, profile) -> None:
+        from baseapp_profiles.rest_framework.memberships.filters import ProfileMemberFilter
+
+        ann = ProfileUserRoleFactory(profile=profile, user=UserFactory(email="ann@example.com"))
+        ProfileUserRoleFactory(profile=profile, user=UserFactory(email="bob@example.com"))
+
+        found = ProfileMemberFilter({"q": "ann@"}, queryset=ProfileUserRole.objects.all()).qs
+
+        assert list(found) == [ann]
+
+
+class TestOrganizationProfileName:
+    def test_the_profile_is_named_from_the_stored_organization(self) -> None:
+        from baseapp_organizations.services import OrganizationService
+
+        Organization = swapper.load_model("baseapp_organizations", "Organization")
+        organization = Organization.objects.create(name="Acme")
+        stale = Organization.objects.get(pk=organization.pk)
+        Organization.objects.filter(pk=organization.pk).update(name="Acme Holdings")
+
+        profile = OrganizationService.ensure_profile(stale)
+
+        assert profile.name == "Acme Holdings"

@@ -71,9 +71,12 @@ class OrganizationService:
             if stored is not None and stored.profile_id:
                 organization.profile = stored.profile
                 return stored.profile
+            # The stored name: the copy may predate a rename. (A row that is gone leaves
+            # only the copy to go by; linking it below then changes nothing.)
+            name = stored.name if stored is not None else organization.name
             profile = Profile.objects.create(
                 owner=owner,
-                name=organization.name,
+                name=name,
                 target_content_type=ContentType.objects.get_for_model(organization),
                 target_object_id=organization.pk,
             )

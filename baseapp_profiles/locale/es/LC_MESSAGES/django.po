@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-27 00:21+0000\n"
+"POT-Creation-Date: 2026-11-27 01:04+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -291,6 +291,11 @@ msgstr "Token de invitación inválido"
 
 #: services/invitations.py
 #, python-format
+msgid "Names can have at most %(limit)d characters"
+msgstr "Los nombres pueden tener como máximo %(limit)d caracteres"
+
+#: services/invitations.py
+#, python-format
 msgid "%(email)s is already a member of this profile"
 msgstr "%(email)s ya es miembro de este perfil"
 
@@ -312,6 +317,11 @@ msgstr ""
 #: services/invitations.py
 msgid "Can only resend expired or pending invitations"
 msgstr "Solo se pueden reenviar invitaciones expiradas o pendientes"
+
+#: services/invitations.py
+#, python-format
+msgid "%(email)s already has a membership or invitation on this profile"
+msgstr "%(email)s ya tiene una membresía o invitación en este perfil"
 
 #: services/invitations.py
 msgid "Can only send held invitations"
@@ -364,11 +374,6 @@ msgstr ""
 #: services/invitations.py
 msgid "This account has been deactivated. Contact an administrator."
 msgstr "Esta cuenta ha sido desactivada. Contacta con un administrador."
-
-#: services/invitations.py
-#, python-format
-msgid "Names can have at most %(limit)d characters"
-msgstr "Los nombres pueden tener como máximo %(limit)d caracteres"
 
 #: services/members.py
 msgid "A profile must keep at least one active admin"

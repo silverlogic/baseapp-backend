@@ -118,13 +118,19 @@ def _normalize_invitees(invitees: Iterable[str | Invitee | Mapping]) -> list[Inv
         email = (item.email or "").strip().lower()
         if email and email not in seen:
             seen.add(email)
-            normalized.append(
-                Invitee(
-                    email=email,
-                    first_name=(item.first_name or "").strip(),
-                    last_name=(item.last_name or "").strip(),
-                )
+            invitee = Invitee(
+                email=email,
+                first_name=(item.first_name or "").strip(),
+                last_name=(item.last_name or "").strip(),
             )
+            for field_name in ("invited_first_name", "invited_last_name"):
+                limit = ProfileUserRole._meta.get_field(field_name).max_length
+                if len(getattr(invitee, field_name.removeprefix("invited_"))) > limit:
+                    raise ProfileMembershipError(
+                        _("Names can have at most %(limit)d characters") % {"limit": limit},
+                        "invalid_input",
+                    )
+            normalized.append(invitee)
     return normalized
 
 
@@ -289,10 +295,19 @@ def _open_invitation(
         invitation = reuse
         # The row is bound to whoever holds the address today (nobody, without an account):
         # a closed row found through a stale address must not keep its former account.
+        same_person = (
+            invitation.invited_email or ""
+        ).lower() == invitee.email and invitation.user_id == getattr(invited_user, "pk", None)
         invitation.user = invited_user
         invitation.invited_email = invitee.email
-        invitation.invited_first_name = invitee.first_name or invitation.invited_first_name
-        invitation.invited_last_name = invitee.last_name or invitation.invited_last_name
+        # Names given earlier are kept for the same person only: a row reused for someone
+        # else must not greet them with the previous invitee's name.
+        invitation.invited_first_name = invitee.first_name or (
+            invitation.invited_first_name if same_person else ""
+        )
+        invitation.invited_last_name = invitee.last_name or (
+            invitation.invited_last_name if same_person else ""
+        )
         invitation.role = role
         invitation.message = message
         invitation.invited_by = invited_by
@@ -378,8 +393,10 @@ def send_invitations(
         )
 
     with transaction.atomic():
-        invitations = [
-            _open_invitation(
+        # Opened in one order whatever order the caller listed them in, so two batches that
+        # share invitees lock their rows the same way round instead of deadlocking.
+        opened = {
+            item.email: _open_invitation(
                 profile,
                 item,
                 role=role,
@@ -388,8 +405,9 @@ def send_invitations(
                 message=message or "",
                 extra_fields=extra_fields,
             )
-            for item in items
-        ]
+            for item in sorted(items, key=lambda item: item.email)
+        }
+        invitations = [opened[item.email] for item in items]
 
     result = SentInvitations(invitations=invitations)
     for invitation in invitations:
@@ -400,7 +418,10 @@ def send_invitations(
 def _ensure_resend_allowed(invitation: "ProfileUserRole") -> None:
     """Refuse a resend sooner than `BASEAPP_PROFILES_INVITATION_RESEND_MIN_INTERVAL`."""
     interval = invitation_resend_min_interval()
-    last_sent = invitation.last_sent_at or invitation.invited_at
+    # The latest attempt: a resend still waiting in the queue has renewed `invited_at`
+    # but not yet `last_sent_at`.
+    attempts = [at for at in (invitation.last_sent_at, invitation.invited_at) if at]
+    last_sent = max(attempts) if attempts else None
     if interval and last_sent and timezone.now() - last_sent < timedelta(seconds=interval):
         raise ProfileMembershipError(
             _("This invitation was sent moments ago. Try again later."), "resend_too_soon"
@@ -458,9 +479,26 @@ def resend_invitation(
                 extra_fields=extra_fields,
             )
         else:
+            email = (invitation.invited_email or "").lower()
+            if (
+                email
+                and invitation.user is not None
+                and _email_of(invitation.user) != email.casefold()
+            ):
+                # The account it was bound to no longer has the address the email goes to,
+                # so it could not answer: bind whoever holds the address now.
+                invitation.user = find_user_by_email(email)
             set_extra_fields(invitation, extra_fields)
             _reset_for_send(invitation)
-            invitation.save()
+            try:
+                with transaction.atomic():
+                    invitation.save()
+            except IntegrityError:
+                raise ProfileMembershipError(
+                    _("%(email)s already has a membership or invitation on this profile")
+                    % {"email": email},
+                    "duplicate_invitation",
+                )
 
     result = SentInvitations(invitations=[invitation])
     _deliver_or_hold(invitation, inviter=by, result=result)
@@ -634,9 +672,14 @@ def send_invitation_email_now(
         return False
 
     now = timezone.now()
-    ProfileUserRole.objects.filter(pk=invitation.pk).update(
-        sent_count=F("sent_count") + 1, last_sent_at=now
-    )
+    counted = ProfileUserRole.objects.filter(
+        pk=invitation.pk, invitation_token=invitation.invitation_token
+    ).update(sent_count=F("sent_count") + 1, last_sent_at=now)
+    if not counted:
+        # Resent (or cancelled and deleted) while this email was going out: what left
+        # carries a token that is no longer the invitation's, so it is not recorded
+        # against the current one.
+        return True
     invitation.sent_count += 1
     invitation.last_sent_at = now
     send_on_commit(signals.invitation_sent, invitation, inviter=inviter)
@@ -873,10 +916,14 @@ def decline_invitation(token: str, user: AbstractBaseUser) -> "ProfileUserRole":
     _bind_user(invitation, user)
     with transaction.atomic():
         invitation = _lock_for_response(invitation)
+        bound_user_id = invitation.user_id
         _bind_user(invitation, user)
         if invitation.status != Status.ACTIVE:
-            # Declining a member claim leaves the membership as it was.
             invitation.status = Status.DECLINED
+        elif bound_user_id is None:
+            # Declining a member claim leaves the membership as it was: a row that had no
+            # account must not gain the account of the person who said no.
+            invitation.user = None
         invitation.responded_at = timezone.now()
         invitation.save()
         send_on_commit(signals.invitation_declined, invitation, user=user)

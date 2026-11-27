@@ -297,7 +297,11 @@ Error codes: `invalid_input`, `invalid_token`, `invalid_status`, `already_member
 
 ### Settings
 
-Every default keeps the behaviour projects had before these settings existed.
+Every default keeps the behaviour projects had before these settings existed. Three things
+change on upgrade whatever the settings: the hourly `expire_invitations` task marks overdue
+PENDING invitations EXPIRED (they used to stay PENDING and only read as expired),
+`Profile.check_if_member()` (used by the chats `list_chatrooms` permission) counts ACTIVE
+members only, and `me.profiles` lists only profiles the user owns or is an ACTIVE member of.
 
 | Setting | Default | Effect |
 |---|---|---|
@@ -742,10 +746,12 @@ BASEAPP_PROFILES_PROFILEUSERROLE_MODEL = "profiles.ProfileUserRole"
 
 ### Upgrading to invitation history and ownerless profiles
 
-Run `./manage.py makemigrations` for your profiles app: `Profile.owner` becomes nullable,
+Run `./manage.py makemigrations` for your profiles app, review the migration and apply it
+with `./manage.py migrate` before deploying: `Profile.owner` becomes nullable,
 `ProfileUserRole` gains the invitation and audit fields and the CANCELLED status, and the
 `(user, profile)` and `(profile, invited_email)` uniqueness becomes conditional on open
-rows. Behaviour stays as it was until you turn on the settings above. Code that compares
+rows. Apart from the upgrade effects listed under [Settings](#settings), behaviour stays as
+it was until you turn on the settings above. Code that compares
 `profile.owner_id` with a user id should switch to `profile.is_owned_by(user)` before you
 create ownerless profiles.
 

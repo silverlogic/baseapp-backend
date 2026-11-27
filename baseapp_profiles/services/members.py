@@ -30,6 +30,31 @@ ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 Status = ProfileUserRole.ProfileRoleStatus
 
 
+# What the services decide; never set through `extra_fields`.
+LIFECYCLE_FIELDS = frozenset(
+    {
+        "id",
+        "pk",
+        "role",
+        "status",
+        "user",
+        "user_id",
+        "profile",
+        "profile_id",
+        "invited_email",
+        "invitation_token",
+        "invitation_expires_at",
+        "invited_at",
+        "responded_at",
+        "sent_count",
+        "last_sent_at",
+        "deactivated_at",
+        "deactivated_by",
+        "deactivated_by_id",
+    }
+)
+
+
 def validate_role(role: int) -> None:
     """Refuse a role the model will not accept (see `assignable_roles()`)."""
     if role not in ProfileUserRole.assignable_roles():
@@ -41,10 +66,14 @@ def set_extra_fields(membership: "ProfileUserRole", extra_fields: Mapping | None
     Set the project's own columns on `membership` (field name -> value); returns the names.
 
     Raises `FieldDoesNotExist` for a name the concrete model does not have, so a typo in a
-    project's mutation fails loudly rather than being dropped.
+    project's mutation fails loudly rather than being dropped, and `ValueError` for a field
+    BaseApp owns (`role`, `status`, `user`, ...): those only change through the services
+    that check them, the last-admin guard included.
     """
     names = []
     for name, value in (extra_fields or {}).items():
+        if name in LIFECYCLE_FIELDS:
+            raise ValueError(f"extra_fields cannot set {name!r}; use the membership services")
         field = ProfileUserRole._meta.get_field(name)
         setattr(membership, field.attname if field.is_relation else name, value)
         names.append(field.attname if field.is_relation else name)
