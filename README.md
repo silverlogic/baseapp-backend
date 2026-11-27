@@ -10,6 +10,10 @@ The core contains the basics for BaseApp like Django Rest Framework's basic setu
 
 Reusable user and authentication utilities. Authentication setup using AuthToken, JWT and Multi-factor authentication (MFA)
 
+### [baseapp_auth.impersonation](baseapp_auth/impersonation)
+
+Opt-in "view as" / "act as" another user: time-limited sessions with a required reason, read-only by default, with an audit trail of every write.
+
 ## [baseapp-referrals](baseapp_referrals)
 
 Models and utilities for user referrals

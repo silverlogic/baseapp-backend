@@ -3,8 +3,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import channels_graphql_ws
 import pytest
 from django.contrib.auth.models import AnonymousUser
+from graphql import MiddlewareManager
 
-from baseapp_core.graphql.consumers import GraphqlWsJWTAuthenticatedConsumer
+from baseapp_core.graphql.consumers import (
+    GraphqlWsJWTAuthenticatedConsumer,
+    threadpool_for_sync_resolvers,
+    with_extra_middleware,
+)
+from baseapp_core.plugins import shared_services
 
 # on_connect delegates auth to the shared helper; patch it where the consumer looks it up.
 CONSUMER_AUTH = "baseapp_core.graphql.consumers.authenticate_jwt_async"
@@ -126,3 +132,57 @@ class TestGraphqlWsJWTAuthenticatedConsumerOnConnect:
 
         assert consumer.scope["user"] is user
         assert user.current_profile is not profile
+
+
+class TestSharedMiddleware:
+    """A `graphql_ws.middleware` provider adds middleware after the consumer's own."""
+
+    def test_appends_the_provider_middleware(self) -> None:
+        extra = MagicMock()
+        provider = MagicMock()
+        provider.get_middleware.return_value = [extra]
+        with (
+            patch.object(shared_services, "get", return_value=provider),
+            patch.object(channels_graphql_ws.GraphqlWsConsumer, "__init__", return_value=None),
+        ):
+            consumer = GraphqlWsJWTAuthenticatedConsumer()
+        assert consumer.middleware == [threadpool_for_sync_resolvers, extra]
+        # The class attribute is untouched.
+        assert GraphqlWsJWTAuthenticatedConsumer.middleware == [threadpool_for_sync_resolvers]
+
+    def test_keeps_the_middleware_without_a_provider(self) -> None:
+        with (
+            patch.object(shared_services, "get", return_value=None),
+            patch.object(channels_graphql_ws.GraphqlWsConsumer, "__init__", return_value=None),
+        ):
+            consumer = GraphqlWsJWTAuthenticatedConsumer()
+        assert consumer.middleware == [threadpool_for_sync_resolvers]
+
+
+class TestWithExtraMiddleware:
+    """The provider's middleware is added whatever shape the consumer's `middleware` has."""
+
+    def test_none(self) -> None:
+        extra = MagicMock()
+        assert with_extra_middleware(None, [extra]) == [extra]
+
+    def test_tuple_and_generator(self) -> None:
+        first, extra = MagicMock(), MagicMock()
+        assert with_extra_middleware((first,), [extra]) == [first, extra]
+        assert with_extra_middleware(iter([first]), [extra]) == [first, extra]
+
+    def test_middleware_manager(self) -> None:
+        first, extra = MagicMock(), MagicMock()
+        result = with_extra_middleware(MiddlewareManager(first), [extra])
+        assert isinstance(result, MiddlewareManager)
+        assert list(result.middlewares) == [first, extra]
+
+    def test_nothing_to_add_keeps_the_object(self) -> None:
+        middleware = [MagicMock()]
+        assert with_extra_middleware(middleware, []) is middleware
+
+    def test_unsupported_shape_is_kept_with_a_warning(self, caplog) -> None:
+        middleware = object()
+        with caplog.at_level("WARNING", logger="baseapp_core.graphql.consumers"):
+            assert with_extra_middleware(middleware, [MagicMock()]) is middleware
+        assert "graphql_ws.middleware" in caplog.text
