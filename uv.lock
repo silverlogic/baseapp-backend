@@ -313,6 +313,7 @@ dependencies = [
 [package.optional-dependencies]
 auth = [
     { name = "baseapp-django-trench" },
+    { name = "django-allauth", extra = ["headless", "headless-spec", "socialaccount"] },
     { name = "djangorestframework-simplejwt", extra = ["crypto"] },
 ]
 graphql = [
@@ -430,6 +431,7 @@ requires-dist = [
     { name = "channels", specifier = ">=4.3.1" },
     { name = "daphne", specifier = ">=4.2.1" },
     { name = "django", specifier = ">=5.2.13" },
+    { name = "django-allauth", extras = ["headless", "headless-spec", "socialaccount"], marker = "extra == 'auth'", specifier = "==65.14.0" },
     { name = "django-ckeditor", marker = "extra == 'messagetemplates'", specifier = ">=6.5" },
     { name = "django-constance", specifier = ">=4.3.2" },
     { name = "django-filter", specifier = ">=25.1" },
@@ -1210,6 +1212,32 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/d5/d8/43e9d000519adceb189620b6869ff88031e046df91c2e9da72f8f6918399/django-5.2.17.tar.gz", hash = "sha256:9d4d93be539a18ab80d058eb515900e10951e04c537c5a6b394fc49528d3251f", size = 10889740, upload-time = "2026-08-04T15:04:03.173Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/df/f8/ce120525ca78f12b07daf65786679c5d0b54a75285a8958d3ae55e39da35/django-5.2.17-py3-none-any.whl", hash = "sha256:f04fb3b36ee119e1af4fa1d397d5fd6cf12700f49321e84d4f4c642c5b1973db", size = 8315563, upload-time = "2026-08-04T15:03:59.1Z" },
+]
+
+[[package]]
+name = "django-allauth"
+version = "65.14.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "asgiref" },
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/23/9b/061a6ac65c602eb721b13fbf9c665b20fb900f113a03ec8521b5fcf16b83/django_allauth-65.14.0.tar.gz", hash = "sha256:5529227aba2b1377d900e9274a3f24496c645e65400fbae3cad5789944bc4d0b", size = 1991909, upload-time = "2026-01-17T18:43:12.928Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ce/c8/2f959ff8466913d95ba72eb4a29bd7998d28a559786033a97b5bbdda2b81/django_allauth-65.14.0-py3-none-any.whl", hash = "sha256:448f5f7877f95fcbe1657256510fe7822d7871f202521a29e23ef937f3325a97", size = 1793052, upload-time = "2026-01-17T18:43:08.954Z" },
+]
+
+[package.optional-dependencies]
+headless = [
+    { name = "pyjwt", extra = ["crypto"] },
+]
+headless-spec = [
+    { name = "pyyaml" },
+]
+socialaccount = [
+    { name = "oauthlib" },
+    { name = "pyjwt", extra = ["crypto"] },
+    { name = "requests" },
 ]
 
 [[package]]

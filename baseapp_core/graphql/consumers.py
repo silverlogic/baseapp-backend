@@ -2,7 +2,7 @@ import asyncio
 import contextvars
 import functools
 import sys
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import channels_graphql_ws
 import swapper
@@ -13,6 +13,9 @@ from rest_framework.authtoken.models import Token
 
 from baseapp_core.authentication import authenticate_jwt_async
 from baseapp_core.graphql import get_pk_from_relay_id
+
+if TYPE_CHECKING:
+    from django.contrib.auth.models import AbstractBaseUser
 
 python_version = sys.version_info
 
@@ -76,6 +79,17 @@ class GraphqlWsJWTAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
 
     schema = graphene_settings.SCHEMA
 
+    async def authenticate(self, payload: dict) -> "AbstractBaseUser | None":
+        """Resolve the user from the connection payload's ``Authorization`` token.
+
+        Override to accept other token types (e.g. allauth headless JWTs). The default
+        validates a SimpleJWT access token and refreshes it from ``Refresh`` when it has
+        expired, instead of rejecting the connection, which — with client retries —
+        drove an endless reconnect loop.
+        """
+        user, _ = await authenticate_jwt_async(payload["Authorization"], payload.get("Refresh"))
+        return user
+
     async def on_connect(self, payload) -> None:
         if "user" in self.scope:
             # do nothing if already authenticated
@@ -85,9 +99,7 @@ class GraphqlWsJWTAuthenticatedConsumer(channels_graphql_ws.GraphqlWsConsumer):
             self.scope["user"] = AnonymousUser()
             return
 
-        # Refresh an expired access token instead of rejecting the connection, which —
-        # with client retries — drove an endless reconnect loop.
-        user, _ = await authenticate_jwt_async(payload["Authorization"], payload.get("Refresh"))
+        user = await self.authenticate(payload)
 
         if user and user.is_active:
             if "Current-Profile" in payload:

@@ -15,8 +15,8 @@ This project includes:
 
 In the `rest_framework/` directory you can find a implementation of account-related endpoints: login, signup, forgot-passowrd, change-email. Authentication (login) is implemented in a few different modes that can be picked depending on project preference/requirements. In [testproject/urls.py](testproject/urls.py) you'll find DRF routing set up for each of supported modes with unit tests for each mode:
 
-- Authentication with Simple AuthToken
-- Authentication with JWT
+- Authentication with Simple AuthToken (deprecated for headless clients)
+- Authentication with JWT (deprecated - use allauth.headless instead)
 - Authentication with MFA and Simple AuthToken
 - Authentication with MFA and JWT
 
@@ -131,8 +131,198 @@ The setting is read once, when `baseapp_auth.rest_framework.urls.mfa` is importe
 including with `override_settings` in tests, doesn't change the mounted views; call
 `baseapp_auth.rest_framework.urls.mfa.get_urlpatterns()` to build the URLs from the current value.
 
+#### Headless AllAuth API Endpoints
+
+**⚠️ IMPORTANT: We now use the official `allauth.headless` module for headless authentication.**
+
+**Dependency note:** Install `django-allauth[headless,headless-spec]`.
+
+- `headless` enables the headless API endpoints
+- `headless-spec` provides the headless social-account specification used by provider token auth flows (for example, Google OAuth via `POST /v1/_allauth/app/v1/auth/provider/token`)
+
+The package provides headless authentication endpoints using django-allauth's official headless module (`allauth.headless`). These endpoints use OAuth2-style JWT tokens (access and refresh tokens) and are designed for frontend applications.
+
+**Official AllAuth Headless Endpoints (Recommended):**
+
+- `POST /v1/_allauth/app/v1/auth/signup` - User registration (signup)
+- `POST /v1/_allauth/app/v1/auth/login` - User login
+- `DELETE /v1/_allauth/app/v1/auth/session` - User logout
+- `POST /v1/_allauth/app/v1/tokens/refresh` - Token refresh
+- `POST /v1/_allauth/app/v1/auth/password/request` - Request password reset
+
+**⚠️ Legacy Custom Endpoints (Deprecated):**
+
+The following custom endpoints are deprecated and will be removed in a future version:
+
+- `POST /v1/register` - Use `/v1/_allauth/app/v1/auth/signup` instead
+- `POST /v1/auth/jwt/login` - Use `/v1/_allauth/app/v1/auth/login` instead
+- `POST /v1/auth/jwt/refresh` - Use `/v1/_allauth/app/v1/tokens/refresh` instead
+
+**OAuth2 Flow:**
+
+The implementation follows OAuth2-style token flow:
+
+1. **Signup/Login**: Client receives access token (short-lived, ~5 minutes) and refresh token (long-lived, ~1 day)
+2. **API Requests**: Client includes access token in `Authorization: Bearer <token>` header
+3. **Token Refresh**: When access token expires, client exchanges refresh token for new tokens
+4. **Logout**: Client calls logout endpoint, which invalidates tokens
+
+**Token Lifecycle:**
+
+- Access tokens are short-lived (default: 5 minutes) and used for API authentication
+- Refresh tokens are long-lived (default: 1 day) and used to obtain new access tokens
+- Tokens are invalidated on logout via session deletion (stateful validation enabled)
+- When refresh tokens are rotated, old tokens are invalidated
+
+**Configuration:**
+
+```python
+from baseapp_auth.settings import (
+    ACCOUNT_ADAPTER,
+    ACCOUNT_AUTHENTICATION_METHOD,
+    ACCOUNT_EMAIL_VERIFICATION,
+    ACCOUNT_SIGNUP_FIELDS,
+    ACCOUNT_SIGNUP_FORM_CLASS,
+    ACCOUNT_USER_MODEL_USERNAME_FIELD,
+    ALLAUTH_ADMIN_LOCALE_SELECTOR_ENABLED,
+    ALLAUTH_ADMIN_SIGNUP_ENABLED,
+    ALLAUTH_ADMIN_SOCIAL_LOGIN_ENABLED,
+    HEADLESS_JWT_ACCESS_TOKEN_EXPIRES_IN,
+    HEADLESS_JWT_AUTHORIZATION_HEADER_SCHEME,
+    HEADLESS_JWT_PRIVATE_KEY,
+    HEADLESS_JWT_REFRESH_TOKEN_EXPIRES_IN,
+    HEADLESS_JWT_ROTATE_REFRESH_TOKEN,
+    HEADLESS_JWT_STATEFUL_VALIDATION_ENABLED,
+    HEADLESS_JWT_USER_SERIALIZER_CLASS,
+    HEADLESS_TOKEN_STRATEGY,
+    SIMPLE_JWT,
+)
+
+# The auth plugin (baseapp_auth/plugin.py) contributes the allauth INSTALLED_APPS and a
+# "baseapp_auth" slot for MIDDLEWARE and AUTHENTICATION_BACKENDS. Pull the slots in where
+# you want them:
+MIDDLEWARE += [
+    *plugin_registry.get("MIDDLEWARE", "baseapp_auth"),
+    # ...
+]
+
+AUTHENTICATION_BACKENDS = [
+    *plugin_registry.get("AUTHENTICATION_BACKENDS", "baseapp_auth"),
+    "django.contrib.auth.backends.ModelBackend",
+    "baseapp_auth.permissions.UsersPermissionsBackend",
+]
+
+SITE_ID = 1
+ACCOUNT_LOGIN_REDIRECT_URL = "admin:index"
+ACCOUNT_LOGOUT_REDIRECT_URL = "account_login"
+ACCOUNT_PASSWORD_CHANGE_REDIRECT_URL = "account_change_password_done"
+
+HEADLESS_FRONTEND_URLS = {
+    "account_confirm_email": f"{FRONT_URL}/confirm-email/{{key}}",
+    "account_reset_password_from_key": f"{FRONT_URL}/forgot-password/{{key}}",
+    "account_signup": f"{FRONT_URL}/signup",
+}
+```
+
+Generate and configure JWT private and public keys:
+
+```bash
+openssl genpkey -algorithm RSA -out private_key.pem -pkeyopt rsa_keygen_bits:2048
+openssl rsa -pubout -in private_key.pem -out public_key.pem
+
+cat private_key.pem
+cat public_key.pem
+```
+
+Add to `.env`:
+
+```bash
+HEADLESS_JWT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBg...\n-----END PRIVATE KEY-----"
+HEADLESS_JWT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhki...\n-----END PUBLIC KEY-----"
+```
+
+**Important**: A valid private key is required. The headless endpoints will fail with a 500 error if the key is missing or invalid.
+
+URLs: the auth plugin mounts `_allauth/` under `v1/` (through `plugin_registry.get_all_v1_urlpatterns()`)
+when `allauth.headless` is installed, and `accounts/` plus the admin login/logout/password-change
+redirects at the root (through `plugin_registry.get_all_urlpatterns()`) when `allauth` is installed.
+Put `*plugin_registry.get_all_urlpatterns()` at the top of your root `urlpatterns`, before
+`admin/` and any catch-all (e.g. wagtail): otherwise Django's admin login answers `/admin/login/`
+and the catch-all swallows `/accounts/`.
+
+**Using the API:**
+
+Authenticated requests use JWT access tokens:
+
+```http
+Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+When access token expires, exchange refresh token for new tokens via `/v1/_allauth/app/v1/tokens/refresh`.
+
+**Configure REST Framework:**
+
+The template includes `AllAuthJWTTokenAuthentication` in `REST_FRAMEWORK` by default. If setting up from scratch, add it to your `settings/base.py`:
+
+```python
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "baseapp_auth.rest_framework.authentication.AllAuthJWTTokenAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+        # Add other authentication classes as needed
+    ),
+    # ... other REST_FRAMEWORK settings
+}
+```
+
+Use `baseapp_auth.rest_framework.authentication.AllAuthJWTTokenAuthentication` rather than allauth's
+`JWTTokenAuthentication` in the defaults: allauth's class rejects any `Bearer` token it didn't issue,
+so SimpleJWT tokens would never reach `JWTAuthentication`. The baseapp class steps aside instead, so
+both strategies work side by side.
+
+**Protect DRF endpoints:**
+
+For individual views, you can specify authentication classes:
+
+```python
+from allauth.headless.contrib.rest_framework.authentication import JWTTokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+
+class YourAPIView(APIView):
+    authentication_classes = [JWTTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+```
+
+Or rely on the default authentication classes configured in `REST_FRAMEWORK`.
+
+See [django-allauth documentation](https://docs.allauth.org/en/dev/headless/) for more details.
 
 ### GraphQL
+
+#### WebSocket Consumer
+
+The `GRAPHQL_WS_CONSUMER` setting is automatically available (imported from `baseapp_auth.settings`). It defaults to `baseapp_core.graphql.consumers.GraphqlWsJWTAuthenticatedConsumer` (simplejwt).
+
+When using allauth headless JWT authentication with GraphQL WebSockets, override the setting in your `settings/base.py`:
+
+```python
+GRAPHQL_WS_CONSUMER = "baseapp_auth.graphql.consumers.GraphqlWsAllAuthJWTAuthenticatedConsumer"
+```
+
+#### JWT Authentication Middleware
+
+The `GRAPHQL_JWT_AUTHENTICATION_MIDDLEWARE` setting is automatically available (imported from `baseapp_auth.settings`). It defaults to `baseapp_core.graphql.middlewares.JWTAuthentication` (simplejwt).
+
+When using allauth headless JWT authentication with GraphQL HTTP queries, override the setting in your `settings/base.py`:
+
+```python
+GRAPHQL_JWT_AUTHENTICATION_MIDDLEWARE = "baseapp_auth.graphql.middlewares.AllauthJWTTokenAuthentication"
+```
+
+This setting is used in the `GRAPHENE["MIDDLEWARE"]` configuration.
 
 #### PermissionsInterface
 
@@ -199,7 +389,9 @@ SIMPLE_JWT = {
 }
 JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
 ```
+
 We override some settings from the Simple JWT library by default to make some baseapp features work properly. They look like the following:
+
 ```py
 SIMPLE_JWT = {
     "TOKEN_OBTAIN_SERIALIZER": "baseapp_auth.rest_framework.jwt.serializers.BaseJwtLoginSerializer",
@@ -208,6 +400,7 @@ SIMPLE_JWT = {
 
 JWT_CLAIM_SERIALIZER_CLASS = "baseapp_auth.rest_framework.users.serializers.UserBaseSerializer"
 ```
+
 However, any setting defined on the project will take precedence over the default ones.
 
 There is a constance config for password expiration interval:
@@ -238,7 +431,97 @@ CELERY_BEAT_SCHEDULE = {
 }
 ```
 
-## How to delevop
+## Social Authentication with Google
+
+### Configuration
+
+Google OAuth is configured in `settings.py` with the following settings:
+
+```python
+# Social Account Configuration
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
+SOCIALACCOUNT_EMAIL_REQUIRED = True
+SOCIALACCOUNT_QUERY_EMAIL = True
+
+# Google Provider Configuration
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+        # For AllAuth Headless with provider/token endpoint,
+        # we don't use PKCE as we're sending id_token directly
+        "OAUTH_PKCE_ENABLED": False,
+        # Enable token verification
+        "VERIFIED_EMAIL": True,
+    }
+}
+```
+
+### Key Settings Explained
+
+- **SOCIALACCOUNT_AUTO_SIGNUP**: Automatically creates user account on first Google login
+- **SOCIALACCOUNT_EMAIL_VERIFICATION**: Set to "none" - email is already verified by Google
+- **SOCIALACCOUNT_EMAIL_REQUIRED**: Google must provide email in OAuth response
+- **SOCIALACCOUNT_QUERY_EMAIL**: Request email scope from Google
+- **OAUTH_PKCE_ENABLED**: Disabled because AllAuth headless sends id_token directly instead of using authorization code flow
+- **VERIFIED_EMAIL**: Skip additional email verification since Google already verified it
+
+### Google OAuth Provider Setup
+
+Before using Google OAuth, you need to:
+
+1. Create a Google OAuth application in [Google Cloud Console](https://console.cloud.google.com/)
+2. Get Client ID and Client Secret
+3. Add the Google social application in Django admin:
+   - Go to `Admin > Social Applications > Add Social Application`
+   - Provider: Google
+   - Name: Google
+   - Client ID: `<your-client-id>`
+   - Secret key: `<your-client-secret>`
+   - Sites: Select your site
+4. After adding `allauth.socialaccount` and the Google provider to `INSTALLED_APPS`, run database migrations so the social account tables are created:
+   ```bash
+   python manage.py migrate
+
+### Frontend Integration
+
+On the frontend, use the Google OAuth id_token with the AllAuth endpoint:
+
+```http
+POST /v1/_allauth/app/v1/auth/signup HTTP/1.1
+
+{
+  "provider": "google",
+  "id_token": "<google-id-token>"
+}
+```
+
+Or for login (if user already exists):
+
+```http
+POST /v1/_allauth/app/v1/auth/login HTTP/1.1
+
+{
+  "provider": "google",
+  "id_token": "<google-id-token>"
+}
+```
+
+After successful signup/login, the response includes access and refresh tokens:
+
+```json
+{
+  "meta": {
+    "access_token": "<jwt-access-token>",
+    "refresh_token": "<jwt-refresh-token>",
+    "isEmailVerified": true,
+    "sessionToken": "<session-token>"
+  }
+}
+```
+
+## How to develop
 
 General development instructions can be found in [main README](..#testing)
 

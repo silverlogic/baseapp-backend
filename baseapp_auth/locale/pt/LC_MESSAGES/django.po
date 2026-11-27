@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-30 14:50+0000\n"
+"POT-Creation-Date: 2026-11-26 18:49+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -33,6 +33,229 @@ msgstr ""
 #: admin.py
 msgid "Expire password"
 msgstr "Expirar senha"
+
+#: allauth/templates/account/confirm_email.html
+#: templates/users/emails/welcome-body.html.j2
+msgid "Confirm Email Address"
+msgstr "Confirmar endereço de e-mail"
+
+#: allauth/templates/account/confirm_email.html
+#, python-format
+msgid ""
+"Please confirm that <a href=\"mailto:%(email)s\">%(email)s</a> is an email "
+"address for user %(user_display)s."
+msgstr ""
+"Confirme que <a href=\"mailto:%(email)s\">%(email)s</a> é um endereço de e-"
+"mail do usuário %(user_display)s."
+
+#: allauth/templates/account/confirm_email.html
+msgid "Confirm"
+msgstr "Confirmar"
+
+#: allauth/templates/account/confirm_email.html
+msgid ""
+"This email confirmation link expired or is invalid. Please issue a new email "
+"confirmation request."
+msgstr ""
+"Este link de confirmação de e-mail expirou ou é inválido. Solicite uma nova "
+"confirmação de e-mail."
+
+#: allauth/templates/account/confirm_email.html
+#: allauth/templates/account/email_verification_sent.html
+#: allauth/templates/account/verified_email_required.html
+msgid "Manage Email Addresses"
+msgstr "Gerenciar endereços de e-mail"
+
+#: allauth/templates/account/email.html
+msgid "Email Addresses"
+msgstr "Endereços de e-mail"
+
+#: allauth/templates/account/email.html
+msgid "The following email addresses are associated with your account:"
+msgstr "Os seguintes endereços de e-mail estão associados à sua conta:"
+
+#: allauth/templates/account/email.html
+msgid "Verified"
+msgstr "Verificado"
+
+#: allauth/templates/account/email.html
+msgid "Unverified"
+msgstr "Não verificado"
+
+#: allauth/templates/account/email.html
+msgid "Primary"
+msgstr "Principal"
+
+#: allauth/templates/account/email.html
+msgid "Make Primary"
+msgstr "Tornar principal"
+
+#: allauth/templates/account/email.html
+msgid "Re-send Verification"
+msgstr "Reenviar verificação"
+
+#: allauth/templates/account/email.html
+msgid "Remove"
+msgstr "Remover"
+
+#: allauth/templates/account/email.html
+msgid ""
+"You currently do not have any email address set up. You should really add an "
+"email address so you can receive notifications, reset your password, etc."
+msgstr ""
+"No momento você não tem nenhum endereço de e-mail configurado. Adicione um "
+"para receber notificações, redefinir sua senha etc."
+
+#: allauth/templates/account/email.html
+msgid "Add Email Address"
+msgstr "Adicionar endereço de e-mail"
+
+#: allauth/templates/account/email.html
+msgid "Add Email"
+msgstr "Adicionar e-mail"
+
+#: allauth/templates/account/email_verification_sent.html
+#: allauth/templates/account/verified_email_required.html
+msgid "Verify Your Email Address"
+msgstr "Verifique seu endereço de e-mail"
+
+#: allauth/templates/account/email_verification_sent.html
+msgid ""
+"We have sent an email to you for verification. Follow the link provided to "
+"finalize the signup process. If you do not see the verification email in "
+"your main inbox, check your spam folder. Please contact us if you do not "
+"receive the verification email within a few minutes."
+msgstr ""
+"Enviamos um e-mail de verificação para você. Siga o link para concluir o "
+"cadastro. Se não encontrar o e-mail de verificação na sua caixa de entrada "
+"principal, confira a pasta de spam. Entre em contato conosco se não receber "
+"o e-mail de verificação em alguns minutos."
+
+#: allauth/templates/account/login.html
+#: allauth/templates/account/password_reset_from_key_done.html
+#: allauth/templates/account/signup.html
+#: allauth/templates/allauth/layouts/base.html
+msgid "Sign In"
+msgstr "Entrar"
+
+#: allauth/templates/account/logout.html
+#: allauth/templates/allauth/layouts/base.html
+msgid "Sign Out"
+msgstr "Sair"
+
+#: allauth/templates/account/logout.html
+msgid "Are you sure you want to sign out?"
+msgstr "Tem certeza de que deseja sair?"
+
+#: allauth/templates/account/password_change.html
+#: allauth/templates/account/password_reset_from_key.html
+msgid "Change Password"
+msgstr "Alterar senha"
+
+#: allauth/templates/account/password_change_done.html
+msgid "Password Changed"
+msgstr "Senha alterada"
+
+#: allauth/templates/account/password_change_done.html
+#: allauth/templates/account/password_reset_from_key_done.html
+msgid "Your password has been changed successfully."
+msgstr "Sua senha foi alterada com sucesso."
+
+#: allauth/templates/account/password_change_done.html
+msgid "Go to Admin"
+msgstr "Ir para o admin"
+
+#: allauth/templates/account/password_reset.html
+#: allauth/templates/account/password_reset_done.html
+#: allauth/templates/account/password_reset_from_key_done.html
+msgid "Password Reset"
+msgstr "Redefinição de senha"
+
+#: allauth/templates/account/password_reset.html
+msgid "You are already logged in."
+msgstr "Você já está conectado."
+
+#: allauth/templates/account/password_reset.html
+msgid ""
+"Forgotten your password? Enter your email address below, and we'll send you "
+"an email allowing you to reset it."
+msgstr ""
+"Esqueceu sua senha? Informe seu endereço de e-mail abaixo e enviaremos um e-"
+"mail para você redefini-la."
+
+#: allauth/templates/account/password_reset.html
+msgid "Reset My Password"
+msgstr "Redefinir minha senha"
+
+#: allauth/templates/account/password_reset.html
+#: allauth/templates/account/password_reset_done.html
+msgid "Back to Sign In"
+msgstr "Voltar para o login"
+
+#: allauth/templates/account/password_reset_done.html
+msgid ""
+"We have sent you an email. If you have not received it please check your "
+"spam folder. Otherwise contact us if you do not receive it in a few minutes."
+msgstr ""
+"Enviamos um e-mail para você. Se não o recebeu, confira sua pasta de spam. "
+"Caso contrário, entre em contato conosco se não o receber em alguns minutos."
+
+#: allauth/templates/account/password_reset_from_key.html
+msgid ""
+"The password reset link was invalid, possibly because it has already been "
+"used. Please request a new password reset."
+msgstr ""
+"O link de redefinição de senha é inválido, possivelmente porque já foi "
+"usado. Solicite uma nova redefinição de senha."
+
+#: allauth/templates/account/password_reset_from_key.html
+msgid "Request New Password Reset"
+msgstr "Solicitar nova redefinição de senha"
+
+#: allauth/templates/account/signup.html
+msgid "Sign Up"
+msgstr "Cadastrar-se"
+
+#: allauth/templates/account/signup.html
+msgid "Already have an account?"
+msgstr "Já tem uma conta?"
+
+#: allauth/templates/account/verified_email_required.html
+msgid ""
+"This part of the site requires us to verify that you are who you claim to "
+"be. For this purpose, we require that you verify ownership of your email "
+"address."
+msgstr ""
+"Esta parte do site exige que confirmemos que você é quem diz ser. Para isso, "
+"precisamos que você confirme que é o titular do seu endereço de e-mail."
+
+#: allauth/templates/account/verified_email_required.html
+msgid ""
+"We have sent an email to you for verification. Please click on the link "
+"inside that email. If you do not see the verification email in your main "
+"inbox, check your spam folder. Otherwise contact us if you do not receive it "
+"within a few minutes."
+msgstr ""
+"Enviamos um e-mail de verificação para você. Clique no link desse e-mail. Se "
+"não encontrar o e-mail de verificação na sua caixa de entrada principal, "
+"confira a pasta de spam. Caso contrário, entre em contato conosco se não o "
+"receber em alguns minutos."
+
+#: allauth/templates/allauth/elements/button.html
+msgid "Delete"
+msgstr "Excluir"
+
+#: allauth/templates/allauth/elements/button.html
+msgid "Edit"
+msgstr "Editar"
+
+#: allauth/templates/allauth/layouts/base.html
+msgid "BaseApp"
+msgstr "BaseApp"
+
+#: allauth/templates/allauth/layouts/base.html
+msgid "Toggle navigation"
+msgstr "Alternar navegação"
 
 #: apps.py
 msgid "BaseApp Auth"
@@ -625,10 +848,6 @@ msgid ""
 msgstr ""
 "Que bom ter você conosco! Vamos garantir que esteja tudo certo com o seu e-"
 "mail. Confirme seu endereço de e-mail clicando no botão abaixo:"
-
-#: templates/users/emails/welcome-body.html.j2
-msgid "Confirm Email Address"
-msgstr "Confirmar endereço de e-mail"
 
 #: templates/users/emails/welcome-body.html.j2
 msgid "Didn't sign up?<br />"
