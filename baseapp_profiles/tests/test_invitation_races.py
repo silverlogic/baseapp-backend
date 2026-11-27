@@ -624,3 +624,94 @@ class TestOrganizationProfileName:
         profile = OrganizationService.ensure_profile(stale)
 
         assert profile.name == "Acme Holdings"
+
+
+class TestFourthRound:
+    def test_a_claim_is_not_resent_to_an_address_its_account_left(self, profile, settings) -> None:
+        settings.BASEAPP_PROFILES_INVITATION_CAN_INVITE_MEMBER = lambda membership: True
+        member = UserFactory(email="old@example.com", is_active=False)
+        membership = ProfileUserRoleFactory(
+            profile=profile, user=member, role=MANAGER, status=Status.ACTIVE
+        )
+        claim = invite(profile, "old@example.com")
+        assert claim.pk == membership.pk
+        member.email = "new@example.com"
+        member.save()
+        token = claim.invitation_token
+
+        with pytest.raises(ProfileMembershipError) as error:
+            service.resend_invitation(claim)
+
+        assert error.value.code == "invalid_invitation"
+        membership.refresh_from_db()
+        assert membership.invitation_token == token
+        assert membership.user == member
+
+    def test_cancel_reports_the_invitation_as_it_is_now(
+        self, profile, settings, signal_recorder, django_capture_on_commit_callbacks
+    ) -> None:
+        settings.BASEAPP_PROFILES_INVITATION_KEEP_HISTORY = True
+        invitation = invite(profile)
+        stale = stale_copy(invitation)
+        current_token = service.resend_invitation(invitation).invitations[0].invitation_token
+        assert stale.invitation_token != current_token
+        cancelled = signal_recorder(signals.invitation_cancelled)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            result = service.cancel_invitation(stale)
+
+        assert result.invitation_token == current_token
+        assert cancelled[0]["instance"].invitation_token == current_token
+        assert result.status == Status.CANCELLED
+
+    def test_a_release_that_expired_in_the_queue_can_be_released_again(
+        self, profile, settings, django_capture_on_commit_callbacks, mailoutbox
+    ) -> None:
+        settings.BASEAPP_PROFILES_INVITATION_PRE_SEND_HOOK = hold_everything
+        held = invite(profile)
+        settings.BASEAPP_PROFILES_INVITATION_ASYNC_SEND = True
+        settings.CELERY_TASK_ALWAYS_EAGER = False
+        with patch.object(tasks.send_invitation_email_task, "delay") as delay:
+            with django_capture_on_commit_callbacks(execute=True):
+                service.release_invitation(held)
+        args = list(delay.call_args.args)
+        # The queue was slow: the lifetime ran out, and the sweep got there first.
+        past = timezone.now() - timedelta(minutes=5)
+        ProfileUserRole.objects.filter(pk=held.pk).update(invitation_expires_at=past)
+        args[3] = past.isoformat()
+        service.expire_invitations()
+
+        assert tasks.send_invitation_email_task(*args) is False
+
+        held.refresh_from_db()
+        assert held.status == Status.PENDING
+        assert held.invitation_expires_at is None
+        assert mailoutbox == []
+
+    def test_a_deep_link_answer_that_is_not_json_falls_back(self, profile, settings) -> None:
+        from baseapp_profiles.emails import get_accept_url
+
+        invitation = invite(profile)
+
+        with patch("baseapp_core.deep_links.requests.post") as post:
+            post.return_value.json.side_effect = ValueError("no JSON")
+            url = get_accept_url(invitation)
+
+        assert url == settings.FRONT_ACCEPT_INVITATION_URL.format(token=invitation.invitation_token)
+
+    def test_a_prefetch_keeps_the_order_it_asked_for(self, profile) -> None:
+        from django.db.models import Prefetch
+
+        Profile = swapper.load_model("baseapp_profiles", "Profile")
+        URLPath = profile.url_paths.model
+        profile.url_paths.all().delete()
+        first = URLPath.objects.create(target=profile, path="/acme-one", is_active=True)
+        second = URLPath.objects.create(target=profile, path="/acme-two", is_active=True)
+
+        plain = Profile.objects.prefetch_related("url_paths").get(pk=profile.pk)
+        newest_first = Profile.objects.prefetch_related(
+            Prefetch("url_paths", queryset=URLPath.objects.order_by("-pk"))
+        ).get(pk=profile.pk)
+
+        assert plain.url_path == first == profile.url_path
+        assert newest_first.url_path == second

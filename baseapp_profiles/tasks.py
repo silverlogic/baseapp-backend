@@ -34,23 +34,25 @@ def send_invitation_email_task(
     )
 
     ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
+    released = datetime.fromisoformat(released_until) if released_until else None
     invitation = ProfileUserRole.objects.select_related("profile").filter(pk=invitation_id).first()
-    if invitation is None or not awaits_answer(invitation):
-        logger.info("Invitation %s is no longer pending; not sending it", invitation_id)
-        return False
-    if token is not None and invitation.invitation_token != token:
+    if invitation is not None and token is not None and invitation.invitation_token != token:
         logger.info("Invitation %s was resent since; not sending the older email", invitation_id)
         return False
-    if invitation.is_invitation_expired():
-        logger.info("Invitation %s has expired; not sending it", invitation_id)
+    if invitation is None or not awaits_answer(invitation) or invitation.is_invitation_expired():
+        logger.info("Invitation %s is no longer pending; not sending it", invitation_id)
+        if released is not None:
+            # A release that waited in the queue past its expiry date sent nothing: it
+            # goes back on hold (if it is still that release) to be released again.
+            _restore_hold(invitation_id, token, released)
         return False
 
     inviter = None
     if inviter_id is not None:
         inviter = get_user_model()._default_manager.filter(pk=inviter_id).first()
     sent = send_invitation_email_now(invitation, inviter=inviter)
-    if not sent and released_until is not None:
-        _restore_hold(invitation_id, token, datetime.fromisoformat(released_until))
+    if not sent and released is not None:
+        _restore_hold(invitation_id, token, released)
     return sent
 
 

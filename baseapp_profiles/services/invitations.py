@@ -446,6 +446,8 @@ def resend_invitation(
     resend opens a new row for the same person (returned in `invitations`).
     """
     with transaction.atomic():
+        # The profile first, as a fresh send does, so the two never wait on each other.
+        lock_profile_memberships([invitation.profile_id])
         # Lock and re-read: the invitee may have answered since `invitation` was loaded, and
         # saving the stale copy would reopen their answer with a fresh token.
         if ProfileUserRole.objects.select_for_update().filter(pk=invitation.pk).first() is None:
@@ -462,6 +464,15 @@ def resend_invitation(
 
         is_expired = invitation.status == Status.EXPIRED or invitation.is_invitation_expired()
         if claim:
+            claimed_email = (invitation.invited_email or "").casefold()
+            if invitation.user is not None and _email_of(invitation.user) != claimed_email:
+                # The member's account moved to another address: the token would go to
+                # whoever has the old one, who could not use it. The membership is not
+                # handed to them either.
+                raise ProfileMembershipError(
+                    _("This member no longer uses the invited address. Invite their current one."),
+                    "invalid_invitation",
+                )
             set_extra_fields(invitation, extra_fields)
             _renew_token(invitation)
             invitation.save()
@@ -597,17 +608,23 @@ def _restore_hold(invitation_pk: int, token: str | None, released_until: datetim
     Put a released invitation back on hold after its email could not be sent or queued.
 
     Only if the row is still as that release left it (same token and expiry date): one
-    that was resent, released again, answered or cancelled since is left alone.
+    that was resent, released again, answered or cancelled since is left alone. A row the
+    sweep marked EXPIRED while the email waited in the queue is still that release's, and
+    is reopened: its lifetime starts when it is released again.
     """
-    return bool(
-        ProfileUserRole.objects.filter(
-            pk=invitation_pk,
-            invitation_token=token,
-            invitation_expires_at=released_until,
-            status__in=[Status.PENDING, Status.ACTIVE],
-            responded_at__isnull=True,
-        ).update(invitation_expires_at=None)
+    release = ProfileUserRole.objects.filter(
+        pk=invitation_pk,
+        invitation_token=token,
+        invitation_expires_at=released_until,
+        responded_at__isnull=True,
     )
+    held = release.filter(status__in=[Status.PENDING, Status.ACTIVE]).update(
+        invitation_expires_at=None
+    )
+    held += release.filter(status=Status.EXPIRED).update(
+        status=Status.PENDING, invitation_expires_at=None
+    )
+    return bool(held)
 
 
 def _celery_is_eager() -> bool:
@@ -728,6 +745,9 @@ def cancel_invitation(
         current = ProfileUserRole.objects.select_for_update().filter(pk=invitation.pk).first()
         if current is None or not awaits_answer(current):
             raise ProfileMembershipError(_("Can only cancel pending invitations"), "invalid_status")
+        # What is cancelled, signalled and returned is the row as it is now (it may have
+        # been resent since the caller loaded it), not the caller's older copy.
+        invitation.refresh_from_db()
         if current.status == Status.ACTIVE:
             invitation.invitation_token = None
             invitation.save(update_fields=["invitation_token"])

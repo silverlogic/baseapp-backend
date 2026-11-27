@@ -92,7 +92,7 @@ class ProfileUserRoleCreate(ExtensibleMutation):
             f"{profile_user_role_app_label}.add_profileuserrole", profile
         ):
             raise _permission_error()
-        if role_type:
+        if role_type is not None:
             validate_assignable_role(role_type)
 
         # TODO on BA-2426: send invitation to new users emails
@@ -115,7 +115,7 @@ class ProfileUserRoleCreate(ExtensibleMutation):
             profile_user_roles = member_service.add_members(
                 profile,
                 users,
-                role=role_type or None,
+                role=role_type,
                 by=info.context.user,
                 extra_fields=cls.extra_fields_from_input(info, input),
             )

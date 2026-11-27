@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.exceptions import APIException
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
@@ -141,6 +142,7 @@ class ProfileMembersViewSet(
     def _respond(self, membership: "ProfileUserRole") -> Response:
         return Response(self.get_serializer(membership).data)
 
+    @extend_schema(request=ProfileMemberRoleSerializer)
     def partial_update(self, request: Request, *args, **kwargs) -> Response:
         membership = self.get_object()
         serializer = ProfileMemberRoleSerializer(data=request.data)
@@ -162,6 +164,7 @@ class ProfileMembersViewSet(
         )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @extend_schema(request=None)
     @action(detail=True, methods=["post"])
     def deactivate(self, request: Request, *args, **kwargs) -> Response:
         membership = self.get_object()
@@ -172,6 +175,7 @@ class ProfileMembersViewSet(
         )
         return self._respond(membership)
 
+    @extend_schema(request=None)
     @action(detail=True, methods=["post"])
     def reactivate(self, request: Request, *args, **kwargs) -> Response:
         membership = self.get_object()
@@ -258,6 +262,9 @@ class ProfileInvitationsViewSet(
         ).data
         return Response(data, status=status_code)
 
+    @extend_schema(
+        request=ProfileInvitationSendSerializer, responses={201: ProfileInvitationSentSerializer}
+    )
     def create(self, request: Request, *args, **kwargs) -> Response:
         serializer = ProfileInvitationSendSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -270,11 +277,13 @@ class ProfileInvitationsViewSet(
         )
         return self._sent_response(result, status.HTTP_201_CREATED)
 
+    @extend_schema(request=None, responses=ProfileInvitationSentSerializer)
     @action(detail=True, methods=["post"])
     def resend(self, request: Request, *args, **kwargs) -> Response:
         result = invitation_service.resend_invitation(self.get_object(), by=request.user)
         return self._sent_response(result, status.HTTP_200_OK)
 
+    @extend_schema(request=None, responses={200: ProfileInvitationSerializer, 204: None})
     @action(detail=True, methods=["post"])
     def cancel(self, request: Request, *args, **kwargs) -> Response:
         invitation = invitation_service.cancel_invitation(self.get_object(), by=request.user)
@@ -282,6 +291,7 @@ class ProfileInvitationsViewSet(
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(self.get_serializer(invitation).data)
 
+    @extend_schema(responses=PublicInvitationSerializer)
     @action(detail=False, methods=["get"], url_path=TOKEN_URL, url_name="lookup")
     def lookup(self, request: Request, token: str, *args, **kwargs) -> Response:
         invitation = invitation_service.lookup_invitation(token)
@@ -291,6 +301,7 @@ class ProfileInvitationsViewSet(
             PublicInvitationSerializer(invitation, context=self.get_serializer_context()).data
         )
 
+    @extend_schema(request=None, responses=InvitationResponseSerializer)
     @action(detail=False, methods=["post"], url_path=f"{TOKEN_URL}/accept", url_name="accept")
     def accept(self, request: Request, token: str, *args, **kwargs) -> Response:
         invitation = invitation_service.accept_invitation(token, request.user)
@@ -298,6 +309,7 @@ class ProfileInvitationsViewSet(
             InvitationResponseSerializer(invitation, context=self.get_serializer_context()).data
         )
 
+    @extend_schema(request=None, responses=InvitationResponseSerializer)
     @action(detail=False, methods=["post"], url_path=f"{TOKEN_URL}/decline", url_name="decline")
     def decline(self, request: Request, token: str, *args, **kwargs) -> Response:
         invitation = invitation_service.decline_invitation(token, request.user)
@@ -305,6 +317,9 @@ class ProfileInvitationsViewSet(
             InvitationResponseSerializer(invitation, context=self.get_serializer_context()).data
         )
 
+    @extend_schema(
+        request=InvitationSignupSerializer, responses={201: InvitationResponseSerializer}
+    )
     @action(
         detail=False,
         methods=["post"],

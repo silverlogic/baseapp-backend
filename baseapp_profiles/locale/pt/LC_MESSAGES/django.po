@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-27 01:04+0000\n"
+"POT-Creation-Date: 2026-11-27 02:12+0000\n"
 "PO-Revision-Date: 2026-10-12 15:10+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -314,6 +314,12 @@ msgstr "Este convite foi enviado há pouco. Tente novamente mais tarde."
 #: services/invitations.py
 msgid "Can only resend expired or pending invitations"
 msgstr "Só é possível reenviar convites expirados ou pendentes"
+
+#: services/invitations.py
+msgid ""
+"This member no longer uses the invited address. Invite their current one."
+msgstr ""
+"Este membro não usa mais o endereço convidado. Convide o endereço atual."
 
 #: services/invitations.py
 #, python-format

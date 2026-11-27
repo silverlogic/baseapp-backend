@@ -640,11 +640,11 @@ credential.
 | `GET\|PATCH\|DELETE /profile-members/{id}` | Read, change the role (`{"role": 1}`), remove |
 | `POST /profile-members/{id}/deactivate`, `/reactivate` | Change access |
 | `GET /profile-invitations` | Invitations, all statuses; `?status=`, `?role=`, `?q=` |
-| `POST /profile-invitations` | `{"emails": [...], "invitations": [{"email", "first_name", "last_name"}], "role": 2, "message": ""}` |
+| `POST /profile-invitations` | `{"emails": ["bob@example.com"], "invitations": [{"email": "ann@example.com", "first_name": "Ann", "last_name": "Lee"}], "role": 2, "message": "Welcome aboard"}` |
 | `GET /profile-invitations/{id}`, `POST .../resend`, `POST .../cancel` | |
 | `GET /profile-invitations/by-token/{token}` | Public summary (no sign-in, rate-limited): `profile_name`, `profile_image`, `invited_email`, `invited_first_name`, `invited_last_name`, `inviter_name`, `message`, `role`, `status`, `expires_at`, `requires_sign_in` |
 | `POST /profile-invitations/by-token/{token}/accept`, `/decline` | Signed-in invitee |
-| `POST /profile-invitations/by-token/{token}/accept-with-signup` | `{"password", "first_name", "last_name"}` (no sign-in, rate-limited, opt-in) |
+| `POST /profile-invitations/by-token/{token}/accept-with-signup` | `{"password": "a-strong-password", "first_name": "Ann", "last_name": "Lee"}` (no sign-in, rate-limited, opt-in) |
 
 Choices are serialized as their keys (`role`, `status` are integers). A refused operation
 answers `{"non_field_errors": ["..."], "code": "<error code>"}` with 400 — or 404

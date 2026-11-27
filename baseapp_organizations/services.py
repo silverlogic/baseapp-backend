@@ -158,6 +158,15 @@ class OrganizationAccountService(SharedServiceProvider):
             # to let the other admin go.
             from baseapp_profiles.services.members import lock_profile_memberships
 
+            # The account itself first: adding this user to a profile (a new row that
+            # references the account) then waits for the caller's transaction too, so
+            # someone who has no membership yet cannot be made the last admin unseen.
+            list(
+                type(user)
+                ._default_manager.select_for_update()
+                .filter(pk=user.pk)
+                .values_list("pk", flat=True)
+            )
             lock_profile_memberships(
                 ProfileUserRole.objects.filter(
                     user_id=user.id,

@@ -180,6 +180,7 @@ def add_members(
         )
 
     with transaction.atomic():
+        lock_profile_memberships([profile.pk])
         existing = ProfileUserRole.objects.filter(
             profile=profile, user_id__in=[user.pk for user in users]
         )

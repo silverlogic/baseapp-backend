@@ -131,3 +131,51 @@ def test_overlapping_invitation_batches_do_not_deadlock() -> None:
     assert isinstance(second, ProfileMembershipError)
     assert second.code == "duplicate_invitation"
     assert ProfileUserRole.objects.filter(profile=profile).count() == 2
+
+
+def test_adding_someone_as_admin_during_their_account_deletion_cannot_strand_it() -> None:
+    organization = OrganizationService.create("Acme")
+    admin = ProfileUserRoleFactory(profile=organization.profile, role=ADMIN)
+    newcomer = UserFactory()  # no membership yet
+
+    def add_then_step_down() -> None:
+        member_service.add_members(organization.profile, [newcomer], role=ADMIN)
+        member_service.change_member_role(admin, MANAGER)
+
+    first, second = run_overlapping(
+        lambda holding: delete_account(newcomer, holding), add_then_step_down
+    )
+
+    assert first is None
+    assert isinstance(second, ProfileMembershipError)
+    assert second.code == "last_admin"
+    admin.refresh_from_db()
+    assert admin.role == ADMIN
+
+
+def test_a_history_resend_and_a_fresh_send_do_not_deadlock(settings) -> None:
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    settings.BASEAPP_PROFILES_INVITATION_KEEP_HISTORY = True
+    profile = ProfileFactory(owner=UserFactory())
+    invitation = invitation_service.send_invitations(profile, ["ann@example.com"]).invitations[0]
+    invitation.invitation_expires_at = timezone.now() - timedelta(days=1)
+    invitation.save(update_fields=["invitation_expires_at"])
+
+    def resend_and_hold(holding: threading.Event) -> int:
+        with transaction.atomic():
+            result = invitation_service.resend_invitation(invitation)
+            holding.set()
+            threading.Event().wait(HOLD_SECONDS)
+        return len(result.invitations)
+
+    first, second = run_overlapping(
+        resend_and_hold,
+        lambda: invitation_service.send_invitations(profile, ["ann@example.com"]),
+    )
+
+    assert first == 1
+    assert isinstance(second, ProfileMembershipError)
+    assert second.code == "duplicate_invitation"
