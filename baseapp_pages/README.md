@@ -210,6 +210,14 @@ AUTHENTICATION_BACKENDS = [
 ]
 ```
 
+### Visibility of `urlPath.target`
+
+`urlPath(path:)` returns `target: null` unless the requesting user holds the target's object-level view permission: `view_page` for pages, and `<app_label>.view_<model_name>` for every other model that implements `PageInterface` (`view_profile` for profiles, `view_user` for users). For the stock `Page`, `Profile` and user models this is the same permission their object types check in `get_node`, so a target is visible through its URL path exactly when it is visible through `node(id:)`.
+
+That match is not guaranteed for a swapped model whose class has a different name. The permission name here comes from the concrete model, while the stock `get_node` checks and permission backends use the fixed names `view_profile` and `view_user`. With `Profile` swapped for a class named `SocialProfile`, `urlPath` asks for `view_socialprofile` and `node(id:)` still asks for `view_profile`. Until your permission backend answers `view_socialprofile` with the same rule, those targets are hidden through `urlPath` even when `node(id:)` returns them. Pages are not affected: they always use `view_page`.
+
+If you add `PageInterface` to your own model, make sure one of your `AUTHENTICATION_BACKENDS` answers `<app_label>.view_<model_name>` for an object of that model. Django's `ModelBackend` returns `False` for object-level checks, so without such a backend the target is hidden from everyone except superusers.
+
 ## How to develop
 
 General development instructions can be found in the [main README](../README.md#how-to-develop).

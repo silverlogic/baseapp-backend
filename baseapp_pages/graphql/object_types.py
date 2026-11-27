@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 import django_filters
 import graphene
 import swapper
+from django.contrib.auth import get_permission_codename
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.utils.translation import get_language
@@ -25,6 +26,19 @@ PageStatusEnum = graphene.Enum.from_enum(Page.PageStatus)
 # ================================
 # URL Path Object Types/Interfaces
 # ================================
+
+
+def get_view_permission(target: "Model") -> str:
+    """
+    Name of the object-level permission that decides who may view a URL path's target.
+
+    Pages keep `view_page` on the swapped Page model's app label; any other model uses
+    Django's default `<app_label>.view_<model_name>`.
+    """
+    if isinstance(target, AbstractPage):
+        return f"{page_app_label}.view_page"
+    opts = target._meta
+    return f"{opts.app_label}.{get_permission_codename('view', opts)}"
 
 
 class PageInterface(RelayNode):
@@ -71,10 +85,20 @@ class URLPathNode(DjangoObjectType):
         }
 
     def resolve_target(self, info, **kwargs) -> "Model | None":
-        if isinstance(self.target, AbstractPage):
-            if not info.context.user.has_perm(f"{page_app_label}.view_page", self.target):
-                return None
-        return self.target
+        """
+        Return the target only when the requesting user may view it.
+
+        `urlPath(path:)` reaches the target without going through its object type's
+        `get_node`, so the object-level `view_<model>` permission that `get_node` relies on
+        is checked here for every `PageInterface` model. A target whose model has no
+        permission backend answering that permission is hidden.
+        """
+        target = self.target
+        if target is None:
+            return None
+        if not info.context.user.has_perm(get_view_permission(target), target):
+            return None
+        return target
 
     @classmethod
     def get_queryset(cls, queryset, info) -> "QuerySet[URLPath]":
