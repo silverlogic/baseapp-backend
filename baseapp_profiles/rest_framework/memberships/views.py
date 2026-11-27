@@ -39,6 +39,7 @@ from .serializers import (
 )
 from .throttles import InvitationTokenThrottle
 
+Profile = swapper.load_model("baseapp_profiles", "Profile")
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
 TOKEN_URL = r"by-token/(?P<token>[^/]+)"
@@ -116,12 +117,16 @@ class ProfileMembersViewSet(
         if any(field.name == "profile" for field in get_user_model()._meta.get_fields()):
             # The serializer shows each member's own profile.
             related.append("user__profile")
-        return (
+        queryset = (
             ProfileUserRole.objects.memberships()
             .filter(profile=profile)
             .select_related(*related)
             .order_by("pk")
         )
+        if "user__profile" in related and hasattr(Profile, "url_paths"):
+            # ... and that profile's URL path (see `PageMixin.url_path`).
+            queryset = queryset.prefetch_related("user__profile__url_paths")
+        return queryset
 
     def get_permissions(self) -> list[BasePermission]:
         permissions = [IsAuthenticated(), HasCurrentProfile()]

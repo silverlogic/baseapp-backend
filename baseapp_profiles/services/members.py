@@ -131,7 +131,7 @@ def lock_profile_memberships(profile_ids: Iterable[int]) -> None:
     """
     list(
         Profile.objects.select_for_update(no_key=True)
-        .filter(pk__in=profile_ids)
+        .filter(pk__in=list(profile_ids))
         .order_by("pk")
         .values_list("pk", flat=True)
     )

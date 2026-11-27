@@ -535,20 +535,25 @@ class TestThirdRound:
         assert invitation.invited_first_name == ""
         assert invitation.invited_last_name == ""
 
-    def test_a_reinvite_of_the_same_person_keeps_their_names(self, profile) -> None:
-        declined = ProfileUserRoleFactory(
+    def test_a_fresh_invitation_to_an_address_without_an_account_drops_earlier_names(
+        self, profile
+    ) -> None:
+        # Nobody can tell whether the address still belongs to the person named before.
+        expired = ProfileUserRoleFactory(
             profile=profile,
             user=None,
             role=MANAGER,
-            status=Status.DECLINED,
+            status=Status.EXPIRED,
             invited_email="ann@example.com",
             invited_first_name="Ann",
+            invited_last_name="Lee",
         )
 
         invitation = invite(profile)
 
-        assert invitation.pk == declined.pk
-        assert invitation.invited_first_name == "Ann"
+        assert invitation.pk == expired.pk
+        assert invitation.invited_first_name == ""
+        assert invitation.invited_last_name == ""
 
     def test_a_batch_keeps_the_callers_order(self, profile) -> None:
         result = service.send_invitations(profile, ["zoe@example.com", "ann@example.com"])

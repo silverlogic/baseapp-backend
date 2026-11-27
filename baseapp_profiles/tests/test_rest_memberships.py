@@ -422,3 +422,46 @@ class TestErrors:
             "non_field_errors": ["A profile must keep at least one active admin"],
             "code": "last_admin",
         }
+
+
+class TestMemberListQueries:
+    def _url_path_queries(self, client) -> int:
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        with CaptureQueriesContext(connection) as queries:
+            assert client.get(MEMBERS).status_code == 200
+        return len([query for query in queries if "urlpath" in query["sql"]])
+
+    def test_the_member_list_loads_url_paths_in_one_query(self, org) -> None:
+        profile, admin, _ = org
+        client = client_for(admin.user, profile)
+        for _index in range(4):
+            ProfileUserRoleFactory(profile=profile, role=MANAGER)
+
+        response = client.get(MEMBERS)
+
+        assert self._url_path_queries(client) == 1
+        assert all(row["user"]["profile"]["url_path"] for row in response.json()["results"])
+
+
+class TestSentCount:
+    def test_a_publish_refused_on_commit_is_taken_off_the_count(
+        self, org, settings, django_capture_on_commit_callbacks
+    ) -> None:
+        from unittest.mock import patch
+
+        from baseapp_profiles import tasks
+
+        profile, _, _ = org
+        settings.BASEAPP_PROFILES_INVITATION_ASYNC_SEND = True
+        settings.CELERY_TASK_ALWAYS_EAGER = False
+
+        with patch.object(
+            tasks.send_invitation_email_task, "delay", side_effect=[OSError("down"), None]
+        ):
+            with django_capture_on_commit_callbacks(execute=True):
+                result = service.send_invitations(profile, ["ann@example.com", "bob@example.com"])
+                assert result.emails_sent == 2
+
+        assert result.emails_sent == 1

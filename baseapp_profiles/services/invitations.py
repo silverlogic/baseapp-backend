@@ -17,7 +17,7 @@ carried on that row without changing its status; see `is_member_claim`.
 """
 
 import logging
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
@@ -49,7 +49,7 @@ from baseapp_profiles.conf import (
 from baseapp_profiles.exceptions import ProfileMembershipError
 
 from ._utils import send_on_commit
-from .members import set_extra_fields, validate_role
+from .members import lock_profile_memberships, set_extra_fields, validate_role
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,13 @@ class Invitee:
 
 @dataclass
 class SentInvitations:
-    """The rows a send or resend produced, and how many emails went out (or were queued)."""
+    """
+    The rows a send or resend produced, and how many emails went out (or were queued).
+
+    When emails are queued inside a caller's transaction, `emails_sent` counts them as soon
+    as they are handed to the commit, and is lowered again if the broker refuses one once
+    the transaction commits. Read it after the commit for the final number.
+    """
 
     invitations: list = field(default_factory=list)
     emails_sent: int = 0
@@ -222,6 +228,11 @@ def _open_invitation(
     """
     _validate_invitee(profile, invitee, invited_by)
 
+    # One writer per profile at a time: the rows found below are matched by address or by
+    # account, so two batches can reach the same rows through different invitees, and no
+    # ordering of the invitees alone keeps them from locking those rows crosswise.
+    lock_profile_memberships([profile.pk])
+
     match = Q(invited_email__iexact=invitee.email)
     if invited_user is not None:
         match |= Q(user=invited_user)
@@ -295,19 +306,12 @@ def _open_invitation(
         invitation = reuse
         # The row is bound to whoever holds the address today (nobody, without an account):
         # a closed row found through a stale address must not keep its former account.
-        same_person = (
-            invitation.invited_email or ""
-        ).lower() == invitee.email and invitation.user_id == getattr(invited_user, "pk", None)
         invitation.user = invited_user
         invitation.invited_email = invitee.email
-        # Names given earlier are kept for the same person only: a row reused for someone
-        # else must not greet them with the previous invitee's name.
-        invitation.invited_first_name = invitee.first_name or (
-            invitation.invited_first_name if same_person else ""
-        )
-        invitation.invited_last_name = invitee.last_name or (
-            invitation.invited_last_name if same_person else ""
-        )
+        # A fresh invitation carries the names it was given, empty ones included: whoever
+        # holds the address now may not be the person the row was first opened for.
+        invitation.invited_first_name = invitee.first_name
+        invitation.invited_last_name = invitee.last_name
         invitation.role = role
         invitation.message = message
         invitation.invited_by = invited_by
@@ -541,7 +545,12 @@ def _deliver_or_hold(
             invitation.invitation_expires_at = None
             result.held.append(invitation)
         return
-    if deliver_invitation(invitation, inviter=inviter):
+
+    def uncount() -> None:
+        # Counted when the email was handed to the commit; the broker then refused it.
+        result.emails_sent -= 1
+
+    if deliver_invitation(invitation, inviter=inviter, on_publish_failure=uncount):
         result.emails_sent += 1
 
 
@@ -614,16 +623,23 @@ def deliver_invitation(
     *,
     inviter: AbstractBaseUser | None = None,
     released_until: datetime | None = None,
+    on_publish_failure: Callable[[], None] | None = None,
 ) -> bool:
     """
     Send the invitation email now, or queue it when `BASEAPP_PROFILES_INVITATION_ASYNC_SEND`
     is on. A queued email leaves once the transaction commits; while Celery runs eagerly it
     is sent inline instead, so the result reflects the real outcome.
 
-    An inline send does not wait for an enclosing transaction: call this once the invitation
-    is committed (as `send_invitations` and `resend_invitation` do), or the invitee may
-    receive a token that is then rolled back. Inside a transaction a queued send answers
-    True before the broker is asked; a publish that then fails is logged, not reported.
+    An inline send does not wait for an enclosing transaction. `send_invitations` and
+    `resend_invitation` call this once their own transaction has ended, which is a commit
+    only when the caller has not opened one around them: a caller that does (or
+    `ATOMIC_REQUESTS`) and then rolls back leaves the invitee with a link to an invitation
+    that does not exist. Turn on `BASEAPP_PROFILES_INVITATION_ASYNC_SEND` there; queued
+    emails wait for the commit.
+
+    Inside a transaction a queued send answers True before the broker is asked. If the
+    publish then fails it is logged and `on_publish_failure` is called, so the caller's
+    count of sent emails can be put right.
 
     `released_until` marks the delivery of a release (the expiry date that release set): if
     the email cannot be queued, or the worker cannot send it, the invitation goes back on
@@ -652,7 +668,12 @@ def deliver_invitation(
             return True
 
         if transaction.get_connection().in_atomic_block:
-            transaction.on_commit(queue)
+
+            def queue_on_commit() -> None:
+                if not queue() and on_publish_failure is not None:
+                    on_publish_failure()
+
+            transaction.on_commit(queue_on_commit)
             return True
         return queue()
     return send_invitation_email_now(invitation, inviter=inviter)

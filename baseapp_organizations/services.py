@@ -139,9 +139,9 @@ class OrganizationAccountService(SharedServiceProvider):
         Return `True` if `user` is the only active ADMIN of an organization whose profile
         has no owner — deleting the account would leave nobody able to manage it.
 
-        Inside a transaction the organization's admin rows are locked until it ends, so a
-        caller that deactivates the account in the same transaction cannot race another
-        admin doing the same.
+        Inside a transaction the user's ownerless organizations and their admin rows are
+        locked until it ends, so a caller that deactivates the account in the same
+        transaction cannot race another admin doing the same, or a promotion of this user.
         """
         Organization = swapper.load_model("baseapp_organizations", "Organization")
         ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
@@ -149,6 +149,24 @@ class OrganizationAccountService(SharedServiceProvider):
             role=ProfileUserRole.ProfileRoles.ADMIN,
             status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
         )
+        locking = transaction.get_connection().in_atomic_block
+        if locking:
+            # Before asking: every ownerless organization the user belongs to, whatever
+            # their role, so a promotion to ADMIN that is under way either shows up below
+            # or waits until the caller's transaction (the deactivation) has ended. It then
+            # promotes an account that no longer counts, and the last-admin guard refuses
+            # to let the other admin go.
+            from baseapp_profiles.services.members import lock_profile_memberships
+
+            lock_profile_memberships(
+                ProfileUserRole.objects.filter(
+                    user_id=user.id,
+                    profile__owner__isnull=True,
+                    profile_id__in=Organization.objects.values("profile_id"),
+                )
+                .open()
+                .values_list("profile_id", flat=True)
+            )
         profile_ids = set(
             admins.filter(
                 user_id=user.id,
@@ -158,13 +176,9 @@ class OrganizationAccountService(SharedServiceProvider):
         )
         if not profile_ids:
             return False
-        if transaction.get_connection().in_atomic_block:
-            # Lock what the membership services lock, in their order (the profiles, then
-            # the admin rows), so two admins leaving at the same time are checked one
-            # after the other.
-            from baseapp_profiles.services.members import lock_profile_memberships
-
-            lock_profile_memberships(profile_ids)
+        if locking:
+            # Then the admin rows, as the membership services do, so two admins leaving at
+            # the same time are checked one after the other.
             list(
                 admins.select_for_update()
                 .filter(profile_id__in=profile_ids)
