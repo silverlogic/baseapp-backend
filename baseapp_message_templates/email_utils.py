@@ -1,18 +1,26 @@
 import logging
 
 from .models import EmailTemplate
+from .registry import email_templates
 from .sendgrid import get_personalization
 
 logger = logging.getLogger(__name__)
 
 
 def send_template_email(template_name, *args, **kwargs) -> None:
+    """Send the ``EmailTemplate`` named ``template_name`` (see ``EmailTemplate.send``).
 
+    A registered name (``register_email_template``) is sent from its template files even when
+    it has no row yet; any other missing name is logged and nothing is sent.
+    """
     try:
         template = EmailTemplate.objects.get(name=template_name)
-        template.send(use_base_template=True, *args, **kwargs)
     except EmailTemplate.DoesNotExist:
-        logger.error(f'Email template "{template_name}" not found.')
+        if not email_templates.is_registered(template_name):
+            logger.error(f'Email template "{template_name}" not found.')
+            return
+        template = EmailTemplate(name=template_name)
+    template.send(use_base_template=True, *args, **kwargs)
 
 
 def send_sendgrid_email(template_name, content=[]) -> None:
