@@ -1,5 +1,11 @@
+from unittest.mock import MagicMock
+
 import pytest
 import swapper
+
+from baseapp_core.tests.factories import UserFactory
+from baseapp_pages.graphql.object_types import URLPathNode, get_view_permission
+from baseapp_pages.models import URLPath
 
 from .factories import PageFactory, URLPathFactory
 from .utils import make_text_into_quill
@@ -316,3 +322,56 @@ def test_another_user_cant_change_page(graphql_user_client) -> None:
     assert not content["data"]["page"]["canDelete"]
     assert not content["data"]["page"]["canChangeFull"]
     assert not content["data"]["page"]["canDeleteFull"]
+
+
+GET_USER_BY_PATH = """
+    query User($path: String!) {
+        urlPath(path: $path) {
+            target {
+                __typename
+                ... on User {
+                    id
+                }
+            }
+        }
+    }
+"""
+
+
+def test_anon_can_view_user_by_url(graphql_client) -> None:
+    # `view_user` is granted to everyone, so a user target stays visible.
+    user = UserFactory()
+    url_path = URLPathFactory(target=user, language="en", path="/some-user/", is_active=True)
+
+    response = graphql_client(GET_USER_BY_PATH, variables={"path": url_path.path})
+
+    content = response.json()
+    assert content["data"]["urlPath"]["target"] == {"__typename": "User", "id": user.relay_id}
+
+
+def test_view_permission_of_page_target() -> None:
+    assert get_view_permission(PageFactory()) == f"{page_app_label}.view_page"
+
+
+def test_view_permission_of_other_targets_is_the_model_view_permission() -> None:
+    user = UserFactory()
+
+    assert get_view_permission(user) == f"{user._meta.app_label}.view_user"
+
+
+def test_url_path_target_is_hidden_without_its_view_permission() -> None:
+    # Any target model is gated, not only pages: with the permission denied it is not returned.
+    user = UserFactory()
+    url_path = URLPathFactory(target=user, language="en", path="/some-user/", is_active=True)
+    info = MagicMock()
+    info.context.user.has_perm.return_value = False
+
+    assert URLPathNode.resolve_target(url_path, info) is None
+    info.context.user.has_perm.assert_called_once_with(f"{user._meta.app_label}.view_user", user)
+
+
+def test_url_path_without_target_resolves_to_none() -> None:
+    info = MagicMock()
+
+    assert URLPathNode.resolve_target(URLPath(path="/orphan/"), info) is None
+    info.context.user.has_perm.assert_not_called()

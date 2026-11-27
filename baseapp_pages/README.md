@@ -210,6 +210,12 @@ AUTHENTICATION_BACKENDS = [
 ]
 ```
 
+### Visibility of `urlPath.target`
+
+`urlPath(path:)` returns `target: null` unless the requesting user holds the target's object-level view permission: `view_page` for pages, and `<app_label>.view_<model_name>` for every other model that implements `PageInterface` (`view_profile` for profiles, `view_user` for users). This is the same permission each object type checks in `get_node`, so a target is visible through its URL path exactly when it is visible through `node(id:)`.
+
+If you add `PageInterface` to your own model, make sure one of your `AUTHENTICATION_BACKENDS` answers `<app_label>.view_<model_name>` for an object of that model. Django's `ModelBackend` returns `False` for object-level checks, so without such a backend the target is hidden from everyone except superusers.
+
 ## How to develop
 
 General development instructions can be found in the [main README](../README.md#how-to-develop).
