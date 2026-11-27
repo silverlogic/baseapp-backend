@@ -18,15 +18,15 @@ class CurrentProfileMixin:
             ...
     """
 
-    def initial(self, request, *args, **kwargs):
+    def check_permissions(self, request) -> None:
         """
-        Runs anything that needs to occur prior to calling the method handler.
-        This is where we set the current_profile.
+        Set the current_profile once the request is authenticated and before the permission
+        classes run, so they can rely on it (e.g. "may this user manage its members?").
         """
-        super().initial(request, *args, **kwargs)
         self.set_current_profile(request)
+        super().check_permissions(request)
 
-    def set_current_profile(self, request):
+    def set_current_profile(self, request) -> None:
         """
         Set current_profile on request.user based on Current-Profile header.
         """

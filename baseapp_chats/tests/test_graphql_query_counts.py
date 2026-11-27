@@ -5,20 +5,20 @@ exist to trip when a future change loses a prefetch or drops an
 optimizer hook — the bounds are tight enough to catch a fan-out
 regression but loose enough to absorb optimizer-internal churn.
 
-Modelled after:
-- baseapp_mentions/tests/test_graphql.py (`CaptureQueriesContext` +
-  asserted upper bound; "Likely cause:" hints in assertion messages).
-- baseapp_follows/tests/test_follow_count.py (SQL-shape assertions when
-  the count alone is too coarse).
+Counts use `assert_queries_dont_grow` / `assert_max_queries` from
+`baseapp_core.testing`. Where the count alone is too coarse, a test
+asserts on the SQL shape instead (as baseapp_follows/tests/test_follow_count.py
+does).
 """
 
-from collections import Counter
 from typing import TYPE_CHECKING
 
 import pytest
 from django.db import connection
+from django.http import HttpResponse
 from django.test.utils import CaptureQueriesContext
 
+from baseapp_core.testing import assert_max_queries, assert_queries_dont_grow
 from baseapp_mentions.tests.helpers import seed_mentions
 from baseapp_profiles.tests.factories import ProfileFactory
 
@@ -113,34 +113,30 @@ def _set_up_rooms_with_participants(
 def test_paginated_chat_rooms_does_not_explode_query_count(
     graphql_user_client, django_user_client
 ) -> None:
-    """Regression guard: paged `chatRooms` listing stays flat regardless
-    of room count, with `lastMessage` batched (not per-row).
-
-    Baseline for (5 rooms, 3 extra participants each, 1 message each)
-    is 11 queries — request setup (4) + permission check (1) +
-    ContentType lookups (2, cold-start only) + COUNT (1) + page (1)
-    + batched `lastMessage` (1) + COMMIT (1).
-
-    A per-room `lastMessage` regression would push the count to
-    ~16+ (5 extra round-trips), so the bound below trips immediately.
-    """
+    """Regression guard: paged `chatRooms` listing stays flat regardless of room count, with
+    `lastMessage` batched (not per-row). A per-room `lastMessage` adds a query per room."""
     my_profile = django_user_client.user.profile
-    _set_up_rooms_with_participants(my_profile, n_rooms=5, n_other_participants_per_room=3)
-
-    with CaptureQueriesContext(connection) as ctx:
-        response = graphql_user_client(USER_CHAT_ROOMS_LISTING)
-
-    assert "errors" not in response.json(), response.json()
-    # ~11 queries today. 15 absorbs minor optimiser shifts (e.g. an
-    # extra ContentType cache miss); any per-room fan-out blows past it.
-    assert len(ctx.captured_queries) <= 15, (
-        f"Chat room listing issued {len(ctx.captured_queries)} queries. "
-        "Likely causes (priority order):\n"
-        "  - `last_message` lost its batched prefetch (now per-row)\n"
-        "  - `chat_rooms` reverted to `DjangoFilterConnectionField`\n"
-        "  - `ChatRoomsInterface.resolve_chat_rooms` block-exclusion "
-        "subqueries became per-row"
+    hint = (
+        "`last_message` lost its batched prefetch (now per-row), `chat_rooms` reverted to "
+        "`DjangoFilterConnectionField`, or the `ChatRoomsInterface.resolve_chat_rooms` "
+        "block-exclusion subqueries became per-row"
     )
+
+    def query() -> HttpResponse:
+        return graphql_user_client(USER_CHAT_ROOMS_LISTING)
+
+    assert_queries_dont_grow(
+        run=query,
+        add_items=lambda n: _set_up_rooms_with_participants(
+            my_profile, n_rooms=n, n_other_participants_per_room=3
+        ),
+        small=1,
+        big=5,
+        hint=hint,
+    )
+
+    with assert_max_queries(9, hint=hint):
+        query()
 
 
 def test_chat_rooms_listing_unread_count_subquery_runs_once_per_page(
@@ -218,28 +214,25 @@ def test_mentions_interface_on_messages_rides_optimizer_prefetch(
     ChatRoomParticipantFactory(profile=other, room=room)
 
     mention_targets = [ProfileFactory() for _ in range(3)]
-    messages = [MessageFactory(room=room, profile=my_profile) for _ in range(5)]
-    for message in messages:
-        seed_mentions(message, mention_targets)
-
-    with CaptureQueriesContext(connection) as ctx:
-        response = graphql_user_client(
-            ROOM_MESSAGES_WITH_MENTIONS, variables={"roomId": room.relay_id}
-        )
-
-    assert "errors" not in response.json(), response.json()
-    # ~17 queries today, comparable to the comments+mentions baseline.
-    # 20 absorbs minor optimiser-internals shifts; trips immediately
-    # on any of the three regressions named in the docstring.
-    assert len(ctx.captured_queries) <= 20, (
-        f"Messages-with-mentions listing issued {len(ctx.captured_queries)} queries. "
-        "Likely causes (in priority order):\n"
-        "  - `chatRoom.allMessages` reverted to `DjangoFilterConnectionField`\n"
-        "  - `BaseMessageObjectType.pre_optimization_hook` dropped one of "
-        "`room_id` / `deleted` / `message_type` from `only_fields`\n"
-        "  - `MentionsInterface.mentions.optimizer_hook` was lost\n"
-        "  - Message ObjectType lost its `document = GenericRelation(DocumentId)`"
+    room_id = room.relay_id  # resolve outside the capture
+    hint = (
+        "`chatRoom.allMessages` reverted to `DjangoFilterConnectionField`, "
+        "`BaseMessageObjectType.pre_optimization_hook` dropped one of `room_id` / `deleted` / "
+        "`message_type` from `only_fields`, `MentionsInterface.mentions.optimizer_hook` was "
+        "lost, or the Message ObjectType lost its `document = GenericRelation(DocumentId)`"
     )
+
+    def add_messages(n: int) -> None:
+        for _ in range(n):
+            seed_mentions(MessageFactory(room=room, profile=my_profile), mention_targets)
+
+    def query() -> HttpResponse:
+        return graphql_user_client(ROOM_MESSAGES_WITH_MENTIONS, variables={"roomId": room_id})
+
+    assert_queries_dont_grow(run=query, add_items=add_messages, small=1, big=5, hint=hint)
+
+    with assert_max_queries(16, hint=hint):
+        query()
 
 
 UNREAD_FILTERED_ROOMS = """
@@ -325,7 +318,7 @@ MANAGEABLE_ROOMS_WITH_IS_PARTICIPANT_LISTING = """
 
 def test_manageable_listing_with_is_participant_stays_linear(
     graphql_user_client, django_user_client
-):
+) -> None:
     """Bound guard for the add-contact-to-group listing.
 
     `isParticipant(profileId:)` resolves one indexed EXISTS per row —
@@ -333,12 +326,9 @@ def test_manageable_listing_with_is_participant_stays_linear(
     `resolve_is_archived`). The relay-id decode of `profileId` is
     memoized per request, so it must NOT scale with row count.
 
-    Baseline for 5 rooms is 26 queries: ~21 fixed (request setup,
-    documentid decodes, permission + blocks checks, metadata tables,
-    COUNT + page) + 1 EXISTS per room. The bound absorbs minor churn;
-    a second per-row query (e.g. an un-memoized decode, or hydrating
-    participant profiles like `participant_ids` does) adds +5 and
-    trips it immediately.
+    The test declares that per-room cost. Another per-row query (e.g. an
+    un-memoized decode, or hydrating participant profiles like
+    `participant_ids` does) trips it immediately.
     """
     import swapper
 
@@ -349,35 +339,30 @@ def test_manageable_listing_with_is_participant_stays_linear(
 
     my_profile = django_user_client.user.profile
     contact = _ProfileFactory()
+    variables = {"profileId": my_profile.relay_id, "contactId": contact.relay_id}
 
-    n_rooms = 5
-    for i in range(n_rooms):
-        room = ChatRoomFactory(is_group=True, title=f"group {i}")
-        ChatRoomParticipantFactory(room=room, profile=my_profile, role=roles.ADMIN)
-        ChatRoomParticipantFactory(room=room, profile=_ProfileFactory(), role=roles.MEMBER)
-        room.participants_count = 2
-        room.save(update_fields=["participants_count"])
+    def add_rooms(n: int) -> None:
+        for i in range(n):
+            room = ChatRoomFactory(is_group=True, title=f"group {i}")
+            ChatRoomParticipantFactory(room=room, profile=my_profile, role=roles.ADMIN)
+            ChatRoomParticipantFactory(room=room, profile=_ProfileFactory(), role=roles.MEMBER)
+            room.participants_count = 2
+            room.save(update_fields=["participants_count"])
 
-    with CaptureQueriesContext(connection) as ctx:
-        response = graphql_user_client(
-            MANAGEABLE_ROOMS_WITH_IS_PARTICIPANT_LISTING,
-            variables={
-                "profileId": my_profile.relay_id,
-                "contactId": contact.relay_id,
-            },
-        )
-
-    assert "errors" not in response.json(), response.json()
-    fixed_overhead = 24
-    tables = Counter()
-    for captured in ctx.captured_queries:
-        for token in captured["sql"].split('FROM "')[1:]:
-            tables[token.split('"')[0]] += 1
-    assert len(ctx.captured_queries) <= fixed_overhead + n_rooms, (
-        f"Manageable listing issued {len(ctx.captured_queries)} queries for "
-        f"{n_rooms} rooms. Table histogram: {dict(tables)}\n"
-        "Likely causes:\n"
-        "  - `resolve_is_participant` started hydrating profiles instead of EXISTS\n"
-        "  - the `manageable` filter join lost `.distinct()` and duplicated rows\n"
-        "  - a per-row COUNT crept into `participants_count` resolution"
+    assert_queries_dont_grow(
+        run=lambda: graphql_user_client(
+            MANAGEABLE_ROOMS_WITH_IS_PARTICIPANT_LISTING, variables=variables
+        ),
+        add_items=add_rooms,
+        small=1,
+        big=5,
+        # Accepted for now, two per room: the indexed EXISTS for `isParticipant`, and a
+        # deferred `is_group` load in `resolve_title` (the field is not in the optimizer's
+        # `only_fields`). BE-5b removes the second one and lowers this to 1.
+        per_item=2,
+        hint=(
+            "`resolve_is_participant` started hydrating profiles instead of EXISTS, the "
+            "`manageable` filter join lost `.distinct()` and duplicated rows, or a per-row "
+            "COUNT crept into `participants_count` resolution"
+        ),
     )

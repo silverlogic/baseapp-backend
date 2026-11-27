@@ -15,9 +15,12 @@ shape, not the present-state shape, and the optimizer/resolver work to reach tho
 is intentionally not done yet.
 """
 
-import pytest
-from django.contrib.contenttypes.models import ContentType
+from collections.abc import Callable
 
+import pytest
+from django.http import HttpResponse
+
+from baseapp_core.testing import assert_max_queries, assert_queries_dont_grow
 from baseapp_core.tests.factories import UserFactory
 from baseapp_profiles.tests.factories import ProfileFactory
 
@@ -25,6 +28,9 @@ from .factories import FollowFactory
 
 pytestmark = pytest.mark.django_db
 
+
+# PAGINATED_FOLLOWERS_QUERY for one page, whatever its size.
+PAGINATED_FOLLOWERS_QUERY_COUNT = 11
 
 # Just the followers/following counts (cheapest path; should resolve from
 # FollowableMetadata via a single DocumentId join).
@@ -144,114 +150,117 @@ NESTED_FOLLOWERS_QUERY = """
 """
 
 
+def add_followers(target, *, with_own_follower: bool = False) -> Callable[[int], None]:
+    """`add_items` for a target's followers. `with_own_follower` gives each new follower a
+    follower of its own, so a nested `followersCount` is non-zero."""
+
+    def add(n: int) -> None:
+        for _ in range(n):
+            user = UserFactory()
+            follower = ProfileFactory(owner=user)
+            FollowFactory(actor_object=follower, target_object=target, user=user)
+            if with_own_follower:
+                inner_user = UserFactory()
+                inner = ProfileFactory(owner=inner_user)
+                FollowFactory(actor_object=inner, target_object=follower, user=inner_user)
+
+    return add
+
+
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_followers_and_following_counts_query_count(
-    django_user_client, graphql_client_with_queries
+    django_user_client, graphql_client
 ) -> None:
-    """Counts-only query: should be flat regardless of follower volume."""
+    """Counts-only query: both counts arrive as annotations on the Profile fetch (subqueries
+    against follows_followablemetadata), so the whole path is:
+    1) DocumentId resolve by public_id (joined to django_content_type)
+    2) ContentType lookup for profiles.profile (cold cache)
+    3) Profile fetch with _followable_followers_count + _followable_following_count annotated
+       via FollowableMetadataService.annotate_queryset
+    """
     target_profile = ProfileFactory(owner=django_user_client.user)
-    follower_users = [UserFactory() for _ in range(3)]
-    follower_profiles = [ProfileFactory(owner=u) for u in follower_users]
-    for fp in follower_profiles:
-        FollowFactory(actor_object=fp, target_object=target_profile, user=fp.owner)
+    add_followers(target_profile)(3)
+    relay_id = target_profile.relay_id  # resolve outside the capture
 
-    ContentType.objects.clear_cache()
+    with assert_max_queries(3, hint="FollowableMetadataService.annotate_queryset was dropped"):
+        response = graphql_client(COUNTS_ONLY_QUERY, variables={"id": relay_id})
 
-    response, queries = graphql_client_with_queries(
-        COUNTS_ONLY_QUERY, variables={"id": target_profile.relay_id}
-    )
     content = response.json()
-
     assert content["data"]["node"]["followersCount"] == 3
     assert content["data"]["node"]["followingCount"] == 0
-
-    # Both counts arrive as annotations on the Profile fetch (subqueries against
-    # follows_followablemetadata), so the whole counts-only path is just:
-    # 1) DocumentId resolve by public_id (joined to django_content_type)
-    # 2) Profile fetch with _followable_followers_count + _followable_following_count
-    #    annotated via FollowableMetadataService.annotate_queryset
-    assert queries.count == 2
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_followers_list_query_count_does_not_grow_with_followers(
-    django_user_client, graphql_client_with_queries
+    django_user_client, graphql_client
 ) -> None:
-    """Listing followers should be O(1) in the optimizer's eyes regardless of how many
-    follower rows exist. Two test runs with different follower counts must produce the
-    same query count (this is the regression we want to lock in)."""
+    """Listing followers takes the same queries for 15 followers as for 3."""
     target_profile = ProfileFactory(owner=django_user_client.user)
+    relay_id = target_profile.relay_id
 
-    follower_users_small = [UserFactory() for _ in range(3)]
-    for u in follower_users_small:
-        fp = ProfileFactory(owner=u)
-        FollowFactory(actor_object=fp, target_object=target_profile, user=u)
+    def query() -> HttpResponse:
+        return graphql_client(FOLLOWERS_LIST_QUERY, variables={"id": relay_id})
 
-    ContentType.objects.clear_cache()
-    response_small, queries_small = graphql_client_with_queries(
-        FOLLOWERS_LIST_QUERY, variables={"id": target_profile.relay_id}
+    assert_queries_dont_grow(
+        run=query,
+        add_items=add_followers(target_profile),
+        small=3,
+        big=15,
+        hint="the followers connection lost its batched actor prefetch",
     )
-    assert len(response_small.json()["data"]["node"]["followers"]["edges"]) == 3, (
-        response_small.json()
-    )
-    small_count = queries_small.count
 
-    # Now create a second target with many more followers and run the same query.
-    big_target = ProfileFactory(owner=UserFactory())
-    follower_users_big = [UserFactory() for _ in range(15)]
-    for u in follower_users_big:
-        fp = ProfileFactory(owner=u)
-        FollowFactory(actor_object=fp, target_object=big_target, user=u)
-
-    ContentType.objects.clear_cache()
-    response_big, queries_big = graphql_client_with_queries(
-        FOLLOWERS_LIST_QUERY, variables={"id": big_target.relay_id}
-    )
-    assert len(response_big.json()["data"]["node"]["followers"]["edges"]) == 15
-
-    # The whole point of the optimizer: query count must NOT grow with row count.
-    assert queries_big.count == small_count
+    assert len(query().json()["data"]["node"]["followers"]["edges"]) == 15
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_anon_following_list_query_count_is_flat(
-    django_user_client, graphql_client_with_queries
-) -> None:
-    """Symmetric to followers list — querying `following` for a profile should also
-    resolve in a flat number of queries."""
+def test_anon_following_list_query_count_is_flat(django_user_client, graphql_client) -> None:
+    """Symmetric to the followers list: `following` for a profile resolves in a flat number of
+    queries.
+
+    Counts-only path is 3 queries (see test_anon_followers_and_following_counts_query_count).
+    The following-list path adds, on top of that:
+      + ContentType.get for follows.follow
+      + COUNT(*) over follows_follow filtered by actor_id
+      + the connection fetch (Follow rows with mapped_public_id annotated)
+      + GenericPrefetch's batched DocumentId fetch for actor (1 query)
+      + GenericPrefetch's batched Profile fetch for actor (1 query, all rows in one IN())
+      + same pair for target (DocumentIds + Profiles batched)
+    Total = 3 + 8 = 11, independent of how many follow rows exist.
+    """
     actor_profile = ProfileFactory(owner=django_user_client.user)
-    target_profiles = [ProfileFactory(owner=UserFactory()) for _ in range(5)]
-    for tp in target_profiles:
-        FollowFactory(actor_object=actor_profile, target_object=tp, user=actor_profile.owner)
+    relay_id = actor_profile.relay_id
 
-    ContentType.objects.clear_cache()
-    response, queries = graphql_client_with_queries(
-        FOLLOWING_LIST_QUERY, variables={"id": actor_profile.relay_id}
+    def follow(n: int) -> None:
+        for _ in range(n):
+            target = ProfileFactory(owner=UserFactory())
+            FollowFactory(
+                actor_object=actor_profile, target_object=target, user=actor_profile.owner
+            )
+
+    def query() -> HttpResponse:
+        return graphql_client(FOLLOWING_LIST_QUERY, variables={"id": relay_id})
+
+    assert_queries_dont_grow(
+        run=query,
+        add_items=follow,
+        small=1,
+        big=5,
+        hint="the following connection lost its batched target prefetch",
     )
-    content = response.json()
 
+    with assert_max_queries(11):
+        response = query()
+    content = response.json()
     assert content["data"]["node"]["followingCount"] == 5
     assert len(content["data"]["node"]["following"]["edges"]) == 5
-
-    # Counts-only path is 2 queries (see test_anon_followers_and_following_counts_query_count).
-    # The following-list path adds, on top of that:
-    #   + ContentType.get for follows.follow (cleared above)
-    #   + COUNT(*) over follows_follow filtered by actor_id
-    #   + the connection fetch (Follow rows with mapped_public_id annotated)
-    #   + GenericPrefetch's batched DocumentId fetch for actor (1 query)
-    #   + GenericPrefetch's batched Profile fetch for actor (1 query, all rows in one IN())
-    #   + same pair for target (DocumentIds + Profiles batched)
-    # Total = 2 + 8 = 10. Independent of how many follow rows exist.
-    assert queries.count == 10
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
 def test_anon_followers_pagination_query_count_independent_of_page_size(
-    django_user_client, graphql_client_with_queries
+    django_user_client, graphql_client
 ) -> None:
-    """The paginated followers query should not scale with the page size — first=50 must
-    use the same number of queries (within ContentType-cache jitter) as first=5.
-    Catches a regression where the resolver fans out per-edge queries."""
+    """A page of 50 followers takes the same queries as a page of 5. Catches a resolver that
+    fans out per-edge queries."""
     target_profile = ProfileFactory(owner=django_user_client.user)
     # 60 followers + Faker's `email` provider draws from a finite pool, so unique-email
     # collisions become routine at this volume (and stick around across --reuse-db
@@ -261,87 +270,36 @@ def test_anon_followers_pagination_query_count_independent_of_page_size(
         u = UserFactory(email=f"follower-{target_profile.pk}-{i}@example.com")
         fp = ProfileFactory(owner=u)
         FollowFactory(actor_object=fp, target_object=target_profile, user=u)
+    relay_id = target_profile.relay_id
 
-    ContentType.objects.clear_cache()
-    resp_small, q_small = graphql_client_with_queries(
-        PAGINATED_FOLLOWERS_QUERY, variables={"id": target_profile.relay_id, "first": 5}
-    )
-    assert len(resp_small.json()["data"]["node"]["followers"]["edges"]) == 5
-    assert resp_small.json()["data"]["node"]["followers"]["pageInfo"]["hasNextPage"] is True
-
-    ContentType.objects.clear_cache()
-    resp_big, q_big = graphql_client_with_queries(
-        PAGINATED_FOLLOWERS_QUERY, variables={"id": target_profile.relay_id, "first": 50}
-    )
-    assert len(resp_big.json()["data"]["node"]["followers"]["edges"]) == 50
-    assert resp_big.json()["data"]["node"]["followers"]["pageInfo"]["hasNextPage"] is True
-
-    # 10× the page size, only ContentType-cache-warming jitter (one extra
-    # `ContentType.objects.get_for_model` per cache wipe). The invariant we care about
-    # is that the gap between the two runs stays bounded — definitively NOT 10× the page
-    # multiplier.
-    assert abs(q_big.count - q_small.count) <= 1
+    for first in (5, 50):
+        with assert_max_queries(PAGINATED_FOLLOWERS_QUERY_COUNT, hint=f"page size {first}"):
+            response = graphql_client(
+                PAGINATED_FOLLOWERS_QUERY, variables={"id": relay_id, "first": first}
+            )
+        followers = response.json()["data"]["node"]["followers"]
+        assert len(followers["edges"]) == first
+        assert followers["pageInfo"]["hasNextPage"] is True
 
 
 @override_settings(ENABLE_PUBLIC_ID_LOGIC=True)
-def test_anon_nested_followers_count_does_not_explode(
-    django_user_client, graphql_client_with_queries
-) -> None:
-    """When each follower edge expands to its own followers/following counts, query count
-    should stay sublinear (one extra batch fetch — not one per row). This is the canonical
-    'N+1 on FollowableMetadata' regression test."""
+def test_anon_nested_followers_count_does_not_explode(django_user_client, graphql_client) -> None:
+    """When each follower edge expands to its own followers/following counts, the count stays
+    flat (one batch fetch, not one per row). This is the canonical 'N+1 on
+    FollowableMetadata' regression test."""
     target_profile = ProfileFactory(owner=django_user_client.user)
-    follower_profiles = []
-    for _ in range(5):
-        u = UserFactory()
-        fp = ProfileFactory(owner=u)
-        FollowFactory(actor_object=fp, target_object=target_profile, user=u)
-        follower_profiles.append(fp)
+    relay_id = target_profile.relay_id
 
-    # Give one of the followers their OWN follower so followersCount is non-zero — keeps
-    # the assertion meaningful (otherwise we'd be checking that 0 == 0 N times).
-    extra_follower_user = UserFactory()
-    extra_follower_profile = ProfileFactory(owner=extra_follower_user)
-    FollowFactory(
-        actor_object=extra_follower_profile,
-        target_object=follower_profiles[0],
-        user=extra_follower_user,
+    def query() -> HttpResponse:
+        return graphql_client(NESTED_FOLLOWERS_QUERY, variables={"id": relay_id})
+
+    assert_queries_dont_grow(
+        run=query,
+        add_items=add_followers(target_profile, with_own_follower=True),
+        small=5,
+        big=10,
+        hint="the nested followersCount is no longer annotated on the followers' profiles",
     )
 
-    ContentType.objects.clear_cache()
-    response_small, queries_small = graphql_client_with_queries(
-        NESTED_FOLLOWERS_QUERY, variables={"id": target_profile.relay_id}
-    )
-    content = response_small.json()
-    assert len(content["data"]["node"]["followers"]["edges"]) == 5
-    nested_followers_counts = [
-        e["node"]["actorObject"]["followersCount"]
-        for e in content["data"]["node"]["followers"]["edges"]
-    ]
-    # One follower has followersCount=1, the rest 0.
-    assert sorted(nested_followers_counts) == [0, 0, 0, 0, 1]
-    small_count = queries_small.count
-
-    # Now run the same query with double the followers. The query count must NOT double.
-    target_profile_big = ProfileFactory(owner=UserFactory())
-    big_followers = []
-    for _ in range(10):
-        u = UserFactory()
-        fp = ProfileFactory(owner=u)
-        FollowFactory(actor_object=fp, target_object=target_profile_big, user=u)
-        big_followers.append(fp)
-    # Give a few of them inner-followers to keep counts non-zero
-    for fp in big_followers[:3]:
-        u = UserFactory()
-        inner = ProfileFactory(owner=u)
-        FollowFactory(actor_object=inner, target_object=fp, user=u)
-
-    ContentType.objects.clear_cache()
-    response_big, queries_big = graphql_client_with_queries(
-        NESTED_FOLLOWERS_QUERY, variables={"id": target_profile_big.relay_id}
-    )
-    assert len(response_big.json()["data"]["node"]["followers"]["edges"]) == 10
-
-    # The actual numeric count is encoded in queries_small/queries_big. The invariant we
-    # care about: doubling the rows does not double the queries.
-    assert queries_big.count == small_count
+    edges = query().json()["data"]["node"]["followers"]["edges"]
+    assert [e["node"]["actorObject"]["followersCount"] for e in edges] == [1] * 10
