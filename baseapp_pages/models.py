@@ -124,6 +124,21 @@ class PageMixin(models.Model):
     @property
     def url_path(self) -> URLPath | None:
         # returns the most probable url path based on current session
+        if "url_paths" in getattr(self, "_prefetched_objects_cache", {}):
+            # A list that prefetched the paths is answered from them, in the order the
+            # query below would give, instead of with one query per row.
+            language = get_language()
+            prefetched = self.url_paths.all()
+            candidates = [
+                path
+                for path in prefetched
+                if path.is_active and (path.language == language or path.language is None)
+            ]
+            if not prefetched.ordered:
+                # `.first()` on an unordered queryset orders by primary key; a prefetch
+                # that chose an order keeps it.
+                candidates.sort(key=lambda path: path.pk)
+            return candidates[0] if candidates else None
         return self.url_paths.filter(
             Q(is_active=True), Q(language=get_language()) | Q(language__isnull=True)
         ).first()

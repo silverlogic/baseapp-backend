@@ -1,11 +1,12 @@
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 
 import baseapp_wagtail.urls as baseapp_wagtail_urls
 from baseapp_core.graphql import GraphQLView
 from baseapp_core.plugins import plugin_registry
 from baseapp_core.rest_framework.routers import DefaultRouter
 from baseapp_e2e.rest_framework.views import E2EViewSet
+from baseapp_profiles.rest_framework.routers import profiles_router
 
 __all__ = [
     "urlpatterns",
@@ -13,6 +14,7 @@ __all__ = [
 
 v1_urlpatterns = [
     *plugin_registry.get_all_v1_urlpatterns(),
+    re_path(r"", include(profiles_router.urls)),
 ]
 
 router = DefaultRouter(trailing_slash=False)

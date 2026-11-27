@@ -41,7 +41,11 @@ def get_deep_link(
     except RequestException:
         raise DeepLinkFetchError
 
-    results = r.json()
-    if "url" not in results:
+    try:
+        results = r.json()
+    except ValueError:
+        # A successful response whose body is empty or not JSON.
+        raise DeepLinkFetchError
+    if not isinstance(results, dict) or "url" not in results:
         raise DeepLinkFetchError
     return results
