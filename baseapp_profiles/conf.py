@@ -106,9 +106,10 @@ def invitation_expiration_days() -> int:
 
 
 def invitation_email_sender() -> Callable:
-    return _get_callable("BASEAPP_PROFILES_INVITATION_EMAIL_SENDER") or import_string(
-        DEFAULTS["BASEAPP_PROFILES_INVITATION_EMAIL_SENDER"]
-    )
+    sender = _get_callable("BASEAPP_PROFILES_INVITATION_EMAIL_SENDER")
+    if sender is None:
+        sender = import_string(DEFAULTS["BASEAPP_PROFILES_INVITATION_EMAIL_SENDER"])
+    return sender
 
 
 def invitation_validator() -> Callable | None:

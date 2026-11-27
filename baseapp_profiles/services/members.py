@@ -78,24 +78,45 @@ def ensure_not_last_admin(membership: "ProfileUserRole", *, allow_last_admin: bo
     if not is_last_admin_protected(membership.profile):
         return
 
-    admin_pks = list(
-        ProfileUserRole.objects.select_for_update()
-        .filter(
-            profile_id=membership.profile_id,
-            role=admin,
-            status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
-        )
-        .values_list("pk", flat=True)
+    admins = ProfileUserRole.objects.filter(
+        profile_id=membership.profile_id,
+        role=admin,
+        status=ProfileUserRole.ProfileRoleStatus.ACTIVE,
     )
-    if not [pk for pk in admin_pks if pk != membership.pk]:
+    list(admins.select_for_update().order_by("pk").values_list("pk", flat=True))
+    # An admin whose account is deactivated (say, being deleted) cannot manage the profile,
+    # so does not count. Asked separately so the lock above stays on the admin rows.
+    if not admins.filter(user__is_active=True).exclude(pk=membership.pk).exists():
         raise ProfileMembershipError(
             _("A profile must keep at least one active admin"), "last_admin"
         )
 
 
+def lock_profile_memberships(profile_ids: Iterable[int]) -> None:
+    """
+    Serialize membership changes on these profiles until the transaction ends.
+
+    Taken before any membership row is locked, so two requests that each hold one admin's
+    row never wait on each other's (a deadlock): the second waits here and then sees what
+    the first did. `no_key` keeps rows that reference the profile insertable meanwhile.
+    """
+    list(
+        Profile.objects.select_for_update(no_key=True)
+        .filter(pk__in=profile_ids)
+        .order_by("pk")
+        .values_list("pk", flat=True)
+    )
+
+
 def _lock(membership: "ProfileUserRole") -> None:
     """Lock the row and reload it, so the checks below see the committed state."""
-    list(ProfileUserRole.objects.select_for_update().filter(pk=membership.pk).values_list("pk"))
+    lock_profile_memberships([membership.profile_id])
+    locked = list(
+        ProfileUserRole.objects.select_for_update().filter(pk=membership.pk).values_list("pk")
+    )
+    if not locked:
+        # Removed by another request since the caller loaded it.
+        raise ProfileMembershipError(_("Role not found"), "not_found")
     membership.refresh_from_db()
 
 
@@ -155,9 +176,8 @@ def add_members(
         except IntegrityError as error:
             logger.exception("Failed to add members to profile %s", profile.pk)
             # A concurrent add got there first; anything else is reported generically.
-            if ProfileUserRole.objects.filter(
-                profile=profile, user_id__in=[user.pk for user in users]
-            ).exists():
+            # The same question as above: with history on, a closed row is not a conflict.
+            if existing.exists():
                 raise ProfileMembershipError(
                     _("One or more of the selected users are already members of this profile"),
                     "already_member",

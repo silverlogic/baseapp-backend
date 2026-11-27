@@ -17,8 +17,9 @@ if TYPE_CHECKING:
 
 class OrganizationService:
     """
-    Create organizations — and their profiles — outside GraphQL: in the admin, data
-    migrations, importers or management commands.
+    Create organizations — and their profiles — outside GraphQL: in the admin, importers
+    or management commands. It uses the current models, not migration state, so it does not
+    belong in a data migration.
 
     `organizationCreate` makes the signed-in user the profile's owner. Here the owner is
     optional: an organization created without one is run by its ADMIN members, and the
@@ -60,6 +61,16 @@ class OrganizationService:
 
         Profile = swapper.load_model("baseapp_profiles", "Profile")
         with transaction.atomic():
+            # `organization` may be a copy loaded before another call linked a profile.
+            stored = (
+                type(organization)
+                ._default_manager.select_for_update()
+                .filter(pk=organization.pk)
+                .first()
+            )
+            if stored is not None and stored.profile_id:
+                organization.profile = stored.profile
+                return stored.profile
             profile = Profile.objects.create(
                 owner=owner,
                 name=organization.name,
@@ -145,8 +156,12 @@ class OrganizationAccountService(SharedServiceProvider):
         if not profile_ids:
             return False
         if transaction.get_connection().in_atomic_block:
-            # Lock the rows the membership services lock (`ensure_not_last_admin`), so two
-            # admins leaving at the same time are checked one after the other.
+            # Lock what the membership services lock, in their order (the profiles, then
+            # the admin rows), so two admins leaving at the same time are checked one
+            # after the other.
+            from baseapp_profiles.services.members import lock_profile_memberships
+
+            lock_profile_memberships(profile_ids)
             list(
                 admins.select_for_update()
                 .filter(profile_id__in=profile_ids)

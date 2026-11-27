@@ -2,6 +2,8 @@ import swapper
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
+from baseapp_profiles.services.invitations import awaits_answer
+
 from ..serializers import JWTProfileSerializer
 
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
@@ -77,9 +79,9 @@ class ProfileInvitationSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_is_expired(self, invitation) -> bool:
+        # A member claim stays ACTIVE while it waits, so it is asked the same way.
         return invitation.status == ProfileUserRole.ProfileRoleStatus.EXPIRED or (
-            invitation.status == ProfileUserRole.ProfileRoleStatus.PENDING
-            and invitation.is_invitation_expired()
+            invitation.is_invitation_expired() and awaits_answer(invitation)
         )
 
 

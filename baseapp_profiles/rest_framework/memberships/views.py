@@ -1,4 +1,5 @@
 import swapper
+from django.contrib.auth import get_user_model
 from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
@@ -111,10 +112,14 @@ class ProfileMembersViewSet(
         profile = get_current_profile(self.request)
         if profile is None:
             return ProfileUserRole.objects.none()
+        related = ["user", "profile"]
+        if any(field.name == "profile" for field in get_user_model()._meta.get_fields()):
+            # The serializer shows each member's own profile.
+            related.append("user__profile")
         return (
             ProfileUserRole.objects.memberships()
             .filter(profile=profile)
-            .select_related("user", "profile")
+            .select_related(*related)
             .order_by("pk")
         )
 

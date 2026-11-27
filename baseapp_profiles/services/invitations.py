@@ -450,7 +450,9 @@ def resend_invitation(
                 invitation.profile,
                 invitee,
                 role=invitation.role,
-                invited_user=invitation.user or find_user_by_email(invitee.email),
+                # Whoever holds the address now: the account on the expired row may have
+                # changed its email since, and could not answer the new token.
+                invited_user=find_user_by_email(invitee.email),
                 invited_by=by or invitation.invited_by,
                 message=invitation.message,
                 extra_fields=extra_fields,
@@ -490,11 +492,16 @@ def _deliver_or_hold(
         # the clock when it is finally sent.
         # Only for the token the hook looked at: a resend that committed while the hook
         # ran has its own token and expiry date, which this hold must not clear.
-        ProfileUserRole.objects.filter(
-            pk=invitation.pk, invitation_token=invitation.invitation_token
+        # ... nor write to an invitation that was answered or cancelled meanwhile.
+        held = ProfileUserRole.objects.filter(
+            pk=invitation.pk,
+            invitation_token=invitation.invitation_token,
+            status__in=[Status.PENDING, Status.ACTIVE],
+            responded_at__isnull=True,
         ).update(invitation_expires_at=None)
-        invitation.invitation_expires_at = None
-        result.held.append(invitation)
+        if held:
+            invitation.invitation_expires_at = None
+            result.held.append(invitation)
         return
     if deliver_invitation(invitation, inviter=inviter):
         result.emails_sent += 1
@@ -528,13 +535,32 @@ def release_invitation(
         )
         invitation.save(update_fields=["invitation_expires_at"])
 
-    sent = deliver_invitation(invitation, inviter=by or invitation.invited_by)
+    released_until = invitation.invitation_expires_at
+    sent = deliver_invitation(
+        invitation, inviter=by or invitation.invited_by, released_until=released_until
+    )
     if not sent:
-        ProfileUserRole.objects.filter(
-            pk=invitation.pk, invitation_token=invitation.invitation_token
-        ).update(invitation_expires_at=None)
+        _restore_hold(invitation.pk, invitation.invitation_token, released_until)
         invitation.invitation_expires_at = None
     return sent
+
+
+def _restore_hold(invitation_pk: int, token: str | None, released_until: datetime | None) -> bool:
+    """
+    Put a released invitation back on hold after its email could not be sent or queued.
+
+    Only if the row is still as that release left it (same token and expiry date): one
+    that was resent, released again, answered or cancelled since is left alone.
+    """
+    return bool(
+        ProfileUserRole.objects.filter(
+            pk=invitation_pk,
+            invitation_token=token,
+            invitation_expires_at=released_until,
+            status__in=[Status.PENDING, Status.ACTIVE],
+            responded_at__isnull=True,
+        ).update(invitation_expires_at=None)
+    )
 
 
 def _celery_is_eager() -> bool:
@@ -546,12 +572,24 @@ def _celery_is_eager() -> bool:
 
 
 def deliver_invitation(
-    invitation: "ProfileUserRole", *, inviter: AbstractBaseUser | None = None
+    invitation: "ProfileUserRole",
+    *,
+    inviter: AbstractBaseUser | None = None,
+    released_until: datetime | None = None,
 ) -> bool:
     """
     Send the invitation email now, or queue it when `BASEAPP_PROFILES_INVITATION_ASYNC_SEND`
     is on. A queued email leaves once the transaction commits; while Celery runs eagerly it
     is sent inline instead, so the result reflects the real outcome.
+
+    An inline send does not wait for an enclosing transaction: call this once the invitation
+    is committed (as `send_invitations` and `resend_invitation` do), or the invitee may
+    receive a token that is then rolled back. Inside a transaction a queued send answers
+    True before the broker is asked; a publish that then fails is logged, not reported.
+
+    `released_until` marks the delivery of a release (the expiry date that release set): if
+    the email cannot be queued, or the worker cannot send it, the invitation goes back on
+    hold so it can be released again.
     """
     if invitation_async_send() and not _celery_is_eager():
         from baseapp_profiles.tasks import send_invitation_email_task
@@ -561,13 +599,17 @@ def deliver_invitation(
         # The task only sends the token it was queued for (see the task).
         token = invitation.invitation_token
 
+        released = released_until.isoformat() if released_until else None
+
         def queue() -> bool:
             try:
-                send_invitation_email_task.delay(invitation_pk, inviter_pk, token)
+                send_invitation_email_task.delay(invitation_pk, inviter_pk, token, released)
             except Exception:
                 # The invitation is saved; a broker failure must not fail the request or
                 # keep the rest of a batch from being queued. Resend it once the broker is back.
                 logger.exception("Failed to queue the email for invitation %s", invitation_pk)
+                if released_until is not None:
+                    _restore_hold(invitation_pk, token, released_until)
                 return False
             return True
 
@@ -719,8 +761,9 @@ def lookup_invitation(token: str) -> PublicInvitation | None:
         inviter_name=_display_name(invitation.invited_by),
         message=invitation.message,
         profile_image=invitation.profile.image or None,
-        # The inverse of accept_invitation_with_signup's rule, so the page never offers a
-        # sign-up that would be refused.
+        # True exactly when accept_invitation_with_signup would answer `user_exists`. An
+        # inactive account it refuses to reactivate (`account_inactive`) could not sign in
+        # either, so the page is not sent there.
         requires_sign_in=bool(account is not None and account.is_active),
     )
 
@@ -894,17 +937,18 @@ def accept_invitation_with_signup(
         # Lock the row and re-check, so two submissions of the form cannot both sign up.
         invitation = _lock_for_response(invitation)
 
-        if invitation.user is not None and _email_of(invitation.user) != email.casefold():
-            # The account changed its email since the invitation was sent: the token only
-            # proves control of the old address, not of this account.
-            raise ProfileMembershipError(
-                _("This invitation was sent to a different user"), "wrong_user"
-            )
         user = invitation.user or find_user_by_email(email)
         if user is not None:
             # Lock the account: another invitation for the same inactive account may be
             # signing up right now, and only one of them may activate it.
             user = User._default_manager.select_for_update().get(pk=user.pk)
+        if user is not None and _email_of(user) != email.casefold():
+            # The account changed its email since the invitation was sent: the token only
+            # proves control of the old address, not of this account. Read from the
+            # locked row, so a change made a moment ago counts.
+            raise ProfileMembershipError(
+                _("This invitation was sent to a different user"), "wrong_user"
+            )
         if user is not None and user.is_active:
             raise ProfileMembershipError(
                 _("An account already exists for this email. Sign in to accept the invitation."),
@@ -922,10 +966,17 @@ def accept_invitation_with_signup(
             if User.USERNAME_FIELD != User.get_email_field_name():
                 setattr(user, User.USERNAME_FIELD, email)
 
-        if first_name is not None and hasattr(user, "first_name"):
-            user.first_name = first_name.strip()
-        if last_name is not None and hasattr(user, "last_name"):
-            user.last_name = last_name.strip()
+        for field_name, value in (("first_name", first_name), ("last_name", last_name)):
+            if value is None or not hasattr(user, field_name):
+                continue
+            value = value.strip()
+            max_length = getattr(User._meta.get_field(field_name), "max_length", None)
+            if max_length is not None and len(value) > max_length:
+                raise ProfileMembershipError(
+                    _("Names can have at most %(limit)d characters") % {"limit": max_length},
+                    "invalid_input",
+                )
+            setattr(user, field_name, value)
 
         try:
             validate_password(password, user=user)
@@ -936,7 +987,15 @@ def accept_invitation_with_signup(
         user.is_active = True
         if hasattr(user, "is_email_verified"):
             user.is_email_verified = True
-        user.save()
+        try:
+            with transaction.atomic():
+                user.save()
+        except IntegrityError:
+            # Another signup created the account for this address a moment ago.
+            raise ProfileMembershipError(
+                _("An account already exists for this email. Sign in to accept the invitation."),
+                "user_exists",
+            )
 
         _activate(invitation, user)
         send_on_commit(

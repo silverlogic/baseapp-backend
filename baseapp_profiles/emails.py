@@ -48,7 +48,7 @@ def _display_name(user) -> str:
     if user is None:
         return ""
     full_name = user.get_full_name() if hasattr(user, "get_full_name") else ""
-    return full_name or getattr(user, "email", "") or ""
+    return full_name or getattr(user, user.get_email_field_name(), "") or ""
 
 
 def get_accept_url(invitation) -> str:

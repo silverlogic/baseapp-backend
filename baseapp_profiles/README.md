@@ -457,7 +457,9 @@ from baseapp_profiles.exceptions import ProfileMembershipError
 
 def validate_invitee(profile, invitee, invited_by) -> None:
     # invitee is a services.invitations.Invitee(email, first_name, last_name)
-    if not invited_by.is_staff and not invitee.email.endswith("@" + profile.target.domain):
+    # invited_by is None when nobody sent it (an importer, say)
+    is_staff = invited_by is not None and invited_by.is_staff
+    if not is_staff and not invitee.email.endswith("@" + profile.target.domain):
         raise ProfileMembershipError("Invite people from your company only", "outside_domain")
 ```
 
@@ -681,7 +683,11 @@ gives it to. Override `has_invitation_perm` in your subclass instead (or raise
 `PermissionDenied` from a backend listed before it, which stops the check):
 
 ```python
+import swapper
+
 from baseapp_profiles.permissions import ProfilesPermissionsBackend, is_active_member
+
+ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
 
 
 class MyProfilesPermissionsBackend(ProfilesPermissionsBackend):
@@ -753,8 +759,8 @@ membership are no longer offered.
 `ProfileUserRole.objects` is now a manager built from `ProfileUserRoleQuerySet`, and the
 services rely on its methods (`.open()`, `.overdue()`, `.memberships()`, ...). If your
 concrete model declares its own `objects`, derive it from that queryset
-(`ProfileUserRoleQuerySet.as_manager()`, or a manager whose `get_queryset()` returns a
-`ProfileUserRoleQuerySet` subclass).
+(`ProfileUserRoleQuerySet.as_manager()`, or `MyManager.from_queryset(ProfileUserRoleQuerySet)()`
+to keep a manager class of your own).
 
 ### Migrating an existing project
 

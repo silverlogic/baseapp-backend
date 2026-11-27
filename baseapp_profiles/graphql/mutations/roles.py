@@ -103,16 +103,18 @@ class ProfileUserRoleCreate(ExtensibleMutation):
                 str(get_pk_from_relay_id(user_id)) for user_id in input.get("users_ids") or []
             )
         )
-        users_by_pk = {
-            str(pk): user for pk, user in User._default_manager.in_bulk(user_pks).items()
-        }
-        if len(users_by_pk) != len(user_pks):
+        # Matched on the stored primary key: an id spelled differently ("0042") still finds
+        # its user, but is not the key the result comes back under.
+        users = list(User._default_manager.in_bulk(user_pks).values())
+        if len(users) != len(user_pks):
             raise GraphQLError(str(_("User not found")), extensions={"code": "not_found"})
+        requested = {pk: position for position, pk in enumerate(user_pks)}
+        users.sort(key=lambda user: requested.get(str(user.pk), len(requested)))
 
         try:
             profile_user_roles = member_service.add_members(
                 profile,
-                [users_by_pk[pk] for pk in user_pks],
+                users,
                 role=role_type or None,
                 by=info.context.user,
                 extra_fields=cls.extra_fields_from_input(info, input),

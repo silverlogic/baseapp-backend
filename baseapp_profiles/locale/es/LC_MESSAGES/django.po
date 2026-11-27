@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-26 22:53+0000\n"
+"POT-Creation-Date: 2026-11-27 00:21+0000\n"
 "PO-Revision-Date: 2026-10-12 16:00+0000\n"
 "Last-Translator: BaseApp i18n <dev@tsl.io>\n"
 "Language-Team: Spanish\n"
@@ -59,7 +59,7 @@ msgstr "Usuario no encontrado"
 msgid "Role is required"
 msgstr "El rol es obligatorio"
 
-#: graphql/mutations/roles.py
+#: graphql/mutations/roles.py services/members.py
 msgid "Role not found"
 msgstr "Rol no encontrado"
 
@@ -364,6 +364,11 @@ msgstr ""
 #: services/invitations.py
 msgid "This account has been deactivated. Contact an administrator."
 msgstr "Esta cuenta ha sido desactivada. Contacta con un administrador."
+
+#: services/invitations.py
+#, python-format
+msgid "Names can have at most %(limit)d characters"
+msgstr "Los nombres pueden tener como máximo %(limit)d caracteres"
 
 #: services/members.py
 msgid "A profile must keep at least one active admin"

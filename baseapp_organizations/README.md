@@ -58,8 +58,9 @@ Because it's a `ProfilableModel`, `Organization` sets `profile_name_sql = "NEW.n
 ## Creating organizations outside GraphQL
 
 `organizationCreate` makes the signed-in user the owner of the new profile. Admin actions,
-importers, data migrations and management commands use `OrganizationService` instead,
-which always creates and links the profile and makes the owner optional:
+importers and management commands use `OrganizationService` instead, which always creates
+and links the profile and makes the owner optional (it uses the current models, so call it
+after `migrate`, not from a data migration):
 
 ```python
 from baseapp_organizations.services import OrganizationService

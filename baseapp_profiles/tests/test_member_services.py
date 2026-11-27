@@ -73,17 +73,19 @@ class TestLastAdminGuard:
         ProfileUserRoleFactory(profile=profile, role=ADMIN)
         manager = ProfileUserRoleFactory(profile=profile, role=MANAGER)
 
+        pk = manager.pk
         remove_member(manager)
 
-        assert not ProfileUserRole.objects.filter(pk=manager.pk).exists()
+        assert not ProfileUserRole.objects.filter(pk=pk).exists()
 
     def test_a_profile_with_an_owner_is_not_guarded_by_default(self) -> None:
         profile = ProfileFactory()
         admin = ProfileUserRoleFactory(profile=profile, role=ADMIN)
 
+        pk = admin.pk
         remove_member(admin)
 
-        assert not ProfileUserRole.objects.filter(pk=admin.pk).exists()
+        assert not ProfileUserRole.objects.filter(pk=pk).exists()
 
     def test_the_setting_guards_profiles_with_an_owner_too(self, settings) -> None:
         settings.BASEAPP_PROFILES_PROTECT_LAST_ADMIN = True

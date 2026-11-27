@@ -23,6 +23,7 @@ pytestmark = pytest.mark.django_db
 
 User = get_user_model()
 ProfileUserRole = swapper.load_model("baseapp_profiles", "ProfileUserRole")
+ADMIN = ProfileUserRole.ProfileRoles.ADMIN
 MANAGER = ProfileUserRole.ProfileRoles.MANAGER
 Status = ProfileUserRole.ProfileRoleStatus
 PASSWORD = "c0rrect-Horse-battery"  # NOSONAR
@@ -300,3 +301,172 @@ class TestMembershipCheck:
 
         assert profile.check_if_member(row.user) is True
         assert profile.check_if_member(profile.owner) is True
+
+
+class TestLastAdminWithDeactivatedAccounts:
+    def test_an_admin_whose_account_is_deactivated_does_not_count(self) -> None:
+        profile = ProfileFactory(owner=None)
+        admin = ProfileUserRoleFactory(profile=profile, role=ADMIN)
+        leaving = ProfileUserRoleFactory(profile=profile, role=ADMIN)
+        leaving.user.is_active = False
+        leaving.user.save()
+
+        for change in (
+            lambda: member_service.remove_member(admin),
+            lambda: member_service.deactivate_member(admin),
+            lambda: member_service.change_member_role(admin, MANAGER),
+        ):
+            with pytest.raises(ProfileMembershipError) as error:
+                change()
+            assert error.value.code == "last_admin"
+
+    def test_a_membership_removed_meanwhile_is_reported_as_not_found(self) -> None:
+        membership = ProfileUserRoleFactory(profile=ProfileFactory(owner=None), role=MANAGER)
+        stale = stale_copy(membership)
+        member_service.remove_member(membership)
+
+        with pytest.raises(ProfileMembershipError) as error:
+            member_service.remove_member(stale)
+
+        assert error.value.code == "not_found"
+
+
+class TestSecondRound:
+    def test_a_history_resend_binds_whoever_holds_the_address_now(self, profile, settings) -> None:
+        settings.BASEAPP_PROFILES_INVITATION_KEEP_HISTORY = True
+        account = UserFactory(email="old@example.com")
+        invitation = invite(profile, "old@example.com")
+        assert invitation.user == account
+        account.email = "new@example.com"
+        account.save()
+        invitation.invitation_expires_at = timezone.now() - timedelta(days=1)
+        invitation.save(update_fields=["invitation_expires_at"])
+
+        resent = service.resend_invitation(invitation).invitations[0]
+
+        assert resent.pk != invitation.pk
+        assert resent.invited_email == "old@example.com"
+        assert resent.user is None
+
+    def test_a_hold_is_not_written_to_a_cancelled_invitation(self, profile, settings) -> None:
+        settings.BASEAPP_PROFILES_INVITATION_KEEP_HISTORY = True
+        invitation = invite(profile)
+        stale = stale_copy(invitation)
+        service.cancel_invitation(invitation)
+        expires_at = ProfileUserRole.objects.get(pk=invitation.pk).invitation_expires_at
+        settings.BASEAPP_PROFILES_INVITATION_PRE_SEND_HOOK = hold_everything
+
+        result = service.SentInvitations()
+        service._deliver_or_hold(stale, inviter=None, result=result)
+
+        assert result.held == []
+        assert ProfileUserRole.objects.get(pk=invitation.pk).invitation_expires_at == expires_at
+
+    def test_signup_refuses_an_account_whose_email_changed_before_the_lock(
+        self, profile, settings
+    ) -> None:
+        settings.BASEAPP_PROFILES_INVITATION_SIGNUP_ENABLED = True
+        account = UserFactory(email="ann@example.com", is_active=False, last_login=None)
+        invitation = invite(profile)
+        stale = stale_copy(invitation)
+        assert stale.user == account
+        User.objects.filter(pk=account.pk).update(email="other@example.com")
+
+        with patch.object(service, "get_invitation_by_token", return_value=stale):
+            with pytest.raises(ProfileMembershipError) as error:
+                service.accept_invitation_with_signup(stale.invitation_token, password=PASSWORD)
+
+        assert error.value.code == "wrong_user"
+        account.refresh_from_db()
+        assert account.is_active is False
+
+    def test_signup_refuses_a_name_the_user_model_cannot_hold(self, profile, settings) -> None:
+        settings.BASEAPP_PROFILES_INVITATION_SIGNUP_ENABLED = True
+        invitation = invite(profile)
+        limit = User._meta.get_field("first_name").max_length
+
+        with pytest.raises(ProfileMembershipError) as error:
+            service.accept_invitation_with_signup(
+                invitation.invitation_token, password=PASSWORD, first_name="a" * (limit + 1)
+            )
+
+        assert error.value.code == "invalid_input"
+        assert not User.objects.filter(email="ann@example.com").exists()
+
+    def test_the_text_email_shows_names_and_the_note_as_typed(self, profile, mailoutbox) -> None:
+        service.send_invitations(
+            profile,
+            [{"email": "ann@example.com", "first_name": "A & B"}],
+            message="R&D <team>",
+        )
+
+        email = mailoutbox[0]
+        assert "Hi A & B," in email.body
+        assert "R&D <team>" in email.body
+        html = email.alternatives[0][0]
+        assert "A &amp; B" in html
+        assert "R&amp;D &lt;team&gt;" in html
+
+    def test_a_queued_email_is_not_sent_after_the_invitation_expired(
+        self, profile, mailoutbox
+    ) -> None:
+        invitation = invite(profile)
+        mailoutbox.clear()
+        invitation.invitation_expires_at = timezone.now() - timedelta(minutes=1)
+        invitation.save(update_fields=["invitation_expires_at"])
+
+        assert tasks.send_invitation_email_task(invitation.pk) is False
+        assert mailoutbox == []
+
+
+class TestReleaseOfQueuedEmails:
+    @pytest.fixture
+    def held(self, profile, settings) -> "ProfileUserRole":
+        settings.BASEAPP_PROFILES_INVITATION_PRE_SEND_HOOK = hold_everything
+        invitation = invite(profile)
+        settings.BASEAPP_PROFILES_INVITATION_ASYNC_SEND = True
+        settings.CELERY_TASK_ALWAYS_EAGER = False
+        return invitation
+
+    def test_a_publish_that_fails_on_commit_puts_the_invitation_back_on_hold(
+        self, held, django_capture_on_commit_callbacks
+    ) -> None:
+        with patch.object(tasks.send_invitation_email_task, "delay", side_effect=OSError):
+            with django_capture_on_commit_callbacks(execute=True):
+                assert service.release_invitation(held) is True
+
+        held.refresh_from_db()
+        assert held.invitation_expires_at is None
+
+    def test_a_worker_that_cannot_send_puts_the_invitation_back_on_hold(
+        self, held, django_capture_on_commit_callbacks
+    ) -> None:
+        with patch.object(tasks.send_invitation_email_task, "delay") as delay:
+            with django_capture_on_commit_callbacks(execute=True):
+                service.release_invitation(held)
+        args = delay.call_args.args
+
+        with patch("baseapp_profiles.emails.send_invitation_email", side_effect=OSError):
+            assert tasks.send_invitation_email_task(*args) is False
+
+        held.refresh_from_db()
+        assert held.invitation_expires_at is None
+
+    def test_a_failure_of_a_superseded_attempt_leaves_a_resend_alone(
+        self, held, settings, django_capture_on_commit_callbacks
+    ) -> None:
+        with patch.object(tasks.send_invitation_email_task, "delay") as delay:
+            with django_capture_on_commit_callbacks(execute=True):
+                service.release_invitation(held)
+            args = delay.call_args.args
+            settings.BASEAPP_PROFILES_INVITATION_PRE_SEND_HOOK = None
+            with django_capture_on_commit_callbacks(execute=True):
+                service.resend_invitation(held)
+        current = ProfileUserRole.objects.get(pk=held.pk)
+
+        with patch("baseapp_profiles.emails.send_invitation_email", side_effect=OSError):
+            assert tasks.send_invitation_email_task(*args) is False
+
+        assert ProfileUserRole.objects.get(pk=held.pk).invitation_expires_at == (
+            current.invitation_expires_at
+        )
