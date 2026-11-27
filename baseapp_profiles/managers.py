@@ -21,13 +21,18 @@ class ProfileManager(models.Manager):
         )
 
     def filter_user_profiles(self, user: AbstractBaseUser | AnonymousUser) -> models.QuerySet:
-        """Profiles `user` owns or is an ACTIVE member of."""
+        """Profiles `user` owns or is an ACTIVE member of; none for an anonymous user."""
+        if not user.is_authenticated:
+            # `owner=AnonymousUser()` raises TypeError instead of matching nothing.
+            return self.none()
         return self.filter(models.Q(owner=user) | models.Q(self._active_membership_subquery(user)))
 
     def get_if_member(
         self, user: AbstractBaseUser | AnonymousUser, **kwargs
     ) -> models.Model | None:
         """The profile matching `kwargs` when `user` owns it or is an ACTIVE member of it."""
+        if not user.is_authenticated:
+            return None
         if user.is_superuser:
             return self.get(**kwargs)
         return self.filter(
